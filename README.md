@@ -33,7 +33,7 @@ Project website: https://BrainAnnex.org
 ## Major components
 * **NeoAccess** : a library to connect to Neo4j.
   The APOC library must be installed to use the function export_dbase_json().  
-  [Link](https://github.com/BrainAnnex/brain-annex/tree/main/BrainAnnex/modules/neo_access)
+  [Link](https://github.com/BrainAnnex/brain-annex/blob/main/BrainAnnex/modules/neo_access/neo_access.py)
 
 
 * **NeoSchema** : a higher-level schema-based library on top of NeoAccess.
@@ -52,4 +52,4 @@ Project website: https://BrainAnnex.org
 
 
 * **Navigation bar** : Brain Annex can be used either as a standalone web app, or integrated with another site.  
-  The navigation is implemented [in this file](https://github.com/BrainAnnex/brain-annex/tree/main/navigation)
+  The navigation is implemented [in this package](https://github.com/BrainAnnex/brain-annex/tree/main/navigation)
