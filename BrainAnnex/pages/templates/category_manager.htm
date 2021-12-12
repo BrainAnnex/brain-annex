@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters:
+    current_page
+    site_pages
+
+    category_id
+    category_name
+    category_remarks
+
+    subcategories
+    parent_categories
+    all_categories
+#}
+
+<html>
+<head>
+    <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>
+    <link rel='stylesheet' type='text/css' href='https://brainannex.org/css/knowledge.css'>
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+    <style type="text/css">
+        div.categoryManagement {
+            border:0;
+        }
+
+        div.categoryManagement div {
+            background-color:white;
+            display:inline-block;
+        }
+
+        div.topRow div {
+            vertical-align:bottom;
+        }
+
+        div.midRow div {
+            vertical-align:middle;
+        }
+
+        div.bottomRow div {
+            vertical-align:top;
+        }
+    </style>
+
+    <title>Edit Categories - Brain Annex</title>
+    <meta name='description' content='Knowledge and Media Management made easy and powerful. Note-taking software. Brain Annex.'>
+    <meta name='keywords' content='Notetaking, Knowledge Representation, Knowledge Management, Media Management, Brain Annex'>
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+<body class='cp'>
+
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
+
+
+
+<div class='navmenu dark-background'>  <!-- Navigation Menu -->
+    <div class='navmenu-header'><span style='font-weight:bold; color:#9999FF'><a href='/viewer.php?ac=1' title="BRAIN ANNEX - Knowledge &amp; Media Management. Logged in as juls &nbsp;(ADMIN)">juls</a></span><span style='margin-left:100px'>&nbsp;</span><span style='color:#55CC55; font-weight:bold'></span><span style='margin-left:100px'>&nbsp;</span><a href='#'>^TOP</a> <a href='/search.php?ac=1' target='_blank' style='margin-left:150px'>SEARCH (in new tab)</a> </div>
+    <table class='navmenu-table'><tr class='major-line'><td align='center' class='unselected'><a href="/viewer.php?ac=1">HOME</a></td><td align='center' class='unselected'><a href="/siteModules/categoryManagement/graph.php">Categories (Table of Contents)</a></td><td align='center' class='unselected'><a href="/pluginPage.php?plugin=ach&page=showHistory">History</a></td><td align='center' class='unselected'><a href="/admin.php">Admin</a></td><td align='center' class='unselected'><a href="https://brainannex.org/viewer.php?ac=2&cat=12" target='_blank'>HELP</a></td><td align='center' class='unselected'><a href="/search.php?ac=1">Search</a></td><td align='center' class='unselected'><a href="/doLogout.php">LOGOUT</a></td></tr></table>
+</div>  <!-- End of Navigation Menu -->
+
+
+
+<div class='outerbox'>  <!-- START OUTER BOX -->
+
+<div class='lightbox' id='page'>   <!--  START LIGHTBOX -->
+
+
+<div class='page-header'>
+    Edit Categories
+
+    <form method='GET' action='/search.php'  id='ajax-form'  style='float:right; padding-right:5px;'>
+        <img src='/BA/pages/static/graphics/magnifier.png' alt='search box' title='search box'>
+        <input type='text' name='text' size='35'>
+        <input type='hidden' name='ac' value=1>
+        <input type='submit' value='SEARCH'>
+
+    </form>
+</div>   <!--  END PAGE HEADER -->
+
+<a href='/BA/pages/viewer/{{category_id}}' title="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;"><img src="/BA/pages/static/graphics/open_16_227574.png" title="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;" alt="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;" style="margin-left:16px">EXIT EDITOR and go to &ldquo;{{category_name}}&rdquo;</a><br>
+
+
+
+
+<div id='categoryManager' style='border:1px solid gray; background-color:white; margin-left:15px; margin-right:15px; margin-top:15px; padding:2px'>
+
+
+    <div class='categoryManagement  topRow'>
+        <img src='/BA/pages/static/graphics/parent.jpg'>
+
+        {% for p in parent_categories %}
+
+            <div style='width:105px'>&nbsp;</div>
+            <div style='width:105px; text-align:center'>
+                <a href='javascript:replaceMenu(0)'>
+                    <img src='/BA/pages/static/graphics/replace_16_1329089.png'
+                         title='REMOVE &ldquo;{{p["name"]}}&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'
+                           alt='REMOVE &ldquo;{{p["name"]}}&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'>
+                </a><br>
+                <form method='POST' action='doCategoryHandler2.php?op=switchParentNode&cat={{category_id}}' id='form_0' style='display:none'>
+                    <input type='hidden' name='childID' value='{{category_id}}'>
+                    <input type='hidden' name='oldParentID' value='153'>
+                    <select id = 'menu_0' name = 'newParentID' style = 'width:180px'>
+                        <option value='-1'>[Select parent category]</option>
+
+                        {% for s in subcategories %}
+                            <option value="{{s['id']}}">{{s['name']}}</option>
+                        {% endfor %}
+
+                    </select>
+                </form>
+
+                <form method='POST' action='doCategoryHandler2.php?op=removeEdge&cat={{category_id}}'>
+                    <input type='hidden' name='parentID' value='153'>
+                    <input type='hidden' name='childID' value='{{category_id}}'>
+                    <input type='image' src='/BA/pages/static/graphics/scissors_16_15275.png'
+                           title='SEVER the "sub-category" relationship between `{{p["name"]}}` and `{{category_name}}`
+It does *NOT* delete `{{p["name"]}}`'
+                           alt='SEVER the "sub-category" relationship between `{{p["name"]}}` and "{{category_name}}"
+It does *NOT* delete `{{p["name"]}}`'>
+                </form>
+
+                <span style='font-weight:bold; font-size:11px'>
+                    <a href='/BA/pages/category_manager/{{p["item_id"]}}' title='Re-Center the Editor on this Category (&ldquo;{{p["name"]}}&rdquo;)'>{{p["name"]}}</a>
+                </span>
+            </div>
+
+        {% endfor %}  {# END of for p in parent_categories #}
+
+
+
+
+        <div style='width:105px'>&nbsp;</div>
+
+
+
+
+        <div style='width:180px; text-align:center'>
+            <span style='font-style:italic; color:#666666'>Make &ldquo;{{category_name}}&rdquo; also a Sub-category of:</span><br>
+            <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_id}}' id='form_3'><input type='hidden' name='childID' value='{{category_id}}'>
+                <select id = 'menu_3' name = 'parentID' style = 'width:180px'>
+                    <option value='-1'>[Select parent category]</option>
+
+                    {% for c in all_categories %}
+                    <option value="{{c['id']}}">{{c['name']}}</option>
+                    {% endfor %}
+
+                </select>
+
+            </form>
+        </div>
+
+    </div><div class='categoryManagement'><div style='width:38px'>&nbsp;</div><div style='width:90%; border-bottom:2px solid black; border-left:2px solid black; border-right:2px solid black'>&nbsp;</div></div>
+
+    <div class='categoryManagement'>
+        <div style='width:350px'>&nbsp;</div>
+
+        <div><img src='/BA/pages/static/graphics/down_128_172594_from_parents.png'></div>
+    </div>
+
+    <div class="categoryManagement  midRow">
+
+
+    <div><img src="/BA/pages/static/graphics/current.jpg"></div>		<!-- The "THIS category" image on the left -->
+
+
+    <div id="nameControls" style="width:240px; text-align:right">	<!-- A few icons with controls, to the left of this Category's name -->
+
+        <a href='/BA/pages/viewer/{{category_id}}'>
+            <img src='/BA/pages/static/graphics/open_16_227574.png'  style='margin-right:8px'
+                 title='Visit the &ldquo;{{category_name}}&rdquo; Page (EXIT edit mode)'
+                 alt='Visit the &ldquo;{{category_name}}&rdquo; Page (EXIT edit mode)'>
+        </a>
+        <a href='https://brainannex.org/editPermissions.php?cat={{category_id}}'><img src='/BA/pages/static/graphics/permissions_16_3018587.png' title='Edit the User Permissions for &ldquo;{{category_name}}&rdquo;' alt='Edit the User Permissions for &ldquo;{{category_name}}&rdquo;' style='margin-right:8px'></a>
+
+        <div style='display:inline-block; margin-left:5px; margin-bottom:7px'>
+            <input type='image' src='/BA/pages/static/graphics/delete_16.png' @click="delete_category({{category_id}})" title='delete this category ("{{category_name}}")' alt='delete this category ("{{category_name}}")'>
+        </div>
+
+        <a href="javascript:editName(1)"><img src="/BA/pages/static/graphics/pencil2_16.png" title="edit name" alt="edit name" style="margin-left:8px"></a>
+    </div>
+
+
+    <div id="categoryName" style="font-weight:bold; color:brown; width:260px; text-align:center; font-size:16px; border:1px solid #CCC; padding:5px">
+
+        {{category_name}} &nbsp;<span style='font-size:10px; color:gray'>{{category_remarks}}</span></div>
+
+    <!-- Form to edit the category's name -->
+    <form id="nameEditForm" action="doCategoryHandler2.php?op=rename&cat={{category_id}}" method="POST" style="display:none; width:260px; border:1px solid #DDD; padding: 2px">
+        <input type='hidden' name='ID' value='{{category_id}}'>
+        <input type="text" name="newName" value="{{category_name}}" style="width:203px;"> <span style="font-size:9px; color:gray">Name</span><br>
+        <input type="text" name="newRemarks" value="My Neuro Computing Research" style="width:203px;"> <span style="font-size:9px; color:gray">Remarks</span><br>
+        <input type="submit" value="Save"> <a href="javascript:editName(0)" style="margin-left:5px">Cancel</a>
+    </form>
+
+    <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
+    </div>
+    <div style="width:160px; font-size:12px">
+        &diams; Neuroscience<form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_id}}' style='display:inline-block; margin-left:5px'>
+        <input type='hidden' name='parentID' value='{{category_id}}'>
+        <input type='hidden' name='childID' value='366'>
+        <input type='image' src='/BA/pages/static/graphics/delete_12_1493279.png'
+               title='SEVER the "see also" relationship between "{{category_name}}" and "Neuroscience"'
+               alt='SEVER the "see also" relationship between "{{category_name}}" and "Neuroscience"'>
+    </form>
+        <br>    Add:
+        <form method='POST' action='doCategoryHandler2.php?op=addSeeAlso&cat={{category_id}}' id='form_4'>
+            <input type='hidden' name='parentID' value='{{category_id}}'>
+            <select id = 'menu_4' name = 'childID' style = 'width:180px'>
+                <option value='-1'>[Select 'see-also' category]</option>
+
+                {% for c in all_categories %}
+                <option value="{{c['id']}}">{{c['name']}}</option>
+                {% endfor %}
+
+            </select>
+        </form>
+        <br>
+        <input type='checkbox' checked onClick='pinCategory(this, "pin_status")'> Pin    <span id="pin_status" style="margin-left:5px; color:gray"></span>
+
+    </div>
+</div>
+
+
+
+    <div class="categoryManagement">
+        <div style="width:350px">&nbsp;</div>
+        <div><img src="/BA/pages/static/graphics/down_128_172594_to_children.png"></div>
+    </div>
+
+
+    <div class="categoryManagement">
+        <div style="width:38px">&nbsp;</div>
+        <div style="width:90%; border-top:2px solid black; border-left:2px solid black; border-right:2px solid black">&nbsp;</div>
+    </div>
+
+
+    <div class="categoryManagement bottomRow">
+
+        <img src="/BA/pages/static/graphics/child.jpg">
+
+
+        <!-- Provide an Add-child form, floated to the right -->
+        <div style="width:180px; float:right">
+            <span style="font-style:italic; color:#666666">Add an <b>existing</b> Sub-category to &ldquo;{{category_name}}&rdquo;:</span><br>
+            <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_id}}' id='form_5'>
+                <input type='hidden' name='parentID' value='{{category_id}}'>
+                <select id = 'menu_5' name = 'childID' style = 'width:180px'>
+                    <option value='-1'>[Select sub-category]</option>
+
+                    {% for c in all_categories %}
+                        <option value="{{c['id']}}">{{c['name']}}</option>
+                    {% endfor %}
+
+                </select>
+            </form><br><br>
+
+            <span style="font-style:italic; color:#666666"><b>OR</b> Create <b>new</b> Sub-category:</span>
+            <form action="doCategoryHandler2.php?op=addNode&cat={{category_id}}" method="POST" style="border:1px solid #DDD; padding: 2px">
+                <input type='hidden' name='parentID' value='{{category_id}}'>
+                Name <input type="text" name="name"><br>
+                Remarks <span style="color:gray">(optional)</span><input type="text" name="remarks"><br>
+                <input type="submit" value="Add">
+            </form>
+        </div>
+
+        {% for s in subcategories %}
+            <div style='width:73px; border-left:1px solid #CCC; text-align:center'>
+                <span style='font-weight:bold; font-size:10px'>
+                    <a href='/BA/pages/category_manager/{{s["item_id"]}}'
+                       title='Re-Center the Editor on this Category (&ldquo;{{s["name"]}}&rdquo;)'>{{s["name"]}}
+                    </a>
+                </span><br>
+                <form method='POST' action='doCategoryHandler2.php?op=removeEdge&cat={{category_id}}'>
+                    <input type='hidden' name='parentID' value='{{category_id}}'>
+                    <input type='hidden' name='childID' value='860'>
+                    <input type='image' src='/BA/pages/static/graphics/scissors_16_15275.png'
+                           title='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
+It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'
+                             alt='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
+It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'></form>
+                <a href='javascript:replaceMenu(6)'>
+                    <img src='/BA/pages/static/graphics/replace_16_1329089.png'
+                         title='REMOVE &ldquo;{{s["name"]}}&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'
+                           alt='REMOVE &ldquo;{{s["name"]}}&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'>
+                </a><br>
+                <form method='POST' action='doCategoryHandler2.php?op=switchChildNode&cat={{category_id}}' id='form_6' style='display:none'>
+                    <input type='hidden' name='parentID' value='{{category_id}}'>
+                    <input type='hidden' name='oldChildID' value='{{s["id"]}}'>
+                    <select id = 'menu_6' name = 'newChildID' style = 'width:180px'>
+                        <option value='-1'>[Select sub-category]</option>
+                        {% for c in all_categories %}
+                            <option value="{{c['id']}}">{{c['name']}}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+
+
+            <div style='width:73px'>&nbsp;</div>
+
+        {% endfor %}  {# END of for s in subcategories #}
+
+
+    </div>  <!-- end div class="categoryManagement bottomRow" -->
+
+    <div style="clear: both;"></div>  <!-- Clear the bottom of the Add-child form -->
+
+
+</div>
+
+
+
+<br>
+
+<!-- Status info -->
+<span v-if="waiting" class="waiting">Performing the requested operation...</span>
+<span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+
+<br><br>
+
+</div>	<!-- END OF lightbox -->
+
+</div>  <!-- END OF OUTER BOX -->
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root-1 element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements.
+     Using type="module" because it contains imports! -->
+
+<script>
+// Instantiation must come after the component definition
+new Vue({
+    el: '#vue-root-1',
+
+    delimiters: ['[[', ']]'] ,      // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {
+
+        status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
+        error: false,                // Whether the last server communication resulted in error
+        waiting: false               // Whether any server request is still pending
+    },
+
+
+    // ---------------------  METHODS  ----------------------
+
+    methods:  {
+        delete_category(category_id)
+        //
+        {
+            const retVal = confirm("Do you want to DELETE this Category? (Note: only possible if no Content Items are in it)");
+            if  (retVal != true) {
+                // Cancel selected
+                return;
+            }
+
+            const url_server = "http://localhost:5000/BA/api/simple/delete_category/" + category_id;
+            console.log(`delete_category(): About to contact the server at ${url_server}`);
+
+            // Initiate asynchronous contact with the server
+            this.waiting = true;
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";
+            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_delete_category);
+        },
+
+        finish_delete_category(success, server_payload, error_message)
+        // Callback function to wrap up the action of delete_category() upon getting a response from the server
+        {
+            console.log("Finalizing the delete_category() operation...");
+
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: " , server_payload);
+                this.status_message = "Category deleted successfully";
+                alert("The Category WAS deleted successfully; however, for now, the page must be refreshed manually");
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED addition of new Category`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>

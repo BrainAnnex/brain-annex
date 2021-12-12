@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters: current_page, site_pages
+ #}
+
+<html lang="en">
+<head>
+    <title>Filter</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
+    <link type="text/css"  rel="stylesheet" href="/BA/pages/static/multiselect/multiselect.css">
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+<body>
+
+
+{# Top Navigation bar #}
+{% include "navbar_top.htm" %}
+
+<h2>Search and Filter</h2>
+
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
+
+
+<div class='form-box'>
+    <span class='title'>SELECT THE CRITERIA</span><br><br>
+
+    <table border='0' cellspacing='5' cellpadding='0'>
+        <tr>
+            <td>Class Name</td><td><input type="text" size="40" v-model="class_name"></td>
+        </tr>
+        <tr>
+            <td>Label Name</td><td><input type="text" size="40" v-model="labels"></td>
+        </tr>
+        <tr>
+            <td>Key Name</td><td><input type="text" size="40" v-model="key_name"></td>
+        </tr>
+        <tr>
+            <td>Key Value</td><td><input type="text" size="40" v-model="key_value"></td>
+        </tr>
+        <tr>
+            <td>LIMIT</td><td><input type="text" size="2" v-model="limit"></td>
+        </tr>
+    </table>
+
+    <br>
+    <button @click="submit_query">Submit query</button>
+
+</div>  <!-- class='form-box' -->
+
+<p>
+    <span v-if="waiting" class="waiting">Retrieving the data...</span>
+    <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+</p>
+
+
+<p style="color: #CCC; margin-top:30px; margin-bottom:0">Query result:</p>
+
+
+<div style="border:1px solid #DDD; padding:10px">
+
+    <div v-for="(item, index) in result_array">
+        [[item]]
+    </div>
+
+</div>
+
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root-1 element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+
+
+<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements.
+     Using type="module" because it contains imports! -->
+
+<script>
+// Instantiation must come after the component definition
+new Vue({
+    el: '#vue-root-1',
+
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {     // Global data for the whole page (Vue root element).  This is the handover of data from Flask to Vue
+        content_array: "TBA",                       // Array containing item-data objects
+                                                    // EXAMPLE: [{"pos":0,"item_id":5,"schema_code":"h","text":"GENERAL METHODS"},
+                                                    //           {"pos":50,"item_id":8,"schema_code":"i","basename":"mypix","suffix":"png"}]
+        class_name: "",
+        labels: "",
+        key_name: "",
+        key_value: "",
+        limit: "10",
+
+        result_array: [],
+
+        status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
+        error: false,                // Whether the last server communication resulted in error
+        waiting: false               // Whether any server request is still pending
+    },
+
+
+    // ---------------------  METHODS  ----------------------
+
+    methods:  {
+        submit_query()
+        //
+        {
+            const url_server = "http://localhost:5000/BA/api/get_filtered"
+            console.log(`submit_query(): About to contact the server at ${url_server}`);
+
+            var post_obj = {labels: this.labels,
+                            key_name: this.key_name, key_value: this.key_value,
+                            limit: this.limit};
+            console.log(`post_obj:`);
+            console.log(post_obj);
+
+            // Initiate asynchronous contact with the server
+            this.waiting = true;
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";
+
+            ServerCommunication.contact_server(url_server,
+                    {method: "POST", post_obj: post_obj, payload_type: "JSON", callback_fn: this.finish_submit_query});
+        },
+
+        finish_submit_query(success, server_payload, error_message)
+        // Callback function to wrap up the action of submit_query() upon getting a response from the server
+        {
+            console.log("Finalizing the submit_query() operation...");
+
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: " , server_payload);
+                // EXAMPLE:  [ {}, {} ]
+                this.result_array = server_payload;
+                this.status_message = `Data successfully retrieved`;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED retrieval of data. ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>

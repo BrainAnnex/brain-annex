@@ -1,0 +1,65 @@
+div.vertical-scroll {
+    height: 620px;
+    overflow: auto;
+}
+
+table.node {
+    border:1px solid #DDD;
+    border-collapse: collapse;
+    margin:10px;
+}
+
+table.node td, th {
+    border:1px solid #EEE;
+    padding:5px;
+
+}
+
+table.node th.subtle {
+    color: #999;
+}
+
+table.node td.subtle {
+    color: #777;
+}
+
+table.node th {
+    background-color: #222;
+    color:#DDD;
+    font-size:14px;
+}
+
+table.node td {
+    font-size:12px;
+}
+
+table.node tr:nth-child(even)  {
+    /* formatting for even-numbered rows */
+    background-color: #EEE;
+}
+
+
+span.subtle {
+    color: #999;
+}
+
+p.minimal {
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+}
+
+div.minimal-wrapper {
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+}
+
+
+span.label {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: #333;
+}

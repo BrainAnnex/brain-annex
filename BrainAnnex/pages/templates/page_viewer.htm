@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters:
+        site_pages
+        current_page
+        header_title
+
+        content_items
+        category_id
+        category_name
+        subcategories
+        all_categories
+
+        records_classes  (TODO: maybe obtain thru server call, when first needed)
+
+    General viewer page for a list of Content Items (the list is specified in Flask parameter: content_items)
+
+    :param content_items:   A list of dictionaries
+                        EXAMPLE:
+                        [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                         {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                         {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                        ]
+
+    ----------------------------------------------------------------------------------
+	MIT License
+
+    Copyright (c) 2021 Julian A. West
+
+    This file is part of the "Brain Annex" project (https://BrainAnnex.org)
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+	----------------------------------------------------------------------------------
+
+ #}
+
+
+<html lang="en">
+<head>
+    <title>BA-{{category_name}}</title>
+
+    <!-- General and module styling -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/page_viewer.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/modules/dropzone/dropzone.css">
+
+    <!-- Styling for Vue core components -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/CORE/controls/controls.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/CORE/content_items/content_items.css">
+    <!-- Plugin-specific styling -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/headers/headers.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/images/images.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/notes/notes.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/codedocs/codedocs.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/records/records.css">
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/pages/static/modules/CKeditor/ckeditor.js"></script>
+    <script src="/BA/pages/static/modules/dropzone/dropzone.js"></script>
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+
+<body>
+
+
+<div id="vue-root">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
+
+
+
+<!--   The "scroll-canvas" is the main part of the page,
+       incl. the navbar at the top; note that a descendant element, the left sidebar, is fixed in position -->
+<div v-bind:class="{ 'scroll-canvas': show_left_sidebar, 'scroll-canvas--collapsed-left': !show_left_sidebar }">
+
+
+
+{# TOP NAVIGATION BAR #}
+{% include "navbar_top.htm" %}
+
+
+<div class='outerbox'>  <!-- START OUTER BOX -->
+
+
+
+    <!-- ****************************************************************
+
+                sidebar-left : used for Table of Contents
+
+         **************************************************************** -->
+
+<div v-show='show_left_sidebar' class='sidebar-left'>
+<img v-on:click='show_left_sidebar = false'  src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right'
+     title='Click to collapse sidebar' alt='Click to collapse sidebar'>
+
+<!-- Page navigation section (using Vue) -->
+<a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
+    <span style='color:#AAA; margin-left:10px; font-size:10px;'>PAGE CONTENTS</span>
+<br>
+
+<div class="page-toc">
+    <template v-for="item in content_array">
+        <p v-if="item.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.item_id">[[item.text]]</a><br></p>
+        <p v-if="item.schema_code == 'cd'">&nbsp; &diams; <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.name">[[item.name]]</a><br></p>
+    </template>
+</div>      <!-- END of page-toc -->
+
+<br><a href='#BOTTOM' style='font-size:14px; font-weight:bold'>BOTTOM</a>
+
+</div>		<!-- END OF sidebar-left-->
+
+
+<!-- COLLAPSED version of sidebar-left -->
+<div v-show='!show_left_sidebar' class='sidebar-left-collapsed'>
+    <img v-on:click='show_left_sidebar = true' src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left'
+         title='Click to expand sidebar' alt='Click to expand sidebar'>
+</div> 	 <!-- END of Collapsed version of sidebar-left -->
+
+
+
+    <!-- ****************************************************************
+
+                RIGHT sidebox (for now done with Flask)
+
+     **************************************************************** -->
+
+<div class='sidebox'>
+<img src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right' title='Click to collapse sidebar' alt='Click to collapse sidebar'>
+
+<span class="sidebox-section">PINNED</span>
+<br>&bull; <a href='/BA/pages/viewer/514' title="French">French</a>
+<br>&bull; <a href='/BA/pages/viewer/60' title="German">German</a>
+<br>&bull; <a href='/BA/pages/viewer/61' title="Professional Networking">Professional Networking</a>
+
+<hr>
+<span class="sidebox-section">RELATED</span><br>
+TBA<br>
+
+<hr>
+<span class="sidebox-section">ALL</span>
+<br>
+{% for category in all_categories %}
+    <br>&diams; <a href="/BA/pages/viewer/{{category['id']}}">{{category['name']}}</a>
+{% endfor %}
+<br>
+<br>
+</div>  <!-- END of sidebox -->
+
+
+<!-- Collapsed version of sidebox -->
+<div class='sidebox_collapsed' style='display:none'>
+<img src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left' title='Click to expand sidebar' alt='Click to expand sidebar'>
+</div>  <!-- Collapsed version of sidebox -->
+
+
+
+
+<div class='lightbox'>
+
+<!-- ****************************************************************
+
+                        TOP OF PAGE
+
+ **************************************************************** -->
+
+{#  Uncomment for debugging (to view some of the Flask-passed parameters)
+<br>{{content_items}}<br><br>
+ #}
+
+{% if category_name %}
+<p class="headline">{{category_name}}
+    {# Category management #}
+    <a v-if="expose_controls" href='/BA/pages/category_manager/{{category_id}}' style='margin-left:15px' target="_blank">
+        <img src='/BA/pages/static/graphics/edit_16_2530834.png' alt='EDIT category (rename, etc.)' title='EDIT category (rename, etc.)'>
+    </a>
+</p>
+{% endif %}
+
+{# Display all subcategories (at the top) #}
+{% if subcategories %}
+<div class='subsections'>
+    <span class='subsections-label'>Subsections: </span>
+    {% for subcategory in subcategories %}
+        {% if loop.index == 1 %}
+        <span class='subsection-link'><a href="/BA/pages/viewer/{{subcategory['id']}}">{{subcategory['name']}}</a></span>
+        {% else %}
+        <span class='subsection-link'>&nbsp; &diams; &nbsp;<a href="/BA/pages/viewer/{{subcategory['id']}}">{{subcategory['name']}}</a></span>
+        {% endif %}
+    {% endfor %}
+</div>
+<br>
+{% endif %}
+
+
+{# Give notice if no Content Items were passed #}
+{% if (content_items | count == 0) and (not subcategories) %}
+    <p style="margin-top:50px; color:#888">NO CONTENT ITEMS FOUND : you need to add or import them</p>
+{% endif %}
+
+
+
+
+<!-- Icons to expose/hide the editing controls -->
+<img v-if="!expose_controls" @click="expose_controls = true"
+     class="clickable-icon  fixed-2nd-from-bottom"
+     alt="SHOW the Editing Controls (un-lock the page)" title="SHOW the Editing Controls (un-lock the page)"
+     src="/BA/pages/static/graphics/screwdriver_unlock.png" width="40" height="40">
+
+<img v-if="expose_controls" @click="expose_controls = false"
+     class="clickable-icon  fixed-2nd-from-bottom"
+     alt="HIDE the Editing Controls (lock the page)" title="HIDE the Editing Controls (lock the page)"
+     src="/BA/pages/static/graphics/lock_6611478_64.png" width="40" height="40">
+
+
+
+<!-- ****************************************************************
+
+                        MAIN LOOP of Content Items
+
+ **************************************************************** -->
+
+<!-- For each Content Item on this page, make use of the appropriate Vue component (picked dynamically)
+     Handle here some UI operations common to all types, such as moves around the page.
+     Type-specific operations, such as editing, are handled by the individual components
+
+     v-bind:key Used to provide unique identifiers for each component (it may change if content_array changes)
+     v-bind:is  Specifies which component to use, based on the type of the Content Item
+
+     Props (arguments) passed to the components [some meant for the 'vue-controls' sub-components]
+            v-bind:item="item"
+            v-bind:expose_controls="expose_controls"
+            v-bind:category_id="category_id"
+            v-bind:index="index"                        Zero-based position of the Content Item on the page
+            v-bind:item_count="content_array.length"
+
+            v-bind:records_types="records_types"
+
+            v-bind:schema_data="get_schema_data(item)"  Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
+                                                        EXAMPLE: ["French", "English", "notes"]
+
+     Intercept various SIGNALS from descendant components:
+        Originating in grandchildren:
+            v-on:delete-content-item
+            v-on:move-up-content-item
+            v-on:move-down-content-item
+        Originating in children:
+            v-on:cancel-edit
+            v-on:updated-item
+            v-on:insert-new-item
+     -->
+
+
+
+<div v-for="(item, index) in content_array" class="content-item">
+
+    <vue-content-items
+        v-bind:key="item.schema_code + '_' + item.item_id + '_' + index"
+
+        v-bind:item="item"
+        v-bind:expose_controls="expose_controls"
+        v-bind:category_id="category_id"
+        v-bind:index="index"
+        v-bind:item_count="content_array.length"
+
+        v-bind:records_types="records_types"
+
+        v-bind:schema_data="get_schema_data(item)"
+
+        v-on:delete-content-item-highlighted="delete_content_item(item)"
+        v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
+        v-on:relocate-content-item="relocate_content_item(item, $event)"
+        v-on:cancel-edit="cancel_edit(item)"
+        v-on:updated-item="absorb_item_updates(item, $event)"
+        v-on:insert-new-item="insert_new_item_after(item, $event)"
+    >
+    </vue-content-items>
+</div>
+
+
+<a name="BOTTOM"></a>   <!-- Anchor for page scrolling to the bottom of the page-->
+
+
+<br><br>
+<h3>Add at the bottom of page</h3>
+<span style="margin-right:10px">Add new:</span>
+<button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
+<button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
+<button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
+
+<!-- All leaf Classes that are instances of "Records" -->
+<br>Add new record of type:
+{% for class_name in records_classes %}
+    <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
+            class="record-picker"
+            style="color: {% if (loop.index % 7) == 1 %}#ae9cd6{% elif (loop.index % 7) == 2 %}#8bb9d4{% elif (loop.index % 7) == 3 %}#a6cfa1{% elif (loop.index % 7) == 4 %}#dad6a1{% elif (loop.index % 7) == 5 %}#e1b298{% elif (loop.index % 7) == 6 %}#e59ca0{% elif (loop.index % 7) == 0 %}gray{% else %}black{% endif %}">
+        {{class_name}}
+    </button>
+{% endfor %}
+
+<br>
+
+
+<div style='border:1px solid gray; padding:10px; background-color:#DDDDDD; margin-top:5px; margin-bottom:5px; margin-right:5px'>		<!-- Maybe the DIV wrapper could be ditched? -->
+
+<b>UPLOAD IMAGES (or, not yet implemented, DOCUMENTS)</b>:<br>
+
+<form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
+    <input type='hidden' name='category_id' value='{{category_id}}'>
+    <input type='hidden' name='pos' value='TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'>
+</form>
+
+<!--  The "DONE" button simply reloads the viewer page -->
+<a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Close</a>
+<span style='color:gray; margin-left:20px; font-size:10px'>The "Close" button not yet implemented: currently, it refresh the page when uploads complete</span><br>
+
+</div>	<!--  Terminate the wrapper DIV for uploads -->
+
+
+
+<!--  To add a new Subcategory -->
+<div style='clear: left;'></div> {# To clear any Content Item #}
+
+<div class='form-box' style="float:right">
+    <span class='title'>CREATE A NEW SUBCATEGORY for &ldquo;{{category_name}}&rdquo;</span><br><br>
+
+    <input type='hidden' name='parentID' value={{category_id}}>
+
+    <table border='0' cellspacing='5' cellpadding='0'>
+        <tr>
+            <td>Name</td><td style='padding-left:5px'><input type='text' v-model="new_subcategory_name" size='50' maxlength='60'></td>
+        </tr>
+        <tr>
+            <td>Remarks <span style='color:gray; font-style:italic'>(optional)</span></td><td style='padding-left:5px'><input type='text'  v-model="new_subcategory_remarks" size='50' maxlength='90'></td>
+        </tr>
+    </table>
+
+    <br>
+    <button @click="add_subcategory({{category_id}})">Add New Sub-Category</button>
+        <span v-if="waiting" class="waiting">Adding the subcategory...</span>
+        <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+    <br><br>
+    <span style='color:gray'><b>OR:</b> add an <a href='/BA/pages/category_manager/{{category_id}}'><i>existing</i></a> sub-category</span>
+</div>
+
+
+<div style='height:170px'></div>     <!-- To extend the main page enough to fit the above floating element -->
+<br><br>
+
+
+
+</div>  <!-- END OF lightbox -->
+
+
+
+<!-- Icon to scroll to top of page -->
+<a id="to_top" href="javascript:;" onclick="window.scrollTo(0, 0)">
+    <img src="/BA/pages/static/graphics/to_top_80.png" width="40" height="40"
+         alt="Scroll to TOP of page" title="Scroll to TOP of page">
+</a>
+
+
+<br><br>
+<a href="/BA/pages/md-file/{{category_id}}" target="_blank">Export to MD file</a>
+<a href="/BA/pages/static-web/{{category_id}}" target="_blank" style="margin-left:50px">Export to static webpage</a>
+<br><br><br>
+
+
+
+</div>	<!-- END OF OUTER BOX -->
+</div>  <!-- END OF scroll-canvas -->
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+
+
+<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="/BA/pages/static/plugins/CORE/controls/controls.js"></script>
+<script src="/BA/pages/static/plugins/CORE/content_items/content_items.js"></script>
+
+<script src="/BA/pages/static/plugins/headers/headers.js"></script>
+<script src="/BA/pages/static/plugins/images/images.js"></script>
+<script src="/BA/pages/static/plugins/notes/notes.js"></script>
+<script src="/BA/pages/static/plugins/codedocs/codedocs.js"></script>
+<script src="/BA/pages/static/plugins/records/records.js"></script>
+
+<script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
+
+<script>
+// Instantiation must come after the component definition
+new Vue({
+    el: '#vue-root',
+
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {     // GLOBAL DATA for the whole page (Vue root element).  This is the handover of data from Flask to Vue
+        content_array: {{content_items | tojson(indent=4)}},  // Array containing item-data objects
+                                        // EXAMPLE: [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                                        //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                                        //          ]
+        expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
+        category_id: {{category_id}},   // Integer
+        show_left_sidebar: true,
+
+        records_types: {{records_classes | tojson}},    // Array of all the names of leaf Classes associated to records
+
+        records_schema_data : {"Quotes": ["quote", "attribution", "notes"],
+                               "French Vocabulary": ["French", "English", "notes"],
+                               "German Vocabulary": ["German", "English", "notes"],
+                               "Site Link": ["url", "name", "date", "comments", "rating", "read"],
+                               "Profl Connections": ["name", "role", "location", "notes", "LinkedIn", "email"],
+                               "Restaurants": ["name", "website", "address", "city", "phone", "notes", "eval"]
+                               },       // TODO: Extract from dbase
+
+        // For "Add Subcategory" (TODO: move to a separate component?)
+        new_subcategory_name: "",
+        new_subcategory_remarks: "",
+        status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
+        error: false,                // Whether the last server communication resulted in error
+        waiting: false               // Whether any server request is still pending
+    },
+
+
+    // ---------------------  METHODS  ----------------------
+
+    methods:  {
+        get_schema_data(item)
+        // If the given Content Item is a record, return a list of its field names (Properties), in order
+        {
+            if (item.schema_code != "r")
+                return [];                      // Nothing is being done for non-record Content Items (at least for now)
+
+            const record_type = item.class_name;
+
+            return this.records_schema_data[record_type] || [];     // If the requested key doesn't exist, return an empty array instead
+                                                                    // TODO: if key is missing, query the server
+        },
+
+
+        add_subcategory(category_id)
+        {
+            console.log(`Adding new sub-category: category_id: ${category_id}, subcategory name: ${this.new_subcategory_name} , remarks: ${this.new_subcategory_remarks}`);
+            if (this.new_subcategory_name == "")  {
+                alert("Must enter a Subcategory name");
+                return;
+            }
+
+            // Send the request to the server, using a POST
+            url_server = "http://localhost:5000/BA/api/simple/add_subcategory"
+            // Compose the body of the POST to send to the server
+            post_obj = {category_id: category_id,
+                        subcategory_name: this.new_subcategory_name,
+                        subcategory_remarks: this.new_subcategory_remarks};
+            post_body = ServerCommunication.parse_POST_object(post_obj);
+            console.log("post_body:", post_body);
+
+            // Initiate asynchronous contact with the server
+            this.waiting = true;
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";
+            ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_add_subcategory);
+        },
+
+        finish_add_subcategory(success, server_payload, error_message)
+        /*  Callback function to wrap up the action of add_subcategory() upon getting a response from the server.
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned ID
+         */
+        {
+            console.log("Finalizing the Add Subcategory operation...");
+            if (success)  {     // Server reported SUCCESS
+                this.status_message = `New Category successfully added (assigned ID ${server_payload})`;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED addition of new Category`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            // Clear up the form
+            this.new_subcategory_name = "";
+            this.new_subcategory_remarks = "";
+
+        }, // finish_add_subcategory
+
+
+
+        cancel_edit(item)
+        {
+            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , id ${item.item_id} , pos ${item.pos}`);
+            if (item.item_id == -1)  {
+                // If we're aborting the edit of a new Content Item, delete it from the page
+                index = this.locate_item_pos(item.schema_code, item.item_id, item.pos);
+                console.log(`Aborting the edit of a NEW Content Item, whose index position on the page is ${index}`);
+                this.content_array.splice(index, 1);    // It modifies the array, to take out 1 element in position index
+            }
+        },
+
+
+
+        insert_new_item_after(item, {schema_code, class_name})
+        /*  Add a new Content Item of the specified type, placed after the specified Item;
+            class_name is an OPTIONAL argument, only used for Content Item of type 'r'.
+         */
+        {
+            //console.log(item);
+            console.log(`In root component, insert_new_item_after()`);
+            console.log(`    Insert after Item ID: ${item.item_id}. New item - schema_code: ${schema_code}, class_name (optional): ${class_name}`);
+
+            this.create_new_item_after(item.item_id, schema_code, class_name);
+        },
+
+
+        create_new_item_after(insert_after_id, schema_code, class_name)
+        {
+            console.log(`In root component, create_new_item_after().  insert_after_id: ${insert_after_id} | schema_code: ${schema_code} |  class_name: ${class_name}`);
+
+            const insert_after_index = this.locate_item_simplified(insert_after_id);
+            console.log(`    Content item located in position ${insert_after_index}`);
+
+            if (insert_after_index == -1)  {
+                alert("Unable to locate the element after which to insert. Maybe a change was made on a separate tab...  Try refreshing page");
+                return;
+            }
+
+            // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
+            if (schema_code == "r")   // This is the one type that makes uses of the Schema
+                blank_record = {item_id: -1, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
+            else
+                blank_record = {item_id: -1, schema_code: schema_code, insert_after: insert_after_id};
+
+            // Insert the newly-created record after the specified existing element
+            this.content_array.splice(insert_after_index + 1, 0, blank_record);
+
+        }, // create_new_item_after
+
+
+
+        add_new_item_at_bottom(schema_code, class_name)
+        /*  Add a new Content Item of the specified type, placed at the bottom of the page (past the last Item);
+            class_name is an OPTIONAL argument, only used for Content Item of type 'r'.
+         */
+        {
+            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: ${class_name}`);
+
+            // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
+            if (schema_code == "r")   // This is the one type that makes uses of the Schema
+                blank_record = {"item_id": -1, "schema_code": schema_code, "class_name": class_name, insert_after: "BOTTOM"};
+            else
+                blank_record = {"item_id": -1, "schema_code": schema_code, insert_after: "BOTTOM"};
+
+            this.content_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
+
+        }, // add_new_item_at_bottom
+
+
+
+        delete_content_item(item)
+        // Delete from the page and from the database the specified Content Item
+        {
+            console.log(`Root element received signal to delete content item of type '${item.schema_code}' , id ${item.item_id}`);
+            const index = this.locate_item(item.schema_code, item.item_id);
+            console.log(`Content item located in position ${index}`);
+
+            if (index == -1)  {
+                alert("Unable to locate the element to delete. Maybe a change was made on a separate tab...  Try refreshing page");
+                return;
+            }
+
+            url_server = `/BA/api/simple/delete/${item.item_id}/${item.schema_code}`;
+            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_delete, index);
+
+        },  // delete_content_item()
+
+        finish_delete(success, server_payload, error_message, index)
+        // Callback function to wrap up the action of delete_content_item() upon getting a response from the server
+        {
+            console.log("Finalizing the deleting operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log(`    Removing from page the element with index ${index}`);
+                this.content_array.splice(index, 1);  // It modifies the array, to take out 1 element in position index
+            }
+            else  {             // Server reported FAILURE
+                alert("The server could not delete the Content Item. Perhaps it was deleted on another tab... Try saving your work and reloading the page");
+            }
+
+        }, // finish_delete
+
+
+
+        move_up_content_item(item)
+        //
+        {
+            const schema_code = item.schema_code;
+            const item_id = item.item_id;
+
+            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , id ${item_id}`);
+
+            const number_items = this.content_array.length;
+
+            if (number_items == 1)  {
+                alert("There is only 1 item on the page!  No action taken");
+                return;
+            }
+
+            const i = this.locate_item(schema_code, item_id);     // Locate the specified Content Item in the array of Content Items
+
+            if (i == -1)  {  // Not found
+                alert(`Item type '${schema_code}' , id ${item_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
+                return;
+            }
+            if (i == 0)  {
+                alert("Item is already at the top: no action taken");
+                return;
+            }
+
+            // Request the server to perform the operation on the data
+            const swap_item_id = this.content_array[i-1].item_id;       // The ID of the Item that we're swapping with
+            const url_server = `/BA/api/simple/swap/${item_id}/${swap_item_id}/${this.category_id}`;
+            console.log(url_server);
+
+            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_up, i);
+
+        }, // move_up_content_item
+
+
+        finish_move_up(success, server_payload, error_message, i)
+        // Callback function to wrap up the action of move_up_content_item() upon getting a response from the server
+        {
+            console.log("Finalizing the move_up operation...");
+            if (success)  {     // Server reported SUCCESS
+                // Swap the position of the current Item with the one before it
+                // Using Vue.set for the array operation to be "reactive" on the UI
+                const old_value = this.content_array[i-1];                  // save item above
+                Vue.set(this.content_array, i-1, this.content_array[i]);    // the item below moves up
+                Vue.set(this.content_array, i, old_value);                  // (the saved) item above moves below
+            }
+        }, // finish_move_up
+
+
+
+        move_down_content_item(item)
+        //
+        {
+            const schema_code = item.schema_code;
+            const item_id = item.item_id;
+
+            console.log(`Root element received signal to move DOWN the content item of type '${item.schema_code}' , id ${item.item_id}`);
+
+            const number_items = this.content_array.length;
+
+            if (number_items == 1)  {
+                alert("There is only 1 item on the page!  No action taken");
+                return;
+            }
+
+            const i = this.locate_item(schema_code, item_id);     // Locate the specified Content Item in the array of Content Items
+
+            if (i == -1)  {  // Not found
+                alert(`Item type '${schema_code}' , id ${item_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
+                return;
+            }
+            if (i == number_items - 1)  {
+                alert("Item is already at the bottom: no action taken");
+                return;
+            }
+
+            // Request the server to perform the operation on the data
+            const swap_item_id = this.content_array[i+1].item_id;       // The ID of the Item that we're swapping with
+            const url_server = `/BA/api/simple/swap/${item_id}/${swap_item_id}/${this.category_id}`;
+            console.log(url_server);
+
+            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_down, i);
+
+        }, // move_down_content_item
+
+
+        finish_move_down(success, server_payload, error_message, i)
+        // Callback function to wrap up the action of move_up_content_item() upon getting a response from the server
+        {
+            console.log("Finalizing the move_down operation...");
+            if (success)  {     // Server reported SUCCESS
+                // Swap the position of the current Item with the one after it
+                // Using Vue.set for the array operation to be "reactive" on the UI
+                const old_value = this.content_array[i+1];                  // save item below
+                Vue.set(this.content_array, i+1, this.content_array[i]);    // the item above moves down
+                Vue.set(this.content_array, i, old_value);                  // (the saved) item below moves above
+            }
+        }, // finish_move_down
+
+
+
+        absorb_item_updates(item, new_data)
+        /*  Update the entry for the specified item in this.content_array, with the new data passed by a component
+            (generally done at the end of an update on the server.)
+            In terms of item's attributes:
+                * "item_id" can be different if it was a newly-added item (which is assigned a temporary value of -1)
+                * "schema_code" doesn't vary under normal edits
+                * "pos" is not changed thru edits (it uses separate mechanisms to move items about)
+                * everything else will be updated
+         */
+        {
+            console.log(`Root element received signal to UPDATE the content item of type '${item.schema_code}' , original id ${item.item_id}, current id ${new_data.item_id}`);
+
+            //if (item.item_id != -1)
+                //alert("Attempting to modify an existing ID.  Request ignored...  Save your work and refresh the page");
+
+            // **********  TODO:  The following will NOT work if there's more than one NEW item of the same type!!!!!
+            // 2 strategy ideas: 1) for new items, assign temp ID's of -1, -2, -3, etc. (instead of giving -1 to all)
+            //                   2) search by ID (-1) AND by pos
+            const index = this.locate_item(item.schema_code, item.item_id);
+
+            if (index == -1)    // If the Item is not found on the page
+                alert("Unable to update the display so as to set the ID of the newly-added Content Item.  Save your work and refresh the page");
+
+            // Bring the front-end up-to-date with the new data (possibly including the ID just assigned by the server for new Items)
+            console.log(`Updating the Content Item found in array index ${index}`);
+            console.log("The new data is:");
+            console.log(new_data);
+
+            //console.log("The current value of that Content Item is:");
+            //console.log(this.content_array[index]);
+
+            // Save all attributes, except "pos" and "schema_code"
+            for (field_name in new_data)
+                if (field_name != "pos" && field_name != "schema_code")
+                    this.content_array[index][field_name] = new_data[field_name];
+        },
+
+
+        relocate_content_item(item, where_to)
+        /*  (At the request of another component) Relocate the specified Item within the page, to be placed after specified position,
+            and inform the server of this operation.
+            Note: where_to is a 1-based index of Content Items on the page; by our convention, 0 means "move to top"
+         */
+        {
+            const schema_code = item.schema_code;
+            const item_id = item.item_id;
+
+            console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , id ${item.item_id} to just after the ${where_to}-th entry, within category ${this.category_id}`);
+
+            const number_items = this.content_array.length;
+
+            if (number_items == 1)  {
+                alert("There is only 1 item on the page!  No action taken");
+                return;
+            }
+
+            const i = this.locate_item_simplified(item_id);     // Locate the specified Content Item in the array of Content Items
+
+            if (i == -1)  {  // Not found
+                alert(`Item type '${schema_code}' , id ${item_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
+                return;
+            }
+
+            status = this.reposition_content(i, where_to);
+
+            if (!status)  {
+                alert("The move operation failed.  Refresh the page and try again");
+                return;
+            }
+
+            // Request the server to perform the operation on the database
+            const url_server = `/BA/api/simple/reposition/${this.category_id}/${item_id}/${where_to}`;
+            console.log(url_server);
+
+            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_relocate_content_item, i);
+
+        }, // relocate_content_item
+
+
+
+        finish_relocate_content_item(success, server_payload, error_message, i)
+        // Callback function to wrap up the action of finish_relocate_content_item() upon getting a response from the server
+        {
+            console.log("Finalizing the finish_relocate_content_item operation...");
+            if (!success)  {     // Server reported FAILURE
+                alert("The server could not move the Content Item. Perhaps items were repositioned on another tab.  Save your work and reload the page");
+            }
+        }, // finish_relocate_content_item
+
+
+
+        reposition_content(index_of_moved_item, move_after_n)
+        /*  Relocate the Item (specified by its index) within the page, to be placed after the n-th item.
+            Return true if successful, or false otherwise.
+            IMPORTANT: index_of_moved_item is zero-based, while move_after_n starts at 1 (0 means "move to top")
+         */
+        {
+            if (index_of_moved_item < 0 || index_of_moved_item >= this.content_array.length) {
+                console.error(`index_of_moved_item ${index_of_moved_item} is out of bounds.  Expected range is [0-${this.content_array.length - 1}]`);
+                return false;
+            }
+
+            if (move_after_n < 0 || move_after_n > this.content_array.length) {
+                console.error(`move_after_n ${move_after_n} is out of bounds.  Expected range is [0-${this.content_array.length}]`);    // Note it's 1 longer than the range of index_of_moved_item
+                return false;
+            }
+
+            if (move_after_n == index_of_moved_item) {
+                console.error(`Attempting to reposition to same location: index_of_moved_item and move_after_n are equal (both ${move_after_n})`);
+                return false;
+            }
+
+            console.log(`Relocate the ${index_of_moved_item}-th Item on the page, to be moved after position ${move_after_n}`);
+
+            const being_moved = this.content_array[index_of_moved_item];    // The object with the data of the Content Item being moved
+
+            this.content_array.splice(move_after_n, 0, being_moved);        // Insert it at the given position
+
+            if (move_after_n < index_of_moved_item)
+                index_of_moved_item += 1;                                   // If the insertion took place before the element to take out, adjust its index
+
+            this.content_array.splice(index_of_moved_item, 1);              // Take it out from the array of Content Items
+
+                                                                            // (Note: Vue automatically detects array changes done with splice)
+            return true;
+
+        }, // reposition_content
+
+
+
+        locate_item_simplified(item_id)
+        /*  Locate the specified Content Item in the array of Content Items.
+            The item is identified by its item_id.
+            If found, return its index in the array; otherwise, return -1
+            (No check is done as to whether there might be more than one match; the first one is returned.)
+         */
+        {
+            //console.log(`Attempting to locate content item with id ${item_id}`);
+
+            const number_items = this.content_array.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (this.content_array[i].item_id == item_id)
+                    return i;          //  Found it
+            }
+
+            return -1;    // Didn't find it
+        },
+
+        locate_item(schema_code, item_id)
+        /*  TODO: maybe phase out in favor of locate_item_simplified()
+            Helper function, to locate the specified Content Item in the array of Content Items.
+            The item is identified by its schema_code and item_id.  (Note: schema_code is redundant.)
+            If found, return its index in the array; otherwise, return -1
+            (No check is done as to whether there might be more than one match; the first one is returned.)
+         */
+        {
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}`);
+
+            const number_items = this.content_array.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].item_id == item_id)
+                    return i;          //  Found it
+            }
+
+            return -1;    // Didn't find it
+        },
+
+
+        locate_item_pos(schema_code, item_id, pos)
+        /*  Same as locate_item(), but also requiring a match on position.  ONLY USED TO TAKE OUT NEW ITEMS WHOSE ADDITION GOT CANCELLED
+         */
+        {
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}, pos ${pos}`);
+
+            const number_items = this.content_array.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (this.content_array[i].schema_code == schema_code  &&
+                    this.content_array[i].item_id == item_id  &&
+                    this.content_array[i].pos == pos)
+                    return i;          //  Found it
+            }
+
+            return -1;    // Didn't find it
+        },
+
+
+        plugin_component_name_MOVED(item)
+        // Compose the name of the plugin-provided Vue component to handle the given item (based on its type)
+        {
+            // TODO: make sure that item.schema_code is known, or return a special "generic" type
+            return "vue-plugin-" + item.schema_code;
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>

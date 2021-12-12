@@ -1,0 +1,18 @@
+img.clickable-icon  {   /* To display the clickable cursor on images */
+    cursor: pointer;
+}
+
+img.control {
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+
+div.content-controls {
+}
+
+/* To display the index of the Content Items */
+span.index {
+    color: #BBB;
+    margin-left: 5px;
+}

@@ -1,0 +1,168 @@
+/*
+ *  NAVIGATION MENU STYLES TOP-OF-PAGE NAVBAR (navigation menu)
+ *
+ *  from BrainAnnex.org
+ *
+ */
+
+
+
+/*
+  STYLES THAT GO INTO EFFECT ONLY IF BROWSER SCREEN IS SUFFICIENTLY WIDE
+  When screen width exceeds a threshold (wide enough to display just about the full nav bar),
+  turn the nav bar from static positioning to fixed (non-scrollable) positioning;
+  the "outerbox" div needs to be moved down accordingly.
+  NOTE: previously used min-width: 835px ; now the min-with is so small that it's always applied!
+ */
+
+@media (min-width: 83px) {	/* Apply these rules only if the browser screen is at least 83 pixels */
+	div.navmenu   {
+		margin-top:20px;	/* Leave space at the top for nav bar */
+	}
+	div.navmenu-header   {
+		border:1px solid white;	/* Slightly change the border, to mark switch to fixed element */
+		position:fixed;
+		top:0;
+		left:0;
+		right:0;
+		z-index:2;			/* Keep in front of other elements */
+	}
+}
+
+
+
+
+
+div.navmenu  {					/* The navmenu outer div */
+    width:100%;
+	border: 1px solid #0084AD;	/* Mid-tone blue */
+	margin-bottom:0px;
+	background-color:#547698;	/* A shade of blue.  For brighter blue: #336699 .  Also tried: #446688 */
+}
+
+div.navmenu table {
+	width:100%;
+	padding:0;
+	margin:0;
+	border-collapse:collapse;
+}
+
+
+/* Primary navbar rows */
+
+tr.major-line  td.unselected {
+	font-size:12px;
+}
+
+tr.major-line  td.selected {
+	font-size:18px;
+}
+
+
+/* Secondary navbar rows */
+
+tr.minor-line  td.unselected {
+	font-size:10px;
+}
+
+tr.minor-line  td.selected {
+	font-size:11px;
+}
+
+
+/* Navbar cells */
+
+div.navmenu td {
+	color : white;
+	font-weight:bold;
+	font-family:Verdana, Arial, Helvetica, sans-serif;
+	padding:0;
+}
+
+div.navmenu td.unselected {
+	border-left: 1px solid #888888;
+	border-top: 1px solid #888888;
+	border-bottom: 1px solid #888888;
+}
+
+div.navmenu td.selected {
+	background-color:#990000;		/* Dark red */
+	border:1px solid white;
+}
+
+
+div.navmenu  td.unselected a {
+    display: block;			/* To allow clicking anywhere within the td element (not just on the text) */
+	line-height:20px;
+}
+
+
+div.navmenu td.unselected:hover  {
+	border:1px solid red;
+	background-color: #990000;
+}
+
+
+
+div.navmenu-header  {	/* The unchanging first (header) line in the navmenu */
+	height:14px;		/* It must agree with the margin-top value in the @media line for fixed elements (after adjusting for padding) */
+	line-height: 14px;	/* It must be same as height, above.  It's used to vertically center text */
+	background:black;
+	padding-top:2px;
+	padding-left:10px;
+	padding-bottom:3px;
+	margin-bottom:0;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	color:#CCCCCC;
+	font-size:10px;
+}
+
+
+
+/*
+ *
+ *  HYPERLINKS
+ *
+ */
+
+
+/* For links in navmenu : zap the underscores.  Override any other setting (e.g. those inherited) */
+
+.navmenu  a:link  {
+	text-decoration: none !important;
+}
+
+.navmenu  a:visited  {
+	text-decoration: none !important;
+}
+
+.navmenu  a:hover {
+	text-decoration: none !important;
+	color:#FF5151 !important;				/* Light red */
+}
+
+.navmenu  a:active {
+	text-decoration: none !important;
+}
+
+
+
+/*  Links on dark backgrounds are forced to be appropriate for them (i.e. light colors)
+	The "dark-background" class is only used to affect links.
+ */
+
+.dark-background  a:link  {
+	color : #eeeeee !important;
+}
+
+.dark-background  a:visited  {
+	color : #eeeeee !important;
+}
+
+.dark-background  a:hover{
+	color:red !important;
+}
+
+.dark-background  a:active {
+	color:red !important;
+}

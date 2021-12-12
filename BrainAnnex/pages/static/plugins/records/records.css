@@ -1,0 +1,27 @@
+table.r-main {
+    border:1px solid #DDD;
+    border-collapse: collapse;
+    margin-top:10px;
+    margin-bottom:5px;
+}
+
+table.r-main td, th {
+    border:1px solid #DDD;
+    padding:5px;
+}
+
+table.r-main th {
+    background-color: #333;
+    color:#DDD;
+    font-size:13px;
+}
+
+table.r-main td {
+    border:1px solid #DDD;
+    padding:5px;
+    font-size:12px;
+}
+
+table.r-main td.r-description {
+    color:#888;
+}

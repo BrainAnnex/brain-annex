@@ -1,0 +1,89 @@
+div.notes  {
+	font-family: sans-serif, Arial, Verdana, "Trebuchet MS";
+	font-size:13px;		/* CK Edit uses Arial 13 ; Facebook uses Arial 14 in the posts, and 13 in the comments */
+	line-height:1.6;
+	border:1px solid #CCC;
+	padding:5px;
+	margin-top:2px;
+	margin-left:5px;
+	margin-right:5px;
+	margin-bottom:2px;
+	background-color:#F8F8F8;
+}
+
+div.noteBlock  {
+	margin-top: 5px;
+}
+
+
+div.add-form {  /* To add new Notes */
+    background-color: #BBF;  /* Blue/violet */
+    border: 1px solid brown;
+    padding: 5px;
+    margin-right: 5px;
+    margin-top: 15px;
+}
+
+div.editor-controls {
+}
+
+span.n-waiting {
+    color: #CCC;
+}
+
+
+
+/*
+	STYLES USED INSIDE OF NOTES: they need to match their counterparts in "ckeditor/content.css"
+ */
+
+p.indent_1 {	/* BEING PHASED OUT */
+	margin-top:5px;
+	margin-left:15px;
+	margin-bottom:0;
+	padding-bottom:0;
+}
+
+span.code_1 {	/* BEING PHASED OUT */
+	font-family:"Courier New", Courier, monospace;
+	background:#DDDDDD;
+}
+
+.marker
+{
+	background-color: Yellow;
+}
+
+h3 {	/* This is used for headings inside notes. It should be very similar, perhaps a tad smaller, than "section-header" */
+	font-family: verdana;
+	color: brown;
+	font-size:14px;
+	font-weight: bold;
+	border-bottom:1px solid #DDD;
+	padding-bottom:10px;
+}
+
+code  {
+	 font-family:"Courier New", Courier, monospace;
+	 background:#E3E3E3;
+	 font-size:11px;
+}
+
+span.code_emphasis  {	/* To emphasize keyword in computer code */
+	color: #B22222;
+	font-weight:bold;
+}
+
+blockquote
+{
+	font-style: italic;
+	font-family: Georgia, Times, "Times New Roman", serif;
+	font-size:12px;
+	padding: 2px 0;
+	padding-left: 20px;
+	padding-right: 8px;
+	border-style: solid;
+	border-color: #ccc;
+	border-width: 0;
+	border-left-width: 5px;
+}

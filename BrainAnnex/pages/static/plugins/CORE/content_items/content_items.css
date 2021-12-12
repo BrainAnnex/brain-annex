@@ -1,0 +1,33 @@
+div.highlight {
+    background-color: red;
+}
+
+p.confirm-question {
+    background-color: white;
+    padding: 20px;
+    margin: 10px;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+p.insert-box {
+    background-color: white;
+    border: 1px solid gray;
+    margin: 5px;
+    margin-right:15px;
+    padding: 10px;
+}
+
+button.confirm-button {
+    padding: 20px;
+    margin: 10px;
+    font-size: 18px;
+    background-color: blue;
+    color: white;
+}
+
+button.cancel-button {
+    padding: 20px;
+    margin: 10px;
+    font-size: 18px;
+}

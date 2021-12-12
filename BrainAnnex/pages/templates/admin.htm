@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters:  current_page, site_pages
+ #}
+
+<html lang="en">
+<head>
+    <title>Admin</title>
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/admin.css">
+</head>
+
+<body>
+
+{# Top Navigation bar #}
+{% include "navbar_top.htm" %}
+
+
+<h2 class="title">Admin Functions</h2>
+
+
+<br><br>
+<div class="content-block">
+    <p style="padding:25px">
+    <a href="/BA/api/download_dbase_json">EXPORT Full Database as JSON</a>
+    </p>
+</div>
+
+
+<br><br><br>
+<div class="content-block">
+<form enctype="multipart/form-data" action="/BA/api/import_json_file" method="POST">
+    <p>IMPORT from JSON <span style="color:gray">(containing Neo4j export format)</span> : <input type="file" name="imported_json"></p>
+    <p><input type="submit" value="Import JSON"></p>
+    <input type="hidden" name="return_url" value="/BA/pages/admin">
+</form>
+</div>
+
+
+<br><br><br>
+<div class="content-block">
+<form enctype="multipart/form-data" action="/BA/api/parse_datafile" method="POST">
+    <p><b>EXPERIMENTAL!</b></p>
+    <p>IMPORT data file to parse : <input type="file" name="imported_datafile"></p>
+    <p><input type="submit" value="Import data file"></p>
+    <input type="hidden" name="return_url" value="/BA/pages/admin">
+</form>
+</div>
+
+
+<br><br><br>
+<div class="content-block">
+    <p><b>SCHEMA EDITOR</b></p>
+    <p style="padding:25px">
+        UI not yet implemented.  Use API calls to add a new record type.  Example:
+        <br><br>
+        curl http://localhost:5000/BA/api/simple/create_new_class_with_properties -d "data=ClassName,prop1,prop2,prop3"
+    </p>
+</div>
+
+
+</body>
+</html>

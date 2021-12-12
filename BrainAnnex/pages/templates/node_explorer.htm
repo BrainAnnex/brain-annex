@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters: label_list, header_list, record_list,
+    inbound_headers, outbound_headers, inbound_counts, outbound_counts
+ #}
+
+<html lang="en">
+<head>
+    <title>Node Explorer</title>
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
+    <link type="text/css"  rel="stylesheet" href="/BA/pages/static/multiselect/multiselect.css">
+
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+</head>
+<body>
+
+
+{# Top Navigation bar #}
+{% include "navbar_top.htm" %}
+
+<h2>Node Explorer: view by label</h2>
+
+
+<div id="vue-root-1">   <!-- Container for Vue components -->
+    <!-- The only Vue component -->
+
+    <p>Selected: {{ '{{ selected }}' }}</p>
+    <vue-multiselect
+        v-model="selected"
+        v-bind:options="{{label_list}}"
+        v-bind:multiple="true">
+    </vue-multiselect>
+
+</div>
+
+
+
+<br><br><br>
+<hr>
+
+Choose a label:
+{% for label in label_list %}
+    <a href="/BA/pages/node/{{label}}" style="margin-right:10px">{{label}}</a>
+{% endfor %}
+
+<br>
+
+<div class="vertical-scroll">
+<table class="node">
+<tr>
+    {# Header for column showing row counts #}
+    <th style="color:#888; font-size:11px">
+        #
+    </th>
+
+    {# Headers for node attributes #}
+    {% for header in header_list %}
+        <th>
+        {{header}}
+        </th>
+    {% endfor %}
+
+    {# Headers for relationships #}
+    {% for header in inbound_headers %}
+        <th class="subtle">
+        {{header}} (IN)
+        </th>
+    {% endfor %}
+    {% for header in outbound_headers %}
+        <th class="subtle">
+        {{header}} (OUT)
+        </th>
+    {% endfor %}
+</tr>
+
+{% for record in record_list%}
+    <tr>
+        <td style="color:#AAA">{{loop.index}}</td>  {# Showing the row count #}
+        {% for value in record %}
+            <td>
+            {{value}}
+            </td>
+        {% endfor %}
+
+        {# Show the data for the inbound links #}
+        {% for cnt in inbound_counts[loop.index-1] %}
+            <td class="subtle">
+            {{cnt}}
+            </td>
+        {% endfor %}
+
+        {# Show the link counts for the outbound links #}
+        {% for cnt in outbound_counts[loop.index-1] %}
+            <td class="subtle">
+            {{cnt}}
+            </td>
+        {% endfor %}
+    </tr>
+
+    {% if loop.index is divisibleby 10 %}
+        <tr>
+            {# Header for column showing row counts #}
+            <th style="color:#888; font-size:11px">
+                #
+            </th>
+
+            {# Headers for node attributes #}
+            {% for header in header_list %}
+                <th>
+                {{header}}
+                </th>
+            {% endfor %}
+
+            {# Headers for relationships #}
+            {% for header in inbound_headers %}
+                <th class="subtle">
+                {{header}} (IN)
+                </th>
+            {% endfor %}
+            {% for header in outbound_headers %}
+                <th class="subtle">
+                {{header}} (OUT)
+                </th>
+            {% endfor %}
+        </tr>
+    {% endif %}
+
+{% endfor %}
+</table>
+</div>
+
+
+
+<p style="color:#eee; margin-top:25px">
+inbound_counts: {{inbound_counts}}
+<br>
+outbound_counts: {{outbound_counts}}
+</p>
+
+
+
+
+<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements.
+     Using type="module" because it contains imports! -->
+<script type="module" src="/BA/pages/static/multiselect/multiselect.js"></script>
+
+
+</body>
+</html>

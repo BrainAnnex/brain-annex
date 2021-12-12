@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+{#  Adapted from Brain Annex
+    Flask-passed parameters: node_list, node_list_json,
+    current_page, site_pages
+ #}
+
+<html lang="en">
+<head>
+    <title>Node Explorer</title>
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
+
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+<body>
+
+
+{# Top Navigation bar #}
+{% include "navbar_top.htm" %}
+
+<h2>Nodes Viewer</h2>
+
+
+<br>
+
+<b>Flask version:</b>
+
+<table class="node">
+{# Header line #}
+<tr>
+    {# Header for column showing row counts #}
+    <th style="color:#888; font-size:11px">
+    #
+    </th>
+    {# The other headers #}
+    {% for header in node_list['headers'] %}
+        {% if header[1] == "IN" %}
+            <th class="subtle">{{header[0]}} (IN)</th>
+        {% elif header[1] == "OUT" %}
+            <th class="subtle">{{header[0]}} (OUT)</th>
+        {% else %}
+            <th>{{header[0]}}</th>
+        {% endif %}
+    {% endfor %}
+</tr>
+
+{# The table data #}
+{% for record in node_list['records'] %}
+    <tr>
+        <td style="color:#AAA">{{loop.index}}</td>  {# Showing the row count #}
+        {% for value in record %}
+            <td>
+            {% if value == None %}
+                &nbsp;
+            {% else %}
+                {{value}}
+            {% endif %}
+            </td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+
+</table>
+
+
+
+<br><br>
+<b>Vue.js version:</b>
+
+<div id="vue-root-1">   <!-- Container for Vue components -->
+    <!-- The only Vue component -->
+    {#  Pass a Flask parameter as an argument ("prop") to the following Vue component #}
+    <vue-show-nodes-tabular v-bind:data_from_flask="{{node_list_json}}">
+    </vue-show-nodes-tabular>
+</div>
+
+
+<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements -->
+<script src="/BA/pages/static/js/tabular_node_manager.js"></script>
+
+
+<br>
+<hr>
+
+<b>Raw view:</b>
+{% for k, v in node_list.items() %}
+    <p style="color: gray">
+    {{k}}  -> {{v}}
+    </p>
+{% endfor %}
+
+<br>
+<b>JSON version:</b>
+<span style="color: gray">{{node_list_json}}</span>
+
+</body>
+</html>

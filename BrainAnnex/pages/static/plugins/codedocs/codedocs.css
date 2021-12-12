@@ -1,0 +1,29 @@
+table.cd-main {
+    border:1px solid #DDD;
+    border-collapse: collapse;
+    margin-top:10px;
+    margin-bottom:5px;
+}
+
+table.cd-main th {
+    background-color: #333;
+    color:#DDD;
+}
+
+table.cd-main td, th {
+    border:1px solid #DDD;
+    padding:15px;
+}
+
+table.cd-main td.cd-fun-name {
+    font-weight:bold;
+    color:brown;
+    font-size:30px;
+}
+
+table.cd-main td.cd-description {
+    color:#888;
+}
+
+
+

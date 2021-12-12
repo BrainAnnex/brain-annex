@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test of file upload</title>
+</head>
+<body>
+
+<h1>Test of file upload</h1>
+
+<form enctype="multipart/form-data" method="POST" action="/BA/api/upload_file">
+    <input type="file" name="file"><br><br> <!-- This conforms to the uploads by Dropzone -->
+    <input type="submit" value="Upload file">
+</form>
+
+<br>
+<i>File is uploaded to temporary directory, and will need to be manually deleted</i>
+
+</body>
+</html>
