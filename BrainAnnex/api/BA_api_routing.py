@@ -767,16 +767,28 @@ def parse_datafile() -> str:
 
 
 @BA_api_flask_blueprint.route('/download_dbase_json')
-def download_dbase_json():
+@BA_api_flask_blueprint.route('/download_dbase_json/<download_type>')
+def download_dbase_json(download_type="full"):
     """
     Download the full Neo4j database as a JSON file
 
     EXAMPLE invocation: http://localhost:5000/BA/api/download_dbase_json
 
-    :return:    A Flask response object, with HTTP headers that will initiate a download
+    :param download_type:   Either "full" (default) or "schema"
+    :return:                A Flask response object, with HTTP headers that will initiate a download
     """
-    ne = NodeExplorer()
-    result = ne.neo.export_dbase_json()
+    if download_type == "full":
+        ne = NodeExplorer()     # TODO: use a more direct way to get to the NeoAccess object
+        result = ne.neo.export_dbase_json()
+    elif download_type == "schema":
+        result = NeoSchema.export_schema()
+    else:
+        return f"Unknown requested type of download: {download_type}"
+    # TODO: error handling
+
+    # result is a dict with 4 keys
+    print(f"Getting ready to export {result.get('nodes')} nodes, "
+          f"{result.get('relationships')} relationships, and {result.get('properties')} properties")
 
     data = result["data"]
     response = make_response(data)

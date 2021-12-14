@@ -898,6 +898,27 @@ class NeoSchema:
 
 
 
+    ########################################################
+    #                    EXPORT SCHEMA                     #
+    ########################################################
+
+    @classmethod
+    def export_schema(cls) -> {}:      # TODO: test
+        """
+        Export all the Schema nodes and relationships as a JSON string.
+
+        :return:    A dictionary specifying the number of nodes exported,
+                    the number of relationships, and the number of properties,
+                    as well as a "data" field with the actual export as a JSON string
+        """
+        nodes_query = "MATCH (n) WHERE (n:CLASS OR n:PROPERTY)"
+        rels_query = "MATCH ()-[r:HAS_PROPERTY]->()"
+
+        return cls.db.export_nodes_rels_json(nodes_query, rels_query)
+
+
+
+
     ###############   INTERNAL  METHODS   ###############
 
     @classmethod
