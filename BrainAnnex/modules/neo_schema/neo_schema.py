@@ -115,6 +115,9 @@ class NeoSchema:
         Return the auto-incremented unique ID assigned to the new Class,
         or -1 (which is not regarded as a valid schema ID) if nothing is created.
 
+        NOTE: if you want to add Properties at the same time that you create a new Class,
+              use the function new_class_with_properties() instead.
+
         TODO: offer the option to link to an existing Class.  link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
         TODO: maybe an option to add multiple Classes of the same type at once???
 
@@ -660,7 +663,7 @@ class NeoSchema:
         :param data_dict:       A dictionary with the properties of the new data point.  EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:          String or list of strings with label(s) to assign to new data node; if not specified, use the Class name
 
-        :param connected_to_id: Int or None.  To optionally specify a data node to connect the new node to
+        :param connected_to_id: Int or None.  To optionally specify another DATA node to connect the new node to
                                         EXAMPLE: the item_id of a data point representing a particular salesperson or dealership
 
         The following group only applicable if connected_to_id isn't None

@@ -25,6 +25,13 @@ def test_allows_datanodes(db):
 
 
 
+def test_add_root_category(db):
+    NeoSchema.add_data_point(class_name="Categories",
+                            data_dict={"name": "ROOT (Home)", "remarks": "EVERYTHING - top level"},
+                            labels="BA")
+
+
+
 def test_initialize_schema(db):
     db.empty_dbase()    # Completely clear the database
 
