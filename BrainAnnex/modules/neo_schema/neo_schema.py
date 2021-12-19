@@ -115,6 +115,9 @@ class NeoSchema:
         Return the auto-incremented unique ID assigned to the new Class,
         or -1 (which is not regarded as a valid schema ID) if nothing is created.
 
+        NOTE: if you want to add Properties at the same time that you create a new Class,
+              use the function new_class_with_properties() instead.
+
         TODO: offer the option to link to an existing Class.  link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
         TODO: maybe an option to add multiple Classes of the same type at once???
 
@@ -128,8 +131,8 @@ class NeoSchema:
         """
         assert schema_type=="L" or schema_type=="S", "schema_type argument must be either 'L' or 'S'"
 
-        name = name.strip()     # Strip whitespace at the ends
-        assert name != "", "Unacceptable class name, either empty or blank"
+        name = name.strip()     # Strip any whitespace at the ends
+        assert name != "", "Unacceptable Class name, either empty or blank"
 
         if cls.db.exists_by_key(cls.class_label, key_name="name", key_value=name):
             return -1
@@ -329,11 +332,6 @@ class NeoSchema:
 
 
 
-
-    ###################################################
-    #                PROPERTIES-RELATED               #
-    ###################################################
-
     @classmethod
     def get_class_instances(cls, class_name: str, leaf_only=False) -> [str]:
         """
@@ -366,126 +364,10 @@ class NeoSchema:
 
 
 
-    @classmethod
-    def add_properties_to_class(cls, class_id: int, property_list: [str]) -> int:
-        """
-        Add a list of Properties to the specified (already-existing) Class.
-        The properties are assigned an inherent order (an attribute named "index", starting at 1),
-        based on the order they appear in the list.
-        NOTE: if the Class doesn't already exist, use new_class_with_properties() instead
-        TODO: raise an Exception if the class doesn't exit.
-              Maybe offer option to specify class by name.
 
-        :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
-        :param property_list:   A list of strings with the names of the properties, in the desired default order
-        :return:                The number of Properties added (might be zero if the Class doesn't exist)
-        """
-        #TODO: strip whitespace at the ends of names
-        #TODO: reject properties with blank names
-
-        assert type(class_id) == int, "Argument `class_id` in add_properties_to_class() must be an integer"
-        assert type(property_list) == list, "Argument `property_list` in add_properties_to_class() must be a list"
-
-        # Locate the largest index of the Properties currently present
-        q = '''
-            MATCH (:CLASS {schema_id: $schema_id})-[r:HAS_PROPERTY]-(:PROPERTY)
-            RETURN MAX(r.index) AS MAX_INDEX
-            '''
-        max_index = cls.db.query(q, {"schema_id": class_id}, single_cell="MAX_INDEX")
-
-        # Determine the index value to use for the next Property
-        if max_index is None:
-            new_index = 1               # Start a new Property count
-        else:
-            new_index = max_index + 1   # Continue an existing Property count
-
-        number_properties_nodes_created = 0
-
-        for property_name in property_list:
-            new_schema_id = cls.next_available_id()
-            q = f'''
-                MATCH (c: `{cls.class_label}` {{ schema_id: {class_id} }})
-                MERGE (c)-[:{cls.class_prop_rel} {{ index: {new_index} }}]
-                         ->(p: `{cls.property_label}` {{ schema_id: {new_schema_id}, name: $property_name }})
-                '''
-            # EXAMPLE:
-            '''
-            MATCH (c:`CLASS` {schema_id: 3})
-            MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p: `PROPERTY` {schema_id: 8, name: $property_name})
-            '''
-            #print(q)
-            result = cls.db.update_query(q, {"property_name": property_name})
-            number_properties_nodes_created += result.get("nodes_created")
-            new_index += 1
-
-        return number_properties_nodes_created
-
-
-
-    @classmethod
-    def new_class_with_properties(cls, class_name: str, property_list: [str], code=None, schema_type="L") -> int:
-        """
-        Create a new Class with the specified name and properties,
-        and return the auto-incremented unique ID ("scheme ID") assigned to the new Class.
-        Each Property node is also assigned a unique "scheme ID";
-        the links are assigned an auto-increment index, representing the default order of the Properties.
-
-        If a Class with the given name already exists, nothing is done,
-        and -1 (not a valid schema ID) is returned.
-
-        NOTE: if the Class already exists, use add_properties_to_class() instead
-
-        :param class_name:      String with name to assign to the new class
-        :param property_list:   List of strings with the names of the Properties, in their default order (if that matters)
-        :param code:            Optional string indicative of the software handler for this Class and its subclasses
-        :param schema_type      Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
-
-        :return:                If successful, the integer "schema_id" assigned to the new Class; otherwise, -1
-        """
-        #TODO: it may be safer to use a single Cypher transaction
-        #TODO: have an option to link the new Class to an existing Class
-        #TODO: strip whitespace at the ends of names
-        #TODO: reject properties with blank names
-        new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
-        if cls.valid_schema_id(new_class_id):
-            number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
-            print("new_class_with_properties().  number_properties_added: ", number_properties_added)
-
-        return new_class_id
-
-
-
-    @classmethod
-    def remove_property_from_class(cls, class_id: int, property_id: int) -> bool:
-        """
-        Take out the specified Property from the given Class
-
-        :param class_id:    The schema ID of the Class node
-        :param property_id: The schema ID of the Property node
-        :return:            True if a Property was found, and successfully removed; otherwise, False
-        """
-        q = f'''
-            MATCH (c: `{cls.class_label}` {{ schema_id: {class_id} }})
-                  -[r:{cls.class_prop_rel}]
-                  ->(p: `{cls.property_label}` {{ schema_id: {property_id}}})
-            DELETE r
-            '''
-        # EXAMPLE:
-        '''
-        MATCH (c: `CLASS` { schema_id: 4 })
-              -[r:HAS_PROPERTY]
-              ->(p: `PROPERTY` { schema_id: 13})
-        DELETE r
-        '''
-
-        result = cls.db.update_query(q)
-        #print("result of update_query in remove_property_from_class(): ", result)
-        if result.get("relationships_deleted") == 1:
-            return True
-        else:
-            return False
-
-
+    ###################################################
+    #                PROPERTIES-RELATED               #
+    ###################################################
 
     @classmethod
     def get_class_properties(cls, schema_id: int, include_ancestors=False) -> list:
@@ -522,6 +404,141 @@ class NeoSchema:
         name_list = [item["prop_name"] for item in result_list]
 
         return name_list
+
+
+
+    @classmethod
+    def add_properties_to_class(cls, class_id: int, property_list: [str]) -> int:
+        """
+        Add a list of Properties to the specified (ALREADY-existing) Class.
+        The properties are assigned an inherent order (an attribute named "index", starting at 1),
+        based on the order they appear in the list.
+        NOTE: if the Class doesn't already exist, use new_class_with_properties() instead
+        TODO: raise an Exception if the class doesn't exit.
+              Asser that all the items in property_list are strings.
+              Offer option to specify the class by name.
+
+        :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
+        :param property_list:   A list of strings with the names of the properties, in the desired default order
+                                    Whitespace in any of the names gets stripped out.  If any name is a blank string, an Exception is raised
+        :return:                The number of Properties added (might be zero if the Class doesn't exist)
+        """
+
+        assert type(class_id) == int, "Argument `class_id` in add_properties_to_class() must be an integer"
+        assert type(property_list) == list, "Argument `property_list` in add_properties_to_class() must be a list"
+
+
+        clean_property_list = [prop.strip() for prop in property_list]
+        for prop_name in clean_property_list:
+            assert prop_name != "", "Unacceptable Property name, either empty or blank"
+
+        # Locate the largest index of the Properties currently present
+        q = '''
+            MATCH (:CLASS {schema_id: $schema_id})-[r:HAS_PROPERTY]-(:PROPERTY)
+            RETURN MAX(r.index) AS MAX_INDEX
+            '''
+        max_index = cls.db.query(q, {"schema_id": class_id}, single_cell="MAX_INDEX")
+
+        # Determine the index value to use for the next Property
+        if max_index is None:
+            new_index = 1               # Start a new Property count
+        else:
+            new_index = max_index + 1   # Continue an existing Property count
+
+        number_properties_nodes_created = 0
+
+        for property_name in clean_property_list:
+            new_schema_id = cls.next_available_id()
+            q = f'''
+                MATCH (c: `{cls.class_label}` {{ schema_id: {class_id} }})
+                MERGE (c)-[:{cls.class_prop_rel} {{ index: {new_index} }}]
+                         ->(p: `{cls.property_label}` {{ schema_id: {new_schema_id}, name: $property_name }})
+                '''
+            # EXAMPLE:
+            '''
+            MATCH (c:`CLASS` {schema_id: 3})
+            MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p: `PROPERTY` {schema_id: 8, name: $property_name})
+            '''
+            #print(q)
+            result = cls.db.update_query(q, {"property_name": property_name})
+            number_properties_nodes_created += result.get("nodes_created")
+            new_index += 1
+
+        return number_properties_nodes_created
+
+
+
+    @classmethod
+    def new_class_with_properties(cls, class_name: str, property_list: [str], code=None, schema_type="L",
+                                  class_to_link_to=None, link_to_name="INSTANCE_OF") -> int:
+        """
+        Create a new Class with the specified name and properties,
+        and return the auto-incremented unique ID ("scheme ID") assigned to the new Class.
+        Each Property node is also assigned a unique "scheme ID";
+        the links are assigned an auto-increment index, representing the default order of the Properties.
+
+        If a Class with the given name already exists, nothing is done,
+        and -1 (not a valid schema ID) is returned.
+
+        NOTE: if the Class already exists, use add_properties_to_class() instead
+
+        :param class_name:      String with name to assign to the new class
+        :param property_list:   List of strings with the names of the Properties, in their default order (if that matters)
+        :param code:            Optional string indicative of the software handler for this Class and its subclasses
+        :param schema_type      Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
+        :param class_to_link_to If this name is specified, and a link_to_name (below) is also specified,
+                                    then create a relationship from the newly-created Class to this existing one
+        :param link_to_name     Name to use for the above relationship.  Default is "INSTANCE_OF"
+
+        :return:                If successful, the integer "schema_id" assigned to the new Class; otherwise, -1
+        """
+        #TODO: it might be safer to use fewer Cypher transactions
+
+        new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
+        if cls.valid_schema_id(new_class_id):
+            number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
+            print("new_class_with_properties().  number_properties_added: ", number_properties_added)
+
+        if class_to_link_to and link_to_name:
+            # Create a relationship from the newly-created Class to an existing Class whose name is given by class_to_link_to
+            parent_id = NeoSchema.get_class_id(class_name = class_to_link_to)
+            print(f"parent_id (ID of `{class_to_link_to}` class): ", parent_id)
+            status = NeoSchema.create_class_relationship(child=new_class_id, parent=parent_id, rel_name =link_to_name)
+            assert status, f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class"
+
+        return new_class_id
+
+
+
+    @classmethod
+    def remove_property_from_class(cls, class_id: int, property_id: int) -> bool:
+        """
+        Take out the specified Property from the given Class
+
+        :param class_id:    The schema ID of the Class node
+        :param property_id: The schema ID of the Property node
+        :return:            True if a Property was found, and successfully removed; otherwise, False
+        """
+        q = f'''
+            MATCH (c: `{cls.class_label}` {{ schema_id: {class_id} }})
+                  -[r:{cls.class_prop_rel}]
+                  ->(p: `{cls.property_label}` {{ schema_id: {property_id}}})
+            DELETE r
+            '''
+        # EXAMPLE:
+        '''
+        MATCH (c: `CLASS` { schema_id: 4 })
+              -[r:HAS_PROPERTY]
+              ->(p: `PROPERTY` { schema_id: 13})
+        DELETE r
+        '''
+
+        result = cls.db.update_query(q)
+        #print("result of update_query in remove_property_from_class(): ", result)
+        if result.get("relationships_deleted") == 1:
+            return True
+        else:
+            return False
 
 
 
@@ -646,7 +663,7 @@ class NeoSchema:
         :param data_dict:       A dictionary with the properties of the new data point.  EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:          String or list of strings with label(s) to assign to new data node; if not specified, use the Class name
 
-        :param connected_to_id: Int or None.  To optionally specify a data node to connect the new node to
+        :param connected_to_id: Int or None.  To optionally specify another DATA node to connect the new node to
                                         EXAMPLE: the item_id of a data point representing a particular salesperson or dealership
 
         The following group only applicable if connected_to_id isn't None
@@ -894,6 +911,30 @@ class NeoSchema:
                                  dummy_node_name="to")
 
         return cls.db.remove_edge(match_from, match_to, rel_name=rel_name)
+
+
+
+
+    ########################################################
+    #                    EXPORT SCHEMA                     #
+    ########################################################
+
+    @classmethod
+    def export_schema(cls) -> {}:      # TODO: unit testing
+        """
+        Export all the Schema nodes and relationships as a JSON string.
+
+        :return:    A dictionary specifying the number of nodes exported,
+                    the number of relationships, and the number of properties,
+                    as well as a "data" field with the actual export as a JSON string
+        """
+        # Any Class or Property node
+        nodes_query = "MATCH (n) WHERE (n:CLASS OR n:PROPERTY)"
+
+        # Any relationship from a Class to another Class or to a Property
+        rels_query = "MATCH (c:CLASS)-[r]->(n) WHERE (n:CLASS OR n:PROPERTY)"
+
+        return cls.db.export_nodes_rels_json(nodes_query, rels_query)
 
 
 

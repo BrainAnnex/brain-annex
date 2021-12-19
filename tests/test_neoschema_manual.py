@@ -25,6 +25,13 @@ def test_allows_datanodes(db):
 
 
 
+def test_add_root_category(db):
+    NeoSchema.add_data_point(class_name="Categories",
+                            data_dict={"name": "ROOT (Home)", "remarks": "EVERYTHING - top level"},
+                            labels="BA")
+
+
+
 def test_initialize_schema(db):
     db.empty_dbase()    # Completely clear the database
 
@@ -62,11 +69,18 @@ def test_get_class_instances():
 
 
 def test_new_class_with_properties():
+    """
     new_id = NeoSchema.new_class_with_properties("Images",
                                                  ["width", "caption"], code="i"
                                                  )
+    """
+    new_id = NeoSchema.new_class_with_properties(class_name="Documents",
+                                                 property_list=["caption"],
+                                                 code="d",
+                                                 class_to_link_to="Media"
+                                                 )
     assert NeoSchema.valid_schema_id(new_id)
-    print("test_new_class_with_properties() - New class was assigned id: ", new_id)
+    print("test_new_class_with_properties() - New class was assigned schema id: ", new_id)
 
     #NeoSchema.new_class_with_properties("Category", ["name", "remarks"])
     #NeoSchema.new_class_with_properties("Foreign Vocabulary", ["English", "notes"])
@@ -86,9 +100,10 @@ def test_rename_class_rel():
 
 
 def test_add_properties_to_class():
-    result = NeoSchema.add_properties_to_class(2, ["LinkedIn", "email"])
-    assert result == 2
+    result = NeoSchema.add_properties_to_class(23, ["title"])
+    assert result == 1
 
+    """
     German_class_id = 1
     Profl_class_id = 2
     French_class_id = 4
@@ -98,6 +113,7 @@ def test_add_properties_to_class():
     assert result == 4
     result = NeoSchema.add_properties_to_class(French_class_id, ["French", "English", "Notes"])
     assert result == 3
+    """
 
 
 

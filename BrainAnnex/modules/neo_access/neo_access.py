@@ -9,7 +9,7 @@ import json
 
 class NeoAccess:
     """
-    VERSION 3.0
+    VERSION 3.1
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -2033,7 +2033,7 @@ class NeoAccess:
         """
         Export the entire Neo4j database as a JSON string
 
-        IMPORTANT: APOC must be activated for this function
+        IMPORTANT: APOC must be activated in the database for this function
 
         EXAMPLE:
         { 'nodes': 2,
@@ -2065,24 +2065,100 @@ class NeoAccess:
                     "since": 2003
                   }
                 }
-        :return:    A dictionary specifying the number of nodes exported,
-                    the number of relationships, and the number of properties,
-                    as well as a "data" field with the actual export in JSON format
+
+        :return:    A dictionary specifying the number of nodes exported ("nodes"),
+                    the number of relationships ("relationships"),
+                    and the number of properties ("properties"),
+                    as well as a "data" field with the actual export as a JSON string
         """
         cypher = '''
-            CALL apoc.export.json.all(null, {useTypes:true, stream: true})
+            CALL apoc.export.json.all(null, {useTypes: true, stream: true, jsonFormat: "JSON_LINES"})
             YIELD nodes, relationships, properties, data
             RETURN nodes, relationships, properties, data
             '''
-        result = self.query(cypher)     # It returns a list with a single element
-        export_dict = result[0]
-        #print(export_dict)
+        # TODO: unclear if the part "useTypes: true" is needed
 
-        pseudo_json = export_dict["data"]
-        # Who knows why, the string returned by the APOC function isn't actual JSON! :o  Some tweaking needed to produce valid JSON...
-        json = "[" + pseudo_json.replace("\n", ",\n ") + "\n]"  # The newlines \n make the JSON much more human-readable
-        export_dict["data"] = json
-        #print(export_dict)
+        result = self.query(cypher)     # It returns a list with a single element
+        export_dict = result[0]         # This will be a dictionary with 4 keys: "nodes", "relationships", "properties", "data"
+                                        #   "nodes", "relationships" and "properties" contain their respective counts
+
+        json_lines = export_dict["data"]
+        # Tweak the "JSON_LINES" format to make it a valid JSON string, and more readable.
+        # See https://neo4j.com/labs/apoc/4.3/export/json/#export-nodes-relationships-json
+        json_str = "[" + json_lines.replace("\n", ",\n ") + "\n]"   # The newlines \n make the JSON much more human-readable
+        export_dict["data"] = json_str                              # Replace the "data" value
+
+        #print("export_dict = ", export_dict)
+
+        return export_dict
+
+
+
+    def export_nodes_rels_json(self, nodes_query="", rels_query="") -> {}:
+        """
+        Export the specified nodes, plus the specified relationships, as a JSON string.
+        The default empty strings are taken to mean (respectively) ALL nodes/relationships.
+
+        For details on the formats, see export_dbase_json()
+
+        IMPORTANT: APOC must be activated in the database for this function
+
+        :param nodes_query: A Cypher query to identify the desired nodes (exclusive of RETURN statements)
+                                    The dummy variable for the nodes must be "n"
+                                    Use "" to request all nodes
+                                    EXAMPLE: "MATCH (n) WHERE (n:CLASS OR n:PROPERTY)"
+        :param rels_query:   A Cypher query to identify the desired relationships (exclusive of RETURN statements)
+                                    The dummy variable for the relationships must be "r"
+                                    Use "" to request all relationships (whether or not their end nodes are also exported)
+                                    EXAMPLE: "MATCH ()-[r:HAS_PROPERTY]->()"
+
+        :return:    A dictionary specifying the number of nodes exported,
+                    the number of relationships, and the number of properties,
+                    as well as a "data" field with the actual export as a JSON string
+
+        """
+        if nodes_query == "":
+            nodes_query = "MATCH (n)"           # All nodes by default
+
+        if rels_query == "":
+            rels_query = "MATCH ()-[r]->()"     # All relationships by default
+
+        cypher = f'''
+            {nodes_query}
+            WITH collect(n) as nds
+            OPTIONAL {rels_query}
+            WITH nds, collect(r) AS rels
+            CALL apoc.export.json.data(nds, rels, null, {{stream: true, jsonFormat: "JSON_LINES"}})
+            YIELD nodes, relationships, properties, data
+            RETURN nodes, relationships, properties, data
+            '''
+        # The "OPTIONAL" keyword is necessary in cases where there are no relationships
+
+        # Example of complete Cypher query
+        '''
+            MATCH (s) WHERE (s:CLASS OR s:PROPERTY) 
+            WITH collect(s) as nds
+            OPTIONAL MATCH ()-[r:HAS_PROPERTY]->()
+            WITH nds, collect(r) AS rels 
+            CALL apoc.export.json.data(nds, rels, null, {stream: true, jsonFormat: "ARRAY_JSON"})
+            YIELD nodes, relationships, properties, data
+            RETURN nodes, relationships, properties, data
+        '''
+
+        #self.debug_print(cypher, method="export_nodes_rels_json", force_output=True)
+        result = self.query(cypher)     # It returns a list with a single element
+        #print("In export_nodes_rels_json(): result = ", result)
+
+        export_dict = result[0]     # This will be a dictionary with 4 keys: "nodes", "relationships", "properties", "data"
+                                    #   "nodes", "relationships" and "properties" contain their respective counts
+
+        json_lines = export_dict["data"]
+        # Tweak the "JSON_LINES" format to make it a valid JSON string, and more readable.
+        # See https://neo4j.com/labs/apoc/4.3/export/json/#export-nodes-relationships-json
+        json_str = "[" + json_lines.replace("\n", ",\n ") + "\n]"       # The newlines \n make the JSON much more human-readable
+        export_dict["data"] = json_str                                  # Replace the "data" value
+
+        #print("export_dict = ", export_dict)
 
         return export_dict
 

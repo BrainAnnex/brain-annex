@@ -213,13 +213,13 @@ def get_properties_by_item_id(item_id):
 
 
 
-@BA_api_flask_blueprint.route('/simple/create_new_class_with_properties', methods=['POST'])
-def create_new_class_with_properties():
+@BA_api_flask_blueprint.route('/simple/create_new_record', methods=['POST'])
+def create_new_record():
     """
     TODO: this is a simple, interim version - to later switch to JSON
 
     EXAMPLES of invocation:
-        curl http://localhost:5000/BA/api/simple/create_new_class_with_properties -d "data=Quotes,quote,attribution,notes"
+        curl http://localhost:5000/BA/api/simple/create_new_record -d "data=Quotes,quote,attribution,notes"
 
     1 POST FIELD:
         data    The name of the new Class, followed by the name of all desired Properties, in order
@@ -227,7 +227,7 @@ def create_new_class_with_properties():
     """
     # Extract the POST values
     post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
-    show_post_data(post_data, "create_new_class_with_properties")
+    show_post_data(post_data, "create_new_record")
 
     try:
         APIRequestHandler.new_record_class(dict(post_data))
@@ -236,7 +236,7 @@ def create_new_class_with_properties():
         err_status = f"UNABLE TO CREATE NEW CLASS WITH PROPERTIES: {ex}"
         return_value = ERROR_PREFIX + err_status    # Failure
 
-    print(f"create_new_class_with_properties() is returning: `{return_value}`")
+    print(f"create_new_record() is returning: `{return_value}`")
 
     return return_value
 
@@ -766,22 +766,37 @@ def parse_datafile() -> str:
 
 
 
-@BA_api_flask_blueprint.route('/download_dbase_json')
-def download_dbase_json():
+@BA_api_flask_blueprint.route('/download_dbase_json/<download_type>')
+def download_dbase_json(download_type="full"):
     """
     Download the full Neo4j database as a JSON file
 
-    EXAMPLE invocation: http://localhost:5000/BA/api/download_dbase_json
+    EXAMPLES invocation:
+        http://localhost:5000/BA/api/download_dbase_json/full
+        http://localhost:5000/BA/api/download_dbase_json/schema
 
-    :return:    A Flask response object, with HTTP headers that will initiate a download
+    :param download_type:   Either "full" (default) or "schema"
+    :return:                A Flask response object, with HTTP headers that will initiate a download
     """
-    ne = NodeExplorer()
-    result = ne.neo.export_dbase_json()
+    if download_type == "full":
+        ne = NodeExplorer()     # TODO: use a more direct way to get to the NeoAccess object
+        result = ne.neo.export_dbase_json()
+        export_filename = "exported_dbase.json"
+    elif download_type == "schema":
+        result = NeoSchema.export_schema()
+        export_filename = "exported_schema.json"
+    else:
+        return f"Unknown requested type of download: {download_type}"
+    # TODO: error handling
+
+    # result is a dict with 4 keys
+    print(f"Getting ready to export {result.get('nodes')} nodes, "
+          f"{result.get('relationships')} relationships, and {result.get('properties')} properties")
 
     data = result["data"]
     response = make_response(data)
     response.headers['Content-Type'] = 'application/save'
-    response.headers['Content-Disposition'] = 'attachment; filename=\"exported_dbase.json\"'
+    response.headers['Content-Disposition'] = f'attachment; filename=\"{export_filename}\"'
     return response
 
 
