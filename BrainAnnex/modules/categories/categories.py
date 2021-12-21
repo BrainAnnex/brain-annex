@@ -2,20 +2,27 @@ from BrainAnnex.modules.neo_access import neo_access
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from typing import Union
 
+# 2 classes: "Categories" and  "Collections"
+
 
 class Categories:
     """
-    Library for Category-related operations
+    Library for Category-related operations.
+
+    Contains the following groups of methods:
+        1. LOOKUP
+        2. UPDATE
+        3. POSITIONING WITHIN CATEGORIES
     """
 
-    db = neo_access.NeoAccess()    # Saving database-interface object as a CLASS variable.
-                                        # This will only be executed once
+    db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable.
+                                    # This will only be executed once
 
     DELTA_POS = 20      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large
 
 
 
-    ##########  LOOKUP  ##########
+    ##########  1. LOOKUP  ##########
 
     @classmethod
     def get_category_info(cls, category_id) -> dict:
@@ -124,15 +131,41 @@ class Categories:
              RETURN cat.item_id AS id, cat.name AS name
              ORDER BY toLower(cat.name)
              '''
-        # Notes: 1 is the ROOT.
+        # Notes: 1 is the ROOT category.
         # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
 
         return cls.db.query(q)
 
 
+    @classmethod
+    def paths_from_root(cls, category_id: int):
+        """
+        Extract and return all the existing paths from the ROOT category to the given one,
+        traversing the relationship "BA_subcategory_of"
+
+        :param category_id:
+        :return:
+        """
+        # Look up and return all the paths (p) from the ROOT category (ID 1) to the given one,
+        #   following 1 or more hops along the relationship "BA_subcategory_of"
+        q = '''
+            MATCH p=(root :BA {schema_code:"cat", item_id:1})<-[:BA_subcategory_of*]-(c :BA {schema_code:"cat", item_id:$category_id}) 
+            RETURN p
+            '''
+
+        result = cls.db.query(q, {"category_id": category_id})
+
+        print(f"\n*****  PATHS TO CATEGORY {category_id} ***********")
+        print(f"result contains {len(result)} elements")
+        print(result)
+        for path in result:
+            print(path)
+            print(path["p"])
 
 
-    ##########  UPDATE  ##########
+
+
+    ##########  2. UPDATE  ##########
 
     @classmethod
     def add_subcategory(cls, post_data: dict) -> int:
@@ -575,8 +608,11 @@ class Categories:
 
 
 
+##########################################################################################
 
 ################################    COLLECTIONS   ########################################
+
+##########################################################################################
 
 class Collections:
     """
@@ -867,4 +903,3 @@ class Collections:
 
         status = cls.db.update_query(q, data_binding)
         return status.get("properties_set", 0)
-

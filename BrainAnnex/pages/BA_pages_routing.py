@@ -154,7 +154,7 @@ def category_page_viewer(category_id=1) -> str:
     # EXAMPLE : [{'id': 3, 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
     category_name = category_info.get("name", "[No name]")
-    category_remarks = category_info.get("remarks", "")
+    category_remarks = category_info.get("remarks", "")     # TODO: pass this to the template
 
     subcategories = PagesRequestHandler.get_subcategories(category_id)
     all_categories = PagesRequestHandler.get_all_categories()
