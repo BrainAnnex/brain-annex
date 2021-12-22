@@ -26,10 +26,20 @@ def test_get_parent_categories():
 
 
 
+def test_create_parent_map():
+    Categories.create_parent_map(799)     # single path, 1-hop
+    Categories.create_parent_map(876)     # single path, 2-hop
+    Categories.create_parent_map(823)     # single path, 3-hop
+
+    Categories.create_parent_map(814)     # 2 paths, a 2-hop and a 3-hop one
+
+    Categories.create_parent_map(1)       # no results
+
+
 def test_paths_from_root():
     Categories.paths_from_root(799)     # single path, 1-hop
     Categories.paths_from_root(876)     # single path, 2-hop
-    Categories.paths_from_root(823)     # single path, 2-hop
+    Categories.paths_from_root(823)     # single path, 3-hop
 
     Categories.paths_from_root(814)     # 2 paths, a 2-hop and a 3-hop one
 

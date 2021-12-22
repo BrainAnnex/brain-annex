@@ -137,14 +137,58 @@ class Categories:
         return cls.db.query(q)
 
 
+
     @classmethod
-    def paths_from_root(cls, category_id: int):
+    def create_parent_map(cls, category_id: int) -> dict:
+        """
+        Taking into account the set of all the ancestor nodes of the given Category (i.e. all its super-categories),
+        create and return a dictionary that maps each of the Category IDs of the nodes of that set
+        into list of ID's of its parent Categories.
+
+        :param category_id:
+        :return:            A dictionary mapping integers into lists of integers
+                            EXAMPLES:       {799: [1]}
+                                            {823: [709], 709: [544], 544: [1]}              # A single 3-hop path from Category 823 to the root (1)
+                                            {814: [526, 61], 61: [1], 526: [799], 799: [1]} # Two paths from Category 514 to the root
+        """
+        # Based on the "BA_subcategory_of" relationship,
+        #       extract a child (c) - parent (p) map,
+        #       where the child is an ancestor node of the given Category node
+        q = '''
+            MATCH (:BA {schema_code:"cat", item_id:$category_id})-[:BA_subcategory_of*0..5]->(c :BA)-[:BA_subcategory_of]->(p)
+            WITH c, collect(p.item_id) AS all_parents
+            RETURN c.item_id AS item_id, all_parents
+            '''
+        result = cls.db.query(q, {"category_id": category_id})      # A list of dictionaries
+        # EXAMPLE:  [{'item_id': 876, 'all_parents': [799]}, {'item_id': 799, 'all_parents': [1]}]
+
+        parent_map = {}
+        for entry in result:
+            key = entry["item_id"]
+            value = entry["all_parents"]
+            parent_map[key] = value
+
+        print(parent_map, "\n")
+        return parent_map
+
+
+
+    @classmethod
+    def paths_from_root(cls, category_id: int):     # *** NOT IN CURRENT USE ***
         """
         Extract and return all the existing paths from the ROOT category to the given one,
         traversing the relationship "BA_subcategory_of"
 
         :param category_id:
-        :return:
+        :return:            A list of of paths.  Each path is a list of nodes along it.  Each node is a dict of its properties
+                            EXAMPLE 1:
+                                [[{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Jobs', 'item_id': 799, 'schema_code': 'cat'}]]
+                            EXAMPLE 2:
+                                [
+                                 [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Food', 'item_id': 61, 'schema_code': 'cat'}, {'name': 'Nutrition', 'item_id': 814, 'schema_code': 'cat'}],
+                                 [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Health', 'item_id': 799, 'schema_code': 'cat'}, {'name': 'Nutrition', 'item_id': 814, 'schema_code': 'cat'}]
+                                ]
+
         """
         # Look up and return all the paths (p) from the ROOT category (ID 1) to the given one,
         #   following 1 or more hops along the relationship "BA_subcategory_of"
@@ -154,13 +198,91 @@ class Categories:
             '''
 
         result = cls.db.query(q, {"category_id": category_id})
+        # EXAMPLE:
+        #   [{'p': [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, 'BA_subcategory_of', {'name': 'Jobs', 'item_id': 799, 'schema_code': 'cat'}]}]
+        #print(f"\n*****  PATHS TO CATEGORY {category_id} ***********")
+        #print(f"result contains {len(result)} elements")
+        #print(result)
 
-        print(f"\n*****  PATHS TO CATEGORY {category_id} ***********")
-        print(f"result contains {len(result)} elements")
-        print(result)
-        for path in result:
-            print(path)
-            print(path["p"])
+        all_paths = []
+        for path_map in result:
+            #print(path_map)
+            path = path_map["p"]
+
+            node_path = []
+            for i, step in enumerate(path):
+                # Only take the 0-th, 2nd, 4th, etc. elements, skipping over the relationship name
+                if i%2 == 0:
+                    node_path.append(step)
+
+            all_paths.append(node_path)
+
+        print(all_paths, "\n")
+        return all_paths
+
+        # Desired intermediate structure:
+        example = \
+        [
+            [
+                {'name': 'HOME', 'item_id': 1, 'remarks': 'ROOT NODE'},
+                {'name': 'Professional Networking', 'item_id': 61},
+                {'name': 'People at GSK', 'item_id': 814}
+            ],
+            [
+                {'name': 'HOME', 'item_id': 1, 'remarks': 'ROOT NODE'},
+                {'name': 'Jobs', 'item_id': 799},
+                {'name': 'GSK', 'item_id': 526},
+                {'name': 'People at GSK', 'item_id': 814}
+            ]
+        ]
+
+        # Desired final structure:
+        parents_map = {814: [526, 61], 526: [799], 799: [1], 61: [1], 1: []}
+        names = {814: 'People at GSK', 526: 'GSK', 799: 'Jobs', 61: 'Professional Networking', 1: 'HOME'
+                 } # Ignoring `remarks` field for now
+
+        # Maybe encode a tree in JSON
+        json_data = [[['HOME', 'Jobs', 'GSK'] , ['HOME', 'Professional Networking']], 'People at GSK']
+        # OR
+        json_data_2 = ['People at GSK', [ ['Professional Networking', 'HOME'],  ['GSK', ['Jobs', 'HOME']] ] ]
+
+
+
+    @classmethod
+    def bread_crumbs(cls, category_ID, parents_map):
+        if category_ID == 1:    # If it is the root
+            return 1
+
+        # If we get here, we're NOT at the root.
+        # Put together a block (to be turned into an HTML element by the front end) depicting all possible
+        # breadcrumb paths from the ROOT to the current category
+        return ["START_CONTAINER", cls.recursive(category_ID, parents_map, True) ,"END_CONTAINER"]
+
+
+    @classmethod
+    def recursive(cls, category_ID, parents_map, terminal_node = False):
+        if category_ID == 1:
+            return 1
+
+        parent_list = parents_map(category_ID)
+
+        if len(parent_list) == 0:
+            return []    # TODO: generate warning
+        elif len(parent_list) == 1:     # If just one parent
+            parent_id = parent_list[0]
+            bc = cls.recursive(parent_id, parents_map)
+            return bc.append(category_ID)
+        else:                           # If multiple parents
+            bc = ["START_BLOCK"]
+            for parent_id in parent_list:
+                bc.append("START_LINE")
+                bc.append(cls.recursive(parent_id, parents_map))
+                bc.append("END_LINE")
+                if parent_id != parent_list[-1]:    # Skip if we're dealing with last element
+                    bc.append("CLEAR_RIGHT")
+
+            bc.append("END_BLOCK")
+            return bc.append(category_ID)
 
 
 

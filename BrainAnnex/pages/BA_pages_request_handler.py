@@ -226,7 +226,7 @@ function recursive($categoryID, $categoryName, $terminalNode = false)
 		
 		
 		if ($SITE_ENV->isAdmin && ($SITE_ENV->userAccountID == $SITE_ENV->siteAccount))	// If the user is an admin visiting a page on his own account, then the problem  must be a missing edge in the graph...
-			// Generate a warming, and provide a link to remedy it
+			// Generate a warning, and provide a link to remedy it
 		 	$SITE_ENV->userMessages->displayWarning("WARNING",
 					"&ldquo;$categoryName&rdquo; <span style='color:gray'>(category ID $categoryID)</span> has no parent categories",
 		 		    "<a href='siteModules/categoryManagement/categoryManager.php?c=$categoryID'>CLICK HERE TO REMEDY: Add a parent category</a>");
