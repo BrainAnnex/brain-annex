@@ -157,7 +157,7 @@ def category_page_viewer(category_id=1) -> str:
     category_remarks = category_info.get("remarks", "")     # TODO: pass this to the template
 
     subcategories = PagesRequestHandler.get_subcategories(category_id)
-    all_categories = PagesRequestHandler.get_all_categories()
+    all_categories = PagesRequestHandler.get_all_categories(exclude_root=False)
 
     records_classes = APIRequestHandler.get_leaf_records()
 

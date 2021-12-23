@@ -273,14 +273,21 @@ class Categories:
         # If we get here, we're NOT at the root.
 
         parents_map = cls.create_parent_map(category_ID)
-        print("In create_bread_crumbs().  parents_map: ", parents_map)
+        #print("In create_bread_crumbs().  parents_map: ", parents_map)
+
         # Put together a block (to be turned into an HTML element by the front end) depicting all possible
         # breadcrumb paths from the ROOT to the current category
-        return ["START_CONTAINER", cls.recursive(category_ID, parents_map, True) ,"END_CONTAINER"]
+        return ["START_CONTAINER", cls.recursive(category_ID, parents_map) ,"END_CONTAINER"]
 
 
     @classmethod
-    def recursive(cls, category_ID, parents_map, terminal_node = False) -> list:
+    def recursive(cls, category_ID, parents_map) -> list:
+        """
+
+        :param category_ID:
+        :param parents_map:
+        :return:
+        """
         if category_ID == 1:
             return [1]
 

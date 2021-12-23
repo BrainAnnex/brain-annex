@@ -5,10 +5,13 @@
         header_title
 
         content_items
+
         category_id
         category_name
+
         subcategories
         all_categories
+
         bread_crumbs
 
         records_classes  (TODO: maybe obtain thru server call, when first needed)
@@ -189,6 +192,7 @@ TBA<br>
 <vue-bread-crumbs
     v-bind:category_id="category_id"
     v-bind:bread_crumbs="bread_crumbs"
+    v-bind:all_categories="all_categories"
 >
 </vue-bread-crumbs>
 
@@ -447,6 +451,9 @@ new Vue({
 
         bread_crumbs: {{bread_crumbs | tojson}},
                         // EXAMPLE: ["START_CONTAINER", [1, 544, 514], "END_CONTAINER"]
+
+        all_categories: {{all_categories | tojson}},
+                        // EXAMPLE: [{"id": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"id": 123, "name": "work"}]
 
         // For "Add Subcategory" (TODO: move to a separate component?)
         new_subcategory_name: "",

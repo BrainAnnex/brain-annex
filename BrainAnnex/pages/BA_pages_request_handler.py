@@ -48,6 +48,7 @@ class PagesRequestHandler:
         """
         Return the records for all nodes linked to the Category node identified by its item_id value
 
+        :param category_id:
         :return:    A list of dictionaries
                     EXAMPLE:
                     [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
@@ -109,6 +110,7 @@ class PagesRequestHandler:
             OLD -> [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
             [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
 
+        :param category_id:
         :return:    A list of dictionaries
         """
         q =  '''
@@ -136,6 +138,7 @@ class PagesRequestHandler:
         EXAMPLE:
             [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
 
+        :param category_id:
         :return:    A list of dictionaries
         """
         match = cls.db.find(labels="BA",
@@ -149,131 +152,37 @@ class PagesRequestHandler:
 
 
     @classmethod
-    def get_all_categories(cls) -> [dict]:
+    def get_all_categories(cls, exclude_root=True) -> [dict]:
         """
         Return all the existing Categories - except the root -
-        as a list of dictionaries with keys 'id' and 'name',
+        as a list of dictionaries with keys 'id', 'name', 'remarks'
         sorted by name
         EXAMPLE:
-            [{'id': 3, 'name': 'Hobbies'}, {'id': 2, 'name': 'Work'}]
+            [{'id': 3, 'name': 'Hobbies'}, {'id': 2, 'name': 'Work', 'remarks': 'paid jobs'}]
 
-        :return:    A list of dictionaries
+        Note that missing "remarks" values are not in the dictionaries
+
+        :param exclude_root:
+        :return:                A list of dictionaries
         """
-        q =  '''
-             MATCH (cat:BA {schema_code:"cat"})
-             WHERE cat.item_id <> 1
-             RETURN cat.item_id AS id, cat.name AS name
+        clause = ""
+        if exclude_root:
+            clause = "WHERE cat.item_id <> 1"
+
+        q =  f'''
+             MATCH (cat:BA {{schema_code:"cat"}})
+             {clause}
+             RETURN cat.item_id AS id, cat.name AS name, cat.remarks AS remarks
              ORDER BY toLower(cat.name)
              '''
-        # Notes: 1 is the ROOT.
+        # Notes: 1 is the ROOT
         # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
 
         result = cls.db.query(q)
 
+        # Ditch all the missing "remarks" values
+        for cat in result:
+            if cat["remarks"] is None:
+                del cat["remarks"]
+
         return result
-
-
-# Breadcrumb navigation as done in v. 4
-"""
-/*
-	Create navigation BREAD CRUMBS, unless we are at the top level
- */
-
-if ($categoryID != $SITE_ENV->categoryHandler->rootNodeID())	// If not at the root node
-	echo breadCrumbs($categoryID, $categoryName);
-	
-	
-function breadCrumbs($categoryID, $categoryName)
-/*	Return an HTML element depicting all possible breadcrumb paths for the given node.  Perhaps move it to Categories module?
-	A recursive call is used.
- */ 
-{
-	global $SITE_ENV;
-		
-	if ($categoryID == $SITE_ENV->categoryHandler->rootNodeID())		// If it is the root
-		return  "<span class='br_nav'>TOP</span>";
-
-	//$html = " <div style='inline-block; vertical-align:center'>&raquo; " . "$categoryName</div>\n";	// The category itself (no link because we're on that page)
-	
-	
-	/* If we get here, we're NOT at the root.  Put together an HTML element depicting all possible breadcrumb paths from the ROOT to the current category...
-	 */
-	
-	$html = "<div class='br_container'>\n";
-	$html .= recursive($categoryID, $categoryName, true);
-	$html .= "</div>\n";
-	return $html;
-	
-} // breadCrumbs()
-
-
-
-function recursive($categoryID, $categoryName, $terminalNode = false)
-// Recursive graph traversal to generate page's bread crumbs
-{
-	global $SITE_ENV;
-	
-	//echo "categoryID:  $categoryID | categoryName: '$categoryName' | terminalNode: $terminalNode<br>";	
-	if ($categoryID == $SITE_ENV->categoryHandler->rootNodeID())							// If it is the root...
-		return "<span class='br_nav'><a href='" . $SITE_ENV->viewerURL . $SITE_ENV->categoryHandler->rootNodeID() ."'>TOP</a></span>\n";		// ...recursive exit
-	
-	$parentsArray = $SITE_ENV->categoryHandler->fetchParentCategories($categoryID);	// each element is an array that contains: [parentID, name, remarks]
-
-
-	if (sizeof($parentsArray) == 0)  {
-		/* 	Termination from an orphaned node!
-			This might be due to a missing edge in the graph, or more simply from lacking permissions to view the parent categories */
-		
-		
-		if ($SITE_ENV->isAdmin && ($SITE_ENV->userAccountID == $SITE_ENV->siteAccount))	// If the user is an admin visiting a page on his own account, then the problem  must be a missing edge in the graph...
-			// Generate a warning, and provide a link to remedy it
-		 	$SITE_ENV->userMessages->displayWarning("WARNING",
-					"&ldquo;$categoryName&rdquo; <span style='color:gray'>(category ID $categoryID)</span> has no parent categories",
-		 		    "<a href='siteModules/categoryManagement/categoryManager.php?c=$categoryID'>CLICK HERE TO REMEDY: Add a parent category</a>");
-		else					// ... otherwise, for general users, we'll assume it's a permissions issue; assign the ROOT node as the only parent
-			$parentsArray = array(
-									array("parentID" =>$SITE_ENV->categoryHandler->rootNodeID(), "name" => "TOP", "remarks" => "")
-								  );		// Assign the Top Level as the only parent
-	}
-
-
-	if ($terminalNode)
-		$currentCategory = "<span class='br_nav'> &raquo; $categoryName</span>\n";
-	else
-		$currentCategory = "<span class='br_nav'> &raquo; <a href='" . $SITE_ENV->viewerURL . "$categoryID'>$categoryName</a></span>\n";
-
-	
-	if (sizeof($parentsArray) == 1)  {		// If just one parent
-
-		$parent = $parentsArray[0];			// Single parent
-		$parentID = $parent["parentID"];
-		$parentName = $parent["name"];
-		
-		$html = recursive($parentID, $parentName);
-		
-		return $html . $currentCategory;
-	}
-	else  {									// If multiple parents
-		$html = "<div class='br_block'>\n";
-		
-		foreach ($parentsArray as $i => $parent)  {
-			$parentID = $parent["parentID"];
-			$parentName = $parent["name"];
-							
-			$html .= "<div class='br_line'>\n";
-			
-			$html .= recursive($parentID, $parentName);
-			
-			$html .= "</div>\n";	// end div 'br_line'
-			
-			if ($i != sizeof($parentsArray) - 1)				// Skip if we're dealing with last element
-				$html .= "<div style='clear:right'></div>";	
-		}
-		
-		$html .= "</div>\n";	// end div 'br_block'
-		
-		return $html . $currentCategory;
-	}
-
-} // recursive()
-"""
