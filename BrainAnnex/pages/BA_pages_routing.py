@@ -139,7 +139,7 @@ def category_page_viewer(category_id=1) -> str:
     """
 
     template = "page_viewer.htm"
-    category_id = int(category_id)
+    category_id = int(category_id)  # TODO: return good error message if it's not an integer
 
     # Fetch all the Content Items attached to the given Category.
     content_items = PagesRequestHandler.get_content_items_by_category(category_id)
@@ -161,11 +161,15 @@ def category_page_viewer(category_id=1) -> str:
 
     records_classes = APIRequestHandler.get_leaf_records()
 
+    bread_crumbs = Categories.create_bread_crumbs(category_id)
+
     return render_template(template, current_page=request.path, site_pages=get_site_pages(), header_title=category_name,
                            content_items=content_items,
                            category_id=category_id, category_name=category_name,
                            subcategories=subcategories, all_categories=all_categories,
-                           records_classes=records_classes)
+                           bread_crumbs=bread_crumbs,
+                           records_classes=records_classes
+                           )
 
 
 

@@ -9,8 +9,10 @@
         category_name
         subcategories
         all_categories
+        bread_crumbs
 
         records_classes  (TODO: maybe obtain thru server call, when first needed)
+
 
     General viewer page for a list of Content Items (the list is specified in Flask parameter: content_items)
 
@@ -61,6 +63,7 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/modules/dropzone/dropzone.css">
 
     <!-- Styling for Vue core components -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/page_viewer/bread_crumbs.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/CORE/controls/controls.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/CORE/content_items/content_items.css">
     <!-- Plugin-specific styling -->
@@ -178,8 +181,18 @@ TBA<br>
  **************************************************************** -->
 
 {#  Uncomment for debugging (to view some of the Flask-passed parameters)
-<br>{{content_items}}<br><br>
- #}
+<br>{{bread_crumbs}}<br><br>
+#}
+
+
+<!-- Bread crumbs for this Category -->
+<vue-bread-crumbs
+    v-bind:category_id="category_id"
+    v-bind:bread_crumbs="bread_crumbs"
+>
+</vue-bread-crumbs>
+
+
 
 {% if category_name %}
 <p class="headline">{{category_name}}
@@ -388,8 +401,11 @@ TBA<br>
 
 
 
-<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
+<script src="/BA/pages/static/page_viewer/bread_crumbs.js"></script>
+
 <script src="/BA/pages/static/plugins/CORE/controls/controls.js"></script>
 <script src="/BA/pages/static/plugins/CORE/content_items/content_items.js"></script>
 
@@ -408,7 +424,9 @@ new Vue({
 
     delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
-    data: {     // GLOBAL DATA for the whole page (Vue root element).  This is the handover of data from Flask to Vue
+    data: {     // GLOBAL DATA for the whole page (Vue root element).
+                // This is the handover of data from Flask to Vue
+
         content_array: {{content_items | tojson(indent=4)}},  // Array containing item-data objects
                                         // EXAMPLE: [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
                                         //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
@@ -426,6 +444,9 @@ new Vue({
                                "Profl Connections": ["name", "role", "location", "notes", "LinkedIn", "email"],
                                "Restaurants": ["name", "website", "address", "city", "phone", "notes", "eval"]
                                },       // TODO: Extract from dbase
+
+        bread_crumbs: {{bread_crumbs | tojson}},
+                        // EXAMPLE: ["START_CONTAINER", [1, 544, 514], "END_CONTAINER"]
 
         // For "Add Subcategory" (TODO: move to a separate component?)
         new_subcategory_name: "",

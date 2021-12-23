@@ -168,7 +168,7 @@ class Categories:
             value = entry["all_parents"]
             parent_map[key] = value
 
-        print(parent_map, "\n")
+        #print(parent_map, "\n")
         return parent_map
 
 
@@ -249,29 +249,51 @@ class Categories:
 
 
     @classmethod
-    def bread_crumbs(cls, category_ID, parents_map):
+    def create_bread_crumbs(cls, category_ID) -> list:
+        """
+        Return a list of Category ID's together with token strings, providing directives for the HTML structure of
+        the bread crumbs
+
+        :param category_ID:
+        :return:            EXAMPLE 1:  [1]
+                            EXAMPLE 2:  ['START_CONTAINER', [1, 'ARROW', 799, 'ARROW', 876], 'END_CONTAINER']
+                            EXAMPLE 3:
+                                [
+                                    'START_CONTAINER',
+                                    ['START_BLOCK',
+                                                    'START_LINE', [1, 'ARROW', 799, 'ARROW', 526], 'END_LINE', 'CLEAR_RIGHT',
+                                                    'START_LINE', [1, 'ARROW', 61], 'END_LINE',
+                                     'END_BLOCK', 'ARROW', 814],
+                                    'END_CONTAINER'
+                                ]
+        """
         if category_ID == 1:    # If it is the root
-            return 1
+            return [1]
 
         # If we get here, we're NOT at the root.
+
+        parents_map = cls.create_parent_map(category_ID)
+        print("In create_bread_crumbs().  parents_map: ", parents_map)
         # Put together a block (to be turned into an HTML element by the front end) depicting all possible
         # breadcrumb paths from the ROOT to the current category
         return ["START_CONTAINER", cls.recursive(category_ID, parents_map, True) ,"END_CONTAINER"]
 
 
     @classmethod
-    def recursive(cls, category_ID, parents_map, terminal_node = False):
+    def recursive(cls, category_ID, parents_map, terminal_node = False) -> list:
         if category_ID == 1:
-            return 1
+            return [1]
 
-        parent_list = parents_map(category_ID)
+        parent_list = parents_map[category_ID]
 
         if len(parent_list) == 0:
             return []    # TODO: generate warning
         elif len(parent_list) == 1:     # If just one parent
             parent_id = parent_list[0]
             bc = cls.recursive(parent_id, parents_map)
-            return bc.append(category_ID)
+            bc.append("ARROW")
+            bc.append(category_ID)
+            return bc
         else:                           # If multiple parents
             bc = ["START_BLOCK"]
             for parent_id in parent_list:
@@ -282,7 +304,9 @@ class Categories:
                     bc.append("CLEAR_RIGHT")
 
             bc.append("END_BLOCK")
-            return bc.append(category_ID)
+            bc.append("ARROW")
+            bc.append(category_ID)
+            return bc
 
 
 

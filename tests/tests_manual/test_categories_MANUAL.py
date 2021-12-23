@@ -33,7 +33,7 @@ def test_create_parent_map():
 
     Categories.create_parent_map(814)     # 2 paths, a 2-hop and a 3-hop one
 
-    Categories.create_parent_map(1)       # no results
+    Categories.create_parent_map(1)       # the root
 
 
 def test_paths_from_root():
@@ -43,9 +43,21 @@ def test_paths_from_root():
 
     Categories.paths_from_root(814)     # 2 paths, a 2-hop and a 3-hop one
 
-    Categories.paths_from_root(1)       # no results
+    Categories.paths_from_root(1)       # the root
 
 
+def test_bread_crumbs():
+    print(Categories.create_bread_crumbs(1))   # [1]
+    print(Categories.create_bread_crumbs(799)) # ['START_CONTAINER', [1, 'ARROW', 799], 'END_CONTAINER']
+    print(Categories.create_bread_crumbs(876)) # ['START_CONTAINER', [1, 'ARROW', 799, 'ARROW', 876], 'END_CONTAINER']
+    print(Categories.create_bread_crumbs(823)) # ['START_CONTAINER', [1, 'ARROW', 544, 'ARROW', 709, 'ARROW', 823], 'END_CONTAINER']
+
+    print(Categories.create_bread_crumbs(814))
+    # [
+    #   'START_CONTAINER',
+    #   ['START_BLOCK', 'START_LINE', [1, 'ARROW', 799, 'ARROW', 526], 'END_LINE', 'CLEAR_RIGHT', 'START_LINE', [1, 'ARROW', 61], 'END_LINE', 'END_BLOCK', 'ARROW', 814],
+    #   'END_CONTAINER'
+    # ]
 
 
 def test_add_content_at_end():

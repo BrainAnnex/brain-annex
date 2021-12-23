@@ -127,7 +127,7 @@ Vue.component('vue-plugin-r',
                 if (this.schema_data.length == 0)
                     return Object.keys(this.current_data);      // Fallback, if Schema info isn't available
 
-                console.log("In determine_headers(): schema_data = ", this.schema_data);
+                //console.log("In determine_headers(): schema_data = ", this.schema_data);
                 //console.log("this.current_data = ", this.current_data);
                 //console.log("All keys of the above: ", Object.keys(this.current_data));
                 let all_keys = [];
@@ -140,7 +140,7 @@ Vue.component('vue-plugin-r',
 
                 // TODO: at this point, should add any keys in this.current_data that aren't declared in the Schema, if any
 
-                console.log("   all_keys = ", all_keys);
+                //console.log("   all_keys = ", all_keys);
 
                 //return Object.keys(this.current_data);
                 return all_keys;
