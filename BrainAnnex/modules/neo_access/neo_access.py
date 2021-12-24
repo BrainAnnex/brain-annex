@@ -157,14 +157,14 @@ class NeoAccess:
 
     #---------------------------------------------------------------------------------------------------#
     #                                                                                                   #
-    #                                   ~ RUNNING GENERIC QUERIES ~                                     #
+    #                                 ~  RUNNING GENERIC QUERIES  ~                                     #
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
     def query(self, q: str, data_binding=None, single_row=False, single_cell="", single_column=""):
         """
         Run a Cypher query.  Best suited for Cypher queries that return individual values,
-        but may also be used with queries that return nodes or relationships (or paths?) - or nothing.
+        but may also be used with queries that return nodes or relationships or paths - or nothing.
 
         Execute the query and fetch the returned values as a list of dictionaries.
         In cases of no results, return an empty list.
@@ -203,6 +203,8 @@ class NeoAccess:
                                     -> a single list item such as {"count(n)": 100}
                             Cypher returns a single relationship, with or without attributes: MERGE (c)-[r:PAID_BY]->(p)
                                     -> a single list item such as [{ 'r': ({}, 'PAID_BY', {}) }]
+                            Cypher returns a path:   MATCH p= .......   RETURN p
+                                 -> list item such as {'p': [ {'name': 'Eve'}, 'LOVES', {'name': 'Adam'} ] }
                             Cypher creates nodes (without returning them)
                                     -> empty list
         """

@@ -1,0 +1,40 @@
+/* Links in bread-crumbs navigation */
+span.br_nav  {
+    color:#999999;
+}
+.br_nav  a:link  {
+    color:#B0B0F0;
+    text-decoration:none;
+}
+
+.br_nav  a:visited  {
+    color:#B0B0F0;
+    text-decoration:none;
+}
+
+.br_nav  a:hover {
+    color:red;
+}
+
+.br_nav  a:active {
+    color:red;
+}
+
+div.br_container {
+    background-color:#F2F2F2;
+    padding:5px;
+}
+
+div.br_line {
+    display:inline-block;
+    float:right;
+}
+
+div.br_block {
+    display:inline-block;
+    vertical-align:middle;
+    border-right: 2px solid gray;
+    padding-right: 3px;
+    padding-top:2px;
+    padding-bottom:2px;
+}

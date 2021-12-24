@@ -48,6 +48,7 @@ class PagesRequestHandler:
         """
         Return the records for all nodes linked to the Category node identified by its item_id value
 
+        :param category_id:
         :return:    A list of dictionaries
                     EXAMPLE:
                     [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
@@ -109,6 +110,7 @@ class PagesRequestHandler:
             OLD -> [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
             [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
 
+        :param category_id:
         :return:    A list of dictionaries
         """
         q =  '''
@@ -136,6 +138,7 @@ class PagesRequestHandler:
         EXAMPLE:
             [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
 
+        :param category_id:
         :return:    A list of dictionaries
         """
         match = cls.db.find(labels="BA",
@@ -149,25 +152,37 @@ class PagesRequestHandler:
 
 
     @classmethod
-    def get_all_categories(cls) -> [dict]:
+    def get_all_categories(cls, exclude_root=True) -> [dict]:
         """
         Return all the existing Categories - except the root -
-        as a list of dictionaries with keys 'id' and 'name',
+        as a list of dictionaries with keys 'id', 'name', 'remarks'
         sorted by name
         EXAMPLE:
-            [{'id': 3, 'name': 'Hobbies'}, {'id': 2, 'name': 'Work'}]
+            [{'id': 3, 'name': 'Hobbies'}, {'id': 2, 'name': 'Work', 'remarks': 'paid jobs'}]
 
-        :return:    A list of dictionaries
+        Note that missing "remarks" values are not in the dictionaries
+
+        :param exclude_root:
+        :return:                A list of dictionaries
         """
-        q =  '''
-             MATCH (cat:BA {schema_code:"cat"})
-             WHERE cat.item_id <> 1
-             RETURN cat.item_id AS id, cat.name AS name
+        clause = ""
+        if exclude_root:
+            clause = "WHERE cat.item_id <> 1"
+
+        q =  f'''
+             MATCH (cat:BA {{schema_code:"cat"}})
+             {clause}
+             RETURN cat.item_id AS id, cat.name AS name, cat.remarks AS remarks
              ORDER BY toLower(cat.name)
              '''
-        # Notes: 1 is the ROOT.
+        # Notes: 1 is the ROOT
         # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
 
         result = cls.db.query(q)
+
+        # Ditch all the missing "remarks" values
+        for cat in result:
+            if cat["remarks"] is None:
+                del cat["remarks"]
 
         return result

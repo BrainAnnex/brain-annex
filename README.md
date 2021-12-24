@@ -62,7 +62,7 @@ We test on Python 3.7/3.8 (slightly earlier versions might be fine.)
 
 **Set up the local environment**
 
-All dependencies (such as Flask, pandas, etc) are specified in the file "requirements.txt"
+All dependencies (such as Flask, pandas, etc) are specified in the file `requirements.txt`
 
 **Local Media Folder**
 
