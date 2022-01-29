@@ -45,7 +45,8 @@ class NodeExplorer:
         :param label:   A Neo4j label
         :return:        A 6-tuple containing (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts)
         """
-        db = neo_access.NeoAccess()
+        #db = neo_access.NeoAccess()
+        db = self.neo
         # Retrieve ALL nodes with the specified label
         recordset = db.get_nodes(label, return_nodeid=True, return_labels=True)
                                     # EXAMPLE: [ {"neo4j_id": 145, "neo4j_labels": ["person", "client"], 'gender': 'M', 'age': 42},
@@ -326,7 +327,7 @@ class NodeExplorer:
         :param label:   A string with a Neo4j label
         :return:
         """
-        db = neo_access.NeoAccess()
+        db = self.neo
         # TODO: Retrieve ALL nodes with the specified label, and pass the results to self.serialize_nodes()
 
 
@@ -432,8 +433,10 @@ class NodeExplorer:
 
         return all_data
 
+##################################   END OF CLASS   ###########################
 
 
+# TODO: get rid of this loose function outside of the class
 
 def test_column_based_results(db):
     # A general situation where different records may agree on some field, but not all

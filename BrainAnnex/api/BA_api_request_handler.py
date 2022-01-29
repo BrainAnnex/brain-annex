@@ -51,7 +51,8 @@ class APIRequestHandler:
     "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
 
-    db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable, accessible as cls.db
+    db = None   # MUST be set before using this class!
+    #db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable, accessible as cls.db
                                     # This will only be executed once
 
     #media_directory = "BrainAnnex/pages/static/media"
@@ -841,8 +842,8 @@ class APIRequestHandler:
             return f"File I/O failed. {return_link}"
 
         try:
-            neo = neo_access.NeoAccess()
-            details = neo.import_json_data(file_contents)
+            #neo = neo_access.NeoAccess()
+            details = cls.db.import_json_data(file_contents)
         except Exception as ex:
             return f"Import of JSON data failed: {ex}. {return_link}"
 

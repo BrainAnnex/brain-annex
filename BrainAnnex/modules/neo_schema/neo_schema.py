@@ -84,7 +84,8 @@ class NeoSchema:
 	----------------------------------------------------------------------------------
     """
 
-    db = neo_access.NeoAccess()         # Saving database-interface object as a CLASS variable, accessible as cls.db
+    db = None   # MUST be set before using this class!
+    #db = neo_access.NeoAccess()        # Saving database-interface object as a CLASS variable, accessible as cls.db
                                         # This will only be executed once
 
     class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;

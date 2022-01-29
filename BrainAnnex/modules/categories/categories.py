@@ -15,7 +15,8 @@ class Categories:
         3. POSITIONING WITHIN CATEGORIES
     """
 
-    db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable.
+    db = None   # MUST be set before using this class!
+    #db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable.
                                     # This will only be executed once
 
     DELTA_POS = 20      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large
@@ -763,7 +764,7 @@ class Categories:
 
 ##########################################################################################
 
-################################    COLLECTIONS   ########################################
+#                                COLLECTIONS                                             #
 
 ##########################################################################################
 
@@ -776,7 +777,8 @@ class Collections:
 
     # Class variables
 
-    db = neo_access.NeoAccess()    # Saving database-interface object as a CLASS variable.
+    db = None   # MUST be set before using this class!
+    #db = neo_access.NeoAccess()    # Saving database-interface object as a CLASS variable.
                                         # This will only be executed once
 
     DELTA_POS = 20                      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large
