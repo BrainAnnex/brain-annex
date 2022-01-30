@@ -47,8 +47,13 @@ class PagesRouting:
                                                   template_folder='templates', static_folder='static')
         # This "Blueprint" object will get registered in the Flask app object in main.py, using: url_prefix = "/BA/pages"
 
-        self.set_routing()
+        self.set_routing()   # Define the Flask routing (mapping URLs to Python functions)
 
+
+
+    ###############################################
+    #               For ROUTING                   #
+    ###############################################
 
     def set_routing(self) -> None:
         """
@@ -57,7 +62,6 @@ class PagesRouting:
 
         :return: None
         """
-        #test = current_app.config['APP_NEO4J_DBASE']
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
         @self.BA_pages_flask_blueprint.route('/login')

@@ -11,7 +11,8 @@ from flask import Flask
 from navigation.navigation_routing import navigation_flask_blueprint
 
 from BrainAnnex.pages.BA_pages_routing import PagesRouting
-from BrainAnnex.api.BA_api_routing import BA_api_flask_blueprint
+from BrainAnnex.api.BA_api_routing import ApiRouting
+#from BrainAnnex.api.BA_api_routing import BA_api_flask_blueprint
 
 # These are an example of an independent site embedded (co-hosted) with Brain Annex.  Comment out if not needed!
 from sample_embedded_site.sample_pages.sample_pages_routing import sample_pages_flask_blueprint
@@ -19,11 +20,7 @@ from sample_embedded_site.sample_api.sample_api_routing import sample_api_flask_
 
 # The remaining imports, below, are for the database initialization
 from BrainAnnex.modules.neo_access import neo_access
-from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
-from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
-from BrainAnnex.modules.categories.categories import Categories
-from BrainAnnex.modules.categories.categories import Collections
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+from BrainAnnex.initialize import InitializeBrainAnnex
 
 
 
@@ -32,17 +29,12 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 #########################################
 
 
-# TODO: Maybe move all the initilization below into a separate module
-
-# INITIALIZATION of various static classes that need the database object
-# (to avoid multiple dbase connections)
+### INITIALIZATION of various static classes that need the database object
+#   (to avoid multiple dbase connections)
 APP_NEO4J_DBASE = neo_access.NeoAccess()
 
-PagesRequestHandler.db = APP_NEO4J_DBASE
-APIRequestHandler.db = APP_NEO4J_DBASE
-Categories.db = APP_NEO4J_DBASE
-Collections.db = APP_NEO4J_DBASE
-NeoSchema.db = APP_NEO4J_DBASE
+InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
+
 
 
 
@@ -59,18 +51,21 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #       and specify the URL prefixes to use for the various modules
 
 # NOTE: 2 different approaches are currently in use -
-#       with object instantiation (for BA_pages_flask_blueprint), and without (all other ones)
+#       with object instantiation, and without
 #       TODO: make all the same
-app.register_blueprint(navigation_flask_blueprint, url_prefix = "/navigation")  # The navbar
+app.register_blueprint(navigation_flask_blueprint, url_prefix = "/navigation")      # The navbar
 
-#app.register_blueprint(BA_pages_flask_blueprint, url_prefix = "/BA/pages")      # The BrainAnnex-derived UI
-obj = PagesRouting()
-app.register_blueprint(obj.BA_pages_flask_blueprint, url_prefix = "/BA/pages")      # The BrainAnnex-derived UI
+routing_obj = PagesRouting()
+app.register_blueprint(routing_obj.BA_pages_flask_blueprint, url_prefix = "/BA/pages")      # The BrainAnnex-derived UI
+#app.register_blueprint(BA_pages_flask_blueprint, url_prefix = "/BA/pages")                 # The old way to do it
 
-app.register_blueprint(BA_api_flask_blueprint, url_prefix = "/BA/api")          # The BrainAnnex-derived endpoint
+routing_obj = ApiRouting()
+app.register_blueprint(routing_obj.BA_api_flask_blueprint, url_prefix = "/BA/api")          # The BrainAnnex-derived endpoint
+#app.register_blueprint(BA_api_flask_blueprint, url_prefix = "/BA/api")                     # The old way to do it
 
-app.register_blueprint(sample_pages_flask_blueprint, url_prefix = "/sample/pages") # Example of UI for an embedded independent site
-app.register_blueprint(sample_api_flask_blueprint, url_prefix = "/sample/api")     # Example of endpoints for an embedded independent site
+app.register_blueprint(sample_pages_flask_blueprint, url_prefix = "/sample/pages")  # Example of UI for an embedded independent site
+app.register_blueprint(sample_api_flask_blueprint, url_prefix = "/sample/api")      # Example of endpoints for an embedded independent site
+
 
 
 # DEFINE A TEMPORARY FOLDER FOR FILE UPLOADS
