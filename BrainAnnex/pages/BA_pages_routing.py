@@ -34,20 +34,25 @@ from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler     # TODO: reorganize, to avoid this
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from BrainAnnex.modules.categories.categories import Categories
-from navigation.navigation import get_site_pages        # Navigation configuration for this site
 import json
 
 
 
 class PagesRouting:
 
-    def __init__(self):
+    def __init__(self, site_pages):
+        """
+        
+        :param site_pages: Data for the site navigation
+        """
         # Specify where this module's TEMPLATE and STATIC folders are located (relative to this module's main folder)
         self.BA_pages_flask_blueprint = Blueprint('BA_pages', __name__,
                                                   template_folder='templates', static_folder='static')
         # This "Blueprint" object will get registered in the Flask app object in main.py, using: url_prefix = "/BA/pages"
 
-        self.set_routing()   # Define the Flask routing (mapping URLs to Python functions)
+        self.site_pages = site_pages    # Data for the site navigation
+        
+        self.set_routing()              # Define the Flask routing (mapping URLs to Python functions)
 
 
 
@@ -91,7 +96,7 @@ class PagesRouting:
             node_list = ne_obj.serialize_nodes(None)
             node_list_json = json.dumps(node_list)
 
-            return render_template(url, current_page="nodes_viewer", site_pages=get_site_pages(),
+            return render_template(url, current_page="nodes_viewer", site_pages=self.site_pages,
                                    node_list=node_list, node_list_json=node_list_json)
 
         @self.BA_pages_flask_blueprint.route('/nodes_viewer')
@@ -105,7 +110,7 @@ class PagesRouting:
             node_list = ne_obj.serialize_nodes(None)
             node_list_json = json.dumps(node_list)
 
-            return render_template(url, current_page=request.path, site_pages=get_site_pages(),
+            return render_template(url, current_page=request.path, site_pages=self.site_pages,
                                    node_list=node_list, node_list_json=node_list_json)
 
 
@@ -119,7 +124,7 @@ class PagesRouting:
 
             label_list = PagesRequestHandler.get_node_labels()
 
-            return render_template(url, current_page=request.path, site_pages=get_site_pages(),
+            return render_template(url, current_page=request.path, site_pages=self.site_pages,
                                    label_list = label_list)
 
 
@@ -135,7 +140,7 @@ class PagesRouting:
             ne_obj = NodeExplorer()
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = ne_obj.all_nodes_by_label(label)
 
-            return render_template(url, current_page="node", site_pages=get_site_pages(),   # Maybe it should be current_page="/BA/pages/node"
+            return render_template(url, current_page="node", site_pages=self.site_pages,   # Maybe it should be current_page="/BA/pages/node"
                                    label_list = label_list,
                                    header_list = header_list, record_list = record_list,
                                    inbound_headers = inbound_headers,
@@ -181,7 +186,7 @@ class PagesRouting:
 
             bread_crumbs = Categories.create_bread_crumbs(category_id)
 
-            return render_template(template, current_page=request.path, site_pages=get_site_pages(), header_title=category_name,
+            return render_template(template, current_page=request.path, site_pages=self.site_pages, header_title=category_name,
                                    content_items=content_items,
                                    category_id=category_id, category_name=category_name,
                                    subcategories=subcategories, all_categories=all_categories,
@@ -198,7 +203,7 @@ class PagesRouting:
 
             template = "filter.htm"
 
-            return render_template(template, current_page=request.path, site_pages=get_site_pages())
+            return render_template(template, current_page=request.path, site_pages=self.site_pages)
 
 
 
@@ -249,7 +254,7 @@ class PagesRouting:
             # EXAMPLE invocation: http://localhost:5000/BA/pages/admin
 
             url = "admin.htm"
-            return render_template(url, current_page=request.path, site_pages=get_site_pages())
+            return render_template(url, current_page=request.path, site_pages=self.site_pages)
 
 
 
@@ -264,7 +269,7 @@ class PagesRouting:
             url = "manage_node_labels.htm"
             label_list = PagesRequestHandler.get_node_labels()
             return render_template(url, label_list = label_list, current_page=request.path,
-                                    site_pages=get_site_pages())
+                                    site_pages=self.site_pages)
 
 
 
@@ -290,7 +295,7 @@ class PagesRouting:
             all_categories = Categories.get_all_categories()
             parent_categories = Categories.get_parent_categories(category_id)
 
-            return render_template(template, current_page=request.path, site_pages=get_site_pages(),
+            return render_template(template, current_page=request.path, site_pages=self.site_pages,
                                    category_id=category_id, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    all_categories=all_categories)
@@ -313,7 +318,7 @@ class PagesRouting:
             # A test of integration into site navigation
             # EXAMPLE invocation: http://localhost:5000/BA/pages/test/nav
             url = "tests/nav.htm"
-            return render_template(url, site_pages=get_site_pages())
+            return render_template(url, site_pages=self.site_pages)
 
 
         @self.BA_pages_flask_blueprint.route('/test/upload')

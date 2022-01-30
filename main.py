@@ -7,14 +7,16 @@ from flask import Flask
 
 # All the sub-modules making up this web app
 
-# The navigation is shared by Brain Annex and possible other independent sites embedded (co-hosted) with it
+# The navigation is shared by Brain Annex and possible other independent sites
+# embedded (co-hosted) with it
 from navigation.navigation_routing import navigation_flask_blueprint
+from navigation.navigation import get_site_pages
 
 from BrainAnnex.pages.BA_pages_routing import PagesRouting
 from BrainAnnex.api.BA_api_routing import ApiRouting
-#from BrainAnnex.api.BA_api_routing import BA_api_flask_blueprint
 
-# These are an example of an independent site embedded (co-hosted) with Brain Annex.  Comment out if not needed!
+# These are an example of an independent site embedded (co-hosted) with Brain Annex.
+# Comment out if not needed!
 from sample_embedded_site.sample_pages.sample_pages_routing import sample_pages_flask_blueprint
 from sample_embedded_site.sample_api.sample_api_routing import sample_api_flask_blueprint
 
@@ -35,7 +37,7 @@ APP_NEO4J_DBASE = neo_access.NeoAccess()
 
 InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
 
-
+site_pages = get_site_pages()     # Data for the site navigation
 
 
 ###  FLASK-RELATED INITIALIZATION  ###
@@ -55,13 +57,11 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #       TODO: make all the same
 app.register_blueprint(navigation_flask_blueprint, url_prefix = "/navigation")      # The navbar
 
-routing_obj = PagesRouting()
+routing_obj = PagesRouting(site_pages)
 app.register_blueprint(routing_obj.BA_pages_flask_blueprint, url_prefix = "/BA/pages")      # The BrainAnnex-derived UI
-#app.register_blueprint(BA_pages_flask_blueprint, url_prefix = "/BA/pages")                 # The old way to do it
 
 routing_obj = ApiRouting()
 app.register_blueprint(routing_obj.BA_api_flask_blueprint, url_prefix = "/BA/api")          # The BrainAnnex-derived endpoint
-#app.register_blueprint(BA_api_flask_blueprint, url_prefix = "/BA/api")                     # The old way to do it
 
 app.register_blueprint(sample_pages_flask_blueprint, url_prefix = "/sample/pages")  # Example of UI for an embedded independent site
 app.register_blueprint(sample_api_flask_blueprint, url_prefix = "/sample/api")      # Example of endpoints for an embedded independent site
