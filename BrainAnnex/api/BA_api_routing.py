@@ -73,24 +73,10 @@ class ApiRouting:
     #               For DEBUGGING                 #
     ###############################################
 
-    def exception_helper(self, ex) -> str:       # TODO: 2 copies of this functions currently exist
-        """
-        To give better info on an Exception.
-        The info returned by "ex" is skimpy; for example, in case of a key error, all that it returns is the key name!
-    
-        :param ex:  The Exemption object
-    
-        :return:    A string with a more detailed explanation of the given Exception (prefixed by the Exception type)
-        """
-        (exc_type, _, _) = sys.exc_info()
-        return str(exc_type) + " : " + str(ex)
-
-
-
     def show_post_data(self, post_data, method_name=None) -> None:
         """
         Debug utility method
-    
+
         :param post_data:
         :param method_name: Name of invoking function
         :return:            None
@@ -106,8 +92,9 @@ class ApiRouting:
 
 
 
+
     ###############################################
-    #               For ROUTING                   #
+    #                   ROUTING                   #
     ###############################################
 
     def set_routing(self) -> None:
@@ -373,7 +360,7 @@ class ApiRouting:
                 new_id = APIRequestHandler.new_content_item_in_category(dict(post_data))
                 return_value = self.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + self.exception_helper(ex)
+                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"add_item_to_category() is returning: `{return_value}`")
         
@@ -401,7 +388,7 @@ class ApiRouting:
                 new_id = Categories.add_subcategory(dict(post_data))
                 return_value = self.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + self.exception_helper(ex)
+                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"add_subcategory() is returning: `{return_value}`")
         
@@ -419,7 +406,7 @@ class ApiRouting:
                 Categories.delete_category(int(category_id))
                 return_value = self.SUCCESS_PREFIX
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + self.exception_helper(ex)
+                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"delete_category() is returning: `{return_value}`")
         
@@ -445,7 +432,7 @@ class ApiRouting:
                 Categories.add_subcategory_relationship(subcategory_id=subcategory_id, category_id=category_id)
                 return_value = self.SUCCESS_PREFIX
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + self.exception_helper(ex)
+                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"add_subcategory_relationship() is returning: `{return_value}`")
         
@@ -469,7 +456,7 @@ class ApiRouting:
                 Categories.remove_subcategory_relationship(subcategory_id=subcategory_id, category_id=category_id)
                 return_value = self.SUCCESS_PREFIX
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + self.exception_helper(ex)
+                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"remove_subcategory_relationship() is returning: `{return_value}`")
         

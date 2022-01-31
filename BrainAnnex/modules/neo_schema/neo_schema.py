@@ -84,9 +84,9 @@ class NeoSchema:
 	----------------------------------------------------------------------------------
     """
 
-    db = None   # MUST be set before using this class!
-    #db = neo_access.NeoAccess()        # Saving database-interface object as a CLASS variable, accessible as cls.db
-                                        # This will only be executed once
+    db = None           # MUST be set before using this class!
+                        # Database-interface object is a CLASS variable, accessible as cls.db
+
 
     class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;
                                         #       change it, if you have conflicts with other modules
@@ -416,12 +416,13 @@ class NeoSchema:
         based on the order they appear in the list.
         NOTE: if the Class doesn't already exist, use new_class_with_properties() instead
         TODO: raise an Exception if the class doesn't exit.
-              Asser that all the items in property_list are strings.
+              Assert that all the items in property_list are strings.
               Offer option to specify the class by name.
 
         :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
         :param property_list:   A list of strings with the names of the properties, in the desired default order
-                                    Whitespace in any of the names gets stripped out.  If any name is a blank string, an Exception is raised
+                                    Whitespace in any of the names gets stripped out.
+                                    If any name is a blank string, an Exception is raised
         :return:                The number of Properties added (might be zero if the Class doesn't exist)
         """
 

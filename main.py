@@ -40,6 +40,7 @@ InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
 site_pages = get_site_pages()     # Data for the site navigation
 
 
+
 ###  FLASK-RELATED INITIALIZATION  ###
 
 # Instantiate the Flask object used to provide a UI and an API
