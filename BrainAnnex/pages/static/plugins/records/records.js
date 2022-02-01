@@ -1,7 +1,8 @@
 Vue.component('vue-plugin-r',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:  EXAMPLE: {"item_id":52,"pos":10,"schema_code":"r",class_name:"German Vocabulary","German":"Tier","English":"animal"}
+        /*  item_data:  EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
+                                  "German":"Tier", "English":"animal"}
                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
             category_id:
             index:          The zero-based position of the Record on the page
@@ -44,7 +45,9 @@ Vue.component('vue-plugin-r',
 
             <tr v-if="editing_mode">    <!-- EXTRA TABLE ROW for the relationship editing (if in editing mode) -->
                 <td colspan=3>
-                    Relationship editing will go here
+                    In-Progress!  Relationship editing will go here<br>
+                    Inbound links: {{in_links}}<br>
+                    Outbound links: {{out_links}}
                 </td>
             </tr>
 
@@ -112,6 +115,9 @@ Vue.component('vue-plugin-r',
                 current_data: this.clone_and_standardize(this.item_data),   // Scrub some data, so that it won't show up in the tabular format
                 original_data: this.clone_and_standardize(this.item_data),
                 // NOTE: clone_and_standardize() gets called twice
+
+                in_links: [],       // List of the names of all Inbound links
+                out_links: [],      // List of the names of all Outbound links (except for "INSTANCE_OF")
 
                 waiting_for_server: ((this.item_data.item_id != -1) ? false : this.get_fields_from_server(this.item_data)), // -1 means "new Item"
 
@@ -181,18 +187,35 @@ Vue.component('vue-plugin-r',
             // Initiate request to server, to get all the field and link names specified by the Schema for this Record
             {
                 console.log(`Looking up Schema info for a Content Item of type 'r', with item_id = ${item.item_id}`);
-                if (item.item_id == -1) {
-                    url_server = "http://localhost:5000/BA/api/get_properties_by_class_name";               // New record
-                    post_obj = {class_name: item.class_name}
-                    console.log(`About to contact the server at ${url_server}.  POST object:`);
-                    console.log(post_obj);
-                    ServerCommunication.contact_server(url_server,
-                            {payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
+
+                // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
+                let url_server = "http://localhost:5000/BA/api/get_class_schema";
+                let post_obj = {class_name: item.class_name};
+                console.log(`About to contact the server at ${url_server}.  POST object:`);
+                console.log(post_obj);
+                ServerCommunication.contact_server(url_server,
+                        {payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
+
+                // TODO: merge the 2 now-identical branches
+                if (item.item_id == -1) {       // New record
+                    //url_server = "http://localhost:5000/BA/api/get_properties_by_class_name";
+                    //url_server = "http://localhost:5000/BA/api/get_class_schema";
+                    //post_obj = {class_name: item.class_name}
+                    //console.log(`About to contact the server at ${url_server}.  POST object:`);
+                    //console.log(post_obj);
+                    //ServerCommunication.contact_server(url_server,
+                            //{payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
                 }
-                else {
-                    url_server = "http://localhost:5000/BA/api/get_properties_by_item_id/" + item.item_id;  // Existing record
-                    console.log(`About to contact the server at ${url_server}`);
-                    ServerCommunication.contact_server_JSON(url_server, "", this.finish_get_fields_from_server);
+                else {                          // Existing record
+                    //url_server = "http://localhost:5000/BA/api/get_properties_by_item_id/" + item.item_id;
+                    //url_server = "http://localhost:5000/BA/api/get_class_schema";
+                    //post_obj = {class_name: item.class_name}
+                    //console.log(`About to contact the server at ${url_server}`);
+                    //console.log(`About to contact the server at ${url_server}.  POST object:`);
+                    //console.log(post_obj);
+                    //ServerCommunication.contact_server_JSON(url_server, "", this.finish_get_fields_from_server);
+                    //ServerCommunication.contact_server(url_server,
+                            //{payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
                 }
 
                 return true;
@@ -206,13 +229,26 @@ Vue.component('vue-plugin-r',
                 console.log("Finalizing the get_fields_from_server() operation...");
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: " , server_payload);
+                    /*  EXAMPLE:
+                            {
+                            "properties":   [
+                                              "name",
+                                              "website",
+                                              "address"
+                                            ],
+                            "in_links":     ["BA_served_at"],
+                            "out_links":    ["BA_located_in", "BA_cuisine_type"]
+                            }
+                     */
+
+                    let properties = server_payload["properties"];
                     // EXAMPLE:  [ "Notes", "English", "French" ]
 
-                    // Create new cloned objects (if just altering existing objects, Vue doesn't detect the change)
+                    // Create new cloned objects (if one just alters existing objects, Vue doesn't detect the change!)
                     new_current_data = Object.assign({}, this.current_data);    // Clone the object
 
-                    for (let i = 0; i < server_payload.length; i++) {
-                        field_name = server_payload[i]
+                    for (let i = 0; i < properties.length; i++) {
+                        field_name = properties[i]
 
                         /* Only add fields not already present
                          */
@@ -223,6 +259,9 @@ Vue.component('vue-plugin-r',
                     }
 
                     this.current_data = new_current_data;
+
+                    this.in_links = server_payload["in_links"];
+                    this.out_links = server_payload["out_links"];
                 }
                 else  {             // Server reported FAILURE
                     //this.status = `FAILED lookup of extra fields`;
