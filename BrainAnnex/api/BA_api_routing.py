@@ -149,10 +149,10 @@ class ApiRouting:
                                 EXAMPLE:
                                     {
                                         "payload": {
-                                            "IN": [
+                                            "in": [
                                               "BA_served_at"
                                             ],
-                                            "OUT": [
+                                            "out": [
                                               "BA_located_in",
                                               "BA_cuisine_type"
                                             ]
@@ -164,7 +164,7 @@ class ApiRouting:
             # Fetch all the relationship names
             try:
                 rel_names = NeoSchema.get_class_relationships(int(schema_id), omit_instance=True)
-                payload = {"OUT": rel_names[0], "IN": rel_names[1]}
+                payload = {"in": rel_names["in"], "out": rel_names["out"]}
                 response = {"status": "ok", "payload": payload}    # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -181,22 +181,26 @@ class ApiRouting:
             Return a JSON object with a list of the Property names of that Class.
         
             EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/get_properties_by_class_name  -d "class_name=Restaurant"
+                curl http://localhost:5000/BA/api/get_properties_by_class_name  -d "class_name=French Vocabulary"
         
             1 POST FIELD:
                 class_name
         
-            :return:            A JSON object with a list of the Property names of the specified Class
-                                EXAMPLE:
-                                    [
-                                      "Notes",
-                                      "English",
-                                      "French"
-                                    ]
+            :return:  A JSON with a list of the Property names of the specified Class,
+                      including indirect ones thru chains of outbound "INSTANCE_OF" relationships
+                         EXAMPLE:
+                            {
+                                "payload":  [
+                                              "Notes",
+                                              "English",
+                                              "French"
+                                            ],
+                                "status":   "ok"
+                            }
             """
         
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'Restaurant')])
+            post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
             self.show_post_data(post_data, "get_properties_by_class_name")
         
             data_dict = dict(post_data)
@@ -218,9 +222,70 @@ class ApiRouting:
             print(f"get_properties_by_class_name() is returning: `{response}`")
         
             return jsonify(response)   # This function also takes care of the Content-Type header
-        
-        
-        
+
+
+
+
+        @self.BA_api_flask_blueprint.route('/get_class_schema', methods=['POST'])
+        def get_class_schema():
+            """
+            Get all Schema data - both Properties and Links - of the given Class node
+            (as specified by its name passed as a POST variable),
+            including indirect Properties thru chains of outbound "INSTANCE_OF" relationships.
+            Return a JSON object with a list of the Property names of that Class.
+
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/get_class_schema  -d "class_name=Restaurants"
+
+            1 POST FIELD:
+                class_name
+
+            :return:  A JSON with a list of the Property names of the specified Class,
+                      including indirect ones thru chains of outbound "INSTANCE_OF" relationships
+                         EXAMPLE:
+                            {
+                                "payload":  {
+                                            "properties":   [
+                                                              "name",
+                                                              "website",
+                                                              "address"
+                                                            ],
+                                            "in_links":     ["BA_served_at"],
+                                            "out_links":    ["BA_located_in", "BA_cuisine_type"]
+                                            },
+                                "status":   "ok"
+                            }
+            """
+
+            # Extract the POST values
+            post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'Restaurants')])
+            self.show_post_data(post_data, "get_class_schema")
+
+            data_dict = dict(post_data)
+            if "class_name" not in data_dict:
+                response = {"status": "error", "error_message": "The expected POST parameter `class_name` is not present"}
+            else:
+                class_name = data_dict["class_name"]
+                schema_id = NeoSchema.get_class_id(class_name)
+                if schema_id == -1:
+                    response = {"status": "error", "error_message": f"Unable to locate any Class named `{class_name}`"}
+                else:
+                    try:
+                        # Fetch all the Properties
+                        prop_list = NeoSchema.get_class_properties(schema_id, include_ancestors=True)
+                        rel_names = NeoSchema.get_class_relationships(int(schema_id), omit_instance=True)
+                        payload = {"properties": prop_list, "in_links": rel_names["in"], "out_links": rel_names["out"]}
+                        response = {"status": "ok", "payload": payload}
+                    except Exception as ex:
+                        response = {"status": "error", "error_message": str(ex)}
+
+            print(f"get_class_schema() is returning: `{response}`")
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
+
         @self.BA_api_flask_blueprint.route('/get_properties_by_item_id/<item_id>')
         def get_properties_by_item_id(item_id):
             """

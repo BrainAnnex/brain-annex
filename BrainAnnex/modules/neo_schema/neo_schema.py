@@ -366,15 +366,16 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_relationships(cls, schema_id:int, omit_instance=False) -> (list, list):
+    def get_class_relationships(cls, schema_id:int, omit_instance=False) -> dict:
         """
         Obtain and return the names of all the relationship attached to the given Class
 
         :param schema_id:       To identify the desired Class
         :param omit_instance:   If True, the common outbound relationship "INSTANCE_OF"
                                 is omitted
-        :return:                A pair of lists: the list of outbound-relationship names,
-                                                 and the list of inbound-relationship names
+        :return:                A dictionary of the form
+                                    {"in": list of inbound-relationship names,
+                                     "out": list of outbound-relationship names}
         """
         if omit_instance:
             q_out = '''
@@ -395,7 +396,7 @@ class NeoSchema:
                 '''
         rel_in = cls.db.query(q_in,data_binding={"schema_id": schema_id}, single_column="rel_name")
 
-        return (rel_out, rel_in)
+        return  {"in": rel_in, "out": rel_out}
 
 
 

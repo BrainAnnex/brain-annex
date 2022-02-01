@@ -11,7 +11,7 @@ Vue.component('vue-plugin-r',
          */
 
         template: `
-            <div>	<!-- Outer container box, serving as Vue-required template root  -->
+            <div>	<!-- Outer container, serving as Vue-required template root  -->
 
             <table class='r-main'>
             <!-- Header row  -->
@@ -42,7 +42,13 @@ Vue.component('vue-plugin-r',
                 </td>
             </tr>
 
-            <tr v-if="editing_mode">    <!-- Extra table row with SAVE/Cancel controls -->
+            <tr v-if="editing_mode">    <!-- EXTRA TABLE ROW for the relationship editing (if in editing mode) -->
+                <td colspan=3>
+                    Relationship editing will go here
+                </td>
+            </tr>
+
+            <tr v-if="editing_mode">    <!-- EXTRA TABLE ROW with SAVE/Cancel controls (if in editing mode) -->
             <td colspan=3>
                 <button @click="save()">SAVE</button>
                 <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
@@ -64,7 +70,7 @@ Vue.component('vue-plugin-r',
                           v-on:edit-content-item="edit_content_item(item_data)">
             </vue-controls>
 
-            \n</div>\n		<!-- End of outer container box -->
+            \n</div>\n		<!-- End of outer container -->
             `,
 
 
@@ -84,7 +90,7 @@ Vue.component('vue-plugin-r',
                         original_data:  Object with pre-edit data,
                                         used to restore the data in case of an edit Cancel or failed save
 
-                    EXAMPLE of item_data (a PROP, not a component variable!):
+                    EXAMPLE of item_data (a PROP, not a variable of this component!):
                         {
                             "English": "Love",
                             "German": "Liebe",
@@ -172,9 +178,9 @@ Vue.component('vue-plugin-r',
 
 
             get_fields_from_server(item)
-            // Initiate request to server, to get all the field names specified by the Schema of the given Content Item
+            // Initiate request to server, to get all the field and link names specified by the Schema for this Record
             {
-                console.log(`Processing a Content Item of type 'r', with item_id = ${item.item_id}`);
+                console.log(`Looking up Schema info for a Content Item of type 'r', with item_id = ${item.item_id}`);
                 if (item.item_id == -1) {
                     url_server = "http://localhost:5000/BA/api/get_properties_by_class_name";               // New record
                     post_obj = {class_name: item.class_name}
@@ -264,7 +270,7 @@ Vue.component('vue-plugin-r',
                 console.log(`'Records' component received Event to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
                 this.editing_mode = true;
 
-                this.get_fields_from_server(item);  // Consult the schema
+                this.get_fields_from_server(item);      // Consult the schema
                 this.waiting_for_server = true;
             },
 
