@@ -42,25 +42,22 @@ Vue.component('vue-plugin-r',
                     </span>
                 </td>
             </tr>
+            </table>
 
-            <tr v-if="editing_mode">    <!-- EXTRA TABLE ROW for the relationship editing (if in editing mode) -->
-                <td colspan=3>
-                    In-Progress!  Relationship editing will go here<br>
-                    Inbound links: {{in_links}}<br>
-                    Outbound links: {{out_links}}
-                </td>
-            </tr>
+            <!-- Area below the table, for the relationship editing (if in editing mode) -->
+            <div v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:5px">
+                    <div v-for="link in in_links" class="edit-link"><b>IN_LINK</b><br>{{link}}</div>
+                    <div v-for="link in out_links" class="edit-link"><b>OUT_LINK</b><br><br>{{link}}</div>
+            </div>
 
-            <tr v-if="editing_mode">    <!-- EXTRA TABLE ROW with SAVE/Cancel controls (if in editing mode) -->
-            <td colspan=3>
+            <!-- Area below the table, with SAVE/Cancel controls (if in editing mode) -->
+            <p v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:5px">
                 <button @click="save()">SAVE</button>
                 <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
                 <span v-if="waiting_mode" style="margin-left:15px">saving...</span>
                 <span v-if="waiting_for_server" style="margin-left:15px; color:gray">Loading all fields...</span>
-            </td>
-            </tr>
+            </p>
 
-            </table>
             <span v-if="status!='' && !editing_mode">Status : {{status}}</span>
 
             <!--  STANDARD CONTROLS
@@ -194,29 +191,7 @@ Vue.component('vue-plugin-r',
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
                 ServerCommunication.contact_server(url_server,
-                        {payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
-
-                // TODO: merge the 2 now-identical branches
-                if (item.item_id == -1) {       // New record
-                    //url_server = "http://localhost:5000/BA/api/get_properties_by_class_name";
-                    //url_server = "http://localhost:5000/BA/api/get_class_schema";
-                    //post_obj = {class_name: item.class_name}
-                    //console.log(`About to contact the server at ${url_server}.  POST object:`);
-                    //console.log(post_obj);
-                    //ServerCommunication.contact_server(url_server,
-                            //{payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
-                }
-                else {                          // Existing record
-                    //url_server = "http://localhost:5000/BA/api/get_properties_by_item_id/" + item.item_id;
-                    //url_server = "http://localhost:5000/BA/api/get_class_schema";
-                    //post_obj = {class_name: item.class_name}
-                    //console.log(`About to contact the server at ${url_server}`);
-                    //console.log(`About to contact the server at ${url_server}.  POST object:`);
-                    //console.log(post_obj);
-                    //ServerCommunication.contact_server_JSON(url_server, "", this.finish_get_fields_from_server);
-                    //ServerCommunication.contact_server(url_server,
-                            //{payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
-                }
+                            {payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
 
                 return true;
             },
