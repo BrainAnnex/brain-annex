@@ -1,6 +1,3 @@
-/*  MIT License.  Copyright (c) 2021 Julian A. West
- */
-
 Vue.component('vue-plugin-r',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
@@ -368,6 +365,8 @@ Vue.component('vue-plugin-r',
 
                     // Synchronize the accepted baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
+
+                    this.editing_mode = false;      // Exit the editing mode
                 }
                 else  {             // Server reported FAILURE
                     this.status = `FAILED edit`;
@@ -376,7 +375,6 @@ Vue.component('vue-plugin-r',
                 }
 
                 // Final wrap-up, regardless of error or success
-                this.editing_mode = false;      // Exit the editing mode
                 this.waiting_mode = false;      // Make a note that the asynchronous operation has come to an end
 
             }, // finish_save
@@ -392,6 +390,8 @@ Vue.component('vue-plugin-r',
                     console.log("Records component sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
                 }
+
+                this.editing_mode = false;      // Exit the editing mode
             } // cancel_edit
 
         }  // METHODS

@@ -90,8 +90,8 @@ app.secret_key = b"pqE3_t(4!x"
 
 
 ###  Fire up the web app.   IMPORTANT : COMMENT OUT ALL THE LINES BELOW DURING DEPLOYMENT, to start the webapp from the CLI
-debug_mode=True
-print(" * SET BROWSER TO http://localhost:5000/BA/pages/admin")
-app.run(debug=debug_mode)       # CORE of UI : transfer control to the "Flask object"
-                                # This  will start a local WSGI server.  Threaded mode is enabled by default
-                                # To specify a different port, one could specify, for example: port=8080
+debug_mode = True
+port = 5000             # This is the Flask default
+print(f" * SET BROWSER TO http://localhost:{port}/BA/pages/admin")
+app.run(debug=debug_mode, port=port)    # CORE of UI : transfer control to the "Flask object"
+                                        # This  will start a local WSGI server.  Threaded mode is enabled by default

@@ -75,7 +75,7 @@ class ApiRouting:
 
     def show_post_data(self, post_data, method_name=None) -> None:
         """
-        Debug utility method
+        Debug utility method.  Pretty-printing for POST data
 
         :param post_data:
         :param method_name: Name of invoking function
@@ -106,7 +106,7 @@ class ApiRouting:
         """
         
         ###############################################
-        #                SCHEMA-related               #
+        #              SCHEMA-related (reading)       #
         ###############################################
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
@@ -134,7 +134,44 @@ class ApiRouting:
             # TODO: handle error scenarios
         
             return jsonify(response)   # This function also takes care of the Content-Type header
-        
+
+
+
+        @self.BA_api_flask_blueprint.route('/get_links/<schema_id>')
+        def get_links(schema_id):
+            """
+            Get the names of all the relationship attached to the Class specified by its Schema ID
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_links/47
+
+            :param schema_id:   ID of a Class node
+            :return:            A JSON object with the names of inbound and outbound names
+                                EXAMPLE:
+                                    {
+                                        "payload": {
+                                            "IN": [
+                                              "BA_served_at"
+                                            ],
+                                            "OUT": [
+                                              "BA_located_in",
+                                              "BA_cuisine_type"
+                                            ]
+                                        },
+                                        "status": "ok"
+                                    }
+            """
+
+            # Fetch all the relationship names
+            try:
+                rel_names = NeoSchema.get_class_relationships(int(schema_id), omit_instance=True)
+                payload = {"OUT": rel_names[0], "IN": rel_names[1]}
+                response = {"status": "ok", "payload": payload}    # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
         
         @self.BA_api_flask_blueprint.route('/get_properties_by_class_name', methods=['POST'])
         def get_properties_by_class_name():
@@ -206,36 +243,7 @@ class ApiRouting:
         
             return jsonify(response)   # This function also takes care of the Content-Type header
         
-        
-        
-        @self.BA_api_flask_blueprint.route('/simple/create_new_record', methods=['POST'])
-        def create_new_record():
-            """
-            TODO: this is a simple, interim version - to later switch to JSON
-        
-            EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/create_new_record -d "data=Quotes,quote,attribution,notes"
-        
-            1 POST FIELD:
-                data    The name of the new Class, followed by the name of all desired Properties, in order
-                        (all comma-separated)
-            """
-            # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
-            self.show_post_data(post_data, "create_new_record")
-        
-            try:
-                APIRequestHandler.new_record_class(dict(post_data))
-                return_value = self.SUCCESS_PREFIX               # Success
-            except Exception as ex:
-                err_status = f"UNABLE TO CREATE NEW CLASS WITH PROPERTIES: {ex}"
-                return_value = self.ERROR_PREFIX + err_status    # Failure
-        
-            print(f"create_new_record() is returning: `{return_value}`")
-        
-            return return_value
-        
-        
+
         
         @self.BA_api_flask_blueprint.route('/get_record_classes')
         def get_record_classes() -> str:
@@ -260,9 +268,42 @@ class ApiRouting:
             print(f"get_record_classes() is returning: `{response}`")
         
             return jsonify(response)        # This function also takes care of the Content-Type header
-        
-        
-        
+
+
+
+        ###############################################
+        #            SCHEMA-related (creating)        #
+        ###############################################
+
+        @self.BA_api_flask_blueprint.route('/simple/create_new_record', methods=['POST'])
+        def create_new_record():
+            """
+            TODO: this is a simple, interim version - to later switch to JSON
+
+            EXAMPLES of invocation:
+                curl http://localhost:5000/BA/api/simple/create_new_record -d "data=Quotes,quote,attribution,notes"
+
+            1 POST FIELD:
+                data    The name of the new Class, followed by the name of all desired Properties, in order
+                        (all comma-separated)
+            """
+            # Extract the POST values
+            post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
+            self.show_post_data(post_data, "create_new_record")
+
+            try:
+                APIRequestHandler.new_record_class(dict(post_data))
+                return_value = self.SUCCESS_PREFIX               # Success
+            except Exception as ex:
+                err_status = f"UNABLE TO CREATE NEW CLASS WITH PROPERTIES: {ex}"
+                return_value = self.ERROR_PREFIX + err_status    # Failure
+
+            print(f"create_new_record() is returning: `{return_value}`")
+
+            return return_value
+
+
+
         #######################################################
         #                CONTENT-ITEM MANAGEMENT              #
         #######################################################
@@ -582,7 +623,7 @@ class ApiRouting:
         
         
         ############################################################
-        #                       IMPORT-EXPORT                      #
+        #               IMPORT-EXPORT  (upload/download)           #
         ############################################################
         
         @self.BA_api_flask_blueprint.route('/import_json_file', methods=['GET', 'POST'])

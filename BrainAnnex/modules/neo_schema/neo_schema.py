@@ -365,6 +365,40 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def get_class_relationships(cls, schema_id:int, omit_instance=False) -> (list, list):
+        """
+        Obtain and return the names of all the relationship attached to the given Class
+
+        :param schema_id:       To identify the desired Class
+        :param omit_instance:   If True, the common outbound relationship "INSTANCE_OF"
+                                is omitted
+        :return:                A pair of lists: the list of outbound-relationship names,
+                                                 and the list of inbound-relationship names
+        """
+        if omit_instance:
+            q_out = '''
+                MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS)
+                WHERE type(r) <> "INSTANCE_OF"
+                RETURN type(r) AS rel_name
+                '''
+        else:
+            q_out = '''
+                    MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS) 
+                    RETURN type(r) AS rel_name
+                    '''
+        rel_out = cls.db.query(q_out,data_binding={"schema_id": schema_id}, single_column="rel_name")
+
+        q_in = '''
+                MATCH (n:CLASS {schema_id:$schema_id})<-[r]-(cl:CLASS) 
+                RETURN type(r) AS rel_name
+                '''
+        rel_in = cls.db.query(q_in,data_binding={"schema_id": schema_id}, single_column="rel_name")
+
+        return (rel_out, rel_in)
+
+
+
 
     ###################################################
     #                PROPERTIES-RELATED               #
