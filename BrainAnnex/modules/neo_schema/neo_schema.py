@@ -950,10 +950,12 @@ class NeoSchema:
         return cls.db.remove_edge(match_from, match_to, rel_name=rel_name)
 
 
+
     @classmethod
     def data_points_of_class(cls, class_name) -> [int]:
         """
         Return the Item ID's of all the Data Points of the given Class
+        TODO: generalize "BA" label
 
         :param class_name:
         :return:
@@ -969,6 +971,26 @@ class NeoSchema:
         #cls.db.follow_links(match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="BA")
 
         return res
+
+
+
+    @classmethod
+    def data_points_lacking_schema(cls):
+        """
+        Locate and return all Data Points that aren't associated to any Class
+        TODO: generalize "BA" label
+        TODO: test
+
+        :return:
+        """
+        q = '''
+            MATCH  (n:BA)
+            WHERE  not exists ( (n)-[:SCHEMA]-> (:CLASS) )
+            RETURN n
+            '''
+
+        return cls.db.query(q)
+
 
 
 

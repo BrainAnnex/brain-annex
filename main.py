@@ -33,6 +33,8 @@ from BrainAnnex.initialize import InitializeBrainAnnex
 
 # Location where the media for Content Items is stored.  "../pages/static/media/" also works
 MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+# IMPORTANT: for now, the media folder MUST reside in a Flask-served location
+# (typically, where other static media is stored), and it must include a subfolder called "resized"
 
 # Temporary location for uploads
 UPLOAD_FOLDER = "D:/tmp/"
@@ -43,7 +45,6 @@ UPLOAD_FOLDER = "D:/tmp/"
 #########################################
 #        MAIN PROGRAM EXECUTION         #
 #########################################
-
 
 ### INITIALIZATION of various static classes that need the database object
 #   (to avoid multiple dbase connections)

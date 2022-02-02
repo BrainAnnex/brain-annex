@@ -186,7 +186,7 @@ Vue.component('vue-plugin-r',
                 console.log(`Looking up Schema info for a Content Item of type 'r', with item_id = ${item.item_id}`);
 
                 // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
-                let url_server = "http://localhost:5000/BA/api/get_class_schema";
+                let url_server = "/BA/api/get_class_schema";
                 let post_obj = {class_name: item.class_name};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
