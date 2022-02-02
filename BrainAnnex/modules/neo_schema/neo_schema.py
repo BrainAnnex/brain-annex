@@ -60,7 +60,7 @@ class NeoSchema:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021 Julian A. West
+        Copyright (c) 2021-2022 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 

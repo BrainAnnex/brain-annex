@@ -1,3 +1,6 @@
+# VERSION 5.0-beta4
+
+
 # MAIN PROGRAM : it starts up a server for web User Interface and an API
 # Run this file, and then set the browser to http://localhost:5000/some_url
 # (the actual URL is specified in the various modules.)
