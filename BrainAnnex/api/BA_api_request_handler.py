@@ -10,34 +10,8 @@ from PIL import Image
 import unicodedata
 import sys                  # Used to give better feedback on Exceptions
 
-
-
 """
-    ----------------------------------------------------------------------------------
-	MIT License
-
-    Copyright (c) 2021 Julian A. West
-
-    This file is part of the "Brain Annex" project (https://BrainAnnex.org)
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-	----------------------------------------------------------------------------------
+    MIT License.  Copyright (c) 2021-2022 Julian A. West
 """
 
 
@@ -51,14 +25,11 @@ class APIRequestHandler:
     "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
 
-    db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable, accessible as cls.db
-                                    # This will only be executed once
+    db = None           # MUST be set before using this class!
+                        # Database-interface object is a CLASS variable, accessible as cls.db
 
-    #media_directory = "BrainAnnex/pages/static/media"
-    #MEDIA_FOLDER = "H:/Pics/Brain Annex/media/"            # "../pages/static/media/" also works
-    #
-    # Location where the media for Content Items is stored.  TODO: condense into 1 location
-    MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+    MEDIA_FOLDER = None # Location where the media for Content Items is stored
+                        # Example: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
 
 
 
@@ -841,8 +812,8 @@ class APIRequestHandler:
             return f"File I/O failed. {return_link}"
 
         try:
-            neo = neo_access.NeoAccess()
-            details = neo.import_json_data(file_contents)
+            #neo = neo_access.NeoAccess()
+            details = cls.db.import_json_data(file_contents)
         except Exception as ex:
             return f"Import of JSON data failed: {ex}. {return_link}"
 

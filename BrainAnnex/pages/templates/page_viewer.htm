@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters:
+{#  General viewer page for a list of Content Items (the list is specified in Flask parameter content_items)
+
+    Flask-passed parameters:
+
         site_pages
         current_page
         header_title
-
-        content_items
 
         category_id
         category_name
@@ -16,10 +17,7 @@
 
         records_classes  (TODO: maybe obtain thru server call, when first needed)
 
-
-    General viewer page for a list of Content Items (the list is specified in Flask parameter: content_items)
-
-    :param content_items:   A list of dictionaries
+        content_items:   A list of dictionaries
                         EXAMPLE:
                         [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
                          {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
@@ -422,7 +420,7 @@ TBA<br>
 <script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
 
 <script>
-// Instantiation must come after the component definition
+// Instantiation of the ROOT component must come after the definition of the descendant components
 new Vue({
     el: '#vue-root',
 
@@ -489,7 +487,7 @@ new Vue({
             }
 
             // Send the request to the server, using a POST
-            url_server = "http://localhost:5000/BA/api/simple/add_subcategory"
+            url_server = "/BA/api/simple/add_subcategory"      // "http://localhost:5000/BA/api/simple/add_subcategory"
             // Compose the body of the POST to send to the server
             post_obj = {category_id: category_id,
                         subcategory_name: this.new_subcategory_name,
@@ -884,6 +882,8 @@ new Vue({
 
         locate_item(schema_code, item_id)
         /*  TODO: maybe phase out in favor of locate_item_simplified()
+            TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
+
             Helper function, to locate the specified Content Item in the array of Content Items.
             The item is identified by its schema_code and item_id.  (Note: schema_code is redundant.)
             If found, return its index in the array; otherwise, return -1

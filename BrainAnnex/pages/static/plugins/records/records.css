@@ -25,3 +25,11 @@ table.r-main td {
 table.r-main td.r-description {
     color:#888;
 }
+
+
+div.edit-link  {
+    display: inline-block;
+    border: 1px solid gray;
+    padding: 5px;
+    margin-left: 10px;
+}

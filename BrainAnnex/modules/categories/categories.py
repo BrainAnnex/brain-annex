@@ -15,8 +15,8 @@ class Categories:
         3. POSITIONING WITHIN CATEGORIES
     """
 
-    db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable.
-                                    # This will only be executed once
+    db = None   # MUST be set before using this class!
+                # Database-interface object is a CLASS variable, accessible as cls.db
 
     DELTA_POS = 20      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large
 
@@ -554,11 +554,14 @@ class Categories:
     ######    POSITIONING WITHIN CATEGORIES    ######
 
     @classmethod
-    def check_for_duplicates(cls, category_id) -> Union[str, None]:     # TODO: test
+    def check_for_duplicates(cls, category_id) -> str:
         """
-        Look for duplicates values in the "pos" attributes of the "BA_in_category" relationships ending in the specified Category node
+        Look for duplicates values in the "pos" attributes
+        of the "BA_in_category" relationships ending in the specified Category node (specified by its item_id)
+
         :param category_id:
-        :return:
+        :return:            In case of duplicates, return a text with an explanation;
+                            if no duplicates, return an empty string
         """
         q = '''
             MATCH (i1:BA)-[r1:BA_in_category]->(:BA {schema_code:"cat", item_id: $item_id})<-[r2:BA_in_category]-(i2:BA) 
@@ -568,11 +571,29 @@ class Categories:
             '''
         data_binding = {"item_id": category_id}
         duplicates = cls.db.query(q, data_binding)
-        if duplicates != []:
-            return None
+        if duplicates == []:
+            return ""
         else:
             first_record = duplicates[0]
             return f"Duplicate pos value ({first_record['pos']}, shared by relationships to items with IDs {first_record['item1']} and {first_record['item2']})"
+
+
+    @classmethod
+    def check_all_categories_for_duplicates(cls) -> str:
+        """
+
+        :return:            In case of duplicates, return a text with an explanation;
+                            if no duplicates, return an empty string
+        """
+        all_category_ids = NeoSchema.data_points_of_class("Categories")
+
+        duplicate_info = ""
+        for category_id in all_category_ids:
+            status = cls.check_for_duplicates(category_id)
+            if status:
+                duplicate_info += f"Duplicate found for Category {category_id}: {status}\n"
+
+        return duplicate_info
 
 
 
@@ -763,7 +784,7 @@ class Categories:
 
 ##########################################################################################
 
-################################    COLLECTIONS   ########################################
+#                                COLLECTIONS                                             #
 
 ##########################################################################################
 
@@ -776,7 +797,8 @@ class Collections:
 
     # Class variables
 
-    db = neo_access.NeoAccess()    # Saving database-interface object as a CLASS variable.
+    db = None   # MUST be set before using this class!
+    #db = neo_access.NeoAccess()    # Saving database-interface object as a CLASS variable.
                                         # This will only be executed once
 
     DELTA_POS = 20                      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large

@@ -26,7 +26,6 @@
 	----------------------------------------------------------------------------------
 """
 from BrainAnnex.modules.neo_access import neo_access
-from BrainAnnex.modules.categories.categories import Categories
 
 
 
@@ -39,8 +38,9 @@ class PagesRequestHandler:
     "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
 
-    db = neo_access.NeoAccess()    # Saving database-interface object as a CLASS variable.
-                                        # This will only be executed once
+    db = None   # MUST be set before using this class!
+    #db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable.
+                                    # This will only be executed once
 
 
     @classmethod

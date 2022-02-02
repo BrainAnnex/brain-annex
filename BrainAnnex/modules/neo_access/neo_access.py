@@ -120,6 +120,8 @@ class NeoAccess:
         Establish a connection to the Neo4j database.
         In the process, create and save a driver object
         """
+        assert self.host, "Host name must be specified in order to connect to the Neo4j database"
+        print(f"Attempting to connect to {self.host}, with username '{self.credentials[0]}'")
         try:
             if self.credentials:
                 user, password = self.credentials  # This unpacking will work whether the credentials were passed as a tuple or list
@@ -935,6 +937,7 @@ class NeoAccess:
         :param neighbor_labels: Optional label(s) required on the neighbors.  If present, either a string or list of strings
 
         :return:                All the properties of the neighbor nodes
+                                TODO: maybe add the option to just return a subset of fields
         """
         self._assert_valid_match_structure(match)    # Validate the match dictionary
 

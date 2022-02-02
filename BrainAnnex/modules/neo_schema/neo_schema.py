@@ -60,7 +60,7 @@ class NeoSchema:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021 Julian A. West
+        Copyright (c) 2021-2022 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -84,8 +84,9 @@ class NeoSchema:
 	----------------------------------------------------------------------------------
     """
 
-    db = neo_access.NeoAccess()         # Saving database-interface object as a CLASS variable, accessible as cls.db
-                                        # This will only be executed once
+    db = None           # MUST be set before using this class!
+                        # Database-interface object is a CLASS variable, accessible as cls.db
+
 
     class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;
                                         #       change it, if you have conflicts with other modules
@@ -364,6 +365,41 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def get_class_relationships(cls, schema_id:int, omit_instance=False) -> dict:
+        """
+        Obtain and return the names of all the relationship attached to the given Class
+
+        :param schema_id:       To identify the desired Class
+        :param omit_instance:   If True, the common outbound relationship "INSTANCE_OF"
+                                is omitted
+        :return:                A dictionary of the form
+                                    {"in": list of inbound-relationship names,
+                                     "out": list of outbound-relationship names}
+        """
+        if omit_instance:
+            q_out = '''
+                MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS)
+                WHERE type(r) <> "INSTANCE_OF"
+                RETURN type(r) AS rel_name
+                '''
+        else:
+            q_out = '''
+                    MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS) 
+                    RETURN type(r) AS rel_name
+                    '''
+        rel_out = cls.db.query(q_out,data_binding={"schema_id": schema_id}, single_column="rel_name")
+
+        q_in = '''
+                MATCH (n:CLASS {schema_id:$schema_id})<-[r]-(cl:CLASS) 
+                RETURN type(r) AS rel_name
+                '''
+        rel_in = cls.db.query(q_in,data_binding={"schema_id": schema_id}, single_column="rel_name")
+
+        return  {"in": rel_in, "out": rel_out}
+
+
+
 
     ###################################################
     #                PROPERTIES-RELATED               #
@@ -415,12 +451,13 @@ class NeoSchema:
         based on the order they appear in the list.
         NOTE: if the Class doesn't already exist, use new_class_with_properties() instead
         TODO: raise an Exception if the class doesn't exit.
-              Asser that all the items in property_list are strings.
+              Assert that all the items in property_list are strings.
               Offer option to specify the class by name.
 
         :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
         :param property_list:   A list of strings with the names of the properties, in the desired default order
-                                    Whitespace in any of the names gets stripped out.  If any name is a blank string, an Exception is raised
+                                    Whitespace in any of the names gets stripped out.
+                                    If any name is a blank string, an Exception is raised
         :return:                The number of Properties added (might be zero if the Class doesn't exist)
         """
 
@@ -911,6 +948,48 @@ class NeoSchema:
                                  dummy_node_name="to")
 
         return cls.db.remove_edge(match_from, match_to, rel_name=rel_name)
+
+
+
+    @classmethod
+    def data_points_of_class(cls, class_name) -> [int]:
+        """
+        Return the Item ID's of all the Data Points of the given Class
+        TODO: generalize "BA" label
+
+        :param class_name:
+        :return:
+        """
+        q = '''
+            MATCH (n:BA)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.item_id AS item_id
+            '''
+
+        res = cls.db.query(q, {"class_name": class_name}, single_column="item_id")
+
+        # Alternate approach
+        #match = cls.db.find(labels="CLASS", properties={"name": "Categories"})
+        #cls.db.follow_links(match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="BA")
+
+        return res
+
+
+
+    @classmethod
+    def data_points_lacking_schema(cls):
+        """
+        Locate and return all Data Points that aren't associated to any Class
+        TODO: generalize "BA" label
+        TODO: test
+
+        :return:
+        """
+        q = '''
+            MATCH  (n:BA)
+            WHERE  not exists ( (n)-[:SCHEMA]-> (:CLASS) )
+            RETURN n
+            '''
+
+        return cls.db.query(q)
 
 
 

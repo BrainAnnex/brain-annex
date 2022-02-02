@@ -58,7 +58,7 @@ If you're using PyCharm, you can set them from Run > Edit Configurations...
 
 **Python 3.7+**
 
-We test on Python 3.7/3.8 (slightly earlier versions might be fine.)
+We test on Python 3.7/3.8 (3.6 *might* work - not tested - but not any earlier version, because of the use of f-strings.)
 
 **Set up the local environment**
 

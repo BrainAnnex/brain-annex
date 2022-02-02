@@ -1,10 +1,8 @@
-/*  MIT License.  Copyright (c) 2021 Julian A. West
- */
-
 Vue.component('vue-plugin-r',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:  EXAMPLE: {"item_id":52,"pos":10,"schema_code":"r",class_name:"German Vocabulary","German":"Tier","English":"animal"}
+        /*  item_data:  EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
+                                  "German":"Tier", "English":"animal"}
                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
             category_id:
             index:          The zero-based position of the Record on the page
@@ -14,7 +12,7 @@ Vue.component('vue-plugin-r',
          */
 
         template: `
-            <div>	<!-- Outer container box, serving as Vue-required template root  -->
+            <div>	<!-- Outer container, serving as Vue-required template root  -->
 
             <table class='r-main'>
             <!-- Header row  -->
@@ -44,17 +42,22 @@ Vue.component('vue-plugin-r',
                     </span>
                 </td>
             </tr>
+            </table>
 
-            <tr v-if="editing_mode">    <!-- Extra table row with SAVE/Cancel controls -->
-            <td colspan=3>
+            <!-- Area below the table, for the relationship editing (if in editing mode) -->
+            <div v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:5px">
+                    <div v-for="link in in_links" class="edit-link"><b>IN_LINK</b><br>{{link}}</div>
+                    <div v-for="link in out_links" class="edit-link"><b>OUT_LINK</b><br><br>{{link}}</div>
+            </div>
+
+            <!-- Area below the table, with SAVE/Cancel controls (if in editing mode) -->
+            <p v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:5px">
                 <button @click="save()">SAVE</button>
                 <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
                 <span v-if="waiting_mode" style="margin-left:15px">saving...</span>
                 <span v-if="waiting_for_server" style="margin-left:15px; color:gray">Loading all fields...</span>
-            </td>
-            </tr>
+            </p>
 
-            </table>
             <span v-if="status!='' && !editing_mode">Status : {{status}}</span>
 
             <!--  STANDARD CONTROLS
@@ -67,7 +70,7 @@ Vue.component('vue-plugin-r',
                           v-on:edit-content-item="edit_content_item(item_data)">
             </vue-controls>
 
-            \n</div>\n		<!-- End of outer container box -->
+            \n</div>\n		<!-- End of outer container -->
             `,
 
 
@@ -87,7 +90,7 @@ Vue.component('vue-plugin-r',
                         original_data:  Object with pre-edit data,
                                         used to restore the data in case of an edit Cancel or failed save
 
-                    EXAMPLE of item_data (a PROP, not a component variable!):
+                    EXAMPLE of item_data (a PROP, not a variable of this component!):
                         {
                             "English": "Love",
                             "German": "Liebe",
@@ -109,6 +112,9 @@ Vue.component('vue-plugin-r',
                 current_data: this.clone_and_standardize(this.item_data),   // Scrub some data, so that it won't show up in the tabular format
                 original_data: this.clone_and_standardize(this.item_data),
                 // NOTE: clone_and_standardize() gets called twice
+
+                in_links: [],       // List of the names of all Inbound links
+                out_links: [],      // List of the names of all Outbound links (except for "INSTANCE_OF")
 
                 waiting_for_server: ((this.item_data.item_id != -1) ? false : this.get_fields_from_server(this.item_data)), // -1 means "new Item"
 
@@ -175,22 +181,17 @@ Vue.component('vue-plugin-r',
 
 
             get_fields_from_server(item)
-            // Initiate request to server, to get all the field names specified by the Schema of the given Content Item
+            // Initiate request to server, to get all the field and link names specified by the Schema for this Record
             {
-                console.log(`Processing a Content Item of type 'r', with item_id = ${item.item_id}`);
-                if (item.item_id == -1) {
-                    url_server = "http://localhost:5000/BA/api/get_properties_by_class_name";               // New record
-                    post_obj = {class_name: item.class_name}
-                    console.log(`About to contact the server at ${url_server}.  POST object:`);
-                    console.log(post_obj);
-                    ServerCommunication.contact_server(url_server,
+                console.log(`Looking up Schema info for a Content Item of type 'r', with item_id = ${item.item_id}`);
+
+                // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
+                let url_server = "/BA/api/get_class_schema";
+                let post_obj = {class_name: item.class_name};
+                console.log(`About to contact the server at ${url_server}.  POST object:`);
+                console.log(post_obj);
+                ServerCommunication.contact_server(url_server,
                             {payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
-                }
-                else {
-                    url_server = "http://localhost:5000/BA/api/get_properties_by_item_id/" + item.item_id;  // Existing record
-                    console.log(`About to contact the server at ${url_server}`);
-                    ServerCommunication.contact_server_JSON(url_server, "", this.finish_get_fields_from_server);
-                }
 
                 return true;
             },
@@ -203,13 +204,26 @@ Vue.component('vue-plugin-r',
                 console.log("Finalizing the get_fields_from_server() operation...");
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: " , server_payload);
+                    /*  EXAMPLE:
+                            {
+                            "properties":   [
+                                              "name",
+                                              "website",
+                                              "address"
+                                            ],
+                            "in_links":     ["BA_served_at"],
+                            "out_links":    ["BA_located_in", "BA_cuisine_type"]
+                            }
+                     */
+
+                    let properties = server_payload["properties"];
                     // EXAMPLE:  [ "Notes", "English", "French" ]
 
-                    // Create new cloned objects (if just altering existing objects, Vue doesn't detect the change)
+                    // Create new cloned objects (if one just alters existing objects, Vue doesn't detect the change!)
                     new_current_data = Object.assign({}, this.current_data);    // Clone the object
 
-                    for (let i = 0; i < server_payload.length; i++) {
-                        field_name = server_payload[i]
+                    for (let i = 0; i < properties.length; i++) {
+                        field_name = properties[i]
 
                         /* Only add fields not already present
                          */
@@ -220,6 +234,9 @@ Vue.component('vue-plugin-r',
                     }
 
                     this.current_data = new_current_data;
+
+                    this.in_links = server_payload["in_links"];
+                    this.out_links = server_payload["out_links"];
                 }
                 else  {             // Server reported FAILURE
                     //this.status = `FAILED lookup of extra fields`;
@@ -267,7 +284,7 @@ Vue.component('vue-plugin-r',
                 console.log(`'Records' component received Event to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
                 this.editing_mode = true;
 
-                this.get_fields_from_server(item);  // Consult the schema
+                this.get_fields_from_server(item);      // Consult the schema
                 this.waiting_for_server = true;
             },
 
@@ -368,6 +385,8 @@ Vue.component('vue-plugin-r',
 
                     // Synchronize the accepted baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
+
+                    this.editing_mode = false;      // Exit the editing mode
                 }
                 else  {             // Server reported FAILURE
                     this.status = `FAILED edit`;
@@ -376,7 +395,6 @@ Vue.component('vue-plugin-r',
                 }
 
                 // Final wrap-up, regardless of error or success
-                this.editing_mode = false;      // Exit the editing mode
                 this.waiting_mode = false;      // Make a note that the asynchronous operation has come to an end
 
             }, // finish_save
@@ -392,6 +410,8 @@ Vue.component('vue-plugin-r',
                     console.log("Records component sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
                 }
+
+                this.editing_mode = false;      // Exit the editing mode
             } // cancel_edit
 
         }  // METHODS
