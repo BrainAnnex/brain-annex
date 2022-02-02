@@ -950,6 +950,26 @@ class NeoSchema:
         return cls.db.remove_edge(match_from, match_to, rel_name=rel_name)
 
 
+    @classmethod
+    def data_points_of_class(cls, class_name) -> [int]:
+        """
+        Return the Item ID's of all the Data Points of the given Class
+
+        :param class_name:
+        :return:
+        """
+        q = '''
+            MATCH (n:BA)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.item_id AS item_id
+            '''
+
+        res = cls.db.query(q, {"class_name": class_name}, single_column="item_id")
+
+        # Alternate approach
+        #match = cls.db.find(labels="CLASS", properties={"name": "Categories"})
+        #cls.db.follow_links(match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="BA")
+
+        return res
+
 
 
     ########################################################

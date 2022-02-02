@@ -937,6 +937,7 @@ class NeoAccess:
         :param neighbor_labels: Optional label(s) required on the neighbors.  If present, either a string or list of strings
 
         :return:                All the properties of the neighbor nodes
+                                TODO: maybe add the option to just return a subset of fields
         """
         self._assert_valid_match_structure(match)    # Validate the match dictionary
 

@@ -1,18 +1,30 @@
+import pytest
+from BrainAnnex.modules.neo_access import neo_access
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories, Collections
 
 
-def test_count_subcategories():
+# Provide a database connection that can be used by the various tests that need it
+@pytest.fixture(scope="module")
+def db():
+    neo_obj = neo_access.NeoAccess(debug=True)
+    Categories.db = neo_obj
+    NeoSchema.db = neo_obj
+    yield neo_obj
+
+
+def test_count_subcategories(db):
     count = Categories.count_subcategories(792)
     print(count)
 
 
-def test_count_parent_categories():
+def test_count_parent_categories(db):
     count = Categories.count_parent_categories(61)
     print(count)
 
 
 
-def test_get_subcategories():
+def test_get_subcategories(db):
     result = Categories.get_subcategories(1)
     print(result)
 
@@ -20,13 +32,13 @@ def test_get_subcategories():
     print(result)
 
 
-def test_get_parent_categories():
+def test_get_parent_categories(db):
     result = Categories.get_parent_categories(544)
     print(result)
 
 
 
-def test_create_parent_map():
+def test_create_parent_map(db):
     Categories.create_parent_map(799)     # single path, 1-hop
     Categories.create_parent_map(876)     # single path, 2-hop
     Categories.create_parent_map(823)     # single path, 3-hop
@@ -36,7 +48,7 @@ def test_create_parent_map():
     Categories.create_parent_map(1)       # the root
 
 
-def test_paths_from_root():
+def test_paths_from_root(db):
     Categories.paths_from_root(799)     # single path, 1-hop
     Categories.paths_from_root(876)     # single path, 2-hop
     Categories.paths_from_root(823)     # single path, 3-hop
@@ -46,7 +58,7 @@ def test_paths_from_root():
     Categories.paths_from_root(1)       # the root
 
 
-def test_bread_crumbs():
+def test_bread_crumbs(db):
     print(Categories.create_bread_crumbs(1))   # [1]
     print(Categories.create_bread_crumbs(799)) # ['START_CONTAINER', [1, 'ARROW', 799], 'END_CONTAINER']
     print(Categories.create_bread_crumbs(876)) # ['START_CONTAINER', [1, 'ARROW', 799, 'ARROW', 876], 'END_CONTAINER']
@@ -60,21 +72,21 @@ def test_bread_crumbs():
     # ]
 
 
-def test_add_content_at_end():
+def test_add_content_at_end(db):
     new_item_id = Categories.add_content_at_end(category_id=708,
                                                 item_class_name="Headers",
                                                 item_properties={"text": "This is a New Caption, added at the end"})
     print("new_item_id:", new_item_id)
 
 
-def test_add_content_at_beginning():
+def test_add_content_at_beginning(db):
     new_item_id = Categories.add_content_at_beginning(category_id=708,
                                                 item_class_name="Headers",
                                                 item_properties={"text": "This is a New Caption, added before anything else"})
     print("new_item_id:", new_item_id)
 
 
-def test_add_content_after_element():
+def test_add_content_after_element(db):
     new_item_id = \
         Categories.add_content_after_element(category_id=708,
                                                 item_class_name="Headers", item_properties={"text": "Caption 4, inserted 'after element'"},
@@ -82,18 +94,29 @@ def test_add_content_after_element():
     print("new_item_id: ", new_item_id)
 
 
-def test_delete_category():
+def test_delete_category(db):
     Categories.delete_category(category_id=796)
 
 
-def test_add_subcategory_relationship():
+def test_add_subcategory_relationship(db):
     Categories.add_subcategory_relationship(subcategory_id=3, category_id=526)
 
 
 
-def test_remove_subcategory_relationship():
+def test_remove_subcategory_relationship(db):
     Categories.remove_subcategory_relationship(subcategory_id=535, category_id=1)
 
+
+def test_check_for_duplicates(db):
+    result = Categories.check_for_duplicates(category_id=985)  # 814
+    print(result)
+    assert result == ""
+
+
+def test_check_all_categories_for_duplicates(db):
+    result = Categories.check_all_categories_for_duplicates()
+    print(result)
+    assert result == ""
 
 
 
