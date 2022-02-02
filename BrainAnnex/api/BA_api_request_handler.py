@@ -51,15 +51,11 @@ class APIRequestHandler:
     "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
 
-    db = None   # MUST be set before using this class!
-    #db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable, accessible as cls.db
-                                    # This will only be executed once
+    db = None           # MUST be set before using this class!
+                        # Database-interface object is a CLASS variable, accessible as cls.db
 
-    #media_directory = "BrainAnnex/pages/static/media"
-    #MEDIA_FOLDER = "H:/Pics/Brain Annex/media/"            # "../pages/static/media/" also works
-    #
-    # Location where the media for Content Items is stored.  TODO: condense into 1 location
-    MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+    MEDIA_FOLDER = None # Location where the media for Content Items is stored
+                        # Example: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
 
 
 

@@ -42,7 +42,7 @@ from time import sleep      # Used for tests of delays in asynchronous fetching
 
 class ApiRouting:
 
-    def __init__(self):      
+    def __init__(self, media_folder, upload_folder):
         # Specify where this module's STATIC folder is located (relative to this module's main folder)
         self.BA_api_flask_blueprint = Blueprint('BA_api', __name__, static_folder='static')
         # This "Blueprint" object gets registered in the Flask app object in main.py, using: url_prefix = "/BA/api"
@@ -63,6 +63,10 @@ class ApiRouting:
         
         # NOTE: To test POST-based API access points, on the Linux shell or Windows PowerShell issue commands such as:
         #            curl http://localhost:5000/BA/api/simple/add_item_to_category -d "schema_id=1&category_id=60"
+
+
+        self.MEDIA_FOLDER = media_folder    # Location where the media for Content Items is stored
+        self.UPLOAD_FOLDER = upload_folder  # Temporary location for uploads
 
         self.set_routing()   # Define the Flask routing (mapping URLs to Python functions)
 
@@ -731,11 +735,7 @@ class ApiRouting:
             If the upload is successful, a normal status (200) is returned (no response data);
                 in case of error, a server error status is return (500), with an text error message
             """
-            #MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-code/BrainAnnex/pages/static/media/"    # TODO: for now, hardwired here
-            #MEDIA_FOLDER = "H:/Pics/Brain Annex/media/"    # TODO: for now, hardwired here
-            MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"   # TODO: condense into 1 location
-            # "../pages/static/media/" also works
-        
+
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('schema_code', 'r'), ('field_1', 'hello')])
         
@@ -757,8 +757,8 @@ class ApiRouting:
             # Move the uploaded file from its temp location to the media folder
             # TODO: let upload_helper (optionally) handle it
         
-            src_fullname = "D:/tmp/" + tmp_filename_for_upload
-            dest_folder = MEDIA_FOLDER
+            src_fullname = self.UPLOAD_FOLDER + tmp_filename_for_upload
+            dest_folder = self.MEDIA_FOLDER
             dest_fullname = dest_folder + tmp_filename_for_upload
             print(f"Attempting to move `{src_fullname}` to `{dest_fullname}`")
             try:

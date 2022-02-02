@@ -15,3 +15,9 @@ class InitializeBrainAnnex:
         Categories.db = db_handle
         Collections.db = db_handle
         NeoSchema.db = db_handle
+
+
+
+    @classmethod
+    def set_media_folder(cls, media_folder):
+        APIRequestHandler.MEDIA_FOLDER = media_folder

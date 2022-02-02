@@ -166,7 +166,7 @@ class PagesRouting:
 
             # Fetch all the Content Items attached to the given Category.
             content_items = PagesRequestHandler.get_content_items_by_category(category_id)
-            #   EXAMPLE:
+            #   List of dictionaries.  EXAMPLE:
             #       [
             #           {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
             #           {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}

@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters:
+{#  General viewer page for a list of Content Items (the list is specified in Flask parameter content_items)
+
+    Flask-passed parameters:
+
         site_pages
         current_page
         header_title
-
-        content_items
 
         category_id
         category_name
@@ -16,10 +17,7 @@
 
         records_classes  (TODO: maybe obtain thru server call, when first needed)
 
-
-    General viewer page for a list of Content Items (the list is specified in Flask parameter: content_items)
-
-    :param content_items:   A list of dictionaries
+        content_items:   A list of dictionaries
                         EXAMPLE:
                         [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
                          {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},

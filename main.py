@@ -26,6 +26,20 @@ from BrainAnnex.initialize import InitializeBrainAnnex
 
 
 
+#################################################################################
+#        CONFIGURABLE PARAMETERS (TODO: move to a separate config file)         #
+#        CHANGE AS NEEDED!                                                      #
+#################################################################################
+
+# Location where the media for Content Items is stored.  "../pages/static/media/" also works
+MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+
+# Temporary location for uploads
+UPLOAD_FOLDER = "D:/tmp/"
+
+
+
+
 #########################################
 #        MAIN PROGRAM EXECUTION         #
 #########################################
@@ -36,6 +50,7 @@ from BrainAnnex.initialize import InitializeBrainAnnex
 APP_NEO4J_DBASE = neo_access.NeoAccess()
 
 InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
+InitializeBrainAnnex.set_media_folder(MEDIA_FOLDER)
 
 site_pages = get_site_pages()     # Data for the site navigation
 
@@ -61,7 +76,7 @@ app.register_blueprint(navigation_flask_blueprint, url_prefix = "/navigation")  
 routing_obj = PagesRouting(site_pages)
 app.register_blueprint(routing_obj.BA_pages_flask_blueprint, url_prefix = "/BA/pages")      # The BrainAnnex-derived UI
 
-routing_obj = ApiRouting()
+routing_obj = ApiRouting(MEDIA_FOLDER, UPLOAD_FOLDER)
 app.register_blueprint(routing_obj.BA_api_flask_blueprint, url_prefix = "/BA/api")          # The BrainAnnex-derived endpoint
 
 app.register_blueprint(sample_pages_flask_blueprint, url_prefix = "/sample/pages")  # Example of UI for an embedded independent site
@@ -70,7 +85,7 @@ app.register_blueprint(sample_api_flask_blueprint, url_prefix = "/sample/api")  
 
 
 # DEFINE A TEMPORARY FOLDER FOR FILE UPLOADS
-app.config['UPLOAD_FOLDER'] = "D:/tmp/"   # CHANGE AS NEEDED!
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 #app.config['UPLOAD_FOLDER'] = r'D:\tmp'
 #APP_ROOT = os.path.dirname(os.path.abspath(__file__))
