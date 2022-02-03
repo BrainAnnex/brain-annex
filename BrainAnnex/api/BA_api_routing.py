@@ -356,26 +356,58 @@ class ApiRouting:
         @self.BA_api_flask_blueprint.route('/simple/get_media/<item_id>')
         def get_media(item_id) -> str:
             """
-            Retrieve and return the text content of a media item (for now, just "notes")
+            Retrieve and return the contents of a text media item (for now, just "notes"),
+            including the request status
         
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/get_media/123
             """
             #sleep(1)    # For debugging
-        
-            #content = "Media data TBA for note id " + item_id
+
             status, content = APIRequestHandler.get_content("n", int(item_id))
         
             if status is False:
-                return_value = self.ERROR_PREFIX + "Unable to retrieve note id " + item_id + " : " + content
-                print(f"get_media() is encountered error: {return_value}")
+                err_details = f"Unable to retrieve note id {item_id} : {content}"
+                print(f"get_media() encountered the following error: {err_details}")
+                return_value = self.ERROR_PREFIX + err_details
             else:
                 return_value = self.SUCCESS_PREFIX + content
-                print(f"get_media() is returning the following text [first 40 chars]: `{return_value[:40]}`")
+                print(f"get_media() is returning the following text [first 30 chars]: `{return_value[:30]}`")
         
             return return_value
-        
-        
-        
+
+
+
+        @self.BA_api_flask_blueprint.route('/simple/serve_media/<item_id>')
+        def serve_media(item_id):
+            """
+            Retrieve and return the contents of a data media item (for now, just "images")
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/simple/serve_media/1234
+            """
+            mime_mapping = {'jpg': 'image/jpeg',
+                            'png': 'image/png',
+                            'gif': 'image/gif',
+                            'bmp': 'image/bmp',
+                            'svg': 'image/svg+xml'
+                            }
+            default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
+
+            try:
+                (suffix, content) = APIRequestHandler.get_binary_content(int(item_id))
+                response = make_response(content)
+                # set the MIME type
+                mime_type = mime_mapping.get(suffix.lower(), default_mime)
+                response.headers['Content-Type'] = mime_type
+                print(f"serve_media() is returning an image, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
+            except Exception as ex:
+                err_details = f"Unable to retrieve image id {item_id} : {ex}"
+                print(f"serve_media() encountered the following error: {err_details}")
+                response = make_response(err_details, 500)
+
+            return response
+
+
+
         @self.BA_api_flask_blueprint.route('/simple/update', methods=['POST'])
         def update() -> str:
             """
