@@ -378,9 +378,13 @@ class ApiRouting:
 
 
         @self.BA_api_flask_blueprint.route('/simple/serve_media/<item_id>')
-        def serve_media(item_id):
+        @self.BA_api_flask_blueprint.route('/simple/serve_media/<item_id>/<th>')
+        def serve_media(item_id, th=None):
             """
-            Retrieve and return the contents of a data media item (for now, just "images")
+            Retrieve and return the contents of a data media item (for now, just images or documents)
+            If ANY value is specified for the argument "th", then the thumbnail version is returned
+
+            TODO: (at least for large media) read the file in blocks.
 
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/serve_media/1234
             """
@@ -388,19 +392,29 @@ class ApiRouting:
                             'png': 'image/png',
                             'gif': 'image/gif',
                             'bmp': 'image/bmp',
-                            'svg': 'image/svg+xml'
-                            }
+                            'svg': 'image/svg+xml',
+
+                            'txt': 'text/plain',
+                            'pdf': 'application/pdf',
+                            'docx': 'application/msword',
+                            'doc': 'application/msword',
+                            'xlsx': 'application/vnd.ms-excel',
+                            'xls': 'application/vnd.ms-excel',
+
+                            'zip': 'application/zip'
+                            }   # TODO: add more MIME types, when more plugins are introduced
+
             default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
 
             try:
-                (suffix, content) = APIRequestHandler.get_binary_content(int(item_id))
+                (suffix, content) = APIRequestHandler.get_binary_content(int(item_id), th)
                 response = make_response(content)
                 # set the MIME type
                 mime_type = mime_mapping.get(suffix.lower(), default_mime)
                 response.headers['Content-Type'] = mime_type
                 print(f"serve_media() is returning an image, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
             except Exception as ex:
-                err_details = f"Unable to retrieve image id {item_id} : {ex}"
+                err_details = f"Unable to retrieve image id `{item_id}` : {ex}"
                 print(f"serve_media() encountered the following error: {err_details}")
                 response = make_response(err_details, 500)
 

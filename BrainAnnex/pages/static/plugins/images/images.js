@@ -51,14 +51,14 @@ Vue.component('vue-plugin-i',
             image_url(item_data)
             // Return the URL of the full image
             {
-                return '/BA/pages/static/media/' + item_data.basename + '.' + item_data.suffix;
-            },
+                return '/BA/api/simple/serve_media/' + item_data.item_id;           // Invoke the file server
+             },
 
             image_url_thumb(item_data)
             // Return the URL of the thumbnail
             {
-                return '/BA/pages/static/media/resized/' + item_data.basename + '.' + item_data.suffix;
-            },
+                return '/BA/api/simple/serve_media/' + item_data.item_id + '/th';    // Invoke the file server, with the thumbnail option
+             },
 
             edit_content_item(item)
             {

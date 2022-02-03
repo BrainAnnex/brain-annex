@@ -3,7 +3,7 @@
 
 # MAIN PROGRAM : it starts up a server for web User Interface and an API
 # Run this file, and then set the browser to http://localhost:5000/some_url
-# (the actual URL is specified in the various modules.)
+# (the actual port number is configurable; the URL's are specified in the various modules)
 # Note: this main program may also be started from the CLI with the "flask run" command
 
 from flask import Flask
@@ -34,15 +34,15 @@ from BrainAnnex.initialize import InitializeBrainAnnex
 #        CHANGE AS NEEDED!                                                      #
 #################################################################################
 
-# Location where the media for Content Items is stored.  "../pages/static/media/" also works
-MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
-# IMPORTANT: for now, the media folder MUST reside in a Flask-served location
-# (typically, where other static media is stored), and it must include a subfolder called "resized"
+# Location where the media for Content Items is stored.  Use forward slashes even on Windows
+#MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+MEDIA_FOLDER = "D:/media/"
+# IMPORTANT: for now, the media folder MUST include a subfolder called "resized"
 
 # Temporary location for uploads
 UPLOAD_FOLDER = "D:/tmp/"
 
-PORT_NUMBER = 5000      # This is the Flask default
+PORT_NUMBER = 5000      # The Flask default is 5000
 
 
 

@@ -130,7 +130,5 @@ dmypy.json
 
 /.idea
 
-# Users' media
-/BrainAnnex/pages/static/media/*
-
+# Brain Annex - specific
 /BrainAnnex/modules/utilities/unused.py

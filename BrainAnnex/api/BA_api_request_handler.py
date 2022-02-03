@@ -154,11 +154,12 @@ class APIRequestHandler:
 
 
     @classmethod
-    def get_binary_content(cls, item_id: int) -> (str, bytes):
+    def get_binary_content(cls, item_id: int, th: str) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored on a local file
         In case of error, raise an Exception
 
+        :param th:
         :param item_id:
         :return:    The binary data
 
@@ -173,7 +174,11 @@ class APIRequestHandler:
         filename = f"{basename}.{suffix}"
 
         try:
-            file_contents = cls.get_from_binary_file(filename)
+            if th:
+                file_contents = cls.get_from_binary_file(cls.MEDIA_FOLDER + "resized/", filename)
+            else:
+                file_contents = cls.get_from_binary_file(cls.MEDIA_FOLDER, filename)
+
             return (suffix, file_contents)
         except Exception as ex:
             raise Exception(f"Reading of data file for Content Item {item_id} failed: {ex}")     # File I/O failed
@@ -392,13 +397,15 @@ class APIRequestHandler:
 
 
     @classmethod
-    def get_from_binary_file(cls, filename: str) -> bytes:
+    def get_from_binary_file(cls, path: str, filename: str) -> bytes:
         """
 
-        :param filename:    EXCLUSIVE of MEDIA_FOLDER part (stored as class variable)
-        :return:            The contents of the file
+        :param path:
+        :param filename:    EXCLUSIVE of path
+        :return:            The contents of the binary file
         """
-        full_file_name = cls.MEDIA_FOLDER + filename
+        #full_file_name = cls.MEDIA_FOLDER + filename
+        full_file_name = path + filename
         with open(full_file_name, 'rb') as fh:
             file_contents = fh.read()
             return file_contents
