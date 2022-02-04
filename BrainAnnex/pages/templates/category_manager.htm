@@ -15,31 +15,10 @@
 <html>
 <head>
     <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>
-    <link rel='stylesheet' type='text/css' href='https://brainannex.org/css/knowledge.css'>
+
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
-    <style type="text/css">
-        div.categoryManagement {
-            border:0;
-        }
-
-        div.categoryManagement div {
-            background-color:white;
-            display:inline-block;
-        }
-
-        div.topRow div {
-            vertical-align:bottom;
-        }
-
-        div.midRow div {
-            vertical-align:middle;
-        }
-
-        div.bottomRow div {
-            vertical-align:top;
-        }
-    </style>
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/category_manager.css">
 
     <title>Edit Categories - Brain Annex</title>
     <meta name='description' content='Knowledge and Media Management made easy and powerful. Note-taking software. Brain Annex.'>
@@ -55,6 +34,13 @@
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
 
+
+<div v-if="overlay" class="overlay-bg" v-bind:style="{ 'height': compute_height() + 'px' }">
+    <div class="overlay-box">
+        <a href="/BA/pages/category_manager/1" style='font-size:24px'>Go the top category</a>
+    </div>
+
+</div>
 
 
 <div class='navmenu dark-background'>  <!-- Navigation Menu -->
@@ -200,7 +186,7 @@ It does *NOT* delete `{{p["name"]}}`'>
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
     </div>
     <div style="width:160px; font-size:12px">
-        &diams; Neuroscience<form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_id}}' style='display:inline-block; margin-left:5px'>
+        &diams; NOT YET IMPLEMENTED<form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_id}}' style='display:inline-block; margin-left:5px'>
         <input type='hidden' name='parentID' value='{{category_id}}'>
         <input type='hidden' name='childID' value='366'>
         <input type='image' src='/BA/pages/static/graphics/delete_12_1493279.png'
@@ -342,15 +328,37 @@ new Vue({
 
     data: {
 
-        status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
-        error: false,                // Whether the last server communication resulted in error
-        waiting: false               // Whether any server request is still pending
+        overlay: false,             // To cover the main display with a message
+
+        status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
+        error: false,               // Whether the last server communication resulted in error
+        waiting: false              // Whether any server request is still pending
     },
 
 
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+        compute_height()
+        {
+            /*
+            const bodytags = document.getElementsByTagName('body');	// Locate all the <body> tag elements
+            const mainbody = bodytags[0];						    // First element with a <body> tag
+            const window_height = mainbody.offsetHeight;		        // To take into account the vertical extension that might be hidden by the scrolling
+		    alert(window_height);
+
+            alert(window.innerHeight);
+            alert(window.outerHeight);
+
+            // Neither window_height, window.innerHeight, or window.outerHeight
+            // worked well.  But the value belows seems fine for a wide variety
+            // of window sizes.
+            */
+
+            overlay_height = 1080;
+            return overlay_height;
+        },
+
         delete_category(category_id)
         //
         {
@@ -378,7 +386,8 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 console.log("    server call was successful; it returned: " , server_payload);
                 this.status_message = "Category deleted successfully";
-                alert("The Category WAS deleted successfully; however, for now, the page must be refreshed manually");
+                alert("The Category WAS deleted successfully; a link will appear to take you to the parent page");
+                this.overlay = true;
             }
             else  {             // Server reported FAILURE
                 this.error = true;
