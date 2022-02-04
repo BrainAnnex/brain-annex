@@ -58,30 +58,43 @@ If you're using PyCharm, you can set them from Run > Edit Configurations...
 
 **Python 3.7+**
 
-We test on Python 3.7/3.8 (3.6 *might* work - not tested - but not any earlier version, because of the use of f-strings.)
+We test on Python 3.7/3.8 (3.6 *might* work - not tested - but not any earlier version, because of the use of Python f-strings.)
 
 **Set up the local environment**
 
 All dependencies (such as Flask, pandas, etc) are specified in the file `requirements.txt`
 
-**Local Media Folder**
+**Configuration (currently inside main.py)**
 
-You must change the definition of all the instances of
-the Python variable `MEDIA_FOLDER` (currently, in the files
-`BA_api_routing.py` and `BA_api_request_handler.py`) to 
-the full path on your machine of the following project folder: `/BrainAnnex/pages/static/media/` .  
+-  `MEDIA_FOLDER` (where the images, formatted text, documents, etc, are stored)  
+   EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/media/"`  
+   IMPORTANT: for now, the media folder MUST include a subfolder called `"resized"`
 
-EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/YOUR_PATH/BrainAnnex/pages/static/media/`
+- `UPLOAD_FOLDER` (temporary location for uploads)  
+   EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/tmp/"`
 
-(Create the folder if not already present.)
-
-For the time being, it must be in a Flask static-pages folder; this is 
-a very temporary stage - later on,
-you'll be able to set it to any location of your choice.
+- `PORT_NUMBER` (ok keep the default 5000, unless you have a conflict)
 
 **Start the Neo4j database**
 
-For example, by using Neo4j Desktop, if you went the local database router.
+For example, by using Neo4j Desktop, if you went the local database route.
+
+If you installed it Neo4j yourself on a Linux machine, it can typically
+be started with `sudo neo4j start`
+
+If you're using the Bitnami image, it should start automatically,
+but you can also issue `sudo gonit start neo4j`
+
+**Allow remote access to Neo4j (if applicable)**
+
+If remote access is needed (for example, if Neo4j is on the cloud),
+one must open ports 7474, 7473, 7687,
+and uncomment the line
+
+`#dbms.default_listen_address=0.0.0.0`
+
+in the Neo4j configuration file, typically found in locations such as
+`/etc/neo4j/neo4j.conf` or (for the Bitnami image) `/opt/bitnami/neo4j/conf/neo4j.conf`
 
 
 **Start the main program**
@@ -95,7 +108,7 @@ it'll give you an error message such as:
 
 We test on Firefox and Chrome.
 
-Set the URL to http://localhost:5000/BA/pages/admin
+Set the URL to `http://localhost:5000/BA/pages/admin` (or whatever port number you used in your configuration)
 
 You're now on the "Admin" page of the Brain Annex UI (the layout of this page may be different):
 
@@ -103,14 +116,14 @@ You're now on the "Admin" page of the Brain Annex UI (the layout of this page ma
 
 **Import the Schema**
 
-Brain Annex is schema-based, and it's critical that you import the standard schema.
+Brain Annex is schema-based, and **it's critical that you import the standard schema.**
 Use the **"IMPORT from JSON"** box on that "Admin" page.
 
 For testing, we recommend importing the file `/BrainAnnex/init/Schema_EXAMPLE_plus_root_category.json`, which
 includes various examples of user-added schema.
 
 If you don't want the examples, there's the file `/BrainAnnex/Schema_MINIMAL_plus_root_category.json`, which
-contains everything that is regarded as fundamental in a typical Brain Annex installation.
+contains everything that is regarded as *fundamental* in a typical Brain Annex installation.
 
 In addition to the Schema, both files contain the ROOT node for the Categories (which is regarded as a data point,
 not part of the Schema.)
@@ -118,7 +131,7 @@ not part of the Schema.)
 At the end of the import operation,
 you should see a message about having imported a certain number of nodes and relationships.
 
-Note - the imported schema may be seen by going to the Neo4j browser interface, 
+Note - the imported schema may be seen by going to the Neo4j browser interface,
 and issuing the Cypher command:
 
     MATCH (c1:CLASS)--(c2:CLASS)-[:HAS_PROPERTY]-(p:PROPERTY), (n:BA)
@@ -128,8 +141,9 @@ The following diagram shows about 1/2 of the Schema.  "chem" is an example of a 
 Classes are for a typical Brain Annex installation:
 ![Classes and Properties in Brain Annex - Non-record types](BrainAnnex/docs/Classes_and_Properties_Non_record_types.png)
 
-The following diagram shows the other half of the Schema, detailing Classes that are instances of the "Records" Class.
-Most of the items in this diagrams are examples of typical user-added schema:
+The following diagram shows the remainder of the Schema, detailing Classes that are instances of the "Records" Class.
+Most of the items in this diagrams are examples of typical user-added schema, only present if you imported
+the larger schema file with the examples:
 ![Classes and Properties in Brain Annex - Record types](BrainAnnex/docs/Classes_and_Properties_Record_types.png)
 
 Below is the **minimal** version of the JSON file imports - it's the combination of the previous 2 diagrams, minus 
