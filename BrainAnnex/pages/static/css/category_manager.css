@@ -35,7 +35,7 @@ div.overlay-bg {		    /* Background for overlay */
 
 div.overlay-box {			/* Box for overlay */
 	margin:100px auto;
-	background-color:#cfdfd4;
+	background-color:#f3ffff;
 	width:75%;
 	height:40%;
 	z-index:200;

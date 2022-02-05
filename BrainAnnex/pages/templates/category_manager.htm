@@ -3,12 +3,12 @@
     current_page
     site_pages
 
-    category_id
-    category_name
-    category_remarks
+    category_id         EXAMPLE: 123
+    category_name       EXAMPLE: "French"
+    category_remarks    EXAMPLE: "Notes from class"
 
     subcategories
-    parent_categories
+    parent_categories   EXAMPLE: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
     all_categories
 #}
 
@@ -35,12 +35,23 @@
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
 
 
+
+<!-- Informational/Navigational OVERLAY used if this Category gets delete -->
+
 <div v-if="overlay" class="overlay-bg" v-bind:style="{ 'height': compute_height() + 'px' }">
     <div class="overlay-box">
-        <a href="/BA/pages/category_manager/1" style='font-size:24px'>Go the top category</a>
+        <img src="/BA/pages/static/graphics/info_small_24.png" style="vertical-align:middle">
+        <span style="color:green; font-weight: bold">This Category (&ldquo;{{category_name}}&rdquo;) was successfully deleted</span>
+        <br><br><br>
+        Go to the &nbsp; <a href="/BA/pages/category_manager/1" style='font-size:22px'>Root (home) category</a>
+        <br><br>
+        Or go to one of its <i>parent</i> categories: &nbsp; &nbsp;
+        <span v-for="parent_category in parent_categories" style='font-size:18px; margin-right:30px'>
+            <a v-bind:href="'/BA/pages/category_manager/' + [[ parent_category['item_id'] ]]">[[ parent_category['name'] ]]</a>
+        </span>
     </div>
-
 </div>
+
 
 
 <div class='navmenu dark-background'>  <!-- Navigation Menu -->
@@ -307,7 +318,14 @@ It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'></form>
 <span v-if="waiting" class="waiting">Performing the requested operation...</span>
 <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
 
-<br><br>
+<br>
+
+<p style="background-color: yellow; margin-top:0; padding: 5px">
+    <span style="font-size:22px;">IMPORTANT: still in Beta.  <i>Only the Delete function is implemented.</i></span>
+    <br>To add a new category, use the add-category box at the bottom of the category-viewer pages (when in editing mode).
+</p>
+
+<br>
 
 </div>	<!-- END OF lightbox -->
 
@@ -329,6 +347,10 @@ new Vue({
     data: {
 
         overlay: false,             // To cover the main display with a message
+
+        // The data handover from Flask to Vue
+        parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
+                                                           // Eg: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
 
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
         error: false,               // Whether the last server communication resulted in error
@@ -362,6 +384,11 @@ new Vue({
         delete_category(category_id)
         //
         {
+            if (category_id == 1)  {
+                alert("Cannot delete the root (top) category!");
+                return;
+            }
+
             const retVal = confirm("Do you want to DELETE this Category? (Note: only possible if no Content Items are in it)");
             if  (retVal != true) {
                 // Cancel selected
@@ -386,7 +413,7 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 console.log("    server call was successful; it returned: " , server_payload);
                 this.status_message = "Category deleted successfully";
-                alert("The Category WAS deleted successfully; a link will appear to take you to the parent page");
+                //alert("The Category WAS deleted successfully; a link will appear to take you to the parent page");
                 this.overlay = true;
             }
             else  {             // Server reported FAILURE

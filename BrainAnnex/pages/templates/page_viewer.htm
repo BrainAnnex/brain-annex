@@ -9,6 +9,7 @@
 
         category_id
         category_name
+        category_remarks
 
         subcategories
         all_categories
@@ -176,7 +177,9 @@ TBA<br>
 
 {# Display prominently this page's Category #}
 {% if category_name %}
-<p class="headline">{{category_name}}
+<p class="headline">
+    {{category_name}}
+    <span style="color:gray; margin-left:25px; font-size:10px">{{category_remarks}}</span>
     {# Category management #}
     <a v-if="expose_controls" href='/BA/pages/category_manager/{{category_id}}' style='margin-left:15px' target="_blank">
         <img src='/BA/pages/static/graphics/edit_16_2530834.png' alt='EDIT category (rename, etc.)' title='EDIT category (rename, etc.)'>

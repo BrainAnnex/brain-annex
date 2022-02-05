@@ -188,7 +188,7 @@ class PagesRouting:
 
             return render_template(template, current_page=request.path, site_pages=self.site_pages, header_title=category_name,
                                    content_items=content_items,
-                                   category_id=category_id, category_name=category_name,
+                                   category_id=category_id, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, all_categories=all_categories,
                                    bread_crumbs=bread_crumbs,
                                    records_classes=records_classes
