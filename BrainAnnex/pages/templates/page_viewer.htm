@@ -226,10 +226,9 @@ TBA
 
 
 {# Give notice if no Content Items were passed #}
-{% if (content_items | count == 0) and (not subcategories) %}
-    <p style="margin-top:50px; color:#888">NO CONTENT ITEMS FOUND : you need to add or import them</p>
-{% endif %}
-
+<p v-if="is_page_empty" style="margin-top:50px; color:#888">
+    NO CONTENT ITEMS FOUND : you need to add or upload them
+</p>
 
 
 
@@ -314,70 +313,77 @@ TBA
 
 
 <br><br>
-<h3>Add at the bottom of page</h3>
-<span style="margin-right:10px">Add new:</span>
-<button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
-<button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
-<button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
-
-<!-- All leaf Classes that are instances of "Records" -->
-<br>Add new record of type:
-{% for class_name in records_classes %}
-    <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
-            class="record-picker"
-            style="color: {% if (loop.index % 7) == 1 %}#ae9cd6{% elif (loop.index % 7) == 2 %}#8bb9d4{% elif (loop.index % 7) == 3 %}#a6cfa1{% elif (loop.index % 7) == 4 %}#dad6a1{% elif (loop.index % 7) == 5 %}#e1b298{% elif (loop.index % 7) == 6 %}#e59ca0{% elif (loop.index % 7) == 0 %}gray{% else %}black{% endif %}">
-        {{class_name}}
-    </button>
-{% endfor %}
-
-<br>
 
 
-<div style='border:1px solid gray; padding:10px; background-color:#DDDDDD; margin-top:5px; margin-bottom:5px; margin-right:5px'>		<!-- Maybe the DIV wrapper could be ditched? -->
+<div v-if="expose_controls">
 
-<b>UPLOAD IMAGES (or, not yet implemented, DOCUMENTS)</b>:<br>
+    <h3>Add at the bottom of page</h3>
+    <span style="margin-right:10px">Add new:</span>
+    <button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
+    <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
+    <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
 
-<form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
-    <input type='hidden' name='category_id' value='{{category_id}}'>
-    <input type='hidden' name='pos' value='TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'>
-</form>
-
-<!--  The "DONE" button simply reloads the viewer page -->
-<a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Close</a>
-<span style='color:gray; margin-left:20px; font-size:10px'>The "Close" button not yet implemented: currently, it refreshes the page when uploads complete</span><br>
-
-</div>	<!--  Terminate the wrapper DIV for uploads -->
-
-
-
-<!--  To add a new Subcategory -->
-<div style='clear: left;'></div> {# To clear any Content Item #}
-
-<div class='form-box' style="float:right">
-    <span class='title'>CREATE A NEW SUBCATEGORY for &ldquo;{{category_name}}&rdquo;</span><br><br>
-
-    <input type='hidden' name='parentID' value={{category_id}}>
-
-    <table border='0' cellspacing='5' cellpadding='0'>
-        <tr>
-            <td>Name</td><td style='padding-left:5px'><input type='text' v-model="new_subcategory_name" size='50' maxlength='60'></td>
-        </tr>
-        <tr>
-            <td>Remarks <span style='color:gray; font-style:italic'>(optional)</span></td><td style='padding-left:5px'><input type='text'  v-model="new_subcategory_remarks" size='50' maxlength='90'></td>
-        </tr>
-    </table>
+    <!-- All leaf Classes that are instances of "Records" -->
+    <br>Add new record of type:
+    {% for class_name in records_classes %}
+        <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
+                class="record-picker"
+                style="color: {% if (loop.index % 7) == 1 %}#ae9cd6{% elif (loop.index % 7) == 2 %}#8bb9d4{% elif (loop.index % 7) == 3 %}#a6cfa1{% elif (loop.index % 7) == 4 %}#dad6a1{% elif (loop.index % 7) == 5 %}#e1b298{% elif (loop.index % 7) == 6 %}#e59ca0{% elif (loop.index % 7) == 0 %}gray{% else %}black{% endif %}">
+            {{class_name}}
+        </button>
+    {% endfor %}
 
     <br>
-    <button @click="add_subcategory({{category_id}})">Add New Sub-Category</button>
-        <span v-if="waiting" class="waiting">Adding the subcategory...</span>
-        <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+
+
+    <div style='border:1px solid gray; padding:10px; background-color:#DDDDDD; margin-top:5px; margin-bottom:5px; margin-right:5px'>		<!-- Maybe the DIV wrapper could be ditched? -->
+
+    <b>UPLOAD IMAGES (or, not yet implemented, DOCUMENTS)</b>:<br>
+
+    <form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
+        <input type='hidden' name='category_id' value='{{category_id}}'>
+        <input type='hidden' name='pos' value='TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'>
+    </form>
+
+    <!--  The "DONE" button simply reloads the viewer page -->
+    <a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Close</a>
+    <span style='color:gray; margin-left:20px; font-size:10px'>The "Close" button not yet implemented: currently, it refreshes the page (use when uploads complete)</span><br>
+
+    </div>	<!--  Terminate the wrapper DIV for uploads -->
+
+
+
+    <!--  To add a new Subcategory -->
+    <div style='clear: left;'></div> {# To clear any Content Item #}
+
+    <div class='form-box' style="float:right">
+        <span class='title'>CREATE A NEW SUBCATEGORY for &ldquo;{{category_name}}&rdquo;</span><br><br>
+
+        <input type='hidden' name='parentID' value={{category_id}}>
+
+        <table border='0' cellspacing='5' cellpadding='0'>
+            <tr>
+                <td>Name</td><td style='padding-left:5px'><input type='text' v-model="new_subcategory_name" size='50' maxlength='60'></td>
+            </tr>
+            <tr>
+                <td>Remarks <span style='color:gray; font-style:italic'>(optional)</span></td><td style='padding-left:5px'><input type='text'  v-model="new_subcategory_remarks" size='50' maxlength='90'></td>
+            </tr>
+        </table>
+
+        <br>
+        <button @click="add_subcategory({{category_id}})">Add New Sub-Category</button>
+            <span v-if="waiting" class="waiting">Adding the subcategory...</span>
+            <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+        <br><br>
+        <span style='color:gray'><b>OR:</b> add an <a href='/BA/pages/category_manager/{{category_id}}'><i>existing</i></a> sub-category</span>
+    </div>
+
+
+    <div style='height:170px'></div>     <!-- To extend the main page enough to fit the above floating element -->
     <br><br>
-    <span style='color:gray'><b>OR:</b> add an <a href='/BA/pages/category_manager/{{category_id}}'><i>existing</i></a> sub-category</span>
+
 </div>
 
-
-<div style='height:170px'></div>     <!-- To extend the main page enough to fit the above floating element -->
-<br><br>
 
 
 
@@ -392,10 +398,12 @@ TBA
 </a>
 
 
+<br>
+<div v-if="expose_controls">
+    <a href="/BA/pages/md-file/{{category_id}}" target="_blank">Export to MD file</a>
+    <a href="/BA/pages/static-web/{{category_id}}" target="_blank" style="margin-left:50px">Export to static webpage</a>
+</div>
 <br><br>
-<a href="/BA/pages/md-file/{{category_id}}" target="_blank">Export to MD file</a>
-<a href="/BA/pages/static-web/{{category_id}}" target="_blank" style="margin-left:50px">Export to static webpage</a>
-<br><br><br>
 
 
 
@@ -437,7 +445,9 @@ new Vue({
                                         // EXAMPLE: [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
                                         //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                         //          ]
-        expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
+
+        expose_controls: false,  // If true, the editing controls of the various Content Items are revealed
+
         category_id: {{category_id}},   // Integer
         show_left_sidebar: true,
 
@@ -449,7 +459,7 @@ new Vue({
                                "Site Link": ["url", "name", "date", "comments", "rating", "read"],
                                "Profl Connections": ["name", "role", "location", "notes", "LinkedIn", "email"],
                                "Restaurants": ["name", "website", "address", "city", "phone", "notes", "eval"]
-                               },       // TODO: Extract from dbase
+                               },       // TODO: Extract from dbase (as needed?)
 
         bread_crumbs: {{bread_crumbs | tojson}},
                         // EXAMPLE: ["START_CONTAINER", [1, 544, 514], "END_CONTAINER"]
@@ -472,9 +482,36 @@ new Vue({
     },
 
 
+
+    // ---------------------  COMPUTED  ----------------------
+
+    mounted() {
+        // If the page is empty of content and of sub-categories, switch automatically to editing mode
+        if (this.is_page_empty)
+            this.expose_controls = true;
+    },
+
+
+
+    // ---------------------  METHODS  ----------------------
+
+    computed: {
+        is_page_empty()
+        // Return true if the page is empty of content and of sub-categories; false, otherwise
+        {
+            if (this.content_array.length == 0 && this.all_subcategories.length == 0)
+                return true;
+            else
+                return false;
+        }
+    },
+
+
+
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+
         get_schema_data(item)
         // If the given Content Item is a record, return a list of its field names (Properties), in order
         {
