@@ -176,6 +176,10 @@ class PagesRouting:
             category_info = Categories.get_category_info(category_id)
             # EXAMPLE : [{'id': 3, 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
+            if not category_info:
+                # TODO: add a special page to show that
+                return f"<b>No such Category ID ({category_id}) exists!</b> Maybe that category got deleted? <a href='/BA/pages/viewer/1'>Go to top (HOME) category</a>"
+
             category_name = category_info.get("name", "[No name]")
             category_remarks = category_info.get("remarks", "")
 
