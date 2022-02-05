@@ -177,10 +177,11 @@ class PagesRouting:
             # EXAMPLE : [{'id': 3, 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
             category_name = category_info.get("name", "[No name]")
-            category_remarks = category_info.get("remarks", "")     # TODO: pass this to the template
+            category_remarks = category_info.get("remarks", "")
 
             subcategories = PagesRequestHandler.get_subcategories(category_id)
             all_categories = PagesRequestHandler.get_all_categories(exclude_root=False)
+            # TODO: also get and pass the parent Categories
 
             records_classes = APIRequestHandler.get_leaf_records()
 
