@@ -70,7 +70,7 @@ Vue.component('vue-plugin-r',
                           v-on:edit-content-item="edit_content_item(item_data)">
             </vue-controls>
 
-            \n</div>\n		<!-- End of outer container -->
+            </div>		<!-- End of outer container -->
             `,
 
 
