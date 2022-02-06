@@ -43,7 +43,7 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/modules/dropzone/dropzone.css">
 
     <!-- Styling for Vue core components -->
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/page_viewer/bread_crumbs.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/CORE/controls/controls.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/CORE/content_items/content_items.css">
     <!-- Plugin-specific styling -->
@@ -119,12 +119,9 @@
 
     <!-- ****************************************************************
 
-                  RIGHT sidebox  (TODO: turn into Vue component)
+                   RIGHT side-box (with Category navigation)
 
      **************************************************************** -->
-
-<div class='sidebox'>
-<img src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right' title='NOT YET IMPLEMENTED! Click to collapse sidebar' alt='NOT YET IMPLEMENTED! Click to collapse sidebar'>
 
 <vue-category-navbox
     v-bind:category_name="category_name"
@@ -134,13 +131,6 @@
 </vue-category-navbox>
 
 
-</div>  <!-- END of sidebox -->
-
-
-<!-- Collapsed version of sidebox -->
-<div class='sidebox_collapsed' style='display:none'>
-<img src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left' title='Click to expand sidebar' alt='Click to expand sidebar'>
-</div>  <!-- Collapsed version of sidebox -->
 
 
 
@@ -384,12 +374,11 @@
 <!--
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
-<script src="/BA/pages/static/page_viewer/bread_crumbs.js"></script>
-
 <script src="/BA/pages/static/plugins/CORE/controls/controls.js"></script>
 <script src="/BA/pages/static/plugins/CORE/content_items/content_items.js"></script>
 
 <!-- TODO: reorganize the folders, to have the plugins in the "vue_components" folder -->
+<script src="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.js"></script>
 <script src="/BA/pages/static/vue_components/category_navbox/category_navbox.js"></script>
 
 <script src="/BA/pages/static/plugins/headers/headers.js"></script>
@@ -418,7 +407,7 @@ new Vue({
         expose_controls: false,  // If true, the editing controls of the various Content Items are revealed
 
         category_id: {{category_id}},   // Integer
-        show_left_sidebar: true,
+        show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
 
         records_types: {{records_classes | tojson}},    // Array of all the names of leaf Classes associated to records
 

@@ -54,7 +54,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
         // ----------------  METHODS  -----------------
         methods: {
-            foo: function () {
+            foo() {
                 alert("In foo. some_data_a= " + this.some_data_a);
             }
 
