@@ -14,6 +14,8 @@ This major new release is currently in a **late Beta stage**.  Released to open 
 
 **[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
 
+## Background - Multimedia Knowledge Representation and Management
+[What is Brain Annex?](https://julianspolymathexplorations.blogspot.com/2019/03/multimedia-knowledge-representation-and-management-brain-annex.html)
 ### Project website: https://BrainAnnex.org
 
 
