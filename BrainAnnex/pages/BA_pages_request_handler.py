@@ -135,6 +135,9 @@ class PagesRequestHandler:
         """
         Return all the (immediate) parent categories of the given category,
         as a list of dictionaries with all the keys of the Category Class
+
+        TODO: fix inconsistency.  This function uses item_id ; others use just id
+
         EXAMPLE:
             [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
 

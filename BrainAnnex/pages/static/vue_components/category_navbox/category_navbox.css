@@ -37,7 +37,6 @@ div.sidebox  a:link  {
 	color:#222;					/* Dark gray */
 	text-decoration:none;
 }
-
 div.sidebox span.sidebox-section a:link  {
 	color:#EEE;
 }
@@ -45,6 +44,9 @@ div.sidebox span.sidebox-section a:link  {
 div.sidebox  a:visited  {
 	color:#222;
 	text-decoration:none;
+}
+div.sidebox span.sidebox-section a:visited  {
+	color:#EEE;
 }
 
 div.sidebox  a:hover {

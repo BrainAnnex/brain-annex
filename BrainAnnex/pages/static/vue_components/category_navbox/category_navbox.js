@@ -1,7 +1,8 @@
 Vue.component('vue-category-navbox',
     {
-        props: ['category_name', 'subcategories', 'all_categories'],
+        props: ['category_name', 'parent_categories', 'subcategories', 'all_categories'],
         /*  category_name:
+            parent_categories:
             subcategories:
             all_categories:
          */
@@ -28,8 +29,9 @@ Vue.component('vue-category-navbox',
                     <br>
                     <!-- All parent categories -->
                     <span style='color:#BBBBBB; font-size:8px; font-style:italic'>Parent Categories:</span>
-                    <br>
-                    TBA
+                    <template v-for="category in parent_categories">
+                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['item_id']">{{category.name}}</a>
+                    </template>
                     <br><br>
 
                     <!-- The current category -->

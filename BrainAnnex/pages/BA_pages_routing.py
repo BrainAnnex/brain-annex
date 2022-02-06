@@ -183,9 +183,9 @@ class PagesRouting:
             category_name = category_info.get("name", "[No name]")
             category_remarks = category_info.get("remarks", "")
 
+            parent_categories = PagesRequestHandler.get_parent_categories(category_id)
             subcategories = PagesRequestHandler.get_subcategories(category_id)
             all_categories = PagesRequestHandler.get_all_categories(exclude_root=False)
-            # TODO: also get and pass the parent Categories
 
             records_classes = APIRequestHandler.get_leaf_records()
 
@@ -194,7 +194,8 @@ class PagesRouting:
             return render_template(template, current_page=request.path, site_pages=self.site_pages, header_title=category_name,
                                    content_items=content_items,
                                    category_id=category_id, category_name=category_name, category_remarks=category_remarks,
-                                   subcategories=subcategories, all_categories=all_categories,
+                                   all_categories=all_categories,
+                                   subcategories=subcategories, parent_categories=parent_categories,
                                    bread_crumbs=bread_crumbs,
                                    records_classes=records_classes
                                    )

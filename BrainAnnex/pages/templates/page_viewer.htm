@@ -11,8 +11,9 @@
         category_name
         category_remarks
 
-        subcategories
         all_categories
+        subcategories
+        parent_categories
 
         bread_crumbs
 
@@ -126,6 +127,7 @@
 
 <vue-category-navbox
     v-bind:category_name="category_name"
+    v-bind:parent_categories="parent_categories"
     v-bind:subcategories="all_subcategories"
     v-bind:all_categories="all_categories"
 >
@@ -431,6 +433,7 @@ new Vue({
         all_subcategories: {{subcategories  | tojson}},
                         // EXAMPLE: [{"id":709,"name":"English"},{"id":708,"name":"Italian"},{"id":514,"name":"French"}]
 
+        parent_categories: {{parent_categories  | tojson}},
 
         // For "Add Subcategory" (TODO: move to a separate component?)
         new_subcategory_name: "",
