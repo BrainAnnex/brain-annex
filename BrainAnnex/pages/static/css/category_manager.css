@@ -1,0 +1,316 @@
+div.categoryManagement {
+    border:0;
+}
+
+div.categoryManagement div {
+    background-color:white;
+    display:inline-block;
+}
+
+div.topRow div {
+    vertical-align:bottom;
+}
+
+div.midRow div {
+    vertical-align:middle;
+}
+
+div.bottomRow div {
+    vertical-align:top;
+}
+
+
+
+/*
+ Lightbox
+ */
+
+div.overlay-bg {		    /* Background for overlay */
+	position:absolute;
+	left:0px;top:0px;
+	width:100%;height:100%;
+	background-image:url(/BA/pages/static/graphics/overlay.png);
+	z-index:100;
+}
+
+div.overlay-box {			/* Box for overlay */
+	margin:100px auto;
+	background-color:#f6ffff;
+	width:75%;
+	height:40%;
+	z-index:200;
+	padding:35px;
+	font-size:12px;
+}
+
+
+
+/*
+ BODY (incl. scrollbars)
+ */
+
+body {		/* General website styling, incl. scrollbars */
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	color: #000000;
+	font-size:10px;
+	padding: 0px;
+	margin: 0px;
+	background:black;
+	scrollbar-base-color : #000000;
+	scrollbar-arrow-color : #E1DEE;
+	background:#CCCCCC;
+}
+
+
+
+
+/*
+ *
+ *	BOXES (General containers)
+ *
+ */
+
+
+
+/* Light boxes */
+
+div.lightbox {					/* Alt name: light-canvas */
+	margin-left:0;
+	width: 85%;
+	box-sizing: border-box;
+
+	border-bottom:3px;
+	background-color:#EEEEEE; 	/* very light gray */
+	/* border-bottom:#0084AD solid; */
+
+	border:1px #0084AD solid;
+	padding-left:5px;
+}
+
+
+div.lightbox-expand-right {
+	width: 97%  !important;
+}
+
+
+
+
+
+
+/*
+ *
+ * 	STYLES FOR HEADERS (incl. "slogans")
+ *
+ */
+
+
+div.page-header {			/* For main page headers (just below navigation bar) */
+	font-family: verdana;
+	font-size:28px;
+	font-weight: bold;
+	padding-left:5px;
+	background-color:black;
+	color: #DDDDDD;
+	border-left:#0084AD 2px solid;
+	border-right:#0084AD 2px solid;
+	margin-bottom:5px;
+	line-height:55px;
+}
+
+
+
+
+
+
+/*
+ *
+ * TABLE DATA
+ *
+ */
+
+
+table {
+	border-collapse:collapse;
+}
+
+
+
+
+td.title {
+	font-weight: bold;
+	text-align: center;
+	color:#FF0000;
+
+
+	background-color:#000000;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size: 16px;
+}
+
+td.feature {
+	vertical-align: middle;
+	width:252px;
+	background-color: #BAE0F4;
+	font-family: verdana;
+	color: #000000;
+	font-size:10px;
+	padding: 2px;
+}
+
+td.thumb {
+	font-weight: bold;
+	text-align: center;
+	color:#FFFFFF;
+	background-color:white;
+}
+
+
+
+
+
+/*
+  DEFAULT (STANDARD) TABLE  -- Needed by the table framework  (it ought to be moved there!!)
+ */
+
+table.default-table {
+	border-width: 4px;
+	border-spacing: 0px;
+	border-style: ridge;
+}
+table.default-table th {
+	border-width: 1px;
+	padding: 1px;
+	border-style: inset;
+	border-color: gray;
+	color:#DDDDDD;
+	background-color: black;
+	font-weight:bold;
+	font-size:12px;
+}
+table.default-table td {
+	border-width: 1px;
+	padding: 1px;
+	border-style: inset;
+	border-color: gray;
+	padding-left:5px;
+}
+table.default-table tr:nth-child(odd) {
+	background-color: white;
+}
+table.default-table tr:nth-child(even) {
+	background-color: #EEEEEE;
+}
+table.default-table input  {
+	/* border: 1px solid gray;    Good for IE, but unappealing for FF */
+}
+
+
+
+
+
+/*
+ *** BUTTONS ***
+ */
+
+a.buttonLink_1 {
+	display:inline-block;
+	padding: 4px;
+	margin: 0 auto;
+
+	background: #FFFFFF; /* old browsers */
+	background: -moz-linear-gradient(top, #FFFFFF 0%, #888888 100%); /* firefox */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#FFFFFF), color-stop(100%,#888888)); /* webkit, for Chrome */
+
+	border: 1px solid #5ea617;
+	border-radius: 4px;
+
+	font: bold 12px Helvetica, Sans-Serif;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	text-shadow: 0px 1px 2px #b4d1ad;
+}
+
+a.buttonLink_1:hover {
+	color: #145675;
+}
+
+
+
+
+
+/*
+ *
+ *  HYPERLINKS
+ *
+ */
+
+
+
+/* The general hyperlink styles are usable against light backgrounds */
+
+a:link  {
+	color:blue;
+	text-decoration:none;
+}
+
+a:visited  {
+	color:blue;
+	text-decoration:none;
+}
+
+a:hover {
+	color:red;
+	text-decoration:underline;
+}
+
+a:active {
+	color:red;
+	text-decoration:underline;
+}
+
+
+
+
+
+/*  Links on dark backgrounds are forced to be appropriate for them (i.e. light colors)
+	The "dark-background" class is only used to affect links */
+
+.dark-background  a:link  {
+	color : #eeeeee !important;
+}
+
+.dark-background  a:visited  {
+	color : #eeeeee !important;
+}
+
+.dark-background  a:hover{
+	color:red !important;
+}
+
+.dark-background  a:active {
+	color:red !important;
+}
+
+
+
+
+
+
+/* Self-contained link classes */
+
+
+a.external-link:after {	/* It shows a Google-style external-image icon after the link */
+	content:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAG9JREFUeNpi/P//PwO1AeOooUPYUEZGRlzqURQD9WJXCDIUHUM1I2NkkAATx6YXrB+PodgAzMAEahmKbCADNQxFNxBn0BFrqAI2Ayk1FGYwRirAZSiuJAUSZMSTFP/jS+N0N5Ts3DhaoAwRQwECDADz2Rla0lLdgwAAAABJRU5ErkJggg==);
+	display:inline-block;
+	*display:inline;
+	*zoom:1;
+	vertical-align:
+	middle;
+	width:20px
+}
+
+
+a.collapsible_controller  {		/* Used for links on arrows for collapsible sections */
+	cursor:pointer;				/* Otherwise, the typical link cursor won't show (since no "href" attribute is provided) */
+}

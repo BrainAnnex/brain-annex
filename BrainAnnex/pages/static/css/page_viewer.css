@@ -144,37 +144,6 @@ div.sidebar-left-collapsed {    /* LEFT sidebar, in its collapsed state */
 
 
 
-div.sidebox {					/* RIGHT Sidebox with the Categories, in its expanded state */
-	float:right;
-	width:15%;
-	box-sizing: border-box;
-
-	background-color:#EEEEFF;
-	border:1px #0084AD solid;
-	padding:2px;
-	padding-top:5px;
-}
-
-div.sidebox_collapsed {			/* Sidebox with the Categories, in its collapsed state */
-	float:right;
-	width:3%;
-	box-sizing: border-box;
-
-	background-color:#EEEEFF;
-	border:1px #0084AD solid;
-	padding-left:0px;
-	padding-right:0px;
-	padding-top:5px;
-}
-
-div.sidebox  span.sidebox-section {
-    color:#EEE;
-    background-color:#444;
-    padding-left:3px;
-    padding-right:3px;
-    font-weight:bold;
-}
-
 
 /*
  *
@@ -309,27 +278,6 @@ a:active {
 }
 
 
-/* Version for sidebox */
-
-div.sidebox  a:link  {
-	color:#222;					/* Dark gray */
-	text-decoration:none;
-}
-
-div.sidebox  a:visited  {
-	color:#222;
-	text-decoration:none;
-}
-
-div.sidebox  a:hover {
-	color:red;
-	text-decoration:none;
-}
-
-div.sidebox  a:active {
-	color:red;
-	text-decoration:none;
-}
 
 
 /* Version for the sidebar-left */

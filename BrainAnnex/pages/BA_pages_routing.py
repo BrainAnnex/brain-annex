@@ -176,9 +176,14 @@ class PagesRouting:
             category_info = Categories.get_category_info(category_id)
             # EXAMPLE : [{'id': 3, 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
-            category_name = category_info.get("name", "[No name]")
-            category_remarks = category_info.get("remarks", "")     # TODO: pass this to the template
+            if not category_info:
+                # TODO: add a special page to show that
+                return f"<b>No such Category ID ({category_id}) exists!</b> Maybe that category got deleted? <a href='/BA/pages/viewer/1'>Go to top (HOME) category</a>"
 
+            category_name = category_info.get("name", "[No name]")
+            category_remarks = category_info.get("remarks", "")
+
+            parent_categories = PagesRequestHandler.get_parent_categories(category_id)
             subcategories = PagesRequestHandler.get_subcategories(category_id)
             all_categories = PagesRequestHandler.get_all_categories(exclude_root=False)
 
@@ -188,8 +193,9 @@ class PagesRouting:
 
             return render_template(template, current_page=request.path, site_pages=self.site_pages, header_title=category_name,
                                    content_items=content_items,
-                                   category_id=category_id, category_name=category_name,
-                                   subcategories=subcategories, all_categories=all_categories,
+                                   category_id=category_id, category_name=category_name, category_remarks=category_remarks,
+                                   all_categories=all_categories,
+                                   subcategories=subcategories, parent_categories=parent_categories,
                                    bread_crumbs=bread_crumbs,
                                    records_classes=records_classes
                                    )

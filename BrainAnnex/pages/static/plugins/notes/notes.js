@@ -25,7 +25,7 @@ Vue.component('vue-plugin-n',
                         <b>THE EDITOR WILL GO HERE</b>
                     </div>
 
-                    <div ref="julian">CKeditor TBA</div>  <!-- The content of this <div> gets replaced by the HTML online editor CKeditor when fired up
+                    <div ref="julian"></div>  <!-- The content of this <div> gets replaced by the HTML online editor CKeditor when fired up
                                                                TODO: maybe use a Vue conditional to call a function that return a CK object body -->
 
                     <!-- The editor Controls (with the SAVE and CANCEL buttons) are initially hidden -->

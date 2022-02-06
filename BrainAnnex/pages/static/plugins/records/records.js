@@ -70,7 +70,7 @@ Vue.component('vue-plugin-r',
                           v-on:edit-content-item="edit_content_item(item_data)">
             </vue-controls>
 
-            \n</div>\n		<!-- End of outer container -->
+            </div>		<!-- End of outer container -->
             `,
 
 
@@ -198,7 +198,8 @@ Vue.component('vue-plugin-r',
 
             finish_get_fields_from_server(success, server_payload, error_message)
             /*  Callback function to wrap up the action of get_fields_from_server() upon getting a response from the server.
-                The server returns a JSON value
+                The server returns a JSON value.
+                TODO: maybe save the returned values in the root component, to reduce server calls
               */
             {
                 console.log("Finalizing the get_fields_from_server() operation...");

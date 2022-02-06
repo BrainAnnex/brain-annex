@@ -126,11 +126,15 @@ class APIRequestHandler:
     #######################     CONTENT-ITEM RELATED      #######################
 
     @classmethod
-    def get_content(cls, schema_code, item_id) -> (bool, str):
+    def get_content(cls, schema_code, item_id: int) -> (bool, str):
         """
-        Get media content from a local file
+        Fetch and return the contents of a media item stored on a local file
 
-        :return:    The pair (status, data/error_message)
+        :param schema_code:     TODO: phase out
+        :param item_id:
+
+        :return:    The pair (status, data/error_message)   # TODO: generate an Exception in case of failure
+
         """
         content_node = cls.db.get_nodes("BA", properties_condition = {"schema_code": schema_code, "item_id": item_id})
         #print("properties_condition", {"schema_code": schema_code, "item_id": item_id})
@@ -147,6 +151,37 @@ class APIRequestHandler:
             return (True, file_contents)
         except Exception as ex:
             return (False, f"I/O failed. {ex}")     # File I/O failed
+
+
+    @classmethod
+    def get_binary_content(cls, item_id: int, th: str) -> (str, bytes):
+        """
+        Fetch and return the contents of a media item stored on a local file
+        In case of error, raise an Exception
+
+        :param th:
+        :param item_id:
+        :return:    The binary data
+
+        """
+        content_node = cls.db.get_nodes("BA", properties_condition = {"item_id": item_id})
+        #print("content_node:", content_node)
+        if (content_node is None) or (content_node == []):
+            raise Exception("Metadata not found")
+
+        basename = content_node[0]['basename']
+        suffix = content_node[0]['suffix']
+        filename = f"{basename}.{suffix}"
+
+        try:
+            if th:
+                file_contents = cls.get_from_binary_file(cls.MEDIA_FOLDER + "resized/", filename)
+            else:
+                file_contents = cls.get_from_binary_file(cls.MEDIA_FOLDER, filename)
+
+            return (suffix, file_contents)
+        except Exception as ex:
+            raise Exception(f"Reading of data file for Content Item {item_id} failed: {ex}")     # File I/O failed
 
 
 
@@ -357,6 +392,21 @@ class APIRequestHandler:
         """
         full_file_name = cls.MEDIA_FOLDER + filename
         with open(full_file_name, 'r', encoding='utf8') as fh:
+            file_contents = fh.read()
+            return file_contents
+
+
+    @classmethod
+    def get_from_binary_file(cls, path: str, filename: str) -> bytes:
+        """
+
+        :param path:
+        :param filename:    EXCLUSIVE of path
+        :return:            The contents of the binary file
+        """
+        #full_file_name = cls.MEDIA_FOLDER + filename
+        full_file_name = path + filename
+        with open(full_file_name, 'rb') as fh:
             file_contents = fh.read()
             return file_contents
 

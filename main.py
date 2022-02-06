@@ -1,9 +1,9 @@
-# VERSION 5.0-beta4
+# VERSION 5.0-beta5
 
 
 # MAIN PROGRAM : it starts up a server for web User Interface and an API
 # Run this file, and then set the browser to http://localhost:5000/some_url
-# (the actual URL is specified in the various modules.)
+# (the actual port number is configurable; the URL's are specified in the various modules)
 # Note: this main program may also be started from the CLI with the "flask run" command
 
 from flask import Flask
@@ -34,13 +34,15 @@ from BrainAnnex.initialize import InitializeBrainAnnex
 #        CHANGE AS NEEDED!                                                      #
 #################################################################################
 
-# Location where the media for Content Items is stored.  "../pages/static/media/" also works
-MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
-# IMPORTANT: for now, the media folder MUST reside in a Flask-served location
-# (typically, where other static media is stored), and it must include a subfolder called "resized"
+# Location where the media for Content Items is stored.  Use forward slashes even on Windows
+#MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+MEDIA_FOLDER = "D:/media/"
+# IMPORTANT: for now, the media folder MUST include a subfolder called "resized"
 
 # Temporary location for uploads
 UPLOAD_FOLDER = "D:/tmp/"
+
+PORT_NUMBER = 5000      # The Flask default is 5000
 
 
 
@@ -108,9 +110,9 @@ app.secret_key = b"pqE3_t(4!x"
 
 
 
-###  Fire up the web app.   IMPORTANT : COMMENT OUT ALL THE LINES BELOW DURING DEPLOYMENT, to start the webapp from the CLI
+###  Fire up the web app.
+###  IMPORTANT : COMMENT OUT ALL THE LINES BELOW DURING DEPLOYMENT, to start the webapp from the CLI
 debug_mode = True
-port = 5000             # This is the Flask default
-print(f" * SET BROWSER TO http://localhost:{port}/BA/pages/admin")
-app.run(debug=debug_mode, port=port)    # CORE of UI : transfer control to the "Flask object"
-                                        # This  will start a local WSGI server.  Threaded mode is enabled by default
+print(f" * SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
+app.run(debug=debug_mode, port=PORT_NUMBER)   # CORE of UI : transfer control to the "Flask object"
+                                              # This  will start a local WSGI server.  Threaded mode is enabled by default
