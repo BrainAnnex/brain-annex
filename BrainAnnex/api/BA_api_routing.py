@@ -136,19 +136,19 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/get_links/47
 
             :param schema_id:   ID of a Class node
-            :return:            A JSON object with the names of inbound and outbound names
+            :return:            A JSON object with the names of inbound and outbound links
                                 EXAMPLE:
                                     {
+                                        "status": "ok",
                                         "payload": {
                                             "in": [
-                                              "BA_served_at"
+                                                "BA_served_at"
                                             ],
                                             "out": [
-                                              "BA_located_in",
-                                              "BA_cuisine_type"
+                                                "BA_located_in",
+                                                "BA_cuisine_type"
                                             ]
-                                        },
-                                        "status": "ok"
+                                        }
                                     }
             """
 
@@ -364,7 +364,10 @@ class ApiRouting:
         #######################################################
         #                CONTENT-ITEM MANAGEMENT              #
         #######################################################
-        
+
+
+        ##############   VIEWING CONTENT ITEMS   ##############
+
         @self.BA_api_flask_blueprint.route('/simple/get_media/<item_id>')
         def get_media(item_id) -> str:
             """
@@ -431,6 +434,43 @@ class ApiRouting:
                 response = make_response(err_details, 500)
 
             return response
+
+
+
+        @self.BA_api_flask_blueprint.route('/get_link_summary/<item_id>')
+        def get_link_summary_api(item_id) -> str:
+            """
+            Return a JSON structure identifying the names and counts of all
+            inbound and outbound links to/from the given data node.
+
+            This is approximately the data-node counterpart of the schema API 'get_links'
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_link_summary/47
+
+            :param item_id:     ID of a data node
+            :return:            A JSON object with the names and counts of inbound and outbound links
+                                EXAMPLE:
+                                    {
+                                        "status": "ok",
+                                        "payload": {
+                                            "in": [
+                                                ["BA_served_at", 1]
+                                            ],
+                                            "out": [
+                                                ["BA_located_in", 1],
+                                                ["BA_cuisine_type", 2]
+                                            ]
+                                        }
+                                    }
+            """
+            # TODO: generate error if item_id cannot be converted to an int (turn into helper method)
+            try:
+                payload = APIRequestHandler.get_link_summary(int(item_id))
+                response = {"status": "ok", "payload": payload}             # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
 
 
 

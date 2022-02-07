@@ -186,6 +186,54 @@ class APIRequestHandler:
 
 
     @classmethod
+    def get_link_summary(cls, item_id: int, omit_names = None) -> dict:
+        """
+        TODO: test
+        TODO: move most of it to the ~ FOLLOW LINKS ~ section of NeoAccess
+
+        :param item_id:     ID of a data node
+        :param omit_names:
+        :return:            A dictionary with the names and counts of inbound and outbound links.
+                            Each inner list is a pair [name, count]
+                            EXAMPLE:
+                                {
+                                    "in": [
+                                        ["BA_served_at", 1]
+                                    ],
+                                    "out": [
+                                        ["BA_located_in", 1],
+                                        ["BA_cuisine_type", 2]
+                                    ]
+                                }
+        """
+        if omit_names:
+            q_out = '''
+                    MATCH (n :BA {item_id:item_id})-[r]->(n2 :BA)
+                    WHERE type(r) <> "INSTANCE_OF" AND type(r) <> "SCHEMA" AND type(r) <> "BA_IN_CATEGORY"
+                    RETURN type(r) AS rel_name, count(n2) AS rel_count
+                    '''
+        else:
+            q_out = '''
+                    MATCH (n :BA {item_id:item_id})-[r]->(n2 :BA) 
+                    RETURN type(r) AS rel_name, count(n2) AS rel_count
+                    '''
+        result = cls.db.query(q_out,data_binding={"item_id": item_id})
+        rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
+
+        q_in = '''
+                    MATCH (n :BA {item_id:item_id})<-[r]-(n2 :BA)
+                    RETURN type(r) AS rel_name, count(n2) AS rel_count
+                    '''
+        result = cls.db.query(q_in,data_binding={"item_id": item_id})
+        rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
+
+        return  {"in": rel_in, "out": rel_out}
+
+
+
+    ##############   MODIFYING CONTENT ITEMS   ##############
+
+    @classmethod
     def update_content_item(cls, post_data: dict) -> str:
         """
         Update an existing Content Item
@@ -494,6 +542,8 @@ class APIRequestHandler:
 
 
     #######################     PLUGIN-SPECIFIC      #######################
+
+    # TODO: move to a separate module
 
     #####  For "n" plugin
 
@@ -963,7 +1013,7 @@ class APIRequestHandler:
 
 
 
-########################    IMAGES    ###################################################################
+########################    IMAGES  (TODO: move to a separate module)  ############################################################
 
 class ImageProcessing:
     """
@@ -1073,7 +1123,7 @@ class ImageProcessing:
 
 def test():
     """
-    Tester function for regex
+    Tester function for regex.   TODO: move to test folders
 
     :return:
     """

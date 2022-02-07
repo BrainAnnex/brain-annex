@@ -385,9 +385,9 @@ class NeoSchema:
                 '''
         else:
             q_out = '''
-                    MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS) 
-                    RETURN type(r) AS rel_name
-                    '''
+                MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS) 
+                RETURN type(r) AS rel_name
+                '''
         rel_out = cls.db.query(q_out,data_binding={"schema_id": schema_id}, single_column="rel_name")
 
         q_in = '''
