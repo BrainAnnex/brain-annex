@@ -10,7 +10,7 @@
 
 * **Vue2.js** has expanded to take on a full role, replacing the old vanilla-JavaScript parts
 
-This major new release is currently in a **late Beta stage**.  Released to open source on Dec. 12, 2021 
+This major new release is currently in a **late Beta stage**.  First released to open source on Dec. 12, 2021
 
 **[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
 
@@ -187,3 +187,6 @@ From the Neo4j browser interface, issue the following 3 Cypher commands:
 
 * **Navigation bar** : Brain Annex can be used either as a standalone web app, or integrated with another site.  
   The navigation is implemented [in this package](https://github.com/BrainAnnex/brain-annex/tree/main/navigation)
+
+
+### Project website: https://BrainAnnex.org
