@@ -3,7 +3,7 @@ from BrainAnnex.modules.neo_access import neo_access
 
 class NodeExplorer:
     """
-
+    A largely experimental library to deal with management and visualization of data nodes
     """
     def __init__(self):
         self.neo = neo_access.NeoAccess()
@@ -147,7 +147,7 @@ class NodeExplorer:
                                     {'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
 
         :return:                A dictionary, for a single node
-                                EXAMPLE:  {'HAS_RACE': [['Subject', 233], ['Subject', 225]]}
+                                EXAMPLE:  {'HAS_AGE': [['Subject', 233], ['Subject', 225]]}
         """
         node_relationship_dict = {}    # A dictionary, for a single node
 
@@ -254,7 +254,7 @@ class NodeExplorer:
 
 
 
-############################   NEW EXPERIMENTAL STUFF   ############################
+    ############################   NEW EXPERIMENTAL STUFF   ############################
 
 
     def column_based_results(self, recordset: [{}], use_for_missing=None, row_defining_keys=None):

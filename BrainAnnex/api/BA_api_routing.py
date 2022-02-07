@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, make_response  # The request package makes available a GLOBAL request object
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
+from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer     # TODO: to phase out
 from BrainAnnex.modules.categories.categories import Categories
 import sys                  # Used to give better feedback on Exceptions
 import shutil
@@ -79,8 +79,19 @@ class ApiRouting:
 
     def set_routing(self) -> None:
         """
-        Define the Flask routing (mapping URLs to Python functions)
-        for all the web pages served by this module
+        Define the Flask routing (mapping of URLs to Python functions)
+        for all the web pages served by this module.
+
+        Organized in the following groups:
+                * SCHEMA-related (reading)
+                * SCHEMA-related (creating)
+                * CONTENT-ITEM MANAGEMENT
+                * CATEGORY-RELATED
+                    * POSITIONING WITHIN CATEGORIES
+
+                * FILTERS
+                * IMPORT-EXPORT  (upload/download)
+                * EXPERIMENTAL
 
         :return: None
         """
@@ -316,6 +327,7 @@ class ApiRouting:
 
 
 
+
         ###############################################
         #            SCHEMA-related (creating)        #
         ###############################################
@@ -402,7 +414,7 @@ class ApiRouting:
                             'xls': 'application/vnd.ms-excel',
 
                             'zip': 'application/zip'
-                            }   # TODO: add more MIME types, when more plugins are introduced
+                            }   # TODO: add more MIME types, when more plugins are introduced, and move to APIRequestHandler
 
             default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
 
@@ -421,6 +433,8 @@ class ApiRouting:
             return response
 
 
+
+        ##############   MODIFYING CONTENT ITEMS   ##############
 
         @self.BA_api_flask_blueprint.route('/simple/update', methods=['POST'])
         def update() -> str:
@@ -902,7 +916,8 @@ class ApiRouting:
             :return:                A Flask response object, with HTTP headers that will initiate a download
             """
             if download_type == "full":
-                ne = NodeExplorer()     # TODO: use a more direct way to get to the NeoAccess object
+                ne = NodeExplorer()     # TODO: use a more direct way to get to the NeoAccess object;
+                                        #       this part of the code belongs in  APIRequestHandler
                 result = ne.neo.export_dbase_json()
                 export_filename = "exported_dbase.json"
             elif download_type == "schema":

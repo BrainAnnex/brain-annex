@@ -84,23 +84,8 @@ class PagesRouting:
 
 
 
-
         @self.BA_pages_flask_blueprint.route('/nodes_viewer')
-        def nodes_viewer() -> str:
-            # Node Explorer: display a (hardwired-for-now) list of nodes
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/nodes_viewer
-
-            url = "nodes_viewer.htm"
-
-            ne_obj = NodeExplorer()
-            node_list = ne_obj.serialize_nodes(None)
-            node_list_json = json.dumps(node_list)
-
-            return render_template(url, current_page="nodes_viewer", site_pages=self.site_pages,
-                                   node_list=node_list, node_list_json=node_list_json)
-
-        @self.BA_pages_flask_blueprint.route('/nodes_viewer')
-        def nodesviewer_duplicate() -> str:
+        def nodesviewer() -> str:
             # Node Explorer: display a (hardwired-for-now) list of nodes
             # EXAMPLE invocation: http://localhost:5000/BA/pages/nodes_viewer
 
@@ -140,7 +125,7 @@ class PagesRouting:
             ne_obj = NodeExplorer()
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = ne_obj.all_nodes_by_label(label)
 
-            return render_template(url, current_page="node", site_pages=self.site_pages,   # Maybe it should be current_page="/BA/pages/node"
+            return render_template(url, current_page="node", site_pages=self.site_pages,   # Maybe it should be current_page=request.path
                                    label_list = label_list,
                                    header_list = header_list, record_list = record_list,
                                    inbound_headers = inbound_headers,
