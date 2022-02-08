@@ -33,3 +33,28 @@ div.edit-link  {
     padding: 5px;
     margin-left: 10px;
 }
+
+
+/* A little box showing a relationships */
+span.relationship-in {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    color: #333;
+    background-color: cyan;
+}
+
+span.relationship-out {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    color: #333;
+    background-color: magenta;
+}
+
+span.link-count {
+    color:gray;
+    font-size:9px;
+}

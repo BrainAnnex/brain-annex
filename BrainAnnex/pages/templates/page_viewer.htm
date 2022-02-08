@@ -94,6 +94,7 @@
 
 <div v-show='show_left_sidebar' class='sidebar-left'>
 <img v-on:click='show_left_sidebar = false'  src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right'
+     class='clickable-icon'
      title='Click to collapse sidebar' alt='Click to collapse sidebar'>
 
 <!-- Page navigation section (using Vue) -->
@@ -116,6 +117,7 @@
 <!-- COLLAPSED version of sidebar-left -->
 <div v-show='!show_left_sidebar' class='sidebar-left-collapsed'>
     <img v-on:click='show_left_sidebar = true' src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left'
+         class='clickable-icon'
          title='Click to expand sidebar' alt='Click to expand sidebar'>
 </div> 	 <!-- END of Collapsed version of sidebar-left -->
 

@@ -4,9 +4,9 @@ Vue.component('vue-plugin-r',
         /*  item_data:  EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
                                   "German":"Tier", "English":"animal"}
                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
-            category_id:
+            category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of the Record on the page
-            item_count:     The total number of Content Items (of all types) on the page
+            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names, in order.
                                 EXAMPLE: ["French", "English", "notes"]
          */
@@ -21,10 +21,15 @@ Vue.component('vue-plugin-r',
                 {{cell}}
                 </td>
 
-                <th>controls</th>
+                <th>controls</th>   <!-- Experimental cell  -->
+
+                <th style='font-size:9px'><i>LINKS</i></th>   <!-- Experimental cell  -->
             </tr>
 
-            <!-- Data row  -->
+
+            <!--
+                Row for the data, the controls and the links
+             -->
             <tr>
                 <td v-for="key in this.determine_cells()">
                     <!-- Display SPAN or INPUT elements, depending on the editing status -->
@@ -32,7 +37,7 @@ Vue.component('vue-plugin-r',
                     <input v-if="editing_mode" type="text" size="25" v-model="current_data[key]">
                 </td>
 
-                <td>
+                <td>    <!-- "Controls" cell  -->
                     <span v-if="!editing_mode" style="color:gray">
                         <button type="button"
                                   v-clipboard:copy="Object.values(current_data)[0]"
@@ -41,13 +46,40 @@ Vue.component('vue-plugin-r',
                         </button>   <!-- EXAMPLE to copy a named field: current_data['English'] -->
                     </span>
                 </td>
+
+                <!-- Cell for the links  -->
+                <td v-if="!expanded_row" @click="expand_links_cell()" class="clickable-icon" style='background-color:#333' align="center" >    <!-- "See more" cell  -->
+                    <span style='color:#DDD; font-weight:bold; font-size:18px'>&gt;</span>
+                </td>
+                <td v-else>
+                    <span v-if="waiting_for_links">Fetching links from server</span>
+
+                    <template v-if="!waiting_for_links">
+                        <!-- Inbound links  -->
+                        <template v-for="link in in_links">
+                            <span class="link-count">({{link[1]}})</span> &rArr;
+                            <span @click="show_linked_records(link[0], 'in')" class="clickable-icon relationship-in">{{link[0]}}</span> &nbsp;
+                        </template>
+                        <br>
+                        <!-- Outbound links  -->
+                        <template v-for="link in out_links">
+                            <span @click="show_linked_records(link[0], 'out')" class="clickable-icon relationship-out">{{link[0]}}</span>&rArr;
+                            <span class='link-count'>({{link[1]}})</span> &nbsp;
+                        </template>
+                    </template>
+
+                    <img v-on:click='expanded_row=false'  src='/BA/pages/static/graphics/thin_left_arrow_32.png'
+                         class='clickable-icon'
+                         align='right' title='Hide' alt='Hide'>
+                </td>
+
             </tr>
             </table>
 
             <!-- Area below the table, for the relationship editing (if in editing mode) -->
             <div v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:5px">
-                    <div v-for="link in in_links" class="edit-link"><b>IN_LINK</b><br>{{link}}</div>
-                    <div v-for="link in out_links" class="edit-link"><b>OUT_LINK</b><br><br>{{link}}</div>
+                    <div v-for="link in in_links_schema" class="edit-link"><b>IN_LINK</b><br>{{link}}</div>
+                    <div v-for="link in out_links_schema" class="edit-link"><b>OUT_LINK</b><br><br>{{link}}</div>
             </div>
 
             <!-- Area below the table, with SAVE/Cancel controls (if in editing mode) -->
@@ -113,9 +145,18 @@ Vue.component('vue-plugin-r',
                 original_data: this.clone_and_standardize(this.item_data),
                 // NOTE: clone_and_standardize() gets called twice
 
-                in_links: [],       // List of the names of all Inbound links
-                out_links: [],      // List of the names of all Outbound links (except for "INSTANCE_OF")
+                expanded_row: false,
 
+                in_links_schema: [],    // List of the names of all Inbound links as specified by the Schema
+                out_links_schema: [],   // List of the names of all Outbound links as specified by the Schema (except for "INSTANCE_OF")
+
+                in_links: [],           // List of the names/counts of all the actual Inbound links
+                out_links: [],          // List of the names/counts of all the actual Outbound links
+                links_status: '',
+                links_error_indicator: false,
+                waiting_for_links: false,   // Note that we have 2 different "wait for server" flags: this one is specific to getting the links
+
+                // Note that we have 2 different "wait for server" flags
                 waiting_for_server: ((this.item_data.item_id != -1) ? false : this.get_fields_from_server(this.item_data)), // -1 means "new Item"
 
                 waiting_mode: false,
@@ -125,8 +166,22 @@ Vue.component('vue-plugin-r',
         }, // data
 
 
+
         // ------------------------------   METHODS   ------------------------------
         methods: {
+            show_linked_records(rel_name, dir)
+            {
+                alert(`TO BE IMPLEMENTED: show the records linked by the ${dir}-bound relationship '${rel_name}'`);
+            },
+
+
+            expand_links_cell()
+            // Expand the table cell that will show the summary of the inbound/outbound links
+            {
+                this.expanded_row = true;
+                this.get_link_summary_from_server(this.item_data);
+            },
+
 
             determine_headers()
             {
@@ -178,6 +233,55 @@ Vue.component('vue-plugin-r',
                 else
                     return cell_data;
             },
+
+
+
+            /*
+                SERVER CALLS
+             */
+
+            get_link_summary_from_server(item)
+            // Initiate request to server, to get the list of the names/counts of all the actual Inbound and Outbound links
+            {
+                console.log(`Getting the links info for a Content Item of type 'r', with item_id = ${item.item_id}`);
+                let url_server = "/BA/api/get_link_summary/" + item.item_id;
+                console.log(`About to contact the server at ${url_server}`);
+                this.waiting_for_links = true;
+                ServerCommunication.contact_server(url_server,
+                            {payload_type: "JSON", callback_fn: this.finish_get_link_summary_from_server});
+            },
+
+            finish_get_link_summary_from_server(success, server_payload, error_message)
+            /*  Callback function to wrap up the action of get_link_summary_from_server() upon getting a response from the server.
+                The server returns a JSON value.
+              */
+            {
+                console.log("Finalizing the finish_get_link_summary_from_server() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: " , server_payload);
+                    /*  EXAMPLE:
+                            {"in":  [
+                                        ["BA_served_at", 3]
+                                    ],
+                            "out":  [
+                                        ["BA_located_in", 1],
+                                        ["BA_cuisine_type", 1]
+                                    ]
+                            }
+                     */
+                     this.in_links = server_payload.in;
+                     this.out_links = server_payload.out;
+                }
+                else  {             // Server reported FAILURE
+                   this.links_status = `FAILED server lookup of link data`;
+                   this.links_error_indicator = true;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting_for_links = false;
+
+            }, // finish_get_link_summary_from_server
+
 
 
             get_fields_from_server(item)
@@ -236,8 +340,8 @@ Vue.component('vue-plugin-r',
 
                     this.current_data = new_current_data;
 
-                    this.in_links = server_payload["in_links"];
-                    this.out_links = server_payload["out_links"];
+                    this.in_links_schema = server_payload["in_links"];
+                    this.out_links_schema = server_payload["out_links"];
                 }
                 else  {             // Server reported FAILURE
                     //this.status = `FAILED lookup of extra fields`;

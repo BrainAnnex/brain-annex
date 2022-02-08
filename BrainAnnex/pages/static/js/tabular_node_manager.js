@@ -1,7 +1,3 @@
-/* Vue-related code.  This must be included AFTER the Vue-containing element
- */
-
-
 Vue.component('vue-show-nodes-tabular',
     {
         props: ['data_from_flask'],

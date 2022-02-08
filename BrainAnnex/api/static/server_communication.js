@@ -53,13 +53,15 @@ class ServerCommunication
     /*  Send a request to the server at the specified URL
         Using named arguments to make use of contact_server_TEXT() or contact_server_JSON, etc
 
-            method:         Either "GET" or "POST" (ignored if a non-empty string is passed to post_body,
-                                                    or a non-empty object is passed to post_obj)
+            method:         Either "GET" or "POST" - optional, by default "GET"
+                                (however, ignored if a non-empty string is passed to post_body,
+                                                     or a non-empty object is passed to post_obj)
             post_obj:       If a non-empty object is passed, the method is automatically forced to POST
                                 (and it will disregard the contents of post_body)
             post_body:      If a non-empty string is passed, the method is automatically forced to POST;
-                                (disregarded if a non-empty post_obj was passed)
-            payload_type:   Either "TEXT" or "JSON"
+                                (disregarded if a non-empty post_obj was passed,
+                                 i.e. post_obj has higher priority over post_obj)
+            payload_type:   Either "TEXT" or "JSON" - optional, by default "TEXT"
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data     If present, it is passed as a final argument to the callback function
 
@@ -90,9 +92,15 @@ class ServerCommunication
         }
 
         const post_obj_as_string = ServerCommunication.parse_POST_object(post_obj);
-        console.log(`contact_server() converted the post object to the following string: "${post_obj_as_string}"`);
+        //console.log(`contact_server() converted the post object to the following string: "${post_obj_as_string}"`);
         if (post_obj_as_string != "")
-            post_body = post_obj_as_string;     // If post_obj consisted of something, it will over-ride post_body
+            post_body = post_obj_as_string;     // If a post_body was passed, it will be over-ridden,
+                                                // because post_obj has higher priority
+
+        if (post_body == "")
+            console.log('contact_server() - No POST data present');
+        else
+           console.log(`contact_server() - a POST will be used, with the following data: "${post_body}"`);
 
 
         if (payload_type == "TEXT")
