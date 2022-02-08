@@ -188,11 +188,12 @@ class APIRequestHandler:
     @classmethod
     def get_link_summary(cls, item_id: int, omit_names = None) -> dict:
         """
-        TODO: test
-        TODO: move most of it to the ~ FOLLOW LINKS ~ section of NeoAccess
+        Return a dictionary structure identifying the names and counts of all
+        inbound and outbound links to/from the given data node.
+        TODO: move most of it to the "~ FOLLOW LINKS ~" section of NeoAccess
 
         :param item_id:     ID of a data node
-        :param omit_names:
+        :param omit_names:  Optional list of relationship names to disregard
         :return:            A dictionary with the names and counts of inbound and outbound links.
                             Each inner list is a pair [name, count]
                             EXAMPLE:
@@ -207,27 +208,34 @@ class APIRequestHandler:
                                 }
         """
         if omit_names:
-            q_out = '''
-                    MATCH (n :BA {item_id:item_id})-[r]->(n2 :BA)
-                    WHERE type(r) <> "INSTANCE_OF" AND type(r) <> "SCHEMA" AND type(r) <> "BA_IN_CATEGORY"
-                    RETURN type(r) AS rel_name, count(n2) AS rel_count
-                    '''
+            assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
+            where_clause = f"WHERE NOT type(r) IN {omit_names}"
         else:
-            q_out = '''
-                    MATCH (n :BA {item_id:item_id})-[r]->(n2 :BA) 
-                    RETURN type(r) AS rel_name, count(n2) AS rel_count
-                    '''
+            where_clause = ""
+
+        # Get outbound links (names and counts)
+        q_out = f'''
+                MATCH (n :BA {{item_id:$item_id}})-[r]->(n2 :BA)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+        print(q_out)
         result = cls.db.query(q_out,data_binding={"item_id": item_id})
         rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
-        q_in = '''
-                    MATCH (n :BA {item_id:item_id})<-[r]-(n2 :BA)
-                    RETURN type(r) AS rel_name, count(n2) AS rel_count
-                    '''
+
+        # Get inbound links (names and counts)
+        q_in = f'''
+                MATCH (n :BA {{item_id:$item_id}})<-[r]-(n2 :BA)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
         result = cls.db.query(q_in,data_binding={"item_id": item_id})
         rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
         return  {"in": rel_in, "out": rel_out}
+
 
 
 

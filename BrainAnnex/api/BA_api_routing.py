@@ -49,6 +49,31 @@ class ApiRouting:
 
 
 
+
+    ###############################################
+    #               UTILITY methods               #
+    ###############################################
+
+    def str_to_int(self, s: str) -> int:
+        """
+        Helper function to give more friendly error messages in case non-integers are passed
+        in situations where they are expected (for example, for id's).
+        Without this function, the user would see more cryptic messages such as
+        "invalid literal for int() with base 10: 'q123'"
+
+        :param s:
+        :return:
+        """
+        try:
+            i = int(s)
+        except Exception as ex:
+            raise Exception(f"The passed parameter ({s}) is not an integer as expected")
+
+        return i
+
+
+
+
     ###############################################
     #               For DEBUGGING                 #
     ###############################################
@@ -437,8 +462,8 @@ class ApiRouting:
 
 
 
-        @self.BA_api_flask_blueprint.route('/get_link_summary/<item_id>')
-        def get_link_summary_api(item_id) -> str:
+        @self.BA_api_flask_blueprint.route('/get_link_summary/<item_id_str>')
+        def get_link_summary_api(item_id_str) -> str:
             """
             Return a JSON structure identifying the names and counts of all
             inbound and outbound links to/from the given data node.
@@ -447,7 +472,7 @@ class ApiRouting:
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_link_summary/47
 
-            :param item_id:     ID of a data node
+            :param item_id_str: ID of a data node
             :return:            A JSON object with the names and counts of inbound and outbound links
                                 EXAMPLE:
                                     {
@@ -463,9 +488,9 @@ class ApiRouting:
                                         }
                                     }
             """
-            # TODO: generate error if item_id cannot be converted to an int (turn into helper method)
             try:
-                payload = APIRequestHandler.get_link_summary(int(item_id))
+                item_id = self.str_to_int(item_id_str)
+                payload = APIRequestHandler.get_link_summary(item_id, omit_names = ['BA_in_category'])
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
