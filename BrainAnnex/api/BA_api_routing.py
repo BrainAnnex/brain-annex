@@ -73,6 +73,29 @@ class ApiRouting:
 
 
 
+    def extract_post_pars(self, post_data, required_par_list=None) -> dict:
+        """
+        Convert the given POST data (an ImmutableMultiDict) into a dictionary,
+        while enforcing the optional given list of parameters that must be present.
+        In case of errors (or missing required parameters), an Exception is raised.
+
+        TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
+              Example - int_pars = ['item_id']
+
+        :param post_data:           EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at')])
+        :param required_par_list:   A list or tuple.  EXAMPLE: ['item_id', 'rel_name']
+        :return:                    A dict of POST data
+        """
+        data_dict = dict(post_data)
+
+        if required_par_list:
+            for par in required_par_list:
+                assert par in data_dict, f"The expected POST parameter `{par}` is missing"
+
+        return data_dict
+
+
+
 
     ###############################################
     #               For DEBUGGING                 #
@@ -82,8 +105,8 @@ class ApiRouting:
         """
         Debug utility method.  Pretty-printing for POST data
 
-        :param post_data:
-        :param method_name: Name of invoking function
+        :param post_data:   An ImmutableMultiDict, as for example returned by request.form
+        :param method_name: (Optional) Name of invoking function
         :return:            None
         """
         if method_name:
@@ -121,9 +144,9 @@ class ApiRouting:
         :return: None
         """
         
-        ###############################################
+        #---------------------------------------------#
         #              SCHEMA-related (reading)       #
-        ###############################################
+        #---------------------------------------------#
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
         @self.BA_api_flask_blueprint.route('/get_properties/<schema_id>')
@@ -353,9 +376,9 @@ class ApiRouting:
 
 
 
-        ###############################################
+        #---------------------------------------------#
         #            SCHEMA-related (creating)        #
-        ###############################################
+        #---------------------------------------------#
 
         @self.BA_api_flask_blueprint.route('/simple/create_new_record', methods=['POST'])
         def create_new_record():
@@ -386,12 +409,12 @@ class ApiRouting:
 
 
 
-        #######################################################
-        #                CONTENT-ITEM MANAGEMENT              #
-        #######################################################
+        #---------------------------------------------#
+        #            CONTENT-ITEM MANAGEMENT          #
+        #---------------------------------------------#
 
 
-        ##############   VIEWING CONTENT ITEMS   ##############
+        ##########   VIEWING CONTENT ITEMS   ##########
 
         @self.BA_api_flask_blueprint.route('/simple/get_media/<item_id>')
         def get_media(item_id) -> str:
@@ -499,13 +522,40 @@ class ApiRouting:
 
 
 
+        @self.BA_api_flask_blueprint.route('/get_records_by_link', methods=['POST'])
+        def get_records_by_link_api() -> str:
+            """
+            Locate and return the data of the nodes linked to the one specified by item_id,
+            by the relationship named by rel_name, in the direction specified by dir
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/get_records_by_link -d "item_id=123&rel_name=BA_served_at&dir=IN"
+            """
+            # Extract the POST values
+            post_data = request.form
+            # EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
+            self.show_post_data(post_data)
+
+            try:
+                data_dict = self.extract_post_pars(post_data, ['item_id', 'rel_name', 'dir'])
+                data_dict["item_id"] = self.str_to_int(data_dict["item_id"])
+                payload = APIRequestHandler.get_records_by_link(data_dict)
+                response = {"status": "ok", "payload": payload}             # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
+
         ##############   MODIFYING CONTENT ITEMS   ##############
 
         @self.BA_api_flask_blueprint.route('/simple/update', methods=['POST'])
         def update() -> str:
             """
             Update an existing Content Item
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/update
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/simple/update -d "item_id=11&TBA=TODO"
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('item_id', '11'), ('schema_code', 'r')])
@@ -540,13 +590,13 @@ class ApiRouting:
             print(f"delete() is returning: `{return_value}`")
         
             return return_value
-        
-        
-        
-        
-        ################################################
-        #               CATEGORY-RELATED               #
-        ################################################
+
+
+
+
+        #---------------------------------------------#
+        #               CATEGORY-RELATED              #
+        #---------------------------------------------#
         
         @self.BA_api_flask_blueprint.route('/simple/add_item_to_category', methods=['POST'])
         def add_item_to_category() -> str:
@@ -716,13 +766,13 @@ class ApiRouting:
             print(f"reposition() is returning: `{return_value}`")
         
             return return_value
-        
-        
-        
-        
-        ###############################################################
-        #                            FILTERS                          #
-        ###############################################################
+
+
+
+
+        #---------------------------------------------#
+        #                   FILTERS                   #
+        #---------------------------------------------#
         
         @self.BA_api_flask_blueprint.route('/get-filtered-json', methods=['POST'])
         def get_filtered_JSON() -> str:     # *** NOT IN CURRENT USE; see get_filtered() ***
@@ -788,13 +838,13 @@ class ApiRouting:
             print(f"get_filtered() is returning: `{response}`")
         
             return jsonify(response)        # This function also takes care of the Content-Type header
-        
-        
-        
-        
-        ############################################################
-        #               IMPORT-EXPORT  (upload/download)           #
-        ############################################################
+
+
+
+
+        #---------------------------------------------#
+        #       IMPORT-EXPORT  (upload/download)      #
+        #---------------------------------------------#
         
         @self.BA_api_flask_blueprint.route('/import_json_file', methods=['GET', 'POST'])
         def import_json_file() -> str:
@@ -1001,13 +1051,13 @@ class ApiRouting:
             response.headers['Content-Type'] = 'application/save'
             response.headers['Content-Disposition'] = f'attachment; filename=\"{export_filename}\"'
             return response
-        
-        
-        
-        
-        ########################################################################
-        #                           EXPERIMENTAL                               #
-        ########################################################################
+
+
+
+
+        #---------------------------------------------#
+        #                EXPERIMENTAL                 #
+        #---------------------------------------------#
         
         @self.BA_api_flask_blueprint.route('/add_label/<new_label>')
         def add_label(new_label) -> str:

@@ -186,6 +186,28 @@ class APIRequestHandler:
 
 
     @classmethod
+    def get_records_by_link(cls, request_data: dict) -> [dict]:
+        """
+        Locate and return the data of the nodes linked to the one specified by item_id,
+        by the relationship named by rel_name, in the direction specified by dir
+
+        :param request_data: A dictionary with 3 keys, "item_id", "rel_name", "dir"
+        :return:             A list of dictionaries with all the properties of the neighbor nodes
+        """
+        item_id = request_data["item_id"]        # This must be an integer
+        rel_name = request_data["rel_name"]
+        dir = request_data["dir"]                # Must be either "IN or "OUT"
+
+        assert dir in ["IN", "OUT"], f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
+        assert type(item_id) == int, "get_records_by_link(): The value of the parameter `item_id` must be an integer"
+
+        match = cls.db.find(labels="BA", key_name="item_id", key_value=item_id)
+
+        return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, neighbor_labels = "BA")
+
+
+
+    @classmethod
     def get_link_summary(cls, item_id: int, omit_names = None) -> dict:
         """
         Return a dictionary structure identifying the names and counts of all
@@ -219,7 +241,7 @@ class APIRequestHandler:
                 {where_clause}
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
-        print(q_out)
+
         result = cls.db.query(q_out,data_binding={"item_id": item_id})
         rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 

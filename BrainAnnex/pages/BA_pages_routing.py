@@ -57,7 +57,7 @@ class PagesRouting:
 
 
     ###############################################
-    #               For ROUTING                   #
+    #                   ROUTING                   #
     ###############################################
 
     def set_routing(self) -> None:
@@ -202,7 +202,7 @@ class PagesRouting:
         def md_file(category_id) -> str:
             """
             Generate the .MD file version of the Content Items attached to the specified Category
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/md-file/3
+            EXAMPLE invocation: http://localhost:5000/BA/pages/md-file/3
             """
             template = "md_file_generator.htm"
 
@@ -216,7 +216,7 @@ class PagesRouting:
         def static_web(category_id) -> str:
             """
             Generate the static-webpage version of the Content Items attached to the specified Category
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/static-web/3
+            EXAMPLE invocation: http://localhost:5000/BA/pages/static-web/3
             """
 
             template = "viewer_static.htm"
@@ -241,8 +241,10 @@ class PagesRouting:
 
         @self.BA_pages_flask_blueprint.route('/admin')
         def admin() -> str:
-            # A general administrative page (currently for import/exports)
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/admin
+            """
+            Generate a general administrative page (currently for import/exports)
+            EXAMPLE invocation: http://localhost:5000/BA/pages/admin
+            """
 
             url = "admin.htm"
             return render_template(url, current_page=request.path, site_pages=self.site_pages)
@@ -270,7 +272,7 @@ class PagesRouting:
         @self.BA_pages_flask_blueprint.route('/category_manager/<category_id>')
         def category_manager(category_id) -> str:
             """
-
+            Generate a page for administration of the Categories
             EXAMPLE invocation: http://localhost:5000/BA/pages/category_manager
             """
 
