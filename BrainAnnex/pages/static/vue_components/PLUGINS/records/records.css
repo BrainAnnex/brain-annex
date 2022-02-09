@@ -16,6 +16,18 @@ table.r-main th {
     font-size:13px;
 }
 
+table.r-main th.subrecord-in {
+    background-color:cyan;
+    color:black;
+    font-size:10px;
+}
+
+table.r-main th.subrecord-out {
+    background-color:magenta;
+    color:black;
+    font-size:10px;
+}
+
 table.r-main td {
     border:1px solid #DDD;
     padding:5px;
