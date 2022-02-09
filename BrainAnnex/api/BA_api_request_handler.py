@@ -186,6 +186,84 @@ class APIRequestHandler:
 
 
     @classmethod
+    def get_records_by_link(cls, request_data: dict) -> [dict]:
+        """
+        Locate and return the data of the nodes linked to the one specified by item_id,
+        by the relationship named by rel_name, in the direction specified by dir
+
+        :param request_data: A dictionary with 3 keys, "item_id", "rel_name", "dir"
+        :return:             A list of dictionaries with all the properties of the neighbor nodes
+        """
+        item_id = request_data["item_id"]        # This must be an integer
+        rel_name = request_data["rel_name"]
+        dir = request_data["dir"]                # Must be either "IN or "OUT"
+
+        assert dir in ["IN", "OUT"], f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
+        assert type(item_id) == int, "get_records_by_link(): The value of the parameter `item_id` must be an integer"
+
+        match = cls.db.find(labels="BA", key_name="item_id", key_value=item_id)
+
+        return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, neighbor_labels = "BA")
+
+
+
+    @classmethod
+    def get_link_summary(cls, item_id: int, omit_names = None) -> dict:
+        """
+        Return a dictionary structure identifying the names and counts of all
+        inbound and outbound links to/from the given data node.
+        TODO: move most of it to the "~ FOLLOW LINKS ~" section of NeoAccess
+
+        :param item_id:     ID of a data node
+        :param omit_names:  Optional list of relationship names to disregard
+        :return:            A dictionary with the names and counts of inbound and outbound links.
+                            Each inner list is a pair [name, count]
+                            EXAMPLE:
+                                {
+                                    "in": [
+                                        ["BA_served_at", 1]
+                                    ],
+                                    "out": [
+                                        ["BA_located_in", 1],
+                                        ["BA_cuisine_type", 2]
+                                    ]
+                                }
+        """
+        if omit_names:
+            assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
+            where_clause = f"WHERE NOT type(r) IN {omit_names}"
+        else:
+            where_clause = ""
+
+        # Get outbound links (names and counts)
+        q_out = f'''
+                MATCH (n :BA {{item_id:$item_id}})-[r]->(n2 :BA)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
+        result = cls.db.query(q_out,data_binding={"item_id": item_id})
+        rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
+
+
+        # Get inbound links (names and counts)
+        q_in = f'''
+                MATCH (n :BA {{item_id:$item_id}})<-[r]-(n2 :BA)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
+        result = cls.db.query(q_in,data_binding={"item_id": item_id})
+        rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
+
+        return  {"in": rel_in, "out": rel_out}
+
+
+
+
+    ##############   MODIFYING CONTENT ITEMS   ##############
+
+    @classmethod
     def update_content_item(cls, post_data: dict) -> str:
         """
         Update an existing Content Item
@@ -494,6 +572,8 @@ class APIRequestHandler:
 
 
     #######################     PLUGIN-SPECIFIC      #######################
+
+    # TODO: move to a separate module
 
     #####  For "n" plugin
 
@@ -963,7 +1043,7 @@ class APIRequestHandler:
 
 
 
-########################    IMAGES    ###################################################################
+########################    IMAGES  (TODO: move to a separate module)  ############################################################
 
 class ImageProcessing:
     """
@@ -1073,7 +1153,7 @@ class ImageProcessing:
 
 def test():
     """
-    Tester function for regex
+    Tester function for regex.   TODO: move to test folders
 
     :return:
     """

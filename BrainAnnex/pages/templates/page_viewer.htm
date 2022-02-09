@@ -46,14 +46,16 @@
     <!-- Styling for Vue core components -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/category_navbox/category_navbox.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/CORE/controls/controls.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/CORE/content_items/content_items.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
+    
     <!-- Plugin-specific styling -->
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/headers/headers.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/images/images.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/notes/notes.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/codedocs/codedocs.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/plugins/records/records.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/headers/headers.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/images/images.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
 
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -92,6 +94,7 @@
 
 <div v-show='show_left_sidebar' class='sidebar-left'>
 <img v-on:click='show_left_sidebar = false'  src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right'
+     class='clickable-icon'
      title='Click to collapse sidebar' alt='Click to collapse sidebar'>
 
 <!-- Page navigation section (using Vue) -->
@@ -114,6 +117,7 @@
 <!-- COLLAPSED version of sidebar-left -->
 <div v-show='!show_left_sidebar' class='sidebar-left-collapsed'>
     <img v-on:click='show_left_sidebar = true' src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left'
+         class='clickable-icon'
          title='Click to expand sidebar' alt='Click to expand sidebar'>
 </div> 	 <!-- END of Collapsed version of sidebar-left -->
 
@@ -377,18 +381,18 @@
 <!--
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
-<script src="/BA/pages/static/plugins/CORE/controls/controls.js"></script>
-<script src="/BA/pages/static/plugins/CORE/content_items/content_items.js"></script>
-
-<!-- TODO: reorganize the folders, to have the plugins in the "vue_components" folder -->
 <script src="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.js"></script>
 <script src="/BA/pages/static/vue_components/category_navbox/category_navbox.js"></script>
 
-<script src="/BA/pages/static/plugins/headers/headers.js"></script>
-<script src="/BA/pages/static/plugins/images/images.js"></script>
-<script src="/BA/pages/static/plugins/notes/notes.js"></script>
-<script src="/BA/pages/static/plugins/codedocs/codedocs.js"></script>
-<script src="/BA/pages/static/plugins/records/records.js"></script>
+<script src="/BA/pages/static/vue_components/content_items/content_items.js"></script>
+<script src="/BA/pages/static/vue_components/controls/controls.js"></script>
+
+<script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
 
 <script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
 

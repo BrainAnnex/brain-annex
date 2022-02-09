@@ -57,7 +57,7 @@ class PagesRouting:
 
 
     ###############################################
-    #               For ROUTING                   #
+    #                   ROUTING                   #
     ###############################################
 
     def set_routing(self) -> None:
@@ -84,23 +84,8 @@ class PagesRouting:
 
 
 
-
         @self.BA_pages_flask_blueprint.route('/nodes_viewer')
-        def nodes_viewer() -> str:
-            # Node Explorer: display a (hardwired-for-now) list of nodes
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/nodes_viewer
-
-            url = "nodes_viewer.htm"
-
-            ne_obj = NodeExplorer()
-            node_list = ne_obj.serialize_nodes(None)
-            node_list_json = json.dumps(node_list)
-
-            return render_template(url, current_page="nodes_viewer", site_pages=self.site_pages,
-                                   node_list=node_list, node_list_json=node_list_json)
-
-        @self.BA_pages_flask_blueprint.route('/nodes_viewer')
-        def nodesviewer_duplicate() -> str:
+        def nodesviewer() -> str:
             # Node Explorer: display a (hardwired-for-now) list of nodes
             # EXAMPLE invocation: http://localhost:5000/BA/pages/nodes_viewer
 
@@ -140,7 +125,7 @@ class PagesRouting:
             ne_obj = NodeExplorer()
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = ne_obj.all_nodes_by_label(label)
 
-            return render_template(url, current_page="node", site_pages=self.site_pages,   # Maybe it should be current_page="/BA/pages/node"
+            return render_template(url, current_page="node", site_pages=self.site_pages,   # Maybe it should be current_page=request.path
                                    label_list = label_list,
                                    header_list = header_list, record_list = record_list,
                                    inbound_headers = inbound_headers,
@@ -217,7 +202,7 @@ class PagesRouting:
         def md_file(category_id) -> str:
             """
             Generate the .MD file version of the Content Items attached to the specified Category
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/md-file/3
+            EXAMPLE invocation: http://localhost:5000/BA/pages/md-file/3
             """
             template = "md_file_generator.htm"
 
@@ -231,7 +216,7 @@ class PagesRouting:
         def static_web(category_id) -> str:
             """
             Generate the static-webpage version of the Content Items attached to the specified Category
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/static-web/3
+            EXAMPLE invocation: http://localhost:5000/BA/pages/static-web/3
             """
 
             template = "viewer_static.htm"
@@ -256,8 +241,10 @@ class PagesRouting:
 
         @self.BA_pages_flask_blueprint.route('/admin')
         def admin() -> str:
-            # A general administrative page (currently for import/exports)
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/admin
+            """
+            Generate a general administrative page (currently for import/exports)
+            EXAMPLE invocation: http://localhost:5000/BA/pages/admin
+            """
 
             url = "admin.htm"
             return render_template(url, current_page=request.path, site_pages=self.site_pages)
@@ -285,7 +272,7 @@ class PagesRouting:
         @self.BA_pages_flask_blueprint.route('/category_manager/<category_id>')
         def category_manager(category_id) -> str:
             """
-
+            Generate a page for administration of the Categories
             EXAMPLE invocation: http://localhost:5000/BA/pages/category_manager
             """
 
