@@ -1,3 +1,9 @@
+/* Side boxes.  Container for Category selector shown off to the right
+    of the "outerbox" -- which is used as its parent,
+    and as a coordinate frame of reference
+ */
+
+
 div.sidebox {					/* RIGHT Sidebox with the Categories, in its expanded state */
 	float:right;
 	width:15%;

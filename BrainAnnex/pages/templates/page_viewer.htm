@@ -45,6 +45,7 @@
 
     <!-- Styling for Vue core components -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/toc_sidebar/toc_sidebar.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/category_navbox/category_navbox.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
@@ -88,39 +89,17 @@
 
     <!-- ****************************************************************
 
-         sidebar-left : used for Table of Contents (TODO: turn into Vue component)
+                    LEFT side-bar (used for Table of Contents)
 
          **************************************************************** -->
 
-<div v-show='show_left_sidebar' class='sidebar-left'>
-<img v-on:click='show_left_sidebar = false'  src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right'
-     class='clickable-icon'
-     title='Click to collapse sidebar' alt='Click to collapse sidebar'>
+<vue-toc-sidebar
+    v-bind:content_array="content_array"
+    v-bind:show_left_sidebar="show_left_sidebar"
 
-<!-- Page navigation section (using Vue) -->
-<a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
-    <span style='color:#AAA; margin-left:10px; font-size:10px;'>PAGE CONTENTS</span>
-<br>
-
-<div class="page-toc">
-    <template v-for="item in content_array">
-        <p v-if="item.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.item_id">[[item.text]]</a><br></p>
-        <p v-if="item.schema_code == 'cd'">&nbsp; &diams; <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.name">[[item.name]]</a><br></p>
-    </template>
-</div>      <!-- END of page-toc -->
-
-<br><a href='#BOTTOM' style='font-size:14px; font-weight:bold'>BOTTOM</a>
-
-</div>		<!-- END OF sidebar-left-->
-
-
-<!-- COLLAPSED version of sidebar-left -->
-<div v-show='!show_left_sidebar' class='sidebar-left-collapsed'>
-    <img v-on:click='show_left_sidebar = true' src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left'
-         class='clickable-icon'
-         title='Click to expand sidebar' alt='Click to expand sidebar'>
-</div> 	 <!-- END of Collapsed version of sidebar-left -->
-
+    v-on:adjust-left-sidebar="adjust_left_sidebar($event)"
+>
+</vue-toc-sidebar>
 
 
     <!-- ****************************************************************
@@ -382,6 +361,7 @@
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
 <script src="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.js"></script>
+<script src="/BA/pages/static/vue_components/toc_sidebar/toc_sidebar.js"></script>
 <script src="/BA/pages/static/vue_components/category_navbox/category_navbox.js"></script>
 
 <script src="/BA/pages/static/vue_components/content_items/content_items.js"></script>
@@ -414,6 +394,7 @@ new Vue({
         expose_controls: false,  // If true, the editing controls of the various Content Items are revealed
 
         category_id: {{category_id}},   // Integer
+
         show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
 
         records_types: {{records_classes | tojson}},    // Array of all the names of leaf Classes associated to records
@@ -477,6 +458,14 @@ new Vue({
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+
+        adjust_left_sidebar(state)
+        // Adjust the collapse/expansion of the left sidebar, based on the requested state: true = expanded; false = collapsed
+        {
+            //console.log(`Root element received signal to adjust the left sidebar, with state ${state}`);
+            this.show_left_sidebar = state;
+        },
+
 
         get_schema_data(item)
         // If the given Content Item is a record, return a list of its field names (Properties), in order

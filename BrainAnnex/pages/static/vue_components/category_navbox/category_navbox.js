@@ -7,8 +7,6 @@ Vue.component('vue-category-navbox',
             all_categories:
          */
 
-        my_optional_component_metadata: 123,   <!-- Available thru this.$options.metadata -->
-
         template: `
             <div>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
 
