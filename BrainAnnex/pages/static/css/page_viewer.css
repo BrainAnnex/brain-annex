@@ -45,9 +45,9 @@ img.fixed-2nd-from-bottom {
  */
 
 div.scroll-canvas {
-    margin-top:20px;	        /* Leave space at the top for the fixed status bar, plus a small extra (+1) */
+    margin-top:20px;    /* Leave space at the top for the fixed status bar, plus a small extra (+1) */
 	margin-left:15%;
-	width:85%;
+	width:84.9%;        /* 85% causes a wasteful horiz scrollbar if there's a vertical one */
 }
 
 /* A wider version of the "scroll-canvas",
