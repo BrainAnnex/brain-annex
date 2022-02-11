@@ -1,0 +1,42 @@
+/*
+    Horizontal status bar
+ */
+
+
+div.horiz-status-bar  {	    /* Display the horizontal bar as a fixed element at the top */
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:2;			/* Keep in front of other elements */
+
+    box-sizing: border-box; /* The assigned height will now incorporate padding and border */
+	height:19px;		    /* It must agree with the margin-top for the element below (to keep it out of the way
+	                           of this fixed element */
+	line-height: 14px;	    /* It must be same as height, above, minus any vertical padding/border;
+	                           it's used to vertically center text */
+    padding-left:10px;
+	padding-top:2px;
+	padding-bottom:3px;
+
+    border: 0;
+	margin:0;
+
+	background-color:black;
+	color:#CCCCCC;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size:10px;
+}
+
+
+div.horiz-status-bar  span.site-name  {
+    font-weight:bold;
+    color:#9999FF;
+    margin-left:20px;
+}
+
+div.horiz-status-bar  span.header-title  {
+    font-weight:bold;
+    color:#65DC65;
+    margin-left:150px;
+}

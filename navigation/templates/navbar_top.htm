@@ -1,4 +1,4 @@
-{#  Flask-passed parameters:  site_pages, current_page, header_title
+{#  Flask-passed parameters:  site_pages, current_page
 
     Top Navigation bar
 
@@ -6,19 +6,12 @@
 
     HOW TO USE: site pages that want to include this Top Navbar need to have the line
                 {% include "navbar_top.htm" %}
-                and also have the Flask-passed parameters:  site_pages, current_page, header_title
+                and also have the Flask-passed parameters:  site_pages, current_page
  #}
 
 
 <!-- Top Navigation bar -->
 <div class='navmenu dark-background'>
-
-<!-- Unchanging header line (above the selection row) -->
-<div class='navmenu-header'>
-    <span style='font-weight:bold; color:#9999FF; margin-left:20px'>Brain Annex</span>
-    <span style='color:#55CC55; font-weight:bold; margin-left:150px'>{{header_title}}</span>
-    <a href='#' style='margin-left:130px'>^TOP</a>
-</div>
 
 
 <!-- The Selection row -->

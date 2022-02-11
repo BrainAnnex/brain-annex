@@ -1,10 +1,11 @@
 Vue.component('vue-category-navbox',
     {
-        props: ['category_name', 'parent_categories', 'subcategories', 'all_categories'],
+        props: ['category_name', 'parent_categories', 'subcategories', 'all_categories', 'show_right_sidebox'],
         /*  category_name:
             parent_categories:
             subcategories:
             all_categories:
+            show_right_sidebox:
          */
 
         template: `
@@ -14,9 +15,9 @@ Vue.component('vue-category-navbox',
                 <!--
                     EXPANDED (normal) version of sidebox
                   -->
-                <div v-show='show_sidebox'  class='sidebox'>
-                    <img v-on:click='show_sidebox = false'  src='/BA/pages/static/graphics/thin_left_arrow_32.png'
-                         class='clickable-icon'
+                <div v-show='show_right_sidebox'  class='sidebox'>
+                    <img @click='set_sidebox_state(false)'  src='/BA/pages/static/graphics/thin_left_arrow_32.png'
+                         class='clickable-icon  fixed-collapse-icon'
                          align='right' title='Click to collapse sidebox' alt='Click to collapse sidebox'>
 
                     <span class="sidebox-section">PINNED</span>
@@ -97,9 +98,9 @@ Vue.component('vue-category-navbox',
                 <!--
                     COLLAPSED version of sidebox
                   -->
-                <div v-show='!show_sidebox' class='sidebox_collapsed' style='display:none'>
-                    <img v-on:click='show_sidebox = true'  src='/BA/pages/static/graphics/thin_right_arrow_32.png'
-                         class='clickable-icon'
+                <div v-show='!show_right_sidebox' class='sidebox_collapsed' style='display:none'>
+                    <img @click='set_sidebox_state(true)'  src='/BA/pages/static/graphics/thin_right_arrow_32.png'
+                         class='clickable-icon  fixed-expand-icon'
                          align='left' title='Click to expand sidebox' alt='Click to expand sidebox'>
                 </div>  <!-- END of collapsed version of sidebox -->
 
@@ -111,8 +112,6 @@ Vue.component('vue-category-navbox',
 
         data: function() {
             return {
-                show_sidebox: true,  // Indicating whether to show or collapse the right sidebox (with the Category navigation)
-
                 alphabet: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
                            'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
 
@@ -126,6 +125,12 @@ Vue.component('vue-category-navbox',
 
         // ----------------  METHODS  -----------------
         methods: {
+            set_sidebox_state(state)
+            {
+                console.log("Component 'vue-category-navbox' sending `adjust-right-sidebox` signal to its parent, with parameter: ", state);
+                this.$emit('adjust-right-sidebox', state);
+            },
+
             set_filter(l) {
                 //alert(`Filtering for category names starting with ${l} : sorry, not yet implemented!`);
                 this.categories_to_show = this.all_categories.filter( cat => cat.name[0] == l);
