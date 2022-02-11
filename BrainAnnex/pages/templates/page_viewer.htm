@@ -93,7 +93,6 @@
 
 
 
-
 <!-- ****************************************************************
 
                 LEFT side-bar (used for Table of Contents)
@@ -184,17 +183,6 @@
 </p>
 
 
-
-<!-- Icons to expose/hide the editing controls -->
-<img v-if="!expose_controls" @click="expose_controls = true"
-     class="clickable-icon  fixed-2nd-from-bottom"
-     alt="SHOW the Editing Controls (un-lock the page)" title="SHOW the Editing Controls (un-lock the page)"
-     src="/BA/pages/static/graphics/screwdriver_unlock.png" width="40" height="40">
-
-<img v-if="expose_controls" @click="expose_controls = false"
-     class="clickable-icon  fixed-2nd-from-bottom"
-     alt="HIDE the Editing Controls (lock the page)" title="HIDE the Editing Controls (lock the page)"
-     src="/BA/pages/static/graphics/lock_6611478_64.png" width="40" height="40">
 
 
 
@@ -344,7 +332,20 @@
 
 
 
-<!-- Icon to scroll to top of page -->
+
+<!-- Icons (in fixed positions) to expose/hide the editing controls -->
+<img v-if="!expose_controls" @click="expose_controls = true"
+     class="clickable-icon  fixed-2nd-from-bottom"
+     alt="SHOW the Editing Controls (un-lock the page)" title="SHOW the Editing Controls (un-lock the page)"
+     src="/BA/pages/static/graphics/screwdriver_unlock.png" width="40" height="40">
+
+<img v-if="expose_controls" @click="expose_controls = false"
+     class="clickable-icon  fixed-2nd-from-bottom"
+     alt="HIDE the Editing Controls (lock the page)" title="HIDE the Editing Controls (lock the page)"
+     src="/BA/pages/static/graphics/lock_6611478_64.png" width="40" height="40">
+
+
+<!-- Icon (in fixed position) to scroll to top of page -->
 <a id="to_top" href="javascript:;" onclick="window.scrollTo(0, 0)">
     <img src="/BA/pages/static/graphics/to_top_80.png" width="40" height="40"
          alt="Scroll to TOP of page" title="Scroll to TOP of page">

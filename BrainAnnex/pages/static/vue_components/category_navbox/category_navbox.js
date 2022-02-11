@@ -17,7 +17,7 @@ Vue.component('vue-category-navbox',
                   -->
                 <div v-show='show_right_sidebox'  class='sidebox'>
                     <img @click='set_sidebox_state(false)'  src='/BA/pages/static/graphics/thin_left_arrow_32.png'
-                         class='clickable-icon'
+                         class='clickable-icon  fixed-collapse-icon'
                          align='right' title='Click to collapse sidebox' alt='Click to collapse sidebox'>
 
                     <span class="sidebox-section">PINNED</span>
@@ -100,7 +100,7 @@ Vue.component('vue-category-navbox',
                   -->
                 <div v-show='!show_right_sidebox' class='sidebox_collapsed' style='display:none'>
                     <img @click='set_sidebox_state(true)'  src='/BA/pages/static/graphics/thin_right_arrow_32.png'
-                         class='clickable-icon'
+                         class='clickable-icon  fixed-expand-icon'
                          align='left' title='Click to expand sidebox' alt='Click to expand sidebox'>
                 </div>  <!-- END of collapsed version of sidebox -->
 

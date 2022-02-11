@@ -14,7 +14,7 @@ body {		/* General website styling */
 
 
 
-/* Place in fixed position as the 2nd from the bottom right of screen */
+/* Place in fixed position as the 2nd icon from the bottom/right of screen */
 img.fixed-2nd-from-bottom {
     position:fixed;
     bottom: 4.5rem;
@@ -22,7 +22,7 @@ img.fixed-2nd-from-bottom {
 }
 
 
-/* Place in fixed position at bottom right of screen */
+/* Place in fixed position at bottom/right of screen */
 #to_top {
     position:fixed;
     bottom:.5rem;
@@ -74,7 +74,7 @@ div.scroll-canvas--collapsed-left {
 
 div.lightbox {					/* Alt name: light-canvas */
 	margin-left:0;
-	width: 85%;                /* 85% if a right-sidebox is used, or 100% otherwise  */
+	width: 85%;                /* 85% if a right-sidebox is used, or 100% (or close to) otherwise  */
 	box-sizing: border-box;
 
 	background-color:#EEEEEE; 	/* very light gray */
@@ -87,7 +87,7 @@ div.lightbox {					/* Alt name: light-canvas */
 
 div.lightbox--expand-right {
 	margin-left:0;
-
+    width: 98%  !important;
 	box-sizing: border-box;
 
 	border-bottom:3px;
@@ -96,7 +96,6 @@ div.lightbox--expand-right {
 
 	border:1px #0084AD solid;
 	padding-left:5px;
-	width: 97%  !important;
 }
 
 

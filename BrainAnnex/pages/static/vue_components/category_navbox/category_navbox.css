@@ -16,16 +16,18 @@ div.sidebox {					/* RIGHT Sidebox with the Categories, in its expanded state */
 }
 
 div.sidebox_collapsed {			/* Sidebox in its collapsed state */
-	float:right;
-	width:3%;
+	position:fixed;
+	top:80px;
+	right:0;
+
+	width:17px;
 	box-sizing: border-box;
 
+    height:110px;
+    border:1px #0084AD solid;
 	background-color:#EEEEFF;
-	border:1px #0084AD solid;
-	padding-left:0px;
-	padding-right:0px;
-	padding-top:5px;
 }
+
 
 div.sidebox  span.sidebox-section {
     color:#EEE;
@@ -63,4 +65,20 @@ div.sidebox  a:hover {
 div.sidebox  a:active {
 	color:red;
 	text-decoration:none;
+}
+
+
+/* Place in fixed position near the top/right of screen
+ */
+img.fixed-collapse-icon {
+    position:fixed;
+    top: 3.0rem;
+    right:.15rem;
+}
+
+
+img.fixed-expand-icon {
+    position:fixed;
+    top: 7.5rem;
+    right:.15rem;
 }
