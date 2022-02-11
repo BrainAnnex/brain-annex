@@ -1,7 +1,7 @@
 /* LEFT SIDEBAR (used to host the TOC)
  */
 div.sidebar-left {              /* LEFT sidebar, in its expanded state */
-	box-sizing: border-box;
+	box-sizing: border-box;     /* The assigned width will now incorporate padding and border */
 	position:fixed;
 	top:20px;
 	left:0;

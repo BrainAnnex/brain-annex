@@ -1,14 +1,11 @@
 /*
  *  NAVIGATION MENU STYLES TOP-OF-PAGE NAVBAR (navigation menu)
- *
  */
 
 
 
-
-
 div.navmenu  {					/* The navmenu outer div */
-    margin-top:20px;	        /* Leave space at the top for nav bar */
+    margin-top:0;
     width:100%;
 	border: 1px solid #0084AD;	/* Mid-tone blue */
 	margin-bottom:0px;
