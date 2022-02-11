@@ -1,0 +1,19 @@
+div.navmenu-header  {	/* The unchanging first (header) line in the navmenu */
+    border:1px solid white;	/* Slightly change the border, to mark switch to fixed element */
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:2;			/* Keep in front of other elements */
+
+	height:14px;		/* It must agree with the margin-top value in the @media line for fixed elements (after adjusting for padding) */
+	line-height: 14px;	/* It must be same as height, above.  It's used to vertically center text */
+	background:black;
+	padding-top:2px;
+	padding-left:10px;
+	padding-bottom:3px;
+	margin-bottom:0;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	color:#CCCCCC;
+	font-size:10px;
+}
