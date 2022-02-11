@@ -81,7 +81,8 @@
 
 
 <!--   The "scroll-canvas" is the main part of the page,
-       incl. the navbar at the top; note that a descendant element, the left sidebar, is fixed in position -->
+       incl. the navbar at the top and the sidebox on the right;
+       by contrast, the left sidebar, is fixed in position -->
 <div v-bind:class="{ 'scroll-canvas': show_left_sidebar, 'scroll-canvas--collapsed-left': !show_left_sidebar }">
 
 
@@ -108,17 +109,21 @@
 </vue-toc-sidebar>
 
 
-    <!-- ****************************************************************
 
-                   RIGHT side-box (with Category navigation)
+<!-- ****************************************************************
 
-     **************************************************************** -->
+               RIGHT side-box (with Category navigation)
+
+ **************************************************************** -->
 
 <vue-category-navbox
     v-bind:category_name="category_name"
     v-bind:parent_categories="parent_categories"
     v-bind:subcategories="all_subcategories"
     v-bind:all_categories="all_categories"
+    v-bind:show_right_sidebox="show_right_sidebox"
+
+    v-on:adjust-right-sidebox="adjust_right_sidebox($event)"
 >
 </vue-category-navbox>
 
@@ -126,8 +131,8 @@
 
 
 
+<div v-bind:class="{ 'lightbox': show_right_sidebox, 'lightbox--expand-right': !show_right_sidebox }">
 
-<div class='lightbox'>
 
 <!-- ****************************************************************
 
@@ -402,6 +407,7 @@ new Vue({
         category_id: {{category_id}},   // Integer
 
         show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
+        show_right_sidebox: true,       // Indicating whether to show or collapse the right sidebox (with the Category navigation)
 
         records_types: {{records_classes | tojson}},    // Array of all the names of leaf Classes associated to records
 
@@ -471,6 +477,15 @@ new Vue({
             //console.log(`Root element received signal to adjust the left sidebar, with state ${state}`);
             this.show_left_sidebar = state;
         },
+
+
+        adjust_right_sidebox(state)
+        // Adjust the collapse/expansion of the right sidebox, based on the requested state: true = expanded; false = collapsed
+        {
+            console.log(`Root element received signal to adjust the right sidebox, with state ${state}`);
+            this.show_right_sidebox = state;
+        },
+
 
 
         get_schema_data(item)

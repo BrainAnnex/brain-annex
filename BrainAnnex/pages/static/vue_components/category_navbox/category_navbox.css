@@ -15,7 +15,7 @@ div.sidebox {					/* RIGHT Sidebox with the Categories, in its expanded state */
 	padding-top:5px;
 }
 
-div.sidebox_collapsed {			/* Sidebox with the Categories, in its collapsed state */
+div.sidebox_collapsed {			/* Sidebox in its collapsed state */
 	float:right;
 	width:3%;
 	box-sizing: border-box;

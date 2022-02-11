@@ -85,7 +85,7 @@ div.lightbox {					/* Alt name: light-canvas */
 }
 
 
-div.lightbox-expand-right {
+div.lightbox--expand-right {
 	margin-left:0;
 
 	box-sizing: border-box;
