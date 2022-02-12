@@ -1,4 +1,6 @@
-/*  MIT License.  Copyright (c) 2021 Julian A. West
+/*  Vue component to display and edit Content Items of any type.  Based on the specific type,
+    it dispatches to components specialized for that type.
+    MIT License.  Copyright (c) 2021-22 Julian A. West
  */
 
 Vue.component('vue-content-items',
@@ -6,23 +8,29 @@ Vue.component('vue-content-items',
         props: ['item', 'expose_controls', 'category_id', 'index', 'item_count', 'records_types', 'schema_data'],
         /*  item:       EXAMPLE: {item_id:52, pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Headers"}
                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
-            expose_controls:
-            category_id:
-            index:          The zero-based position of the Record on the page
+            expose_controls: Flag indicating whether in edit mode
+            category_id:    Indicating which Category-viewer page is using this component
+            index:          The zero-based position of this Content Items on the page
             item_count:     The total number of Content Items (of all types) on the page
             records_types:  A list of all the Classes that can be used for new Records
             schema_data:    Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
                                 EXAMPLE: ["French", "English", "notes"]
+
+            NOTE: some of the data is just passed thru by the child components, on its way to the grand-child 'vue-controls'
+                  (TODO: bundle that data into an object)
          */
 
         template: `
-            <div v-bind:class="{'highlight': highlight }">	<!-- Outer container box, serving as Vue-required template root  -->
+            <div v-bind:class="{'highlight': highlight }">	<!-- Outer container, serving as Vue-required template root  -->
 
             <a v-bind:name="item.schema_code + '_' + item.item_id"></a>  <!-- Anchor for page scrolling -->
 
-            <!-- All signals from descendant components get relayed (v-on="$listeners")
+            <!--
+                The line with `v-bind:is` dispatches to the appropriate specialized component.
+
+                 All signals from descendant components get relayed (with v-on="$listeners")
                  to the parent of this component,
-                 and some also get listened to here:
+                 and some also get listened to here - namely:
                     v-on:delete-content-item
                     v-on:add-content            (from the 'vue-controls' component)
             -->
@@ -64,7 +72,7 @@ Vue.component('vue-content-items',
                 </button>
             </p>
 
-            </div>		<!-- End of outer container box -->
+            </div>		<!-- End of outer container -->
             `,
 
 
@@ -100,6 +108,7 @@ Vue.component('vue-content-items',
                 this.insert_box = true;
             },
 
+
             add_new_item_below(schema_code, class_name)
             /*  Add a new Content Item of the specified type, placed at the bottom of the page (past the last Item);
                 class_name is an OPTIONAL argument, only used for Content Item of type 'r'.
@@ -117,12 +126,14 @@ Vue.component('vue-content-items',
                 this.insert_box = false;    // Hide the box that was used for the selection of the type of new Content
             },
 
+
             confirm_delete()
             {
                 console.log("Confirming delete");
                 console.log("`vue-content-items` component is sending 'delete-content-item-highlighted' signal to its parent");
                 this.$emit('delete-content-item-highlighted');
             },
+
 
             cancel_delete()
             {
