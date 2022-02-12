@@ -78,7 +78,7 @@ Vue.component('vue-content-items',
 
         data: function() {
             return {
-                highlight: false,       //
+                highlight: false,       // Whether to highlight this Content Item (e.g. prior to deleting it)
                 show_button: false,
                 insert_box: false
             }

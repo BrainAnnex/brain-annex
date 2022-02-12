@@ -222,8 +222,6 @@
             v-on:insert-new-item
      -->
 
-
-
 <div v-for="(item, index) in content_array" class="content-item">
 
     <vue-content-items
@@ -247,9 +245,11 @@
         v-on:insert-new-item="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
+
 </div>
 
 
+    
 <a name="BOTTOM"></a>   <!-- Anchor for page scrolling to the bottom of the page-->
 
 
@@ -404,7 +404,22 @@ new Vue({
                                         //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                         //          ]
 
-        expose_controls: false,  // If true, the editing controls of the various Content Items are revealed
+        element_grouping: [],       // EXPERIMENTAL!
+                                    // Array of at most the size as content_array, indexes referring to positions in it
+                                    // EXAMPLE: [{index:0, group_size: 1, merge: false},
+                                    //           {index:1, group_size: 3, merge: true, fields: ["A", "B"]},
+                                    //           {index:4, group_size: 1, merge: true, fields: ["C"]},
+                                    //           {index:5, group_size: 8, merge: true, fields: ["X", "Y", "Z"]}
+                                    //          ]
+
+        element_grouping_v2: [],     // EXPERIMENTAL!
+                                    // Array of same size as content_array, with elements in the same order (TODO: maybe merge?)
+                                    // EXAMPLE: [{group: "ONLY"}, {group: "FIRST", fields: ["A", "B"]},
+                                    //                            {group: "MIDDLE", fields: ["A", "B"]},
+                                    //                            {group: "LAST", fields: ["A", "B"]}
+                                    //          ]
+
+        expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
         category_id: {{category_id}},   // Integer
 
