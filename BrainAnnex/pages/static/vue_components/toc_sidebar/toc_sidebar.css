@@ -1,0 +1,103 @@
+/* LEFT SIDEBAR (used to host the TOC)
+ */
+
+div.sidebar-left {              /* LEFT sidebar, in its expanded state */
+	box-sizing: border-box;     /* The assigned width will now incorporate padding and border */
+	position:fixed;
+	top:20px;
+	left:0;
+	width:15%;
+	background:#f5f2f0;             /* Best if it matches that of page body */
+	border-right:1px solid #d5d2d0;
+
+	overflow:auto;
+	max-height:100%;
+
+	font-family: Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+	font-size: 11px;
+	line-height: 20px;
+	color: #333;
+	padding-left:3px;
+}
+
+/*  TODO: factor out common parts in "sidebar-left" and "sidebar-left-collapsed" */
+
+div.sidebar-left-collapsed {    /* LEFT sidebar, in its collapsed state */
+	position:fixed;
+	top:20px;
+	left:0;
+	width:3%;
+	background:#f5f2f0;
+	border-right:1px solid #d5d2d0;
+	padding-left:0px;
+	padding-right:0px;
+	padding-top:5px;
+}
+
+
+/*
+ *  Table of Contents (TOC) for the page (hosted inside sidebar-left)
+ */
+
+div.page-toc  p  {     /* For paragraphs inside DIV's of class "page-toc" (Table of Contents) */
+    font-family: Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-size:11px;
+    line-height: 20px;
+    padding: 0;
+    margin: 0;
+}
+
+div.page-toc  p.header  {
+    font-size:14px;
+    font-weight:bold;
+}
+
+
+
+/*
+    Hyperlink styles for the "page-toc" DIV
+ */
+
+div.page-toc  a:link  {
+	color:#222;					/* Dark gray */
+	text-decoration:none;
+}
+
+div.page-toc  a:visited  {
+	color:#222;
+	text-decoration:none;
+}
+
+div.page-toc  a:hover {
+	color:red;
+	text-decoration:none;
+}
+
+div.page-toc  a:active {
+	color:red;
+	text-decoration:none;
+}
+
+
+
+/* Hyperlink styles for the sidebar-left */
+
+div.sidebar-left  a:link  {
+	color:#222;					/* Dark gray */
+	text-decoration:none;
+}
+
+div.sidebar-left  a:visited  {
+	color:#222;
+	text-decoration:none;
+}
+
+div.sidebar-left  a:hover {
+	color:red;
+	text-decoration:none;
+}
+
+div.sidebar-left  a:active {
+	color:red;
+	text-decoration:none;
+}

@@ -1,47 +1,66 @@
+/*  Vue component to display and edit the "sub-records" (linked records) of a given record.
+    This is a simplified, and specialized, version of its parent component, 'vue-plugin-r'
+ */
+
 Vue.component('vue-plugin-r-linked',
     {
         props: ['item_data', 'rel_name', 'rel_dir'],
-        /*  item_data:  EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r"
+        /*  item_data:  The "parent" record, from which we're following its links.
+                        EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r"
                                   "German":"Tier", "English":"animal"}
-            rel_name:   EXAMPLE: "BA_served_at"
-            rel_dir:    Either "IN" or "OUT"
+            rel_name:   Name of the relationship that the user followed to get here.
+                        EXAMPLE: "sold_by"
+            rel_dir:    Direction or the relationship, from the point of view of its "source".
+                        Either "IN" or "OUT"
          */
 
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
-            <table class='r-main'>
-            <!-- Header row  -->
-            <tr>
-                <th style='background-color: white'>
-                <img v-if="rel_dir=='IN'" src='/BA/pages/static/graphics/thick_up_arrow_16_216098.png'>
-                <img v-else src='/BA/pages/static/graphics/down_thick_arrow_16_216439.png'>
-                </th>
+            <table v-if='display_record' class='r-main'>
+                <!--
+                    Header row
+                  -->
+                <tr>
+                    <th style='background-color: white'>
+                    <img v-if="rel_dir=='IN'" src='/BA/pages/static/graphics/thick_up_arrow_16_216098.png'>
+                    <img v-else src='/BA/pages/static/graphics/down_thick_arrow_16_216439.png'>
+                    </th>
 
-                <th v-for="cell in this.determine_headers()">
-                {{cell}}
-                </th>
-            </tr>
+                    <th v-for="cell in this.determine_headers()">
+                    {{cell}}
+                    </th>
+
+                    <th>
+                    &nbsp;
+                    </th>
+                </tr>
 
 
-            <!--
-                Row for the data, starting with the relationship name
-             -->
-            <tr>
-                <th v-if="rel_dir=='IN'" class='subrecord-in'>
-                {{rel_name}}
-                </th>
-                <th v-if="rel_dir=='OUT'" class='subrecord-out'>
-                {{rel_name}}
-                </th>
+                <!--
+                    Row for the data, starting with the relationship name
+                 -->
+                <tr>
+                    <th v-if="rel_dir=='IN'" class='subrecord-in'>
+                    {{rel_name}}
+                    </th>
+                    <th v-if="rel_dir=='OUT'" class='subrecord-out'>
+                    {{rel_name}}
+                    </th>
 
-                <td v-for="key in this.determine_cells()">
-                    <!-- Display SPAN or INPUT elements, depending on the editing status -->
-                    <span v-if="!editing_mode" v-html="render_cell(current_data[key])"></span>
-                    <input v-if="editing_mode" type="text" size="25" v-model="current_data[key]">
-                </td>
+                    <td v-for="key in this.determine_cells()">
+                        <!-- Display SPAN or INPUT elements, depending on the editing status -->
+                        <span v-if="!editing_mode" v-html="render_cell(current_data[key])"></span>
+                        <input v-if="editing_mode" type="text" size="25" v-model="current_data[key]">
+                    </td>
 
-            </tr>
+                    <td>
+                        <a v-on:click.prevent="hide_record()"  href="#" title='Hide this record' alt='Hide this record'>
+                            <img src='/BA/pages/static/graphics/eye_hidden_16_315219.png'>
+                        </a>
+                    </td>
+
+                </tr>
             </table>
 
             </div>		<!-- End of outer container -->
@@ -50,6 +69,7 @@ Vue.component('vue-plugin-r-linked',
 
         data: function() {
             return {
+                display_record: true,
                 editing_mode: false,
 
                 current_data: this.clone_and_standardize(this.item_data),   // Scrub some data, so that it won't show up in the tabular format
@@ -63,16 +83,25 @@ Vue.component('vue-plugin-r-linked',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
+            hide_record()
+            {
+                const item_id = this.item_data.item_id;
+                console.log(`Hiding record with item_id ${item_id}`);
+                this.display_record = false;
+            },
+
 
             determine_headers()
             {
                 return Object.keys(this.current_data);
             },
 
+
             determine_cells()
             {
                 return this.determine_headers();
             },
+
 
             clone_and_standardize(obj)
             // Clone, and remove keys that don't get shown nor edited

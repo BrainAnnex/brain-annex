@@ -40,11 +40,15 @@
     <!-- General and module styling -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/page_viewer.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/modules/dropzone/dropzone.css">
 
     <!-- Styling for Vue core components -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/toc_sidebar/toc_sidebar.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/category_navbox/category_navbox.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
@@ -71,9 +75,14 @@
 <div id="vue-root">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
 
 
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+
 
 <!--   The "scroll-canvas" is the main part of the page,
-       incl. the navbar at the top; note that a descendant element, the left sidebar, is fixed in position -->
+       incl. the navbar at the top and the sidebox on the right;
+       by contrast, the left sidebar, is fixed in position -->
 <div v-bind:class="{ 'scroll-canvas': show_left_sidebar, 'scroll-canvas--collapsed-left': !show_left_sidebar }">
 
 
@@ -82,58 +91,38 @@
 {% include "navbar_top.htm" %}
 
 
-<div class='outerbox'>  <!-- START OUTER BOX -->
 
 
+<!-- ****************************************************************
 
-    <!-- ****************************************************************
-
-         sidebar-left : used for Table of Contents (TODO: turn into Vue component)
-
-         **************************************************************** -->
-
-<div v-show='show_left_sidebar' class='sidebar-left'>
-<img v-on:click='show_left_sidebar = false'  src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right'
-     class='clickable-icon'
-     title='Click to collapse sidebar' alt='Click to collapse sidebar'>
-
-<!-- Page navigation section (using Vue) -->
-<a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
-    <span style='color:#AAA; margin-left:10px; font-size:10px;'>PAGE CONTENTS</span>
-<br>
-
-<div class="page-toc">
-    <template v-for="item in content_array">
-        <p v-if="item.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.item_id">[[item.text]]</a><br></p>
-        <p v-if="item.schema_code == 'cd'">&nbsp; &diams; <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.name">[[item.name]]</a><br></p>
-    </template>
-</div>      <!-- END of page-toc -->
-
-<br><a href='#BOTTOM' style='font-size:14px; font-weight:bold'>BOTTOM</a>
-
-</div>		<!-- END OF sidebar-left-->
-
-
-<!-- COLLAPSED version of sidebar-left -->
-<div v-show='!show_left_sidebar' class='sidebar-left-collapsed'>
-    <img v-on:click='show_left_sidebar = true' src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left'
-         class='clickable-icon'
-         title='Click to expand sidebar' alt='Click to expand sidebar'>
-</div> 	 <!-- END of Collapsed version of sidebar-left -->
-
-
-
-    <!-- ****************************************************************
-
-                   RIGHT side-box (with Category navigation)
+                LEFT side-bar (used for Table of Contents)
 
      **************************************************************** -->
+
+<vue-toc-sidebar
+    v-bind:content_array="content_array"
+    v-bind:show_left_sidebar="show_left_sidebar"
+
+    v-on:adjust-left-sidebar="adjust_left_sidebar($event)"
+>
+</vue-toc-sidebar>
+
+
+
+<!-- ****************************************************************
+
+               RIGHT side-box (with Category navigation)
+
+ **************************************************************** -->
 
 <vue-category-navbox
     v-bind:category_name="category_name"
     v-bind:parent_categories="parent_categories"
     v-bind:subcategories="all_subcategories"
     v-bind:all_categories="all_categories"
+    v-bind:show_right_sidebox="show_right_sidebox"
+
+    v-on:adjust-right-sidebox="adjust_right_sidebox($event)"
 >
 </vue-category-navbox>
 
@@ -141,8 +130,8 @@
 
 
 
+<div v-bind:class="{ 'lightbox': show_right_sidebox, 'lightbox--expand-right': !show_right_sidebox }">
 
-<div class='lightbox'>
 
 <!-- ****************************************************************
 
@@ -195,17 +184,6 @@
 
 
 
-<!-- Icons to expose/hide the editing controls -->
-<img v-if="!expose_controls" @click="expose_controls = true"
-     class="clickable-icon  fixed-2nd-from-bottom"
-     alt="SHOW the Editing Controls (un-lock the page)" title="SHOW the Editing Controls (un-lock the page)"
-     src="/BA/pages/static/graphics/screwdriver_unlock.png" width="40" height="40">
-
-<img v-if="expose_controls" @click="expose_controls = false"
-     class="clickable-icon  fixed-2nd-from-bottom"
-     alt="HIDE the Editing Controls (lock the page)" title="HIDE the Editing Controls (lock the page)"
-     src="/BA/pages/static/graphics/lock_6611478_64.png" width="40" height="40">
-
 
 
 <!-- ****************************************************************
@@ -244,8 +222,6 @@
             v-on:insert-new-item
      -->
 
-
-
 <div v-for="(item, index) in content_array" class="content-item">
 
     <vue-content-items
@@ -269,7 +245,9 @@
         v-on:insert-new-item="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
+
 </div>
+
 
 
 <a name="BOTTOM"></a>   <!-- Anchor for page scrolling to the bottom of the page-->
@@ -286,7 +264,7 @@
     <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
     <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
 
-    <!-- All leaf Classes that are instances of "Records" -->
+    <!-- Show all leaf Classes that are instances of "Records" -->
     <br>Add new record of type:
     {% for class_name in records_classes %}
         <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
@@ -316,7 +294,7 @@
 
 
 
-    <!--  To add a new Subcategory -->
+    <!--  To add a new Subcategory (TODO: turn into a Vue component) -->
     <div style='clear: left;'></div> {# To clear any Content Item #}
 
     <div class='form-box' style="float:right">
@@ -354,7 +332,20 @@
 
 
 
-<!-- Icon to scroll to top of page -->
+
+<!-- Icons (in fixed positions) to expose/hide the editing controls -->
+<img v-if="!expose_controls" @click="expose_controls = true"
+     class="clickable-icon  fixed-2nd-from-bottom"
+     alt="SHOW the Editing Controls (un-lock the page)" title="SHOW the Editing Controls (un-lock the page)"
+     src="/BA/pages/static/graphics/screwdriver_unlock.png" width="40" height="40">
+
+<img v-if="expose_controls" @click="expose_controls = false"
+     class="clickable-icon  fixed-2nd-from-bottom"
+     alt="HIDE the Editing Controls (lock the page)" title="HIDE the Editing Controls (lock the page)"
+     src="/BA/pages/static/graphics/lock_6611478_64.png" width="40" height="40">
+
+
+<!-- Icon (in fixed position) to scroll to top of page -->
 <a id="to_top" href="javascript:;" onclick="window.scrollTo(0, 0)">
     <img src="/BA/pages/static/graphics/to_top_80.png" width="40" height="40"
          alt="Scroll to TOP of page" title="Scroll to TOP of page">
@@ -370,8 +361,8 @@
 
 
 
-</div>	<!-- END OF OUTER BOX -->
 </div>  <!-- END OF scroll-canvas -->
+
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
 
 
@@ -382,6 +373,7 @@
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
 <script src="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.js"></script>
+<script src="/BA/pages/static/vue_components/toc_sidebar/toc_sidebar.js"></script>
 <script src="/BA/pages/static/vue_components/category_navbox/category_navbox.js"></script>
 
 <script src="/BA/pages/static/vue_components/content_items/content_items.js"></script>
@@ -395,6 +387,7 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
 
 <script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
+
 
 <script>
 // Instantiation of the ROOT component must come after the definition of the descendant components
@@ -411,10 +404,27 @@ new Vue({
                                         //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                         //          ]
 
-        expose_controls: false,  // If true, the editing controls of the various Content Items are revealed
+        element_grouping: [],       // EXPERIMENTAL!
+                                    // Array of at most the size as content_array, indexes referring to positions in it
+                                    // EXAMPLE: [{index:0, group_size: 1, merge: false},
+                                    //           {index:1, group_size: 3, merge: true, fields: ["A", "B"]},
+                                    //           {index:4, group_size: 1, merge: true, fields: ["C"]},
+                                    //           {index:5, group_size: 8, merge: true, fields: ["X", "Y", "Z"]}
+                                    //          ]
+
+        element_grouping_v2: [],     // EXPERIMENTAL!
+                                    // Array of same size as content_array, with elements in the same order (TODO: maybe merge?)
+                                    // EXAMPLE: [{group: "ONLY"}, {group: "FIRST", fields: ["A", "B"]},
+                                    //                            {group: "MIDDLE", fields: ["A", "B"]},
+                                    //                            {group: "LAST", fields: ["A", "B"]}
+                                    //          ]
+
+        expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
         category_id: {{category_id}},   // Integer
+
         show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
+        show_right_sidebox: true,       // Indicating whether to show or collapse the right sidebox (with the Category navigation)
 
         records_types: {{records_classes | tojson}},    // Array of all the names of leaf Classes associated to records
 
@@ -477,6 +487,23 @@ new Vue({
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+
+        adjust_left_sidebar(state)
+        // Adjust the collapse/expansion of the left sidebar, based on the requested state: true = expanded; false = collapsed
+        {
+            //console.log(`Root element received signal to adjust the left sidebar, with state ${state}`);
+            this.show_left_sidebar = state;
+        },
+
+
+        adjust_right_sidebox(state)
+        // Adjust the collapse/expansion of the right sidebox, based on the requested state: true = expanded; false = collapsed
+        {
+            console.log(`Root element received signal to adjust the right sidebox, with state ${state}`);
+            this.show_right_sidebox = state;
+        },
+
+
 
         get_schema_data(item)
         // If the given Content Item is a record, return a list of its field names (Properties), in order

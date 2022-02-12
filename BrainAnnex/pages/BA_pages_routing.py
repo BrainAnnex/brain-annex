@@ -71,7 +71,10 @@ class PagesRouting:
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
         @self.BA_pages_flask_blueprint.route('/login')
         def login() -> str:
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/login
+            """
+            NOT YET IN USE
+            EXAMPLE invocation: http://localhost:5000/BA/pages/login
+            """
             url = "login.htm"
             """
             # DEBUGGING, TO DELETE
@@ -81,58 +84,6 @@ class PagesRouting:
             print(not_yet_used2.credentials)
             """
             return render_template(url)
-
-
-
-        @self.BA_pages_flask_blueprint.route('/nodes_viewer')
-        def nodesviewer() -> str:
-            # Node Explorer: display a (hardwired-for-now) list of nodes
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/nodes_viewer
-
-            url = "nodes_viewer.htm"
-
-            ne_obj = NodeExplorer()
-            node_list = ne_obj.serialize_nodes(None)
-            node_list_json = json.dumps(node_list)
-
-            return render_template(url, current_page=request.path, site_pages=self.site_pages,
-                                   node_list=node_list, node_list_json=node_list_json)
-
-
-
-        @self.BA_pages_flask_blueprint.route('/node')
-        def node_explorer() -> str:
-            # Node Explorer for all nodes in the database
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/node
-
-            url = "node_explorer.htm"
-
-            label_list = PagesRequestHandler.get_node_labels()
-
-            return render_template(url, current_page=request.path, site_pages=self.site_pages,
-                                   label_list = label_list)
-
-
-        @self.BA_pages_flask_blueprint.route('/node/<label>')
-        def nodes_with_given_label(label) -> str:
-            # Node Explorer for all nodes with a given label
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/node/BA
-
-            url = "node_explorer.htm"
-
-            label_list = PagesRequestHandler.get_node_labels()
-
-            ne_obj = NodeExplorer()
-            (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = ne_obj.all_nodes_by_label(label)
-
-            return render_template(url, current_page="node", site_pages=self.site_pages,   # Maybe it should be current_page=request.path
-                                   label_list = label_list,
-                                   header_list = header_list, record_list = record_list,
-                                   inbound_headers = inbound_headers,
-                                   outbound_headers = outbound_headers,
-                                   inbound_counts = inbound_counts,
-                                   outbound_counts = outbound_counts
-                                   )
 
 
 
@@ -189,7 +140,7 @@ class PagesRouting:
 
         @self.BA_pages_flask_blueprint.route('/filter')
         def filter_page() -> str:
-            # Experimental filter
+            # General filter page, in early stage
             # EXAMPLE invocation: http://localhost:5000/BA/pages/filter
 
             template = "filter.htm"
@@ -251,21 +202,6 @@ class PagesRouting:
 
 
 
-        @self.BA_pages_flask_blueprint.route('/manage_labels')
-        def manage_labels() -> str:
-            """
-            Generate a page to manage nodes in the database; in particular,
-            to display a list of all node labels, and to enter new nodes
-            EXAMPLE invocation: http://localhost:5000/BA/pages/manage_labels
-            """
-
-            url = "manage_node_labels.htm"
-            label_list = PagesRequestHandler.get_node_labels()
-            return render_template(url, label_list = label_list, current_page=request.path,
-                                    site_pages=self.site_pages)
-
-
-
 
         #############################   CATEGORY-RELATED   #############################
 
@@ -292,6 +228,92 @@ class PagesRouting:
                                    category_id=category_id, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    all_categories=all_categories)
+
+
+
+
+        #############################  EXPERIMENTAL PAGES   #############################
+
+        @self.BA_pages_flask_blueprint.route('/experimental')
+        def experimental() -> str:
+            """
+            Page with links to experimental pages
+
+            EXAMPLE invocation: http://localhost:5000/BA/pages/experimental
+            :return:
+            """
+
+            template = "experimental.htm"
+
+            return render_template(template, current_page=request.path, site_pages=self.site_pages)
+
+
+
+        @self.BA_pages_flask_blueprint.route('/node')
+        def node_explorer() -> str:
+            # Node Explorer for all nodes in the database
+            # EXAMPLE invocation: http://localhost:5000/BA/pages/node
+
+            url = "node_explorer.htm"
+
+            label_list = PagesRequestHandler.get_node_labels()
+
+            return render_template(url, current_page=request.path, site_pages=self.site_pages,
+                                   label_list = label_list)
+
+
+
+        @self.BA_pages_flask_blueprint.route('/nodes_viewer')
+        def nodesviewer() -> str:
+            # Node Explorer: display a (hardwired-for-now) list of nodes
+            # EXAMPLE invocation: http://localhost:5000/BA/pages/nodes_viewer
+
+            url = "nodes_viewer.htm"
+
+            ne_obj = NodeExplorer()
+            node_list = ne_obj.serialize_nodes(None)
+            node_list_json = json.dumps(node_list)
+
+            return render_template(url, current_page=request.path, site_pages=self.site_pages,
+                                   node_list=node_list, node_list_json=node_list_json)
+
+
+
+        @self.BA_pages_flask_blueprint.route('/manage_labels')
+        def manage_labels() -> str:
+            """
+            Generate a page to manage nodes in the database; in particular,
+            to display a list of all node labels, and to enter new nodes
+            EXAMPLE invocation: http://localhost:5000/BA/pages/manage_labels
+            """
+
+            url = "manage_node_labels.htm"
+            label_list = PagesRequestHandler.get_node_labels()
+            return render_template(url, label_list = label_list, current_page=request.path,
+                                   site_pages=self.site_pages)
+
+
+
+        @self.BA_pages_flask_blueprint.route('/node/<label>')
+        def nodes_with_given_label(label) -> str:
+            # Node Explorer for all nodes with a given label
+            # EXAMPLE invocation: http://localhost:5000/BA/pages/node/BA
+
+            url = "node_explorer.htm"
+
+            label_list = PagesRequestHandler.get_node_labels()
+
+            ne_obj = NodeExplorer()
+            (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = ne_obj.all_nodes_by_label(label)
+
+            return render_template(url, current_page="node", site_pages=self.site_pages,   # Maybe it should be current_page=request.path
+                                   label_list = label_list,
+                                   header_list = header_list, record_list = record_list,
+                                   inbound_headers = inbound_headers,
+                                   outbound_headers = outbound_headers,
+                                   inbound_counts = inbound_counts,
+                                   outbound_counts = outbound_counts
+                                   )
 
 
 

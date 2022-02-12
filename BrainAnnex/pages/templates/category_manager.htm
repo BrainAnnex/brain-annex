@@ -14,15 +14,13 @@
 
 <html>
 <head>
-    <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>
+    <title>Edit Categories - Brain Annex</title>
 
-    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/category_manager.css">
 
-    <title>Edit Categories - Brain Annex</title>
-    <meta name='description' content='Knowledge and Media Management made easy and powerful. Note-taking software. Brain Annex.'>
-    <meta name='keywords' content='Notetaking, Knowledge Representation, Knowledge Management, Media Management, Brain Annex'>
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -36,7 +34,7 @@
 
 
 
-<!-- Informational/Navigational OVERLAY used if this Category gets delete -->
+<!-- Informational/Navigational OVERLAY used if this Category gets deleted -->
 
 <div v-if="overlay" class="overlay-bg" v-bind:style="{ 'height': compute_height() + 'px' }">
     <div class="overlay-box">
@@ -54,14 +52,14 @@
 
 
 
-<div class='navmenu dark-background'>  <!-- Navigation Menu -->
-    <div class='navmenu-header'><span style='font-weight:bold; color:#9999FF'><a href='/viewer.php?ac=1' title="BRAIN ANNEX - Knowledge &amp; Media Management. Logged in as juls &nbsp;(ADMIN)">juls</a></span><span style='margin-left:100px'>&nbsp;</span><span style='color:#55CC55; font-weight:bold'></span><span style='margin-left:100px'>&nbsp;</span><a href='#'>^TOP</a> <a href='/search.php?ac=1' target='_blank' style='margin-left:150px'>SEARCH (in new tab)</a> </div>
-    <table class='navmenu-table'><tr class='major-line'><td align='center' class='unselected'><a href="/viewer.php?ac=1">HOME</a></td><td align='center' class='unselected'><a href="/siteModules/categoryManagement/graph.php">Categories (Table of Contents)</a></td><td align='center' class='unselected'><a href="/pluginPage.php?plugin=ach&page=showHistory">History</a></td><td align='center' class='unselected'><a href="/admin.php">Admin</a></td><td align='center' class='unselected'><a href="https://brainannex.org/viewer.php?ac=2&cat=12" target='_blank'>HELP</a></td><td align='center' class='unselected'><a href="/search.php?ac=1">Search</a></td><td align='center' class='unselected'><a href="/doLogout.php">LOGOUT</a></td></tr></table>
-</div>  <!-- End of Navigation Menu -->
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
 
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
 
-
-<div class='outerbox'>  <!-- START OUTER BOX -->
 
 <div class='lightbox' id='page'>   <!--  START LIGHTBOX -->
 
@@ -329,7 +327,7 @@ It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'></form>
 
 </div>	<!-- END OF lightbox -->
 
-</div>  <!-- END OF OUTER BOX -->
+
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root-1 element  ~~~~~~~~~~~~~~~~~~~~~  -->
 

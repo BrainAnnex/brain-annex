@@ -1,5 +1,5 @@
-/*  MIT License.  Copyright (c) 2021 Julian A. West
-    This file is part of the "Brain Annex" project (https://BrainAnnex.org)
+/*  Vue component to display and edit Content Items at type "cd" (Code Documentation)
+    MIT License.  Copyright (c) 2021-22 Julian A. West
  */
 
 Vue.component('vue-plugin-cd',

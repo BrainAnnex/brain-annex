@@ -1,3 +1,7 @@
+/*  Vue component to display and edit Content Items at type "r" (Record)
+    MIT License.  Copyright (c) 2021-22 Julian A. West
+ */
+
 Vue.component('vue-plugin-r',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
@@ -263,9 +267,10 @@ Vue.component('vue-plugin-r',
             // If the string is a URL, convert it into a hyperlink
             {
                 // Do a simple-minded check as to whether the cell content appear to be a hyperlink
+                // TODO: if the URL is very long, show it in abbreviated form
                 if (cell_data.substring(0, 8) == "https://"
                             ||  cell_data.substring(0, 7) == "http://")
-                    return `<a href='${cell_data}' target='_blank'>${cell_data}<a>`;
+                    return `<a href='${cell_data}' target='_blank' style='font-size:10px'>${cell_data}<a>`;
                 else
                     return cell_data;
             },

@@ -5,7 +5,11 @@
 <html lang="en">
 <head>
     <title>List of node labels in Neo4j database</title>
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/manage_node_labels.css">
 
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -14,8 +18,13 @@
 
 <body>
 
-{# Top Navigation bar #}
-{% include "navbar_top.htm" %}
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
 
 
 <div class="header">
