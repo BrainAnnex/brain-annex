@@ -63,6 +63,11 @@ body {		/* General website styling, incl. scrollbars */
 
 
 
+div.scroll-canvas {
+    margin-top:20px;    /* Leave space at the top for the fixed status bar, plus a small extra (+1) */
+}
+
+
 
 /*
  *
@@ -76,7 +81,6 @@ body {		/* General website styling, incl. scrollbars */
 
 div.lightbox {					/* Alt name: light-canvas */
 	margin-left:0;
-	width: 85%;
 	box-sizing: border-box;
 
 	border-bottom:3px;
@@ -86,13 +90,6 @@ div.lightbox {					/* Alt name: light-canvas */
 	border:1px #0084AD solid;
 	padding-left:5px;
 }
-
-
-div.lightbox-expand-right {
-	width: 97%  !important;
-}
-
-
 
 
 
