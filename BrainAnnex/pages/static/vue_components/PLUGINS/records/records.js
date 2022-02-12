@@ -1,3 +1,7 @@
+/*  Vue component to display and edit Content Items at type "r" (Record)
+    MIT License.  Copyright (c) 2021-22 Julian A. West
+ */
+
 Vue.component('vue-plugin-r',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
