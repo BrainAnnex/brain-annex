@@ -249,7 +249,7 @@
 </div>
 
 
-    
+
 <a name="BOTTOM"></a>   <!-- Anchor for page scrolling to the bottom of the page-->
 
 
@@ -264,7 +264,7 @@
     <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
     <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
 
-    <!-- All leaf Classes that are instances of "Records" -->
+    <!-- Show all leaf Classes that are instances of "Records" -->
     <br>Add new record of type:
     {% for class_name in records_classes %}
         <button @click='add_new_item_at_bottom("r", "{{class_name}}")'

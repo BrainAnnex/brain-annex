@@ -26,7 +26,7 @@ Vue.component('vue-content-items',
             <a v-bind:name="item.schema_code + '_' + item.item_id"></a>  <!-- Anchor for page scrolling -->
 
             <!--
-                The line with `v-bind:is` dispatches to the appropriate specialized component.
+                 The line with "v-bind:is" dispatches to the appropriate specialized component.
 
                  All signals from descendant components get relayed (with v-on="$listeners")
                  to the parent of this component,
