@@ -7,7 +7,10 @@
     <title>Filter</title>
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
     <link type="text/css"  rel="stylesheet" href="/BA/pages/static/multiselect/multiselect.css">
 
@@ -15,11 +18,17 @@
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
 </head>
+
 <body>
 
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
 
-{# Top Navigation bar #}
-{% include "navbar_top.htm" %}
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
 
 <h2>Search and Filter</h2>
 

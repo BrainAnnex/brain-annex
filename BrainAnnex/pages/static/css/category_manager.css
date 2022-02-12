@@ -63,11 +63,6 @@ body {		/* General website styling, incl. scrollbars */
 
 
 
-div.scroll-canvas {
-    margin-top:20px;    /* Leave space at the top for the fixed status bar, plus a small extra (+1) */
-}
-
-
 
 /*
  *
@@ -230,63 +225,6 @@ a.buttonLink_1 {
 
 a.buttonLink_1:hover {
 	color: #145675;
-}
-
-
-
-
-
-/*
- *
- *  HYPERLINKS
- *
- */
-
-
-
-/* The general hyperlink styles are usable against light backgrounds */
-
-a:link  {
-	color:blue;
-	text-decoration:none;
-}
-
-a:visited  {
-	color:blue;
-	text-decoration:none;
-}
-
-a:hover {
-	color:red;
-	text-decoration:underline;
-}
-
-a:active {
-	color:red;
-	text-decoration:underline;
-}
-
-
-
-
-
-/*  Links on dark backgrounds are forced to be appropriate for them (i.e. light colors)
-	The "dark-background" class is only used to affect links */
-
-.dark-background  a:link  {
-	color : #eeeeee !important;
-}
-
-.dark-background  a:visited  {
-	color : #eeeeee !important;
-}
-
-.dark-background  a:hover{
-	color:red !important;
-}
-
-.dark-background  a:active {
-	color:red !important;
 }
 
 

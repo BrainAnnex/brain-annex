@@ -102,25 +102,3 @@ div.navmenu td.unselected:hover  {
 .navmenu  a:active {
 	text-decoration: none !important;
 }
-
-
-
-/*  Links on dark backgrounds are forced to be appropriate for them (i.e. light colors)
-	The "dark-background" class is only used to affect links.
- */
-
-.dark-background  a:link  {
-	color : #eeeeee !important;
-}
-
-.dark-background  a:visited  {
-	color : #eeeeee !important;
-}
-
-.dark-background  a:hover{
-	color:red !important;
-}
-
-.dark-background  a:active {
-	color:red !important;
-}

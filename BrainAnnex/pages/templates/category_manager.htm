@@ -55,11 +55,10 @@
 {# HORIZONTAL STATUS BAR (fixed at the top) #}
 {% include "horiz_status_bar.htm" %}
 
-<div class="scroll-canvas">
-
-{# TOP NAVIGATION BAR #}
-{% include "navbar_top.htm" %}
-
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
 
 
 <div class='lightbox' id='page'>   <!--  START LIGHTBOX -->
@@ -328,7 +327,7 @@ It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'></form>
 
 </div>	<!-- END OF lightbox -->
 
-</div>  <!-- END OF scroll-canvas -->
+
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root-1 element  ~~~~~~~~~~~~~~~~~~~~~  -->
 

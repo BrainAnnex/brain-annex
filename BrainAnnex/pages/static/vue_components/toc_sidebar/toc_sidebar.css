@@ -1,5 +1,6 @@
 /* LEFT SIDEBAR (used to host the TOC)
  */
+
 div.sidebar-left {              /* LEFT sidebar, in its expanded state */
 	box-sizing: border-box;     /* The assigned width will now incorporate padding and border */
 	position:fixed;
@@ -49,4 +50,54 @@ div.page-toc  p  {     /* For paragraphs inside DIV's of class "page-toc" (Table
 div.page-toc  p.header  {
     font-size:14px;
     font-weight:bold;
+}
+
+
+
+/*
+    Hyperlink styles for the "page-toc" DIV
+ */
+
+div.page-toc  a:link  {
+	color:#222;					/* Dark gray */
+	text-decoration:none;
+}
+
+div.page-toc  a:visited  {
+	color:#222;
+	text-decoration:none;
+}
+
+div.page-toc  a:hover {
+	color:red;
+	text-decoration:none;
+}
+
+div.page-toc  a:active {
+	color:red;
+	text-decoration:none;
+}
+
+
+
+/* Hyperlink styles for the sidebar-left */
+
+div.sidebar-left  a:link  {
+	color:#222;					/* Dark gray */
+	text-decoration:none;
+}
+
+div.sidebar-left  a:visited  {
+	color:#222;
+	text-decoration:none;
+}
+
+div.sidebar-left  a:hover {
+	color:red;
+	text-decoration:none;
+}
+
+div.sidebar-left  a:active {
+	color:red;
+	text-decoration:none;
 }
