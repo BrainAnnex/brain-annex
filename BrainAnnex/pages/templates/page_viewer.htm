@@ -399,10 +399,11 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
-        content_array: {{content_items | tojson(indent=4)}},  // Array containing item-data objects
-                                        // EXAMPLE: [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                                        //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
-                                        //          ]
+        content_array: {{content_items | tojson(indent=4)}},
+                                    // Array containing objects with the data for all the Content Items on the page
+                                    // EXAMPLE: [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                                    //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                                    //          ]
 
         element_grouping: [],       // EXPERIMENTAL!
                                     // Array of at most the size as content_array, indexes referring to positions in it

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters: current_page, site_pages
+ #}
+
+<html lang="en">
+<head>
+    <title>Table tests</title>
+
+    <!-- General and module styling -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <!-- Plugin-specific styling -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+</head>
+
+
+<body>
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
+
+<h2>Table tests</h2>
+
+<br>
+
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
+
+<h3>Just utilizing the component 'vue-plugin-single-record' :</h3>
+
+
+<!-- [[content_array]] -->
+
+
+<div style="background-color: yellow">
+
+START TABLE<br>
+<table class='r-main'>
+    <tr><th>one</th><th>two</th></tr>
+
+    <vue-plugin-single-record
+            v-bind:record_data="content_array[0]"
+            v-bind:field_list="field_list"
+    >
+    </vue-plugin-single-record>
+
+    <vue-plugin-single-record
+            v-bind:record_data="content_array[0]"
+            v-bind:field_list="field_list"
+    >
+    </vue-plugin-single-record>
+
+    <tr><td>A</td><td>B</td></tr>
+
+</table>
+<br>END TABLE
+</div>
+
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="/BA/pages/static/vue_components/PLUGINS/records/single_record.js"></script>
+
+
+<script>
+// Instantiation of the ROOT component must come after the definition of the descendant components
+new Vue({
+    el: '#vue-root-1',
+
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {
+        content_array: [{"pos":10, "item_id":52, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"Tier", "English":"animal"},
+                        {pos:20, "item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                        {pos:50, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                       ],       // Array containing objects with the data for all the Content Items on the page
+
+        field_list: ["German", "English"]
+    },
+
+
+    // ---------------------  METHODS  ----------------------
+
+    methods:  {
+
+        foo()
+        {
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>
