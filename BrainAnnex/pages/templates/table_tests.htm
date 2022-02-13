@@ -38,22 +38,70 @@
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
 
-<h3>Just utilizing the component 'vue-plugin-single-record' :</h3>
+<!-- [[content_array]] For debugging -->
 
 
-<!-- [[content_array]] -->
+<h3>Utilizing <i>element_grouping</i> and the component 'vue-plugin-table':</h3>
 
+<div style="background-color: #EAEAEA; padding:15px">
+
+    <template v-for="group in element_grouping">
+        <p v-if="!group.merge">
+            Unmerged group: [[group]]
+        </p>
+
+        <vue-plugin-table v-if="group.merge"
+            v-bind:key="group.index"
+
+            v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
+            v-bind:common_fields="group.fields"
+            v-bind:common_schema_data="group.fields"
+        ></vue-plugin-table>
+    </template>
+
+</div>
+
+
+<hr>
+
+
+<h3>Utilizing the component 'vue-plugin-table':</h3>
+
+<div style="background-color: #EAEAEA; padding:15px">
+
+    <vue-plugin-table
+        key="sample_table1"
+
+        v-bind:record_data_list="content_array.slice(0,2)"
+        v-bind:common_fields="field_list"
+        v-bind:common_schema_data="field_list"
+    ></vue-plugin-table>
+
+    <vue-plugin-table
+        key="sample_table2"
+
+        v-bind:record_data_list="content_array.slice(2,3)"
+        v-bind:common_fields="['German', 'English', 'Notes']"
+        v-bind:common_schema_data="['German', 'English', 'Notes']"
+    ></vue-plugin-table>
+
+</div>
+
+
+<hr>
+
+
+<h3>Just utilizing the component 'vue-plugin-<span style="color:brown">single</span>-record' :</h3>
 
 <div style="background-color: #EAEAEA; padding:15px">
 
 
 <table class='r-main'>
-    <tr><th>English</th><th>German</th></tr>
-
+    <tr><th>German</th><th>English</th></tr>
 
     <tr is="vue-plugin-single-record"
-            v-bind:record_data="content_array[0]"
-            v-bind:field_list="field_list"
+        v-bind:record_data="content_array[0]"
+        v-bind:field_list="field_list"
     >
     </tr>
 
@@ -72,7 +120,7 @@
 <br>
 
 <table class='r-main'>
-    <tr><th>English</th><th>German</th><th>Notes</th></tr>
+    <tr><th>German</th><th>English</th><th>Notes</th></tr>
     <tr is="vue-plugin-single-record"
         v-bind:record_data="content_array[2]"
         v-bind:field_list="['German', 'English', 'Notes']"
@@ -92,6 +140,7 @@
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
 <script src="/BA/pages/static/vue_components/PLUGINS/records/single_record.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/table.js"></script>
 
 
 <script>
@@ -113,7 +162,33 @@ new Vue({
                         {pos:90, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                        ],       // Array containing objects with the data for all the Content Items on the page
 
-        field_list: ["German", "English"]
+        field_list: ["German", "English"],
+
+        // the key "merge" would be better named "in_group"
+        element_grouping: [{index:0, group_size: 2, merge: true, fields: ["German", "English"]},
+                           {index:2, group_size: 1, merge: true, fields: ["German", "English", "Notes"]},
+                           {index:3, group_size: 1, merge: false},
+                           {index:4, group_size: 1, merge: false}
+                          ],
+
+        experimental: [],
+
+        records_schema_data : {"Quotes": ["quote", "attribution", "notes"],
+                               "French Vocabulary": ["French", "English", "notes"],
+                               "German Vocabulary": ["German", "English", "notes"],
+                               "Site Link": ["url", "name", "date", "comments", "rating", "read"],
+                               "Profl Connections": ["name", "role", "location", "notes", "LinkedIn", "email"],
+                               "Restaurants": ["name", "website", "address", "city", "phone", "notes", "eval"]
+                               }       // TODO: Extract from dbase (as needed?)
+    },
+
+
+
+    // ---------------------  HOOKS  ----------------------
+
+    mounted()
+    {
+        this.build_groupings();
     },
 
 
@@ -121,8 +196,115 @@ new Vue({
 
     methods:  {
 
-        foo()
+        build_groupings()
+        // Lump together consecutive Content Items, if they meet a set of criteria
         {
+            this.experimental = [];
+
+            const num_items = this.content_array.length;
+            const parsing = [];     // Helper intermediate structure
+
+            for (let i = 0; i < num_items-1; i++) {     // Stop 1 before the last Content Item on the page
+                let merge = this.should_group_with_next(i);
+                parsing.push(merge);
+            }
+            parsing.push(false);    // The last Content Item cannot be merged with a "next" one
+
+            console.log('parsing array: ', parsing);
+
+            let active_index = -1;
+
+            for (let i = 0; i < num_items; i++) {
+                if (active_index == -1)  {   // If there no group-in-progress
+                    if (parsing[i])
+                        active_index = i;                                                   // Reset group start
+                    else  {
+                        // Export singleton
+                        if (this.content_array[i].schema_code == "r")
+                            this.experimental.push({index: i, group_size: 1, merge: true}); // TODO: add the Canonical field list
+                        else
+                            this.experimental.push({index: i, group_size: 1, merge: false});
+                    }
+                }
+                else  {                     // If there's a group-in-progress
+                    if (!parsing[i])  {
+                        this.experimental.push({index: active_index, group_size: i-active_index+1, merge: true});    // Export group
+                        // TODO: add the Canonical field list to the objects pushed to the "experimental" array
+                        // i.e. the fields in the schema go first, in the schema order
+                        active_index = -1;
+                    }
+                    // if (parsing[i]), no action is needed
+                }
+            }
+
+        }, // build_groupings()
+
+
+        should_group_with_next(i)
+        // Return a Boolean depending on whether Content Item i and the next one should be merged
+        {
+            const item_i = this.content_array[i];
+            const item_j = this.content_array[i+1];
+
+            if (item_i.schema_code != "r"  ||  item_j.schema_code != "r")
+                return false;       // We're only grouping Content Items of type "record"
+
+            if (item_i.class_name != item_j.class_name)
+                return false;
+
+            // The version below, incorrectly, was looking at the schemas rather than the actual fields
+            //const fields_i = this.records_schema_data[item_i.class_name];
+            //const fields_j = this.records_schema_data[item_j.class_name];
+
+            const fields_i = this.extract_fields(item_i);
+            const fields_j = this.extract_fields(item_j);
+
+            console.log('Examining record with index: ', i);
+            console.log('  fields_i: ', fields_i);
+            console.log('  fields_j: ', fields_j);
+
+            if (!this.compare_arrays(fields_i, fields_j)) {  // Allows variations in field order
+                console.log('    the field lists differ');
+                return false;
+            }
+
+            console.log('    the field lists are the same');
+            return true;
+        },
+
+
+        extract_fields(content_item)
+        // Scrub out all the standard fields (i.e. all fields that won't appear in a tabular format)
+        // TODO: maybe the objects in content_array ought to keep the 2 types of fields separate
+        {
+            let shown_fields = [];
+            let all_fields = Object.keys(content_item);
+
+            // TODO: maybe use Lodash _.difference function
+            for (i in all_fields) {
+                key = all_fields[i];
+                if (key != "pos" && key != "item_id" && key != "schema_code" && key != "class_name")
+                    shown_fields.push(key);
+            }
+
+            return shown_fields;
+        },
+
+
+        compare_arrays(a1, a2)
+        // Compare two flat arrays regardless of order.  TODO: maybe there's a Lodash method
+        {
+            if (a1.length != a2.length)
+                return false;
+
+            a1.sort();
+            a2.sort();
+
+            for (let i = 0; i < a1.length; i++)
+                if (a1[i] != a2[i])
+                    return false;
+
+            return true;
         }
 
     } // METHODS

@@ -35,7 +35,8 @@ Vue.component('vue-plugin-single-record',
 
         data: function() {
             return {
-                editing_mode: false     // For now, unused
+                expose_controls: false,     // For now, unused
+                editing_mode: false         // For now, unused
             }
         }, // data
 
