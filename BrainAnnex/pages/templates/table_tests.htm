@@ -41,7 +41,32 @@
 <!-- [[content_array]] For debugging -->
 
 
-<h3>Utilizing <i>element_grouping</i> and the component 'vue-plugin-table':</h3>
+<h3>Utilizing the computed <i>new_grouping</i> and the component 'vue-plugin-table':</h3>
+
+<div style="background-color: #EAEAEA; padding:15px">
+
+    <template v-for="group in new_grouping">
+        <p v-if="!group.merge">
+            Unmerged group: [[group]]
+        </p>
+
+        <vue-plugin-table v-if="group.merge"
+                          v-bind:key="group.index"
+
+                          v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
+                          v-bind:common_fields="group.fields"
+                          v-bind:common_schema_data="group.fields"
+        ></vue-plugin-table>
+    </template>
+
+</div>
+
+
+<hr>
+
+
+
+<h3>Utilizing the hardwired <i>element_grouping</i> and the component 'vue-plugin-table':</h3>
 
 <div style="background-color: #EAEAEA; padding:15px">
 
@@ -81,8 +106,8 @@
         key="sample_table2"
 
         v-bind:record_data_list="content_array.slice(2,3)"
-        v-bind:common_fields="['German', 'English', 'Notes']"
-        v-bind:common_schema_data="['German', 'English', 'Notes']"
+        v-bind:common_fields="['German', 'English', 'notes']"
+        v-bind:common_schema_data="['German', 'English', 'notes']"
     ></vue-plugin-table>
 
 </div>
@@ -120,10 +145,10 @@
 <br>
 
 <table class='r-main'>
-    <tr><th>German</th><th>English</th><th>Notes</th></tr>
+    <tr><th>German</th><th>English</th><th>notes</th></tr>
     <tr is="vue-plugin-single-record"
         v-bind:record_data="content_array[2]"
-        v-bind:field_list="['German', 'English', 'Notes']"
+        v-bind:field_list="['German', 'English', 'notes']"
     >
     </tr>
 </table>
@@ -156,7 +181,7 @@ new Vue({
                         {"pos":15, "item_id":2, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Tier", "English":"animal"},
                         {"pos":20, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
-                             "German":"krank", "English":"ill (sick)", "Notes": "https://translate.google.com/?sl=de&tl=en&text=krank%0A&op=translate"},
+                             "German":"krank", "English":"ill (sick)", "notes": "https://translate.google.com/?sl=de&tl=en&text=krank%0A&op=translate"},
 
                         {pos:50, "item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
                         {pos:90, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
@@ -166,7 +191,7 @@ new Vue({
 
         // the key "merge" would be better named "in_group"
         element_grouping: [{index:0, group_size: 2, merge: true, fields: ["German", "English"]},
-                           {index:2, group_size: 1, merge: true, fields: ["German", "English", "Notes"]},
+                           {index:2, group_size: 1, merge: true, fields: ["German", "English", "notes"]},
                            {index:3, group_size: 1, merge: false},
                            {index:4, group_size: 1, merge: false}
                           ],
@@ -192,9 +217,76 @@ new Vue({
     },
 
 
+
+    // ---------------------  COMPUTED  ----------------------
+
+    computed: {
+        new_grouping()
+        {
+            return this.build_groupings();
+        }
+    },
+
+
+
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+        canonical_field_list(content_item)
+        /*  Canonical order means the Item's fields in the schema go first, in the schema order,
+            followed by any other field not in the Schema, in order of appearance.
+
+            Standard fields (i.e. all fields that won't appear in a tabular format) are ignored.
+            TODO: simplify with Lodash
+
+            EXAMPLES (assuming that the Schema for "Quotes" is ["quote", "attribution", "notes"]):
+                {"pos":10, "item_id":1, "extra": "some value"}
+                    ->  [ "extra" ]
+                {"pos":10, "item_id":1, "extra": "some value", class_name:"Quotes"}
+                    ->  [ "extra" ]
+                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes"}
+                    ->  [ "notes", "extra" ]
+                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "notes", "extra" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes", "extra" ]
+                {"attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"UNKNOWN", "quote": "My quote"}
+                    ->  [ "extra", "attribution", "notes", "extra2", "quote" ]
+         */
+        {
+            let field_list = this.extract_fields(content_item);
+
+            if (! ("class_name" in content_item))
+                return field_list;      // No Schema field found
+
+
+            const class_name = content_item.class_name;
+
+            if (! (class_name in this.records_schema_data))  {
+                console.log(`No Schema information available for class '${class_name}'`);
+                return field_list;  // No Schema information available for this class; TODO: query server
+            }
+
+            const schema_list = this.records_schema_data[class_name];
+
+            let canonical_list = [];
+            // Add all the Schema fields that are in the item's field list
+            for (let i = 0; i < schema_list.length; i++)
+                if (field_list.includes(schema_list[i]))
+                    canonical_list.push(schema_list[i]);
+
+            // Add all the item's fields that aren't in its Schema (non-standard fields, if any)
+            for (let i = 0; i < field_list.length; i++)
+                if (! schema_list.includes(field_list[i]))
+                    canonical_list.push(field_list[i]);
+
+            return canonical_list;
+        },
+
 
         build_groupings()
         // Lump together consecutive Content Items, if they meet a set of criteria
@@ -220,22 +312,26 @@ new Vue({
                         active_index = i;                                                   // Reset group start
                     else  {
                         // Export singleton
-                        if (this.content_array[i].schema_code == "r")
-                            this.experimental.push({index: i, group_size: 1, merge: true}); // TODO: add the Canonical field list
+                        if (this.content_array[i].schema_code == "r")  {
+                            let field_list = this.canonical_field_list(this.content_array[i]);
+                            this.experimental.push({index: i, group_size: 1, merge: true, fields: field_list});
+                        }
                         else
                             this.experimental.push({index: i, group_size: 1, merge: false});
                     }
                 }
                 else  {                     // If there's a group-in-progress
                     if (!parsing[i])  {
-                        this.experimental.push({index: active_index, group_size: i-active_index+1, merge: true});    // Export group
-                        // TODO: add the Canonical field list to the objects pushed to the "experimental" array
-                        // i.e. the fields in the schema go first, in the schema order
-                        active_index = -1;
+                        let field_list = this.canonical_field_list(this.content_array[active_index]);
+                        // Export group
+                        this.experimental.push({index: active_index, group_size: i-active_index+1, merge: true, fields: field_list});
+                        active_index = -1;  // terminate the current group-in-progress
                     }
                     // if (parsing[i]), no action is needed
                 }
             }
+
+            return this.experimental;
 
         }, // build_groupings()
 
@@ -274,8 +370,13 @@ new Vue({
 
 
         extract_fields(content_item)
-        // Scrub out all the standard fields (i.e. all fields that won't appear in a tabular format)
-        // TODO: maybe the objects in content_array ought to keep the 2 types of fields separate
+        /*  Scrub out all the standard fields (i.e. all fields that won't appear in a tabular format)
+            EXAMPLE:  {"pos":10, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"Leben", "English":"life"}
+                       will return  [ "German", "English" ]
+
+            TODO: maybe the objects in content_array ought to keep the 2 types of fields separate
+         */
         {
             let shown_fields = [];
             let all_fields = Object.keys(content_item);
