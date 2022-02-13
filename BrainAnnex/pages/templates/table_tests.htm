@@ -44,33 +44,47 @@
 <!-- [[content_array]] -->
 
 
-<div style="background-color: yellow">
+<div style="background-color: #EAEAEA; padding:15px">
 
-START TABLE<br>
+
 <table class='r-main'>
-    <tr><th>one</th><th>two</th></tr>
+    <tr><th>English</th><th>German</th></tr>
 
-    <vue-plugin-single-record
+
+    <tr is="vue-plugin-single-record"
             v-bind:record_data="content_array[0]"
             v-bind:field_list="field_list"
     >
-    </vue-plugin-single-record>
+    </tr>
 
-    <vue-plugin-single-record
-            v-bind:record_data="content_array[0]"
-            v-bind:field_list="field_list"
+    <tr is="vue-plugin-single-record"
+        v-bind:record_data="content_array[1]"
+        v-bind:field_list="field_list"
     >
-    </vue-plugin-single-record>
+    </tr>
 
-    <tr><td>A</td><td>B</td></tr>
+    <tr>
+        <td>Extra A</td><td>Extra B</td>
+    </tr>
 
 </table>
-<br>END TABLE
+
+<br>
+
+<table class='r-main'>
+    <tr><th>English</th><th>German</th><th>Notes</th></tr>
+    <tr is="vue-plugin-single-record"
+        v-bind:record_data="content_array[2]"
+        v-bind:field_list="['German', 'English', 'Notes']"
+    >
+    </tr>
+</table>
+
 </div>
 
 
-</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
 
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
 
 
 
@@ -88,10 +102,15 @@ new Vue({
     delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
     data: {
-        content_array: [{"pos":10, "item_id":52, "schema_code":"r", class_name:"German Vocabulary",
+        content_array: [{"pos":10, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"Leben", "English":"life"},
+                        {"pos":15, "item_id":2, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Tier", "English":"animal"},
-                        {pos:20, "item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                        {pos:50, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                        {"pos":20, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"krank", "English":"ill (sick)", "Notes": "https://translate.google.com/?sl=de&tl=en&text=krank%0A&op=translate"},
+
+                        {pos:50, "item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                        {pos:90, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                        ],       // Array containing objects with the data for all the Content Items on the page
 
         field_list: ["German", "English"]
