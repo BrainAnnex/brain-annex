@@ -328,7 +328,8 @@ new Vue({
 
     computed: {
         element_grouping()
-        /* EXAMPLE:
+        /*  A list of "lumped" records, and other "singleton" Content Items, on the page
+            EXAMPLE:
                 [{index:0, group_size: 2, use_group: true, fields: ["German", "English"]},
                  {index:2, group_size: 1, use_group: true, fields: ["German", "English", "notes"]},
                  {index:3, group_size: 1, use_group: false},
@@ -463,10 +464,6 @@ new Vue({
 
             if (item_i.class_name != item_j.class_name)
                 return false;
-
-            // The version below, incorrectly, was looking at the schemas rather than the actual fields
-            //const fields_i = this.records_schema_data[item_i.class_name];
-            //const fields_j = this.records_schema_data[item_j.class_name];
 
             const fields_i = this.extract_fields(item_i);
             const fields_j = this.extract_fields(item_j);

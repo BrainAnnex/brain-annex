@@ -405,21 +405,6 @@ new Vue({
                                     //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                     //          ]
 
-        element_grouping: [],       // EXPERIMENTAL!
-                                    // Array of at most the size as content_array, indexes referring to positions in it
-                                    // EXAMPLE: [{index:0, group_size: 1, merge: false},
-                                    //           {index:1, group_size: 3, merge: true, fields: ["A", "B"]},
-                                    //           {index:4, group_size: 1, merge: true, fields: ["C"]},
-                                    //           {index:5, group_size: 8, merge: true, fields: ["X", "Y", "Z"]}
-                                    //          ]
-
-        element_grouping_v2: [],     // EXPERIMENTAL!
-                                    // Array of same size as content_array, with elements in the same order (TODO: maybe merge?)
-                                    // EXAMPLE: [{group: "ONLY"}, {group: "FIRST", fields: ["A", "B"]},
-                                    //                            {group: "MIDDLE", fields: ["A", "B"]},
-                                    //                            {group: "LAST", fields: ["A", "B"]}
-                                    //          ]
-
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
         category_id: {{category_id}},   // Integer
@@ -480,12 +465,27 @@ new Vue({
                 return true;
             else
                 return false;
+        },
+
+
+        element_grouping()
+        /*  A list of "lumped" records, and other "singleton" Content Items, on the page
+            EXAMPLE:
+                [{index:0, group_size: 2, use_group: true, fields: ["German", "English"]},
+                 {index:2, group_size: 1, use_group: true, fields: ["German", "English", "notes"]},
+                 {index:3, group_size: 1, use_group: false},
+                 {index:4, group_size: 1, use_group: false}
+                ]
+         */
+        {
+            return this.build_groupings();
         }
-    },
+
+    }, // END computed
 
 
 
-    // ---------------------  METHODS  ----------------------
+    // ----------------------------  METHODS  -----------------------------
 
     methods:  {
 
@@ -972,6 +972,194 @@ new Vue({
         {
             // TODO: make sure that item.schema_code is known, or return a special "generic" type
             return "vue-plugin-" + item.schema_code;
+        },
+
+
+
+
+        /*  -------------------------------------------------------------------------------------------
+                    The methods below are used to implement GROUPING of similar consecutive
+                    content items of type "Record"
+            -------------------------------------------------------------------------------------------
+         */
+
+        canonical_field_list(content_item)
+        /*  Canonical order means the Item's fields in the schema go first, in the schema order,
+            followed by any other field not in the Schema, in order of appearance.
+
+            Standard fields (i.e. all fields that won't appear in a tabular format) are ignored.
+            TODO: simplify with Lodash
+
+            EXAMPLES (assuming that the Schema for "Quotes" is ["quote", "attribution", "notes"]):
+                {"pos":10, "item_id":1, "extra": "some value"}
+                    ->  [ "extra" ]
+                {"pos":10, "item_id":1, "extra": "some value", class_name:"Quotes"}
+                    ->  [ "extra" ]
+                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes"}
+                    ->  [ "notes", "extra" ]
+                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "notes", "extra" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes", "extra" ]
+                {"attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"UNKNOWN", "quote": "My quote"}
+                    ->  [ "extra", "attribution", "notes", "extra2", "quote" ]
+         */
+        {
+            let field_list = this.extract_fields(content_item);
+
+            if (! ("class_name" in content_item))
+                return field_list;      // No Schema field found
+
+
+            const class_name = content_item.class_name;
+
+            if (! (class_name in this.records_schema_data))  {
+                console.log(`No Schema information available for class '${class_name}'`);
+                return field_list;  // No Schema information available for this class; TODO: query server
+            }
+
+            const schema_list = this.records_schema_data[class_name];
+
+            let canonical_list = [];
+            // Add all the Schema fields that are in the item's field list
+            for (let i = 0; i < schema_list.length; i++)
+                if (field_list.includes(schema_list[i]))
+                    canonical_list.push(schema_list[i]);
+
+            // Add all the item's fields that aren't in its Schema (non-standard fields, if any)
+            for (let i = 0; i < field_list.length; i++)
+                if (! schema_list.includes(field_list[i]))
+                    canonical_list.push(field_list[i]);
+
+            return canonical_list;
+        },
+
+
+        build_groupings()
+        // Lump together consecutive Content Items, if they meet a set of criteria
+        {
+            groupings_list = [];
+
+            const num_items = this.content_array.length;
+            const parsing = [];     // Helper intermediate structure
+
+            for (let i = 0; i < num_items-1; i++) {     // Stop 1 before the last Content Item on the page
+                let merge = this.should_group_with_next(i);
+                parsing.push(merge);
+            }
+            parsing.push(false);    // The last Content Item cannot be merged with a "next" one
+
+            console.log('parsing array: ', parsing);
+
+            let active_index = -1;
+
+            for (let i = 0; i < num_items; i++) {
+                if (active_index == -1)  {   // If there no group-in-progress
+                    if (parsing[i])
+                        active_index = i;                                                   // Reset group start
+                    else  {
+                        // Export singleton
+                        if (this.content_array[i].schema_code == "r")  {
+                            let field_list = this.canonical_field_list(this.content_array[i]);
+                            groupings_list.push({index: i, group_size: 1, use_group: true, fields: field_list});
+                        }
+                        else
+                            groupings_list.push({index: i, group_size: 1, use_group: false});
+                    }
+                }
+                else  {                     // If there's a group-in-progress
+                    if (!parsing[i])  {
+                        let field_list = this.canonical_field_list(this.content_array[active_index]);
+                        // Export group
+                        groupings_list.push({index: active_index, group_size: i-active_index+1, use_group: true, fields: field_list});
+                        active_index = -1;  // terminate the current group-in-progress
+                    }
+                    // if (parsing[i]), no action is needed
+                }
+            }
+
+            return groupings_list;
+
+        }, // build_groupings()
+
+
+
+        should_group_with_next(i)
+        /*  Return a Boolean depending on whether Content Item i and the next one should be merged
+            based on their structure similarity
+         */
+        {
+            const item_i = this.content_array[i];
+            const item_j = this.content_array[i+1];
+
+            if (item_i.schema_code != "r"  ||  item_j.schema_code != "r")
+                return false;       // We're only grouping Content Items of type "record"
+
+            if (item_i.class_name != item_j.class_name)
+                return false;
+
+            const fields_i = this.extract_fields(item_i);
+            const fields_j = this.extract_fields(item_j);
+
+            console.log('Examining record with index: ', i);
+            console.log('  fields_i: ', fields_i);
+            console.log('  fields_j: ', fields_j);
+
+            if (!this.compare_arrays(fields_i, fields_j)) {  // Allows variations in field order
+                console.log('    the field lists differ');
+                return false;
+            }
+
+            console.log('    the field lists are the same');
+            return true;
+        },
+
+
+        extract_fields(content_item)
+        /*  Scrub out all the standard fields (i.e. all fields that won't appear in a tabular format)
+            EXAMPLE:  {"pos":10, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"Leben", "English":"life"}
+                       will return  [ "German", "English" ]
+
+            TODO: maybe the objects in content_array ought to keep the 2 types of fields separate
+         */
+        {
+            let shown_fields = [];
+            let all_fields = Object.keys(content_item);
+
+            // TODO: maybe use Lodash _.difference function
+            for (i in all_fields) {
+                key = all_fields[i];
+                if (key != "pos" && key != "item_id" && key != "schema_code" && key != "class_name")
+                    shown_fields.push(key);
+            }
+
+            return shown_fields;
+        },
+
+
+        compare_arrays(a1, a2)
+        /*  Compare two flat arrays regardless of element order.
+            Return true if have the same elements, whether in same or scrambled order - or false otherwise.
+            TODO: maybe there's a Lodash method
+         */
+        {
+            if (a1.length != a2.length)
+                return false;
+
+            // The "slice" method clones the array (otherwise, the passed variable will be altered)
+            const a1_sorted = a1.slice().sort();
+            const a2_sorted = a2.slice().sort();
+
+            for (let i = 0; i < a1.length; i++)
+                if (a1_sorted[i] != a2_sorted[i])
+                    return false;   // A difference was found
+
+            return true;
         }
 
     } // METHODS

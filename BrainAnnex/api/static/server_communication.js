@@ -97,11 +97,12 @@ class ServerCommunication
             post_body = post_obj_as_string;     // If a post_body was passed, it will be over-ridden,
                                                 // because post_obj has higher priority
 
+        /*
         if (post_body == "")
             console.log('contact_server() - No POST data present');
         else
            console.log(`contact_server() - a POST will be used, with the following data: "${post_body}"`);
-
+        */
 
         if (payload_type == "TEXT")
             return ServerCommunication.contact_server_TEXT(url_server, post_body, callback_fn, custom_data, method);
@@ -159,7 +160,7 @@ class ServerCommunication
             success_flag = false;
         })
         .finally(() => {  // Final operation regardless of error or success
-            console.log("Completed the server call.  Passing control to the callback function");
+            //console.log("Completed the server call.  Passing control to the callback function");
             if (callback_fn !== undefined) {
                 if (custom_data === undefined)
                     callback_fn(success_flag, server_payload, error_message);
@@ -221,7 +222,7 @@ class ServerCommunication
             success_flag = false;
         })
         .finally(() => {  // Final operation regardless of error or success
-            console.log("Completed the server call.  Passing control to the callback function");
+            //console.log("Completed the server call.  Passing control to the callback function");
             if (callback_fn !== undefined) {
                 if (custom_data === undefined)
                     callback_fn(success_flag, server_payload, error_message);
