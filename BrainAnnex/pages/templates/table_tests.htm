@@ -41,16 +41,16 @@
 <!-- [[content_array]] For debugging -->
 
 
-<h3>Utilizing the computed <i>new_grouping</i> and the component 'vue-plugin-table':</h3>
+<h3>Utilizing the computed <i>element_grouping</i> and the component 'vue-plugin-table':</h3>
 
 <div style="background-color: #EAEAEA; padding:15px">
 
-    <template v-for="group in new_grouping">
-        <p v-if="!group.merge">
+    <template v-for="group in element_grouping">
+        <p v-if="!group.use_group">
             Unmerged group: [[group]]
         </p>
 
-        <vue-plugin-table v-if="group.merge"
+        <vue-plugin-table v-if="group.use_group"
                           v-bind:key="group.index"
 
                           v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
@@ -70,12 +70,12 @@
 
 <div style="background-color: #EAEAEA; padding:15px">
 
-    <template v-for="group in element_grouping">
-        <p v-if="!group.merge">
+    <template v-for="group in element_grouping_hardwired">
+        <p v-if="!group.use_group">
             Unmerged group: [[group]]
         </p>
 
-        <vue-plugin-table v-if="group.merge"
+        <vue-plugin-table v-if="group.use_group"
             v-bind:key="group.index"
 
             v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
@@ -176,27 +176,142 @@ new Vue({
     delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
     data: {
-        content_array: [{"pos":10, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+        content_array: [{"pos":-50, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Leben", "English":"life"},
-                        {"pos":15, "item_id":2, "schema_code":"r", class_name:"German Vocabulary",
+                        {"pos":-40, "item_id":2, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Tier", "English":"animal"},
-                        {"pos":20, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
+                        {"pos":-30, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"krank", "English":"ill (sick)", "notes": "https://translate.google.com/?sl=de&tl=en&text=krank%0A&op=translate"},
+                        {"pos":-20, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
+                             "notes": "fields in different order", "English":"wonderful", "German":"wunderbar"},
 
-                        {pos:50, "item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                        {pos:90, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                        {"pos":-10, "item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                        {
+                            "attribution": "Oscar Wilde",
+                            "class_name": "Quotes",
+                            "item_id": 824,
+                            "pos": 0,
+                            "quote": "A dirty mind is a joy forever",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "William James",
+                            "class_name": "Quotes",
+                            "item_id": 825,
+                            "pos": 20,
+                            "quote": "A great many people think they are thinking when they are merely REARRANGING THEIR PREJUDICES",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Robert Heinlein",
+                            "class_name": "Quotes",
+                            "item_id": 1120,
+                            "pos": 30,
+                            "quote": "A human being should be able to change a diaper, plan an invasion, butcher a hog, conn a ship, design a building, write a sonnet, balance accounts, build a wall, set a bone, comfort the dying, take orders, give orders, cooperate, act alone, solve equations, analyze a new problem, pitch manure, program a computer, cook a tasty meal, fight efficiently, die gallantly. Specialization is for insects",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Mae West",
+                            "class_name": "Quotes",
+                            "item_id": 833,
+                            "pos": 40,
+                            "quote": "A man\u0027s kiss is his signature",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 834,
+                            "pos": 60,
+                            "quote": "A paper cut is a tree\u0027s last revenge",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 835,
+                            "pos": 80,
+                            "quote": "Active listening is the highest form of intimacy",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Jack Kornfield",
+                            "class_name": "Quotes",
+                            "item_id": 836,
+                            "pos": 100,
+                            "quote": "As surely as there is a voyage away, there is a journey home",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 865,
+                            "pos": 120,
+                            "quote": "Comparison is the thief of joy",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Maria Popova",
+                            "class_name": "Quotes",
+                            "item_id": 866,
+                            "pos": 140,
+                            "quote": "Critical thinking without hope is cynicism. But hope without critical thinking is naivet\u00e9. In order to thrive as individuals and as a civilization we need to bridge critical thinking with hope",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 867,
+                            "pos": 160,
+                            "quote": "Depend on the rabbit\u0027s foot if you will, but remember it didn\u0027t work for the rabbit",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Jane Seabrook",
+                            "class_name": "Quotes",
+                            "item_id": 868,
+                            "pos": 180,
+                            "quote": "Do you believe in love at first sight? Or should I walk past you again?",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 869,
+                            "pos": 200,
+                            "quote": "Don\u0027t blame yourself. Let me do it",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Carl Sagan",
+                            "class_name": "Quotes",
+                            "item_id": 920,
+                            "pos": 220,
+                            "quote": "At the heart of science is an essential balance between two seemingly contradictory attitudes \u2014 an openness to new ideas, no matter how bizarre or counterintuitive they may be, and the most ruthless skeptical scrutiny of all ideas, old and new",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Dante",
+                            "class_name": "Quotes",
+                            "item_id": 931,
+                            "notes": "\"Non ragioniam di lor [coloro che visser sanza \u2019nfamia e sanza lodo], ma guarda e passa\"",
+                            "pos": 240,
+                            "quote": "Let us not speak of them [those who lived without disgrace yet without praise] \u2014 just look and pass by",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 1121,
+                            "pos": 260,
+                            "quote": "\u2018One man\u2019s TRASH is another man\u2019s treasure\u2019... is an awesome phrase, but it\u2019s a horrible way to tell your kids they\u2019re adopted !!",
+                            "schema_code": "r"
+                        },
+
+                        {pos:990, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                        ],       // Array containing objects with the data for all the Content Items on the page
 
         field_list: ["German", "English"],
 
-        // the key "merge" would be better named "in_group"
-        element_grouping: [{index:0, group_size: 2, merge: true, fields: ["German", "English"]},
-                           {index:2, group_size: 1, merge: true, fields: ["German", "English", "notes"]},
-                           {index:3, group_size: 1, merge: false},
-                           {index:4, group_size: 1, merge: false}
+        element_grouping_hardwired: [{index:0, group_size: 2, use_group: true, fields: ["German", "English"]},
+                           {index:2, group_size: 1, use_group: true, fields: ["German", "English", "notes"]},
+                           {index:3, group_size: 1, use_group: false},
+                           {index:4, group_size: 1, use_group: false}
                           ],
-
-        experimental: [],
 
         records_schema_data : {"Quotes": ["quote", "attribution", "notes"],
                                "French Vocabulary": ["French", "English", "notes"],
@@ -209,19 +324,17 @@ new Vue({
 
 
 
-    // ---------------------  HOOKS  ----------------------
-
-    mounted()
-    {
-        this.build_groupings();
-    },
-
-
-
     // ---------------------  COMPUTED  ----------------------
 
     computed: {
-        new_grouping()
+        element_grouping()
+        /* EXAMPLE:
+                [{index:0, group_size: 2, use_group: true, fields: ["German", "English"]},
+                 {index:2, group_size: 1, use_group: true, fields: ["German", "English", "notes"]},
+                 {index:3, group_size: 1, use_group: false},
+                 {index:4, group_size: 1, use_group: false}
+                ]
+         */
         {
             return this.build_groupings();
         }
@@ -291,7 +404,7 @@ new Vue({
         build_groupings()
         // Lump together consecutive Content Items, if they meet a set of criteria
         {
-            this.experimental = [];
+            groupings_list = [];
 
             const num_items = this.content_array.length;
             const parsing = [];     // Helper intermediate structure
@@ -314,30 +427,33 @@ new Vue({
                         // Export singleton
                         if (this.content_array[i].schema_code == "r")  {
                             let field_list = this.canonical_field_list(this.content_array[i]);
-                            this.experimental.push({index: i, group_size: 1, merge: true, fields: field_list});
+                            groupings_list.push({index: i, group_size: 1, use_group: true, fields: field_list});
                         }
                         else
-                            this.experimental.push({index: i, group_size: 1, merge: false});
+                            groupings_list.push({index: i, group_size: 1, use_group: false});
                     }
                 }
                 else  {                     // If there's a group-in-progress
                     if (!parsing[i])  {
                         let field_list = this.canonical_field_list(this.content_array[active_index]);
                         // Export group
-                        this.experimental.push({index: active_index, group_size: i-active_index+1, merge: true, fields: field_list});
+                        groupings_list.push({index: active_index, group_size: i-active_index+1, use_group: true, fields: field_list});
                         active_index = -1;  // terminate the current group-in-progress
                     }
                     // if (parsing[i]), no action is needed
                 }
             }
 
-            return this.experimental;
+            return groupings_list;
 
         }, // build_groupings()
 
 
+
         should_group_with_next(i)
-        // Return a Boolean depending on whether Content Item i and the next one should be merged
+        /*  Return a Boolean depending on whether Content Item i and the next one should be merged
+            based on their structure similarity
+         */
         {
             const item_i = this.content_array[i];
             const item_j = this.content_array[i+1];
@@ -393,17 +509,21 @@ new Vue({
 
 
         compare_arrays(a1, a2)
-        // Compare two flat arrays regardless of order.  TODO: maybe there's a Lodash method
+        /*  Compare two flat arrays regardless of element order.
+            Return true if have the same elements, whether in same or scrambled order - or false otherwise.
+            TODO: maybe there's a Lodash method
+         */
         {
             if (a1.length != a2.length)
                 return false;
 
-            a1.sort();
-            a2.sort();
+            // The "slice" method clones the array (otherwise, the passed variable will be altered)
+            const a1_sorted = a1.slice().sort();
+            const a2_sorted = a2.slice().sort();
 
             for (let i = 0; i < a1.length; i++)
-                if (a1[i] != a2[i])
-                    return false;
+                if (a1_sorted[i] != a2_sorted[i])
+                    return false;   // A difference was found
 
             return true;
         }
