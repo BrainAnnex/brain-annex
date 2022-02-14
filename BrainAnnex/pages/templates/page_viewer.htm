@@ -192,7 +192,10 @@
 
  **************************************************************** -->
 
-<!-- For each Content Item on this page, make use of the appropriate Vue component (picked dynamically)
+<!-- Original version, to be used when the editing controls are shown.
+     This version separates all the Content Items into individual entities.
+
+     For each Content Item on this page, make use of the appropriate Vue component (picked dynamically)
      Handle here some UI operations common to all types, such as moves around the page.
      Type-specific operations, such as editing, are handled by the individual components
 
@@ -222,7 +225,7 @@
             v-on:insert-new-item
      -->
 
-<div v-for="(item, index) in content_array" class="content-item">
+<div v-if="expose_controls"  v-for="(item, index) in content_array" class="content-item">
 
     <vue-content-items
         v-bind:key="item.schema_code + '_' + item.item_id + '_' + index"
@@ -247,6 +250,56 @@
     </vue-content-items>
 
 </div>
+
+
+
+
+
+<!--
+    New version, to be used when the editing controls are hidden.
+    This version groups together similar adjacent records
+  -->
+
+<template v-if="!expose_controls"  v-for="group in element_grouping">
+
+    <!-- If it's "UN-grouped", show it here as an individual Content Item-->
+    <vue-content-items  v-if="!group.use_group"
+            v-bind:key="content_array[group.index].schema_code + '_' + content_array[group.index].item_id + '_' + group.index + '_bis'"
+
+            v-bind:item="content_array[group.index]"
+            v-bind:expose_controls="expose_controls"
+            v-bind:category_id="category_id"
+            v-bind:index="group.index"
+            v-bind:item_count="content_array.length"
+
+            v-bind:records_types="records_types"
+
+            v-bind:schema_data="get_schema_data(content_array[group.index])"
+
+            v-on:delete-content-item-highlighted="delete_content_item(content_array[group.index])"
+            v-on:move-up-content-item="move_up_content_item(content_array[group.index])"  v-on:move-down-content-item="move_down_content_item(content_array[group.index])"
+            v-on:relocate-content-item="relocate_content_item(content_array[group.index], $event)"
+            v-on:cancel-edit="cancel_edit(content_array[group.index])"
+            v-on:updated-item="absorb_item_updates(content_array[group.index], $event)"
+            v-on:insert-new-item="insert_new_item_after(content_array[group.index], $event)"
+    >
+    </vue-content-items>
+
+
+    <!-- If it's "grouped", show the whole group of records here -->
+    <vue-plugin-table v-if="group.use_group"
+                      v-bind:key="group.index"
+
+                      v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
+                      v-bind:common_fields="group.fields"
+                      v-bind:common_schema_data="group.fields"
+    ></vue-plugin-table>
+
+</template>
+
+
+
+
 
 
 
@@ -383,8 +436,11 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
+
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/single_record.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/table.js"></script>
 
 <script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
 
