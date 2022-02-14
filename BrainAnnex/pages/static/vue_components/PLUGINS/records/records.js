@@ -224,6 +224,9 @@ Vue.component('vue-plugin-r',
 
 
             determine_headers()
+            /* Note: this is quite similar to the canonical_field_list() method in the
+                     Vue root component.  TODO: eventually merge
+             */
             {
                 if (this.schema_data.length == 0)
                     return Object.keys(this.current_data);      // Fallback, if Schema info isn't available
@@ -239,7 +242,11 @@ Vue.component('vue-plugin-r',
                         all_keys.push(key_in_schema);
                 }
 
-                // TODO: at this point, should add any keys in this.current_data that aren't declared in the Schema, if any
+                let field_list = Object.keys(this.current_data);     // All the fields in record (pre-scrubbed for special ones)
+                // Add all the item's fields that aren't in its Schema (non-standard fields, if any)
+                for (let i = 0; i < field_list.length; i++)
+                    if (! this.schema_data.includes(field_list[i]))
+                        all_keys.push(field_list[i]);
 
                 //console.log("   all_keys = ", all_keys);
 
