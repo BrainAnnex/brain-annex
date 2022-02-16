@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters: current_page, site_pages
+ #}
+
+<html lang="en">
+<head>
+    <title>Table tests</title>
+
+    <!-- General and module styling -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <!-- Plugin-specific styling -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+</head>
+
+
+<body>
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
+
+<h2>Table tests</h2>
+
+<br>
+
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
+
+<!-- [[content_array]] For debugging -->
+
+
+<h3>Utilizing the computed <i>element_grouping</i> and the component 'vue-plugin-table':</h3>
+
+<div style="background-color: #EAEAEA; padding:15px">
+
+    <template v-for="group in element_grouping">
+        <p v-if="!group.use_group">
+            Unmerged group: [[group]]
+        </p>
+
+        <vue-plugin-table v-if="group.use_group"
+                          v-bind:key="group.index"
+
+                          v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
+                          v-bind:common_fields="group.fields"
+                          v-bind:common_schema_data="group.fields"
+        ></vue-plugin-table>
+    </template>
+
+</div>
+
+
+<hr>
+
+
+
+<h3>Utilizing the hardwired <i>element_grouping</i> and the component 'vue-plugin-table':</h3>
+
+<div style="background-color: #EAEAEA; padding:15px">
+
+    <template v-for="group in element_grouping_hardwired">
+        <p v-if="!group.use_group">
+            Unmerged group: [[group]]
+        </p>
+
+        <vue-plugin-table v-if="group.use_group"
+            v-bind:key="group.index"
+
+            v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
+            v-bind:common_fields="group.fields"
+            v-bind:common_schema_data="group.fields"
+        ></vue-plugin-table>
+    </template>
+
+</div>
+
+
+<hr>
+
+
+<h3>Utilizing the component 'vue-plugin-table':</h3>
+
+<div style="background-color: #EAEAEA; padding:15px">
+
+    <vue-plugin-table
+        key="sample_table1"
+
+        v-bind:record_data_list="content_array.slice(0,2)"
+        v-bind:common_fields="field_list"
+        v-bind:common_schema_data="field_list"
+    ></vue-plugin-table>
+
+    <vue-plugin-table
+        key="sample_table2"
+
+        v-bind:record_data_list="content_array.slice(2,3)"
+        v-bind:common_fields="['German', 'English', 'notes']"
+        v-bind:common_schema_data="['German', 'English', 'notes']"
+    ></vue-plugin-table>
+
+</div>
+
+
+<hr>
+
+
+<h3>Just utilizing the component 'vue-plugin-<span style="color:brown">single</span>-record' :</h3>
+
+<div style="background-color: #EAEAEA; padding:15px">
+
+
+<table class='r-main'>
+    <tr><th>German</th><th>English</th></tr>
+
+    <tr is="vue-plugin-single-record"
+        v-bind:record_data="content_array[0]"
+        v-bind:field_list="field_list"
+    >
+    </tr>
+
+    <tr is="vue-plugin-single-record"
+        v-bind:record_data="content_array[1]"
+        v-bind:field_list="field_list"
+    >
+    </tr>
+
+    <tr>
+        <td>Extra A</td><td>Extra B</td>
+    </tr>
+
+</table>
+
+<br>
+
+<table class='r-main'>
+    <tr><th>German</th><th>English</th><th>notes</th></tr>
+    <tr is="vue-plugin-single-record"
+        v-bind:record_data="content_array[2]"
+        v-bind:field_list="['German', 'English', 'notes']"
+    >
+    </tr>
+</table>
+
+</div>
+
+
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="/BA/pages/static/vue_components/PLUGINS/records/single_record.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/table.js"></script>
+
+
+<script>
+// Instantiation of the ROOT component must come after the definition of the descendant components
+new Vue({
+    el: '#vue-root-1',
+
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {
+        content_array: [{"pos":-50, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"Leben", "English":"life"},
+                        {"pos":-40, "item_id":2, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"Tier", "English":"animal"},
+                        {"pos":-30, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"krank", "English":"ill (sick)", "notes": "https://translate.google.com/?sl=de&tl=en&text=krank%0A&op=translate"},
+                        {"pos":-20, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
+                             "notes": "fields in different order", "English":"wonderful", "German":"wunderbar"},
+
+                        {"pos":-10, "item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                        {
+                            "attribution": "Oscar Wilde",
+                            "class_name": "Quotes",
+                            "item_id": 824,
+                            "pos": 0,
+                            "quote": "A dirty mind is a joy forever",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "William James",
+                            "class_name": "Quotes",
+                            "item_id": 825,
+                            "pos": 20,
+                            "quote": "A great many people think they are thinking when they are merely REARRANGING THEIR PREJUDICES",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Robert Heinlein",
+                            "class_name": "Quotes",
+                            "item_id": 1120,
+                            "pos": 30,
+                            "quote": "A human being should be able to change a diaper, plan an invasion, butcher a hog, conn a ship, design a building, write a sonnet, balance accounts, build a wall, set a bone, comfort the dying, take orders, give orders, cooperate, act alone, solve equations, analyze a new problem, pitch manure, program a computer, cook a tasty meal, fight efficiently, die gallantly. Specialization is for insects",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Mae West",
+                            "class_name": "Quotes",
+                            "item_id": 833,
+                            "pos": 40,
+                            "quote": "A man\u0027s kiss is his signature",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 834,
+                            "pos": 60,
+                            "quote": "A paper cut is a tree\u0027s last revenge",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 835,
+                            "pos": 80,
+                            "quote": "Active listening is the highest form of intimacy",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Jack Kornfield",
+                            "class_name": "Quotes",
+                            "item_id": 836,
+                            "pos": 100,
+                            "quote": "As surely as there is a voyage away, there is a journey home",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 865,
+                            "pos": 120,
+                            "quote": "Comparison is the thief of joy",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Maria Popova",
+                            "class_name": "Quotes",
+                            "item_id": 866,
+                            "pos": 140,
+                            "quote": "Critical thinking without hope is cynicism. But hope without critical thinking is naivet\u00e9. In order to thrive as individuals and as a civilization we need to bridge critical thinking with hope",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 867,
+                            "pos": 160,
+                            "quote": "Depend on the rabbit\u0027s foot if you will, but remember it didn\u0027t work for the rabbit",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Jane Seabrook",
+                            "class_name": "Quotes",
+                            "item_id": 868,
+                            "pos": 180,
+                            "quote": "Do you believe in love at first sight? Or should I walk past you again?",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 869,
+                            "pos": 200,
+                            "quote": "Don\u0027t blame yourself. Let me do it",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Carl Sagan",
+                            "class_name": "Quotes",
+                            "item_id": 920,
+                            "pos": 220,
+                            "quote": "At the heart of science is an essential balance between two seemingly contradictory attitudes \u2014 an openness to new ideas, no matter how bizarre or counterintuitive they may be, and the most ruthless skeptical scrutiny of all ideas, old and new",
+                            "schema_code": "r"
+                        },
+                        {
+                            "attribution": "Dante",
+                            "class_name": "Quotes",
+                            "item_id": 931,
+                            "notes": "\"Non ragioniam di lor [coloro che visser sanza \u2019nfamia e sanza lodo], ma guarda e passa\"",
+                            "pos": 240,
+                            "quote": "Let us not speak of them [those who lived without disgrace yet without praise] \u2014 just look and pass by",
+                            "schema_code": "r"
+                        },
+                        {
+                            "class_name": "Quotes",
+                            "item_id": 1121,
+                            "pos": 260,
+                            "quote": "\u2018One man\u2019s TRASH is another man\u2019s treasure\u2019... is an awesome phrase, but it\u2019s a horrible way to tell your kids they\u2019re adopted !!",
+                            "schema_code": "r"
+                        },
+
+                        {pos:990, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                       ],       // Array containing objects with the data for all the Content Items on the page
+
+        field_list: ["German", "English"],
+
+        element_grouping_hardwired: [{index:0, group_size: 2, use_group: true, fields: ["German", "English"]},
+                           {index:2, group_size: 1, use_group: true, fields: ["German", "English", "notes"]},
+                           {index:3, group_size: 1, use_group: false},
+                           {index:4, group_size: 1, use_group: false}
+                          ],
+
+        records_schema_data : {"Quotes": ["quote", "attribution", "notes"],
+                               "French Vocabulary": ["French", "English", "notes"],
+                               "German Vocabulary": ["German", "English", "notes"],
+                               "Site Link": ["url", "name", "date", "comments", "rating", "read"],
+                               "Profl Connections": ["name", "role", "location", "notes", "LinkedIn", "email"],
+                               "Restaurants": ["name", "website", "address", "city", "phone", "notes", "eval"]
+                               }       // TODO: Extract from dbase (as needed?)
+    },
+
+
+
+    // ---------------------  COMPUTED  ----------------------
+
+    computed: {
+        element_grouping()
+        /*  A list of "lumped" records, and other "singleton" Content Items, on the page
+            EXAMPLE:
+                [{index:0, group_size: 2, use_group: true, fields: ["German", "English"]},
+                 {index:2, group_size: 1, use_group: true, fields: ["German", "English", "notes"]},
+                 {index:3, group_size: 1, use_group: false},
+                 {index:4, group_size: 1, use_group: false}
+                ]
+         */
+        {
+            return this.build_groupings();
+        }
+    },
+
+
+
+    // ---------------------  METHODS  ----------------------
+
+    methods:  {
+        canonical_field_list(content_item)
+        /*  Canonical order means the Item's fields in the schema go first, in the schema order,
+            followed by any other field not in the Schema, in order of appearance.
+
+            Standard fields (i.e. all fields that won't appear in a tabular format) are ignored.
+            TODO: simplify with Lodash
+
+            EXAMPLES (assuming that the Schema for "Quotes" is ["quote", "attribution", "notes"]):
+                {"pos":10, "item_id":1, "extra": "some value"}
+                    ->  [ "extra" ]
+                {"pos":10, "item_id":1, "extra": "some value", class_name:"Quotes"}
+                    ->  [ "extra" ]
+                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes"}
+                    ->  [ "notes", "extra" ]
+                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "notes", "extra" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes", "extra" ]
+                {"attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                    ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"UNKNOWN", "quote": "My quote"}
+                    ->  [ "extra", "attribution", "notes", "extra2", "quote" ]
+         */
+        {
+            let field_list = this.extract_fields(content_item);
+
+            if (! ("class_name" in content_item))
+                return field_list;      // No Schema field found
+
+
+            const class_name = content_item.class_name;
+
+            if (! (class_name in this.records_schema_data))  {
+                console.log(`No Schema information available for class '${class_name}'`);
+                return field_list;  // No Schema information available for this class; TODO: query server
+            }
+
+            const schema_list = this.records_schema_data[class_name];
+
+            let canonical_list = [];
+            // Add all the Schema fields that are in the item's field list
+            for (let i = 0; i < schema_list.length; i++)
+                if (field_list.includes(schema_list[i]))
+                    canonical_list.push(schema_list[i]);
+
+            // Add all the item's fields that aren't in its Schema (non-standard fields, if any)
+            for (let i = 0; i < field_list.length; i++)
+                if (! schema_list.includes(field_list[i]))
+                    canonical_list.push(field_list[i]);
+
+            return canonical_list;
+        },
+
+
+        build_groupings()
+        // Lump together consecutive Content Items, if they meet a set of criteria
+        {
+            groupings_list = [];
+
+            const num_items = this.content_array.length;
+            const parsing = [];     // Helper intermediate structure
+
+            for (let i = 0; i < num_items-1; i++) {     // Stop 1 before the last Content Item on the page
+                let merge = this.should_group_with_next(i);
+                parsing.push(merge);
+            }
+            parsing.push(false);    // The last Content Item cannot be merged with a "next" one
+
+            console.log('parsing array: ', parsing);
+
+            let active_index = -1;
+
+            for (let i = 0; i < num_items; i++) {
+                if (active_index == -1)  {   // If there no group-in-progress
+                    if (parsing[i])
+                        active_index = i;                                                   // Reset group start
+                    else  {
+                        // Export singleton
+                        if (this.content_array[i].schema_code == "r")  {
+                            let field_list = this.canonical_field_list(this.content_array[i]);
+                            groupings_list.push({index: i, group_size: 1, use_group: true, fields: field_list});
+                        }
+                        else
+                            groupings_list.push({index: i, group_size: 1, use_group: false});
+                    }
+                }
+                else  {                     // If there's a group-in-progress
+                    if (!parsing[i])  {
+                        let field_list = this.canonical_field_list(this.content_array[active_index]);
+                        // Export group
+                        groupings_list.push({index: active_index, group_size: i-active_index+1, use_group: true, fields: field_list});
+                        active_index = -1;  // terminate the current group-in-progress
+                    }
+                    // if (parsing[i]), no action is needed
+                }
+            }
+
+            return groupings_list;
+
+        }, // build_groupings()
+
+
+
+        should_group_with_next(i)
+        /*  Return a Boolean depending on whether Content Item i and the next one should be merged
+            based on their structure similarity
+         */
+        {
+            const item_i = this.content_array[i];
+            const item_j = this.content_array[i+1];
+
+            if (item_i.schema_code != "r"  ||  item_j.schema_code != "r")
+                return false;       // We're only grouping Content Items of type "record"
+
+            if (item_i.class_name != item_j.class_name)
+                return false;
+
+            const fields_i = this.extract_fields(item_i);
+            const fields_j = this.extract_fields(item_j);
+
+            console.log('Examining record with index: ', i);
+            console.log('  fields_i: ', fields_i);
+            console.log('  fields_j: ', fields_j);
+
+            if (!this.compare_arrays(fields_i, fields_j)) {  // Allows variations in field order
+                console.log('    the field lists differ');
+                return false;
+            }
+
+            console.log('    the field lists are the same');
+            return true;
+        },
+
+
+        extract_fields(content_item)
+        /*  Scrub out all the standard fields (i.e. all fields that won't appear in a tabular format)
+            EXAMPLE:  {"pos":10, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+                             "German":"Leben", "English":"life"}
+                       will return  [ "German", "English" ]
+
+            TODO: maybe the objects in content_array ought to keep the 2 types of fields separate
+         */
+        {
+            let shown_fields = [];
+            let all_fields = Object.keys(content_item);
+
+            // TODO: maybe use Lodash _.difference function
+            for (i in all_fields) {
+                key = all_fields[i];
+                if (key != "pos" && key != "item_id" && key != "schema_code" && key != "class_name")
+                    shown_fields.push(key);
+            }
+
+            return shown_fields;
+        },
+
+
+        compare_arrays(a1, a2)
+        /*  Compare two flat arrays regardless of element order.
+            Return true if have the same elements, whether in same or scrambled order - or false otherwise.
+            TODO: maybe there's a Lodash method
+         */
+        {
+            if (a1.length != a2.length)
+                return false;
+
+            // The "slice" method clones the array (otherwise, the passed variable will be altered)
+            const a1_sorted = a1.slice().sort();
+            const a2_sorted = a2.slice().sort();
+
+            for (let i = 0; i < a1.length; i++)
+                if (a1_sorted[i] != a2_sorted[i])
+                    return false;   // A difference was found
+
+            return true;
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>

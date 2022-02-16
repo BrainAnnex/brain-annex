@@ -1003,6 +1003,9 @@ class NeoSchema:
         """
         Export all the Schema nodes and relationships as a JSON string.
 
+        IMPORTANT:  APOC must be activated in the database, to use this function.
+                    Otherwise it'll raise an Exception
+
         :return:    A dictionary specifying the number of nodes exported,
                     the number of relationships, and the number of properties,
                     as well as a "data" field with the actual export as a JSON string

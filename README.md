@@ -190,3 +190,5 @@ From the Neo4j browser interface, issue the following 3 Cypher commands:
 
 
 ### Project website: https://BrainAnnex.org
+
+### The lead author of Brain Annex can be reached on [LinkedIn](https://www.linkedin.com/in/julian-%F0%9F%A7%AC-west-059997185/)

@@ -2038,7 +2038,8 @@ class NeoAccess:
         """
         Export the entire Neo4j database as a JSON string
 
-        IMPORTANT: APOC must be activated in the database for this function
+        IMPORTANT: APOC must be activated in the database, to use this function.
+                   Otherwise it'll raise an Exception
 
         EXAMPLE:
         { 'nodes': 2,
@@ -2106,7 +2107,8 @@ class NeoAccess:
 
         For details on the formats, see export_dbase_json()
 
-        IMPORTANT: APOC must be activated in the database for this function
+        IMPORTANT:  APOC must be activated in the database for this function.
+                    Otherwise it'll raise an Exception
 
         :param nodes_query: A Cypher query to identify the desired nodes (exclusive of RETURN statements)
                                     The dummy variable for the nodes must be "n"

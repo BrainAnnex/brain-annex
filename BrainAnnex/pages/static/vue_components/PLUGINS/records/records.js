@@ -224,6 +224,9 @@ Vue.component('vue-plugin-r',
 
 
             determine_headers()
+            /* Note: this is quite similar to the canonical_field_list() method in the
+                     Vue root component.  TODO: eventually merge
+             */
             {
                 if (this.schema_data.length == 0)
                     return Object.keys(this.current_data);      // Fallback, if Schema info isn't available
@@ -239,7 +242,11 @@ Vue.component('vue-plugin-r',
                         all_keys.push(key_in_schema);
                 }
 
-                // TODO: at this point, should add any keys in this.current_data that aren't declared in the Schema, if any
+                let field_list = Object.keys(this.current_data);     // All the fields in record (pre-scrubbed for special ones)
+                // Add all the item's fields that aren't in its Schema (non-standard fields, if any)
+                for (let i = 0; i < field_list.length; i++)
+                    if (! this.schema_data.includes(field_list[i]))
+                        all_keys.push(field_list[i]);
 
                 //console.log("   all_keys = ", all_keys);
 
@@ -264,13 +271,25 @@ Vue.component('vue-plugin-r',
             },
 
             render_cell(cell_data)
-            // If the string is a URL, convert it into a hyperlink
+            /*  If the passed string appears to be a URL, convert it into a hyperlink, opening in a new window;
+                and if the URL is very long, show it in abbreviated form
+             */
             {
+                const max_url_len = 35;     // NOT counting the protocol part (such as "https://")
+
+                let dest_name = "";         // Name of the destination of the link, if applicable
                 // Do a simple-minded check as to whether the cell content appear to be a hyperlink
-                // TODO: if the URL is very long, show it in abbreviated form
-                if (cell_data.substring(0, 8) == "https://"
-                            ||  cell_data.substring(0, 7) == "http://")
-                    return `<a href='${cell_data}' target='_blank' style='font-size:10px'>${cell_data}<a>`;
+                if (cell_data.substring(0, 8) == "https://")
+                    dest_name = cell_data.substring(8);
+                else if (cell_data.substring(0, 7) == "http://")
+                    dest_name = cell_data.substring(7);
+
+                if (dest_name != "")  {     // If the cell data was determined to be a URL
+                    if (dest_name.length > max_url_len)
+                        dest_name = dest_name.substring(0, max_url_len) + "..."; // Display long links in abbreviated form
+
+                    return `<a href='${cell_data}' target='_blank' style='font-size:10px'>${dest_name}<a>`;
+                }
                 else
                     return cell_data;
             },

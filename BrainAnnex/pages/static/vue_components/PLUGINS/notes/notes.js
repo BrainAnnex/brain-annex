@@ -83,7 +83,7 @@ Vue.component('vue-plugin-n',
             /* Note: the "mounted" Vue hook is invoked later in the process of launching this component; waiting this late is
                      needed to make sure that the 'CKeditor_0' DIV element is present in the DOM.
              */
-            console.log("the Notes component has been mounted");
+            //console.log("the Notes component has been mounted");
 
             if (this.item_data.item_id == -1)
                 this.create_new_editor("");   // We're dealing with an "ADD" operation; so, we start with an empty Note
@@ -95,7 +95,7 @@ Vue.component('vue-plugin-n',
         methods: {
 
             get_note: function (item_data) {
-                console.log("In get_note. New item to look up : `" + item_data.item_id + "`");
+                //console.log("In get_note. New item to look up : `" + item_data.item_id + "`");
 
                 this.waiting_mode = true;
 
@@ -112,7 +112,7 @@ Vue.component('vue-plugin-n',
             finish_get_note(success, server_payload, error_message, index)
             // Callback function to wrap up the action of delete_content_item() upon getting a response from the server
             {
-                console.log("Finalizing the get_note operation...");
+                //console.log("Finalizing the get_note operation...");
                 if (success)  {     // Server reported SUCCESS
                     this.body_of_note = server_payload;
                 }

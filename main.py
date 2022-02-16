@@ -1,4 +1,4 @@
-# VERSION 5.0-beta7 in-progress
+# VERSION 5.0-beta8
 
 
 # MAIN PROGRAM : it starts up a server for web User Interface and an API
@@ -43,6 +43,8 @@ MEDIA_FOLDER = "D:/media/"
 UPLOAD_FOLDER = "D:/tmp/"
 
 PORT_NUMBER = 5000      # The Flask default is 5000
+
+# END OF CONFIGURABLE PART
 
 
 
