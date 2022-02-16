@@ -44,6 +44,8 @@ UPLOAD_FOLDER = "D:/tmp/"
 
 PORT_NUMBER = 5000      # The Flask default is 5000
 
+# END OF CONFIGURABLE PART
+
 
 
 

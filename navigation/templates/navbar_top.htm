@@ -10,27 +10,26 @@
  #}
 
 
-<!-- Top Navigation bar -->
+<!-- Start of navigation bar: wrapper DIV -->
 <div class='navmenu dark-background'>
-
 
 <!-- The Selection row -->
 <table class='navmenu-table'>
-<tr class='major-line'>
+    <tr class='major-line'>
 
-{# Loop over the listing of pages to show in the navbar #}
-{% for url in site_pages %}
-    {% if url == current_page %}
-    <td align='center' class='selected'>
-        {{site_pages[url].upper()}}
-    {% else %}
-    <td align='center' class='unselected'>
-        <a href="{{url}}">{{site_pages[url]}}</a>
-    {% endif %}
-    </td>
-{% endfor %}
+    {# Loop over the listing of pages to show in the navbar #}
+    {% for url in site_pages %}
+        {% if url == current_page %}
+        <td align='center' class='selected'>
+            {{site_pages[url].upper()}}
+        {% else %}
+        <td align='center' class='unselected'>
+            <a href="{{url}}">{{site_pages[url]}}</a>
+        {% endif %}
+        </td>
+    {% endfor %}
 
-</tr>
+    </tr>
 </table>    <!-- END table class='navmenu-table' -->
 
 </div>      <!-- END class='navmenu dark-background' -->

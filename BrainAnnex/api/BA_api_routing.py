@@ -1030,17 +1030,26 @@ class ApiRouting:
             :param download_type:   Either "full" (default) or "schema"
             :return:                A Flask response object, with HTTP headers that will initiate a download
             """
-            if download_type == "full":
-                ne = NodeExplorer()     # TODO: use a more direct way to get to the NeoAccess object;
-                                        #       this part of the code belongs in  APIRequestHandler
-                result = ne.neo.export_dbase_json()
-                export_filename = "exported_dbase.json"
-            elif download_type == "schema":
-                result = NeoSchema.export_schema()
-                export_filename = "exported_schema.json"
-            else:
-                return f"Unknown requested type of download: {download_type}"
-            # TODO: error handling
+            try:
+                if download_type == "full":
+                    ne = NodeExplorer()     # TODO: use a more direct way to get to the NeoAccess object;
+                                            #       this part of the code belongs in  APIRequestHandler
+                    result = ne.neo.export_dbase_json()
+                    export_filename = "exported_dbase.json"
+                elif download_type == "schema":
+                    result = NeoSchema.export_schema()
+                    export_filename = "exported_schema.json"
+                else:
+                    return f"Unknown requested type of download: {download_type}"
+            except Exception as ex:
+                    response = APIRequestHandler.exception_helper(ex, safe_html=True)
+                    error_page_body = f'''<b>Unable to perform download</b>. <br>
+                                          This is typically due to the 'APOC' library not being installed on Neo4j. 
+                                          Contact your Neo4j database administrator.
+                                          <br><br>{response}"
+                                       '''
+                    return error_page_body
+                    # TODO: have a special page to display errors like this one
         
             # result is a dict with 4 keys
             print(f"Getting ready to export {result.get('nodes')} nodes, "
