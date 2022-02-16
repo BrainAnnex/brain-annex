@@ -1,4 +1,4 @@
-# VERSION 5.0-beta8 in-progress
+# VERSION 5.0-beta8
 
 
 # MAIN PROGRAM : it starts up a server for web User Interface and an API
