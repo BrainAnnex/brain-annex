@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters:  current_page, site_pages
+ #}
+
+<html lang="en">
+<head>
+    <title>Schema Manager</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/admin.css">
+</head>
+
+<body>
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
+
+<h2 class="title">Schema Manager</h2>
+
+
+<br><br>
+
+<div class="content-block">
+    <p><b>SCHEMA EDITOR</b></p>
+    <p style="padding:25px">
+        UI not yet implemented.  Use API calls to add a new record type.  Example:
+        <br><br>
+        <span style="background-color:lavender">
+            curl http://localhost:5000/BA/api/simple/create_new_record -d "data=ClassName,prop1,prop2,prop3"
+        </span>
+        <br><br>
+        <i>Change the port number if appropriate</i>
+    </p>
+</div>
+
+
+<br><br>
+
+<div class="content-block">
+    <p><b>SCHEMA EXPORT</b></p>
+    <p style="padding:25px">
+        <a href="/BA/api/download_dbase_json/schema">EXPORT the Database Schema as JSON file</a>
+    </p>
+</div>
+
+
+
+</body>
+</html>

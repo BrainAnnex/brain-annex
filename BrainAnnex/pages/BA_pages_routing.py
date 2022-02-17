@@ -193,11 +193,25 @@ class PagesRouting:
         @self.BA_pages_flask_blueprint.route('/admin')
         def admin() -> str:
             """
-            Generate a general administrative page (currently for import/exports)
+            Generate a general administrative page
+            (currently for import/exports, and a link to the Schema-Editor page)
+
             EXAMPLE invocation: http://localhost:5000/BA/pages/admin
             """
 
             template = "admin.htm"
+            return render_template(template, current_page=request.path, site_pages=self.site_pages)
+
+
+
+        @self.BA_pages_flask_blueprint.route('/schema-manager')
+        def schema_manager() -> str:
+            """
+            Generate a general administrative page (currently for import/exports)
+            EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager
+            """
+
+            template = "schema_manager.htm"
             return render_template(template, current_page=request.path, site_pages=self.site_pages)
 
 
