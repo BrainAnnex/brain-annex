@@ -78,8 +78,8 @@ Vue.component('vue-schema-editor',
                in the given order
              */
             {
-                console.log(`Processing request to add_class ${this.new_class_name}`);
-                console.log(this.property_list);
+                console.log(`Processing request to add Class "${this.new_class_name}"`);
+                //console.log(this.property_list);
 
                 if (this.new_class_name == "")  {
                     alert("Must enter a Class name");
@@ -95,7 +95,7 @@ Vue.component('vue-schema-editor',
                         post_data += this.property_list[i] + ",";
                 }
 
-                console.log(post_data);
+                //console.log(post_data);
 
                 // Send the request to the server, using a POST
                 let url_server = "/BA/api/simple/create_new_record_class";
@@ -120,6 +120,9 @@ Vue.component('vue-schema-editor',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `New Class added`;
+                    // Clear up the form
+                    this.new_class_name = "";
+                    this.property_list = [];
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -128,9 +131,6 @@ Vue.component('vue-schema-editor',
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                // Clear up the form
-                this.new_class_name = "";
-                this.property_list = [];
             }
 
 

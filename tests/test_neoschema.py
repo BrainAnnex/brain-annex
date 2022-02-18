@@ -30,8 +30,8 @@ def test_create_class(db):
                 {'name': 'A', 'schema_id': class_A_id, 'type': 'S'}]
     assert compare_recordsets(result, expected)
 
-    status = NeoSchema.create_class("A", schema_type="L")
-    assert status == -1     # A class by that name already exists; so, nothing gets created
+    with pytest.raises(Exception):
+        assert NeoSchema.create_class("A", schema_type="L")  # A class by that name already exists; so, nothing gets created
 
     with pytest.raises(Exception):
         assert NeoSchema.create_class("B", schema_type="X")   # Non-existent schema_type that raises exception

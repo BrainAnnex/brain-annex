@@ -472,7 +472,7 @@ class NeoAccess:
 
 
 
-    def get_single_record_by_key(self, labels: str, primary_key_name: str, key_value, return_nodeid=False) -> Union[None, dict]:     # TODO: test
+    def get_single_record_by_key(self, labels: str, primary_key_name: str, primary_key_value, return_nodeid=False) -> Union[None, dict]:     # TODO: test
         """
         Return the first (and it ought to be only one) record with the given primary key, and the optional label(s),
         as a dictionary of all its attributes.
@@ -480,10 +480,10 @@ class NeoAccess:
 
         :param labels:              A string or list/tuple of strings
         :param primary_key_name:    The name of the primary key by which to look the record up
-        :param key_value:           The desired value of the primary key
+        :param primary_key_value:   The desired value of the primary key
         :return:
         """
-        match = self.find(labels=labels, key_name=primary_key_name, key_value=key_value)
+        match = self.find(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
         results = self.fetch_nodes(match=match, return_neo_id=return_nodeid)
 
         if results == []:

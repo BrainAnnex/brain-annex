@@ -114,7 +114,7 @@ class NeoSchema:
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
         Return the auto-incremented unique ID assigned to the new Class,
-        or -1 (which is not regarded as a valid schema ID) if nothing is created.
+        or raise an Exception if a class by that name already exists
 
         NOTE: if you want to add Properties at the same time that you create a new Class,
               use the function new_class_with_properties() instead.
@@ -127,17 +127,17 @@ class NeoSchema:
         :param schema_type: Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes.
-        :return:            An integer with the unique schema_id assigned to the node just created, if it was created,
-                                or -1 if nothing was created
+        :return:            An integer with the unique schema_id assigned to the node just created, if it was created;
+                                an Exception is raised if a class by that name already exists
         """
         assert schema_type=="L" or schema_type=="S", "schema_type argument must be either 'L' or 'S'"
 
         name = name.strip()     # Strip any whitespace at the ends
         assert name != "", "Unacceptable Class name, either empty or blank"
 
-        print(f"create_class(): about to call db.exists_by_key with parameters `{cls.class_label}` and `{name}`")
+        #print(f"create_class(): about to call db.exists_by_key with parameters `{cls.class_label}` and `{name}`")
         if cls.db.exists_by_key(cls.class_label, key_name="name", key_value=name):
-            return -1
+            raise Exception(f"A class named `{name}` ALREADY exists")
 
         schema_id = cls.next_available_id()    # A schema-wide ID, also used for Property nodes
 
@@ -147,7 +147,7 @@ class NeoSchema:
         if no_datanodes:
             attributes["no_datanodes"] = True       # TODO: test this option
 
-        print(f"create_class(): about to call db.create_node with parameters `{cls.class_label}` and `{attributes}`")
+        #print(f"create_class(): about to call db.create_node with parameters `{cls.class_label}` and `{attributes}`")
         cls.db.create_node(cls.class_label, attributes)
         return schema_id
 
@@ -323,7 +323,7 @@ class NeoSchema:
         :return:            True if allowed, or False if not
                             If the Class doesn't exist, raise an Exception
         """
-        class_node_dict = cls.db.get_single_record_by_key(labels="CLASS", key_name="name", key_value=class_name)
+        class_node_dict = cls.db.get_single_record_by_key(labels="CLASS", key_name="name", primary_key_value=class_name)
 
         if class_node_dict == None:
             raise Exception(f"Class named {class_name} not found in the Schema")
@@ -452,8 +452,7 @@ class NeoSchema:
         The properties are assigned an inherent order (an attribute named "index", starting at 1),
         based on the order they appear in the list.
         NOTE: if the Class doesn't already exist, use new_class_with_properties() instead
-        TODO: raise an Exception if the class doesn't exit.
-              Assert that all the items in property_list are strings.
+        TODO: raise an Exception if the class doesn't exist.
               Offer option to specify the class by name.
 
         :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
@@ -470,6 +469,7 @@ class NeoSchema:
         clean_property_list = [prop.strip() for prop in property_list]
         for prop_name in clean_property_list:
             assert prop_name != "", "Unacceptable Property name, either empty or blank"
+            assert type(prop_name) == str, "Unacceptable non-string Property name"
 
         # Locate the largest index of the Properties currently present
         q = '''
@@ -532,14 +532,14 @@ class NeoSchema:
         :return:                If successful, the integer "schema_id" assigned to the new Class;
                                 otherwise, raise an Exception
         """
-        #TODO: it might be safer to use fewer Cypher transactions
+        # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
+        #       adding a new Class and then leaving it w/o properties or links, in case of mid-operation error
 
         new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
-        if not cls.valid_schema_id(new_class_id):
-            raise Exception(f"new_class_with_properties(): Unable to create a new class with name `{class_name}`")
 
         number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
-        print("new_class_with_properties().  number_properties_added: ", number_properties_added)
+        if number_properties_added != len(property_list):
+            raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {property_list}")
 
         if class_to_link_to and link_to_name:
             # Create a relationship from the newly-created Class to an existing Class whose name is given by class_to_link_to
