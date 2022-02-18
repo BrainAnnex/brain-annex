@@ -135,7 +135,7 @@ class NeoSchema:
         name = name.strip()     # Strip any whitespace at the ends
         assert name != "", "Unacceptable Class name, either empty or blank"
 
-        print(f"create_class(): about to call db.db.exists_by_key with parameters `{cls.class_label}` and `{name}`")
+        print(f"create_class(): about to call db.exists_by_key with parameters `{cls.class_label}` and `{name}`")
         if cls.db.exists_by_key(cls.class_label, key_name="name", key_value=name):
             return -1
 

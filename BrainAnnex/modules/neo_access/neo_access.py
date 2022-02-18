@@ -5,11 +5,12 @@ import numpy as np
 import pandas as pd
 import os
 import json
+from typing import Union
 
 
 class NeoAccess:
     """
-    VERSION 3.1
+    VERSION 3.1.1
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -471,19 +472,20 @@ class NeoAccess:
 
 
 
-    def get_single_record_by_key(self, labels: str, key_name: str, key_value, return_nodeid=False):     # TODO: test
+    def get_single_record_by_key(self, labels: str, primary_key_name: str, key_value, return_nodeid=False) -> Union[None, dict]:     # TODO: test
         """
-        Return the first (and it ought to be only one) record with the given primary key,
+        Return the first (and it ought to be only one) record with the given primary key, and the optional label(s),
         as a dictionary of all its attributes.
         If no record is found, return None
-        TODO: switch to using the "match" data.
 
-        :param labels:
-        :param key_name:
-        :param key_value:
+        :param labels:              A string or list/tuple of strings
+        :param primary_key_name:    The name of the primary key by which to look the record up
+        :param key_value:           The desired value of the primary key
         :return:
         """
-        results = self.get_nodes(labels, properties_condition={key_name: key_value}, return_nodeid=return_nodeid)
+        match = self.find(labels=labels, key_name=primary_key_name, key_value=key_value)
+        results = self.fetch_nodes(match=match, return_neo_id=return_nodeid)
+
         if results == []:
             return None
 
