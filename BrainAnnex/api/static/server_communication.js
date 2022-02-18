@@ -203,6 +203,7 @@ class ServerCommunication
         fetch(url_server, fetch_options)
         .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
         .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
+                                                        //      TODO: turn into a method that first logs the first part of the response (helpful in case of parsing errors)
         .then(server_response => {                      // Manage the server response
             console.log("server_response received by contact_server_JSON(): ");
             console.log(server_response);
@@ -320,11 +321,17 @@ class ServerCommunication
             it will get caught by the next ".then()" statement of the original fetch() call.
         In case of HTTP error status (such as 404), log the error to the console,
             and raise an exception with error details - meant to be caught by a
-            ".catch()" statement in the original fetch() call
+            ".catch()" statement in the original fetch() call.
+
+        Example of response object:
+            { type: "basic", url: "http://localhost:5000/BA/api/simple/create_new_record_class", redirected: false,
+              status: 200, ok: true, statusText: "OK", headers: Headers, body: ReadableStream, bodyUsed: false }
      */
     {
-        if (resp_obj.ok)
+        if (resp_obj.ok)  {
+            console.log(`Received response object from server: `, resp_obj);
             return resp_obj;	// Just pass thru the response object
+        }
 
         // If the above "ok" attribute is false, then there was an HTTP error status - for example a 404 (page not found)
         console.error('Error: HTTP error status received from the server. Response object below:', resp_obj);
@@ -355,7 +362,7 @@ class ServerCommunication
                                       + err.name + " - " + err.message;
         alert(fetch_failure_message);
 
-        /* TODO: there might be a timing bug in Firefox.  I sporadically get an error with name "TypeError"
+        /* TODO: there might be a timing (or caching??) bug in Firefox.  I sporadically get an error with name "TypeError"
            and message: "NetworkError when attempting to fetch resource"
            MAYBE ATTEMPT A 2nd fetch automatically???
            See also: https://stackoverflow.com/questions/67451129/express-and-fetch-typeerror-networkerror-when-attempting-to-fetch-resource

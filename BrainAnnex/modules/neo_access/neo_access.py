@@ -476,6 +476,7 @@ class NeoAccess:
         Return the first (and it ought to be only one) record with the given primary key,
         as a dictionary of all its attributes.
         If no record is found, return None
+        TODO: switch to using the "match" data.
 
         :param labels:
         :param key_name:

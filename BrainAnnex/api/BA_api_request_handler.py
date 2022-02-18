@@ -79,23 +79,26 @@ class APIRequestHandler:
     #######################     SCHEMA-RELATED  ("Records" related)     #######################
 
     @classmethod
-    def new_record_class(cls, d):
+    def new_record_class(cls, class_specs: dict) -> None:
         """
         Create a new Class that is an instance of the Records Class
 
-        :param d:   EXAMPLE : {"data": "Quotes,quote,attribution,notes"}
-                    The first item in the comma-separated list is the Class name;
-                    the remaining items are the desired Properties, in the wanted order
+        :param class_specs: EXAMPLE : {"data": "Favorite Quotes,quote,attribution,notes"}
+                                The first item in the comma-separated list is the Class name;
+                                the remaining items are the desired Properties, in the wanted order.
+                                Blanks before/after any name are ignored.
+                                Empty Properties are ignored.
+                                If the Class name is missing, an Exception is raised.
         :return:
         """
 
-        if "data" not in d:
-            raise Exception("Missing 'data' field in POST request")
+        if "data" not in class_specs:
+            raise Exception("new_record_class(): Missing 'data' key in argument")
 
-        specs = d["data"]       # EXAMPLE:  "Quotes,quote,attribution,notes"
+        specs = class_specs["data"]       # EXAMPLE:  "Quotes,quote,attribution,notes"
 
         if specs.strip() == "":
-            raise Exception("Empty 'data' field in POST request")
+            raise Exception("new_record_class(): Empty 'data' value in argument")
 
         listing = specs.split(",")
         print("listing: ", listing)
@@ -103,14 +106,21 @@ class APIRequestHandler:
         class_name = listing[0]
         property_list = listing[1:]     # Ditch the initial (0-th) element
 
+        class_name = class_name.strip()
         print("class_name: ", class_name)
-        print("property_list: ", property_list)
+
+        property_list_clean = []
+        for p in property_list:
+            prop_name = p.strip()
+            if prop_name:
+                property_list_clean.append(prop_name)
+
+        print("property_list_clean: ", property_list_clean)
 
         parent_id = NeoSchema.get_class_id(class_name = "Records")
         print("parent_id (ID of `Records` class): ", parent_id)
 
-        new_id = NeoSchema.new_class_with_properties(class_name, property_list)
-        assert new_id != -1, f"Unable to create a new Class named {class_name} with the requested Properties {property_list}"
+        new_id = NeoSchema.new_class_with_properties(class_name, property_list_clean)
 
         status = NeoSchema.create_class_relationship(child=new_id, parent=parent_id, rel_name ="INSTANCE_OF")
         assert status, f"Unable to link the newly-created Class ({class_name}) to the `Records` class"

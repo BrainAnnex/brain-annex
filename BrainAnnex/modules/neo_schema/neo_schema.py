@@ -135,6 +135,7 @@ class NeoSchema:
         name = name.strip()     # Strip any whitespace at the ends
         assert name != "", "Unacceptable Class name, either empty or blank"
 
+        print(f"create_class(): about to call db.db.exists_by_key with parameters `{cls.class_label}` and `{name}`")
         if cls.db.exists_by_key(cls.class_label, key_name="name", key_value=name):
             return -1
 
@@ -146,6 +147,7 @@ class NeoSchema:
         if no_datanodes:
             attributes["no_datanodes"] = True       # TODO: test this option
 
+        print(f"create_class(): about to call db.create_node with parameters `{cls.class_label}` and `{attributes}`")
         cls.db.create_node(cls.class_label, attributes)
         return schema_id
 
@@ -515,7 +517,7 @@ class NeoSchema:
         the links are assigned an auto-increment index, representing the default order of the Properties.
 
         If a Class with the given name already exists, nothing is done,
-        and -1 (not a valid schema ID) is returned.
+        and an Exception is raised.
 
         NOTE: if the Class already exists, use add_properties_to_class() instead
 
@@ -527,14 +529,17 @@ class NeoSchema:
                                     then create a relationship from the newly-created Class to this existing one
         :param link_to_name     Name to use for the above relationship.  Default is "INSTANCE_OF"
 
-        :return:                If successful, the integer "schema_id" assigned to the new Class; otherwise, -1
+        :return:                If successful, the integer "schema_id" assigned to the new Class;
+                                otherwise, raise an Exception
         """
         #TODO: it might be safer to use fewer Cypher transactions
 
         new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
-        if cls.valid_schema_id(new_class_id):
-            number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
-            print("new_class_with_properties().  number_properties_added: ", number_properties_added)
+        if not cls.valid_schema_id(new_class_id):
+            raise Exception(f"new_class_with_properties(): Unable to create a new class with name `{class_name}`")
+
+        number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
+        print("new_class_with_properties().  number_properties_added: ", number_properties_added)
 
         if class_to_link_to and link_to_name:
             # Create a relationship from the newly-created Class to an existing Class whose name is given by class_to_link_to

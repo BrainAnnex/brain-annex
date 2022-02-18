@@ -58,28 +58,81 @@ Vue.component('vue-schema-editor',
 
                 property_list: [],
 
-                property_1: "",
-
-                status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
-                error: false,                // Whether the last server communication resulted in error
-                waiting: false               // Whether any server request is still pending
+                waiting: false,         // Whether any server request is still pending
+                status_message: "",     // Message for user about the status of the last operation (NOT for "waiting" status)
+                error: false            // Whether the last server communication resulted in error
             }
-        },
-
-
-
-        // ----------------  COMPUTED  -----------------
-        computed: {
-
         },
 
 
 
         // ----------------  METHODS  -----------------
         methods: {
-            add_class() {
-                alert("add_class foo");     // . some_data_a= " + this.some_data_a);
+
+            /*
+                SERVER CALLS
+             */
+
+            add_class()
+            /* Initiate request to server to add a new Class with the specified Properties,
+               in the given order
+             */
+            {
+                console.log(`Processing request to add_class ${this.new_class_name}`);
+                console.log(this.property_list);
+
+                if (this.new_class_name == "")  {
+                    alert("Must enter a Class name");
+                    return;
+                }
+
+                let post_data = this.new_class_name + ",";
+
+                properties_length = this.property_list.length;
+                for (let i = 0; i < properties_length; i++) {
+                    let property_name = this.property_list[i];
+                    if (property_name)
+                        post_data += this.property_list[i] + ",";
+                }
+
+                console.log(post_data);
+
+                // Send the request to the server, using a POST
+                let url_server = "/BA/api/simple/create_new_record_class";
+                let post_obj = {data: post_data};
+                console.log(`About to contact the server at ${url_server}.  POST object:`);
+                console.log(post_obj);
+
+                this.waiting = true;
+                this.status_message = "";   // Clear any message from the previous operation
+                this.error = false;         // Clear any error from the previous operation
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server,
+                            {post_obj: post_obj,
+                             callback_fn: this.finish_add_class});
+            },
+
+            finish_add_class(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of add_class() upon getting a response from the server
+            {
+                console.log("Finalizing the add_class operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `New Class added`;
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED addition of new Class: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                // Clear up the form
+                this.new_class_name = "";
+                this.property_list = [];
             }
+
 
         }  // METHODS
 

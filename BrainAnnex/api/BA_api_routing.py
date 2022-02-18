@@ -90,7 +90,7 @@ class ApiRouting:
 
         if required_par_list:
             for par in required_par_list:
-                assert par in data_dict, f"The expected POST parameter `{par}` is missing"
+                assert par in data_dict, f"The expected parameter `{par}` in the POST request is missing"
 
         return data_dict
 
@@ -380,30 +380,31 @@ class ApiRouting:
         #            SCHEMA-related (creating)        #
         #---------------------------------------------#
 
-        @self.BA_api_flask_blueprint.route('/simple/create_new_record', methods=['POST'])
-        def create_new_record():
+        @self.BA_api_flask_blueprint.route('/simple/create_new_record_class', methods=['POST'])
+        def create_new_record_class():
             """
             TODO: this is a simple, interim version - to later switch to JSON
 
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/create_new_record -d "data=Quotes,quote,attribution,notes"
+                curl http://localhost:5000/BA/api/simple/create_new_record_class -d "data=Quotes,quote,attribution,notes"
 
             1 POST FIELD:
                 data    The name of the new Class, followed by the name of all desired Properties, in order
-                        (all comma-separated)
+                        (all comma-separated).  Tolerant of leading/trailing blanks, and of missing property names
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
-            self.show_post_data(post_data, "create_new_record")
+            self.show_post_data(post_data, "create_new_record_class")
 
             try:
-                APIRequestHandler.new_record_class(dict(post_data))
+                class_specs = self.extract_post_pars(post_data, required_par_list=["data"])
+                APIRequestHandler.new_record_class(class_specs)
                 return_value = self.SUCCESS_PREFIX               # Success
             except Exception as ex:
-                err_status = f"UNABLE TO CREATE NEW CLASS WITH PROPERTIES: {ex}"
+                err_status = f"UNABLE TO CREATE NEW CLASS WITH PROPERTIES. {ex}"
                 return_value = self.ERROR_PREFIX + err_status    # Failure
 
-            print(f"create_new_record() is returning: `{return_value}`")
+            print(f"create_new_record_class() is returning: `{return_value}`")
 
             return return_value
 
