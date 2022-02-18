@@ -87,9 +87,10 @@ Vue.component('vue-category-navbox',
                     <template v-for="category in categories_to_show">
                         <li>
                         <a v-if="category_name != category.name" v-bind:href="'/BA/pages/viewer/' + category['id']">{{category.name}}</a>
-                        <span v-else class="current-category">{{category.name}}</a>
+                        <span v-else class="current-category">{{category.name}}</span>
+                        </li>
                     </template>
-                    <ul>
+                    </ul>
 
                     <!-- If the filter is applied, show more info -->
                     <template v-if="filter">

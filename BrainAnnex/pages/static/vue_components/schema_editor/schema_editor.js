@@ -6,9 +6,9 @@ Vue.component('vue-schema-editor',
          */
 
         template: `
-            <div>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
+            <div class='form-container'>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
 
-            <span class='title'>CREATE A NEW SCHEMA CLASS :</span><br><br>
+            <span class='title'>CREATE A NEW SCHEMA CLASS</span><br><br>
 
 
             <table border='0' cellspacing='5' cellpadding='0'>

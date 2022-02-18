@@ -1,0 +1,30 @@
+div.form-container {
+    padding:10px;
+}
+
+div.form-container span.title {
+    font-weight:bold;
+    color:brown;
+    font-size:14px
+}
+
+div.form-container button {
+    background: green;
+    font-weight: bold;
+    color: white;
+    border: 0 none;
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 10px 5px;
+    margin-right:15px;
+}
+
+div.form-container button:disabled {
+    border: 1px solid #999999;
+    background-color: #cccccc;
+    color: #666666;
+}
+
+div.form-container input {
+    border: 1px solid #DDD;
+}
