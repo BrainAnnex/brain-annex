@@ -323,7 +323,7 @@ class NeoSchema:
         :return:            True if allowed, or False if not
                             If the Class doesn't exist, raise an Exception
         """
-        class_node_dict = cls.db.get_single_record_by_key(labels="CLASS", key_name="name", primary_key_value=class_name)
+        class_node_dict = cls.db.get_single_record_by_key(labels="CLASS", primary_key_name="name", primary_key_value=class_name)
 
         if class_node_dict == None:
             raise Exception(f"Class named {class_name} not found in the Schema")

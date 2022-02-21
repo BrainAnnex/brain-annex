@@ -1352,11 +1352,9 @@ class NeoAccess:
 
         NOTE: other fields are left un-disturbed
 
-        LIMITATION: blanks are NOT allowed in the keys of set_dict      TODO: fix
-
         :param match:       A dictionary of data to identify a node, or set of nodes, as returned by find()
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
-                            (note: no blanks are allowed in the keys)
+                            (note: blanks ARE allowed in the keys)
 
         :return:            None        TODO: proceed as done in delete_nodes, to extract and return "properties_set"
         """
@@ -1373,9 +1371,10 @@ class NeoAccess:
         cypher_match = f"MATCH {node} {self.prepare_where(where)} "
 
         set_list = []
-        for field_name, field_value in set_dict.items():    # field_name, field_value are key/values in set_dict
-            set_list.append(f"{dummy_node_name}.`{field_name}` = ${field_name}")      # Example:  "n.`field1` = $field1"
-            data_binding[field_name] = field_value                           # EXTEND the Cypher data-binding dictionary
+        for field_name, field_value in set_dict.items():        # field_name, field_value are key/values in set_dict
+            field_name_safe = field_name.replace(" ", "_")      # To protect against blanks in name.  E.g., "end date" becomes "end_date"
+            set_list.append(f"{dummy_node_name}.`{field_name}` = ${field_name_safe}")    # Example:  "n.`field1` = $field1"
+            data_binding[field_name_safe] = field_value                                  # EXTEND the Cypher data-binding dictionary
 
         # Example of data_binding at the end of the loop: {'n_par_1': 123, 'n_par_2': 7500, 'color': 'white', 'price': 7000}
         #       in this example, the first 2 keys arise from the match (find) operation to locate the node,
@@ -1391,9 +1390,6 @@ class NeoAccess:
         #       {'n_par_1': 123, 'n_par_2': 7500, 'color': 'white', 'price': 7000}
 
         self.debug_print(cypher, data_binding, "set_fields")
-        if self.debug:
-            print("cypher: ", cypher)
-            print("data_binding: ", data_binding)
 
         self.query(cypher, data_binding)    # TODO: proceed as done in delete_nodes, to extract and return "properties_set"
 
