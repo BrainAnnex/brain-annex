@@ -17,7 +17,9 @@
 
         bread_crumbs
 
-        records_classes  (TODO: maybe obtain thru server call, when first needed)
+        records_types   EXAMPLE: ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
+                        Used for the addition of new records
+                        (TODO: maybe obtain thru server call, when first needed)
 
         content_items:   A list of dictionaries
                         EXAMPLE:
@@ -319,7 +321,7 @@
 
     <!-- Show all leaf Classes that are instances of "Records" -->
     <br>Add new record of type:
-    {% for class_name in records_classes %}
+    {% for class_name in records_types %}
         <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
                 class="record-picker"
                 style="color: {% if (loop.index % 7) == 1 %}#ae9cd6{% elif (loop.index % 7) == 2 %}#8bb9d4{% elif (loop.index % 7) == 3 %}#a6cfa1{% elif (loop.index % 7) == 4 %}#dad6a1{% elif (loop.index % 7) == 5 %}#e1b298{% elif (loop.index % 7) == 6 %}#e59ca0{% elif (loop.index % 7) == 0 %}gray{% else %}black{% endif %}">
@@ -468,7 +470,7 @@ new Vue({
         show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
         show_right_sidebox: true,       // Indicating whether to show or collapse the right sidebox (with the Category navigation)
 
-        records_types: {{records_classes | tojson}},    // Array of all the names of leaf Classes associated to records
+        records_types: {{records_types | tojson}},    // Array of all the names of leaf Classes associated to records
 
         records_schema_data : {"Quotes": ["quote", "attribution", "notes"],
                                "French Vocabulary": ["French", "English", "notes"],

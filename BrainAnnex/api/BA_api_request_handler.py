@@ -128,7 +128,7 @@ class APIRequestHandler:
 
 
     @classmethod
-    def get_leaf_records(cls):
+    def get_leaf_records(cls) -> [str]:
         """
         Get all Classes that are, directly or indirectly, INSTANCE_OF the Class "Records",
         as long as they are leaf nodes (with no other Class that is an INSTANCE_OF them.)
@@ -138,10 +138,43 @@ class APIRequestHandler:
                  then "French Vocabulary" and "German Vocabulary" (but NOT "Foreign Vocabulary")
                  would be returned
 
-        :return:
+        :return: A list of strings with the Class names
+                 EXAMPLE:
+                    ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
         """
 
         return NeoSchema.get_class_instances("Records", leaf_only=True)
+
+
+
+    @classmethod
+    def get_records_schema_data(cls, category_id: int) -> [dict]:
+        """
+        TODO: test
+        :param category_id:
+        :return:
+        """
+        # Locate all the Classes of type record ("r") used by Content Items attached to the
+        # given Category
+        q = '''
+            MATCH  (cat :BA {item_id: $category_id}) <- 
+                        [:BA_in_category] - (rec :BA {schema_code:"r"}) - [:SCHEMA]->(cl:CLASS) 
+            RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
+            '''
+
+        class_list = cls.db.query(q, data_binding={"category_id": category_id})
+        # EXAMPLE: [ {"class_name": "French Vocabulary" , "schema_id": 4},
+        #            {"class_name": "Site Link" , "schema_id": 63}]
+
+
+        # Now extract all the Property fields, in the schema-stored order, of the above Classes
+        records_schema_data = {}
+        for cl in class_list:
+            prop_list = NeoSchema.get_class_properties(schema_id=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
+            class_name = cl["name"]
+            records_schema_data[class_name] = prop_list
+
+        return records_schema_data
 
 
 
@@ -265,7 +298,7 @@ class APIRequestHandler:
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_out,data_binding={"item_id": item_id})
+        result = cls.db.query(q_out, data_binding={"item_id": item_id})
         rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
 

@@ -404,33 +404,54 @@ class NeoSchema:
 
 
     ###################################################
+    #                                                 #
     #                PROPERTIES-RELATED               #
+    #                                                 #
     ###################################################
 
     @classmethod
-    def get_class_properties(cls, schema_id: int, include_ancestors=False) -> list:
+    def get_class_properties(cls, schema_id: int, include_ancestors=False, sort_by_path_len=False) -> list:
         """
         Return the list of all the names of the Properties associated with the given Class
         (including those inherited thru ancestor nodes, if include_ancestors is True),
-        sorted by schema-specified position.
+        sorted by the schema-specified position.
 
         :param schema_id:           Integer with the ID of a Class node
         :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
                                     to the given one by means of a chain of outbound "INSTANCE_OF" relationships
                                     Note: the sorting by relationship index won't mean much if ancestral nodes are included,
-                                          with their own indexing of relationships  TODO: maybe also sort by path length??
+                                          with their own indexing of relationships; if order matters in those cases, use the
+                                          "sort_by_path_len" argument, below
+        :param sort_by_path_len:    Only applicable if include_ancestors is True.
+                                    If provided, it must be either "ASC" or "DESC", and it will sort the results by path length
+                                    (either ascending or descending), before sorting by the schema-specified position for each Class.
+                                    Note: with "ASC", the immediate Properties of the given Class will be listed first
+
         :return:                    A list of the Properties of the specified Class (including indirectly, if include_ancestors is True)
         """
         if include_ancestors:
             # Follow zero or more outbound "INSTANCE_OF" relationships from the given Class node;
             #   "zero" relationships means the original node itself (handy in situations when there are no such relationships)
-            q = '''
-                MATCH (c :CLASS {schema_id: $schema_id})-[:INSTANCE_OF*0..]->(c_ancestor)
-                      -[r:HAS_PROPERTY]->(p :PROPERTY) 
-                RETURN p.name AS prop_name
-                ORDER BY r.index
-                '''
+            if sort_by_path_len:
+                assert (sort_by_path_len == "ASC" or sort_by_path_len == "DESC"), \
+                    "If the argument sort_by_path_len is provided, it must be either 'ASC' or 'DESC'"
+
+                q = f'''
+                    path=MATCH (c :CLASS {{schema_id: $schema_id}})-[:INSTANCE_OF*0..]->(c_ancestor)
+                                -[r:HAS_PROPERTY]->(p :PROPERTY) 
+                    RETURN p.name AS prop_name
+                    ORDER BY length(path) {sort_by_path_len}, r.index
+                    '''
+            else:
+                q = '''
+                    MATCH (c :CLASS {schema_id: $schema_id})-[:INSTANCE_OF*0..]->(c_ancestor)
+                          -[r:HAS_PROPERTY]->(p :PROPERTY) 
+                    RETURN p.name AS prop_name
+                    ORDER BY r.index
+                    '''
+
         else:
+            # NOT including ancestor nodes
             q = '''
                 MATCH (c :CLASS {schema_id: $schema_id})-[r :HAS_PROPERTY]->(p :PROPERTY)
                 RETURN p.name AS prop_name

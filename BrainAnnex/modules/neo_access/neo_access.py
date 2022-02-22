@@ -10,7 +10,7 @@ from typing import Union
 
 class NeoAccess:
     """
-    VERSION 3.1.1
+    VERSION 3.2
 
     High-level class to interface with the Neo4j graph database from Python.
 
