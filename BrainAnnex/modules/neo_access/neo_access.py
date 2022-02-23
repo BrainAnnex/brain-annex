@@ -5,11 +5,12 @@ import numpy as np
 import pandas as pd
 import os
 import json
+from typing import Union
 
 
 class NeoAccess:
     """
-    VERSION 3.1
+    VERSION 3.2
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -471,18 +472,20 @@ class NeoAccess:
 
 
 
-    def get_single_record_by_key(self, labels: str, key_name: str, key_value, return_nodeid=False):     # TODO: test
+    def get_single_record_by_key(self, labels: str, primary_key_name: str, primary_key_value, return_nodeid=False) -> Union[None, dict]:     # TODO: test
         """
-        Return the first (and it ought to be only one) record with the given primary key,
+        Return the first (and it ought to be only one) record with the given primary key, and the optional label(s),
         as a dictionary of all its attributes.
         If no record is found, return None
 
-        :param labels:
-        :param key_name:
-        :param key_value:
+        :param labels:              A string or list/tuple of strings
+        :param primary_key_name:    The name of the primary key by which to look the record up
+        :param primary_key_value:   The desired value of the primary key
         :return:
         """
-        results = self.get_nodes(labels, properties_condition={key_name: key_value}, return_nodeid=return_nodeid)
+        match = self.find(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
+        results = self.fetch_nodes(match=match, return_neo_id=return_nodeid)
+
         if results == []:
             return None
 
@@ -1349,11 +1352,9 @@ class NeoAccess:
 
         NOTE: other fields are left un-disturbed
 
-        LIMITATION: blanks are NOT allowed in the keys of set_dict      TODO: fix
-
         :param match:       A dictionary of data to identify a node, or set of nodes, as returned by find()
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
-                            (note: no blanks are allowed in the keys)
+                            (note: blanks ARE allowed in the keys)
 
         :return:            None        TODO: proceed as done in delete_nodes, to extract and return "properties_set"
         """
@@ -1370,9 +1371,10 @@ class NeoAccess:
         cypher_match = f"MATCH {node} {self.prepare_where(where)} "
 
         set_list = []
-        for field_name, field_value in set_dict.items():    # field_name, field_value are key/values in set_dict
-            set_list.append(f"{dummy_node_name}.`{field_name}` = ${field_name}")      # Example:  "n.`field1` = $field1"
-            data_binding[field_name] = field_value                           # EXTEND the Cypher data-binding dictionary
+        for field_name, field_value in set_dict.items():        # field_name, field_value are key/values in set_dict
+            field_name_safe = field_name.replace(" ", "_")      # To protect against blanks in name.  E.g., "end date" becomes "end_date"
+            set_list.append(f"{dummy_node_name}.`{field_name}` = ${field_name_safe}")    # Example:  "n.`field1` = $field1"
+            data_binding[field_name_safe] = field_value                                  # EXTEND the Cypher data-binding dictionary
 
         # Example of data_binding at the end of the loop: {'n_par_1': 123, 'n_par_2': 7500, 'color': 'white', 'price': 7000}
         #       in this example, the first 2 keys arise from the match (find) operation to locate the node,
@@ -1388,9 +1390,6 @@ class NeoAccess:
         #       {'n_par_1': 123, 'n_par_2': 7500, 'color': 'white', 'price': 7000}
 
         self.debug_print(cypher, data_binding, "set_fields")
-        if self.debug:
-            print("cypher: ", cypher)
-            print("data_binding: ", data_binding)
 
         self.query(cypher, data_binding)    # TODO: proceed as done in delete_nodes, to extract and return "properties_set"
 

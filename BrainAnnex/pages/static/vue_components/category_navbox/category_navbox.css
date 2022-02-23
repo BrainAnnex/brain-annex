@@ -1,4 +1,4 @@
-/* Side boxes.  Container for Category selector shown off to the right
+/*  Side box.  Container for Category selector shown to the right
     of the "scroll-canvas" -- which is used as its parent,
     and as a coordinate frame of reference
  */
@@ -16,7 +16,7 @@ div.sidebox {					/* RIGHT Sidebox with the Categories, in its expanded state */
 }
 
 div.sidebox_collapsed {			/* Sidebox in its collapsed state */
-	position:fixed;
+	position:fixed;             /* TODO - Maybe position:absolute instead? */
 	top:80px;
 	right:0;
 
@@ -38,8 +38,37 @@ div.sidebox  span.sidebox-section {
 }
 
 
+/* For the Current Category in the listing of categories */
+div.sidebox  span.current-category {
+    color:brown;
+    font-weight:bold;
+}
 
-/* Links for sidebox */
+/* For the letters of the alphabets used to set the filter\1F44D */
+div.sidebox  a.alphabet-letters  {
+    margin-right: 3px;
+}
+
+
+/*
+    For the Category listing at the bottom
+ */
+div.sidebox  ul  {
+    margin: 0;
+    padding-left: 4px;
+}
+
+div.sidebox  li  {
+    list-style-type: "\2666";   /* Filled diamond */
+    margin-top: 1px;
+    padding-left: 3px;
+}
+
+
+
+/*
+    Links for sidebox
+ */
 
 div.sidebox  a:link  {
 	color:#222;					/* Dark gray */

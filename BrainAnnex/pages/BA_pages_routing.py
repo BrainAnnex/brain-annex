@@ -98,7 +98,7 @@ class PagesRouting:
             """
 
             template = "page_viewer.htm"
-            category_id = int(category_id)  # TODO: return good error message if it's not an integer
+            category_id = int(category_id)  # TODO: return a good error message (a special page) if it's not an integer
 
             # Fetch all the Content Items attached to the given Category.
             content_items = PagesRequestHandler.get_content_items_by_category(category_id)
@@ -123,7 +123,9 @@ class PagesRouting:
             subcategories = PagesRequestHandler.get_subcategories(category_id)
             all_categories = PagesRequestHandler.get_all_categories(exclude_root=False)
 
-            records_classes = APIRequestHandler.get_leaf_records()
+            records_types = APIRequestHandler.get_leaf_records()
+            records_schema_data = APIRequestHandler.get_records_schema_data(category_id)  # TODO: *** TEST
+            #print("records_schema_data: ", records_schema_data)
 
             bread_crumbs = Categories.create_bread_crumbs(category_id)
 
@@ -133,7 +135,7 @@ class PagesRouting:
                                    all_categories=all_categories,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    bread_crumbs=bread_crumbs,
-                                   records_classes=records_classes
+                                   records_types=records_types, records_schema_data=records_schema_data
                                    )
 
 
@@ -193,11 +195,25 @@ class PagesRouting:
         @self.BA_pages_flask_blueprint.route('/admin')
         def admin() -> str:
             """
-            Generate a general administrative page (currently for import/exports)
+            Generate a general administrative page
+            (currently for import/exports, and a link to the Schema-Editor page)
+
             EXAMPLE invocation: http://localhost:5000/BA/pages/admin
             """
 
             template = "admin.htm"
+            return render_template(template, current_page=request.path, site_pages=self.site_pages)
+
+
+
+        @self.BA_pages_flask_blueprint.route('/schema-manager')
+        def schema_manager() -> str:
+            """
+            Generate a general administrative page (currently for import/exports)
+            EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager
+            """
+
+            template = "schema_manager.htm"
             return render_template(template, current_page=request.path, site_pages=self.site_pages)
 
 

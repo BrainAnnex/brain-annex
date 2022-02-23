@@ -79,38 +79,48 @@ class APIRequestHandler:
     #######################     SCHEMA-RELATED  ("Records" related)     #######################
 
     @classmethod
-    def new_record_class(cls, d):
+    def new_record_class(cls, class_specs: dict) -> None:
         """
         Create a new Class that is an instance of the Records Class
 
-        :param d:   EXAMPLE : {"data": "Quotes,quote,attribution,notes"}
-                    The first item in the comma-separated list is the Class name;
-                    the remaining items are the desired Properties, in the wanted order
+        :param class_specs: EXAMPLE : {"data": "Favorite Quotes,quote,attribution,notes"}
+                                The first item in the comma-separated list is the Class name;
+                                the remaining items are the desired Properties, in the wanted order.
+                                Blanks before/after any name are ignored.
+                                Empty Properties are ignored.
+                                If the Class name is missing, an Exception is raised.
         :return:
         """
 
-        if "data" not in d:
-            raise Exception("Missing 'data' field in POST request")
+        if "data" not in class_specs:
+            raise Exception("new_record_class(): Missing 'data' key in argument")
 
-        specs = d["data"]       # EXAMPLE:  "Quotes,quote,attribution,notes"
+        specs = class_specs["data"]       # EXAMPLE:  "Quotes,quote,attribution,notes"
 
         if specs.strip() == "":
-            raise Exception("Empty 'data' field in POST request")
+            raise Exception("new_record_class(): Empty 'data' value in argument")
 
         listing = specs.split(",")
-        print("listing: ", listing)
+        #print("listing: ", listing)
 
         class_name = listing[0]
         property_list = listing[1:]     # Ditch the initial (0-th) element
 
-        print("class_name: ", class_name)
-        print("property_list: ", property_list)
+        class_name = class_name.strip()
+        #print("class_name: ", class_name)
+
+        property_list_clean = []
+        for p in property_list:
+            prop_name = p.strip()
+            if prop_name:
+                property_list_clean.append(prop_name)
+
+        #print("property_list_clean: ", property_list_clean)
 
         parent_id = NeoSchema.get_class_id(class_name = "Records")
-        print("parent_id (ID of `Records` class): ", parent_id)
+        #print("parent_id (ID of `Records` class): ", parent_id)
 
-        new_id = NeoSchema.new_class_with_properties(class_name, property_list)
-        assert new_id != -1, f"Unable to create a new Class named {class_name} with the requested Properties {property_list}"
+        new_id = NeoSchema.new_class_with_properties(class_name, property_list_clean)
 
         status = NeoSchema.create_class_relationship(child=new_id, parent=parent_id, rel_name ="INSTANCE_OF")
         assert status, f"Unable to link the newly-created Class ({class_name}) to the `Records` class"
@@ -118,7 +128,7 @@ class APIRequestHandler:
 
 
     @classmethod
-    def get_leaf_records(cls):
+    def get_leaf_records(cls) -> [str]:
         """
         Get all Classes that are, directly or indirectly, INSTANCE_OF the Class "Records",
         as long as they are leaf nodes (with no other Class that is an INSTANCE_OF them.)
@@ -128,10 +138,43 @@ class APIRequestHandler:
                  then "French Vocabulary" and "German Vocabulary" (but NOT "Foreign Vocabulary")
                  would be returned
 
-        :return:
+        :return: A list of strings with the Class names
+                 EXAMPLE:
+                    ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
         """
 
         return NeoSchema.get_class_instances("Records", leaf_only=True)
+
+
+
+    @classmethod
+    def get_records_schema_data(cls, category_id: int) -> [dict]:
+        """
+        TODO: test
+        :param category_id:
+        :return:
+        """
+        # Locate all the Classes of type record ("r") used by Content Items attached to the
+        # given Category
+        q = '''
+            MATCH  (cat :BA {item_id: $category_id}) <- 
+                        [:BA_in_category] - (rec :BA {schema_code:"r"}) - [:SCHEMA]->(cl:CLASS) 
+            RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
+            '''
+
+        class_list = cls.db.query(q, data_binding={"category_id": category_id})
+        # EXAMPLE: [ {"class_name": "French Vocabulary" , "schema_id": 4},
+        #            {"class_name": "Site Link" , "schema_id": 63}]
+
+
+        # Now extract all the Property fields, in the schema-stored order, of the above Classes
+        records_schema_data = {}
+        for cl in class_list:
+            prop_list = NeoSchema.get_class_properties(schema_id=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
+            class_name = cl["class_name"]
+            records_schema_data[class_name] = prop_list
+
+        return records_schema_data
 
 
 
@@ -255,7 +298,7 @@ class APIRequestHandler:
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_out,data_binding={"item_id": item_id})
+        result = cls.db.query(q_out, data_binding={"item_id": item_id})
         rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
 

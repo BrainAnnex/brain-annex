@@ -17,9 +17,18 @@
 
         bread_crumbs
 
-        records_classes  (TODO: maybe obtain thru server call, when first needed)
+        records_types   EXAMPLE: ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
+                        Used for the addition of new records
+                        (TODO: maybe obtain thru server call, when first needed)
 
-        content_items:   A list of dictionaries
+        records_schema_data: A dictionary of record class names mapped into their ordered property names
+                             EXAMPLE:
+                             {"Quotes": ["quote", "attribution", "notes"],
+                              "French Vocabulary": ["French", "English", "notes"],
+                              "Site Link": ["url", "name", "date", "comments", "rating", "read"]
+                             }
+
+        content_items:  A list of dictionaries
                         EXAMPLE:
                         [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
                          {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
@@ -319,7 +328,7 @@
 
     <!-- Show all leaf Classes that are instances of "Records" -->
     <br>Add new record of type:
-    {% for class_name in records_classes %}
+    {% for class_name in records_types %}
         <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
                 class="record-picker"
                 style="color: {% if (loop.index % 7) == 1 %}#ae9cd6{% elif (loop.index % 7) == 2 %}#8bb9d4{% elif (loop.index % 7) == 3 %}#a6cfa1{% elif (loop.index % 7) == 4 %}#dad6a1{% elif (loop.index % 7) == 5 %}#e1b298{% elif (loop.index % 7) == 6 %}#e59ca0{% elif (loop.index % 7) == 0 %}gray{% else %}black{% endif %}">
@@ -468,15 +477,12 @@ new Vue({
         show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
         show_right_sidebox: true,       // Indicating whether to show or collapse the right sidebox (with the Category navigation)
 
-        records_types: {{records_classes | tojson}},    // Array of all the names of leaf Classes associated to records
+        records_types: {{records_types | tojson}},    // Array of all the names of leaf Classes associated to records
 
-        records_schema_data : {"Quotes": ["quote", "attribution", "notes"],
-                               "French Vocabulary": ["French", "English", "notes"],
-                               "German Vocabulary": ["German", "English", "notes"],
-                               "Site Link": ["url", "name", "date", "comments", "rating", "read"],
-                               "Profl Connections": ["name", "role", "location", "notes", "LinkedIn", "email"],
-                               "Restaurants": ["name", "website", "address", "city", "phone", "notes", "eval"]
-                               },       // TODO: Extract from dbase (as needed?)
+        records_schema_data : {{records_schema_data | tojson }}, // EXAMPLE:
+                                                                 // {"Quotes": ["quote", "attribution", "notes"],
+                                                                 //  "French Vocabulary": ["French", "English", "notes"],
+                                                                 //  "Site Link": ["url", "name", "date", "comments", "rating", "read"]}
 
         bread_crumbs: {{bread_crumbs | tojson}},
                         // EXAMPLE: ["START_CONTAINER", [1, 544, 514], "END_CONTAINER"]
@@ -497,14 +503,15 @@ new Vue({
         status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
         error: false,                // Whether the last server communication resulted in error
         waiting: false               // Whether any server request is still pending
-    },
+
+    }, // DATA
 
 
 
     // ---------------------  HOOKS  ----------------------
 
     mounted() {
-        // If the page is empty of content and of sub-categories, switch automatically to editing mode
+        // If the page is devoid of content and of sub-categories, switch automatically to editing mode
         if (this.is_page_empty)
             this.expose_controls = true;
     },
@@ -537,7 +544,7 @@ new Vue({
             return this.build_groupings();
         }
 
-    }, // END computed
+    }, // COMPUTED
 
 
 
@@ -1109,7 +1116,7 @@ new Vue({
             }
             parsing.push(false);    // The last Content Item cannot be merged with a "next" one
 
-            console.log('parsing array: ', parsing);
+            //console.log('parsing array: ', parsing);
 
             let active_index = -1;
 
@@ -1161,16 +1168,16 @@ new Vue({
             const fields_i = this.extract_fields(item_i);
             const fields_j = this.extract_fields(item_j);
 
-            console.log('Examining record with index: ', i);
-            console.log('  fields_i: ', fields_i);
-            console.log('  fields_j: ', fields_j);
+            //console.log('Examining record with index: ', i);
+            //console.log('  fields_i: ', fields_i);
+            //console.log('  fields_j: ', fields_j);
 
             if (!this.compare_arrays(fields_i, fields_j)) {  // Allows variations in field order
-                console.log('    the field lists differ');
+                //console.log('    the field lists differ');
                 return false;
             }
 
-            console.log('    the field lists are the same');
+            //console.log('    the field lists are the same');
             return true;
         },
 

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters:  current_page, site_pages
+ #}
+
+<html lang="en">
+<head>
+    <title>EXAMPLE PAGE</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/admin.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/schema_editor/schema_editor.css">
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+
+<body>
+
+<div id="vue-root">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
+
+<h2 class="title">Schema Manager</h2>
+
+
+<br><br>
+
+<div class="content-block">
+    <p><b>SECTION 1</b></p>
+
+    <vue-bread-crumbs
+            v-bind:category_id="category_id"
+            v-bind:bread_crumbs="bread_crumbs"
+            v-bind:all_categories="all_categories"
+    >
+    </vue-bread-crumbs>
+
+</div>
+
+
+<br><br>
+
+<div class="content-block">
+    <p><b>SECTION 2</b></p>
+    <p style="padding:25px">
+        <a href="/BA/pages/example">Example</a>
+    </p>
+</div>
+
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="/BA/pages/static/vue_components/schema_editor/schema_editor.js"></script>
+
+
+<script>
+// Instantiation of the ROOT component must come after the definition of the descendant components
+new Vue({
+    el: '#vue-root',
+
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {     // GLOBAL DATA for the whole page (Vue root element).
+                // This is the handover of data from Flask to Vue
+
+        example: false
+
+    }, // DATA
+
+
+
+    // ---------------------  HOOKS  ----------------------
+
+    mounted() {
+    },
+
+
+
+    // ---------------------  COMPUTED  ----------------------
+
+    computed: {
+
+        computed_var()
+        {
+        }
+
+    }, // COMPUTED
+
+
+
+    // ----------------------------  METHODS  -----------------------------
+
+    methods:  {
+
+        some_method()
+        {
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>

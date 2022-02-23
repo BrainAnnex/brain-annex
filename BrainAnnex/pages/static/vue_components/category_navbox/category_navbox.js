@@ -1,11 +1,16 @@
 Vue.component('vue-category-navbox',
+/*  Listing of all Categories, including parents and children.
+    Option to FILTER the listing of categories to names starting with a particular letter
+*/
     {
         props: ['category_name', 'parent_categories', 'subcategories', 'all_categories', 'show_right_sidebox'],
-        /*  category_name:
-            parent_categories:
+        /*  category_name:      Name of the Category currently being viewed
+            parent_categories:  List of the parent categories of the Current Category
+                                    each item is an object, whose keys include
+                                    "item_id" and "name" (among others)
             subcategories:
             all_categories:
-            show_right_sidebox:
+            show_right_sidebox: Flag indicating whether the sidebar is expanded or contracted
          */
 
         template: `
@@ -59,36 +64,46 @@ Vue.component('vue-category-navbox',
 
                     <!-- The category listing -->
                     <span class="sidebox-section">
-                        <a  @click.prevent="filter=false"  href="#"
+                        <!-- One way to unset the filter -->
+                        <a  @click.prevent="remove_filter()"  href="#"
                             title='Show ALL categories' alt='Show ALL categories'>ALL</a>
                     </span>
+
                     <br>
-                    <a v-for="letter in alphabet"  @click.prevent="set_filter(letter)"  href="#">
+                    <!-- Option to set a filter -->
+                    <a v-for="letter in alphabet"  @click.prevent="set_filter(letter)"  href="#"  class="alphabet-letters">
                         {{letter}}
                     </a>
                     <br>
 
-                    <!-- UN-filtered listing of all categories -->
-                    <template v-if="!filter" v-for="category in all_categories">
-                        <br>&diams; <a v-bind:href="'/BA/pages/viewer/' + category['id']">{{category.name}}</a>
-                    </template>
-
-                    <!-- FILTERED listing of categories with names starting with a particular letter -->
+                    <!-- If the filter is applied, show its name (a letter) -->
                     <template v-if="filter">
                         <br><span style="font-weight:bold">{{filter}}:</span><br>
-                        <template v-for="category in categories_to_show">
-                            <br>&diams; <a v-bind:href="'/BA/pages/viewer/' + category['id']">{{category.name}}</a>
-                        </template>
+                    </template>
+                    <br>
+
+                    <!-- Listing of all the categories allowed by the filter -->
+                    <ul style=''>
+                    <template v-for="category in categories_to_show">
+                        <li>
+                        <a v-if="category_name != category.name" v-bind:href="'/BA/pages/viewer/' + category['id']">{{category.name}}</a>
+                        <span v-else class="current-category">{{category.name}}</span>
+                        </li>
+                    </template>
+                    </ul>
+
+                    <!-- If the filter is applied, show more info -->
+                    <template v-if="filter">
                         <template v-if="categories_to_show.length == 0">
                             <br><span style="color:gray; font-style: italic">No categories names start with this letter</span>
                         </template>
                         <br><br>
-                        <img @click="filter=false" class="clickable-icon"
+                        <!-- Another way to unset the filter -->
+                        <img @click="remove_filter()" class="clickable-icon"
                               title='Show ALL categories (or click on ALL)' alt='Show ALL categories (or click on ALL)'
                               src='/BA/pages/static/graphics/filter_remove_16.gif'>
                     </template>
 
-                    <br>
                     <br>
 
                 </div>  <!-- END of (expanded version of) sidebox -->
@@ -135,6 +150,12 @@ Vue.component('vue-category-navbox',
                 //alert(`Filtering for category names starting with ${l} : sorry, not yet implemented!`);
                 this.categories_to_show = this.all_categories.filter( cat => cat.name[0] == l);
                 this.filter = l;
+            },
+
+            remove_filter()
+            {
+                this.categories_to_show = this.all_categories;
+                this.filter = false;
             }
 
         }  // METHODS

@@ -314,10 +314,9 @@ Vue.component('vue-plugin-r',
 
                 ServerCommunication.contact_server(url_server,
                             {payload_type: "JSON",
-                            post_obj: post_obj,
-                            callback_fn: this.finish_get_linked_records_from_server,
-                            custom_data: [rel_name, dir]});
-
+                             post_obj: post_obj,
+                             callback_fn: this.finish_get_linked_records_from_server,
+                             custom_data: [rel_name, dir]});
             },
 
             finish_get_linked_records_from_server(success, server_payload, error_message, custom_data)
