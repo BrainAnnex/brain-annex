@@ -157,6 +157,7 @@ class NeoSchema:
     def get_class_id(cls, class_name: str) -> int:
         """
         Returns the Schema ID of the Class with the given name, or -1 if not found
+        TODO: unique Class names are assumed
 
         :param class_name:  The name of the desired class
         :return:            The Schema ID of the specified Class, or -1 if not found
@@ -168,6 +169,18 @@ class NeoSchema:
             return -1
 
         return result
+
+
+
+    @classmethod
+    def class_exists(cls, schema_id: int) -> bool:
+        """
+        Return True if a Class by the given schema ID already exists, or False otherwise
+
+        :param schema_id:
+        :return:
+        """
+        return cls.db.exists_by_key(labels="CLASS", key_name="schema_id", key_value=schema_id)
 
 
 
