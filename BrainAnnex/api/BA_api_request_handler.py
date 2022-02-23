@@ -101,13 +101,13 @@ class APIRequestHandler:
             raise Exception("new_record_class(): Empty 'data' value in argument")
 
         listing = specs.split(",")
-        print("listing: ", listing)
+        #print("listing: ", listing)
 
         class_name = listing[0]
         property_list = listing[1:]     # Ditch the initial (0-th) element
 
         class_name = class_name.strip()
-        print("class_name: ", class_name)
+        #print("class_name: ", class_name)
 
         property_list_clean = []
         for p in property_list:
@@ -115,10 +115,10 @@ class APIRequestHandler:
             if prop_name:
                 property_list_clean.append(prop_name)
 
-        print("property_list_clean: ", property_list_clean)
+        #print("property_list_clean: ", property_list_clean)
 
         parent_id = NeoSchema.get_class_id(class_name = "Records")
-        print("parent_id (ID of `Records` class): ", parent_id)
+        #print("parent_id (ID of `Records` class): ", parent_id)
 
         new_id = NeoSchema.new_class_with_properties(class_name, property_list_clean)
 
@@ -171,7 +171,7 @@ class APIRequestHandler:
         records_schema_data = {}
         for cl in class_list:
             prop_list = NeoSchema.get_class_properties(schema_id=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
-            class_name = cl["name"]
+            class_name = cl["class_name"]
             records_schema_data[class_name] = prop_list
 
         return records_schema_data

@@ -129,12 +129,12 @@ class ServerCommunication
         var fetch_options;
 
         if (post_body != "" || method == "POST") {
-            console.log("About to start asynchronous call to ", url_server, " with POST body: ", post_body);
+            //console.log("About to start asynchronous call to ", url_server, " with POST body: ", post_body);
             fetch_options = ServerCommunication.prepare_POST_options(post_body);
         }
         else
         {
-            console.log("About to start asynchronous call to ", url_server, " with GET method");
+            //console.log("About to start asynchronous call to ", url_server, " with GET method");
             fetch_options = ServerCommunication.prepare_GET_options();
         }
 
@@ -150,7 +150,7 @@ class ServerCommunication
             else
             {   // Server reported SUCCESS
                 server_payload = ServerCommunication.extract_server_data(server_response);
-                console.log("server reported success");
+                //console.log("server reported success");
                 //console.log("  ...and returned the following payload: ", server_payload);
                 success_flag = true;
             }
@@ -191,12 +191,12 @@ class ServerCommunication
         var fetch_options;
 
         if (post_body != "" || method == "POST") {
-            console.log("About to start asynchronous call to ", url_server, " with POST body: ", post_body);
+            //console.log("About to start asynchronous call to ", url_server, " with POST body: ", post_body);
             fetch_options = ServerCommunication.prepare_POST_options(post_body);
         }
         else
         {
-            console.log("About to start asynchronous call to ", url_server, " with GET method");
+            //console.log("About to start asynchronous call to ", url_server, " with GET method");
             fetch_options = ServerCommunication.prepare_GET_options();
         }
 
@@ -329,7 +329,7 @@ class ServerCommunication
      */
     {
         if (resp_obj.ok)  {
-            console.log(`Received response object from server: `, resp_obj);
+            //console.log(`Received response object from server: `, resp_obj);
             return resp_obj;	// Just pass thru the response object
         }
 

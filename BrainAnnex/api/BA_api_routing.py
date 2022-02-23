@@ -435,7 +435,7 @@ class ApiRouting:
                 return_value = self.ERROR_PREFIX + err_details
             else:
                 return_value = self.SUCCESS_PREFIX + content
-                print(f"get_media() is returning the following text [first 30 chars]: `{return_value[:30]}`")
+                #print(f"get_media() is returning the following text [first 30 chars]: `{return_value[:30]}`")
         
             return return_value
 
@@ -476,7 +476,7 @@ class ApiRouting:
                 # set the MIME type
                 mime_type = mime_mapping.get(suffix.lower(), default_mime)
                 response.headers['Content-Type'] = mime_type
-                print(f"serve_media() is returning an image, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
+                #print(f"serve_media() is returning an image, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
             except Exception as ex:
                 err_details = f"Unable to retrieve image id `{item_id}` : {ex}"
                 print(f"serve_media() encountered the following error: {err_details}")

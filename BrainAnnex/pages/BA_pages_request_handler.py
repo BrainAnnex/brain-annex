@@ -78,7 +78,7 @@ class PagesRequestHandler:
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
             content_item_list.append(item_record)
 
-        print(content_item_list)
+        #print(content_item_list)
         return content_item_list
 
 

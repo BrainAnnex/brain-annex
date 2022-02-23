@@ -437,7 +437,7 @@ class NeoSchema:
                     "If the argument sort_by_path_len is provided, it must be either 'ASC' or 'DESC'"
 
                 q = f'''
-                    path=MATCH (c :CLASS {{schema_id: $schema_id}})-[:INSTANCE_OF*0..]->(c_ancestor)
+                    MATCH path=(c :CLASS {{schema_id: $schema_id}})-[:INSTANCE_OF*0..]->(c_ancestor)
                                 -[r:HAS_PROPERTY]->(p :PROPERTY) 
                     RETURN p.name AS prop_name
                     ORDER BY length(path) {sort_by_path_len}, r.index

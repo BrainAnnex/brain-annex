@@ -21,7 +21,14 @@
                         Used for the addition of new records
                         (TODO: maybe obtain thru server call, when first needed)
 
-        content_items:   A list of dictionaries
+        records_schema_data: A dictionary of record class names mapped into their ordered property names
+                             EXAMPLE:
+                             {"Quotes": ["quote", "attribution", "notes"],
+                              "French Vocabulary": ["French", "English", "notes"],
+                              "Site Link": ["url", "name", "date", "comments", "rating", "read"]
+                             }
+
+        content_items:  A list of dictionaries
                         EXAMPLE:
                         [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
                          {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
@@ -472,13 +479,10 @@ new Vue({
 
         records_types: {{records_types | tojson}},    // Array of all the names of leaf Classes associated to records
 
-        records_schema_data : {"Quotes": ["quote", "attribution", "notes"],
-                               "French Vocabulary": ["French", "English", "notes"],
-                               "German Vocabulary": ["German", "English", "notes"],
-                               "Site Link": ["url", "name", "date", "comments", "rating", "read"],
-                               "Profl Connections": ["name", "role", "location", "notes", "LinkedIn", "email"],
-                               "Restaurants": ["name", "website", "address", "city", "phone", "notes", "eval"]
-                               },       // TODO: Extract from dbase (as needed?)
+        records_schema_data : {{records_schema_data | tojson }}, // EXAMPLE:
+                                                                 // {"Quotes": ["quote", "attribution", "notes"],
+                                                                 //  "French Vocabulary": ["French", "English", "notes"],
+                                                                 //  "Site Link": ["url", "name", "date", "comments", "rating", "read"]}
 
         bread_crumbs: {{bread_crumbs | tojson}},
                         // EXAMPLE: ["START_CONTAINER", [1, 544, 514], "END_CONTAINER"]
@@ -1112,7 +1116,7 @@ new Vue({
             }
             parsing.push(false);    // The last Content Item cannot be merged with a "next" one
 
-            console.log('parsing array: ', parsing);
+            //console.log('parsing array: ', parsing);
 
             let active_index = -1;
 
@@ -1164,16 +1168,16 @@ new Vue({
             const fields_i = this.extract_fields(item_i);
             const fields_j = this.extract_fields(item_j);
 
-            console.log('Examining record with index: ', i);
-            console.log('  fields_i: ', fields_i);
-            console.log('  fields_j: ', fields_j);
+            //console.log('Examining record with index: ', i);
+            //console.log('  fields_i: ', fields_i);
+            //console.log('  fields_j: ', fields_j);
 
             if (!this.compare_arrays(fields_i, fields_j)) {  // Allows variations in field order
-                console.log('    the field lists differ');
+                //console.log('    the field lists differ');
                 return false;
             }
 
-            console.log('    the field lists are the same');
+            //console.log('    the field lists are the same');
             return true;
         },
 

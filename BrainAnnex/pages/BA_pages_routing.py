@@ -124,7 +124,8 @@ class PagesRouting:
             all_categories = PagesRequestHandler.get_all_categories(exclude_root=False)
 
             records_types = APIRequestHandler.get_leaf_records()
-            # records_schema_data = APIRequestHandler.get_records_schema_data(category_id)  # TODO: *** TEST
+            records_schema_data = APIRequestHandler.get_records_schema_data(category_id)  # TODO: *** TEST
+            #print("records_schema_data: ", records_schema_data)
 
             bread_crumbs = Categories.create_bread_crumbs(category_id)
 
@@ -134,7 +135,7 @@ class PagesRouting:
                                    all_categories=all_categories,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    bread_crumbs=bread_crumbs,
-                                   records_types=records_types
+                                   records_types=records_types, records_schema_data=records_schema_data
                                    )
 
 
