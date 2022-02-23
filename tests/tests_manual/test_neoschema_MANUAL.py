@@ -18,9 +18,20 @@ def db():
 
 #############   CLASS-related   #############
 
+def test_create_class(db):
+    NeoSchema.create_class("French Vocabulary")
+
+
+
 def test_class_exists(db):
-    assert NeoSchema.class_exists(19) == True
-    assert NeoSchema.class_exists(9999) == False
+    assert NeoSchema.class_exists(19)
+    assert not NeoSchema.class_exists(9999)
+
+
+def test_class_name_exists(db):
+    assert NeoSchema.class_name_exists("Records")
+    assert NeoSchema.class_name_exists("French Vocabulary")
+    assert not NeoSchema.class_name_exists("Was ist das")
 
 
 
@@ -34,15 +45,23 @@ def test_get_class_relationships(db):
     assert result == (['BA_located_in', 'BA_cuisine_type'], ['BA_served_at'])
 
 
+
+
 #############   PROPERTIES-RELATED   #############
 
-def test_get_class_properties():
+def test_get_class_properties(db):
     prop_list = NeoSchema.get_class_properties(4)
-    assert prop_list == ['Notes', 'English', 'French']          # Note: order might differ!
+    assert prop_list == ['French']
+
+    prop_list = NeoSchema.get_class_properties(4, include_ancestors=True, sort_by_path_len="ASC")
+    assert prop_list == ['French', 'English', 'notes']
+
+    prop_list = NeoSchema.get_class_properties(1, include_ancestors=False)
+    assert prop_list == ['German']
 
 
 
-def test_add_properties_to_class():
+def test_add_properties_to_class(db):
     result = NeoSchema.add_properties_to_class(23, ["title"])
     assert result == 1
 
@@ -58,6 +77,10 @@ def test_add_properties_to_class():
     assert result == 3
     """
 
+
+
+def test_remove_property_from_class(db):
+    NeoSchema.remove_property_from_class(class_id=1, property_id=5)
 
 
 
@@ -116,13 +139,13 @@ def test_initialize_schema(db):
 
 
 
-def test_get_class_instances():
+def test_get_class_instances(db):
     result = NeoSchema.get_class_instances("Records", leaf_only=True)
     print(result)
 
 
 
-def test_new_class_with_properties():
+def test_new_class_with_properties(db):
     """
     new_id = NeoSchema.new_class_with_properties("Images",
                                                  ["width", "caption"], code="i"
@@ -141,20 +164,14 @@ def test_new_class_with_properties():
 
 
 
-def test_unlink_classes():
+def test_unlink_classes(db):
     status = NeoSchema.unlink_classes(26, 15)
     assert status == True
 
 
 
-def test_rename_class_rel():
+def test_rename_class_rel(db):
     status = NeoSchema.rename_class_rel(from_class=1, to_class=19, new_rel_name="INSTANCE_OF")
-    assert status == True
-
-
-
-def test_remove_property_from_class():
-    status = NeoSchema.remove_property_from_class(class_id=26, property_id=28)
     assert status == True
 
 
@@ -188,7 +205,7 @@ def test_next_available_id(db):
 
 
 
-def test_next_available_datapoint_id():
+def test_next_available_datapoint_id(db):
     print(NeoSchema.next_available_datapoint_id())
 
 
@@ -196,7 +213,7 @@ def test_next_available_datapoint_id():
 
 ###########   Related to Schema CODES   ###########
 
-def test_get_schema_code():
+def test_get_schema_code(db):
     # TODO: assumes pre-set database!
     assert NeoSchema.get_schema_code("Restaurants") == "r"
     assert NeoSchema.get_schema_code("Entrees") == "r"
@@ -209,7 +226,7 @@ def test_get_schema_code():
 
 
 
-def test_get_schema_id():
+def test_get_schema_id(db):
     # TODO: assumes pre-set database!
     assert NeoSchema.get_schema_id("h") == 31
     assert NeoSchema.get_schema_id("n") == 23
@@ -220,7 +237,7 @@ def test_get_schema_id():
 
 ###########   DATA POINTS   ###########
 
-def test_add_data_point():
+def test_add_data_point(db):
 
     new_id = NeoSchema.add_data_point(class_name="German Vocabulary",
                                       data_dict = {"German": "Tür",
@@ -277,7 +294,7 @@ def test_delete_data_point(db):
 
 
 
-def test_add_data_relationship():
+def test_add_data_relationship(db):
     #status = NeoSchema.add_data_relationship(subcategory_id=536, category_id=540, rel_name="BA_served_at")
     #status = NeoSchema.add_data_relationship(subcategory_id=514, category_id=544, rel_name="BA_subcategory_of")
     #status = NeoSchema.add_data_relationship(subcategory_id=541, category_id=535, rel_name="BA_in_category")
@@ -286,6 +303,6 @@ def test_add_data_relationship():
 
 
 
-def test_remove_data_relationship():
+def test_remove_data_relationship(db):
     status = NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")
     assert status == True

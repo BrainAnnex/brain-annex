@@ -136,7 +136,7 @@ class NeoSchema:
         assert name != "", "Unacceptable Class name, either empty or blank"
 
         #print(f"create_class(): about to call db.exists_by_key with parameters `{cls.class_label}` and `{name}`")
-        if cls.db.exists_by_key(cls.class_label, key_name="name", key_value=name):
+        if cls.class_name_exists(name):
             raise Exception(f"A class named `{name}` ALREADY exists")
 
         schema_id = cls.next_available_id()    # A schema-wide ID, also used for Property nodes
@@ -181,6 +181,17 @@ class NeoSchema:
         :return:
         """
         return cls.db.exists_by_key(labels="CLASS", key_name="schema_id", key_value=schema_id)
+
+
+    @classmethod
+    def class_name_exists(cls, class_name: str) -> bool:
+        """
+        Return True if a Class by the given name already exists, or False otherwise
+
+        :param class_name:
+        :return:
+        """
+        return cls.db.exists_by_key(labels="CLASS", key_name="name", key_value=class_name)
 
 
 
@@ -485,9 +496,11 @@ class NeoSchema:
         Add a list of Properties to the specified (ALREADY-existing) Class.
         The properties are assigned an inherent order (an attribute named "index", starting at 1),
         based on the order they appear in the list.
+        If other Properties already exist, extend the existing numbering.
+        TODO: Offer a way to change the order of the Properties
+
         NOTE: if the Class doesn't already exist, use new_class_with_properties() instead
-        TODO: raise an Exception if the class doesn't exist.
-              Offer option to specify the class by name.
+        TODO: Offer option to specify the class by name.
 
         :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
         :param property_list:   A list of strings with the names of the properties, in the desired default order
@@ -498,6 +511,7 @@ class NeoSchema:
 
         assert type(class_id) == int, "Argument `class_id` in add_properties_to_class() must be an integer"
         assert type(property_list) == list, "Argument `property_list` in add_properties_to_class() must be a list"
+        assert cls.class_exists(class_id), f"No Class with ID {class_id} found in the Schema"
 
 
         clean_property_list = [prop.strip() for prop in property_list]
@@ -587,34 +601,31 @@ class NeoSchema:
 
 
     @classmethod
-    def remove_property_from_class(cls, class_id: int, property_id: int) -> bool:
+    def remove_property_from_class(cls, class_id: int, property_id: int) -> None:
         """
-        Take out the specified Property from the given Class
+        Take out the specified (single) Property from the given Class.
+        If the Class or Property was not found, or if the Property could not be removed, an Exception is raised
 
         :param class_id:    The schema ID of the Class node
         :param property_id: The schema ID of the Property node
-        :return:            True if a Property was found, and successfully removed; otherwise, False
+        :return:            None
         """
+        assert NeoSchema.class_exists(class_id), f"The schema has no Class with the requested ID of {class_id}"
+
         q = f'''
-            MATCH (c: `{cls.class_label}` {{ schema_id: {class_id} }})
-                  -[r:{cls.class_prop_rel}]
-                  ->(p: `{cls.property_label}` {{ schema_id: {property_id}}})
-            DELETE r
+            MATCH (c :CLASS {{ schema_id: {class_id} }})
+                  -[:HAS_PROPERTY]
+                  ->(p :PROPERTY {{ schema_id: {property_id}}})
+            DETACH DELETE p
             '''
-        # EXAMPLE:
-        '''
-        MATCH (c: `CLASS` { schema_id: 4 })
-              -[r:HAS_PROPERTY]
-              ->(p: `PROPERTY` { schema_id: 13})
-        DELETE r
-        '''
 
         result = cls.db.update_query(q)
         #print("result of update_query in remove_property_from_class(): ", result)
-        if result.get("relationships_deleted") == 1:
-            return True
-        else:
-            return False
+
+        # Validate the results of the query
+        assert result.get("nodes_deleted") == 1, f"Failed to find or delete the Property node (with schema_id {property_id})"
+        assert result.get("relationships_deleted") == 1, "Failed to find or delete the relationship"
+
 
 
 
