@@ -320,13 +320,14 @@ class APIRequestHandler:
     ##############   MODIFYING CONTENT ITEMS   ##############
 
     @classmethod
-    def update_content_item(cls, post_data: dict) -> str:
+    def update_content_item(cls, post_data: dict) -> None:
         """
         Update an existing Content Item
+        In case of error, an Exception is raised
 
-        :return:    An empty string if successful, or an error message otherwise
+        :return:    None
         """
-        print("In update_content_item(). POST data: ", post_data)
+        print("In update_content_item(). POST dict: ", post_data)
 
         # Validate the data
         schema_code = post_data.get("schema_code")   # If key not present, the value will be None
@@ -335,7 +336,7 @@ class APIRequestHandler:
         try:
             item_id = int(post_data.get("item_id"))
         except Exception as ex:
-            return f"item_id is missing or not an integer. {ex}"
+            raise Exception(f"item_id is missing or not an integer. {ex}")
 
         print("Item Type: ", item_id)
 
@@ -347,7 +348,7 @@ class APIRequestHandler:
         data_binding = post_data
 
         if item_id < 0:     # Validate item_id
-            return f"Bad item_id: {item_id}"
+            raise Exception(f"Bad item_id: {item_id}")
 
 
         set_dict = {}
@@ -363,9 +364,7 @@ class APIRequestHandler:
         # TODO: check the actual success of the operation
         match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         cls.db.set_fields(match=match, set_dict=set_dict)
-        #cls.db.set_fields("BA", set_dict, properties_condition={"item_id": item_id, "schema_code": schema_code})
 
-        return ""     # Success (no error message)
 
 
 

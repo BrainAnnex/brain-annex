@@ -62,8 +62,8 @@ def test_get_class_properties(db):
 
 
 def test_add_properties_to_class(db):
-    result = NeoSchema.add_properties_to_class(23, ["title"])
-    assert result == 1
+    result = NeoSchema.add_properties_to_class(1, ["Gender", "German"])
+    assert result == 2
 
     """
     German_class_id = 1

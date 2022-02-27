@@ -581,11 +581,13 @@ Vue.component('vue-plugin-r',
                     for (field in this.current_data)  {
                         if (this.current_data[field] != "")
                             console.log("Field still needed because non-empty: ", field);
-                        else if (field in this.original_data)
-                            console.log("Field blank but still needed because in original data: ", field);
+                        else if (field in this.original_data)  {
+                            console.log("Field blank but was in original data [deleted anyway]: ", field);
+                            delete this.current_data[field];     // Zap b/c blank,
+                        }
                         else {
                             console.log("Eliminating field no longer in need to display: ", field);
-                            delete this.current_data[field];    // Zap b/c blank, and not present before edit
+                            delete this.current_data[field];    // Zap b/c blank [NO LONGER DONE:, and not present before edit]
                         }
                     }
 

@@ -497,7 +497,8 @@ class NeoSchema:
         The properties are assigned an inherent order (an attribute named "index", starting at 1),
         based on the order they appear in the list.
         If other Properties already exist, extend the existing numbering.
-        TODO: Offer a way to change the order of the Properties
+        TODO: Offer a way to change the order of the Properties,
+              maybe by first deleting all Properties and then re-adding them
 
         NOTE: if the Class doesn't already exist, use new_class_with_properties() instead
         TODO: Offer option to specify the class by name.

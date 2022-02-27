@@ -415,7 +415,7 @@ class ApiRouting:
         #---------------------------------------------#
 
 
-        ##########   VIEWING CONTENT ITEMS   ##########
+        ################   VIEWING CONTENT ITEMS   ################
 
         @self.BA_api_flask_blueprint.route('/simple/get_media/<item_id>')
         def get_media(item_id) -> str:
@@ -537,7 +537,7 @@ class ApiRouting:
             self.show_post_data(post_data)
 
             try:
-                data_dict = self.extract_post_pars(post_data, ['item_id', 'rel_name', 'dir'])
+                data_dict = self.extract_post_pars(post_data, required_par_list=['item_id', 'rel_name', 'dir'])
                 data_dict["item_id"] = self.str_to_int(data_dict["item_id"])
                 payload = APIRequestHandler.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
@@ -549,24 +549,25 @@ class ApiRouting:
 
 
 
-        ##############   MODIFYING CONTENT ITEMS   ##############
+        ################   MODIFYING EXISTING CONTENT ITEMS   ################
 
         @self.BA_api_flask_blueprint.route('/simple/update', methods=['POST'])
         def update() -> str:
             """
             Update an existing Content Item
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/simple/update -d "item_id=11&TBA=TODO"
+            EXAMPLES of invocation:
+                curl http://localhost:5000/BA/api/simple/update -d "item_id=11&text=my_header"
+                curl http://localhost:5000/BA/api/simple/update -d "item_id=62&schema_code=r&English=Love&German=Liebe"
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('item_id', '11'), ('schema_code', 'r')])
-        
-            err_status = APIRequestHandler.update_content_item(dict(post_data))
-        
-            if err_status == "":    # If no errors
-                return_value = self.SUCCESS_PREFIX
-            else:                   # If errors
-                return_value = self.ERROR_PREFIX + err_status
+
+            try:
+                data_dict = self.extract_post_pars(post_data, required_par_list=['item_id'])
+                APIRequestHandler.update_content_item(data_dict)
+                return_value = self.SUCCESS_PREFIX              # If no errors
+            except Exception as ex:
+                return_value = self.ERROR_PREFIX + str(ex)      # In case of errors
         
             print(f"update() is returning: `{return_value}`")
         
