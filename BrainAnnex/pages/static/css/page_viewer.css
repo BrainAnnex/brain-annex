@@ -30,12 +30,6 @@ img.fixed-2nd-from-bottom {
 }
 
 
-/* Make the element (for example, an image or a TD) clickable,
-   with the same cursor as for links */
-.clickable-icon {
-    cursor: pointer;
-}
-
 
 
 /*

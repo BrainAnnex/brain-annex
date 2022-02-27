@@ -163,7 +163,10 @@ It does *NOT* delete `{{p["name"]}}`'>
     <div><img src="/BA/pages/static/graphics/current.jpg"></div>		<!-- The "THIS category" image on the left -->
 
 
-    <div id="nameControls" style="width:240px; text-align:right">	<!-- A few icons with controls, to the left of this Category's name -->
+    <!-- A few icons with controls, to the left of this Category's name;
+         hide them (but without disturbing the layout) if we're in the middle of editing the name/remarks -->
+    <div v-bind:style="{visibility: !edit_name_mode ? 'visible' : 'hidden'}"
+                style="width:240px; text-align:right">
 
         <a href='/BA/pages/viewer/{{category_id}}'>
             <img src='/BA/pages/static/graphics/open_16_227574.png'  style='margin-right:8px'
@@ -172,25 +175,40 @@ It does *NOT* delete `{{p["name"]}}`'>
         </a>
         <a href='https://brainannex.org/editPermissions.php?cat={{category_id}}'><img src='/BA/pages/static/graphics/permissions_16_3018587.png' title='Edit the User Permissions for &ldquo;{{category_name}}&rdquo;' alt='Edit the User Permissions for &ldquo;{{category_name}}&rdquo;' style='margin-right:8px'></a>
 
+        <!-- Icon to delete this Category -->
         <div style='display:inline-block; margin-left:5px; margin-bottom:7px'>
             <input type='image' src='/BA/pages/static/graphics/delete_16.png' @click="delete_category({{category_id}})" title='delete this category ("{{category_name}}")' alt='delete this category ("{{category_name}}")'>
         </div>
 
-        <a href="javascript:editName(1)"><img src="/BA/pages/static/graphics/pencil2_16.png" title="edit name" alt="edit name" style="margin-left:8px"></a>
+        <!-- Icon to edit the name/remarks of this Category -->
+        <img @click="edit_name()"  src="/BA/pages/static/graphics/pencil2_16.png" class='clickable-icon' style="margin-left:8px"
+             title="edit name" alt="edit name">
+
     </div>
 
 
-    <div id="categoryName" style="font-weight:bold; color:brown; width:260px; text-align:center; font-size:16px; border:1px solid #CCC; padding:5px">
+    <!-- Show the Category name/remarks OR an editing form for them -->
+    <div  v-if="!edit_name_mode" id="categoryName" style="font-weight:bold; color:brown; width:260px; text-align:center; font-size:16px; border:1px solid #CCC; padding:5px">
+        {{category_name}} &nbsp;<span style='font-size:10px; color:gray'>{{category_remarks}}</span>
+    </div>
 
-        {{category_name}} &nbsp;<span style='font-size:10px; color:gray'>{{category_remarks}}</span></div>
+    <div v-else style="width:260px; border:1px solid #DDD; padding: 2px">
+        <!-- Form to edit the category's name/remarks -->
+        <input type='hidden' name='ID' value='{{category_id}}'>
+        <input type="text" name="newName" value="{{category_name}}" style="width:203px;"> <span style="font-size:9px; color:gray">Name</span><br>
+        <input type="text" name="newRemarks" value="{{category_remarks}}" style="width:203px;"> <span style="font-size:9px; color:gray">Remarks</span><br>
+        <input type="submit" value="Save"> <a href="javascript:editName(0)" style="margin-left:5px">Cancel</a>
+    </div>
 
-    <!-- Form to edit the category's name -->
+
+    <!-- OLD FORM, TO DELETE -->
     <form id="nameEditForm" action="doCategoryHandler2.php?op=rename&cat={{category_id}}" method="POST" style="display:none; width:260px; border:1px solid #DDD; padding: 2px">
         <input type='hidden' name='ID' value='{{category_id}}'>
         <input type="text" name="newName" value="{{category_name}}" style="width:203px;"> <span style="font-size:9px; color:gray">Name</span><br>
         <input type="text" name="newRemarks" value="My Neuro Computing Research" style="width:203px;"> <span style="font-size:9px; color:gray">Remarks</span><br>
         <input type="submit" value="Save"> <a href="javascript:editName(0)" style="margin-left:5px">Cancel</a>
     </form>
+
 
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
     </div>
@@ -350,6 +368,8 @@ new Vue({
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
                                                            // Eg: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
 
+        edit_name_mode: false,      // To expose controls for editing name/remarks
+
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
         error: false,               // Whether the last server communication resulted in error
         waiting: false              // Whether any server request is still pending
@@ -364,7 +384,7 @@ new Vue({
             /*
             const bodytags = document.getElementsByTagName('body');	// Locate all the <body> tag elements
             const mainbody = bodytags[0];						    // First element with a <body> tag
-            const window_height = mainbody.offsetHeight;		        // To take into account the vertical extension that might be hidden by the scrolling
+            const window_height = mainbody.offsetHeight;		    // To take into account the vertical extension that might be hidden by the scrolling
 		    alert(window_height);
 
             alert(window.innerHeight);
@@ -377,6 +397,11 @@ new Vue({
 
             overlay_height = 1080;
             return overlay_height;
+        },
+
+        edit_name()
+        {
+            this.edit_name_mode = true;
         },
 
         delete_category(category_id)

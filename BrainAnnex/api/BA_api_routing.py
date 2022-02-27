@@ -560,7 +560,7 @@ class ApiRouting:
                 curl http://localhost:5000/BA/api/simple/update -d "item_id=62&schema_code=r&English=Love&German=Liebe"
             """
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('item_id', '11'), ('schema_code', 'r')])
+            post_data = request.form    # Example: ImmutableMultiDict([('item_id', '11'), ('schema_code', 'r')])
 
             try:
                 data_dict = self.extract_post_pars(post_data, required_par_list=['item_id'])
