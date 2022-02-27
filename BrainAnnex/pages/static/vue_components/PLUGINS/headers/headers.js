@@ -46,7 +46,7 @@ Vue.component('vue-plugin-h',
             return {
                 editing_mode: (this.item_data.item_id == -1 ? true : false),    // -1 means "new Item" (automatically placed in editing mode)
 
-                // This object contains the values bound to the editing field, cloned from the prop data;
+                // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
                 current_data: Object.assign({}, this.item_data),
 

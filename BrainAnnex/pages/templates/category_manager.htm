@@ -194,10 +194,15 @@ It does *NOT* delete `{{p["name"]}}`'>
 
     <div v-else style="width:260px; border:1px solid #DDD; padding: 2px">
         <!-- Form to edit the category's name/remarks -->
-        <input type='hidden' name='ID' value='{{category_id}}'>
-        <input type="text" name="newName" value="{{category_name}}" style="width:203px;"> <span style="font-size:9px; color:gray">Name</span><br>
-        <input type="text" name="newRemarks" value="{{category_remarks}}" style="width:203px;"> <span style="font-size:9px; color:gray">Remarks</span><br>
-        <input type="submit" value="Save"> <a href="javascript:editName(0)" style="margin-left:5px">Cancel</a>
+        <input type="text" v-model="category_name_current_data" style="width:203px;">
+            <span style="font-size:9px; color:gray">Name</span>
+        <br>
+        <input type="text" v-model="category_remarks_current_data" style="width:203px;">
+            <span style="font-size:9px; color:gray">Remarks</span>
+        <br>
+
+        <button @click="save_name_edit">SAVE</button>
+        <a @click.prevent="cancel_name_edit()" href="#" style="margin-left:5px">Cancel</a>
     </div>
 
 
@@ -364,9 +369,19 @@ new Vue({
 
         overlay: false,             // To cover the main display with a message
 
-        // The data handover from Flask to Vue
+        // The DATA HANDOVER from Flask to Vue
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
                                                            // Eg: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
+
+        // The values bound to the editing fields, initially from the data handover from Flask;
+        //      it'll change in the course of the edit-in-progress
+        category_name_current_data: {{category_name | tojson}},
+        category_remarks_current_data: {{category_remarks | tojson}},
+
+        // Copy of the field values, used to restore the data in case of a Cancel or failed save
+        category_name_original_data: {{category_name | tojson}},
+        category_remarks_original_data: {{category_remarks | tojson}},
+
 
         edit_name_mode: false,      // To expose controls for editing name/remarks
 
@@ -400,9 +415,29 @@ new Vue({
         },
 
         edit_name()
+        // Enter edit mode for the Category name and remarks
         {
             this.edit_name_mode = true;
         },
+
+        cancel_name_edit()
+        {
+            this.edit_name_mode = false;
+            this.category_name_current_data = this.category_name_original_data;
+            this.category_remarks_current_data = this.category_remarks_original_data;
+        },
+
+        save_name_edit()
+        {
+            this.edit_name_mode = false;
+
+            alert("Sorry, the operation not yet implemented");
+            // These will be used in case of failure
+            this.category_name_current_data = this.category_name_original_data;
+            this.category_remarks_current_data = this.category_remarks_original_data;
+        },
+
+
 
         delete_category(category_id)
         //

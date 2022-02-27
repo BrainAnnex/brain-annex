@@ -80,7 +80,9 @@ new Vue({
     delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
     data: {     // GLOBAL DATA for the whole page (Vue root element).
-                // This is the handover of data from Flask to Vue
+
+        // The DATA HANDOVER from Flask to Vue
+        parent_categories: {{parent_categories | tojson}},
 
         example: false
 
