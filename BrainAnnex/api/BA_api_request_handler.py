@@ -325,6 +325,9 @@ class APIRequestHandler:
         Update an existing Content Item
         In case of error, an Exception is raised
 
+        TODO: if any (non-special?) field is blank, drop it altogether from the node;
+              maybe add this capability to set_fields()
+
         :return:    None
         """
         print("In update_content_item(). POST dict: ", post_data)
@@ -363,7 +366,9 @@ class APIRequestHandler:
 
         # TODO: check the actual success of the operation
         match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
-        cls.db.set_fields(match=match, set_dict=set_dict)
+        number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
+        if number_updated == 0:
+            raise Exception("No update performed")
 
 
 

@@ -98,7 +98,8 @@ Vue.component('vue-plugin-h',
                 }
 
                 this.waiting_mode = true;
-                this.error_indicator = false;     // Clear possible past message
+                this.status: "";                    // Clear any message from the previous operation
+                this.error_indicator = false;       // Clear any error from the previous operation
 
                 console.log("In 'vue-plugin-h', save().  post_body: ", post_body);
                 ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
@@ -122,13 +123,13 @@ Vue.component('vue-plugin-h',
                     console.log("Headers component sending `updated-item` signal to its parent");
                     this.$emit('updated-item', this.current_data);
 
-                    // Synchronize the baseline data to the current one
+                    // Synchronize the baseline data to the finalized current data
                     this.original_data = Object.assign({}, this.current_data);  // Clone
                 }
                 else  {             // Server reported FAILURE
                     this.status = `FAILED edit`;
                     this.error_indicator = true;
-                    this.cancel_edit();         // Restore the data to how it was prior to the failed changes
+                    this.cancel_edit();         // Restore the data to how it was prior to the failed changes. TODO: maybe leave in edit mode?
                 }
 
                 // Final wrap-up, regardless of error or success

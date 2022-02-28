@@ -115,7 +115,7 @@ class ApiRouting:
             print(f"POST data: ")
 
         for k, v in post_data.items():
-            print("    ", k , " -> " , v)
+            print("    ", k , " -> " , v)   # TODO: if v is a string, put quotes around it
         print("-----------")
 
 
@@ -561,6 +561,7 @@ class ApiRouting:
             """
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('item_id', '11'), ('schema_code', 'r')])
+            self.show_post_data(post_data, "update")
 
             try:
                 data_dict = self.extract_post_pars(post_data, required_par_list=['item_id'])

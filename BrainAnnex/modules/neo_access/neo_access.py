@@ -10,7 +10,7 @@ from typing import Union
 
 class NeoAccess:
     """
-    VERSION 3.2
+    VERSION 3.3
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -384,6 +384,7 @@ class NeoAccess:
                                 {'returned_data': [{'neo4j_id': 123}]}  'returned_data' contains the results of the query,
                                                                         if it returns anything, as a list of dictionaries
                                                                         - akin to the value returned by query()
+                                {'returned_data': []}  Gets returned by SET QUERIES with no return statement
                             OTHER KEYS include:
                                 nodes_created, nodes_deleted, relationships_created, relationships_deleted,
                                 properties_set, labels_added, labels_removed,
@@ -1344,7 +1345,7 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def set_fields(self, match: dict, set_dict: dict ) -> None:
+    def set_fields(self, match: dict, set_dict: dict ) -> int:
         """
         EXAMPLE - locate the "car" with vehicle id 123 and set its color to white and price to 7000
             match = find(labels = "car", properties = {"vehicle id": 123})
@@ -1352,15 +1353,20 @@ class NeoAccess:
 
         NOTE: other fields are left un-disturbed
 
+        Return the number of properties set.
+
+        TODO: if any field is blank, offer the option drop it altogether from the node,
+              with a "REMOVE n.field" statement in Cypher; doing SET n.field = "" doesn't drop it
+
         :param match:       A dictionary of data to identify a node, or set of nodes, as returned by find()
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
                             (note: blanks ARE allowed in the keys)
 
-        :return:            None        TODO: proceed as done in delete_nodes, to extract and return "properties_set"
+        :return:            The number of properties set
         """
 
         if set_dict == {}:
-            return              # There's nothing to do
+            return 0             # There's nothing to do
 
         self._assert_valid_match_structure(match)    # Validate the match dictionary
 
@@ -1391,7 +1397,11 @@ class NeoAccess:
 
         self.debug_print(cypher, data_binding, "set_fields")
 
-        self.query(cypher, data_binding)    # TODO: proceed as done in delete_nodes, to extract and return "properties_set"
+        #self.query(cypher, data_binding)
+        stats = self.update_query(cypher, data_binding)
+        #print(stats)
+        number_properties_set = stats.get("properties_set", 0)
+        return number_properties_set
 
 
 

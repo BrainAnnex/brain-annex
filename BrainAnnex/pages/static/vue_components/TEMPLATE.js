@@ -27,9 +27,9 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 my_count: 0,
                 nickname: this.some_data_a,
 
-                status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
-                error: false,               // Whether the last server communication resulted in error
-                waiting: false              // Whether any server request is still pending
+                waiting: false,         // Whether any server request is still pending
+                error: false,           // Whether the last server communication resulted in error
+                status_message: ""      // Message for the user about the status of the last operation (NOT used for "waiting" status)
             }
         },
 

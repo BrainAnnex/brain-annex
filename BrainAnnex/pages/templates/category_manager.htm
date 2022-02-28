@@ -189,7 +189,7 @@ It does *NOT* delete `{{p["name"]}}`'>
 
     <!-- Show the Category name/remarks OR an editing form for them -->
     <div  v-if="!edit_name_mode" id="categoryName" style="font-weight:bold; color:brown; width:260px; text-align:center; font-size:16px; border:1px solid #CCC; padding:5px">
-        {{category_name}} &nbsp;<span style='font-size:10px; color:gray'>{{category_remarks}}</span>
+        [[category_name_current_data]] &nbsp;<span style='font-size:10px; color:gray'>[[category_remarks_current_data]]</span>
     </div>
 
     <div v-else style="width:260px; border:1px solid #DDD; padding: 2px">
@@ -205,14 +205,6 @@ It does *NOT* delete `{{p["name"]}}`'>
         <a @click.prevent="cancel_name_edit()" href="#" style="margin-left:5px">Cancel</a>
     </div>
 
-
-    <!-- OLD FORM, TO DELETE -->
-    <form id="nameEditForm" action="doCategoryHandler2.php?op=rename&cat={{category_id}}" method="POST" style="display:none; width:260px; border:1px solid #DDD; padding: 2px">
-        <input type='hidden' name='ID' value='{{category_id}}'>
-        <input type="text" name="newName" value="{{category_name}}" style="width:203px;"> <span style="font-size:9px; color:gray">Name</span><br>
-        <input type="text" name="newRemarks" value="My Neuro Computing Research" style="width:203px;"> <span style="font-size:9px; color:gray">Remarks</span><br>
-        <input type="submit" value="Save"> <a href="javascript:editName(0)" style="margin-left:5px">Cancel</a>
-    </form>
 
 
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
@@ -342,7 +334,7 @@ It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'></form>
 <br>
 
 <p style="background-color: yellow; margin-top:0; padding: 5px">
-    <span style="font-size:22px;">IMPORTANT: still in Beta.  <i>Only the Delete function is implemented.</i></span>
+    <span style="font-size:22px;">IMPORTANT: still in Beta.  <i>Only the Delete and Rename functions are implemented.</i></span>
     <br>To add a new category, use the add-category box at the bottom of the category-viewer pages (when in editing mode).
 </p>
 
@@ -370,6 +362,7 @@ new Vue({
         overlay: false,             // To cover the main display with a message
 
         // The DATA HANDOVER from Flask to Vue
+        category_id: {{category_id}},
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
                                                            // Eg: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
 
@@ -385,9 +378,9 @@ new Vue({
 
         edit_name_mode: false,      // To expose controls for editing name/remarks
 
+        waiting: false,             // Whether any server request is still pending
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
-        error: false,               // Whether the last server communication resulted in error
-        waiting: false              // Whether any server request is still pending
+        error: false                // Whether the last server communication resulted in error
     },
 
 
@@ -423,6 +416,7 @@ new Vue({
         cancel_name_edit()
         {
             this.edit_name_mode = false;
+            // Undo the changes
             this.category_name_current_data = this.category_name_original_data;
             this.category_remarks_current_data = this.category_remarks_original_data;
         },
@@ -431,10 +425,51 @@ new Vue({
         {
             this.edit_name_mode = false;
 
-            alert("Sorry, the operation not yet implemented");
-            // These will be used in case of failure
-            this.category_name_current_data = this.category_name_original_data;
-            this.category_remarks_current_data = this.category_remarks_original_data;
+            if (! this.category_name_current_data) {
+                alert("The name for the Category is a required field");
+                return;
+            }
+
+            let url_server = "/BA/api/simple/update";
+            let post_obj = {item_id: this.category_id,
+                            schema_code: "cat",
+                            name: this.category_name_current_data,
+                            remarks: this.category_remarks_current_data};
+            console.log(`About to contact the server at ${url_server}.  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {payload_type: "TEXT", post_obj: post_obj, callback_fn: this.finish_save_name_edit});
+        },
+
+
+        finish_save_name_edit(success, server_payload, error_message)
+        // Callback function to wrap up the action of save_name_edit() upon getting a response from the server
+        {
+            console.log("Finalizing the save_name_edit operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Saved`;
+
+                // Synchronize the baseline data to the finalized current data
+                this.category_name_original_data = this.category_name_current_data;
+                this.category_remarks_original_data = this.category_remarks_current_data;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED update: ${error_message}`;
+                // Restore the data to how it was prior to the failed changes (but remain in edit mode)
+                this.category_name_current_data = this.category_name_original_data;
+                this.category_remarks_current_data = this.category_remarks_original_data;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+            this.edit_name_mode = false;    // Exit the editing mode
         },
 
 
