@@ -370,7 +370,9 @@ class APIRequestHandler:
         # TODO: utilize the schema layer, rather than directly access the database
         match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
-        if number_updated == 0:
+        # If the update was NOT for a "note" (in which case it might only be about the note than its metadata)
+        # verify that some fields indeed got changed
+        if schema_code != "n" and number_updated == 0:
             raise Exception("No update performed")
 
 
