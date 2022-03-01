@@ -325,6 +325,9 @@ class APIRequestHandler:
         Update an existing Content Item
         In case of error, an Exception is raised
 
+        NOTE: the "schema_code" field is currently required, but it's redundant.  Only
+              used as a safety mechanism against incorrect values of item_id
+
         TODO: if any (non-special?) field is blank, drop it altogether from the node;
               maybe add this capability to set_fields()
 
@@ -364,7 +367,7 @@ class APIRequestHandler:
         if schema_code == "n":
             set_dict = cls.plugin_n_update_content(data_binding, set_dict)
 
-        # TODO: check the actual success of the operation
+        # TODO: utilize the schema layer, rather than directly access the database
         match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
         if number_updated == 0:

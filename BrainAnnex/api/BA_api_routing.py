@@ -554,9 +554,12 @@ class ApiRouting:
         @self.BA_api_flask_blueprint.route('/simple/update', methods=['POST'])
         def update() -> str:
             """
-            Update an existing Content Item
+            Update an existing Content Item.
+            NOTE: the "schema_code" field is currently required, but it's redundant.  Only
+                  used as a safety mechanism against incorrect values of item_id
+
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/update -d "item_id=11&text=my_header"
+                curl http://localhost:5000/BA/api/simple/update -d "item_id=11&schema_code=h&text=my_header"
                 curl http://localhost:5000/BA/api/simple/update -d "item_id=62&schema_code=r&English=Love&German=Liebe"
             """
             # Extract the POST values

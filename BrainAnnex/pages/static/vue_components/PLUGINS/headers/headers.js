@@ -22,7 +22,7 @@ Vue.component('vue-plugin-h',
                     <button @click="save">SAVE</button>
                     <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
                 </span>
-                <span v-if="waiting_mode" style="margin-left:15px">saving...</span>
+                <span v-if="waiting" style="margin-left:15px">saving...</span>
             <br>
             <!-- In the PHP version, the controls were placed here -->
             </div>
@@ -53,7 +53,7 @@ Vue.component('vue-plugin-h',
                 // Clone, used to restore the data in case of a Cancel or failed save
                 original_data: Object.assign({}, this.item_data),
 
-                waiting_mode: false,
+                waiting: false,
                 status: "",
                 error_indicator: false
             }
@@ -97,8 +97,8 @@ Vue.component('vue-plugin-h',
                     return;
                 }
 
-                this.waiting_mode = true;
-                this.status: "";                    // Clear any message from the previous operation
+                this.waiting = true;
+                this.status = "";                    // Clear any message from the previous operation
                 this.error_indicator = false;       // Clear any error from the previous operation
 
                 console.log("In 'vue-plugin-h', save().  post_body: ", post_body);
@@ -134,7 +134,7 @@ Vue.component('vue-plugin-h',
 
                 // Final wrap-up, regardless of error or success
                 this.editing_mode = false;      // Exit the editing mode
-                this.waiting_mode = false;      // Make a note that the asynchronous operation has come to an end
+                this.waiting = false;           // Make a note that the asynchronous operation has come to an end
 
             }, // finish_save
 
