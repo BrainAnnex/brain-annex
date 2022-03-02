@@ -1,5 +1,6 @@
 /*  Left sidebar (with the page's Table of Contents)
-    Used in page_viewer.htm
+    Used by page_viewer.htm
+    Show the headers, and varying details of some of Content Items under them
  */
 
 Vue.component('vue-toc-sidebar',
@@ -7,9 +8,9 @@ Vue.component('vue-toc-sidebar',
         props: ['content_array', 'show_left_sidebar'],
         /*  content_array:  Array containing item-data objects.  EXAMPLE:
                             [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                             {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                             {pos:50,"item_id":8,schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
                             ]
-            show_left_sidebar
+            show_left_sidebar: Flag indicating whether the sidebar containing the TOC is to be show
          */
 
         template: `
@@ -27,6 +28,7 @@ Vue.component('vue-toc-sidebar',
                     <!-- Page navigation section -->
                     <a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
                         <span style='color:#AAA; margin-left:10px; font-size:10px;'>PAGE CONTENTS</span>
+                        <input @click="expand_categories = !expand_categories" type="checkbox" checked style='margin-left:5px'> Details?
                     <br>
 
                     <div class="page-toc">
@@ -34,14 +36,27 @@ Vue.component('vue-toc-sidebar',
                             <p v-if="item.schema_code == 'h'" class="header">
                                 <br><a v-bind:href="'#h_' + item.item_id">{{item.text}}</a><br>
                             </p>
-                            <p v-if="item.schema_code == 'cd'">&nbsp; &diams;
-                                <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.name">{{item.name}}</a>
-                                <br>
-                            </p>
+
+                            <template v-if="expand_categories">
+                                <!-- Case-by-case, based on the type of Content Item -->
+                                <p v-if="item.schema_code == 'cd'">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.name">{{item.name}}</a>
+                                    <br>
+                                </p>
+                                
+                                <p v-if="item.schema_code == 'i'">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.caption">{{item.caption}}</a>
+                                    <img src='/BA/pages/static/graphics/image_14_1814111.png'>
+                                    <br>
+                                </p>
+                            </template>
+
                         </template>
                     </div>      <!-- END of page-toc -->
 
                     <br><a href='#BOTTOM' style='font-size:14px; font-weight:bold'>BOTTOM</a>
+
+                    <br><br>
 
                 </div>		<!-- END OF class 'sidebar-left' -->
 
@@ -63,7 +78,7 @@ Vue.component('vue-toc-sidebar',
 
         data: function() {
             return {
-
+                expand_categories: true     // Whether to show details of some Content Items under the various headers
             }
         },
 
