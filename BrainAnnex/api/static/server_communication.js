@@ -277,7 +277,10 @@ class ServerCommunication
 
     static parse_POST_object(post_obj)
     /*  Turn an object literal into a string, suitable for situations when 'Content-Type': 'application/x-www-form-urlencoded'
-        Any blank strings in the values gets dropped; any other string gets passed thru encodeURIComponent.
+
+        Any non-blank string gets passed thru encodeURIComponent.
+        [NO! NO LONGER DONE: Any blank strings in the values gets dropped]
+
         The returned result is ready for use as the "post_body" argument
         in contact_server(), contact_server_TEXT() and contact_server_JSON()
         Note: if post_obj contains no properties, or is null, then an empty string is returned.
@@ -294,17 +297,17 @@ class ServerCommunication
             val = post_obj[k];
             //console.log(` value: ${val} `);
 
-            if (val != "")  {   // If the value is blank, the whole entry gets skipped over
-                //console.log(` key: ${k} `);
-                post_body += k + "=";
+            //if (val != "")  {   // If the value is blank, the whole entry gets skipped over
+            //console.log(` key: ${k} `);
+            post_body += k + "=";
 
-                if (typeof val == "string")
-                    post_body += encodeURIComponent(val);
-                else
-                    post_body += val;
+            if ((val != "") && (typeof val == "string"))
+                post_body += encodeURIComponent(val);
+            else
+                post_body += val;
 
-                post_body += "&";
-            }
+            post_body += "&";
+            //}
             //console.log(`post_body so far: ${post_body}`);
         }
 

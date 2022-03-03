@@ -22,7 +22,7 @@ Vue.component('vue-plugin-h',
                     <button @click="save">SAVE</button>
                     <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
                 </span>
-                <span v-if="waiting_mode" style="margin-left:15px">saving...</span>
+                <span v-if="waiting" style="margin-left:15px">saving...</span>
             <br>
             <!-- In the PHP version, the controls were placed here -->
             </div>
@@ -46,14 +46,14 @@ Vue.component('vue-plugin-h',
             return {
                 editing_mode: (this.item_data.item_id == -1 ? true : false),    // -1 means "new Item" (automatically placed in editing mode)
 
-                // This object contains the values bound to the editing field, cloned from the prop data;
+                // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
                 current_data: Object.assign({}, this.item_data),
 
                 // Clone, used to restore the data in case of a Cancel or failed save
                 original_data: Object.assign({}, this.item_data),
 
-                waiting_mode: false,
+                waiting: false,
                 status: "",
                 error_indicator: false
             }
@@ -97,8 +97,9 @@ Vue.component('vue-plugin-h',
                     return;
                 }
 
-                this.waiting_mode = true;
-                this.error_indicator = false;     // Clear possible past message
+                this.waiting = true;
+                this.status = "";                    // Clear any message from the previous operation
+                this.error_indicator = false;       // Clear any error from the previous operation
 
                 console.log("In 'vue-plugin-h', save().  post_body: ", post_body);
                 ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
@@ -122,18 +123,18 @@ Vue.component('vue-plugin-h',
                     console.log("Headers component sending `updated-item` signal to its parent");
                     this.$emit('updated-item', this.current_data);
 
-                    // Synchronize the baseline data to the current one
+                    // Synchronize the baseline data to the finalized current data
                     this.original_data = Object.assign({}, this.current_data);  // Clone
                 }
                 else  {             // Server reported FAILURE
                     this.status = `FAILED edit`;
                     this.error_indicator = true;
-                    this.cancel_edit();         // Restore the data to how it was prior to the failed changes
+                    this.cancel_edit();         // Restore the data to how it was prior to the failed changes. TODO: maybe leave in edit mode?
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.editing_mode = false;      // Exit the editing mode
-                this.waiting_mode = false;      // Make a note that the asynchronous operation has come to an end
+                this.waiting = false;           // Make a note that the asynchronous operation has come to an end
 
             }, // finish_save
 

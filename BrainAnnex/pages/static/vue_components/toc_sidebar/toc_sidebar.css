@@ -1,4 +1,4 @@
-/* LEFT SIDEBAR (used to host the TOC)
+/* LEFT SIDEBAR (used to host the Table of Contents)
  */
 
 div.sidebar-left {              /* LEFT sidebar, in its expanded state */
@@ -9,6 +9,7 @@ div.sidebar-left {              /* LEFT sidebar, in its expanded state */
 	width:15%;
 	background:#f5f2f0;             /* Best if it matches that of page body */
 	border-right:1px solid #d5d2d0;
+	border-bottom:1px solid #0084AD;    /* Light blue */
 
 	overflow:auto;
 	max-height:100%;

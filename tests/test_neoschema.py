@@ -15,7 +15,7 @@ def db():
 
 
 
-###########   CLASS-related   ###########
+#############   CLASS-related   #############
 
 def test_create_class(db):
     db.empty_dbase()    # Completely clear the database
@@ -100,6 +100,14 @@ def test_create_class_relationship(db):
     assert db.query(q, single_cell="number_found") == 1
 
 
+#############   PROPERTIES-RELATED   #############
+
+
+#############   SCHEMA-CODE  RELATED   ###########
+
+#############   DATA POINTS   ###########
+
+#############   EXPORT SCHEMA   ###########
 
 
 ###############   INTERNAL  METHODS   ###############

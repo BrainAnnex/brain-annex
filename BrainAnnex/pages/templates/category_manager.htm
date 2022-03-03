@@ -163,7 +163,10 @@ It does *NOT* delete `{{p["name"]}}`'>
     <div><img src="/BA/pages/static/graphics/current.jpg"></div>		<!-- The "THIS category" image on the left -->
 
 
-    <div id="nameControls" style="width:240px; text-align:right">	<!-- A few icons with controls, to the left of this Category's name -->
+    <!-- A few icons with controls, to the left of this Category's name;
+         hide them (but without disturbing the layout) if we're in the middle of editing the name/remarks -->
+    <div v-bind:style="{visibility: !edit_name_mode ? 'visible' : 'hidden'}"
+                style="width:240px; text-align:right">
 
         <a href='/BA/pages/viewer/{{category_id}}'>
             <img src='/BA/pages/static/graphics/open_16_227574.png'  style='margin-right:8px'
@@ -172,25 +175,37 @@ It does *NOT* delete `{{p["name"]}}`'>
         </a>
         <a href='https://brainannex.org/editPermissions.php?cat={{category_id}}'><img src='/BA/pages/static/graphics/permissions_16_3018587.png' title='Edit the User Permissions for &ldquo;{{category_name}}&rdquo;' alt='Edit the User Permissions for &ldquo;{{category_name}}&rdquo;' style='margin-right:8px'></a>
 
+        <!-- Icon to delete this Category -->
         <div style='display:inline-block; margin-left:5px; margin-bottom:7px'>
             <input type='image' src='/BA/pages/static/graphics/delete_16.png' @click="delete_category({{category_id}})" title='delete this category ("{{category_name}}")' alt='delete this category ("{{category_name}}")'>
         </div>
 
-        <a href="javascript:editName(1)"><img src="/BA/pages/static/graphics/pencil2_16.png" title="edit name" alt="edit name" style="margin-left:8px"></a>
+        <!-- Icon to edit the name/remarks of this Category -->
+        <img @click="edit_name()"  src="/BA/pages/static/graphics/pencil2_16.png" class='clickable-icon' style="margin-left:8px"
+             title="edit name" alt="edit name">
+
     </div>
 
 
-    <div id="categoryName" style="font-weight:bold; color:brown; width:260px; text-align:center; font-size:16px; border:1px solid #CCC; padding:5px">
+    <!-- Show the Category name/remarks OR an editing form for them -->
+    <div  v-if="!edit_name_mode" id="categoryName" style="font-weight:bold; color:brown; width:260px; text-align:center; font-size:16px; border:1px solid #CCC; padding:5px">
+        [[category_name_current_data]] &nbsp;<span style='font-size:10px; color:gray'>[[category_remarks_current_data]]</span>
+    </div>
 
-        {{category_name}} &nbsp;<span style='font-size:10px; color:gray'>{{category_remarks}}</span></div>
+    <div v-else style="width:260px; border:1px solid #DDD; padding: 2px">
+        <!-- Form to edit the category's name/remarks -->
+        <input type="text" v-model="category_name_current_data" style="width:203px;">
+            <span style="font-size:9px; color:gray">Name</span>
+        <br>
+        <input type="text" v-model="category_remarks_current_data" style="width:203px;">
+            <span style="font-size:9px; color:gray">Remarks</span>
+        <br>
 
-    <!-- Form to edit the category's name -->
-    <form id="nameEditForm" action="doCategoryHandler2.php?op=rename&cat={{category_id}}" method="POST" style="display:none; width:260px; border:1px solid #DDD; padding: 2px">
-        <input type='hidden' name='ID' value='{{category_id}}'>
-        <input type="text" name="newName" value="{{category_name}}" style="width:203px;"> <span style="font-size:9px; color:gray">Name</span><br>
-        <input type="text" name="newRemarks" value="My Neuro Computing Research" style="width:203px;"> <span style="font-size:9px; color:gray">Remarks</span><br>
-        <input type="submit" value="Save"> <a href="javascript:editName(0)" style="margin-left:5px">Cancel</a>
-    </form>
+        <button @click="save_name_edit">SAVE</button>
+        <a @click.prevent="cancel_name_edit()" href="#" style="margin-left:5px">Cancel</a>
+    </div>
+
+
 
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
     </div>
@@ -319,7 +334,7 @@ It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'></form>
 <br>
 
 <p style="background-color: yellow; margin-top:0; padding: 5px">
-    <span style="font-size:22px;">IMPORTANT: still in Beta.  <i>Only the Delete function is implemented.</i></span>
+    <span style="font-size:22px;">IMPORTANT: still in Beta.  <i>Only the Delete and Rename functions are implemented.</i></span>
     <br>To add a new category, use the add-category box at the bottom of the category-viewer pages (when in editing mode).
 </p>
 
@@ -346,13 +361,26 @@ new Vue({
 
         overlay: false,             // To cover the main display with a message
 
-        // The data handover from Flask to Vue
+        // The DATA HANDOVER from Flask to Vue
+        category_id: {{category_id}},
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
                                                            // Eg: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
 
+        // The values bound to the editing fields, initially from the data handover from Flask;
+        //      it'll change in the course of the edit-in-progress
+        category_name_current_data: {{category_name | tojson}},
+        category_remarks_current_data: {{category_remarks | tojson}},
+
+        // Copy of the field values, used to restore the data in case of a Cancel or failed save
+        category_name_original_data: {{category_name | tojson}},
+        category_remarks_original_data: {{category_remarks | tojson}},
+
+
+        edit_name_mode: false,      // To expose controls for editing name/remarks
+
+        waiting: false,             // Whether any server request is still pending
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
-        error: false,               // Whether the last server communication resulted in error
-        waiting: false              // Whether any server request is still pending
+        error: false                // Whether the last server communication resulted in error
     },
 
 
@@ -364,7 +392,7 @@ new Vue({
             /*
             const bodytags = document.getElementsByTagName('body');	// Locate all the <body> tag elements
             const mainbody = bodytags[0];						    // First element with a <body> tag
-            const window_height = mainbody.offsetHeight;		        // To take into account the vertical extension that might be hidden by the scrolling
+            const window_height = mainbody.offsetHeight;		    // To take into account the vertical extension that might be hidden by the scrolling
 		    alert(window_height);
 
             alert(window.innerHeight);
@@ -378,6 +406,73 @@ new Vue({
             overlay_height = 1080;
             return overlay_height;
         },
+
+        edit_name()
+        // Enter edit mode for the Category name and remarks
+        {
+            this.edit_name_mode = true;
+        },
+
+        cancel_name_edit()
+        {
+            this.edit_name_mode = false;
+            // Undo the changes
+            this.category_name_current_data = this.category_name_original_data;
+            this.category_remarks_current_data = this.category_remarks_original_data;
+        },
+
+        save_name_edit()
+        {
+            this.edit_name_mode = false;
+
+            if (! this.category_name_current_data) {
+                alert("The name for the Category is a required field");
+                return;
+            }
+
+            let url_server = "/BA/api/simple/update";
+            let post_obj = {item_id: this.category_id,
+                            schema_code: "cat",
+                            name: this.category_name_current_data,
+                            remarks: this.category_remarks_current_data};
+            console.log(`About to contact the server at ${url_server}.  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {payload_type: "TEXT", post_obj: post_obj, callback_fn: this.finish_save_name_edit});
+        },
+
+
+        finish_save_name_edit(success, server_payload, error_message)
+        // Callback function to wrap up the action of save_name_edit() upon getting a response from the server
+        {
+            console.log("Finalizing the save_name_edit operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Saved`;
+
+                // Synchronize the baseline data to the finalized current data
+                this.category_name_original_data = this.category_name_current_data;
+                this.category_remarks_original_data = this.category_remarks_current_data;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED update: ${error_message}`;
+                // Restore the data to how it was prior to the failed changes (but remain in edit mode)
+                this.category_name_current_data = this.category_name_original_data;
+                this.category_remarks_current_data = this.category_remarks_original_data;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+            this.edit_name_mode = false;    // Exit the editing mode
+        },
+
+
 
         delete_category(category_id)
         //

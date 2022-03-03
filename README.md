@@ -24,6 +24,9 @@ This major new release is currently in a **late Beta stage**.  First released to
 If you're new, here's a 
 [gentle brief intro](https://julianspolymathexplorations.blogspot.com/2021/02/neo4j-graph-databases-intro.html). 
 
+
+![Brain Annex Technology Stack](BrainAnnex/docs/BrainAnnex_Technology_Stack.png)
+
 # How to set up and use Brain Annex
 
 This beta version support both local and remote databases, but the app is meant to be run or your local computer.

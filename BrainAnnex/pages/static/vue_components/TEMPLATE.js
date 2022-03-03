@@ -13,6 +13,10 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             <button @click="count++">{{ count }}</button>
             <input type='text' v-model="nickname" placeholder="Specify nickname">
 
+            <!-- Status info -->
+            <span v-if="waiting" class="waiting">Performing the requested operation... [OR A MORE SPECIFIC DESCRIPTION]</span>
+            <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+
             </div>		<!-- End of outer container -->
             `,
 
@@ -21,7 +25,11 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
         data: function() {
             return {
                 my_count: 0,
-                nickname: this.some_data_a
+                nickname: this.some_data_a,
+
+                waiting: false,         // Whether any server request is still pending
+                error: false,           // Whether the last server communication resulted in error
+                status_message: ""      // Message for the user about the status of the last operation (NOT used for "waiting" status)
             }
         },
 
