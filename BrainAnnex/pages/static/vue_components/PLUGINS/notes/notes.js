@@ -1,5 +1,5 @@
-/*  MIT License.  Copyright (c) 2021 Julian A. West
-    This file is part of the "Brain Annex" project (https://BrainAnnex.org)
+/*  Vue component to display and edit a single "note" (HTML-formatted text)
+    MIT License.  Copyright (c) 2021-22 Julian A. West
  */
 
 Vue.component('vue-plugin-n',
@@ -12,30 +12,26 @@ Vue.component('vue-plugin-n',
          */
 
         template: `
-            <div>	<!-- Outer container box, serving as Vue-required template root  -->
+            <div>	<!-- Outer container, serving as Vue-required template root  -->
 
             <div class="notes" v-if="!editing_mode" v-html="body_of_note">
+                <!-- Body of Note, and status of last edit  -->
                 <span v-bind:class="{'n-waiting': waiting_mode}">{{status}}</span>
             </div>
 
-            <div v-show="editing_mode" class="add-form">
-                <div id='addNoteBlock' style='margin-top:10px; width:967px'>
 
-                    <div class="notes" v-bind:data_category="category_id" style='display:none'>
-                        <b>THE EDITOR WILL GO HERE</b>
-                    </div>
+            <div v-show="editing_mode" class='note-editor'>
+                <!-- CK Editor, and edit controls  -->
+                <div ref="julian"></div>  <!-- The content of this <div> gets replaced by the HTML online editor CKeditor when fired up
+                                               TODO: maybe use a Vue conditional to call a function that return a CK object body -->
 
-                    <div ref="julian"></div>  <!-- The content of this <div> gets replaced by the HTML online editor CKeditor when fired up
-                                                               TODO: maybe use a Vue conditional to call a function that return a CK object body -->
+                <!-- The Editor Controls (with the SAVE and CANCEL buttons) -->
+                <div class='editor-controls'>
+                    <button @click="save_edit()">SAVE</button>
+                    <button @click="cancel_edit()">CANCEL</button>
+                </div>
 
-                    <!-- The editor Controls (with the SAVE and CANCEL buttons) are initially hidden -->
-                    <div class='editor-controls'>
-                        <button @click="save_edit()">SAVE</button>
-                        <button @click="cancel_edit()">CANCEL</button>
-                    </div>
-
-                </div>  <!--  Terminate the wrapper DIV "addNoteBlock" -->
-            </div> <!--  Terminate the wrapper DIV "add-form" -->
+            </div>  <!--  Terminate the wrapper DIV "note-editor" -->
 
 
             <!--  STANDARD CONTROLS

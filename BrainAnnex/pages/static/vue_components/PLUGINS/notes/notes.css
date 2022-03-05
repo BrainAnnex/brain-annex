@@ -16,12 +16,13 @@ div.noteBlock  {
 }
 
 
-div.add-form {  /* To add new Notes */
+div.note-editor {  /* To add new Notes */
     background-color: #BBF;  /* Blue/violet */
     border: 1px solid brown;
     padding: 5px;
     margin-right: 5px;
-    margin-top: 15px;
+    margin-top: 25px;
+    width:967px;
 }
 
 div.editor-controls {
