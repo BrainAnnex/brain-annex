@@ -49,6 +49,11 @@ Vue.component('vue-toc-sidebar',
                                     <img src='/BA/pages/static/graphics/image_14_1814111.png'>
                                     <br>
                                 </p>
+
+                                <p v-if="item.schema_code == 'n' && item.title">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.caption">{{item.title}}</a>
+                                    <br>
+                                </p>
                             </template>
 
                         </template>

@@ -30,15 +30,7 @@
 class ServerCommunication
 /* 	STATIC class to communicate with the server using the fetch() API.
 
-    Some methods are general; others implement the following SIMPLE COMMUNICATION PROTOCOL for responses from the server
-
-	PROTOCOL: 	1) a server response is expected; its lack is regarded as an error
-	            2) if the response starts with the character "+", it's taken to be an successful operation,
-	               and the optional rest of the string is taken to be a data payload
-				3) if the response starts with the character "-", it's taken to be an error status,
-				   and the rest of the string is taken to be the error message
-				4) responses that DON'T start with either "+" or "-" are taken to be
-				   unexpected error (not correctly handled), and the entire text is regarded as a presumed error message
+    Some methods are general; others implement one of the protocols detailed further down.
  */
 {
     static contact_server(url_server,
@@ -56,11 +48,14 @@ class ServerCommunication
             method:         Either "GET" or "POST" - optional, by default "GET"
                                 (however, ignored if a non-empty string is passed to post_body,
                                                      or a non-empty object is passed to post_obj)
+
             post_obj:       If a non-empty object is passed, the method is automatically forced to POST
                                 (and it will disregard the contents of post_body)
+                                EXAMPLE:  {item_id: 123, text: "Some data"}
             post_body:      If a non-empty string is passed, the method is automatically forced to POST;
                                 (disregarded if a non-empty post_obj was passed,
                                  i.e. post_obj has higher priority over post_obj)
+
             payload_type:   Either "TEXT" or "JSON" - optional, by default "TEXT"
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data     If present, it is passed as a final argument to the callback function
@@ -379,7 +374,15 @@ class ServerCommunication
 
     /****************************************************************************************************************
 
-                 METHODS APPLICABLE TO SERVER COMMUNICATION USING THE "SIMPLE TEXT PROTOCOL" FOR THIS CLASS
+             METHODS APPLICABLE TO SERVER COMMUNICATION USING THE FOLLOWING "SIMPLE COMMUNICATION PROTOCOL"
+
+                PROTOCOL: 	1) a server response is expected; its lack is regarded as an error
+                            2) if the response starts with the character "+", it's taken to be an successful operation,
+                               and the optional rest of the string is taken to be a data payload
+                            3) if the response starts with the character "-", it's taken to be an error status,
+                               and the rest of the string is taken to be the error message
+                            4) responses that DON'T start with either "+" or "-" are taken to be
+                               unexpected error (not correctly handled), and the entire text is regarded as a presumed error message
 
      ****************************************************************************************************************/
 

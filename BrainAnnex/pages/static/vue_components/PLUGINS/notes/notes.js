@@ -14,12 +14,14 @@ Vue.component('vue-plugin-n',
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
+            <!-- Show when NOT in editing mode  -->
             <div class="notes" v-if="!editing_mode" v-html="body_of_note">
                 <!-- Body of Note, and status of last edit  -->
                 <span v-bind:class="{'n-waiting': waiting_mode}">{{status}}</span>
             </div>
 
 
+            <!-- Show when in editing mode  -->
             <div v-show="editing_mode" class='note-editor'>
                 <!-- CK Editor, and edit controls  -->
                 <div ref="julian"></div>  <!-- The content of this <div> gets replaced by the HTML online editor CKeditor when fired up
@@ -29,6 +31,8 @@ Vue.component('vue-plugin-n',
                 <div class='editor-controls'>
                     <button @click="save_edit()">SAVE</button>
                     <button @click="cancel_edit()">CANCEL</button>
+                    <span style='margin-left:10px'>Title:</span>
+                    <input type="text" v-model="current_data['title']" placeholder="Optionally specify a title" size="60">
                 </div>
 
             </div>  <!--  Terminate the wrapper DIV "note-editor" -->
@@ -53,11 +57,18 @@ Vue.component('vue-plugin-n',
             return {
                 editing_mode: (this.item_data.item_id == -1 ? true : false),    // -1 means "new Item"
 
-                //body_of_note: this.get_note(this.item_data)
                 body_of_note: (this.item_data.item_id == -1 ? "NEW NOTE" : this.get_note(this.item_data)),
                 note_editor: null,          // CKeditor object
-                old_note_value: "",         // The pre-edit value
+                old_note_value: "",         // The pre-edit value.  TODO: switch to using the "original_data" Object
                 new_note_value: "",         // Value of the tentative edit (subject to successful server update)
+
+                /*
+                        current_data:   Object with the values bound to the editing fields, cloned from the "prop" data;
+                                        it'll change in the course of the edit-in-progress
+
+                        original_data:  Object with pre-edit data,
+                                        used to restore the data in case of an edit Cancel or failed save
+                 */
 
                 // This object contains the values bound to the editing field, cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -98,7 +109,6 @@ Vue.component('vue-plugin-n',
                 // Prepare a URL to communicate with the server's endpoint
                 url_server = "/BA/api/simple/get_media/" + item_data.item_id;
 
-                //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_get_note);
                 ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});
 
                 return "Retrieving note id " + item_data.item_id + "...";
@@ -174,7 +184,6 @@ Vue.component('vue-plugin-n',
                 // Make sure that the DIV element in which to place the CKeditor exists
                 var element = this.$refs.julian;
                 if (! element)  {
-                    //alert(`ERROR: no DOM element present with ID '${editorBlockID}'`);
                     alert(`ERROR: no DOM element present for editing new Note`);
                     console.log(element);
                     return;
@@ -265,19 +274,24 @@ Vue.component('vue-plugin-n',
                 var positionID = this.item_data.pos;
 
                 // Start the body of the POST to send to the server
-                var post_body = "schema_code=" + this.item_data.schema_code;
+                var post_obj = {schema_code: this.item_data.schema_code};
 
-                // Make the value safe for inclusion in a URL
-                // encodeURIComponent() is needed because newBody may contain "&" or "=" characters.  TODO: switch to new API
                 if (noteID == -1)  {	// Add NEW note
-                    post_body += "&category_id=" + this.category_id + "&body=" + encodeURIComponent(newBody);
                     const insert_after = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    post_body += "&insert_after=" + insert_after;
+
+                    post_obj.category_id = this.category_id;
+                    post_obj.body = newBody;
+                    post_obj.insert_after = insert_after;
+                    if (this.current_data['title'] != "")
+                        post_obj.title = this.current_data['title'];        // TODO: implement a title creator, if not supplied by user
 
                     var url_server = "/BA/api/simple/add_item_to_category";
                 }
                 else  {				    // Edit EXISTING note
-                    post_body += "&item_id=" + noteID + "&body=" + encodeURIComponent(newBody);
+                    post_obj.item_id = noteID;
+                    post_obj.body = newBody;
+                    post_obj.title = this.current_data['title'];
+
                     var url_server = "/BA/api/simple/update";
                 }
 
@@ -285,9 +299,11 @@ Vue.component('vue-plugin-n',
                 this.save_waiting_mode = true;
                 this.error_indicator = false;   // Clear possible past message
 
-                //console.log(url_server);
-                console.log("In 'vue-plugin-n', save().  post_body: ", post_body);      // TODO: only show first few chars
-                ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
+                //console.log("In 'vue-plugin-n', do_box_save().  post_obj: ", post_obj);
+                ServerCommunication.contact_server(url_server, {post_obj: post_obj,
+                                                                payload_type: "TEXT",
+                                                                callback_fn: this.finish_save});
+
             },  // do_box_save()
 
 
@@ -323,6 +339,9 @@ Vue.component('vue-plugin-n',
                     this.$emit('updated-item', this.current_data);
 
                     boxValue = this.new_note_value;
+
+                    // Synchronize the accepted baseline data to the current one
+                    this.original_data = Object.assign({}, this.current_data);      // Clone
                 }
                 else  {		        // Server reported FAILURE
                     this.status = "FAILED SAVE. " + error_message;
@@ -350,6 +369,9 @@ Vue.component('vue-plugin-n',
                 noteID = this.item_data.item_id;    // -1 indicates a new Note
 
                 console.log("Inside cancel_edit().  noteID = " + noteID);
+
+                // Restore the data to how it was prior to the aborted changes
+                this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
                 this.note_editor.setData(this.old_note_value);
 
