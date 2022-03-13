@@ -502,12 +502,21 @@ def test_get_nodes(db):
 def test_get_df(db):
     db.empty_dbase()
 
+    # Create and load a test Pandas dataframe with 2 columns and 2 rows
     df_original = pd.DataFrame({"patient_id": [1, 2], "name": ["Jack", "Jill"]})
-    db.load_pandas(df_original, "A")
+    db.load_pandas(df_original, label="A")
 
     df_new = db.get_df("A")
 
-    assert df_original.sort_index(axis=1).equals(df_new.sort_index(axis=1)) # Disregard column order in the comparison
+    # Sort the columns and then sort the rows, in order to disregard both row and column order (TODO: turn into utility)
+    df_original_sorted = df_original.sort_index(axis=1)
+    df_original_sorted = df_original_sorted.sort_values(by=df_original_sorted.columns.tolist()).reset_index(drop=True)
+
+    df_new_sorted = df_new.sort_index(axis=1)
+    df_new_sorted = df_new_sorted.sort_values(by=df_new_sorted.columns.tolist()).reset_index(drop=True)
+
+    assert df_original_sorted.equals(df_new_sorted)
+
 
 
 def test_is_valid_match_structure(db):

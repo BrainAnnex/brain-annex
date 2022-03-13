@@ -34,6 +34,12 @@ def test_class_name_exists(db):
     assert not NeoSchema.class_name_exists("Was ist das")
 
 
+def test_create_class_relationship(db):
+    #french_class_id = NeoSchema.create_class("French Vocabulary")
+    #foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
+    status = NeoSchema.create_class_relationship(child=93, parent=19, rel_name="INSTANCE_OF")
+    assert status
+
 
 def test_get_class_relationships(db):
     result = NeoSchema.get_class_relationships(47)

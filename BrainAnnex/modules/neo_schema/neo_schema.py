@@ -102,6 +102,18 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def set_database(cls, db) -> None:
+        """
+        IMPORTANT: this method MUST be called before using this class!
+
+        :param db:  Database-interface object
+        :return:    None
+        """
+        cls.db = db
+
+
+
     ##################################################################################################
     #                                                                                                #
     #                                       CLASS-related                                            #
@@ -113,6 +125,7 @@ class NeoSchema:
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
+
         Return the auto-incremented unique ID assigned to the new Class,
         or raise an Exception if a class by that name already exists
 

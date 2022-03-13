@@ -44,7 +44,8 @@ Vue.component('vue-schema-editor',
                 <span v-if="waiting" class="waiting">Adding the subcategory...</span>
                 <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
             <br><br>
-
+            IMPORTANT NOTE: the new class will be given an "INSTANCE_OF" relationship to the "Records" class.
+            <span style='color:gray'>Future versions will allow picking a different parent class</span>
             </div>		<!-- End of outer container -->
             `,
 

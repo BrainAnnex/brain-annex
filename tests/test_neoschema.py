@@ -11,6 +11,7 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 @pytest.fixture(scope="module")
 def db():
     neo_obj = neo_access.NeoAccess(debug=True)
+    NeoSchema.set_database(neo_obj)
     yield neo_obj
 
 
