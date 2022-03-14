@@ -10,7 +10,7 @@ from typing import Union
 
 class NeoAccess:
     """
-    VERSION 3.3
+    VERSION 3.4
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -842,7 +842,8 @@ class NeoAccess:
         cypher_labels = self.prepare_labels(labels)     # EXAMPLES:     ":`patient`"
                                                         #               ":`CAR`:`INVENTORY`"
 
-        if neo_id:     # If an internal node ID is specified, it over-rides all the other conditions
+        if neo_id is not None:      # If an internal node ID is specified, it over-rides all the other conditions
+                                    # CAUTION: neo_id might be 0 ; that's a valid Neo4j node ID
             cypher_match = f"({dummy_node_name})"
             cypher_where = f"id({dummy_node_name}) = {neo_id}"
             return {"node": cypher_match, "where": cypher_where, "data_binding": {}, "dummy_node_name": dummy_node_name}
@@ -1055,7 +1056,7 @@ class NeoAccess:
         Return the Neo4j internal ID of the node just created.
 
         :param labels:      A string, or list/tuple of strings, of Neo4j label (ok to include blank spaces)
-        :param properties:  An optional dictionary of properties to set for the new node.
+        :param properties:  An optional (possibly empty or None) dictionary of properties to set for the new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
 
         :return:            An integer with the Neo4j internal ID of the node just created
@@ -1109,7 +1110,8 @@ class NeoAccess:
 
         :param labels:      A string, or list of strings, with label(s) to assign to the new node
         :param properties:  A dictionary of properties to assign to the new node
-        :param connections: A (possibly empty) list of dictionaries with the following keys (all optional unless otherwise specified):
+        :param connections: A (possibly empty) list of dictionaries with the following keys
+                            (all optional unless otherwise specified):
                                 --- Keys to locate an existing node ---
                                     "labels"        RECOMMENDED
                                     "key"           REQUIRED
@@ -1463,7 +1465,9 @@ class NeoAccess:
         self.debug_print(q, combined_data_binding, "add_edge")
 
         result = self.update_query(q, combined_data_binding)
-        #print("result of update_query in add_edge(): ", result)
+        if self.debug:
+            print("    result of update_query in add_edge(): ", result)
+
         if result.get("relationships_created") == 1:
             return True
         else:
@@ -1878,7 +1882,7 @@ class NeoAccess:
     def load_pandas(self, df:pd.DataFrame, label:str, rename=None, max_chunk_size = 10000) -> [int]:
         """
         Load a Pandas data frame (or Series) into Neo4j.
-        Each line is loaded as a separate node.
+        Each row is loaded as a separate node.
         NOTE: no attempt is made to check if an identical (or at least matching in some primary key) node already exists.
 
         TODO: maybe save the Panda data frame's row number as an attribute of the Neo4j nodes, to ALWAYS have a primary key
@@ -2059,7 +2063,8 @@ class NeoAccess:
                     {"id":"1","type":"relationship","label":"KNOWS","properties":{"since":2003},"start":{"id":"3","labels":["User"]},"end":{"id":"4","labels":["User"]}}\n
                    ]'
         }
-        NOTE: the Neo4j Browser uses a slightly different format for NODES:
+
+        SIDE NOTE: the Neo4j Browser uses a slightly different format for NODES:
                 {
                   "identity": 4,
                   "labels": [
@@ -2180,14 +2185,79 @@ class NeoAccess:
 
 
 
-    def import_json_data(self, json_str: str):
+    def import_json(self, json_str: str, labels="test"):   # EXPERIMENTAL
         """
+
+        :param json_str:    A JSON string
+        :param labels:      To be used on the top-level nodes
+        :return:            Python data (such as a dict or list) that corresponds to the passed JSON string
+        """
+        try:
+            json_data = json.loads(json_str)    # Turn the string (representing a JSON list) into a list
+        except Exception as ex:
+            raise Exception(f"Incorrectly-formatted JSON string. {ex}")
+
+        if type(json_data) == list:
+            for item in json_data:
+                self.create_nodes_from_json_data(item, labels)
+        else:
+            self.create_nodes_from_json_data(json_data, labels)
+
+        return json_data
+
+
+    def create_nodes_from_json_data(self, json_data, labels):
+        """
+
+        :param json_data: Python data (such as a dict or list) created in response to a JSON string
+        :param labels:
+        :return:
+        """
+        if type(json_data) == int or type(json_data) == str or type(json_data) == bool:
+            print(f"Turning literal ({json_data}) into dict")
+            json_data = {"value": json_data}
+
+        if type(json_data) == dict:
+            node_properties = {}
+            children = []
+            for k, v in json_data.items():
+                print(k , " -> " , v)
+                if type(v) == int or type(v) == str or type(v) == bool:
+                    node_properties[k] = v
+                if type(v) == dict:
+                    new_node_id = self.create_nodes_from_json_data(json_data=v, labels=k)
+                    children.append( (new_node_id, k) )
+                if type(v) == list:
+                    for item in v:
+                        new_node_id = self.create_nodes_from_json_data(json_data=item, labels=k)
+                        children.append( (new_node_id, k) )
+
+            node_id = self.create_node(labels, node_properties)
+
+            # Add relationships to all children from the recursive call, if any
+            print("\nnode_id: ", node_id)
+            print(f"{len(children)} children: ", children)
+            print()
+            node_match = self.find(neo_id=node_id, dummy_node_name="from")
+            for child_id, rel_name in children:
+                child_match = self.find(neo_id=child_id, dummy_node_name="to")
+                self.add_edge(match_from=node_match, match_to=child_match, rel_name=rel_name)
+
+            return node_id
+
+
+
+
+
+    def import_json_data(self, json_str: str) -> str:  # TODO: maybe rename import_json_dump()
+        """
+        Used to import data from a database dump done with export_dbase_json() or export_nodes_rels_json()
         Import nodes and/or relationships into the database, as directed by the given data dump in JSON form.
         Note: the id's of the nodes need to be shifted,
               because one cannot force the Neo4j internal id's to be any particular value...
               and, besides (if one is importing into an existing database), particular id's may already be taken.
         :param json_str:    A JSON string with the format specified under export_dbase_json()
-        :return:            A status message with import details if successful, or an Exception if not
+        :return:            A status message with import details if successful, or raise an Exception if not
         """
 
         try:
