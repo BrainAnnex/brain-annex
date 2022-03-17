@@ -109,6 +109,17 @@
                     </select>
                 </form>
 
+
+                <!-- Icon to detach this category from one of its parents [TODO: gray out if only one parent] -->
+                <img @click="remove_edge({{p['item_id']}} , {{category_id}})"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                     class='clickable-icon' style="margin-left:8px"
+                     title='SEVER the "sub-category" relationship between `{{p["name"]}}` and `{{category_name}}`
+It does *NOT* delete `{{p["name"]}}`'
+                     alt='SEVER the "sub-category" relationship between `{{p["name"]}}` and "{{category_name}}"
+It does *NOT* delete `{{p["name"]}}`'>
+                <br>
+
+                <!--
                 <form method='POST' action='doCategoryHandler2.php?op=removeEdge&cat={{category_id}}'>
                     <input type='hidden' name='parentID' value='153'>
                     <input type='hidden' name='childID' value='{{category_id}}'>
@@ -118,6 +129,7 @@ It does *NOT* delete `{{p["name"]}}`'
                            alt='SEVER the "sub-category" relationship between `{{p["name"]}}` and "{{category_name}}"
 It does *NOT* delete `{{p["name"]}}`'>
                 </form>
+                -->
 
                 <span style='font-weight:bold; font-size:11px'>
                     <a href='/BA/pages/category_manager/{{p["item_id"]}}' title='Re-Center the Editor on this Category (&ldquo;{{p["name"]}}&rdquo;)'>{{p["name"]}}</a>
@@ -285,6 +297,18 @@ It does *NOT* delete `{{p["name"]}}`'>
                        title='Re-Center the Editor on this Category (&ldquo;{{s["name"]}}&rdquo;)'>{{s["name"]}}
                     </a>
                 </span><br>
+
+
+                <!-- Icon to detach this category from one of its children -->
+                <img @click="remove_edge({{category_id}} , {{s['item_id']}})"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                     class='clickable-icon' style="margin-left:8px"
+                     title='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
+It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'
+                     alt='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
+It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'>
+                <br>
+
+                <!--
                 <form method='POST' action='doCategoryHandler2.php?op=removeEdge&cat={{category_id}}'>
                     <input type='hidden' name='parentID' value='{{category_id}}'>
                     <input type='hidden' name='childID' value='860'>
@@ -292,7 +316,10 @@ It does *NOT* delete `{{p["name"]}}`'>
                            title='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
 It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'
                              alt='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
-It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'></form>
+It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'>
+                </form>
+                -->
+
                 <a href='javascript:replaceMenu(6)'>
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
                          title='REMOVE &ldquo;{{s["name"]}}&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'
@@ -406,6 +433,16 @@ new Vue({
             overlay_height = 1080;
             return overlay_height;
         },
+
+
+
+        remove_edge(parent_id, child_id)
+        // Detach a sub-category relationship
+        {
+            alert(`Delete edge from Category ${parent_id} to ${child_id}.  Sorry, not yet implemented :(`);
+        },
+
+
 
         edit_name()
         // Enter edit mode for the Category name and remarks

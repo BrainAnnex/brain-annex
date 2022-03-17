@@ -1,6 +1,3 @@
-# VERSION 5.0-beta11 In-Progress
-
-
 # MAIN PROGRAM : it starts up a server for web User Interface and an API
 # Run this file, and then set the browser to http://localhost:5000/some_url
 # (the actual port number is configurable; the URL's are specified in the various modules)
