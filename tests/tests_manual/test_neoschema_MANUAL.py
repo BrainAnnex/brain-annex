@@ -310,5 +310,4 @@ def test_add_data_relationship(db):
 
 
 def test_remove_data_relationship(db):
-    status = NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")
-    assert status == True
+    NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")

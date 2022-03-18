@@ -994,7 +994,7 @@ class NeoSchema:
     @classmethod
     def remove_data_relationship(cls, from_id: int, to_id: int, rel_name: str, labels=None):
         """
-        Drop the specified relationship between the 2 given data nodes, from the "parent" to the "child".
+        Drop the specified relationship from one to the other of the 2 given data nodes.
         Note: the data nodes are left untouched.
 
         TODO: verify that the relationship is optional in the schema
@@ -1002,8 +1002,8 @@ class NeoSchema:
         :param from_id:     The "item_id" value of the data node at which the relationship originates
         :param to_id:       The "item_id" value of the data node at which the relationship ends
         :param rel_name:    The name of the relationship to delete
-        :param labels:      OPTIONAL (generally, redundant)
-        :return:            True if the specified relationship got successfully deleted, or False otherwise
+        :param labels:      OPTIONAL (generally, redundant) labels required to be on both nodes
+        :return:            None.  If the specified relationship didn't get deleted, raise an Exception
         """
         match_from = cls.db.find(labels=labels, key_name="item_id", key_value=from_id,
                                  dummy_node_name="from")
@@ -1011,7 +1011,8 @@ class NeoSchema:
         match_to =   cls.db.find(labels=labels, key_name="item_id", key_value=to_id,
                                  dummy_node_name="to")
 
-        return cls.db.remove_edge(match_from, match_to, rel_name=rel_name)
+        number_removed = cls.db.remove_edge(match_from, match_to, rel_name=rel_name)
+        assert number_removed == 1, "remove_data_relationship(): failed to remove relationship"
 
 
 

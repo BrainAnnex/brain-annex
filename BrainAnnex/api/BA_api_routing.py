@@ -57,12 +57,19 @@ class ApiRouting:
     def str_to_int(self, s: str) -> int:
         """
         Helper function to give more friendly error messages in case non-integers are passed
-        in situations where they are expected (for example, for id's).
-        Without this function, the user would see more cryptic messages such as
+        in situations where integers are expected (for example, for id's).
+        Without this function, the user would see cryptic messages such as
         "invalid literal for int() with base 10: 'q123'"
 
-        :param s:
-        :return:
+        EXAMPLE:
+            try:
+                item_id = self.str_to_int(item_id_str)
+            except Exception as ex:
+                # Do something
+
+        :param s:   A string that should represent an integer
+        :return:    The integer represented in the passed string, if applicable;
+                        if not, an Exception is raised
         """
         try:
             i = int(s)
@@ -704,10 +711,50 @@ class ApiRouting:
             print(f"add_subcategory_relationship() is returning: `{return_value}`")
         
             return return_value
-        
-        
+
+
+
+        @self.BA_api_flask_blueprint.route('/simple/remove_relationship', methods=['POST'])
+        def remove_relationship() -> str:
+            """
+
+            POST FIELDS:
+                from
+                to
+                rel_name
+                schema_code (optional)  If passed, the appropriate plugin gets involved
+            :return:
+            """
+            # Extract the POST values
+            post_data = request.form
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            self.show_post_data(post_data)
+
+            try:
+                data_dict = self.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                from_id = self.str_to_int(data_dict['from'])
+                to_id = self.str_to_int(data_dict['to'])
+                rel_name = data_dict['rel_name']
+                schema_code = data_dict.get('rel_name')         # Tolerant of missing values
+
+                if schema_code == "cat":
+                    pass        # Category-specific action
+
+                NeoSchema.remove_data_relationship(from_id=from_id, to_id=to_id,
+                                                             rel_name="BA_subcategory_of", labels="BA")
+
+                return_value = self.SUCCESS_PREFIX              # If no errors
+            except Exception as ex:
+                return_value = self.ERROR_PREFIX + str(ex)      # In case of errors
+
+            print(f"remove_relationship() is returning: `{return_value}`")
+
+            return return_value
+
+
+
         @self.BA_api_flask_blueprint.route('/simple/remove_subcategory_relationship')
-        def remove_subcategory_relationship() -> str:
+        def remove_subcategory_relationship() -> str:       # NOTE: never used.  TODO: being phased out in favor of remove_relationship()
             """
             Remove a subcategory relationship between 2 existing Categories.
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/remove_subcategory_relationship?sub=12&cat=1

@@ -10,7 +10,7 @@ from typing import Union
 
 class NeoAccess:
     """
-    VERSION 3.4
+    VERSION 3.5
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -1475,11 +1475,33 @@ class NeoAccess:
 
 
 
-    def remove_edge(self, match_from: dict, match_to: dict, rel_name:str) -> bool:
+    def unpack_match(self, match: dict) -> list:    # TODO: test
         """
-        Remove an edge to the graph: a relationship between the 2 specified nodes,
-        with the arrow in the direction from -> to
-        Note: the nodes themselves are left untouched.
+        Turn the passed "match" dictionary structure into a list containing:
+        [node, where, data_binding, dummy_node_name]
+
+        :param match:
+        :return:
+        """
+        match_as_list = [match.get(key) for key in ["node", "where", "data_binding", "dummy_node_name"]]
+        return match_as_list
+
+
+
+    def remove_edge(self, match_from: dict, match_to: dict, rel_name) -> int:
+        """
+        Remove one or more edges (relationships)
+        originating in any of the nodes specified by the match_from specifications,
+        and terminating in any of the nodes specified by the match_to specifications,
+        optionally matching the given relationship name.
+
+        Return the number of edges removed; if none found, or in case of error, raise an Exception
+
+        Notes: - the nodes themselves are left untouched
+               - more than 1 node could be present in either of the matches
+               - the number of relationships deleted could be more than 1 even with a single "from" node and a single "to" node;
+                        Neo4j allows multiple relationships with the same name between the same two nodes,
+                        as long as the relationships differ in their properties
 
         :param match_from:  A dictionary of data to identify a node, or set of nodes, as returned by find()
         :param match_to:    A dictionary of data to identify a node, or set of nodes, as returned by find()
@@ -1487,38 +1509,66 @@ class NeoAccess:
                                        e.g., make sure that match_from find() used the option: dummy_node_name="from"
                                                         and match_from find() used the option: dummy_node_name="to"
 
-        :param rel_name:    The name of the relationship to delete between the 2 specified nodes
-        :return:            True if the requested new relationship got successfully deleted, or False otherwise
+        :param rel_name:    (OPTIONAL) The name of the relationship to delete between the 2 specified nodes;
+                                if None or a blank string, all relationships between those 2 nodes will get deleted
+
+        :return:            The number of edges removed.  If none got deleted, raise an Exception
         """
+        self._assert_valid_match_structure(match_from)   # Validate the match dictionary
+        self._assert_valid_match_structure(match_to)     # Validate the match dictionary
+
         # Unpack needed values from the match_from and match_to dictionaries
         (node_from, where_from, data_binding_from, dummy_node_name_from) = [match_from.get(key) for key in ["node", "where", "data_binding", "dummy_node_name"]]
-        (node_to, where_to, data_binding_to, dummy_node_name_to)         = [match_to.get(key) for key in ["node", "where", "data_binding", "dummy_node_name"]]
+        # = self.unpack(match_from)
 
-        # Make sure there's no conflict in node names
+        (node_to, where_to, data_binding_to, dummy_node_name_to)         = [match_to.get(key) for key in ["node", "where", "data_binding", "dummy_node_name"]]
+        # = self.unpack(match_to)
+
+        # Make sure there's no conflict in node names               # TODO: maybe have a method that accepts a list of "match" dictionaries
+                                                                    # TODO: maybe have a new class with static methods for the "match" dictionaries
         if dummy_node_name_from == dummy_node_name_to:
             raise Exception("remove_edge(): The `match_from` and `match_to` arguments are using the same `dummy_node_name`. Make sure to pass different names to find()")
 
 
         where_clause = self.prepare_where([where_from, where_to])   # Combine the 2 WHERE clauses, and also prefix (if appropriate) the WHERE keyword
+                                                                    # TODO: maybe the prepare_where() method could accept a list of "match" dictionaries
 
-        q = f'''
-            MATCH {node_from} -[r :{rel_name}]-> {node_to}
-            {where_clause}
-            DELETE r           
-            '''
+        if rel_name is None or rel_name == "":  # Delete all relationships
+            q = f'''
+                MATCH {node_from} -[r]-> {node_to}
+                {where_clause}
+                DELETE r           
+                '''
+
+        else: # Delete a specific relationship
+            q = f'''
+                MATCH {node_from} -[r :{rel_name}]-> {node_to}
+                {where_clause}
+                DELETE r           
+                '''
+
 
         # Merge the data-binding dict's
         combined_data_binding = data_binding_from
-        combined_data_binding.update(data_binding_to)
+        combined_data_binding.update(data_binding_to)       # TODO: maybe have a method that accepts a list of "match" dictionaries
 
         self.debug_print(q, combined_data_binding, "remove_edge")
 
         result = self.update_query(q, combined_data_binding)
         #print("result of update_query in remove_edge(): ", result)
+
+        number_relationships_deleted = result.get("relationships_deleted")
+        if number_relationships_deleted == 0:       # This could be more than 1: see notes above
+            raise Exception("No relationship was deleted")
+
+        return number_relationships_deleted
+
+        """
         if result.get("relationships_deleted") == 1:
             return True
         else:
             return False
+        """
 
 
 

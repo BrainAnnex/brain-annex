@@ -1094,27 +1094,181 @@ def test_add_edge(db):
 def test_remove_edge(db):
     db.empty_dbase()    # Completely clear the database
 
-    neo_from = db.create_node("car", {'color': 'white'})
-    neo_to = db.create_node("owner", {'name': 'Julian'})
+    neo_car = db.create_node("car", {'color': 'white'})
+    neo_julian = db.create_node("owner", {'name': 'Julian'})
 
-    match_from = db.find(neo_id=neo_from, dummy_node_name="from")
-    match_to = db.find(neo_id=neo_to, dummy_node_name="to")
+    match_car = db.find(neo_id=neo_car, dummy_node_name="from")
+    match_julian = db.find(neo_id=neo_julian, dummy_node_name="to")
 
-    status = db.add_edge(match_from, match_to, rel_name="OWNED_BY")
+    status = db.add_edge(match_car, match_julian, rel_name="OWNED_BY")
     assert status == True
 
-    match_from = db.find(labels="car", dummy_node_name="from")
-    match_to = db.find(properties={"name": "Julian"}, dummy_node_name="to")
+    match_car = db.find(labels="car", dummy_node_name="from")
+    match_julian = db.find(properties={"name": "Julian"}, dummy_node_name="to")
 
-    status = db.remove_edge(match_from, match_to, rel_name="NON_EXISTENT_RELATIONSHIP")
-    assert status == False
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 1     # Find the relationship
 
-    status = db.remove_edge(match_from, match_to, rel_name="OWNED_BY")
-    assert status == True
+    with pytest.raises(Exception):
+        assert db.remove_edge(match_car, match_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
+
+    with pytest.raises(Exception):
+        assert db.remove_edge({"NON-sensical match object"}, match_julian, rel_name="OWNED_BY")
+
+    # Finally, actually remove the edge
+    number_removed = db.remove_edge(match_car, match_julian, rel_name="OWNED_BY")
+    assert number_removed == 1
+
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 0     # The relationship is now gone
+
+    with pytest.raises(Exception):
+        # This will crash because the relationship is no longer there
+        assert db.remove_edge(match_car, match_car, rel_name="OWNED_BY")
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.remove_edge(match_from, match_from, rel_name="THIS_WILL_CRASH")
+        assert db.remove_edge(match_car, match_car, rel_name="THIS_WILL_CRASH")
+
+
+    # Restore the relationship...
+    status = db.add_edge(match_car, match_julian, rel_name="OWNED_BY")
+    assert status == True
+
+    # ...and add a 2nd one, with a different name, between the same nodes
+    status = db.add_edge(match_car, match_julian, rel_name="REMEMBERED_BY")
+    assert status == True
+
+    # ...and re-add the last one, but with a property (which is allowed by Neo4j, and will result in
+    #       2 relationships with the same name between the same node
+    add_query = '''
+        MATCH (c:car), (o:owner)
+        MERGE (c)-[:REMEMBERED_BY {since: 2020}]->(o)
+    '''
+    result = db.update_query(add_query)
+    assert result == {'relationships_created': 1, 'properties_set': 1, 'returned_data': []}
+
+    # Also, add a 3rd node, and another "OWNED_BY" relationship, this time affecting the 3rd node
+    add_query = '''
+        MATCH (c:car)
+        MERGE (c)-[:OWNED_BY]->(o :owner {name: 'Val'})
+    '''
+    result = db.update_query(add_query)
+    assert result == {'labels_added': 1, 'relationships_created': 1, 'nodes_created': 1, 'properties_set': 1, 'returned_data': []}
+
+    # We now have a car with 2 owners: an "OWNED_BY" relationship to one of them,
+    # and 3 relationships (incl. two with the same name "REMEMBERED_BY") to the other one
+
+    find_query = '''
+        MATCH (c:car)-[:REMEMBERED_BY]->(o:owner ) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 2     # The 2 relationships we just added
+
+    # Remove 2 same-named relationships at once between the same 2 nodes
+    number_removed = db.remove_edge(match_car, match_julian, rel_name="REMEMBERED_BY")
+    assert number_removed == 2
+
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 0     # Gone
+
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner {name: 'Julian'}) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 1     # Still there
+
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner {name: 'Val'}) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 1     # Still there
+
+
+    number_removed = db.remove_edge(match_car, match_julian, rel_name="OWNED_BY")
+    assert number_removed == 1
+
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner {name: 'Julian'}) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 0     # Gone
+
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner {name: 'Val'}) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 1     # We didn't do anything to that relationship
+
+    # Add a 2nd relations between the car node and the "Val" owner node
+    add_query = '''
+        MATCH (c:car), (o :owner {name: 'Val'})
+        MERGE (c)-[:DRIVEN_BY]->(o)
+        '''
+    result = db.update_query(add_query)
+    assert result == {'relationships_created': 1, 'returned_data': []}
+
+    find_query = '''
+        MATCH (c:car)-[r]->(o:owner {name: 'Val'}) 
+        RETURN count(r) As n_relationships
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_relationships"] == 2
+
+    # Delete both relationships at once
+    match_val = db.find(key_name="name", key_value="Val", dummy_node_name="v")
+
+    number_removed = db.remove_edge(match_car, match_val, rel_name=None)
+    assert number_removed == 2
+
+    result = db.query(find_query)
+    assert result[0]["n_relationships"] == 0    # All gone
+
+
+
+def test_remove_edge_2(db):
+    db.empty_dbase()    # Completely clear the database
+
+    # 2 cars, co-owned by 2 people
+    q = '''
+        CREATE  (c1 :car {color:'white'}), (c2 :car {color:'red'}), 
+                (p1: person {name:'Julian'}), (p2 :person {name:'Val'})
+        MERGE (c1)-[:OWNED_BY]->(p1) 
+        MERGE (c1)-[:OWNED_BY]->(p2)
+        MERGE (c2)-[:OWNED_BY]->(p1) 
+        MERGE (c2)-[:OWNED_BY]->(p2)
+    '''
+    result = db.update_query(q)
+    assert result == {'labels_added': 4, 'relationships_created': 4,
+                      'nodes_created': 4, 'properties_set': 4, 'returned_data': []}
+
+    match_white_car = db.find(labels="car", properties={"color": "white"}, dummy_node_name="from")  # 1-node match
+    match_all_people = db.find(labels="person", dummy_node_name="to")                               # 2-node match
+
+
+    find_query = '''
+        MATCH (c :car {color:'white'})-[r:OWNED_BY]->(p : person) 
+        RETURN count(r) As n_relationships
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_relationships"] == 2        # The white car has 2 links
+
+    # Delete all the "OWNED_BY" relationships from the white car to any of the "person" nodes
+    number_removed = db.remove_edge(match_white_car, match_all_people, rel_name="OWNED_BY")
+    assert number_removed == 2
+
+    result = db.query(find_query)
+    assert result[0]["n_relationships"] == 0       # The 2 links from the white car are now gone
+
 
 
 
