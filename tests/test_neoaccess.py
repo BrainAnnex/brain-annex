@@ -3,6 +3,7 @@
 
 import pytest
 from BrainAnnex.modules.neo_access import neo_access
+from BrainAnnex.modules.neo_access.neo_access import CypherUtils as CypherUtils
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 import os
 import pandas as pd
@@ -68,8 +69,9 @@ def test_query(db):
 
     q = "MATCH (x) RETURN x"
     result = db.query(q)
-    assert result == [{'x': {'color': 'white', 'make': 'Toyota'}},
-                      {'x': {'color': 'red', 'year': 2021, 'make': 'VW'}}]
+    expected = [{'x': {'color': 'white', 'make': 'Toyota'}},
+                {'x': {'color': 'red', 'year': 2021, 'make': 'VW'}}]
+    assert compare_recordsets(result, expected)
 
     q = '''CREATE (b:boat {number_masts: 2, year:2003}),
                   (c:car {color: "blue"})
@@ -265,7 +267,7 @@ def test_get_neo_id_by_key(db):
 
 
 def test_fetch_nodes(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create a 1st new node
     db.create_node("test_label", {'patient_id': 123, 'gender': 'M'})
@@ -376,7 +378,7 @@ def test_fetch_nodes(db):
 
     # Now, do a clean start, an investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
 
-    # Completely clear the database
+
     db.empty_dbase()
 
     # Create a first node, with attributes 'age' and 'gender'
@@ -396,7 +398,7 @@ def test_fetch_nodes(db):
 
 
 def test_get_nodes(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create a 1st new node
     db.create_node("test_label", {'patient_id': 123, 'gender': 'M'})
@@ -482,7 +484,7 @@ def test_get_nodes(db):
 
     # Now, do a clean start, an investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
 
-    # Completely clear the database
+
     db.empty_dbase()
 
     # Create a first node, with attributes 'age' and 'gender'
@@ -603,7 +605,7 @@ def test_find(db):
 ###  ~ FOLLOW LINKS ~
 
 def test_follow_links(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     db.create_node("book", {'title': 'The Double Helix'})
     db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
@@ -629,7 +631,7 @@ def test_follow_links(db):
 
 
 def test_count_links(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     db.create_node("book", {'title': 'The Double Helix'})
     db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
@@ -655,7 +657,7 @@ def test_count_links(db):
 
 
 def test_get_parents_and_children(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     node_id = db.create_node("mid generation", {'age': 42, 'gender': 'F'})    # This will be the "central node"
     result = db.get_parents_and_children(node_id)
@@ -729,7 +731,7 @@ def test_create_node(db):
                     3) retrieve the newly created nodes, using retrieve_nodes_by_label_and_clause()
     """
 
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create a new node.  Notice the blank in the key
     db.create_node("test_label", {'patient id': 123, 'gender': 'M'})
@@ -794,7 +796,7 @@ def test_create_node(db):
 
 
 def test_create_node_with_relationships(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create the prior nodes to which to link the newly-created node
     db.create_node("DEPARTMENT", {'dept_name': 'IT'})
@@ -843,7 +845,7 @@ def test_create_node_with_relationships(db):
         ]
     )
     """
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create a new node
     db.create_node("city", properties={'name': 'Berkeley', 'state': 'CA'})
@@ -869,7 +871,7 @@ def test_create_node_with_relationships(db):
 ###  ~ DELETE NODES ~
 
 def test_delete_nodes(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create 5 nodes, representing cars of various colors and prices
     df = pd.DataFrame({"color": ["white", "blue", "gray", "gray", "red"], "price": [100, 200, 300, 400, 500]})
@@ -982,7 +984,7 @@ def test_delete_nodes_by_label(db):
 def test_empty_dbase(db):
     # Tests of completely clearing the database
 
-    # Completely clear the database
+
     db.empty_dbase()
     # Verify nothing is left
     labels = db.get_labels()
@@ -990,14 +992,14 @@ def test_empty_dbase(db):
 
     db.create_node("label_A", {})
     db.create_node("label_B", {'client_id': 123, 'gender': 'M'})
-    # Completely clear the database
+
     db.empty_dbase()
     # Verify nothing is left
     labels = db.get_labels()
     assert labels == []
 
     # Test of removing only specific labels
-    # Completely clear the database
+
     db.empty_dbase()
     # Add a few labels
     db.create_node("label_1", {'client_id': 123, 'gender': 'M'})
@@ -1011,7 +1013,7 @@ def test_empty_dbase(db):
     assert compare_unordered_lists(labels , ["label_2", "label_3"])
 
     # Test of keeping only specific labels
-    # Completely clear the database
+
     db.empty_dbase()
     # Add a few labels
     db.create_node("label_1", {'client_id': 123, 'gender': 'M'})
@@ -1032,7 +1034,6 @@ def test_empty_dbase(db):
 ###  ~ MODIFY FIELDS ~
 
 def test_set_fields(db):
-    # Completely clear the database
     db.empty_dbase()
 
     # Create a new node.  Notice the blank in the key
@@ -1069,7 +1070,7 @@ def test_get_relationship_types(db):
 
 
 def test_add_edge(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     neo_from = db.create_node("car", {'color': 'white'})
     neo_to = db.create_node("owner", {'name': 'Julian'})
@@ -1092,7 +1093,7 @@ def test_add_edge(db):
 
 
 def test_remove_edge(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
@@ -1234,9 +1235,9 @@ def test_remove_edge(db):
     assert result[0]["n_relationships"] == 0    # All gone
 
 
-
 def test_remove_edge_2(db):
-    db.empty_dbase()    # Completely clear the database
+    # This set of test focuses on removing edges between GROUPS of nodes
+    db.empty_dbase()
 
     # 2 cars, co-owned by 2 people
     q = '''
@@ -1278,7 +1279,7 @@ def test_test_reattach_node(db):
 
 
 def test_link_nodes_by_ids(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
     # Create dummy data and return node_ids
     nodeids = db.query("""
         UNWIND range(1,3) as x
@@ -1332,7 +1333,7 @@ def test_get_labels(db):
     Create multiple new nodes, and then retrieve all the labels present in the database
     """
 
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     labels = db.get_labels()
     assert labels == []
@@ -1627,67 +1628,6 @@ def test_load_pandas(db):
 
 
 
-##########   CYPHER UTILITY METHODS   ##########
-
-def test_dict_to_cypher(db):
-    d = {'since': 2003, 'code': 'xyz'}
-    assert db.dict_to_cypher(d) == ('{`since`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
-
-    d = {'year first met': 2003, 'code': 'xyz'}
-    assert db.dict_to_cypher(d) == ('{`year first met`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
-
-    d = {'year first met': 2003, 'code': 'xyz'}
-    assert db.dict_to_cypher(d, prefix="val_") == ('{`year first met`: $val_1, `code`: $val_2}', {'val_1': 2003, 'val_2': 'xyz'})
-
-    d = {'cost': 65.99, 'code': 'the "red" button'}
-    assert db.dict_to_cypher(d) == ('{`cost`: $par_1, `code`: $par_2}', {'par_1': 65.99, 'par_2': 'the "red" button'})
-
-    d = {'phrase': "it's ready!"}
-    assert db.dict_to_cypher(d) == ('{`phrase`: $par_1}', {'par_1': "it's ready!"})
-
-    d = {'phrase': '''it's "ready"!'''}
-    assert db.dict_to_cypher(d) == ('{`phrase`: $par_1}', {'par_1': 'it\'s "ready"!'})
-
-    d = None
-    assert db.dict_to_cypher(d) == ("", {})
-
-    d = {}
-    assert db.dict_to_cypher(d) == ("", {})
-
-
-
-def test_prepare_labels(db):
-    lbl = ""
-    assert db.prepare_labels(lbl) == ""
-
-    lbl = "client"
-    assert db.prepare_labels(lbl) == ":`client`"
-
-    lbl = ["car", "car manufacturer"]
-    assert db.prepare_labels(lbl) == ":`car`:`car manufacturer`"
-
-
-
-def test_prepare_where(db):
-    assert db.prepare_where("") == ""
-    assert db.prepare_where("      ") == ""
-    assert db.prepare_where([]) == ""
-    assert db.prepare_where([""]) == ""
-    assert db.prepare_where( ("  ", "") ) == ""
-
-    wh = "n.name = 'Julian'"
-    assert db.prepare_where(wh) == "WHERE (n.name = 'Julian')"
-
-    wh = ["n.name = 'Julian'"]
-    assert db.prepare_where(wh) == "WHERE (n.name = 'Julian')"
-
-    wh = ("p.key1 = 123", "   ",  "p.key2 = 456")
-    assert db.prepare_where(wh) == "WHERE (p.key1 = 123 AND p.key2 = 456)"
-
-    with pytest.raises(Exception):
-        assert db.prepare_where(123)    # Not a string, nor tuple, nor list
-
-
 
 ###  ~ JSON IMPORT/EXPORT ~
 
@@ -1700,3 +1640,67 @@ def test_prepare_where(db):
 
 def test_debug_print(db):
     pass    # TODO
+
+
+
+
+
+#####################   For the "CypherUtils" class   #################
+
+def test_prepare_labels():
+    lbl = ""
+    assert CypherUtils.prepare_labels(lbl) == ""
+
+    lbl = "client"
+    assert CypherUtils.prepare_labels(lbl) == ":`client`"
+
+    lbl = ["car", "car manufacturer"]
+    assert CypherUtils.prepare_labels(lbl) == ":`car`:`car manufacturer`"
+
+
+
+def test_prepare_where():
+    assert CypherUtils.prepare_where("") == ""
+    assert CypherUtils.prepare_where("      ") == ""
+    assert CypherUtils.prepare_where([]) == ""
+    assert CypherUtils.prepare_where([""]) == ""
+    assert CypherUtils.prepare_where(("  ", "")) == ""
+
+    wh = "n.name = 'Julian'"
+    assert CypherUtils.prepare_where(wh) == "WHERE (n.name = 'Julian')"
+
+    wh = ["n.name = 'Julian'"]
+    assert CypherUtils.prepare_where(wh) == "WHERE (n.name = 'Julian')"
+
+    wh = ("p.key1 = 123", "   ",  "p.key2 = 456")
+    assert CypherUtils.prepare_where(wh) == "WHERE (p.key1 = 123 AND p.key2 = 456)"
+
+    with pytest.raises(Exception):
+        assert CypherUtils.prepare_where(123)    # Not a string, nor tuple, nor list
+
+
+
+def test_dict_to_cypher():
+    d = {'since': 2003, 'code': 'xyz'}
+    assert CypherUtils.dict_to_cypher(d) == ('{`since`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
+
+    d = {'year first met': 2003, 'code': 'xyz'}
+    assert CypherUtils.dict_to_cypher(d) == ('{`year first met`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
+
+    d = {'year first met': 2003, 'code': 'xyz'}
+    assert CypherUtils.dict_to_cypher(d, prefix="val_") == ('{`year first met`: $val_1, `code`: $val_2}', {'val_1': 2003, 'val_2': 'xyz'})
+
+    d = {'cost': 65.99, 'code': 'the "red" button'}
+    assert CypherUtils.dict_to_cypher(d) == ('{`cost`: $par_1, `code`: $par_2}', {'par_1': 65.99, 'par_2': 'the "red" button'})
+
+    d = {'phrase': "it's ready!"}
+    assert CypherUtils.dict_to_cypher(d) == ('{`phrase`: $par_1}', {'par_1': "it's ready!"})
+
+    d = {'phrase': '''it's "ready"!'''}
+    assert CypherUtils.dict_to_cypher(d) == ('{`phrase`: $par_1}', {'par_1': 'it\'s "ready"!'})
+
+    d = None
+    assert CypherUtils.dict_to_cypher(d) == ("", {})
+
+    d = {}
+    assert CypherUtils.dict_to_cypher(d) == ("", {})
