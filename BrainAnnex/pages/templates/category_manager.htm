@@ -87,56 +87,52 @@
     <div class='categoryManagement  topRow'>
         <img src='/BA/pages/static/graphics/parent.jpg'>
 
-        {% for p in parent_categories %}
+
+        <template v-for="p in parent_categories">
 
             <div style='width:105px'>&nbsp;</div>
+
             <div style='width:105px; text-align:center'>
+
+                <!-- TODO: this needs replacing -->
                 <a href='javascript:replaceMenu(0)'>
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
-                         title='REMOVE &ldquo;{{p["name"]}}&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'
-                           alt='REMOVE &ldquo;{{p["name"]}}&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'>
-                </a><br>
+                         v-bind:title="'REMOVE &ldquo;' + p.name + '&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
+                    >
+                </a>
+                <br>
+
+                <!-- TODO: this form needs replacing -->
                 <form method='POST' action='doCategoryHandler2.php?op=switchParentNode&cat={{category_id}}' id='form_0' style='display:none'>
                     <input type='hidden' name='childID' value='{{category_id}}'>
-                    <input type='hidden' name='oldParentID' value='153'>
+                    <input type='hidden' name='oldParentID' value='8888'>
                     <select id = 'menu_0' name = 'newParentID' style = 'width:180px'>
                         <option value='-1'>[Select parent category]</option>
-
                         {% for s in subcategories %}
-                            <option value="{{s['id']}}">{{s['name']}}</option>
+                        <option value="{{s['id']}}">{{s['name']}}</option>
                         {% endfor %}
-
                     </select>
                 </form>
 
-
                 <!-- Icon to detach this category from one of its parents [TODO: gray out if only one parent] -->
-                <img @click="remove_edge({{p['item_id']}} , {{category_id}})"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                <img @click="sever_relationship(p.item_id , {{category_id}})"  src="/BA/pages/static/graphics/scissors_16_15275.png"
                      class='clickable-icon' style="margin-left:8px"
-                     title='SEVER the "sub-category" relationship between `{{p["name"]}}` and `{{category_name}}`
-It does *NOT* delete `{{p["name"]}}`'
-                     alt='SEVER the "sub-category" relationship between `{{p["name"]}}` and "{{category_name}}"
-It does *NOT* delete `{{p["name"]}}`'>
+                     v-bind:title="'SEVER the sub-category relationship between `' + p.name + '` and `{{category_name}}`\n\
+It does *NOT* delete `' + p.name + '`'"
+                >
                 <br>
 
-                <!--
-                <form method='POST' action='doCategoryHandler2.php?op=removeEdge&cat={{category_id}}'>
-                    <input type='hidden' name='parentID' value='153'>
-                    <input type='hidden' name='childID' value='{{category_id}}'>
-                    <input type='image' src='/BA/pages/static/graphics/scissors_16_15275.png'
-                           title='SEVER the "sub-category" relationship between `{{p["name"]}}` and `{{category_name}}`
-It does *NOT* delete `{{p["name"]}}`'
-                           alt='SEVER the "sub-category" relationship between `{{p["name"]}}` and "{{category_name}}"
-It does *NOT* delete `{{p["name"]}}`'>
-                </form>
-                -->
-
                 <span style='font-weight:bold; font-size:11px'>
-                    <a href='/BA/pages/category_manager/{{p["item_id"]}}' title='Re-Center the Editor on this Category (&ldquo;{{p["name"]}}&rdquo;)'>{{p["name"]}}</a>
+                    <a v-bind:href="'/BA/pages/category_manager/' + p.item_id"
+                       v-bind:title="'Re-Center the Editor on this Category (&ldquo;'+ p.name + '&rdquo;)'"
+                    >
+                        [[p.name]]
+                    </a>
                 </span>
+
             </div>
 
-        {% endfor %}  {# END of for p in parent_categories #}
+        </template>     <!-- END of:  v-for="p in parent_categories" -->
 
 
 
@@ -290,44 +286,40 @@ It does *NOT* delete `{{p["name"]}}`'>
             </form>
         </div>
 
-        {% for s in subcategories %}
+
+        <template v-for="s in subcategories">
+
             <div style='width:73px; border-left:1px solid #CCC; text-align:center'>
+
                 <span style='font-weight:bold; font-size:10px'>
-                    <a href='/BA/pages/category_manager/{{s["item_id"]}}'
-                       title='Re-Center the Editor on this Category (&ldquo;{{s["name"]}}&rdquo;)'>{{s["name"]}}
+                    <a v-bind:href="'/BA/pages/category_manager/' + s.item_id"
+                       v-bind:title="'Re-Center the Editor on this Category (&ldquo;'+ s.name + '&rdquo;)'"
+                    >
+                        [[s.name]]
                     </a>
                 </span><br>
 
 
                 <!-- Icon to detach this category from one of its children -->
-                <img @click="remove_edge({{category_id}} , {{s['item_id']}})"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                <img @click="sever_relationship({{category_id}} , s.item_id)"  src="/BA/pages/static/graphics/scissors_16_15275.png"
                      class='clickable-icon' style="margin-left:8px"
-                     title='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
-It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'
-                     alt='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
-It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'>
+                     v-bind:title="'SEVER the sub-category relationship between `{{category_name}}` and &ldquo;' + s.name + '&rdquo;\n\
+It does *NOT* delete `' + s.name + '`'"
+                >
                 <br>
 
-                <!--
-                <form method='POST' action='doCategoryHandler2.php?op=removeEdge&cat={{category_id}}'>
-                    <input type='hidden' name='parentID' value='{{category_id}}'>
-                    <input type='hidden' name='childID' value='860'>
-                    <input type='image' src='/BA/pages/static/graphics/scissors_16_15275.png'
-                           title='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
-It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'
-                             alt='SEVER the "sub-category" relationship between "{{category_name}}" and &ldquo;{{s["name"]}}&rdquo;
-It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'>
-                </form>
-                -->
-
+                <!-- TODO: this needs replacing -->
                 <a href='javascript:replaceMenu(6)'>
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
-                         title='REMOVE &ldquo;{{s["name"]}}&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'
-                           alt='REMOVE &ldquo;{{s["name"]}}&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'>
-                </a><br>
+                         v-bind:title="'REMOVE &ldquo;' + s.name + '&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
+                    >
+                </a>
+                <br>
+
+                <!-- TODO: this form needs replacing -->
                 <form method='POST' action='doCategoryHandler2.php?op=switchChildNode&cat={{category_id}}' id='form_6' style='display:none'>
                     <input type='hidden' name='parentID' value='{{category_id}}'>
-                    <input type='hidden' name='oldChildID' value='{{s["id"]}}'>
+                    <input type='hidden' name='oldChildID' value='666'>
                     <select id = 'menu_6' name = 'newChildID' style = 'width:180px'>
                         <option value='-1'>[Select sub-category]</option>
                         {% for c in all_categories %}
@@ -335,12 +327,13 @@ It does *NOT* delete &ldquo;{{s["name"]}}&rdquo;'>
                         {% endfor %}
                     </select>
                 </form>
+
             </div>
 
 
             <div style='width:73px'>&nbsp;</div>
 
-        {% endfor %}  {# END of for s in subcategories #}
+        </template>     <!-- END of:  v-for="s in subcategories" -->
 
 
     </div>  <!-- end div class="categoryManagement bottomRow" -->
@@ -392,6 +385,7 @@ new Vue({
         category_id: {{category_id}},
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
                                                            // Eg: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
+        subcategories: {{subcategories | tojson}}, // List of sub-categories, each of which is an object
 
         // The values bound to the editing fields, initially from the data handover from Flask;
         //      it'll change in the course of the edit-in-progress
@@ -436,10 +430,48 @@ new Vue({
 
 
 
-        remove_edge(parent_id, child_id)
+        sever_relationship(parent_id, child_id)
         // Detach a sub-category relationship
         {
-            alert(`Delete edge from Category ${parent_id} to ${child_id}.  Sorry, not yet implemented :(`);
+            console.log(`Attempting to delete relationship from Category ${parent_id} to ${child_id}`);
+
+            let url_server = "/BA/api/simple/remove_relationship";
+            // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
+            let post_obj = {from: child_id,
+                            to: parent_id,
+                            rel_name: "BA_subcategory_of",
+                            schema_code: "cat"};
+            console.log(`About to contact the server at ${url_server}.  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {payload_type: "TEXT", post_obj: post_obj,
+                        callback_fn: this.finish_sever_relationship, custom_data: "TBA"});
+        },
+
+        finish_sever_relationship(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of sever_relationship() upon getting a response from the server
+        {
+            console.log(`Finalizing the sever_relationship operation...  custom_data: ${custom_data}`);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Relationship removed`;
+
+                // Synchronize the page data to the finalized current data
+                //this.category_name_original_data = this.category_name_current_data;
+                //this.category_remarks_original_data = this.category_remarks_current_data;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED relationship deletion: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;           // Make a note that the asynchronous operation has come to an end
         },
 
 

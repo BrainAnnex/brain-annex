@@ -2138,7 +2138,7 @@ class NeoAccess:
 
 #################################################################################################
 
-class CypherUtils:
+class CypherUtils:      # TODO: move to separate file
     """
     Helper class.  Most of it is used for matters involving node matching and the "match structure".
     Meant as a private class for NeoAccess; not indicated for the end user.
@@ -2300,7 +2300,7 @@ class CypherUtils:
     @classmethod
     def assert_valid_match_structure(cls, match: dict) -> None:
         """
-        Verify that an alleged match dictionary is a valid one; if not, raise an Exception
+        Verify that an alleged "match" dictionary is a valid one; if not, raise an Exception
 
         :param match:   A dictionary of data to identify a node, or set of nodes, as returned by find()
         :return:        None
@@ -2322,6 +2322,25 @@ class CypherUtils:
 
 
     @classmethod
+    def validate_and_standardize(cls, match) -> dict:
+        """
+        TODO: if match is a nonzero integer, take it to be a Neo4j internal ID and return:
+                    return cls.define_match(neo_id=match)
+              Otherwise, validate it and, if correct, return it
+              At that point, calling methods that accept "match" arguments can have a line such as:
+                    match = CypherUtils.validate_and_standardize(match)
+              and, at that point, they will be automatically accepting Neo4j IDs as "matches"
+
+        TODO: also, accept as argument a list/tuple - and, in addition to the above ops, carry out checks for compatibilities
+
+        :param match:   Either a valid Neo4j internal ID or a "match" dictionary (or a list/tuple of those)
+        :return:
+        """
+        pass
+
+
+
+    @classmethod
     def unpack_match(cls, match: dict, include_dummy=True) -> list:
         """
         Turn the passed "match" dictionary structure into a list containing:
@@ -2329,6 +2348,8 @@ class CypherUtils:
         or
         [node, where, data_binding]
         depending on the include_dummy flag
+
+        TODO: gradually phase out, as more advanced util methods make the unpacking of all the "match" internal structure unnecessary
 
         :param match:
         :param include_dummy:
@@ -2441,7 +2462,7 @@ class CypherUtils:
         combined_data_binding = first_match.get("data_binding", {})
 
         for i, match in enumerate(match_list):
-            if i != 0:
+            if i != 0:      # Skip the first one, which we already processed above
                 new_data_binding = match.get("data_binding", {})
                 combined_data_binding.update(new_data_binding)
 

@@ -717,11 +717,12 @@ class ApiRouting:
         @self.BA_api_flask_blueprint.route('/simple/remove_relationship', methods=['POST'])
         def remove_relationship() -> str:
             """
+            Remove the specified relationship (edge)
 
             POST FIELDS:
-                from
-                to
-                rel_name
+                from                    The item_id of the node from which the relationship originates
+                to                      The item_id of the node into which the relationship takes
+                rel_name                The name of the relationship to remove
                 schema_code (optional)  If passed, the appropriate plugin gets involved
             :return:
             """
@@ -735,48 +736,24 @@ class ApiRouting:
                 from_id = self.str_to_int(data_dict['from'])
                 to_id = self.str_to_int(data_dict['to'])
                 rel_name = data_dict['rel_name']
-                schema_code = data_dict.get('rel_name')         # Tolerant of missing values
+                schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
                 if schema_code == "cat":
-                    pass        # Category-specific action
+                    Categories.remove_relationship(from_id=from_id, to_id=to_id,
+                                                   rel_name=rel_name)       # Category-specific action
 
                 NeoSchema.remove_data_relationship(from_id=from_id, to_id=to_id,
-                                                             rel_name="BA_subcategory_of", labels="BA")
+                                                   rel_name=rel_name, labels="BA")
 
                 return_value = self.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + str(ex)      # In case of errors
+                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
 
             print(f"remove_relationship() is returning: `{return_value}`")
 
             return return_value
 
 
-
-        @self.BA_api_flask_blueprint.route('/simple/remove_subcategory_relationship')
-        def remove_subcategory_relationship() -> str:       # NOTE: never used.  TODO: being phased out in favor of remove_relationship()
-            """
-            Remove a subcategory relationship between 2 existing Categories.
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/remove_subcategory_relationship?sub=12&cat=1
-            """
-            try:
-                subcategory_id: int = request.args.get("sub", type = int)
-                category_id: int = request.args.get("cat", type = int)
-                if subcategory_id is None:
-                    raise Exception("Missing value for parameter `sub`")
-                if category_id is None:
-                    raise Exception("Missing value for parameter `cat`")
-        
-                Categories.remove_subcategory_relationship(subcategory_id=subcategory_id, category_id=category_id)
-                return_value = self.SUCCESS_PREFIX
-            except Exception as ex:
-                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
-        
-            print(f"remove_subcategory_relationship() is returning: `{return_value}`")
-        
-            return return_value
-        
-        
         
         
         #############    POSITIONING WITHIN CATEGORIES    #############

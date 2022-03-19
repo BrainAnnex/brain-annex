@@ -291,7 +291,7 @@ class Categories:
         if category_ID == 1:
             return [1]
 
-        parent_list = parents_map[category_ID]
+        parent_list = parents_map.get(category_ID, [])
 
         if len(parent_list) == 0:
             return []    # TODO: generate warning
@@ -414,29 +414,31 @@ class Categories:
             raise Exception("Unable to create a subcategory relationship (check if it already exists)")
 
 
+    """
+    NOTE: this may be the future prototype of plugin-specific methods...
+          Nothing is return if all is good, but an Exception is raised in case of problems.
+          The method only handles the plugin-specific part; the "main action" is done by the core method,
+          AFTER calling this method (if provided)
+    """
     @classmethod
-    def remove_subcategory_relationship(cls, subcategory_id: int, category_id: int) -> None:
+    def remove_relationship(cls, from_id: int, to_id :int,
+                            rel_name: str) -> None:
         """
-        Remove a parent/child relationship between the specified categories.
-        However, if the subcategory node would be orphaned as a result,
+        Check if any restriction would apply to removing the parent/child relationship between the specified categories.
+        The restriction is: if the subcategory node would be orphaned as a result,
             don't perform the operation; raise an Exception instead.
-        If the requested relationship cannot be deleted (for example, if it doesn't exists),
-        raise an Exception
 
-        TODO: verify that the category ID's are legit
+        NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
 
-        :param subcategory_id:
-        :param category_id:
-        :return:             None.  If the requested new relationship could not be created, raise an Exception
+        :param from_id:     Integer with the item_id of the subcategory node
+        :param to_id:       NOT USED.  Integer with the item_id of the parent-category node
+        :param rel_name:    NOT USED
+        :return:            None.  If the requested new relationship could not be created, raise an Exception
         """
         # If the sub-category has only one parent, raise an Exception
-        if len(cls.get_parent_categories(subcategory_id)) == 1:
+        #print(f"In Category.remove_relationship(). from_id = {from_id}  Parent categories : {cls.get_parent_categories(from_id)}")
+        if len(cls.get_parent_categories(from_id)) == 1:
             raise Exception("Cannot sever the relationship because that would leave the sub-category orphaned (i.e. with no parent categories)")
-
-        # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
-        #   (the originator) of the relationship
-        NeoSchema.remove_data_relationship(from_id=subcategory_id, to_id=category_id,
-                                                     rel_name="BA_subcategory_of", labels="BA")
 
 
 

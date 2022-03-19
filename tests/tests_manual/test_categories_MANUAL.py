@@ -102,11 +102,6 @@ def test_add_subcategory_relationship(db):
     Categories.add_subcategory_relationship(subcategory_id=3, category_id=526)
 
 
-
-def test_remove_subcategory_relationship(db):
-    Categories.remove_subcategory_relationship(subcategory_id=535, category_id=1)
-
-
 def test_check_for_duplicates(db):
     result = Categories.check_for_duplicates(category_id=985)  # 814
     print(result)
