@@ -115,7 +115,7 @@
                 </form>
 
                 <!-- Icon to detach this category from one of its parents [TODO: gray out if only one parent] -->
-                <img @click="sever_relationship(p.item_id , {{category_id}})"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                <img @click="sever_relationship(p.item_id , {{category_id}} , 'parent')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
                      class='clickable-icon' style="margin-left:8px"
                      v-bind:title="'SEVER the sub-category relationship between `' + p.name + '` and `{{category_name}}`\n\
 It does *NOT* delete `' + p.name + '`'"
@@ -301,7 +301,7 @@ It does *NOT* delete `' + p.name + '`'"
 
 
                 <!-- Icon to detach this category from one of its children -->
-                <img @click="sever_relationship({{category_id}} , s.item_id)"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                <img @click="sever_relationship({{category_id}} , s.item_id , 'child')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
                      class='clickable-icon' style="margin-left:8px"
                      v-bind:title="'SEVER the sub-category relationship between `{{category_name}}` and &ldquo;' + s.name + '&rdquo;\n\
 It does *NOT* delete `' + s.name + '`'"
@@ -349,7 +349,7 @@ It does *NOT* delete `' + s.name + '`'"
 
 <!-- Status info -->
 <span v-if="waiting" class="waiting">Performing the requested operation...</span>
-<span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+<span v-bind:class="{'error-message': error, 'status-message-success': !error }">[[status_message]]</span>
 
 <br>
 
@@ -384,8 +384,9 @@ new Vue({
         // The DATA HANDOVER from Flask to Vue
         category_id: {{category_id}},
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
-                                                           // Eg: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
+                                                           // Eg: [{item_id: 544, name: 'Language', schema_code: 'cat'}]
         subcategories: {{subcategories | tojson}}, // List of sub-categories, each of which is an object
+                                                            // Eg: [{item_id:1262, name:'Greek', schema_code:'cat'}]
 
         // The values bound to the editing fields, initially from the data handover from Flask;
         //      it'll change in the course of the edit-in-progress
@@ -430,8 +431,10 @@ new Vue({
 
 
 
-        sever_relationship(parent_id, child_id)
-        // Detach a sub-category relationship
+        sever_relationship(parent_id, child_id, location)
+        /* Detach a sub-category relationship
+           location is either 'parent' or 'child'
+         */
         {
             console.log(`Attempting to delete relationship from Category ${parent_id} to ${child_id}`);
 
@@ -448,13 +451,21 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
+            var custom_data;            // To pass to the callback function, to update the page upon server success
+
+            if (location == 'parent')
+                custom_data = ['parent', parent_id];
+            else
+                custom_data = ['child', child_id];
+
             ServerCommunication.contact_server(url_server,
                         {payload_type: "TEXT", post_obj: post_obj,
-                        callback_fn: this.finish_sever_relationship, custom_data: "TBA"});
+                        callback_fn: this.finish_sever_relationship, custom_data: custom_data});
         },
 
         finish_sever_relationship(success, server_payload, error_message, custom_data)
         // Callback function to wrap up the action of sever_relationship() upon getting a response from the server
+        // custom_data is a 2-element array of the form [location, category_id]
         {
             console.log(`Finalizing the sever_relationship operation...  custom_data: ${custom_data}`);
             if (success)  {     // Server reported SUCCESS
@@ -462,8 +473,22 @@ new Vue({
                 this.status_message = `Relationship removed`;
 
                 // Synchronize the page data to the finalized current data
-                //this.category_name_original_data = this.category_name_current_data;
-                //this.category_remarks_original_data = this.category_remarks_current_data;
+                let cat_id = custom_data[1];    // The ID of the deleted Category
+                var pos;                        // The array position of the deleted Category
+                if (custom_data[0] == "parent")  {      // Deleting a parent category
+                    pos = this.locate_item(this.parent_categories, cat_id);
+                    if (pos == -1)
+                        alert("Unable to find the deleted parent Category in the page. Try refreshing");
+                    else
+                        this.parent_categories.splice(pos, 1);
+                }
+                else  {                                 // Deleting a sub-category
+                    pos = this.locate_item(this.subcategories, cat_id);
+                    if (pos == -1)
+                        alert("Unable to find the deleted Subcategory in the page. Try refreshing");
+                    else
+                        this.subcategories.splice(pos, 1);
+                }
             }
             else  {             // Server reported FAILURE
                 this.error = true;
@@ -472,6 +497,20 @@ new Vue({
 
             // Final wrap-up, regardless of error or success
             this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+        },
+
+        locate_item(arr, item_id)
+        // Locate a Category, specified by its ID, in the given array (of Parent Categories or Subcategories)
+        // TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
+        {
+            const number_items = arr.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (arr[i].item_id == item_id)
+                    return i;          //  Found it
+            }
+
+            return -1;    // Didn't find it
         },
 
 
