@@ -157,7 +157,9 @@ class PagesRequestHandler:
     @classmethod
     def get_all_categories(cls, exclude_root=True) -> [dict]:
         """
-        Return all the existing Categories - except the root -
+        TODO: phase out, in favor of Categories.get_all_categories (which uses 'item_id' instead of 'id')
+
+        Return all the existing Categories - possibly except the root -
         as a list of dictionaries with keys 'id', 'name', 'remarks'
         sorted by name
         EXAMPLE:

@@ -749,7 +749,7 @@ class NeoAccess:
             match_to =   db.find(labels="manufacturer", key_name="company", key_value="Toyota",
                                  dummy_node_name="to")
 
-            db.add_edge(match_from, match_to, rel_name="MADE_BY")
+            db.add_edges(match_from, match_to, rel_name="MADE_BY")
 
         TODO? - possible alt. names  for this function include "define_match()", match(), "locate(), choose() or identify()
 
@@ -1297,11 +1297,16 @@ class NeoAccess:
 
 
 
-    def add_edge(self, match_from: dict, match_to: dict, rel_name:str, rel_props = None) -> bool:
+    def add_edges(self, match_from: dict, match_to: dict, rel_name:str, rel_props = None) -> int:
         """
-        Add an edge to the graph: a relationship between 2 specified nodes
-        Return True if the requested new relationship got successfully created, or False otherwise.
-        Note that if a relationship with the same name already exists, nothing gets created (and False is returned)
+        Add one or more edges (relationships, with the specified rel_name),
+        originating in any of the nodes specified by the match_from specifications,
+        and terminating in any of the nodes specified by the match_to specifications
+
+        Return the number of edges added; if none were added, or in case of error, raise an Exception.
+
+        Notes:  - if a relationship with the same name already exists, nothing gets created (and an Exception is raised)
+                - more than 1 node could be present in either of the matches
 
         :param match_from:  A dictionary of data to identify a node, or set of nodes, as returned by find()
         :param match_to:    A dictionary of data to identify a node, or set of nodes, as returned by find()
@@ -1310,9 +1315,14 @@ class NeoAccess:
                                                         and match_from find() used the option: dummy_node_name="to"
 
         :param rel_name:    The name to give to the new relationship between the 2 specified nodes
-        :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
-        :return:            True if the requested new relationship got successfully created, or False otherwise
+        :param rel_props:   TODO: not currently used.
+                                  Unclear what multiple calls would do in this case: update the props or create a new relationship???
+
+        :return:            The number of edges added.  If none got deleted, or in case of error, an Exception is raised
         """
+        CypherUtils.assert_valid_match_structure(match_from)   # Validate the match dictionary
+        CypherUtils.assert_valid_match_structure(match_to)     # Validate the match dictionary
+
         # Unpack needed values from the match_from and match_to dictionaries
         (node_from, where_from, data_binding_from, dummy_node_name_from) = CypherUtils.unpack_match(match_from)
         (node_to, where_to, data_binding_to, dummy_node_name_to)         = CypherUtils.unpack_match(match_to)
@@ -1332,27 +1342,28 @@ class NeoAccess:
         # Merge the data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
 
-        self.debug_print(q, combined_data_binding, "add_edge")
+        self.debug_print(q, combined_data_binding, "add_edges")
 
         result = self.update_query(q, combined_data_binding)
         if self.debug:
-            print("    result of update_query in add_edge(): ", result)
+            print("    result of update_query in add_edges(): ", result)
 
-        if result.get("relationships_created") == 1:
-            return True
-        else:
-            return False
+        number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
+        if number_relationships_added == 0:       # This could be more than 1: see notes above
+            raise Exception("No relationship was added")
+
+        return number_relationships_added
 
 
 
-    def remove_edge(self, match_from: dict, match_to: dict, rel_name) -> int:
+    def remove_edges(self, match_from: dict, match_to: dict, rel_name) -> int:
         """
         Remove one or more edges (relationships)
         originating in any of the nodes specified by the match_from specifications,
         and terminating in any of the nodes specified by the match_to specifications,
         optionally matching the given relationship name.
 
-        Return the number of edges removed; if none found, or in case of error, raise an Exception
+        Return the number of edges removed; if none found, or in case of error, raise an Exception.
 
         Notes: - the nodes themselves are left untouched
                - more than 1 node could be present in either of the matches
@@ -1399,12 +1410,13 @@ class NeoAccess:
         # Merge the data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
 
-        self.debug_print(q, combined_data_binding, "remove_edge")
+        self.debug_print(q, combined_data_binding, "remove_edges")
 
         result = self.update_query(q, combined_data_binding)
-        #print("result of update_query in remove_edge(): ", result)
+        if self.debug:
+            print("    result of update_query in remove_edges(): ", result)
 
-        number_relationships_deleted = result.get("relationships_deleted")
+        number_relationships_deleted = result.get("relationships_deleted", 0)   # If field isn't present, return a 0
         if number_relationships_deleted == 0:       # This could be more than 1: see notes above
             raise Exception("No relationship was deleted")
 
@@ -1440,7 +1452,7 @@ class NeoAccess:
         # Merge all the 3data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([node, old_attachment, new_attachment])
 
-        self.debug_print(q, combined_data_binding, "add_edge")
+        self.debug_print(q, combined_data_binding, "add_edges")
 
         result = self.update_query(q, combined_data_binding)
         #print("result of update_query in reattach_node(): ", result)
@@ -2008,7 +2020,7 @@ class NeoAccess:
             node_match = self.find(neo_id=node_id, dummy_node_name="from")
             for child_id, rel_name in children:
                 child_match = self.find(neo_id=child_id, dummy_node_name="to")
-                self.add_edge(match_from=node_match, match_to=child_match, rel_name=rel_name)
+                self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
 
             return node_id
 
@@ -2109,6 +2121,8 @@ class NeoAccess:
 
     def debug_print(self, q: str, data_binding=None, method=None, force_output=False) -> None:
         """
+        Print out some info on the given Cypher query (and, optionally, on the passed data binding and/or method name),
+        BUT only if self.debug is True, or if force_output is True
 
         :param q:               String with Cypher query
         :param data_binding:    OPTIONAL dictionary
@@ -2385,15 +2399,15 @@ class CypherUtils:      # TODO: move to separate file
         suitable for inclusion in a Cypher query.
         Blanks ARE allowed in names.
         EXAMPLES:
-            "client" gives rise to ":`client`"
-            ["car", "vehicle"] gives rise to ":`car`:`vehicle`"
+            "client"            gives rise to   ":`client`"
+            "my label"          gives rise to   ":`my label`"
+            ["car", "vehicle"]  gives rise to   ":`car`:`vehicle`"
 
-        :param labels:  A string, or list/tuple of strings, representing Neo4j labels
+        :param labels:  A string, or list/tuple of strings, representing one or multiple Neo4j labels
         :return:        A string suitable for inclusion in a Cypher query
         """
-        # Turn the label strings, or list/tuple of labels, into a string suitable for inclusion into Cypher
         if not labels:
-            return ""
+            return ""   # No labels
 
         if type(labels) == str:
             labels = [labels]
@@ -2401,6 +2415,7 @@ class CypherUtils:      # TODO: move to separate file
         cypher_labels = ""
         for single_label in labels:
             cypher_labels += f":`{single_label}`"       # EXAMPLE: ":`label 1`:`label 2`"
+            # Note: the back ticks allow the inclusion of blank spaces in the labels
 
         return cypher_labels
 

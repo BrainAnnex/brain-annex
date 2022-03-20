@@ -39,6 +39,21 @@ class Categories:
 
 
     @classmethod
+    def is_root_category(cls, category_id: int) -> bool:
+        """
+        Return True if the given ID corresponds to the ROOT Category, or False otherwise
+
+        TODO: maybe raise an Exception if the argument isn't a valid ID
+        :param category_id: An integer with the item_id of a Category node
+        :return:            True if the given ID corresponds to the ROOT Category, or False otherwise
+        """
+        # NOTE: historically, 1 has been used for the ROOT Category; however, now that item_id is shared
+        #       among all types of plugins, maybe a different approach would be better (such as an attribute in the node)
+        return True if category_id == 1 else False
+
+
+
+    @classmethod
     def count_subcategories(cls, category_id: int) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
@@ -113,28 +128,42 @@ class Categories:
 
 
     @classmethod
-    def get_all_categories(cls, skip_root=True) -> [dict]:
+    def get_all_categories(cls, exclude_root=True, include_remarks=False) -> [dict]:
         """
-        Return all the existing Categories - except the root -
-        as a list of dictionaries with keys 'id' and 'name',
+        Return all the existing Categories - possibly except the root -
+        as a list of dictionaries with keys 'item_id' and 'name',
         sorted by name.
-        TODO: use the option to skip the root
 
-        EXAMPLE:
-            [{'id': 3, 'name': 'Hobbies'}, {'id': 2, 'name': 'Work'}]
+        EXAMPLES:
+            [{'item_id': 3, 'name': 'Hobbies'}, {'item_id': 2, 'name': 'Work'}]
+            [{'item_id': 3, 'name': 'Hobbies'}, {'item_id': 2, 'name': 'Work', 'remarks': 'Current or past'}]
 
         :return:    A list of dictionaries
         """
-        q =  '''
-             MATCH (cat:BA {schema_code:"cat"})
-             WHERE cat.item_id <> 1
-             RETURN cat.item_id AS id, cat.name AS name
+        clause = ""
+        if exclude_root:
+            clause = "WHERE cat.item_id <> 1"
+
+        remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
+
+        q =  f'''
+             MATCH (cat:BA {{schema_code:"cat"}})
+             {clause}
+             RETURN cat.item_id AS item_id, cat.name AS name {remarks_subquery}
              ORDER BY toLower(cat.name)
              '''
         # Notes: 1 is the ROOT category.
         # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
 
-        return cls.db.query(q)
+        result =  cls.db.query(q)
+
+        # If remarks are being included, ditch all the MISSING "remarks" values
+        if include_remarks:
+            for item in result:
+                if item["remarks"] is None:
+                    del item["remarks"]     # To avoid a dictionary entry of the type 'remarks': None
+
+        return result
 
 
 
@@ -226,13 +255,13 @@ class Categories:
             [
                 {'name': 'HOME', 'item_id': 1, 'remarks': 'ROOT NODE'},
                 {'name': 'Professional Networking', 'item_id': 61},
-                {'name': 'People at GSK', 'item_id': 814}
+                {'name': 'People at XYZ', 'item_id': 814}
             ],
             [
                 {'name': 'HOME', 'item_id': 1, 'remarks': 'ROOT NODE'},
                 {'name': 'Jobs', 'item_id': 799},
-                {'name': 'GSK', 'item_id': 526},
-                {'name': 'People at GSK', 'item_id': 814}
+                {'name': 'XYZ', 'item_id': 526},
+                {'name': 'People at XYZ', 'item_id': 814}
             ]
         ]
 
@@ -288,7 +317,7 @@ class Categories:
         :param parents_map:
         :return:
         """
-        if category_ID == 1:
+        if category_ID == 1:    # If it is the root
             return [1]
 
         parent_list = parents_map.get(category_ID, [])
@@ -369,7 +398,7 @@ class Categories:
         :return:            None
         """
 
-        if category_id == 1:
+        if cls.is_root_category(category_id):
             raise Exception("Cannot delete the Root node")
 
         # First, make sure that there are no Content Items linked to this Category
@@ -392,6 +421,9 @@ class Categories:
     @classmethod
     def add_subcategory_relationship(cls, subcategory_id: int, category_id: int) -> None:
         """
+        TODO: phase out.  Probably, no longer really needed (the new API takes care
+        of this largely in the core module.)
+
         Add a sub-category ("BA_subcategory_of") relationship between the specified categories.
         If the requested new relationship cannot be created (for example, if it already exists),
         raise an Exception
@@ -405,40 +437,71 @@ class Categories:
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
         try:
-            status = NeoSchema.add_data_relationship(from_id=subcategory_id, to_id=category_id,
+            NeoSchema.add_data_relationship(from_id=subcategory_id, to_id=category_id,
                                                      rel_name="BA_subcategory_of", labels="BA")
         except Exception as ex:
-            raise Exception(f"Unable to create a subcategory relationship (check whether the IDs correspond to valid Categories). {ex}")
+            raise Exception(f"Unable to create a subcategory relationship. {ex}")
 
-        if not status:
-            raise Exception("Unable to create a subcategory relationship (check if it already exists)")
+
 
 
     """
-    NOTE: this may be the future prototype of plugin-specific methods...
-          Nothing is return if all is good, but an Exception is raised in case of problems.
-          The method only handles the plugin-specific part; the "main action" is done by the core method,
+    NOTE: the next 2 methods, below, may be the future prototype of plugin-specific methods...
+          Nothing is returned if all is good, but an Exception is raised in case of problems.
+          The methods only handle the plugin-specific part; the "main action" is done by the core method,
           AFTER calling this method (if provided)
     """
+
+    @classmethod
+    def add_relationship(cls, from_id: int, to_id :int,
+                        rel_name: str) -> None:
+        """
+        If any restriction would apply to adding the parent/child relationship between the specified categories,
+        raise an Exception.
+
+        The restriction are:
+            1) the subcategory node cannot be the Root Category
+            2) a category cannot be a subcategory of itself
+
+        NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
+
+        :param from_id:     Integer with the item_id of the subcategory node
+        :param to_id:       Integer with the item_id of the parent-category node
+        :param rel_name:    NOT USED
+        :return:            None.  If the requested new relationship should not be created, raise an Exception
+        """
+        # If the sub-category is the Root Category, raise an Exception
+        if cls.is_root_category(from_id):
+            raise Exception("Cannot add the relationship because the Root Category cannot be made a subcategory of something else")
+
+        # If the parent and the child are the same, raise an Exception
+        if from_id == to_id:
+            raise Exception("Cannot add a relationship from a Category to itself")
+
+
+
     @classmethod
     def remove_relationship(cls, from_id: int, to_id :int,
                             rel_name: str) -> None:
         """
-        Check if any restriction would apply to removing the parent/child relationship between the specified categories.
-        The restriction is: if the subcategory node would be orphaned as a result,
-            don't perform the operation; raise an Exception instead.
+        If any restriction would apply to removing the parent/child relationship between the specified categories,
+        raise an Exception.
+
+        The restriction is:
+            *) the subcategory node cannot become orphaned as a result of the deletion
 
         NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
 
         :param from_id:     Integer with the item_id of the subcategory node
         :param to_id:       NOT USED.  Integer with the item_id of the parent-category node
         :param rel_name:    NOT USED
-        :return:            None.  If the requested new relationship could not be created, raise an Exception
+        :return:            None.  If the requested new relationship should not be deleted, raise an Exception
         """
         # If the sub-category has only one parent, raise an Exception
         #print(f"In Category.remove_relationship(). from_id = {from_id}  Parent categories : {cls.get_parent_categories(from_id)}")
         if len(cls.get_parent_categories(from_id)) == 1:
             raise Exception("Cannot sever the relationship because that would leave the sub-category orphaned (i.e. with no parent categories)")
+
 
 
 

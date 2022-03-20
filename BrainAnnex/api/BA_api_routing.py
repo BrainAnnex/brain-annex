@@ -689,6 +689,7 @@ class ApiRouting:
         
         
         @self.BA_api_flask_blueprint.route('/simple/add_subcategory_relationship')
+        # TODO: phase out in favor of the more general /simple/add_relationship
         def add_subcategory_relationship() -> str:
             """
             Create a subcategory relationship between 2 existing Categories.
@@ -723,7 +724,7 @@ class ApiRouting:
                 from                    The item_id of the node from which the relationship originates
                 to                      The item_id of the node into which the relationship takes
                 rel_name                The name of the relationship to remove
-                schema_code (optional)  If passed, the appropriate plugin gets involved
+                schema_code (optional)  If passed, the appropriate plugin gets invoked
             :return:
             """
             # Extract the POST values
@@ -754,8 +755,47 @@ class ApiRouting:
             return return_value
 
 
-        
-        
+        @self.BA_api_flask_blueprint.route('/simple/add_relationship', methods=['POST'])
+        def add_relationship() -> str:
+            """
+            Add the specified relationship (edge)
+
+            POST FIELDS:
+                from                    The item_id of the node from which the relationship originates
+                to                      The item_id of the node into which the relationship takes
+                rel_name                The name of the relationship to add
+                schema_code (optional)  If passed, the appropriate plugin gets invoked
+            :return:
+            """
+            # Extract the POST values
+            post_data = request.form
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            self.show_post_data(post_data)
+
+            try:
+                data_dict = self.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                from_id = self.str_to_int(data_dict['from'])
+                to_id = self.str_to_int(data_dict['to'])
+                rel_name = data_dict['rel_name']
+                schema_code = data_dict.get('schema_code')         # Tolerant of missing values
+
+                if schema_code == "cat":
+                    Categories.add_relationship(from_id=from_id, to_id=to_id,
+                                                rel_name=rel_name)       # Category-specific action
+
+                NeoSchema.add_data_relationship(from_id=from_id, to_id=to_id,
+                                                rel_name=rel_name, labels="BA")
+
+                return_value = self.SUCCESS_PREFIX              # If no errors
+            except Exception as ex:
+                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
+
+            print(f"add_relationship() is returning: `{return_value}`")
+
+            return return_value
+
+
+
         #############    POSITIONING WITHIN CATEGORIES    #############
         
         @self.BA_api_flask_blueprint.route('/simple/swap/<item_id_1>/<item_id_2>/<cat_id>')

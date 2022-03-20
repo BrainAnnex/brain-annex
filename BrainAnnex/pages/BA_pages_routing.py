@@ -121,7 +121,7 @@ class PagesRouting:
 
             parent_categories = PagesRequestHandler.get_parent_categories(category_id)
             subcategories = PagesRequestHandler.get_subcategories(category_id)
-            all_categories = PagesRequestHandler.get_all_categories(exclude_root=False)
+            all_categories = PagesRequestHandler.get_all_categories(exclude_root=False) # TODO: switch to Categories.get_all_categories()
 
             records_types = APIRequestHandler.get_leaf_records()
             records_schema_data = APIRequestHandler.get_records_schema_data(category_id)  # TODO: *** TEST
@@ -237,7 +237,7 @@ class PagesRouting:
 
             # EXAMPLE of the various categories listings, below: [{'item_id': 2, 'name': 'Work'}, {'item_id': 3, 'name': 'Hobbies'}]
             subcategories = Categories.get_subcategories(category_id)
-            all_categories = Categories.get_all_categories()
+            all_categories = Categories.get_all_categories(exclude_root=False)
             parent_categories = Categories.get_parent_categories(category_id)
 
             return render_template(template, current_page=request.path, site_pages=self.site_pages,

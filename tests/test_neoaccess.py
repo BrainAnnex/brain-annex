@@ -1078,17 +1078,17 @@ def test_add_edge(db):
     match_from = db.find(neo_id=neo_from, dummy_node_name="from")
     match_to = db.find(neo_id=neo_to, dummy_node_name="to")
 
-    status = db.add_edge(match_from, match_to, rel_name="OWNED_BY")
-    assert status == True
+    number_added = db.add_edges(match_from, match_to, rel_name="OWNED_BY")
+    assert number_added == 1
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.add_edge(match_from, match_from, rel_name="THIS_WILL_CRASH")
+        assert db.add_edges(match_from, match_from, rel_name="THIS_WILL_CRASH")
 
     # The correct way to add an edge from a node to itself
     match_to_itself = db.find(neo_id=neo_from, dummy_node_name="to")    # Same as the node of origin, but different dummy_node_name`
-    status = db.add_edge(match_from, match_to_itself, rel_name="FROM_CAR_TO_ITSELF")
-    assert status == True
+    number_added = db.add_edges(match_from, match_to_itself, rel_name="FROM_CAR_TO_ITSELF")
+    assert number_added == 1
 
 
 
@@ -1101,8 +1101,8 @@ def test_remove_edge(db):
     match_car = db.find(neo_id=neo_car, dummy_node_name="from")
     match_julian = db.find(neo_id=neo_julian, dummy_node_name="to")
 
-    status = db.add_edge(match_car, match_julian, rel_name="OWNED_BY")
-    assert status == True
+    number_added = db.add_edges(match_car, match_julian, rel_name="OWNED_BY")
+    assert number_added == 1
 
     match_car = db.find(labels="car", dummy_node_name="from")
     match_julian = db.find(properties={"name": "Julian"}, dummy_node_name="to")
@@ -1115,13 +1115,13 @@ def test_remove_edge(db):
     assert result[0]["n_cars"] == 1     # Find the relationship
 
     with pytest.raises(Exception):
-        assert db.remove_edge(match_car, match_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
+        assert db.remove_edges(match_car, match_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
 
     with pytest.raises(Exception):
-        assert db.remove_edge({"NON-sensical match object"}, match_julian, rel_name="OWNED_BY")
+        assert db.remove_edges({"NON-sensical match object"}, match_julian, rel_name="OWNED_BY")
 
     # Finally, actually remove the edge
-    number_removed = db.remove_edge(match_car, match_julian, rel_name="OWNED_BY")
+    number_removed = db.remove_edges(match_car, match_julian, rel_name="OWNED_BY")
     assert number_removed == 1
 
     result = db.query(find_query)
@@ -1129,20 +1129,20 @@ def test_remove_edge(db):
 
     with pytest.raises(Exception):
         # This will crash because the relationship is no longer there
-        assert db.remove_edge(match_car, match_car, rel_name="OWNED_BY")
+        assert db.remove_edges(match_car, match_car, rel_name="OWNED_BY")
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.remove_edge(match_car, match_car, rel_name="THIS_WILL_CRASH")
+        assert db.remove_edges(match_car, match_car, rel_name="THIS_WILL_CRASH")
 
 
     # Restore the relationship...
-    status = db.add_edge(match_car, match_julian, rel_name="OWNED_BY")
-    assert status == True
+    number_added = db.add_edges(match_car, match_julian, rel_name="OWNED_BY")
+    assert number_added == 1
 
     # ...and add a 2nd one, with a different name, between the same nodes
-    status = db.add_edge(match_car, match_julian, rel_name="REMEMBERED_BY")
-    assert status == True
+    number_added = db.add_edges(match_car, match_julian, rel_name="REMEMBERED_BY")
+    assert number_added == 1
 
     # ...and re-add the last one, but with a property (which is allowed by Neo4j, and will result in
     #       2 relationships with the same name between the same node
@@ -1172,7 +1172,7 @@ def test_remove_edge(db):
     assert result[0]["n_cars"] == 2     # The 2 relationships we just added
 
     # Remove 2 same-named relationships at once between the same 2 nodes
-    number_removed = db.remove_edge(match_car, match_julian, rel_name="REMEMBERED_BY")
+    number_removed = db.remove_edges(match_car, match_julian, rel_name="REMEMBERED_BY")
     assert number_removed == 2
 
     result = db.query(find_query)
@@ -1193,7 +1193,7 @@ def test_remove_edge(db):
     assert result[0]["n_cars"] == 1     # Still there
 
 
-    number_removed = db.remove_edge(match_car, match_julian, rel_name="OWNED_BY")
+    number_removed = db.remove_edges(match_car, match_julian, rel_name="OWNED_BY")
     assert number_removed == 1
 
     find_query = '''
@@ -1228,7 +1228,7 @@ def test_remove_edge(db):
     # Delete both relationships at once
     match_val = db.find(key_name="name", key_value="Val", dummy_node_name="v")
 
-    number_removed = db.remove_edge(match_car, match_val, rel_name=None)
+    number_removed = db.remove_edges(match_car, match_val, rel_name=None)
     assert number_removed == 2
 
     result = db.query(find_query)
@@ -1264,7 +1264,7 @@ def test_remove_edge_2(db):
     assert result[0]["n_relationships"] == 2        # The white car has 2 links
 
     # Delete all the "OWNED_BY" relationships from the white car to any of the "person" nodes
-    number_removed = db.remove_edge(match_white_car, match_all_people, rel_name="OWNED_BY")
+    number_removed = db.remove_edges(match_white_car, match_all_people, rel_name="OWNED_BY")
     assert number_removed == 2
 
     result = db.query(find_query)

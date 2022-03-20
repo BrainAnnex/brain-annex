@@ -9,7 +9,7 @@
 
     subcategories
     parent_categories   EXAMPLE: [{'name': 'Language', 'item_id': 544, 'schema_code': 'cat'}]
-    all_categories
+    all_categories      EXAMPLE: [{'name': 'Language', 'item_id': 544}]
 #}
 
 <html>
@@ -97,7 +97,7 @@
                 <!-- TODO: this needs replacing -->
                 <a href='javascript:replaceMenu(0)'>
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
-                         v-bind:title="'REMOVE &ldquo;' + p.name + '&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
+                         v-bind:title="'NOT YET IMPLEMENTED!!!  REMOVE &ldquo;' + p.name + '&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
                     >
                 </a>
                 <br>
@@ -109,7 +109,9 @@
                     <select id = 'menu_0' name = 'newParentID' style = 'width:180px'>
                         <option value='-1'>[Select parent category]</option>
                         {% for s in subcategories %}
-                        <option value="{{s['id']}}">{{s['name']}}</option>
+                            {% if s['item_id'] != category_id %}
+                                <option value="{{s['item_id']}}">{{s['name']}}</option>
+                            {% endif %}
                         {% endfor %}
                     </select>
                 </form>
@@ -136,25 +138,24 @@ It does *NOT* delete `' + p.name + '`'"
 
 
 
-
         <div style='width:105px'>&nbsp;</div>
 
 
 
-
         <div style='width:180px; text-align:center'>
-            <span style='font-style:italic; color:#666666'>Make &ldquo;{{category_name}}&rdquo; also a Sub-category of:</span><br>
-            <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_id}}' id='form_3'><input type='hidden' name='childID' value='{{category_id}}'>
-                <select id = 'menu_3' name = 'parentID' style = 'width:180px'>
-                    <option value='-1'>[Select parent category]</option>
+            <span style='font-style:italic; color:#666666'>Make &ldquo;{{category_name}}&rdquo; also a Sub-category of:</span>
+            <br>
 
-                    {% for c in all_categories %}
-                    <option value="{{c['id']}}">{{c['name']}}</option>
-                    {% endfor %}
+            <select @change="add_parent_category"  v-model="parent_to_add"  style='width:180px'>
+                <option value='-1'>[Select parent category]</option>
 
-                </select>
+                {% for c in all_categories %}
+                    {% if c['item_id'] != category_id %}
+                        <option value="{{c['item_id']}}">{{c['name']}}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
 
-            </form>
         </div>
 
     </div><div class='categoryManagement'><div style='width:38px'>&nbsp;</div><div style='width:90%; border-bottom:2px solid black; border-left:2px solid black; border-right:2px solid black'>&nbsp;</div></div>
@@ -181,7 +182,6 @@ It does *NOT* delete `' + p.name + '`'"
                  title='Visit the &ldquo;{{category_name}}&rdquo; Page (EXIT edit mode)'
                  alt='Visit the &ldquo;{{category_name}}&rdquo; Page (EXIT edit mode)'>
         </a>
-        <a href='https://brainannex.org/editPermissions.php?cat={{category_id}}'><img src='/BA/pages/static/graphics/permissions_16_3018587.png' title='Edit the User Permissions for &ldquo;{{category_name}}&rdquo;' alt='Edit the User Permissions for &ldquo;{{category_name}}&rdquo;' style='margin-right:8px'></a>
 
         <!-- Icon to delete this Category -->
         <div style='display:inline-block; margin-left:5px; margin-bottom:7px'>
@@ -218,27 +218,30 @@ It does *NOT* delete `' + p.name + '`'"
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
     </div>
     <div style="width:160px; font-size:12px">
-        &diams; NOT YET IMPLEMENTED<form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_id}}' style='display:inline-block; margin-left:5px'>
+        &diams; The "See Also" is NOT YET IMPLEMENTED<form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_id}}' style='display:inline-block; margin-left:5px'>
         <input type='hidden' name='parentID' value='{{category_id}}'>
         <input type='hidden' name='childID' value='366'>
         <input type='image' src='/BA/pages/static/graphics/delete_12_1493279.png'
-               title='SEVER the "see also" relationship between "{{category_name}}" and "Neuroscience"'
-               alt='SEVER the "see also" relationship between "{{category_name}}" and "Neuroscience"'>
+               title='SEVER the "see also" relationship between "{{category_name}}" and "OTHER CATEGORY TBA"'
+        >
     </form>
-        <br>    Add:
+        <br>
+        Add:
         <form method='POST' action='doCategoryHandler2.php?op=addSeeAlso&cat={{category_id}}' id='form_4'>
             <input type='hidden' name='parentID' value='{{category_id}}'>
             <select id = 'menu_4' name = 'childID' style = 'width:180px'>
                 <option value='-1'>[Select 'see-also' category]</option>
 
                 {% for c in all_categories %}
-                <option value="{{c['id']}}">{{c['name']}}</option>
+                    {% if c['item_id'] != category_id %}
+                        <option value="{{c['item_id']}}">{{c['name']}}</option>
+                    {% endif %}
                 {% endfor %}
 
             </select>
         </form>
         <br>
-        <input type='checkbox' checked onClick='pinCategory(this, "pin_status")'> Pin    <span id="pin_status" style="margin-left:5px; color:gray"></span>
+        <input type='checkbox' checked onClick='pinCategory(this, "pin_status")'> Pin [NOT YET IMPLEMENTED]    <span id="pin_status" style="margin-left:5px; color:gray"></span>
 
     </div>
 </div>
@@ -271,7 +274,9 @@ It does *NOT* delete `' + p.name + '`'"
                     <option value='-1'>[Select sub-category]</option>
 
                     {% for c in all_categories %}
-                        <option value="{{c['id']}}">{{c['name']}}</option>
+                        {% if c['item_id'] != category_id %}
+                            <option value="{{c['item_id']}}">{{c['name']}}</option>
+                        {% endif %}
                     {% endfor %}
 
                 </select>
@@ -311,7 +316,7 @@ It does *NOT* delete `' + s.name + '`'"
                 <!-- TODO: this needs replacing -->
                 <a href='javascript:replaceMenu(6)'>
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
-                         v-bind:title="'REMOVE &ldquo;' + s.name + '&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
+                         v-bind:title="'NOT YET IMPLEMENTED!!!  REMOVE &ldquo;' + s.name + '&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
                     >
                 </a>
                 <br>
@@ -323,7 +328,9 @@ It does *NOT* delete `' + s.name + '`'"
                     <select id = 'menu_6' name = 'newChildID' style = 'width:180px'>
                         <option value='-1'>[Select sub-category]</option>
                         {% for c in all_categories %}
-                            <option value="{{c['id']}}">{{c['name']}}</option>
+                            {% if c['item_id'] != category_id %}
+                                <option value="{{c['item_id']}}">{{c['name']}}</option>
+                            {% endif %}
                         {% endfor %}
                     </select>
                 </form>
@@ -354,8 +361,9 @@ It does *NOT* delete `' + s.name + '`'"
 <br>
 
 <p style="background-color: yellow; margin-top:0; padding: 5px">
-    <span style="font-size:22px;">IMPORTANT: still in Beta.  <i>Only the Delete and Rename functions are implemented.</i></span>
-    <br>To add a new category, use the add-category box at the bottom of the category-viewer pages (when in editing mode).
+    <span style="font-size:18px;">IMPORTANT: still in Beta.  <i>Several functions aren't yet implemented.</i></span>
+    <br>To add a new category, go to the category-viewer pages, enter editing mode, and
+    use the add-category box at the bottom.
 </p>
 
 <br>
@@ -385,8 +393,10 @@ new Vue({
         category_id: {{category_id}},
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
                                                            // Eg: [{item_id: 544, name: 'Language', schema_code: 'cat'}]
-        subcategories: {{subcategories | tojson}}, // List of sub-categories, each of which is an object
-                                                            // Eg: [{item_id:1262, name:'Greek', schema_code:'cat'}]
+        subcategories: {{subcategories | tojson}},         // List of sub-categories, each of which is an object
+                                                           //       (same format as for parent_categories)
+        all_categories: {{all_categories | tojson}},       // List of all categories, each of which is an object
+                                                           // Eg: [{item_id: 888, name: 'Greek'}]
 
         // The values bound to the editing fields, initially from the data handover from Flask;
         //      it'll change in the course of the edit-in-progress
@@ -397,6 +407,7 @@ new Vue({
         category_name_original_data: {{category_name | tojson}},
         category_remarks_original_data: {{category_remarks | tojson}},
 
+        parent_to_add: -1,          // Used by the add-parent pulldown menu (-1 is its default choice - asking the user to make a selection)
 
         edit_name_mode: false,      // To expose controls for editing name/remarks
 
@@ -409,6 +420,7 @@ new Vue({
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+
         compute_height()
         {
             /*
@@ -430,6 +442,59 @@ new Vue({
         },
 
 
+        add_parent_category()
+        // Add a new parent category (specified by this.parent_to_add) to the current category
+        {
+            console.log(`Attempting to make the just-selected Category ID ${this.parent_to_add} a parent of the current Category (ID ${this.category_id})`);
+
+            let url_server = "/BA/api/simple/add_relationship";
+            // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
+            let post_obj = {from: this.category_id,
+                            to: this.parent_to_add,
+                            rel_name: "BA_subcategory_of",
+                            schema_code: "cat"};
+            console.log(`About to contact the server at ${url_server}.  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;        // About to contact the server
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {payload_type: "TEXT", post_obj: post_obj,
+                        callback_fn: this.finish_add_parent_category, custom_data: this.parent_to_add});
+        },
+
+        finish_add_parent_category(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of add_parent_category() upon getting a response from the server
+        // custom_data contains the item_id of the requested new Parent Category
+        {
+            console.log(`Finalizing the add_parent_category operation...  custom_data: ${custom_data}`);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Relationship added`;
+
+                // Synchronize the page data to the finalized current data
+                pos = this.locate_item(this.all_categories, custom_data);
+                if (pos == -1)
+                    alert("Unable to find the added parent Category in the page. Try refreshing");
+                else
+                    // Append the new parent category to the list of parent categories
+                    this.parent_categories.push(this.all_categories[pos]);
+                    //this.parent_categories.splice(pos, 1);
+                    //this.parent_categories.push(custom_data);
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED relationship addition: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+            this.parent_to_add = -1;        // Reset the pulldown menu to its default choice (asking the user to make a selection)
+        },
+
+
 
         sever_relationship(parent_id, child_id, location)
         /* Detach a sub-category relationship
@@ -439,7 +504,7 @@ new Vue({
             console.log(`Attempting to delete relationship from Category ${parent_id} to ${child_id}`);
 
             let url_server = "/BA/api/simple/remove_relationship";
-            // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
+            // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: child_id,
                             to: parent_id,
                             rel_name: "BA_subcategory_of",
@@ -447,7 +512,7 @@ new Vue({
             console.log(`About to contact the server at ${url_server}.  POST object:`);
             console.log(post_obj);
 
-            this.waiting = true;
+            this.waiting = true;        // About to contact the server
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
