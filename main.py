@@ -9,7 +9,7 @@ from flask import Flask
 
 # The navigation is shared by Brain Annex and possible other independent sites
 # embedded (co-hosted) with it
-from navigation.navigation_routing import navigation_flask_blueprint
+from navigation.navigation_routing import Navigation
 from navigation.navigation import get_site_pages
 
 from BrainAnnex.pages.BA_pages_routing import PagesRouting
@@ -76,16 +76,17 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 # NOTE: 2 different approaches are currently in use -
 #       with object instantiation, and without
 #       TODO: make all the same
-app.register_blueprint(navigation_flask_blueprint, url_prefix = "/navigation")      # The navbar
+Navigation.setup(app)                   # The navbar
 
-routing_obj = PagesRouting(site_pages)
-app.register_blueprint(routing_obj.BA_pages_flask_blueprint, url_prefix = "/BA/pages")      # The BrainAnnex-derived UI
+PagesRouting.site_pages = site_pages
+PagesRouting.setup(app)                 # The BrainAnnex-provided UI
 
+# TODO: the next one is the last one yet to convert to the new system
 routing_obj = ApiRouting(MEDIA_FOLDER, UPLOAD_FOLDER)
-app.register_blueprint(routing_obj.BA_api_flask_blueprint, url_prefix = "/BA/api")          # The BrainAnnex-derived endpoint
+app.register_blueprint(routing_obj.BA_api_flask_blueprint, url_prefix = "/BA/api")    # The BrainAnnex-provided endpoint
 
-SamplePagesRouting.setup(app)       # Example of UI for an embedded independent site
-SampleApiRouting.setup(app)         # Example of endpoints for an embedded independent site
+SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
+SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
 
 
 
