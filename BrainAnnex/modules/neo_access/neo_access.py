@@ -1350,7 +1350,7 @@ class NeoAccess:
 
         number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
         if number_relationships_added == 0:       # This could be more than 1: see notes above
-            raise Exception("No relationship was added")
+            raise Exception(f"The requested relationship {rel_name} was NOT added")
 
         return number_relationships_added
 

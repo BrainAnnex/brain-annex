@@ -1,21 +1,38 @@
 <!DOCTYPE html>
 {#  Flask-passed parameters: current_page, site_pages,
-                             biomarker, my_list
+                             biomarker, my_list,
+                             template_page
  #}
 
 <html lang="en">
 <head>
     <title>Test page</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
     <link type="text/css" rel="stylesheet" href="/sample/pages/static/flask_testing.css">
 </head>
 <body>
 
-{# Top Navigation bar #}
-{% include "navbar_top.htm" %}
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
 
 <h1 class="flamboyant">Page for Flask-based testing : modify at will!</h1>
 
+<br>
+The template from which this webpage is generated, is in the file: `<b>{{template_page}}</b>`
+
+<br><br>
 <i>For a minimalist Flask example, please see
 <a href="http://localhost:5000/sample/pages/minimalist-flask" target="_blank">http://localhost:5000/sample/pages/minimalist-flask</a></i>
 <br><br>

@@ -17,7 +17,7 @@ from BrainAnnex.api.BA_api_routing import ApiRouting
 
 # These are an example of an independent site embedded (co-hosted) with Brain Annex.
 # Comment out if not needed!
-from sample_embedded_site.sample_pages.sample_pages_routing import sample_pages_flask_blueprint
+from sample_embedded_site.sample_pages.sample_pages_routing import SamplePagesRouting
 from sample_embedded_site.sample_api.sample_api_routing import sample_api_flask_blueprint
 
 # The remaining imports, below, are for the database initialization
@@ -84,7 +84,7 @@ app.register_blueprint(routing_obj.BA_pages_flask_blueprint, url_prefix = "/BA/p
 routing_obj = ApiRouting(MEDIA_FOLDER, UPLOAD_FOLDER)
 app.register_blueprint(routing_obj.BA_api_flask_blueprint, url_prefix = "/BA/api")          # The BrainAnnex-derived endpoint
 
-app.register_blueprint(sample_pages_flask_blueprint, url_prefix = "/sample/pages")  # Example of UI for an embedded independent site
+SamplePagesRouting.setup(app)       # Example of UI for an embedded independent site
 app.register_blueprint(sample_api_flask_blueprint, url_prefix = "/sample/api")      # Example of endpoints for an embedded independent site
 
 
