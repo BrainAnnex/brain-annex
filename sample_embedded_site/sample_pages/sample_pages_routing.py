@@ -12,32 +12,46 @@ class SamplePagesRouting:
     Setup, routing and endpoints for all the web pages served by this module
     """
 
+    # Module-specific parameters (as class variables)
+    blueprint_name = "sample_pages_flask"   # Name unique to this module
+    url_prefix = "/sample/pages"            # Prefix for all URL's handled by this module
+    template_folder = "templates"           # Relative to this module's location
+    static_folder = "static"                # Relative to this module's location
+
+
+
+    #############################################################
+    #         REGISTRATION OF THIS MODULE WITH FLASK            #
+    #############################################################
+
     @classmethod
     def setup(cls, flask_app_obj) -> None:
         """
-        Given a Flask app object, instantiate a "Blueprint" object,
-        and register the names of the template and static folders, the URL prefix to use,
-        and the functions that will be assigned to the various URL endpoints
+        Based on the module-specific class variables, and given a Flask app object,
+        instantiate a "Blueprint" object,
+        and register:
+            the names of folders used for templates and static content
+            the URL prefix to use
+            the functions that will be assigned to the various URL endpoints
 
-        :param flask_app_obj:   The Flask app object
-        :return:                None
+        :param flask_app_obj:	The Flask app object
+        :return:				None
         """
-        # Specify where this module's TEMPLATE and STATIC folders are located (relative to this module's main folder)
-        flask_blueprint = Blueprint('sample_pages_flask', __name__,
-                                    template_folder='templates', static_folder='static')
+        flask_blueprint = Blueprint(cls.blueprint_name, __name__,
+                                    template_folder=cls.template_folder, static_folder=cls.static_folder)
 
         # Define the Flask routing (mapping URLs to Python functions) for all the web pages served by this module
         cls.set_routing(flask_blueprint)
 
-        # Register with the Flask app object the Blueprint object created above, using: url_prefix = "/sample/pages"
-        flask_app_obj.register_blueprint(flask_blueprint, url_prefix = "/sample/pages")
+        # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
+        flask_app_obj.register_blueprint(flask_blueprint, url_prefix = cls.url_prefix)
 
 
 
 
-    ###############################################
-    #                   ROUTING                   #
-    ###############################################
+    #############################################################
+    #                           ROUTING                         #
+    #############################################################
 
     @classmethod
     def set_routing(cls, bp) -> None:
@@ -50,9 +64,7 @@ class SamplePagesRouting:
         :return:    None
         """
 
-
-
-        #########  START OF ROUTING DEFINITIONS  #########
+        ##################  START OF ROUTING DEFINITIONS  ##################
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
         @bp.route('/minimalist-flask')
@@ -101,4 +113,4 @@ class SamplePagesRouting:
                                    biomarker = my_variable, my_list = my_list,
                                    template_page=template)
 
-        #########  END OF ROUTING DEFINITIONS  #########
+        ##################  END OF ROUTING DEFINITIONS  ##################
