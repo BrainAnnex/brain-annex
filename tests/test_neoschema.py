@@ -11,6 +11,7 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 @pytest.fixture(scope="module")
 def db():
     neo_obj = neo_access.NeoAccess(debug=True)
+    NeoSchema.set_database(neo_obj)
     yield neo_obj
 
 
@@ -18,7 +19,7 @@ def db():
 #############   CLASS-related   #############
 
 def test_create_class(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     french_class_id = NeoSchema.create_class("French Vocabulary")
     result = db.get_nodes()
@@ -39,7 +40,7 @@ def test_create_class(db):
 
 
 def test_get_class_id(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
     class_A_id = NeoSchema.create_class("A")
     assert NeoSchema.get_class_id("A") == class_A_id
 

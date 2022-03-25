@@ -102,6 +102,18 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def set_database(cls, db) -> None:
+        """
+        IMPORTANT: this method MUST be called before using this class!
+
+        :param db:  Database-interface object
+        :return:    None
+        """
+        cls.db = db
+
+
+
     ##################################################################################################
     #                                                                                                #
     #                                       CLASS-related                                            #
@@ -113,6 +125,7 @@ class NeoSchema:
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
+
         Return the auto-incremented unique ID assigned to the new Class,
         or raise an Exception if a class by that name already exists
 
@@ -933,38 +946,42 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_relationship(cls, from_id: int, to_id: int, rel_name: str, rel_props = None, labels=None) -> bool:
+    def add_data_relationship(cls, from_id: int, to_id: int, rel_name: str, rel_props = None, labels=None) -> None:
         """
-        Add a new relationship between 2 data nodes, from the "parent" to the "child".
-        Return True if the requested new relationship got successfully created, or False otherwise.
-        Note that if a relationship with the same name already exists, nothing gets created (and False is returned)
+        Add a new relationship with the given name, from one to the other of the 2 given data nodes.
+        If the specified relationship didn't get added, raise an Exception
+        Note that if a relationship with the same name already exists, nothing gets created (and an Exception is raised)
 
         :param from_id:     The "item_id" value of the data node at which the new relationship is to originate
         :param to_id:       The "item_id" value of the data node at which the new relationship is to end
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
         :param labels:      OPTIONAL (generally, redundant)
-        :return:            True if the requested new relationship got successfully created, or False otherwise
-                            In case the Schema forbids the new relationship, raise an Exception
-                            TODO: maybe raise Exceptions (of different custom types?) in the case of any failure
+
+        :return:            None.  If the specified relationship didn't get created, raise an Exception
+                            In case the the new relationship doesn't exist in the Schema, raise an Exception
         """
+        assert rel_name != "", f"add_data_relationship(): no name was provided for the new relationship"
 
-        # Verify that the relationship exists in the schema, i.e. that the Classes of the data nodes have a relationship with that name between them
-
-        labels_str = cls.db.prepare_labels(labels)
+        """
+        Schema check
+        """
+        # Verify that the relationship exists IN THE SCHEMA, i.e. that the Classes of the data nodes have a relationship with that name between them
+        labels_str = neo_access.CypherUtils.prepare_labels(labels)
         # Attempt to find a path from the "from" data node, to its Class in the schema, to another Class along a relationship
         #   with the same name as the one we're trying to add, and finally to the "to" data node that has that last Class as schema
         q = f'''
-        MATCH p=(from {labels_str} {{item_id: $from_id}})-[:SCHEMA]-> 
-        (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
-        <-[:SCHEMA]- (to {labels_str} {{item_id: $to_id}})
+        MATCH p=(from {labels_str} {{item_id: $from_id}}) -[:SCHEMA]-> 
+                (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
+                <-[:SCHEMA]- (to {labels_str} {{item_id: $to_id}})
         RETURN p
         '''
 
         data_binding = {"from_id": from_id, "to_id": to_id}
         path = cls.db.query(q, data_binding)
         if path == []:
-            raise Exception(f"Cannot add the relationship `{rel_name}` between the data nodes, because no such relationship exists between their Classes")
+            raise Exception(f"Cannot add the relationship `{rel_name}` between the data nodes, "
+                            f"because no such relationship exists between their Classes. The Schema needs to be modified first")
 
 
         # Add the new relationship
@@ -974,31 +991,35 @@ class NeoSchema:
         match_to =   cls.db.find(labels=labels, key_name="item_id", key_value=to_id,
                                  dummy_node_name="to")
 
-        return cls.db.add_edge(match_from, match_to, rel_name=rel_name)
+        cls.db.add_edges(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is added
 
 
 
     @classmethod
-    def remove_data_relationship(cls, from_id: int, to_id: int, rel_name: str, labels=None):
+    def remove_data_relationship(cls, from_id: int, to_id: int, rel_name: str, labels=None) -> None:
         """
-        Drop the specified relationship between the 2 given data nodes, from the "parent" to the "child".
+        Drop the relationship with the given name, from one to the other of the 2 given data nodes.
         Note: the data nodes are left untouched.
+        If the specified relationship didn't get deleted, raise an Exception
 
         TODO: verify that the relationship is optional in the schema
 
         :param from_id:     The "item_id" value of the data node at which the relationship originates
         :param to_id:       The "item_id" value of the data node at which the relationship ends
         :param rel_name:    The name of the relationship to delete
-        :param labels:      OPTIONAL (generally, redundant)
-        :return:            True if the specified relationship got successfully deleted, or False otherwise
+        :param labels:      OPTIONAL (generally, redundant).  Labels required to be on both nodes
+
+        :return:            None.  If the specified relationship didn't get deleted, raise an Exception
         """
+        assert rel_name != "", f"remove_data_relationship(): no name was provided for the relationship"
+
         match_from = cls.db.find(labels=labels, key_name="item_id", key_value=from_id,
                                  dummy_node_name="from")
 
         match_to =   cls.db.find(labels=labels, key_name="item_id", key_value=to_id,
                                  dummy_node_name="to")
 
-        return cls.db.remove_edge(match_from, match_to, rel_name=rel_name)
+        cls.db.remove_edges(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
 
 
 

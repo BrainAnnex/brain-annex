@@ -106,7 +106,6 @@ def test_export_dbase_json(db):
 
 
 def test_export_nodes_rels_json(db):
-    # Completely clear the database
     db.empty_dbase()
 
     # Start by exporting everything in the empty database
@@ -302,3 +301,59 @@ def test_import_json_data(db):
     assert len(retrieved_records) == 1
 
     # TODO: extend
+
+
+
+
+def test_import_json(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        assert db.import_json("what is this nonsensical would-be JSON string?")
+
+    j_str = '''
+            {"name": "Joe",
+            "employees": ["John", "Anna"], 
+            "sale": true, 
+            "salary": 52000,
+            "manager": {"name": "Elon", "age": 30, "authorized": false},
+            "subsidiaries": null}
+            '''
+    json_data = db.import_json(j_str, "Val")
+    print(json_data)
+
+    assert type(json_data) == dict, "The JSON string does not represent the expected dictionary"
+    assert len(json_data) == 6
+    assert json_data["name"] == "Joe"
+    assert json_data["employees"] == ["John", "Anna"]
+    assert json_data["sale"] == True
+    assert json_data["salary"] == 52000
+    assert json_data["manager"] ==  {"name": "Elon", "age": 30, "authorized": False}
+    assert json_data["subsidiaries"] is None
+
+
+
+def test_import_json2(db):
+    db.empty_dbase()
+
+    j_str = '''
+            [
+                {"name": "Jack",
+                "employees": ["John", "Anna"], 
+                "sale": true, 
+                "salary": 52000,
+                "manager": {"name": "Elon", "age": 30, "authorized": false},
+                "subsidiaries": null
+                }
+                ,
+                {"name": "Jill",
+                "employees": ["Edward", "Anna", "Vincent"], 
+                "sale": false, 
+                "salary": 75000,
+                "manager": {"name": "Matt", "age": 55, "authorized": true},
+                "subsidiaries": "Pepsi"
+                }                
+            ]   
+            '''
+    json_data = db.import_json(j_str, "ROOT")
+    print(json_data)

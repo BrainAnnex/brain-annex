@@ -1,18 +1,19 @@
-# VERSION 5.0-beta10
+"""
+MAIN PROGRAM : it starts up a server for web User Interface and an API
+    Run this file, and then set the browser to http://localhost:5000/some_url
+    (the actual port number is configurable; the URL's are specified in the various modules)
 
+Note: this main program may also be started from the CLI with the "flask run" command
+"""
 
-# MAIN PROGRAM : it starts up a server for web User Interface and an API
-# Run this file, and then set the browser to http://localhost:5000/some_url
-# (the actual port number is configurable; the URL's are specified in the various modules)
-# Note: this main program may also be started from the CLI with the "flask run" command
 
 from flask import Flask
 
-# All the sub-modules making up this web app
+# All the sub-modules making up this web app:
 
-# The navigation is shared by Brain Annex and possible other independent sites
+# The navigation is shared by Brain Annex and possibly other independent sites
 # embedded (co-hosted) with it
-from navigation.navigation_routing import navigation_flask_blueprint
+from navigation.navigation_routing import Navigation
 from navigation.navigation import get_site_pages
 
 from BrainAnnex.pages.BA_pages_routing import PagesRouting
@@ -20,8 +21,8 @@ from BrainAnnex.api.BA_api_routing import ApiRouting
 
 # These are an example of an independent site embedded (co-hosted) with Brain Annex.
 # Comment out if not needed!
-from sample_embedded_site.sample_pages.sample_pages_routing import sample_pages_flask_blueprint
-from sample_embedded_site.sample_api.sample_api_routing import sample_api_flask_blueprint
+from sample_embedded_site.sample_pages.sample_pages_routing import SamplePagesRouting
+from sample_embedded_site.sample_api.sample_api_routing import SampleApiRouting
 
 # The remaining imports, below, are for the database initialization
 from BrainAnnex.modules.neo_access import neo_access
@@ -76,19 +77,21 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
 #       and specify the URL prefixes to use for the various modules
 
-# NOTE: 2 different approaches are currently in use -
-#       with object instantiation, and without
-#       TODO: make all the same
-app.register_blueprint(navigation_flask_blueprint, url_prefix = "/navigation")      # The navbar
+# The navbar
+Navigation.setup(app)
 
-routing_obj = PagesRouting(site_pages)
-app.register_blueprint(routing_obj.BA_pages_flask_blueprint, url_prefix = "/BA/pages")      # The BrainAnnex-derived UI
+# The BrainAnnex-provided UI
+PagesRouting.site_pages = site_pages
+PagesRouting.setup(app)
 
-routing_obj = ApiRouting(MEDIA_FOLDER, UPLOAD_FOLDER)
-app.register_blueprint(routing_obj.BA_api_flask_blueprint, url_prefix = "/BA/api")          # The BrainAnnex-derived endpoint
+# The BrainAnnex-provided endpoint
+ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
+ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
+ApiRouting.setup(app)
 
-app.register_blueprint(sample_pages_flask_blueprint, url_prefix = "/sample/pages")  # Example of UI for an embedded independent site
-app.register_blueprint(sample_api_flask_blueprint, url_prefix = "/sample/api")      # Example of endpoints for an embedded independent site
+# Examples of generic pages and API
+SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
+SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
 
 
 
@@ -98,7 +101,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 #app.config['UPLOAD_FOLDER'] = r'D:\tmp'
 #APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 #UPLOAD_FOLDER = os.path.join(APP_ROOT, 'api/static/')
-
 
 
 

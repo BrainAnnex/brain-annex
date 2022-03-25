@@ -27,8 +27,7 @@ Vue.component('vue-toc-sidebar',
 
                     <!-- Page navigation section -->
                     <a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
-                        <span style='color:#AAA; margin-left:10px; font-size:10px;'>PAGE CONTENTS</span>
-                        <input @click="expand_categories = !expand_categories" type="checkbox" checked style='margin-left:5px'> Details?
+                        <input @click="expand_categories = !expand_categories" type="checkbox" checked style='margin-left:8px'>Details?
                     <br>
 
                     <div class="page-toc">
@@ -47,6 +46,11 @@ Vue.component('vue-toc-sidebar',
                                 <p v-if="item.schema_code == 'i'">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.caption">{{item.caption}}</a>
                                     <img src='/BA/pages/static/graphics/image_14_1814111.png'>
+                                    <br>
+                                </p>
+
+                                <p v-if="item.schema_code == 'n' && item.title">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.caption">{{item.title}}</a>
                                     <br>
                                 </p>
                             </template>

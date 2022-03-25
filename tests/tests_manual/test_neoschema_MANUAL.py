@@ -34,6 +34,12 @@ def test_class_name_exists(db):
     assert not NeoSchema.class_name_exists("Was ist das")
 
 
+def test_create_class_relationship(db):
+    #french_class_id = NeoSchema.create_class("French Vocabulary")
+    #foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
+    status = NeoSchema.create_class_relationship(child=93, parent=19, rel_name="INSTANCE_OF")
+    assert status
+
 
 def test_get_class_relationships(db):
     result = NeoSchema.get_class_relationships(47)
@@ -298,11 +304,10 @@ def test_add_data_relationship(db):
     #status = NeoSchema.add_data_relationship(subcategory_id=536, category_id=540, rel_name="BA_served_at")
     #status = NeoSchema.add_data_relationship(subcategory_id=514, category_id=544, rel_name="BA_subcategory_of")
     #status = NeoSchema.add_data_relationship(subcategory_id=541, category_id=535, rel_name="BA_in_category")
-    status = NeoSchema.add_data_relationship(from_id=9, to_id=690, rel_name="BA_testing")
-    assert status == True
+    number_added = NeoSchema.add_data_relationship(from_id=9, to_id=690, rel_name="BA_testing")
+    assert number_added == 1
 
 
 
 def test_remove_data_relationship(db):
-    status = NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")
-    assert status == True
+    NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")

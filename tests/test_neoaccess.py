@@ -3,6 +3,7 @@
 
 import pytest
 from BrainAnnex.modules.neo_access import neo_access
+from BrainAnnex.modules.neo_access.neo_access import CypherUtils as CypherUtils
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 import os
 import pandas as pd
@@ -68,8 +69,9 @@ def test_query(db):
 
     q = "MATCH (x) RETURN x"
     result = db.query(q)
-    assert result == [{'x': {'color': 'white', 'make': 'Toyota'}},
-                      {'x': {'color': 'red', 'year': 2021, 'make': 'VW'}}]
+    expected = [{'x': {'color': 'white', 'make': 'Toyota'}},
+                {'x': {'color': 'red', 'year': 2021, 'make': 'VW'}}]
+    assert compare_recordsets(result, expected)
 
     q = '''CREATE (b:boat {number_masts: 2, year:2003}),
                   (c:car {color: "blue"})
@@ -265,7 +267,7 @@ def test_get_neo_id_by_key(db):
 
 
 def test_fetch_nodes(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create a 1st new node
     db.create_node("test_label", {'patient_id': 123, 'gender': 'M'})
@@ -376,7 +378,7 @@ def test_fetch_nodes(db):
 
     # Now, do a clean start, an investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
 
-    # Completely clear the database
+
     db.empty_dbase()
 
     # Create a first node, with attributes 'age' and 'gender'
@@ -396,7 +398,7 @@ def test_fetch_nodes(db):
 
 
 def test_get_nodes(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create a 1st new node
     db.create_node("test_label", {'patient_id': 123, 'gender': 'M'})
@@ -482,7 +484,7 @@ def test_get_nodes(db):
 
     # Now, do a clean start, an investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
 
-    # Completely clear the database
+
     db.empty_dbase()
 
     # Create a first node, with attributes 'age' and 'gender'
@@ -502,12 +504,21 @@ def test_get_nodes(db):
 def test_get_df(db):
     db.empty_dbase()
 
+    # Create and load a test Pandas dataframe with 2 columns and 2 rows
     df_original = pd.DataFrame({"patient_id": [1, 2], "name": ["Jack", "Jill"]})
-    db.load_pandas(df_original, "A")
+    db.load_pandas(df_original, label="A")
 
     df_new = db.get_df("A")
 
-    assert df_original.sort_index(axis=1).equals(df_new.sort_index(axis=1)) # Disregard column order in the comparison
+    # Sort the columns and then sort the rows, in order to disregard both row and column order (TODO: turn into utility)
+    df_original_sorted = df_original.sort_index(axis=1)
+    df_original_sorted = df_original_sorted.sort_values(by=df_original_sorted.columns.tolist()).reset_index(drop=True)
+
+    df_new_sorted = df_new.sort_index(axis=1)
+    df_new_sorted = df_new_sorted.sort_values(by=df_new_sorted.columns.tolist()).reset_index(drop=True)
+
+    assert df_original_sorted.equals(df_new_sorted)
+
 
 
 def test_is_valid_match_structure(db):
@@ -594,7 +605,7 @@ def test_find(db):
 ###  ~ FOLLOW LINKS ~
 
 def test_follow_links(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     db.create_node("book", {'title': 'The Double Helix'})
     db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
@@ -620,7 +631,7 @@ def test_follow_links(db):
 
 
 def test_count_links(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     db.create_node("book", {'title': 'The Double Helix'})
     db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
@@ -646,7 +657,7 @@ def test_count_links(db):
 
 
 def test_get_parents_and_children(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     node_id = db.create_node("mid generation", {'age': 42, 'gender': 'F'})    # This will be the "central node"
     result = db.get_parents_and_children(node_id)
@@ -720,7 +731,7 @@ def test_create_node(db):
                     3) retrieve the newly created nodes, using retrieve_nodes_by_label_and_clause()
     """
 
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create a new node.  Notice the blank in the key
     db.create_node("test_label", {'patient id': 123, 'gender': 'M'})
@@ -785,7 +796,7 @@ def test_create_node(db):
 
 
 def test_create_node_with_relationships(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create the prior nodes to which to link the newly-created node
     db.create_node("DEPARTMENT", {'dept_name': 'IT'})
@@ -834,7 +845,7 @@ def test_create_node_with_relationships(db):
         ]
     )
     """
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create a new node
     db.create_node("city", properties={'name': 'Berkeley', 'state': 'CA'})
@@ -860,7 +871,7 @@ def test_create_node_with_relationships(db):
 ###  ~ DELETE NODES ~
 
 def test_delete_nodes(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     # Create 5 nodes, representing cars of various colors and prices
     df = pd.DataFrame({"color": ["white", "blue", "gray", "gray", "red"], "price": [100, 200, 300, 400, 500]})
@@ -973,7 +984,7 @@ def test_delete_nodes_by_label(db):
 def test_empty_dbase(db):
     # Tests of completely clearing the database
 
-    # Completely clear the database
+
     db.empty_dbase()
     # Verify nothing is left
     labels = db.get_labels()
@@ -981,14 +992,14 @@ def test_empty_dbase(db):
 
     db.create_node("label_A", {})
     db.create_node("label_B", {'client_id': 123, 'gender': 'M'})
-    # Completely clear the database
+
     db.empty_dbase()
     # Verify nothing is left
     labels = db.get_labels()
     assert labels == []
 
     # Test of removing only specific labels
-    # Completely clear the database
+
     db.empty_dbase()
     # Add a few labels
     db.create_node("label_1", {'client_id': 123, 'gender': 'M'})
@@ -1002,7 +1013,7 @@ def test_empty_dbase(db):
     assert compare_unordered_lists(labels , ["label_2", "label_3"])
 
     # Test of keeping only specific labels
-    # Completely clear the database
+
     db.empty_dbase()
     # Add a few labels
     db.create_node("label_1", {'client_id': 123, 'gender': 'M'})
@@ -1023,7 +1034,6 @@ def test_empty_dbase(db):
 ###  ~ MODIFY FIELDS ~
 
 def test_set_fields(db):
-    # Completely clear the database
     db.empty_dbase()
 
     # Create a new node.  Notice the blank in the key
@@ -1060,7 +1070,7 @@ def test_get_relationship_types(db):
 
 
 def test_add_edge(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     neo_from = db.create_node("car", {'color': 'white'})
     neo_to = db.create_node("owner", {'name': 'Julian'})
@@ -1068,44 +1078,198 @@ def test_add_edge(db):
     match_from = db.find(neo_id=neo_from, dummy_node_name="from")
     match_to = db.find(neo_id=neo_to, dummy_node_name="to")
 
-    status = db.add_edge(match_from, match_to, rel_name="OWNED_BY")
-    assert status == True
+    number_added = db.add_edges(match_from, match_to, rel_name="OWNED_BY")
+    assert number_added == 1
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.add_edge(match_from, match_from, rel_name="THIS_WILL_CRASH")
+        assert db.add_edges(match_from, match_from, rel_name="THIS_WILL_CRASH")
 
     # The correct way to add an edge from a node to itself
     match_to_itself = db.find(neo_id=neo_from, dummy_node_name="to")    # Same as the node of origin, but different dummy_node_name`
-    status = db.add_edge(match_from, match_to_itself, rel_name="FROM_CAR_TO_ITSELF")
-    assert status == True
+    number_added = db.add_edges(match_from, match_to_itself, rel_name="FROM_CAR_TO_ITSELF")
+    assert number_added == 1
 
 
 
 def test_remove_edge(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
-    neo_from = db.create_node("car", {'color': 'white'})
-    neo_to = db.create_node("owner", {'name': 'Julian'})
+    neo_car = db.create_node("car", {'color': 'white'})
+    neo_julian = db.create_node("owner", {'name': 'Julian'})
 
-    match_from = db.find(neo_id=neo_from, dummy_node_name="from")
-    match_to = db.find(neo_id=neo_to, dummy_node_name="to")
+    match_car = db.find(neo_id=neo_car, dummy_node_name="from")
+    match_julian = db.find(neo_id=neo_julian, dummy_node_name="to")
 
-    status = db.add_edge(match_from, match_to, rel_name="OWNED_BY")
-    assert status == True
+    number_added = db.add_edges(match_car, match_julian, rel_name="OWNED_BY")
+    assert number_added == 1
 
-    match_from = db.find(labels="car", dummy_node_name="from")
-    match_to = db.find(properties={"name": "Julian"}, dummy_node_name="to")
+    match_car = db.find(labels="car", dummy_node_name="from")
+    match_julian = db.find(properties={"name": "Julian"}, dummy_node_name="to")
 
-    status = db.remove_edge(match_from, match_to, rel_name="NON_EXISTENT_RELATIONSHIP")
-    assert status == False
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 1     # Find the relationship
 
-    status = db.remove_edge(match_from, match_to, rel_name="OWNED_BY")
-    assert status == True
+    with pytest.raises(Exception):
+        assert db.remove_edges(match_car, match_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
+
+    with pytest.raises(Exception):
+        assert db.remove_edges({"NON-sensical match object"}, match_julian, rel_name="OWNED_BY")
+
+    # Finally, actually remove the edge
+    number_removed = db.remove_edges(match_car, match_julian, rel_name="OWNED_BY")
+    assert number_removed == 1
+
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 0     # The relationship is now gone
+
+    with pytest.raises(Exception):
+        # This will crash because the relationship is no longer there
+        assert db.remove_edges(match_car, match_car, rel_name="OWNED_BY")
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.remove_edge(match_from, match_from, rel_name="THIS_WILL_CRASH")
+        assert db.remove_edges(match_car, match_car, rel_name="THIS_WILL_CRASH")
+
+
+    # Restore the relationship...
+    number_added = db.add_edges(match_car, match_julian, rel_name="OWNED_BY")
+    assert number_added == 1
+
+    # ...and add a 2nd one, with a different name, between the same nodes
+    number_added = db.add_edges(match_car, match_julian, rel_name="REMEMBERED_BY")
+    assert number_added == 1
+
+    # ...and re-add the last one, but with a property (which is allowed by Neo4j, and will result in
+    #       2 relationships with the same name between the same node
+    add_query = '''
+        MATCH (c:car), (o:owner)
+        MERGE (c)-[:REMEMBERED_BY {since: 2020}]->(o)
+    '''
+    result = db.update_query(add_query)
+    assert result == {'relationships_created': 1, 'properties_set': 1, 'returned_data': []}
+
+    # Also, add a 3rd node, and another "OWNED_BY" relationship, this time affecting the 3rd node
+    add_query = '''
+        MATCH (c:car)
+        MERGE (c)-[:OWNED_BY]->(o :owner {name: 'Val'})
+    '''
+    result = db.update_query(add_query)
+    assert result == {'labels_added': 1, 'relationships_created': 1, 'nodes_created': 1, 'properties_set': 1, 'returned_data': []}
+
+    # We now have a car with 2 owners: an "OWNED_BY" relationship to one of them,
+    # and 3 relationships (incl. two with the same name "REMEMBERED_BY") to the other one
+
+    find_query = '''
+        MATCH (c:car)-[:REMEMBERED_BY]->(o:owner ) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 2     # The 2 relationships we just added
+
+    # Remove 2 same-named relationships at once between the same 2 nodes
+    number_removed = db.remove_edges(match_car, match_julian, rel_name="REMEMBERED_BY")
+    assert number_removed == 2
+
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 0     # Gone
+
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner {name: 'Julian'}) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 1     # Still there
+
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner {name: 'Val'}) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 1     # Still there
+
+
+    number_removed = db.remove_edges(match_car, match_julian, rel_name="OWNED_BY")
+    assert number_removed == 1
+
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner {name: 'Julian'}) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 0     # Gone
+
+    find_query = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner {name: 'Val'}) 
+        RETURN count(c) As n_cars
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_cars"] == 1     # We didn't do anything to that relationship
+
+    # Add a 2nd relations between the car node and the "Val" owner node
+    add_query = '''
+        MATCH (c:car), (o :owner {name: 'Val'})
+        MERGE (c)-[:DRIVEN_BY]->(o)
+        '''
+    result = db.update_query(add_query)
+    assert result == {'relationships_created': 1, 'returned_data': []}
+
+    find_query = '''
+        MATCH (c:car)-[r]->(o:owner {name: 'Val'}) 
+        RETURN count(r) As n_relationships
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_relationships"] == 2
+
+    # Delete both relationships at once
+    match_val = db.find(key_name="name", key_value="Val", dummy_node_name="v")
+
+    number_removed = db.remove_edges(match_car, match_val, rel_name=None)
+    assert number_removed == 2
+
+    result = db.query(find_query)
+    assert result[0]["n_relationships"] == 0    # All gone
+
+
+def test_remove_edge_2(db):
+    # This set of test focuses on removing edges between GROUPS of nodes
+    db.empty_dbase()
+
+    # 2 cars, co-owned by 2 people
+    q = '''
+        CREATE  (c1 :car {color:'white'}), (c2 :car {color:'red'}), 
+                (p1: person {name:'Julian'}), (p2 :person {name:'Val'})
+        MERGE (c1)-[:OWNED_BY]->(p1) 
+        MERGE (c1)-[:OWNED_BY]->(p2)
+        MERGE (c2)-[:OWNED_BY]->(p1) 
+        MERGE (c2)-[:OWNED_BY]->(p2)
+    '''
+    result = db.update_query(q)
+    assert result == {'labels_added': 4, 'relationships_created': 4,
+                      'nodes_created': 4, 'properties_set': 4, 'returned_data': []}
+
+    match_white_car = db.find(labels="car", properties={"color": "white"}, dummy_node_name="from")  # 1-node match
+    match_all_people = db.find(labels="person", dummy_node_name="to")                               # 2-node match
+
+
+    find_query = '''
+        MATCH (c :car {color:'white'})-[r:OWNED_BY]->(p : person) 
+        RETURN count(r) As n_relationships
+    '''
+    result = db.query(find_query)
+    assert result[0]["n_relationships"] == 2        # The white car has 2 links
+
+    # Delete all the "OWNED_BY" relationships from the white car to any of the "person" nodes
+    number_removed = db.remove_edges(match_white_car, match_all_people, rel_name="OWNED_BY")
+    assert number_removed == 2
+
+    result = db.query(find_query)
+    assert result[0]["n_relationships"] == 0       # The 2 links from the white car are now gone
+
 
 
 
@@ -1115,7 +1279,7 @@ def test_test_reattach_node(db):
 
 
 def test_link_nodes_by_ids(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
     # Create dummy data and return node_ids
     nodeids = db.query("""
         UNWIND range(1,3) as x
@@ -1169,7 +1333,7 @@ def test_get_labels(db):
     Create multiple new nodes, and then retrieve all the labels present in the database
     """
 
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     labels = db.get_labels()
     assert labels == []
@@ -1464,67 +1628,6 @@ def test_load_pandas(db):
 
 
 
-##########   CYPHER UTILITY METHODS   ##########
-
-def test_dict_to_cypher(db):
-    d = {'since': 2003, 'code': 'xyz'}
-    assert db.dict_to_cypher(d) == ('{`since`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
-
-    d = {'year first met': 2003, 'code': 'xyz'}
-    assert db.dict_to_cypher(d) == ('{`year first met`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
-
-    d = {'year first met': 2003, 'code': 'xyz'}
-    assert db.dict_to_cypher(d, prefix="val_") == ('{`year first met`: $val_1, `code`: $val_2}', {'val_1': 2003, 'val_2': 'xyz'})
-
-    d = {'cost': 65.99, 'code': 'the "red" button'}
-    assert db.dict_to_cypher(d) == ('{`cost`: $par_1, `code`: $par_2}', {'par_1': 65.99, 'par_2': 'the "red" button'})
-
-    d = {'phrase': "it's ready!"}
-    assert db.dict_to_cypher(d) == ('{`phrase`: $par_1}', {'par_1': "it's ready!"})
-
-    d = {'phrase': '''it's "ready"!'''}
-    assert db.dict_to_cypher(d) == ('{`phrase`: $par_1}', {'par_1': 'it\'s "ready"!'})
-
-    d = None
-    assert db.dict_to_cypher(d) == ("", {})
-
-    d = {}
-    assert db.dict_to_cypher(d) == ("", {})
-
-
-
-def test_prepare_labels(db):
-    lbl = ""
-    assert db.prepare_labels(lbl) == ""
-
-    lbl = "client"
-    assert db.prepare_labels(lbl) == ":`client`"
-
-    lbl = ["car", "car manufacturer"]
-    assert db.prepare_labels(lbl) == ":`car`:`car manufacturer`"
-
-
-
-def test_prepare_where(db):
-    assert db.prepare_where("") == ""
-    assert db.prepare_where("      ") == ""
-    assert db.prepare_where([]) == ""
-    assert db.prepare_where([""]) == ""
-    assert db.prepare_where( ("  ", "") ) == ""
-
-    wh = "n.name = 'Julian'"
-    assert db.prepare_where(wh) == "WHERE (n.name = 'Julian')"
-
-    wh = ["n.name = 'Julian'"]
-    assert db.prepare_where(wh) == "WHERE (n.name = 'Julian')"
-
-    wh = ("p.key1 = 123", "   ",  "p.key2 = 456")
-    assert db.prepare_where(wh) == "WHERE (p.key1 = 123 AND p.key2 = 456)"
-
-    with pytest.raises(Exception):
-        assert db.prepare_where(123)    # Not a string, nor tuple, nor list
-
-
 
 ###  ~ JSON IMPORT/EXPORT ~
 
@@ -1537,3 +1640,67 @@ def test_prepare_where(db):
 
 def test_debug_print(db):
     pass    # TODO
+
+
+
+
+
+#####################   For the "CypherUtils" class   #################
+
+def test_prepare_labels():
+    lbl = ""
+    assert CypherUtils.prepare_labels(lbl) == ""
+
+    lbl = "client"
+    assert CypherUtils.prepare_labels(lbl) == ":`client`"
+
+    lbl = ["car", "car manufacturer"]
+    assert CypherUtils.prepare_labels(lbl) == ":`car`:`car manufacturer`"
+
+
+
+def test_prepare_where():
+    assert CypherUtils.prepare_where("") == ""
+    assert CypherUtils.prepare_where("      ") == ""
+    assert CypherUtils.prepare_where([]) == ""
+    assert CypherUtils.prepare_where([""]) == ""
+    assert CypherUtils.prepare_where(("  ", "")) == ""
+
+    wh = "n.name = 'Julian'"
+    assert CypherUtils.prepare_where(wh) == "WHERE (n.name = 'Julian')"
+
+    wh = ["n.name = 'Julian'"]
+    assert CypherUtils.prepare_where(wh) == "WHERE (n.name = 'Julian')"
+
+    wh = ("p.key1 = 123", "   ",  "p.key2 = 456")
+    assert CypherUtils.prepare_where(wh) == "WHERE (p.key1 = 123 AND p.key2 = 456)"
+
+    with pytest.raises(Exception):
+        assert CypherUtils.prepare_where(123)    # Not a string, nor tuple, nor list
+
+
+
+def test_dict_to_cypher():
+    d = {'since': 2003, 'code': 'xyz'}
+    assert CypherUtils.dict_to_cypher(d) == ('{`since`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
+
+    d = {'year first met': 2003, 'code': 'xyz'}
+    assert CypherUtils.dict_to_cypher(d) == ('{`year first met`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
+
+    d = {'year first met': 2003, 'code': 'xyz'}
+    assert CypherUtils.dict_to_cypher(d, prefix="val_") == ('{`year first met`: $val_1, `code`: $val_2}', {'val_1': 2003, 'val_2': 'xyz'})
+
+    d = {'cost': 65.99, 'code': 'the "red" button'}
+    assert CypherUtils.dict_to_cypher(d) == ('{`cost`: $par_1, `code`: $par_2}', {'par_1': 65.99, 'par_2': 'the "red" button'})
+
+    d = {'phrase': "it's ready!"}
+    assert CypherUtils.dict_to_cypher(d) == ('{`phrase`: $par_1}', {'par_1': "it's ready!"})
+
+    d = {'phrase': '''it's "ready"!'''}
+    assert CypherUtils.dict_to_cypher(d) == ('{`phrase`: $par_1}', {'par_1': 'it\'s "ready"!'})
+
+    d = None
+    assert CypherUtils.dict_to_cypher(d) == ("", {})
+
+    d = {}
+    assert CypherUtils.dict_to_cypher(d) == ("", {})
