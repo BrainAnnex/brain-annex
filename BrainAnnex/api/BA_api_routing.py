@@ -1,3 +1,8 @@
+"""
+API endpoint
+MIT License.  Copyright (c) 2021-2022 Julian A. West
+"""
+
 from flask import Blueprint, jsonify, request, make_response  # The request package makes available a GLOBAL request object
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
@@ -7,45 +12,67 @@ import sys                  # Used to give better feedback on Exceptions
 import shutil
 from time import sleep      # Used for tests of delays in asynchronous fetching
 
-"""
-    MIT License.  Copyright (c) 2021-2022 Julian A. West
-"""
-
 
 
 class ApiRouting:
     """
-    API endpoint
+    Setup, routing and endpoints for all the web pages served by this module
     """
 
-    def __init__(self, media_folder, upload_folder):
-        # Specify where this module's STATIC folder is located (relative to this module's main folder)
-        self.BA_api_flask_blueprint = Blueprint('BA_api', __name__, static_folder='static')
-        # This "Blueprint" object gets registered in the Flask app object in main.py, using: url_prefix = "/BA/api"
+    # Module-specific parameters (as class variables)
+    blueprint_name = "BA_api"           # Name unique to this module
+    url_prefix = "/BA/api"              # Prefix for all URL's handled by this module
+    template_folder = "templates"       # Relative to this module's location
+    static_folder = "static"            # Relative to this module's location
+
+    MEDIA_FOLDER = None                 # Location where the media for Content Items is stored
+    UPLOAD_FOLDER = None                # Temporary location for uploads    
+
+    #######################################################################################################################
+    #                                                                                                                     #
+    #   ERROR_PREFIX and SUCCESS_PREFIX:                                                                                  #
+    #   used for "simple" subset of the API, with endpoints that return PLAIN text (rather than JSON or something else)   #
+    #                                                                                                                     #
+    #######################################################################################################################
+
+    ERROR_PREFIX = "-"      # Prefix used in the "simple API" protocol to indicate an error in the response value;
+    #       the remainder of the response string will the be understood to be the error message
+
+    SUCCESS_PREFIX = "+"    # Prefix used in the "simple API" protocol to indicate a successful operation;
+    #       the remainder of the response string will the be understood to be the optional data payload
+    #       (such as a status message)
+
+    # NOTE: To test POST-based API access points, on the Linux shell or Windows PowerShell issue commands such as:
+    #            curl http://localhost:5000/BA/api/simple/add_item_to_category -d "schema_id=1&category_id=60"
 
 
-        ###################################################################################################################
-        #                                                                                                                 #
-        #   The "simple" subset of the API, with endpoints that return PLAIN text (rather than JSON or something else)    #
-        #                                                                                                                 #
-        ###################################################################################################################
-        
-        self.ERROR_PREFIX = "-"      # Prefix used in the "simple API" protocol to indicate an error in the response value;
-        #       the remainder of the response string will the be understood to be the error message
-        
-        self.SUCCESS_PREFIX = "+"    # Prefix used in the "simple API" protocol to indicate a successful operation;
-        #       the remainder of the response string will the be understood to be the optional data payload
-        #       (such as a status message)
-        
-        # NOTE: To test POST-based API access points, on the Linux shell or Windows PowerShell issue commands such as:
-        #            curl http://localhost:5000/BA/api/simple/add_item_to_category -d "schema_id=1&category_id=60"
 
 
-        self.MEDIA_FOLDER = media_folder    # Location where the media for Content Items is stored
-        self.UPLOAD_FOLDER = upload_folder  # Temporary location for uploads
+    #############################################################
+    #         REGISTRATION OF THIS MODULE WITH FLASK            #
+    #############################################################
 
-        self.set_routing()   # Define the Flask routing (mapping URLs to Python functions)
+    @classmethod
+    def setup(cls, flask_app_obj) -> None:
+        """
+        Based on the module-specific class variables, and given a Flask app object,
+        instantiate a "Blueprint" object,
+        and register:
+            the names of folders used for templates and static content
+            the URL prefix to use
+            the functions that will be assigned to the various URL endpoints
 
+        :param flask_app_obj:	The Flask app object
+        :return:				None
+        """
+        flask_blueprint = Blueprint(cls.blueprint_name, __name__,
+                                    template_folder=cls.template_folder, static_folder=cls.static_folder)
+
+        # Define the Flask routing (mapping URLs to Python functions) for all the web pages served by this module
+        cls.set_routing(flask_blueprint)
+
+        # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
+        flask_app_obj.register_blueprint(flask_blueprint, url_prefix = cls.url_prefix)
 
 
 
@@ -54,7 +81,8 @@ class ApiRouting:
     #               UTILITY methods               #
     ###############################################
 
-    def str_to_int(self, s: str) -> int:
+    @classmethod
+    def str_to_int(cls, s: str) -> int:
         """
         Helper function to give more friendly error messages in case non-integers are passed
         in situations where integers are expected (for example, for id's).
@@ -63,7 +91,7 @@ class ApiRouting:
 
         EXAMPLE:
             try:
-                item_id = self.str_to_int(item_id_str)
+                item_id = cls.str_to_int(item_id_str)
             except Exception as ex:
                 # Do something
 
@@ -73,14 +101,15 @@ class ApiRouting:
         """
         try:
             i = int(s)
-        except Exception as ex:
+        except Exception:
             raise Exception(f"The passed parameter ({s}) is not an integer as expected")
 
         return i
 
 
 
-    def extract_post_pars(self, post_data, required_par_list=None) -> dict:
+    @classmethod
+    def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
         """
         Convert the given POST data (an ImmutableMultiDict) into a dictionary,
         while enforcing the optional given list of parameters that must be present.
@@ -108,7 +137,8 @@ class ApiRouting:
     #               For DEBUGGING                 #
     ###############################################
 
-    def show_post_data(self, post_data, method_name=None) -> None:
+    @classmethod
+    def show_post_data(cls, post_data, method_name=None) -> None:
         """
         Debug utility method.  Pretty-printing for POST data
 
@@ -127,15 +157,16 @@ class ApiRouting:
 
 
 
+    #############################################################
+    #                           ROUTING                         #
+    #############################################################
 
-    ###############################################
-    #                   ROUTING                   #
-    ###############################################
-
-    def set_routing(self) -> None:
+    @classmethod
+    def set_routing(cls, bp) -> None:
         """
-        Define the Flask routing (mapping of URLs to Python functions)
-        for all the web pages served by this module.
+        Define the Flask routing (mapping URLs to Python functions)
+        for all the web pages served by this module,
+        and provide the functions assigned to the various URL endpoints
 
         Organized in the following groups:
                 * SCHEMA-related (reading)
@@ -147,16 +178,19 @@ class ApiRouting:
                 * FILTERS
                 * IMPORT-EXPORT  (upload/download)
                 * EXPERIMENTAL
-
-        :return: None
+                
+        :param bp:  The Flask "Blueprint" object that was created for this module
+        :return:    None
         """
+
+        ##################  START OF ROUTING DEFINITIONS  ##################
         
         #---------------------------------------------#
         #              SCHEMA-related (reading)       #
         #---------------------------------------------#
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
-        @self.BA_api_flask_blueprint.route('/get_properties/<schema_id>')
+        @bp.route('/get_properties/<schema_id>')
         def get_properties(schema_id):
             """
             Get all Properties by the schema_id of a Class node,
@@ -183,7 +217,7 @@ class ApiRouting:
 
 
 
-        @self.BA_api_flask_blueprint.route('/get_links/<schema_id>')
+        @bp.route('/get_links/<schema_id>')
         def get_links(schema_id):
             """
             Get the names of all the relationship attached to the Class specified by its Schema ID
@@ -219,7 +253,7 @@ class ApiRouting:
 
 
         
-        @self.BA_api_flask_blueprint.route('/get_properties_by_class_name', methods=['POST'])
+        @bp.route('/get_properties_by_class_name', methods=['POST'])
         def get_properties_by_class_name():
             """
             Get all Properties of the given Class node (as specified by its name passed as a POST variable),
@@ -247,7 +281,7 @@ class ApiRouting:
         
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
-            self.show_post_data(post_data, "get_properties_by_class_name")
+            cls.show_post_data(post_data, "get_properties_by_class_name")
         
             data_dict = dict(post_data)
             if "class_name" not in data_dict:
@@ -272,7 +306,7 @@ class ApiRouting:
 
 
 
-        @self.BA_api_flask_blueprint.route('/get_class_schema', methods=['POST'])
+        @bp.route('/get_class_schema', methods=['POST'])
         def get_class_schema():
             """
             Get all Schema data - both Properties and Links - of the given Class node
@@ -305,7 +339,7 @@ class ApiRouting:
 
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'Restaurants')])
-            self.show_post_data(post_data, "get_class_schema")
+            cls.show_post_data(post_data, "get_class_schema")
 
             data_dict = dict(post_data)
             if "class_name" not in data_dict:
@@ -332,7 +366,7 @@ class ApiRouting:
 
 
 
-        @self.BA_api_flask_blueprint.route('/get_properties_by_item_id/<item_id>')
+        @bp.route('/get_properties_by_item_id/<item_id>')
         def get_properties_by_item_id(item_id):
             """
             Get all properties by item_id
@@ -356,7 +390,7 @@ class ApiRouting:
         
 
         
-        @self.BA_api_flask_blueprint.route('/get_record_classes')
+        @bp.route('/get_record_classes')
         def get_record_classes() -> str:
             """
             Get all Classes that are, directly or indirectly, INSTANCE_OF the Class "Records",
@@ -387,7 +421,7 @@ class ApiRouting:
         #            SCHEMA-related (creating)        #
         #---------------------------------------------#
 
-        @self.BA_api_flask_blueprint.route('/simple/create_new_record_class', methods=['POST'])
+        @bp.route('/simple/create_new_record_class', methods=['POST'])
         def create_new_record_class():
             """
             TODO: this is a simple, interim version - to later switch to JSON
@@ -401,15 +435,15 @@ class ApiRouting:
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
-            self.show_post_data(post_data, "create_new_record_class")
+            cls.show_post_data(post_data, "create_new_record_class")
 
             try:
-                class_specs = self.extract_post_pars(post_data, required_par_list=["data"])
+                class_specs = cls.extract_post_pars(post_data, required_par_list=["data"])
                 APIRequestHandler.new_record_class(class_specs)
-                return_value = self.SUCCESS_PREFIX               # Success
+                return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"UNABLE TO CREATE NEW CLASS WITH PROPERTIES. {ex}"
-                return_value = self.ERROR_PREFIX + err_status    # Failure
+                return_value = cls.ERROR_PREFIX + err_status    # Failure
 
             print(f"create_new_record_class() is returning: `{return_value}`")
 
@@ -424,7 +458,7 @@ class ApiRouting:
 
         ################   VIEWING CONTENT ITEMS   ################
 
-        @self.BA_api_flask_blueprint.route('/simple/get_media/<item_id>')
+        @bp.route('/simple/get_media/<item_id>')
         def get_media(item_id) -> str:
             """
             Retrieve and return the contents of a text media item (for now, just "notes"),
@@ -439,17 +473,17 @@ class ApiRouting:
             if status is False:
                 err_details = f"Unable to retrieve note id {item_id} : {content}"
                 print(f"get_media() encountered the following error: {err_details}")
-                return_value = self.ERROR_PREFIX + err_details
+                return_value = cls.ERROR_PREFIX + err_details
             else:
-                return_value = self.SUCCESS_PREFIX + content
+                return_value = cls.SUCCESS_PREFIX + content
                 #print(f"get_media() is returning the following text [first 30 chars]: `{return_value[:30]}`")
         
             return return_value
 
 
 
-        @self.BA_api_flask_blueprint.route('/simple/serve_media/<item_id>')
-        @self.BA_api_flask_blueprint.route('/simple/serve_media/<item_id>/<th>')
+        @bp.route('/simple/serve_media/<item_id>')
+        @bp.route('/simple/serve_media/<item_id>/<th>')
         def serve_media(item_id, th=None):
             """
             Retrieve and return the contents of a data media item (for now, just images or documents)
@@ -493,7 +527,7 @@ class ApiRouting:
 
 
 
-        @self.BA_api_flask_blueprint.route('/get_link_summary/<item_id_str>')
+        @bp.route('/get_link_summary/<item_id_str>')
         def get_link_summary_api(item_id_str) -> str:
             """
             Return a JSON structure identifying the names and counts of all
@@ -520,7 +554,7 @@ class ApiRouting:
                                     }
             """
             try:
-                item_id = self.str_to_int(item_id_str)
+                item_id = cls.str_to_int(item_id_str)
                 payload = APIRequestHandler.get_link_summary(item_id, omit_names = ['BA_in_category'])
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
@@ -530,7 +564,7 @@ class ApiRouting:
 
 
 
-        @self.BA_api_flask_blueprint.route('/get_records_by_link', methods=['POST'])
+        @bp.route('/get_records_by_link', methods=['POST'])
         def get_records_by_link_api() -> str:
             """
             Locate and return the data of the nodes linked to the one specified by item_id,
@@ -541,11 +575,11 @@ class ApiRouting:
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
-            self.show_post_data(post_data)
+            cls.show_post_data(post_data)
 
             try:
-                data_dict = self.extract_post_pars(post_data, required_par_list=['item_id', 'rel_name', 'dir'])
-                data_dict["item_id"] = self.str_to_int(data_dict["item_id"])
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['item_id', 'rel_name', 'dir'])
+                data_dict["item_id"] = cls.str_to_int(data_dict["item_id"])
                 payload = APIRequestHandler.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
@@ -558,7 +592,7 @@ class ApiRouting:
 
         ################   MODIFYING EXISTING CONTENT ITEMS   ################
 
-        @self.BA_api_flask_blueprint.route('/simple/update', methods=['POST'])
+        @bp.route('/simple/update', methods=['POST'])
         def update() -> str:
             """
             Update an existing Content Item.
@@ -571,14 +605,14 @@ class ApiRouting:
             """
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('item_id', '11'), ('schema_code', 'r')])
-            self.show_post_data(post_data, "update")
+            cls.show_post_data(post_data, "update")
 
             try:
-                data_dict = self.extract_post_pars(post_data, required_par_list=['item_id'])
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['item_id'])
                 APIRequestHandler.update_content_item(data_dict)
-                return_value = self.SUCCESS_PREFIX              # If no errors
+                return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + str(ex)      # In case of errors
+                return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
         
             print(f"update() is returning: `{return_value}`")
         
@@ -586,7 +620,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/simple/delete/<item_id>/<schema_code>')
+        @bp.route('/simple/delete/<item_id>/<schema_code>')
         def delete(item_id, schema_code) -> str:
             """
             Delete the specified Content Item.
@@ -596,9 +630,9 @@ class ApiRouting:
             err_status = APIRequestHandler.delete_content_item(item_id, schema_code)
         
             if err_status == "":    # If no errors
-                return_value = self.SUCCESS_PREFIX
+                return_value = cls.SUCCESS_PREFIX
             else:                   # If errors
-                return_value = self.ERROR_PREFIX + err_status
+                return_value = cls.ERROR_PREFIX + err_status
         
             print(f"delete() is returning: `{return_value}`")
         
@@ -611,7 +645,7 @@ class ApiRouting:
         #               CATEGORY-RELATED              #
         #---------------------------------------------#
         
-        @self.BA_api_flask_blueprint.route('/simple/add_item_to_category', methods=['POST'])
+        @bp.route('/simple/add_item_to_category', methods=['POST'])
         def add_item_to_category() -> str:
             """
             Create a new Content Item attached to a particular Category
@@ -627,14 +661,14 @@ class ApiRouting:
             # Extract the POST values
             post_data = request.form
             # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('insert_after', '5'), ('text', 'My Header')])
-            self.show_post_data(post_data, "add_item_to_category")
+            cls.show_post_data(post_data, "add_item_to_category")
         
             # Create a new Content Item with the POST data
             try:
                 new_id = APIRequestHandler.new_content_item_in_category(dict(post_data))
-                return_value = self.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
+                return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
+                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"add_item_to_category() is returning: `{return_value}`")
         
@@ -642,7 +676,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/simple/add_subcategory', methods=['POST'])
+        @bp.route('/simple/add_subcategory', methods=['POST'])
         def add_subcategory() -> str:
             """
             Add a new Subcategory to a given Category
@@ -660,9 +694,9 @@ class ApiRouting:
             # Create a new Subcategory to a given Category, using the POST data
             try:
                 new_id = Categories.add_subcategory(dict(post_data))
-                return_value = self.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
+                return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
+                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"add_subcategory() is returning: `{return_value}`")
         
@@ -670,7 +704,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/simple/delete_category/<category_id>')
+        @bp.route('/simple/delete_category/<category_id>')
         def delete_category(category_id) -> str:
             """
             Delete the specified Category, provided that there are no Content Items linked to it
@@ -678,9 +712,9 @@ class ApiRouting:
             """
             try:
                 Categories.delete_category(int(category_id))
-                return_value = self.SUCCESS_PREFIX
+                return_value = cls.SUCCESS_PREFIX
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
+                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"delete_category() is returning: `{return_value}`")
         
@@ -688,7 +722,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/simple/add_subcategory_relationship')
+        @bp.route('/simple/add_subcategory_relationship')
         # TODO: phase out in favor of the more general /simple/add_relationship
         def add_subcategory_relationship() -> str:
             """
@@ -705,9 +739,9 @@ class ApiRouting:
                     raise Exception("Missing value for parameter `cat`")
         
                 Categories.add_subcategory_relationship(subcategory_id=subcategory_id, category_id=category_id)
-                return_value = self.SUCCESS_PREFIX
+                return_value = cls.SUCCESS_PREFIX
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
+                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
         
             print(f"add_subcategory_relationship() is returning: `{return_value}`")
         
@@ -715,7 +749,7 @@ class ApiRouting:
 
 
 
-        @self.BA_api_flask_blueprint.route('/simple/remove_relationship', methods=['POST'])
+        @bp.route('/simple/remove_relationship', methods=['POST'])
         def remove_relationship() -> str:
             """
             Remove the specified relationship (edge)
@@ -730,12 +764,12 @@ class ApiRouting:
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            self.show_post_data(post_data)
+            cls.show_post_data(post_data)
 
             try:
-                data_dict = self.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                from_id = self.str_to_int(data_dict['from'])
-                to_id = self.str_to_int(data_dict['to'])
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                from_id = cls.str_to_int(data_dict['from'])
+                to_id = cls.str_to_int(data_dict['to'])
                 rel_name = data_dict['rel_name']
                 schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
@@ -746,16 +780,16 @@ class ApiRouting:
                 NeoSchema.remove_data_relationship(from_id=from_id, to_id=to_id,
                                                    rel_name=rel_name, labels="BA")
 
-                return_value = self.SUCCESS_PREFIX              # If no errors
+                return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
+                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
 
             print(f"remove_relationship() is returning: `{return_value}`")
 
             return return_value
 
 
-        @self.BA_api_flask_blueprint.route('/simple/add_relationship', methods=['POST'])
+        @bp.route('/simple/add_relationship', methods=['POST'])
         def add_relationship() -> str:
             """
             Add the specified relationship (edge)
@@ -770,12 +804,12 @@ class ApiRouting:
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            self.show_post_data(post_data)
+            cls.show_post_data(post_data)
 
             try:
-                data_dict = self.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                from_id = self.str_to_int(data_dict['from'])
-                to_id = self.str_to_int(data_dict['to'])
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                from_id = cls.str_to_int(data_dict['from'])
+                to_id = cls.str_to_int(data_dict['to'])
                 rel_name = data_dict['rel_name']
                 schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
@@ -786,9 +820,9 @@ class ApiRouting:
                 NeoSchema.add_data_relationship(from_id=from_id, to_id=to_id,
                                                 rel_name=rel_name, labels="BA")
 
-                return_value = self.SUCCESS_PREFIX              # If no errors
+                return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
-                return_value = self.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
+                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
 
             print(f"add_relationship() is returning: `{return_value}`")
 
@@ -798,7 +832,7 @@ class ApiRouting:
 
         #############    POSITIONING WITHIN CATEGORIES    #############
         
-        @self.BA_api_flask_blueprint.route('/simple/swap/<item_id_1>/<item_id_2>/<cat_id>')
+        @bp.route('/simple/swap/<item_id_1>/<item_id_2>/<cat_id>')
         def swap(item_id_1, item_id_2, cat_id) -> str:
             """
             Swap the positions of the specified Content Items within the given Category.
@@ -808,9 +842,9 @@ class ApiRouting:
             err_status:str = Categories.swap_content_items(item_id_1, item_id_2, cat_id)
         
             if err_status == "":    # If no errors
-                return_value = self.SUCCESS_PREFIX
+                return_value = cls.SUCCESS_PREFIX
             else:                   # If errors
-                return_value = self.ERROR_PREFIX + err_status
+                return_value = cls.ERROR_PREFIX + err_status
         
             print(f"swap() is returning: `{return_value}`")
         
@@ -818,7 +852,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/simple/reposition/<category_id>/<item_id>/<move_after_n>')
+        @bp.route('/simple/reposition/<category_id>/<item_id>/<move_after_n>')
         def reposition(category_id, item_id, move_after_n) -> str:
             """
             Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
@@ -828,10 +862,10 @@ class ApiRouting:
             """
             try:
                 Categories.reposition_content(category_id=int(category_id), item_id=int(item_id), move_after_n=int(move_after_n))
-                return_value = self.SUCCESS_PREFIX               # Success
+                return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"UNABLE TO REPOSITION ELEMENT: {ex}"
-                return_value = self.ERROR_PREFIX + err_status    # Failure
+                return_value = cls.ERROR_PREFIX + err_status    # Failure
         
             print(f"reposition() is returning: `{return_value}`")
         
@@ -844,7 +878,7 @@ class ApiRouting:
         #                   FILTERS                   #
         #---------------------------------------------#
         
-        @self.BA_api_flask_blueprint.route('/get-filtered-json', methods=['POST'])
+        @bp.route('/get-filtered-json', methods=['POST'])
         def get_filtered_JSON() -> str:     # *** NOT IN CURRENT USE; see get_filtered() ***
             """
             Note: a form-data version is also available
@@ -879,7 +913,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/get_filtered', methods=['POST'])
+        @bp.route('/get_filtered', methods=['POST'])
         def get_filtered() -> str:
             """
             Note: a JSON version is also available
@@ -897,7 +931,7 @@ class ApiRouting:
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'item_id'), ('key_value', '123')])
-            self.show_post_data(post_data, "get_filtered")
+            cls.show_post_data(post_data, "get_filtered")
         
             try:
                 result = APIRequestHandler.get_nodes_by_filter(dict(post_data))
@@ -916,7 +950,7 @@ class ApiRouting:
         #       IMPORT-EXPORT  (upload/download)      #
         #---------------------------------------------#
         
-        @self.BA_api_flask_blueprint.route('/import_json_file', methods=['GET', 'POST'])
+        @bp.route('/import_json_file', methods=['GET', 'POST'])
         def import_json_file() -> str:
             """
             EXAMPLE invocation: http://localhost:5000/BA/api/import_json_file
@@ -936,7 +970,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/upload_media', methods=['POST'])
+        @bp.route('/upload_media', methods=['POST'])
         def upload_media():
             """
             Upload new media Content, to the (currently hardwired) media folder, and attach it to the Category
@@ -978,8 +1012,8 @@ class ApiRouting:
             # Move the uploaded file from its temp location to the media folder
             # TODO: let upload_helper (optionally) handle it
         
-            src_fullname = self.UPLOAD_FOLDER + tmp_filename_for_upload
-            dest_folder = self.MEDIA_FOLDER
+            src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
+            dest_folder = cls.MEDIA_FOLDER
             dest_fullname = dest_folder + tmp_filename_for_upload
             print(f"Attempting to move `{src_fullname}` to `{dest_fullname}`")
             try:
@@ -1012,7 +1046,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/upload_file', methods=['POST'])
+        @bp.route('/upload_file', methods=['POST'])
         def upload_file():
             """
             Handle the request to upload a file to the temporary directory (defined in main.py).
@@ -1052,7 +1086,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/parse_datafile', methods=['GET', 'POST'])
+        @bp.route('/parse_datafile', methods=['GET', 'POST'])
         def parse_datafile() -> str:
             """
             EXPERIMENTAL!  Upload and parse a datafile.
@@ -1088,7 +1122,7 @@ class ApiRouting:
         
         
         
-        @self.BA_api_flask_blueprint.route('/download_dbase_json/<download_type>')
+        @bp.route('/download_dbase_json/<download_type>')
         def download_dbase_json(download_type="full"):
             """
             Download the full Neo4j database as a JSON file
@@ -1138,7 +1172,7 @@ class ApiRouting:
         #                EXPERIMENTAL                 #
         #---------------------------------------------#
         
-        @self.BA_api_flask_blueprint.route('/add_label/<new_label>')
+        @bp.route('/add_label/<new_label>')
         def add_label(new_label) -> str:
             """
             Add a new blank node with the specified label
@@ -1147,6 +1181,10 @@ class ApiRouting:
             status = APIRequestHandler.add_new_label(new_label)
         
             if status:
-                return self.SUCCESS_PREFIX
+                return cls.SUCCESS_PREFIX
             else:
-                return self.ERROR_PREFIX
+                return cls.ERROR_PREFIX
+
+
+        ##################  END OF ROUTING DEFINITIONS  ##################
+        

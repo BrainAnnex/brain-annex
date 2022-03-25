@@ -73,18 +73,19 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
 #       and specify the URL prefixes to use for the various modules
 
-# NOTE: 2 different approaches are currently in use -
-#       with object instantiation, and without
-#       TODO: make all the same
-Navigation.setup(app)                   # The navbar
+# The navbar
+Navigation.setup(app)
 
+# The BrainAnnex-provided UI
 PagesRouting.site_pages = site_pages
-PagesRouting.setup(app)                 # The BrainAnnex-provided UI
+PagesRouting.setup(app)
 
-# TODO: the next one is the last one yet to convert to the new system
-routing_obj = ApiRouting(MEDIA_FOLDER, UPLOAD_FOLDER)
-app.register_blueprint(routing_obj.BA_api_flask_blueprint, url_prefix = "/BA/api")    # The BrainAnnex-provided endpoint
+# The BrainAnnex-provided endpoint
+ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
+ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
+ApiRouting.setup(app)
 
+# Examples of generic pages and API
 SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
 SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
 
