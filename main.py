@@ -1,13 +1,17 @@
-# MAIN PROGRAM : it starts up a server for web User Interface and an API
-# Run this file, and then set the browser to http://localhost:5000/some_url
-# (the actual port number is configurable; the URL's are specified in the various modules)
-# Note: this main program may also be started from the CLI with the "flask run" command
+"""
+MAIN PROGRAM : it starts up a server for web User Interface and an API
+    Run this file, and then set the browser to http://localhost:5000/some_url
+    (the actual port number is configurable; the URL's are specified in the various modules)
+
+Note: this main program may also be started from the CLI with the "flask run" command
+"""
+
 
 from flask import Flask
 
-# All the sub-modules making up this web app
+# All the sub-modules making up this web app:
 
-# The navigation is shared by Brain Annex and possible other independent sites
+# The navigation is shared by Brain Annex and possibly other independent sites
 # embedded (co-hosted) with it
 from navigation.navigation_routing import Navigation
 from navigation.navigation import get_site_pages
@@ -97,7 +101,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 #app.config['UPLOAD_FOLDER'] = r'D:\tmp'
 #APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 #UPLOAD_FOLDER = os.path.join(APP_ROOT, 'api/static/')
-
 
 
 

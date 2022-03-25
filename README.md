@@ -11,7 +11,7 @@
 * **Vue2.js** has expanded to take on a full role, replacing the old vanilla-JavaScript parts
 
 This major new release is currently in a *late Beta* stage.  
-CURRENT VERSION: **VERSION 5.0-beta11** In-Progress  
+CURRENT VERSION: **VERSION 5.0-beta11**  
 First released to open source on Dec. 12, 2021
 
 **[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
