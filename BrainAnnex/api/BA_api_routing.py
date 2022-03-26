@@ -1,6 +1,6 @@
 """
-API endpoint
-MIT License.  Copyright (c) 2021-2022 Julian A. West
+    API endpoint
+    MIT License.  Copyright (c) 2021-2022 Julian A. West
 """
 
 from flask import Blueprint, jsonify, request, make_response  # The request package makes available a GLOBAL request object

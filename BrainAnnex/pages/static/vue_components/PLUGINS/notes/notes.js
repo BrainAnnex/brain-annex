@@ -115,17 +115,57 @@ Vue.component('vue-plugin-n',
             }, // get_note
 
 
+            reload_mathjax()
+            /*
+                See: https://docs.mathjax.org/en/v1.0/dynamic.html
+                https://docs.mathjax.org/en/v2.7-latest/advanced/dynamic.html
+             */
+            {
+                var script = document.createElement("script");
+                script.type = "text/javascript";
+                script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML";   // use the location of your MathJax
+
+                var config = 'MathJax.Hub.Config({' +
+                             'extensions: ["tex2jax.js"],' +
+                             'jax: ["input/TeX","output/HTML-CSS"]' +
+                           '});' +
+                           'MathJax.Hub.Startup.onload();';
+
+                //if (window.opera) {script.innerHTML = config}
+                           //else {script.text = config}
+                //script.text = config;
+
+                script.defer = true;
+                script.innerHTML = config;
+
+                console.log(`Re-loading the MathJax script for note ${this.item_data.item_id}...`);
+                //document.getElementsByTagName("head")[0].appendChild(script);
+                document.body.append(script);
+
+                //let script = document.createElement('script');
+                //script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML";
+                //script.async = false;
+
+                //document.body.append(script);
+            },
+
+
             finish_get_note(success, server_payload, error_message, index)
             // Callback function to wrap up the action of delete_content_item() upon getting a response from the server
             {
-                //console.log("Finalizing the get_note operation...");
+                console.log("Finalizing the get_note operation...");
                 if (success)  {     // Server reported SUCCESS
                     this.body_of_note = server_payload;
+                    // (Re)load MathJax, if the note contains MathJax code;
+                    // only a weak check is performed for the presence of the substring "\("
+                    if (this.body_of_note.includes("\\("))
+                        this.reload_mathjax();
                 }
                 else  {             // Server reported FAILURE
                     this.body_of_note = "Unable to retrieve note contents. " + error_message;
                 }
                 this.waiting_mode = false;
+
             }, // finish_get_note
 
 
@@ -312,7 +352,7 @@ Vue.component('vue-plugin-n',
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID.
 
                 Exit the editing mode.  Invoked upon a SAVE operation on an existing note.
-                Restore all <input> fields to strings, using the values saved in global arrays
+                Restore all <input> fields to strings, using the values saved in global arrays.
                 Turn the SAVE & CANCEL buttons back into edit links
              */
             {
@@ -360,6 +400,8 @@ Vue.component('vue-plugin-n',
                 this.editing_mode = false;      // Exit the editing mode
                 this.save_waiting_mode = false;
 
+                //this.reload_mathjax();    // NOT WORKING!
+
             },  // finish_save
 
 
@@ -381,6 +423,8 @@ Vue.component('vue-plugin-n',
 
                 // TODO: maybe destroy the CKeditor object, if there are too many on the page
                 // self.destroy_editor();
+
+                //this.reload_mathjax();    // NOT WORKING!
             },
 
             inform_component_root_of_cancel()
