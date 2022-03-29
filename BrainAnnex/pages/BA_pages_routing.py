@@ -223,6 +223,18 @@ class PagesRouting:
 
 
 
+        @bp.route('/data-import')
+        def data_import() -> str:
+            """
+            Generate a general administrative page (currently for import/exports)
+            EXAMPLE invocation: http://localhost:5000/BA/pages/data-import
+            """
+
+            template = "data_import.htm"
+            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
+
+
+
 
         #############################   CATEGORY-RELATED   #############################
 

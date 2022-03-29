@@ -1,0 +1,51 @@
+/* For admin pages and their control panels
+ */
+
+
+h2.page-title {
+    color: #990000;
+    font-size: 40px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid gray;
+}
+
+
+
+/* The next 2 classes are typically meant to be used together
+    EXAMPLE:
+    <div class="content-block">
+        <div class="content-block-title">My title</div>
+    ...
+    </div>
+*/
+
+/* Self-contained section of data */
+div.content-block {
+	margin-left:100px;
+	margin-right:100px;
+	margin-top:10px;
+	margin-bottom:10px;
+	padding:10px;
+	border:1px solid #aaa;
+	-moz-border-radius:10px;
+	-webkit-border-radius:10px;
+	border-radius:10px;
+	background-color:#FAFAFA;
+	padding: 10px;
+	font-family: "Lucida Console", Monaco, monospace;
+	font-size: 12px;
+}
+
+
+/* Title superposed to the top line of the above content-block */
+div.content-block-title {
+	position:absolute;
+	margin:-20px 0 0 15px;
+	background-color:white;
+	padding:0 5px;
+	color:#A77;
+	font-size:14px;
+	font-weight:bold;
+	line-height:18px;
+	overflow:visible;
+}

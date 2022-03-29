@@ -4,7 +4,7 @@
 
 <html lang="en">
 <head>
-    <title>Schema Manager</title>
+    <title>Data Import</title>
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
 
@@ -12,8 +12,6 @@
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
-
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/schema_editor/schema_editor.css">
 
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -34,28 +32,33 @@
 </div>
 
 
-<h2 class="page-title">Schema Manager</h2>
+<h2 class="page-title">Data Import</h2>
 
 
 <br>
 
 <div class="content-block">
-    <div class="content-block-title">New Schema</div>
+    <div class="content-block-title">JSON Import (In-progress!)</div>
 
-    <vue-schema-editor>
-    </vue-schema-editor>
-
+    <form enctype="multipart/form-data" action="/BA/api/parse_datafile" method="POST">
+        <p>JSON data file to parse : <input type="file" name="imported_datafile"></p>
+        <p><input type="submit" value="Import data file"></p>
+        <input type="hidden" name="return_url" value="/BA/pages/admin">
+    </form>
 </div>
 
 
 
-<br><br>
+<br><br><br>
 
 <div class="content-block">
-    <div class="content-block-title">Schema Export</div>
-    <p style="padding:25px">
-        <a href="/BA/api/download_dbase_json/schema">EXPORT the Database Schema as JSON file</a>
-    </p>
+    <div class="content-block-title">Experimental!</div>
+
+    <form enctype="multipart/form-data" action="/BA/api/parse_datafile" method="POST">
+        <p>IMPORT data file to parse : <input type="file" name="imported_datafile"></p>
+        <p><input type="submit" value="Import data file"></p>
+        <input type="hidden" name="return_url" value="/BA/pages/admin">
+    </form>
 </div>
 
 
