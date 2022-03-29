@@ -444,59 +444,6 @@ Vue.component('vue-plugin-n',
 
 
 
-            reload_mathjax_3()
-            // Experimental.  NOT working!
-            {
-                var script = document.createElement('script');
-                script.src = 'src="https://cdn.jsdelivr.net/npm/mathjax@3.1.0/es5/tex-mml-chtml.js"';
-                script.defer = true;
-                document.head.appendChild(script);
-
-                MathJax.typesetPromise().then(() => {
-                  // modify the DOM here
-                  MathJax.typesetPromise();     // DOESN'T WORK ON FIREFOX
-                }).catch((err) => console.log(err.message));
-
-                //Mathjax.typesetPromise();
-            },
-
-            reload_mathjax_1()
-            /*
-                See: https://docs.mathjax.org/en/v1.0/dynamic.html
-                TODO: this is for the ancient version 1 of MathJax!!!
-                https://docs.mathjax.org/en/v2.7-latest/advanced/dynamic.html
-             */
-            {
-                var script = document.createElement("script");
-                script.type = "text/javascript";
-                script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML";   // use the location of your MathJax
-
-                var config = 'MathJax.Hub.Config({' +
-                             'extensions: ["tex2jax.js"],' +
-                             'jax: ["input/TeX","output/HTML-CSS"]' +
-                           '});' +
-                           'MathJax.Hub.Startup.onload();';
-
-                //if (window.opera) {script.innerHTML = config}
-                           //else {script.text = config}
-                //script.text = config;
-
-                script.defer = true;            // Seems to make no difference
-                script.innerHTML = config;      // Seems to make no difference
-
-                console.log(`Re-loading the MathJax script for note ${this.item_data.item_id}...`);
-                //document.getElementsByTagName("head")[0].appendChild(script);
-                //document.head.appendChild(script);
-                document.body.append(script);
-
-                //let script = document.createElement('script');
-                //script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML";
-                //script.async = false;
-
-                //document.body.append(script);
-            },
-
-
             reload_mathjax()
             /*
                 See: https://docs.mathjax.org/en/v2.7-latest/advanced/dynamic.html
@@ -519,14 +466,16 @@ Vue.component('vue-plugin-n',
 
             process_mathjax()
             /*  This is needed after editing a Note, or whenever the component gets reloaded
-                See: https://docs.mathjax.org/en/v2.7-latest/advanced/dynamic.html
+                See: http://docs.mathjax.org/en/v2.7-latest/advanced/typeset.html
              */
             {
                 console.log("Entering process_mathjax()");
 
                 // MathJax.Hub is the parser and typesetter
                 // Because MathJax.Hub is asynchronous, add the request to a queue
-                // The variable MathJax might not even be declared yet, if MathJax hasn't loaded
+
+                // The typeof check is used because the variable MathJax
+                // might not even be declared yet, if the MathJax library hasn't loaded
                 if (typeof MathJax !== 'undefined') {
                     console.log("Adding to MathJax queue");
                     MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
