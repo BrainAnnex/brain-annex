@@ -11,7 +11,7 @@
     <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/admin.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/schema_editor/schema_editor.css">
 
@@ -33,13 +33,15 @@
     {% include "navbar_top.htm" %}
 </div>
 
+<a href='/BA/pages/admin'>Admin</a> > Schema Manager
 
-<h2 class="title">Schema Manager</h2>
+<h2 class="page-title">Schema Manager</h2>
 
 
 <br>
 
 <div class="content-block">
+    <div class="content-block-title">New Schema</div>
 
     <vue-schema-editor>
     </vue-schema-editor>
@@ -47,10 +49,11 @@
 </div>
 
 
+
 <br><br>
 
 <div class="content-block">
-    <p><b>SCHEMA EXPORT</b></p>
+    <div class="content-block-title">Schema Export</div>
     <p style="padding:25px">
         <a href="/BA/api/download_dbase_json/schema">EXPORT the Database Schema as JSON file</a>
     </p>

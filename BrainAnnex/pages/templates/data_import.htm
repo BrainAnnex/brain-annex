@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+{#  Flask-passed parameters:  current_page, site_pages
+ #}
+
+<html lang="en">
+<head>
+    <title>Data Import</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+
+<body>
+
+<div id="vue-root">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
+<a href='/BA/pages/admin'>Admin</a> > Data Import
+
+<h2 class="page-title">Data Import</h2>
+
+
+<br>
+
+<div class="content-block">
+    <div class="content-block-title">JSON Data Import</div>
+
+    <div>
+        <p>
+            JSON data file to parse :
+            <input type="file" @change="upload_file" ref="json_file" name="julian_test">
+        </p>
+        <button @click=submit_file style="margin-bottom:15px">
+            Import JSON data file
+        </button>
+
+        <!-- Status info -->
+        <span v-if="waiting" class="waiting">Performing the upload...</span>
+        <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+
+        <p>
+            [[server_output]]
+        </p>
+    </div>
+</div>
+
+<!-- UNTESTED:  @change="handleFileUpload( $event )"   -->
+
+<br><br><br>
+
+<div class="content-block">
+    <div class="content-block-title">RegEx Data Parse (Experimental!)</div>
+
+    <form enctype="multipart/form-data" action="/BA/api/parse_datafile" method="POST">
+        <p>IMPORT data file to parse : <input type="file" name="imported_datafile"></p>
+        <p><input type="submit" value="Import data file"></p>
+        <input type="hidden" name="return_url" value="/BA/pages/admin">
+    </form>
+</div>
+
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+
+
+<script>
+// Instantiation of the ROOT component must come after the definition of the descendant components
+new Vue({
+    el: '#vue-root',
+
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {
+        file_to_import: null,
+
+        waiting: false,         // Whether any server request is still pending
+        error: false,           // Whether the last server communication resulted in error
+        status_message: "",     // Message for the user about the status of the last operation (NOT used for "waiting" status)
+        server_output: ""
+
+    }, // DATA
+
+
+
+    // ---------------------  HOOKS  ----------------------
+
+    mounted() {
+    },
+
+
+
+    // ----------------------------  METHODS  -----------------------------
+
+    methods:  {
+
+        upload_file()   // UNTESTED: pass argument: event
+        {
+            console.log("In upload_file()");
+
+            var input_element = this.$refs.json_file;
+
+            console.log("input_element :", input_element);
+            console.log("input_element.files[0] : ", input_element.files[0]);
+            console.log("input_element.files[0].name : ", input_element.files[0].name);
+
+            this.file_to_import = this.$refs.json_file.files[0];
+            // UNTESTED:  this.file_to_import = event.target.files[0];
+        },
+
+        submit_file()
+        {
+            var url_server = "/BA/api/import_json_file";
+            var callback_fn = this.finish_upload;
+            var custom_data;            // This will be undefined
+            var success_flag;           // true if communication with the server succeeds, or false otherwise
+            var server_payload = "";    // Only applicable if success_flag is true
+            var error_message = "";     // Only applicable if success_flag is false
+            var fetch_options;
+
+            console.log("In submit_file()");
+
+            this.waiting = true;
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+            this.server_output = "";    // Clear any message from the previous operation
+
+            // Initiate asynchronous contact with the server
+
+            const post_data = new FormData();
+            post_data.append('file', this.file_to_import);  // 'file' is just an identifier to attach to the upload;
+                                                            //      this is the counterpart of name="file" in forms
+
+            //post_data.append('file', this.file_to_import, "julian.json");
+            //post_data.append('extra_field', 'extra_value');   // Similar to passing "hidden" values thru a form, if we needed to
+
+            fetch_options = {
+                method: 'POST',
+                body: post_data
+            };
+            // UNTESTED:  You don't need to wrap the file contents in a FormData object if all you're uploading is the file
+            //            fetch will accept input.files[0] above as its body parameter
+            //            i.e. TODO: try body: this.file_to_import
+
+            //fetch(url_server, fetch_options);
+
+            /*
+            return;
+
+            console.log("post_data : ", post_data);
+
+            var fetch_options = this.prepare_POST_options_upload(post_data);
+            //var fetch_options = this.prepare_POST_options_upload(this.file_to_import);
+            */
+
+            fetch(url_server, fetch_options)
+            .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
+            .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
+                                                            //      TODO: turn into a method that first logs the first part of the response (helpful in case of parsing errors)
+            .then(server_response => {                      // Manage the server response
+                console.log("server_response received by contact_server_JSON(): ");
+                console.log(server_response);
+                // Check if the response indicates failure
+                const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
+                if (error_msg != "")   // If server reported failure
+                    throw new Error(error_msg);   // This will take us to the .catch portion, below
+                else
+                {   // Server reported SUCCESS
+                    server_payload = ServerCommunication.extract_server_data_JSON(server_response);
+                    //console.log("server reported success, and returned the following payload: ", server_payload);
+                    success_flag = true;
+                }
+            })
+            .catch(err => {  // All errors eventually go thru here
+                error_message = ServerCommunication.report_fetch_errors(err);
+                success_flag = false;
+            })
+            .finally(() => {  // Final operation regardless of error or success
+                //console.log("Completed the server call.  Passing control to the callback function");
+                if (callback_fn !== undefined) {
+                    if (custom_data === undefined)
+                        callback_fn(success_flag, server_payload, error_message);
+                    else
+                        callback_fn(success_flag, server_payload, error_message, custom_data);
+                }
+            });  // fetch
+        },
+
+
+        finish_upload(success, server_payload, error_message)
+        {
+            console.log("Finalizing the request to upload a JSON file...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("Server reported success");
+                console.log("server_payload : ", server_payload);
+                this.status_message = `Operation completed`;
+                this.server_output = server_payload;
+            }
+            else  {             // Server reported FAILURE
+                console.log("Server reported failure");
+                console.log("error_message : ", error_message);
+                this.error = true;
+                this.status_message = `FAILED operation: ${error_message}`;
+                this.server_output = "";
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        },
+
+
+        prepare_POST_options_upload(post_body)
+        {
+            const fetch_options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                    //'Content-Type': 'application/octet-stream'
+                    // Note: to be used for uploads
+                },
+                credentials: 'same-origin',
+                body: post_body		// IMPORTANT: as prepare for an upload
+            };
+
+            return fetch_options;
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>

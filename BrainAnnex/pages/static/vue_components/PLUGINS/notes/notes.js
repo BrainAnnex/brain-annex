@@ -57,7 +57,8 @@ Vue.component('vue-plugin-n',
             return {
                 editing_mode: (this.item_data.item_id == -1 ? true : false),    // -1 means "new Item"
 
-                body_of_note: (this.item_data.item_id == -1 ? "NEW NOTE" : this.get_note(this.item_data)),
+                body_of_note: (this.item_data.item_id == -1 ? "NEW NOTE" : "Retrieving note id " + this.item_data.item_id + "..."),
+
                 note_editor: null,          // CKeditor object
                 old_note_value: "",         // The pre-edit value.  TODO: switch to using the "original_data" Object
                 new_note_value: "",         // Value of the tentative edit (subject to successful server update)
@@ -85,15 +86,44 @@ Vue.component('vue-plugin-n',
         }, // data
 
 
+        watch: {
+            body_of_note() {
+                console.log('The data attribute `body_of_note` has changed!');
+                //this.reload_mathjax();
+            }
+       },
+
+
+
+        // ---------------------------  HOOKS  ---------------------------
 
         mounted() {
             /* Note: the "mounted" Vue hook is invoked later in the process of launching this component; waiting this late is
                      needed to make sure that the 'CKeditor_0' DIV element is present in the DOM.
              */
-            //console.log("the Notes component has been mounted");
+            console.log(`the Notes component has been mounted`);
+            //alert("the Notes component has been mounted");
 
             if (this.item_data.item_id == -1)
-                this.create_new_editor("");   // We're dealing with an "ADD" operation; so, we start with an empty Note
+                this.create_new_editor("");     // We're dealing with an "ADD" operation; so, we start with an empty Note
+            else
+                this.get_note(this.item_data);  // Fetch contents of existing Note from the server
+        },
+
+
+        updated() {
+            /* The "updated" Vue hook
+             */
+            console.log("Invoking the `updated` Vue hook");
+            this.reload_mathjax();  // TODO: maybe let process_mathjax() call this, and only if MathJax is undefined
+            this.process_mathjax(); // TODO: maybe only invoke if the note contains math text
+        },
+
+        beforeDestroy()
+        // For debugging purposes, for now...
+        {
+            //alert(`Invoking the 'beforeDestroy' Vue hook`);
+            console.log(`Invoking the 'beforeDestroy' Vue hook`);
         },
 
 
@@ -101,8 +131,9 @@ Vue.component('vue-plugin-n',
         // ---------------------------  METHODS  ---------------------------
         methods: {
 
-            get_note: function (item_data) {
-                //console.log("In get_note. New item to look up : `" + item_data.item_id + "`");
+            get_note(item_data)
+            {
+                console.log("In get_note. Item to look up : `" + item_data.item_id + "`");
 
                 this.waiting_mode = true;
 
@@ -111,21 +142,25 @@ Vue.component('vue-plugin-n',
 
                 ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});
 
-                return "Retrieving note id " + item_data.item_id + "...";
+                console.log("    SENT REQUEST TO SERVER to retrieve note id " + item_data.item_id + "...");
             }, // get_note
-
 
             finish_get_note(success, server_payload, error_message, index)
             // Callback function to wrap up the action of delete_content_item() upon getting a response from the server
             {
-                //console.log("Finalizing the get_note operation...");
+                console.log("Finalizing the get_note operation...");
                 if (success)  {     // Server reported SUCCESS
                     this.body_of_note = server_payload;
+                    // (Re)load MathJax, if the note contains MathJax code;
+                    // only a weak check is performed for the presence of the substring "\("
+                    //if (this.body_of_note.includes("\\("))
+                        //this.reload_mathjax();
                 }
                 else  {             // Server reported FAILURE
                     this.body_of_note = "Unable to retrieve note contents. " + error_message;
                 }
                 this.waiting_mode = false;
+
             }, // finish_get_note
 
 
@@ -312,7 +347,7 @@ Vue.component('vue-plugin-n',
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID.
 
                 Exit the editing mode.  Invoked upon a SAVE operation on an existing note.
-                Restore all <input> fields to strings, using the values saved in global arrays
+                Restore all <input> fields to strings, using the values saved in global arrays.
                 Turn the SAVE & CANCEL buttons back into edit links
              */
             {
@@ -355,10 +390,13 @@ Vue.component('vue-plugin-n',
 
                 // Final wrap-up, regardless of error or success
 
-                this.body_of_note = boxValue;   // Set the DIV data box content (to either the new value or the restored old value)
+                this.body_of_note = boxValue;   // Set the Note content (to either the new value or the restored old value)
 
                 this.editing_mode = false;      // Exit the editing mode
                 this.save_waiting_mode = false;
+
+                //console.log("attempting to reload mathjax just before exiting finish_save()");
+                //this.reload_mathjax();    // NOT WORKING! [Presumably b/c Vue then refreshes the page from the change in this.editing_mode]
 
             },  // finish_save
 
@@ -381,6 +419,8 @@ Vue.component('vue-plugin-n',
 
                 // TODO: maybe destroy the CKeditor object, if there are too many on the page
                 // self.destroy_editor();
+
+                //this.reload_mathjax();    // NOT WORKING! [Presumably b/c Vue then refreshes the page from the change in this.editing_mode]
             },
 
             inform_component_root_of_cancel()
@@ -400,6 +440,48 @@ Vue.component('vue-plugin-n',
                 var editor = this.note_editor;
                 editor.destroy();
                 this.note_editor = null;
+            },
+
+
+
+            reload_mathjax()
+            /*
+                See: https://docs.mathjax.org/en/v2.7-latest/advanced/dynamic.html
+             */
+            {
+                console.log(`Re-loading the MathJax script for note ${this.item_data.item_id}...`);
+
+                var script = document.createElement("script");
+                script.type = "text/javascript";
+                script.src  = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML";
+
+                //script.defer = true;            // Seems to make no difference
+                //script.async = false;
+                //script.innerHTML = config;      // Seems to make no difference
+
+                document.getElementsByTagName("head")[0].appendChild(script);
+                //document.head.appendChild(script);    // Apparent alternative
+                //document.body.append(script);         // Presumed alternative
+            },
+
+            process_mathjax()
+            /*  This is needed after editing a Note, or whenever the component gets reloaded
+                See: http://docs.mathjax.org/en/v2.7-latest/advanced/typeset.html
+             */
+            {
+                console.log("Entering process_mathjax()");
+
+                // MathJax.Hub is the parser and typesetter
+                // Because MathJax.Hub is asynchronous, add the request to a queue
+
+                // The typeof check is used because the variable MathJax
+                // might not even be declared yet, if the MathJax library hasn't loaded
+                if (typeof MathJax !== 'undefined') {
+                    console.log("Adding to MathJax queue");
+                    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+                }
+                else
+                    console.log("No action taken by process_mathjax() because MathJax isn't defined");
             }
 
         } // END methods

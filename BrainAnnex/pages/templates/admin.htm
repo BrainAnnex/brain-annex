@@ -11,7 +11,7 @@
     <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/admin.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 </head>
 
 <body>
@@ -25,41 +25,44 @@
 </div>
 
 
-<h2 class="title">Admin Functions</h2>
+
+<h2 class="page-title">Admin Functions</h2>
 
 
 <br><br>
 <div class="content-block">
+    <div class="content-block-title">Database Dumps</div>
+
     <p style="padding:25px">
-    <a href="/BA/api/download_dbase_json/full">EXPORT Full Database as JSON file</a>
+        <a href="/BA/api/download_dbase_json/full">EXPORT Full Database as JSON file</a>
     </p>
 </div>
 
 
-<br><br><br>
-<div class="content-block">
-<form enctype="multipart/form-data" action="/BA/api/import_json_file" method="POST">
-    <p>IMPORT from JSON <span style="color:gray">(containing Neo4j export format)</span> : <input type="file" name="imported_json"></p>
-    <p><input type="submit" value="Import JSON"></p>
-    <input type="hidden" name="return_url" value="/BA/pages/admin">
-</form>
-</div>
-
 
 <br><br><br>
 <div class="content-block">
-<form enctype="multipart/form-data" action="/BA/api/parse_datafile" method="POST">
-    <p><b>EXPERIMENTAL!</b></p>
-    <p>IMPORT data file to parse : <input type="file" name="imported_datafile"></p>
-    <p><input type="submit" value="Import data file"></p>
-    <input type="hidden" name="return_url" value="/BA/pages/admin">
-</form>
+    <div class="content-block-title">Database Loads</div>
+
+    <form enctype="multipart/form-data" action="/BA/api/import_json_dump" method="POST">
+        <p>IMPORT from JSON <span style="color:gray">(containing Neo4j export format)</span> : <input type="file" name="imported_json"></p>
+        <p><input type="submit" value="Import JSON"></p>
+        <input type="hidden" name="return_url" value="/BA/pages/admin">
+    </form>
 </div>
+
 
 
 <br><br><br>
 <div class="content-block">
     <p><a href="/BA/pages/schema-manager">SCHEMA MANAGER</a></p>
+</div>
+
+
+
+<br><br><br>
+<div class="content-block">
+    <p><a href="/BA/pages/data-import">DATA IMPORT</a></p>
 </div>
 
 

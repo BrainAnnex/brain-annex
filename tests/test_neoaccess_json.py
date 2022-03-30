@@ -322,7 +322,7 @@ def test_import_json(db):
     json_data = db.import_json(j_str, "Val")
     print(json_data)
 
-    assert type(json_data) == dict, "The JSON string does not represent the expected dictionary"
+    assert type(json_data) == dict, "The JSON string didn't convert into the expected dictionary"
     assert len(json_data) == 6
     assert json_data["name"] == "Joe"
     assert json_data["employees"] == ["John", "Anna"]
