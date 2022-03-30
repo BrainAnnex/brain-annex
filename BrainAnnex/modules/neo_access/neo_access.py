@@ -1966,6 +1966,7 @@ class NeoAccess:
 
     def import_json(self, json_str: str, labels="test"):   # EXPERIMENTAL
         """
+        Import into the database data specified by a JSON string
 
         :param json_str:    A JSON string
         :param labels:      To be used on the top-level nodes

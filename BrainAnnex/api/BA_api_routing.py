@@ -958,17 +958,22 @@ class ApiRouting:
             # Extract the POST values
             #post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
             #cls.show_post_data(post_data, "import_json_file")
-
             #data_dict = dict(post_data)
             #print(data_dict)
 
             print("\nIn import_json_file().  request.files: ", request.files)
+            # EXAMPLE: request.files:  ImmutableMultiDict([('file', <FileStorage: 'julian_test.json' ('application/json')>)])
 
-            APIRequestHandler.upload_import_json_file()
+            try:
+                result = APIRequestHandler.upload_import_json_file()
+                response = {"status": "ok", "payload": result}              # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
 
-            response = {"status": "ok", "payload": {"a": 123}}
+            print(f"import_json_file() is returning: `{response}`")
 
             return jsonify(response)   # This function also takes care of the Content-Type header
+
 
 
 

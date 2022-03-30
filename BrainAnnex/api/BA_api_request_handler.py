@@ -9,6 +9,7 @@ from PIL import Image
 import unicodedata
 import sys                  # Used to give better feedback on Exceptions
 import html
+import json
 
 """
     MIT License.  Copyright (c) 2021-2022 Julian A. West
@@ -979,13 +980,42 @@ class APIRequestHandler:
     ############################################################
 
     @classmethod
-    def upload_import_json_file(cls):   # IN-PROGRESS
+    def upload_import_json_file(cls, verbose=True) -> str:   # IN-PROGRESS
+        """
+
+        :return:    Status string, if successful.  In case of error, an Exception is raised
+        """
         print("In upload_import_json_file()")
-        try:
-            (basename, full_filename) = cls.upload_helper(request, html_name="file", verbose=True)
-            # basename and full name of the temporary file created during the upload
-        except Exception as ex:
-            print(f"ERROR in upload: {ex}")
+
+        # 'file' is just an identifier attached to the upload by the frontend
+        (basename, full_filename) = cls.upload_helper(request, html_name="file", verbose=False)
+        # basename and full name of the temporary file created during the upload
+
+
+        # Read in the contents of the uploaded file
+        with open(full_filename, 'r') as fh:
+            file_contents = fh.read()
+            if verbose:
+                print(f"Contents of uploaded file:\n{file_contents}")
+
+        file_size = len(file_contents)
+
+
+        # Now delete the temporary file created during the upload.
+        # TODO: maybe the API could offer the option to save the file as a Document
+        cls.delete_file(full_filename)
+
+
+        # Parse the JSON data
+        python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
+        print("Python version of the JSON file:\n", python_data)
+
+
+        # Import the JSON data into the database
+        #details = cls.db.import_json(file_contents, "IMPORT_ROOT")
+
+        return f"Upload successful. {file_size} characters were read in"
+
 
 
 
@@ -1017,7 +1047,6 @@ class APIRequestHandler:
             return f"File I/O failed. {return_link}"
 
         try:
-            #neo = neo_access.NeoAccess()
             details = cls.db.import_json_data(file_contents)
         except Exception as ex:
             return f"Import of JSON data failed: {ex}. {return_link}"

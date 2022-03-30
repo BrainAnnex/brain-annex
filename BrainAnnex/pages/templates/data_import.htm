@@ -39,7 +39,7 @@
 <br>
 
 <div class="content-block">
-    <div class="content-block-title">JSON Import (In-progress!)</div>
+    <div class="content-block-title">JSON Data Import</div>
 
     <div>
         <p>
@@ -49,6 +49,14 @@
         <button @click=submit_file style="margin-bottom:15px">
             Import JSON data file
         </button>
+
+        <!-- Status info -->
+        <span v-if="waiting" class="waiting">Performing the upload...</span>
+        <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+
+        <p>
+            [[server_output]]
+        </p>
     </div>
 </div>
 
@@ -57,7 +65,7 @@
 <br><br><br>
 
 <div class="content-block">
-    <div class="content-block-title">Experimental!</div>
+    <div class="content-block-title">RegEx Data Parse (Experimental!)</div>
 
     <form enctype="multipart/form-data" action="/BA/api/parse_datafile" method="POST">
         <p>IMPORT data file to parse : <input type="file" name="imported_datafile"></p>
@@ -83,10 +91,13 @@ new Vue({
 
     delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
-    data: {     // GLOBAL DATA for the whole page (Vue root element).
-                // This is the handover of data from Flask to Vue
+    data: {
+        file_to_import: null,
 
-        file_to_import: null
+        waiting: false,         // Whether any server request is still pending
+        error: false,           // Whether the last server communication resulted in error
+        status_message: "",     // Message for the user about the status of the last operation (NOT used for "waiting" status)
+        server_output: ""
 
     }, // DATA
 
@@ -96,18 +107,6 @@ new Vue({
 
     mounted() {
     },
-
-
-
-    // ---------------------  COMPUTED  ----------------------
-
-    computed: {
-
-        computed_var()
-        {
-        }
-
-    }, // COMPUTED
 
 
 
@@ -142,23 +141,30 @@ new Vue({
             console.log("In submit_file()");
 
             const post_data = new FormData();
-            //post_data.append('file', this.file_to_import, "julian.json");
-            post_data.append('file', this.file_to_import);
-            post_data.append('user', 'hubot');
+            post_data.append('file', this.file_to_import);  // 'file' is just an identifier to attach to the upload;
+                                                            //      this is the counterpart of name="file" in forms
 
-            fetch(url_server, {
+            //post_data.append('file', this.file_to_import, "julian.json");
+            //post_data.append('extra_field', 'extra_value');   // Similar to passing "hidden" values thru a form, if we needed to
+
+            fetch_options = {
                 method: 'POST',
                 body: post_data
-            })
+            };
+            // UNTESTED:  You don't need to wrap the file contents in a FormData object if all you're uploading is the file
+            //            fetch will accept input.files[0] above as its body parameter
+            //            i.e. TODO: try body: this.file_to_import
 
+            //fetch(url_server, fetch_options);
+
+            /*
             return;
+
             console.log("post_data : ", post_data);
 
             var fetch_options = this.prepare_POST_options_upload(post_data);
             //var fetch_options = this.prepare_POST_options_upload(this.file_to_import);
-
-            console.log("url_server : ", url_server);
-            console.log("fetch_options : ", fetch_options);
+            */
 
             fetch(url_server, fetch_options)
             .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
@@ -200,11 +206,19 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 console.log("Server reported success");
                 console.log("server_payload : ", server_payload);
+                this.status_message = `Operation completed`;
+                this.server_output = server_payload;
             }
             else  {             // Server reported FAILURE
                 console.log("Server reported failure");
                 console.log("error_message : ", error_message);
+                this.error = true;
+                this.status_message = `FAILED operation: ${error_message}`;
+                this.server_output = "";
             }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
         },
 
 
