@@ -1012,7 +1012,8 @@ class APIRequestHandler:
 
 
         # Import the JSON data into the database
-        #details = cls.db.import_json(file_contents, "IMPORT_ROOT")
+        details = cls.db.import_json(file_contents, "Import_Root")
+
 
         return f"Upload successful. {file_size} characters were read in"
 

@@ -17,8 +17,8 @@ def get_site_pages() -> dict:
         
         "/BA/pages/viewer" : "Category Viewer",      
         "/BA/pages/filter" : "Search",
-        "/BA/pages/experimental" : "Experimental",
         "/BA/pages/admin" : "Admin",
+        "/BA/pages/experimental" : "Experimental",
         "/sample/pages/sample-page" : "Other site"      # Example page from a co-hosted site
     }
 

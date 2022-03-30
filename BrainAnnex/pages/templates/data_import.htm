@@ -140,6 +140,13 @@ new Vue({
 
             console.log("In submit_file()");
 
+            this.waiting = true;
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+            this.server_output = "";    // Clear any message from the previous operation
+
+            // Initiate asynchronous contact with the server
+
             const post_data = new FormData();
             post_data.append('file', this.file_to_import);  // 'file' is just an identifier to attach to the upload;
                                                             //      this is the counterpart of name="file" in forms
