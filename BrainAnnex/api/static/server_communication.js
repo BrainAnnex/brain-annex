@@ -246,21 +246,26 @@ class ServerCommunication
 
 
     static prepare_POST_options(post_body)
-    /*  Prepare and return an object to be used as a 2nd ARGUMENT TO A fetch() call, in case there's a POST method involved.
+    /*  Prepare and return an object to be used as a 2nd ARGUMENT TO A fetch() call;
+        to be used in cases when there's a POST method involved.
         The requested Content-Type will be 'application/x-www-form-urlencoded'.
+
+        post_body:  The string exactly as will be passed to the POST call
+
         EXAMPLES:
                     post_body = "x=11&y=22";
                     post_body = "id=" + note_id + "&body=" + encodeURIComponent(note_body);
 
         IMPORTANT: values defined inside the post_body string must be generated with encodeURIComponent(), as needed.
-                   (an alternative would be to use Jason or XML Content-Type, and skip encodeURIComponent)
+                   (an alternative would be to use Jason or XML Content-Type, and skip using encodeURIComponent)
      */
     {
         const fetch_options = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
-                // Note: I'm using form-urlencoded.  Alternatively, I could encode the data with Jason or XML, and skip encodeURIComponent()
+                // Note: I'm using form-urlencoded.
+                //       Alternatively, I could encode the data with Jason or XML, and skip encodeURIComponent()
             },
             credentials: 'same-origin',
             body: post_body		// IMPORTANT: the body of the POST data type must match the 'Content-Type' header
@@ -271,7 +276,8 @@ class ServerCommunication
 
 
     static parse_POST_object(post_obj)
-    /*  Turn an object literal into a string, suitable for situations when 'Content-Type': 'application/x-www-form-urlencoded'
+    /*  Turn an object literal into a string, after transforming attribute values with encodeURIComponent();
+        suitable for situations when we use 'Content-Type': 'application/x-www-form-urlencoded'
 
         Any non-blank string gets passed thru encodeURIComponent.
         [NO! NO LONGER DONE: Any blank strings in the values gets dropped]
@@ -327,7 +333,12 @@ class ServerCommunication
      */
     {
         if (resp_obj.ok)  {
-            //console.log(`Received response object from server: `, resp_obj);
+            // FOR DEBUGGING:
+            console.log(`Received response object from server: `, resp_obj);
+            console.log('    Content-Type: ', resp_obj.headers.get('Content-Type'));
+            console.log('    Date: ', resp_obj.headers.get('Date'));
+            // END OF DEBUGGING
+
             return resp_obj;	// Just pass thru the response object
         }
 

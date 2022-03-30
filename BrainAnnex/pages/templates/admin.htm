@@ -32,8 +32,9 @@
 <br><br>
 <div class="content-block">
     <div class="content-block-title">Database Dumps</div>
+
     <p style="padding:25px">
-    <a href="/BA/api/download_dbase_json/full">EXPORT Full Database as JSON file</a>
+        <a href="/BA/api/download_dbase_json/full">EXPORT Full Database as JSON file</a>
     </p>
 </div>
 
@@ -42,7 +43,8 @@
 <br><br><br>
 <div class="content-block">
     <div class="content-block-title">Database Loads</div>
-    <form enctype="multipart/form-data" action="/BA/api/import_json_file" method="POST">
+
+    <form enctype="multipart/form-data" action="/BA/api/import_json_dump" method="POST">
         <p>IMPORT from JSON <span style="color:gray">(containing Neo4j export format)</span> : <input type="file" name="imported_json"></p>
         <p><input type="submit" value="Import JSON"></p>
         <input type="hidden" name="return_url" value="/BA/pages/admin">

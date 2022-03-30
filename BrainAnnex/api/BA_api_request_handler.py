@@ -1,4 +1,3 @@
-from BrainAnnex.modules.neo_access import neo_access
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 import re               # For REGEX
@@ -978,6 +977,17 @@ class APIRequestHandler:
     ############################################################
     #                       IMPORT-EXPORT                      #
     ############################################################
+
+    @classmethod
+    def upload_import_json_file(cls):   # IN-PROGRESS
+        print("In upload_import_json_file()")
+        try:
+            (basename, full_filename) = cls.upload_helper(request, html_name="file", verbose=True)
+            # basename and full name of the temporary file created during the upload
+        except Exception as ex:
+            print(f"ERROR in upload: {ex}")
+
+
 
     @classmethod
     def upload_import_json(cls, verbose=False, return_url=None) -> str:

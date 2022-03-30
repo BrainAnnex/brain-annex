@@ -949,13 +949,36 @@ class ApiRouting:
         #---------------------------------------------#
         #       IMPORT-EXPORT  (upload/download)      #
         #---------------------------------------------#
-        
-        @bp.route('/import_json_file', methods=['GET', 'POST'])
+
+        @bp.route('/import_json_file', methods=['POST'])
         def import_json_file() -> str:
             """
-            EXAMPLE invocation: http://localhost:5000/BA/api/import_json_file
+            Invoke with the URL: http://localhost:5000/BA/api/import_json_file
+            """
+            # Extract the POST values
+            #post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
+            #cls.show_post_data(post_data, "import_json_file")
+
+            #data_dict = dict(post_data)
+            #print(data_dict)
+
+            print("\nIn import_json_file().  request.files: ", request.files)
+
+            APIRequestHandler.upload_import_json_file()
+
+            response = {"status": "ok", "payload": {"a": 123}}
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/import_json_dump', methods=['GET', 'POST'])
+        def import_json_dump() -> str:
+            """
+            EXAMPLE invocation: http://localhost:5000/BA/api/import_json_dump
         
-            Upload a file.  NOTE: the uploaded file remains in the temporary folder; it will need to be moved or deleted.j
+            Upload a file that contains a Full Database Dump, as created by BrainAnnex.
+            NOTE: the uploaded file remains in the temporary folder; it will need to be moved or deleted.j
             """
         
             if request.method != 'POST':
