@@ -11,7 +11,7 @@ from PIL import Image
 
 class UploadHelper:
     """
-    Helper class to manage file uploads with Flask 1.1
+    Helper class to manage file uploads with Flask 1.1 (using Werkzeug 2.1)
     """
     @classmethod
     def get_form_data(cls, request_obj, flat=True) -> dict:
@@ -23,6 +23,8 @@ class UploadHelper:
         or its counterpart in JS submissions, such as
                                             const post_data = new FormData();
                                             post_data.append('categoryID', "123");
+
+        TODO: maybe merge with ApiRouting.extract_post_pars()
 
         :param request_obj: A flask.request object
         :param flat:        A flag only relevant when there are non-unique keys;

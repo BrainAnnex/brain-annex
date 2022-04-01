@@ -11,7 +11,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import sys                  # Used to give better feedback on Exceptions
 import shutil
-#from time import sleep      # Used for tests of delays in asynchronous fetching
+#from time import sleep     # Used for tests of delays in asynchronous fetching
 
 
 
@@ -119,6 +119,8 @@ class ApiRouting:
 
         TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
               Example - int_pars = ['item_id']
+
+        TODO: maybe merge with UploadHelper.get_form_data()
 
         :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
                                     that can contain multiple values for the same key.

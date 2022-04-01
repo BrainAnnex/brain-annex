@@ -827,9 +827,9 @@ class APIRequestHandler:
         python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
         print("Python version of the JSON file:\n", python_data)
 
-        
+        # TODO: temporarily disabled
         # Import the JSON data into the database
-        details = cls.db.import_json(file_contents, "Import_Root")
+        #details = cls.db.import_json(file_contents, "Import_Root")
 
 
         return f"Upload successful. {file_size} characters were read in"

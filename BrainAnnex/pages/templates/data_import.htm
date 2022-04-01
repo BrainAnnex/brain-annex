@@ -44,7 +44,7 @@
     <div>
         <p>
             JSON data file to parse :
-            <input type="file" @change="upload_file" ref="json_file" name="julian_test">
+            <input type="file" @change="upload_file" ref="json_file">
         </p>
         <button @click=submit_file style="margin-bottom:15px">
             Import JSON data file
@@ -131,12 +131,6 @@ new Vue({
         submit_file()
         {
             var url_server = "/BA/api/import_json_file";
-            var callback_fn = this.finish_upload;
-            var custom_data;            // This will be undefined
-            var success_flag;           // true if communication with the server succeeds, or false otherwise
-            var server_payload = "";    // Only applicable if success_flag is true
-            var error_message = "";     // Only applicable if success_flag is false
-            var fetch_options;
 
             console.log("In submit_file()");
 
@@ -146,60 +140,11 @@ new Vue({
             this.server_output = "";    // Clear any message from the previous operation
 
             // Initiate asynchronous contact with the server
-
-            const post_data = new FormData();
-            post_data.append('file', this.file_to_import);  // 'file' is just an identifier to attach to the upload;
-                                                            //      this is the counterpart of <input name="file"> in forms
-
-            //post_data.append('file', this.file_to_import, "julian.json");
-            post_data.append('import_root_label', 'Import_Root');   // Similar to passing input values thru a form
-
-            fetch_options = {
-                method: 'POST',
-                body: post_data
-            };
-
-            console.log("fetch_options : ", fetch_options);
-
-
-            /*
-            //console.log("post_data : ", post_data);
-
-            //var fetch_options = this.prepare_POST_options_upload(post_data);
-            //var fetch_options = this.prepare_POST_options_upload(this.file_to_import);
-            */
-
-            fetch(url_server, fetch_options)
-            .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
-            .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
-                                                            //      TODO: turn into a method that first logs the first part of the response (helpful in case of parsing errors)
-            .then(server_response => {                      // Manage the server response
-                console.log("server_response received by contact_server_JSON(): ");
-                console.log(server_response);
-                // Check if the response indicates failure
-                const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
-                if (error_msg != "")   // If server reported failure
-                    throw new Error(error_msg);   // This will take us to the .catch portion, below
-                else
-                {   // Server reported SUCCESS
-                    server_payload = ServerCommunication.extract_server_data_JSON(server_response);
-                    //console.log("server reported success, and returned the following payload: ", server_payload);
-                    success_flag = true;
-                }
-            })
-            .catch(err => {  // All errors eventually go thru here
-                error_message = ServerCommunication.report_fetch_errors(err);
-                success_flag = false;
-            })
-            .finally(() => {  // Final operation regardless of error or success
-                //console.log("Completed the server call.  Passing control to the callback function");
-                if (callback_fn !== undefined) {
-                    if (custom_data === undefined)
-                        callback_fn(success_flag, server_payload, error_message);
-                    else
-                        callback_fn(success_flag, server_payload, error_message, custom_data);
-                }
-            });  // fetch
+             ServerCommunication.contact_server_UPLOAD(url_server,
+                                                      {file_to_import: this.file_to_import,
+                                                       post_obj: {import_root_label: 'Import_Root'},
+                                                       callback_fn: this.finish_upload}
+                                                     );
         },
 
 
