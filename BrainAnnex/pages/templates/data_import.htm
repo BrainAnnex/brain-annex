@@ -149,27 +149,23 @@ new Vue({
 
             const post_data = new FormData();
             post_data.append('file', this.file_to_import);  // 'file' is just an identifier to attach to the upload;
-                                                            //      this is the counterpart of name="file" in forms
+                                                            //      this is the counterpart of <input name="file"> in forms
 
             //post_data.append('file', this.file_to_import, "julian.json");
-            //post_data.append('extra_field', 'extra_value');   // Similar to passing "hidden" values thru a form, if we needed to
+            post_data.append('import_root_label', 'Import_Root');   // Similar to passing input values thru a form
 
             fetch_options = {
                 method: 'POST',
                 body: post_data
             };
-            // UNTESTED:  You don't need to wrap the file contents in a FormData object if all you're uploading is the file
-            //            fetch will accept input.files[0] above as its body parameter
-            //            i.e. TODO: try body: this.file_to_import
 
-            //fetch(url_server, fetch_options);
+            console.log("fetch_options : ", fetch_options);
+
 
             /*
-            return;
+            //console.log("post_data : ", post_data);
 
-            console.log("post_data : ", post_data);
-
-            var fetch_options = this.prepare_POST_options_upload(post_data);
+            //var fetch_options = this.prepare_POST_options_upload(post_data);
             //var fetch_options = this.prepare_POST_options_upload(this.file_to_import);
             */
 

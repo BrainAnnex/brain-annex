@@ -3,14 +3,15 @@
     MIT License.  Copyright (c) 2021-2022 Julian A. West
 """
 
-from flask import Blueprint, jsonify, request, make_response  # The request package makes available a GLOBAL request object
+from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer     # TODO: to phase out
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import sys                  # Used to give better feedback on Exceptions
 import shutil
-from time import sleep      # Used for tests of delays in asynchronous fetching
+#from time import sleep      # Used for tests of delays in asynchronous fetching
 
 
 
@@ -111,18 +112,23 @@ class ApiRouting:
     @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
         """
-        Convert the given POST data (an ImmutableMultiDict) into a dictionary,
+        Convert the given POST data (an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
+        into a dictionary,
         while enforcing the optional given list of parameters that must be present.
         In case of errors (or missing required parameters), an Exception is raised.
 
         TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
               Example - int_pars = ['item_id']
 
-        :param post_data:           EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at')])
+        :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
+                                    that can contain multiple values for the same key.
+                                    EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at')])
+
         :param required_par_list:   A list or tuple.  EXAMPLE: ['item_id', 'rel_name']
         :return:                    A dict of POST data
         """
-        data_dict = dict(post_data)
+        data_dict = post_data.to_dict(flat=True)    # WARNING: if multiple identical keys occur,
+                                                    #          the values associated to the later keys will be discarded
 
         if required_par_list:
             for par in required_par_list:
@@ -1025,10 +1031,9 @@ class ApiRouting:
             print("Uploading content thru upload_media()")
             print("POST variables: ", dict(post_data))
         
-            err_status = ""
-        
             try:
-                (tmp_filename_for_upload, full_filename) = APIRequestHandler.upload_helper(request, html_name="file", verbose=True)
+                upload_dir = current_app.config['UPLOAD_FOLDER']
+                (tmp_filename_for_upload, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1054,7 +1059,7 @@ class ApiRouting:
             category_id = int(post_data["category_id"])
         
             try:
-                properties = APIRequestHandler.process_uploaded_image(tmp_filename_for_upload, dest_fullname)
+                properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=cls.MEDIA_FOLDER)
             except Exception as ex:
                 (exc_type, _, _) = sys.exc_info()
                 err_status = "Unable save, or make a thumb from, the uploaded image. " + str(exc_type) + " : " + str(ex)
@@ -1098,7 +1103,8 @@ class ApiRouting:
             err_status = ""
         
             try:
-                (tmp_filename_for_upload, full_filename) = APIRequestHandler.upload_helper(request, html_name="file", verbose=True)
+                upload_dir = current_app.config['UPLOAD_FOLDER']
+                (tmp_filename_for_upload, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1132,7 +1138,8 @@ class ApiRouting:
                 return "This endpoint requires POST data (you invoked it with a GET method.) No action taken..."   # Handy for testing
         
             try:
-                (tmp_filename_for_upload, full_filename) = APIRequestHandler.upload_helper(request, html_name="imported_datafile", verbose=False)
+                upload_dir = current_app.config['UPLOAD_FOLDER']
+                (tmp_filename_for_upload, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         
