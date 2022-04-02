@@ -44,7 +44,7 @@
     <div>
         <p>
             JSON data file to parse :
-            <input type="file" @change="upload_file" ref="json_file">
+            <input type="file" @change="upload_file">
         </p>
         <button @click=submit_file style="margin-bottom:15px">
             Import JSON data file
@@ -114,18 +114,16 @@ new Vue({
 
     methods:  {
 
-        upload_file()   // UNTESTED: pass argument: event
+        upload_file(event)
         {
             console.log("In upload_file()");
 
-            var input_element = this.$refs.json_file;
+            this.file_to_import = event.target.files[0];
 
-            console.log("input_element :", input_element);
-            console.log("input_element.files[0] : ", input_element.files[0]);
-            console.log("input_element.files[0].name : ", input_element.files[0].name);
-
-            this.file_to_import = this.$refs.json_file.files[0];
-            // UNTESTED:  this.file_to_import = event.target.files[0];
+            console.log("event.target : ", event.target);
+            //console.log("event.target.files : ", event.target.files);
+            console.log("file_to_import : ", this.file_to_import);
+            console.log("file_to_import.name : ", this.file_to_import.name);
         },
 
         submit_file()

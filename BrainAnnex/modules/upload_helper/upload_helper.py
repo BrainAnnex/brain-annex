@@ -166,7 +166,8 @@ class UploadHelper:
     def secure_filename_BA(cls, filename: str) -> str:
         """
         ADAPTED FOR BRAIN ANNEX FROM werkzeug.utils.secure_filename(), version 0.5;
-        blank spaces are no longer transformed to underscores.
+        blank spaces are no longer transformed to underscores,
+        and round parentheses are no longer dropped.
         See: https://flask.palletsprojects.com/en/2.0.x/patterns/fileuploads/
 
         Return a secure version of a filename.
@@ -189,8 +190,9 @@ class UploadHelper:
 
         :param filename:    A string with the filename to secure
         """
-        _filename_ascii_strip_re = re.compile(r"[^A-Za-z0-9_. -]")  # List of allowed characters in the name;
-                                                                    # note that the blank space is included
+        _filename_ascii_strip_re = re.compile(r"[^A-Za-z0-9_. ()-]")  # List of allowed characters in the name;
+                                                                      # note that the blank space and the round parentheses
+                                                                      # are included
         _windows_device_files = (
             "CON",
             "AUX",
