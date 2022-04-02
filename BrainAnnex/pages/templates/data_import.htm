@@ -46,6 +46,10 @@
             JSON data file to parse :
             <input type="file" @change="upload_file">
         </p>
+
+        <input type="text" size="35" v-model="import_label">
+        <span style="color:gray"> label to use on root node(s) of import</span><br><br>
+
         <button @click=submit_file style="margin-bottom:15px">
             Import JSON data file
         </button>
@@ -93,6 +97,7 @@ new Vue({
 
     data: {
         file_to_import: null,
+        import_label: "Import_Root",    // Neo4j label to use on root node(s) of import
 
         waiting: false,         // Whether any server request is still pending
         error: false,           // Whether the last server communication resulted in error
@@ -101,12 +106,6 @@ new Vue({
 
     }, // DATA
 
-
-
-    // ---------------------  HOOKS  ----------------------
-
-    mounted() {
-    },
 
 
 
@@ -140,7 +139,7 @@ new Vue({
             // Initiate asynchronous contact with the server
              ServerCommunication.contact_server_UPLOAD(url_server,
                                                       {file_to_import: this.file_to_import,
-                                                       post_obj: {import_root_label: 'Import_Root'},
+                                                       post_obj: {import_root_label: this.import_label},
                                                        callback_fn: this.finish_upload}
                                                      );
         },

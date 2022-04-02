@@ -807,6 +807,8 @@ class APIRequestHandler:
 
         post_data = UploadHelper.get_form_data(request)
         print("post_data: ", post_data)
+        import_root_label = post_data.get('import_root_label')
+        assert import_root_label, "Missing value for import_root_label"
 
 
         # Read in the contents of the uploaded file
@@ -827,9 +829,9 @@ class APIRequestHandler:
         python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
         print("Python version of the JSON file:\n", python_data)
 
-        # TODO: temporarily disabled
+
         # Import the JSON data into the database
-        #details = cls.db.import_json(file_contents, "Import_Root")
+        details = cls.db.import_json(file_contents, import_root_label)
 
 
         return f"Upload successful. {file_size} characters were read in"
