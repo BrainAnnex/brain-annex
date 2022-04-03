@@ -1030,7 +1030,7 @@ class ApiRouting:
         
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']
-                (tmp_filename_for_upload, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
+                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1101,7 +1101,7 @@ class ApiRouting:
         
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']
-                (tmp_filename_for_upload, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
+                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1136,7 +1136,7 @@ class ApiRouting:
         
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']
-                (tmp_filename_for_upload, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         

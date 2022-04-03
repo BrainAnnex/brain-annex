@@ -83,8 +83,12 @@ class UploadHelper:
                                    if more than one value is present, the first is picked)
         :param verbose:     Flag for debugging
 
-        :return:            The pair (filename, full_filename_including_path) where filename is the basename
-                            EXAMPLE: ("my_file_being_uploaded.txt", "D:/tmp/my_file_being_uploaded.txt")
+        :return:            The triplet (filename, full_filename_including_path, original_filename)
+                            where filename is the basename
+                            filename and original_filename are usually the same, unless there were
+                            funky characters in original_filename
+                            EXAMPLE: ("my_file_being_uploaded.txt", "D:/tmp/my_file_being_uploaded.txt",
+                                      "my_file_being_uploaded.txt")
 
         """
         if verbose:
@@ -151,14 +155,13 @@ class UploadHelper:
         # Construct, from the name of the file being uploaded, a "safe" name for the temporary file to create as part of the upload
         tmp_filename_for_upload = cls.secure_filename_BA(f.filename)
         print(f"Name given to temporary file to upload to: `{tmp_filename_for_upload}`")
-        # TODO: f.filename should be returned as well (e.g. for use in captions, or to save the original name)
 
         print(f"Attempting to upload to directory `{upload_dir}`")
 
         full_filename = f"{upload_dir}{tmp_filename_for_upload}"    # EXAMPLE: "D:/tmp/my_file_being_uploaded.txt"
         f.save(full_filename)                                       # Create the temporary file, which concludes the upload
 
-        return (tmp_filename_for_upload, full_filename)             # Normal termination
+        return (tmp_filename_for_upload, full_filename, f.filename)    # Normal termination
 
 
 

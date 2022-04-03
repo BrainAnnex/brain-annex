@@ -790,7 +790,7 @@ class APIRequestHandler:
     ############################################################
 
     @classmethod
-    def upload_import_json_file(cls, verbose=True) -> str:   # IN-PROGRESS
+    def upload_import_json_file(cls, verbose=True) -> str:
         """
         Manage the upload and import of a data file in JSON format.
 
@@ -800,7 +800,7 @@ class APIRequestHandler:
 
         upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
         # 'file' is just an identifier attached to the upload by the frontend
-        (basename, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
+        (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
                                                                      key_name=None, verbose=False)
         # basename and full name of the temporary file created during the upload
 
@@ -831,7 +831,7 @@ class APIRequestHandler:
 
 
         # Import the JSON data into the database
-        cls.db.import_json(file_contents, import_root_label)
+        cls.db.import_json(file_contents, import_root_label, provenence=original_name)
 
 
         return f"Upload successful. {file_size} characters were read in"
@@ -854,7 +854,7 @@ class APIRequestHandler:
 
         try:
             upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
-            (basename, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_json", verbose=False)
+            (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_json", verbose=False)
             # basename and full name of the temporary file created during the upload
         except Exception as ex:
             return f"ERROR in upload: {ex} {return_link}"

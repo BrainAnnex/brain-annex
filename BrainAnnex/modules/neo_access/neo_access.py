@@ -10,7 +10,7 @@ from typing import Union
 
 class NeoAccess:
     """
-    VERSION 3.4
+    VERSION 3.4.1
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -1220,7 +1220,7 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def set_fields(self, match: dict, set_dict: dict ) -> int:
+    def set_fields(self, match, set_dict: dict ) -> int:
         """
         EXAMPLE - locate the "car" with vehicle id 123 and set its color to white and price to 7000
             match = find(labels = "car", properties = {"vehicle id": 123})
@@ -1243,7 +1243,7 @@ class NeoAccess:
         if set_dict == {}:
             return 0             # There's nothing to do
 
-        CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
+        match = CypherUtils.validate_and_standardize(match) # Validate, and possibly transform, the match dictionary
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match)
@@ -1964,7 +1964,7 @@ class NeoAccess:
 
 
 
-    def import_json(self, json_str: str, root_labels="import_root_label", parse_only=False):
+    def import_json(self, json_str: str, root_labels="import_root_label", parse_only=False, provenence=None):
         """
         Import into the database, data specified by a JSON string
 
@@ -1993,7 +1993,9 @@ class NeoAccess:
         else:                           # Else, the top-level structure should be a dictionary
             assert type(json_data) == dict, f"The top-level structure is neither a list nor a dictionary; instead, it's {type(json_data)}"
             print("Top-level structure of the JSON data is a dictionary (object)")
-            self.create_nodes_from_json_data(json_data, root_labels)
+            node_id = self.create_nodes_from_json_data(json_data, root_labels)
+            if provenence:
+                self.set_fields(node_id, set_dict={"source": provenence})
 
 
 
@@ -2408,8 +2410,9 @@ class CypherUtils:      # TODO: move to separate file
     @classmethod
     def validate_and_standardize(cls, match) -> dict:
         """
-        TODO: if match is a nonzero integer, take it to be a Neo4j internal ID and return:
-                    return cls.define_match(neo_id=match)
+        If match is a non-negative integer, it's assumed to be a Neo4j ID, and a match is created and returned
+
+        TODO:
               Otherwise, validate it and, if correct, return it
               At that point, calling methods that accept "match" arguments can have a line such as:
                     match = CypherUtils.validate_and_standardize(match)
@@ -2420,7 +2423,11 @@ class CypherUtils:      # TODO: move to separate file
         :param match:   Either a valid Neo4j internal ID or a "match" dictionary (or a list/tuple of those)
         :return:
         """
-        pass
+        if type(match) == int and match >= 0:
+            return cls.define_match(neo_id=match)
+
+        cls.assert_valid_match_structure(match)
+        return match
 
 
 
