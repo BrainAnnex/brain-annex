@@ -961,14 +961,9 @@ class ApiRouting:
         @bp.route('/import_json_file', methods=['POST'])
         def import_json_file() -> str:
             """
+            Upload and import of a data file in JSON format
             Invoke with the URL: http://localhost:5000/BA/api/import_json_file
             """
-            # Extract the POST values
-            #post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
-            #cls.show_post_data(post_data, "import_json_file")
-            #data_dict = dict(post_data)
-            #print(data_dict)
-
             print("\nIn import_json_file().  request.files: ", request.files)
             # EXAMPLE: request.files:  ImmutableMultiDict([('file', <FileStorage: 'julian_test.json' ('application/json')>)])
 

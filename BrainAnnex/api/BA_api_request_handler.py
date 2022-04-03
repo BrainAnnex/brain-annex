@@ -801,7 +801,7 @@ class APIRequestHandler:
         upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
         # 'file' is just an identifier attached to the upload by the frontend
         (basename, full_filename) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
-                                                                     key_name=None, verbose=True)
+                                                                     key_name=None, verbose=False)
         # basename and full name of the temporary file created during the upload
 
 
@@ -826,12 +826,12 @@ class APIRequestHandler:
 
 
         # Parse the JSON data
-        python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
-        print("Python version of the JSON file:\n", python_data)
+        #python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
+        # print("Python version of the JSON file:\n", python_data)
 
 
         # Import the JSON data into the database
-        details = cls.db.import_json(file_contents, import_root_label)
+        cls.db.import_json(file_contents, import_root_label)
 
 
         return f"Upload successful. {file_size} characters were read in"

@@ -1964,68 +1964,137 @@ class NeoAccess:
 
 
 
-    def import_json(self, json_str: str, labels="test"):   # EXPERIMENTAL
+    def import_json(self, json_str: str, root_labels="import_root_label", parse_only=False):
         """
-        Import into the database data specified by a JSON string
+        Import into the database, data specified by a JSON string
 
         :param json_str:    A JSON string
-        :param labels:      To be used on the top-level nodes
-        :return:            Python data (such as a dict or list) that corresponds to the passed JSON string
+        :param root_labels: To be used on the top-level nodes
+        :param parse_only:  If True, the parsed data will NOT be added to the database
+        :return:            None
         """
+        # Try to obtain Python data (such as a dict or list) that corresponds to the passed JSON string
         try:
-            json_data = json.loads(json_str)    # Turn the string (representing a JSON list) into a list
+            json_data = json.loads(json_str)    # Turn the string (representing JSON data) into its Python counterpart;
+                                                # at the top level, it'll be a dict or list
         except Exception as ex:
             raise Exception(f"Incorrectly-formatted JSON string. {ex}")
 
-        if type(json_data) == list:
+        #print("Python version of the JSON file:\n", json_data)
+        print()
+
+        if parse_only:
+            return      # Nothing else to do
+
+        if type(json_data) == list:     # If the top-level structure was a list
             for item in json_data:
-                self.create_nodes_from_json_data(item, labels)
-        else:
-            self.create_nodes_from_json_data(json_data, labels)
+                print("Top-level structure of the JSON data is a list")
+                self.create_nodes_from_json_data(item, root_labels)
+        else:                           # Else, the top-level structure should be a dictionary
+            assert type(json_data) == dict, f"The top-level structure is neither a list nor a dictionary; instead, it's {type(json_data)}"
+            print("Top-level structure of the JSON data is a dictionary (object)")
+            self.create_nodes_from_json_data(json_data, root_labels)
 
-        return json_data
 
 
-    def create_nodes_from_json_data(self, json_data, labels):
+
+    def create_nodes_from_json_data(self, json_data, labels, level=1) -> int:
         """
+        Recursive function to add data from a JSON structure to the database
 
-        :param json_data: Python data (such as a dict or list) created in response to a JSON string
+        :param json_data:   Python data (such as a dict or list) created in response to a JSON string
         :param labels:
-        :return:
+        :param level:       Used for debugging, to make the indentation more readable
+        :return:            Integer with the Neo4j ID of the newly-created node, if applicable, or -1 otherwise
         """
+        indent_spaces = level*4
+        indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
+
+        print(f"{indent_str}{level}. ~~~~~:")
         if type(json_data) == int or type(json_data) == str or type(json_data) == bool:
-            print(f"Turning literal ({json_data}) into dict")
+            original_data = json_data   # Only used for debug-printing, below
             json_data = {"value": json_data}
+            print(f"{indent_str}Turning literal ({original_data}) into dict, using `value` as key, as follows: {json_data}")
+
 
         if type(json_data) == dict:
+            print(f"{indent_str}Input is a dict with {len(json_data)} keys: {list(json_data.keys())}")
             node_properties = {}
-            children = []
+            children_info = []   # A list of pairs (Neo4j ID, relationship name)
+
+            # Loop over all the dictionary entries
             for k, v in json_data.items():
-                print(k , " -> " , v)
+                print(f"{indent_str}*** KEY-> VALUE: {k} -> {v}")
+
                 if type(v) == int or type(v) == str or type(v) == bool:
                     node_properties[k] = v
+                    print(f"{indent_str}Processing a literal of type {type(v)} (`{v}`). Node properties so far: {node_properties}")
+
                 if type(v) == dict:
-                    new_node_id = self.create_nodes_from_json_data(json_data=v, labels=k)
-                    children.append( (new_node_id, k) )
+                    print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
+                    new_node_id = self.create_nodes_from_json_data(json_data=v, labels=k, level=level+1)        # Recursive call
+                    if new_node_id == -1:
+                        raise Exception(f"new_node_id is -1")
+                    children_info.append( (new_node_id, k) )
+
                 if type(v) == list:
+                    print(f"{indent_str}Processing a list (with {len(v)} elements):")
+                    if len(v) == 0:
+                        print(f"{indent_str}The list is empty; so, ignoring it")
+                    # Process each element of the list, in turn
                     for item in v:
-                        new_node_id = self.create_nodes_from_json_data(json_data=item, labels=k)
-                        children.append( (new_node_id, k) )
+                        print(f"{indent_str}Making recursive call to process list element...")
+                        new_node_id = self.create_nodes_from_json_data(json_data=item, labels=k, level=level+1)  # Recursive call
+                        if new_node_id == -1:
+                            raise Exception(f"new_node_id is -1")
+                        children_info.append( (new_node_id, k) )
+            # End of loop over all the dictionary entries
 
-            node_id = self.create_node(labels, node_properties)
-
-            # Add relationships to all children from the recursive call, if any
-            print("\nnode_id: ", node_id)
-            print(f"{len(children)} children: ", children)
-            print()
-            node_match = self.find(neo_id=node_id, dummy_node_name="from")
-            for child_id, rel_name in children:
-                child_match = self.find(neo_id=child_id, dummy_node_name="to")
-                self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
-
-            return node_id
+            return self.create_node_with_children(children_list=children_info, labels=labels, node_properties=node_properties, indent_str=indent_str)
 
 
+        elif type(json_data) == list:
+            print(f"{indent_str}Input is a list with {len(json_data)} items")
+            children_info = []
+            for list_item in json_data:
+                print(f"{indent_str}Making recursive call to process list element...")
+                new_node_id = self.create_nodes_from_json_data(json_data=list_item, labels=labels, level=level+1)        # Recursive call
+                if new_node_id == -1:
+                    raise Exception(f"new_node_id is -1")
+                children_info.append( (new_node_id, labels) )
+            # End of loop over all the list items
+
+            return self.create_node_with_children(children_list=children_info, labels=labels, indent_str=indent_str)
+
+
+        else:
+            raise Exception(f"Unexpected data type: {type(json_data)}")
+
+
+
+    def create_node_with_children(self, children_list, labels, node_properties = None, indent_str=""):
+        """
+        Create a new node, with the optional specified properties, and make it a parent of all the EXISTING nodes
+        specified in the list of children nodes (possibly empty), using the given relationship names
+
+        :param children_list:   A list of pairs of the form (Neo4j ID, relationship name)
+        :param labels:          Labels to assign to the newly-created node
+        :param node_properties: Optional properties to assign to the newly-created node
+        :param indent_str:      An optional string of blank characters, for more readability during debugging
+
+        :return:                An integer with the Neo4j ID of the newly-created node
+        """
+        new_node_id = self.create_node(labels, node_properties)
+        # Add relationships to all children from the recursive call, if any
+        print(f"\n{indent_str}Created a new node with ID: ", new_node_id)
+        print(f"{indent_str}and {len(children_list)} children: ", children_list)
+        print()
+        node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
+        for child_id, rel_name in children_list:
+            child_match = self.find(neo_id=child_id, dummy_node_name="to")
+            self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
+
+        return new_node_id
 
 
 
