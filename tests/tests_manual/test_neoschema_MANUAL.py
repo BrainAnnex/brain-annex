@@ -37,8 +37,8 @@ def test_class_name_exists(db):
 def test_create_class_relationship(db):
     #french_class_id = NeoSchema.create_class("French Vocabulary")
     #foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
-    status = NeoSchema.create_class_relationship(child=93, parent=19, rel_name="INSTANCE_OF")
-    assert status
+    NeoSchema.create_class_relationship(from_id=93, to_id=19, rel_name="INSTANCE_OF")
+
 
 
 def test_get_class_relationships(db):
@@ -105,10 +105,10 @@ def test_data_points_of_class(db):
 
 
 def test_allows_datanodes(db):
-    print(NeoSchema.allows_datanodes("Records"))
-    print(NeoSchema.allows_datanodes("Foreign Vocabulary"))
-    print(NeoSchema.allows_datanodes("German Vocabulary"))
-    print(NeoSchema.allows_datanodes("Quotes"))
+    print(NeoSchema.allows_data_nodes("Records"))
+    print(NeoSchema.allows_data_nodes("Foreign Vocabulary"))
+    print(NeoSchema.allows_data_nodes("German Vocabulary"))
+    print(NeoSchema.allows_data_nodes("Quotes"))
 
 
 

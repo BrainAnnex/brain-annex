@@ -231,8 +231,8 @@ class NeoSchema:
     @classmethod
     def get_all_classes(cls, only_names=True):
         """
-        Fetch and return a list of all existing classes - either just their names (sorted alphabetically),
-        or a fuller listing (TODO: not yet implemented)
+        Fetch and return a list of all existing classes - either just their names (sorted alphabetically)
+        (or a fuller listing - TODO: not yet implemented)
         :return:
         """
         return cls.db.get_single_field("name", labels = cls.class_label, order_by="name")
@@ -240,30 +240,33 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class_relationship(cls, child: int, parent: int, rel_name ="INSTANCE_OF") -> bool:
+    def create_class_relationship(cls, from_id: int, to_id: int, rel_name ="INSTANCE_OF") -> None:
         """
         Create a relationship (provided that it doesn't already exist) with the specified name
-        between the 2 given Class nodes (identified by their schema_id),
-        going in the direction FROM "child" node TO the "parent" one.
-        TODO: add a method that reports on all existing relationships among Classes?
-        TODO: allow to alternatively specify the child and parent by name
+        between the 2 existing Class nodes (identified by their schema_id),
+        going in the from -> to direction direction.
 
-        :param child:       schema_id of the child Class
-        :param parent:      schema_id of the parent Class
-        :param rel_name:    Name of the relationship to create FROM the child TO the parent class
-        :return:            True if a relationship was created, or False if not
+        In case of error, an Exception is raised
+
+        TODO: add a method that reports on all existing relationships among Classes?
+        TODO: allow to alternatively specify the classes by name
+
+        :param from_id:     schema_id of one existing Class node
+        :param to_id:       schema_id of another existing Class node
+        :param rel_name:    Name of the relationship to create, in the from -> to direction (blanks allowed)
+        :return:            None
         """
+        assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
+
         q = f'''
-            MATCH (c:CLASS {{schema_id: $child}}), (p:CLASS {{schema_id: $parent}})
-            MERGE (c)-[:{rel_name}]-(p)
+            MATCH (from:CLASS {{schema_id: $from_id}}), (to:CLASS {{schema_id: $to_id}})
+            MERGE (from)-[:`{rel_name}`]->(to)
             '''
 
-        result = cls.db.update_query(q, {"child": child, "parent": parent})
+        result = cls.db.update_query(q, {"from_id": from_id, "to_id": to_id})
         #print("result of update_query in create_subclass_relationship(): ", result)
-        if result.get("relationships_created") == 1:
-            return True
-        else:
-            return False
+        if result.get("relationships_created") != 1:
+            raise Exception(f"Failed to create new relationship from node with Schema_id {from_id} to node with Schema_id {to_id}")
 
 
 
@@ -352,7 +355,7 @@ class NeoSchema:
 
 
     @classmethod
-    def allows_datanodes(cls, class_name: str) -> bool:
+    def allows_data_nodes(cls, class_name: str) -> bool:
         """
         Determine if the given Class allows data nodes directly linked to it
 
@@ -573,10 +576,16 @@ class NeoSchema:
     def new_class_with_properties(cls, class_name: str, property_list: [str], code=None, schema_type="L",
                                   class_to_link_to=None, link_to_name="INSTANCE_OF") -> int:
         """
-        Create a new Class with the specified name and properties,
-        and return the auto-incremented unique ID ("scheme ID") assigned to the new Class.
+        Create a new Class node, with the specified name, and also create the specified Properties nodes,
+        and link them together with "HAS_PROPERTY" relationships.
+
+        Return the auto-incremented unique ID ("scheme ID") assigned to the new Class.
         Each Property node is also assigned a unique "scheme ID";
         the links are assigned an auto-increment index, representing the default order of the Properties.
+
+        If a class_to_link_to name is specified, link the newly-created Class node to that existing Class node,
+        using an outbound relationship with the specified name.  Typically used to create "INSTANCE_OF"
+        relationships from new Classes.
 
         If a Class with the given name already exists, nothing is done,
         and an Exception is raised.
@@ -588,7 +597,8 @@ class NeoSchema:
         :param code:            Optional string indicative of the software handler for this Class and its subclasses
         :param schema_type      Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
         :param class_to_link_to If this name is specified, and a link_to_name (below) is also specified,
-                                    then create a relationship from the newly-created Class to this existing one
+                                    then create an OUTBOUND relationship from the newly-created Class
+                                    to this existing one
         :param link_to_name     Name to use for the above relationship.  Default is "INSTANCE_OF"
 
         :return:                If successful, the integer "schema_id" assigned to the new Class;
@@ -607,8 +617,10 @@ class NeoSchema:
             # Create a relationship from the newly-created Class to an existing Class whose name is given by class_to_link_to
             parent_id = NeoSchema.get_class_id(class_name = class_to_link_to)
             print(f"parent_id (ID of `{class_to_link_to}` class): ", parent_id)
-            status = NeoSchema.create_class_relationship(child=new_class_id, parent=parent_id, rel_name =link_to_name)
-            assert status, f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class"
+            try:
+                NeoSchema.create_class_relationship(from_id=new_class_id, to_id=parent_id, rel_name =link_to_name)
+            except Exception as ex:
+                raise Exception(f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
         return new_class_id
 
@@ -796,7 +808,7 @@ class NeoSchema:
 
         cypher_props_dict = data_dict
 
-        if not cls.allows_datanodes(class_name):
+        if not cls.allows_data_nodes(class_name):
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
@@ -881,7 +893,7 @@ class NeoSchema:
             if not class_name:
                 raise Exception(f"Unable to locate a Class with schema ID {schema_id}")
 
-        if not cls.allows_datanodes(class_name):
+        if not cls.allows_data_nodes(class_name):
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 

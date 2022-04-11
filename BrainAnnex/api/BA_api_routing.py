@@ -429,33 +429,50 @@ class ApiRouting:
         #            SCHEMA-related (creating)        #
         #---------------------------------------------#
 
-        @bp.route('/simple/create_new_record_class', methods=['POST'])
-        def create_new_record_class():
+        @bp.route('/simple/create_new_schema_class', methods=['POST'])
+        def create_new_schema_class():
             """
-            TODO: this is a simple, interim version - to later switch to JSON
+            Create a new Schema Class, possibly linked to another existing class,
+            and also - typically but optionally - with the special "INSTANCE_OF" link
+            to an existing class (often, "Records")
 
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/create_new_record_class -d "data=Quotes,quote,attribution,notes"
+                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                    "new_class_name=my%20new%20class&properties_list=A,B,C,&instance_of=Records"
 
-            1 POST FIELD:
-                data    The name of the new Class, followed by the name of all desired Properties, in order
-                        (all comma-separated).  Tolerant of leading/trailing blanks, and of missing property names
+                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                    "new_class_name=Greek&properties_list=Greek,&instance_of=Foreign%20Vocabulary"
+
+                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                    "new_class_name=Entrees&properties_list=name,price,&instance_of=Records&linked_to=Restaurants&rel_name=served_at&rel_dir=OUT"
+
+            POST FIELDS:
+                new_class_name      The name of the new Class (tolerant of leading/trailing blanks)
+                properties_list     The name of all desired Properties, in order
+                                    (all comma-separated).  Tolerant of leading/trailing blanks, and of missing property names
+                instance_of         Typically, "Records"
+
+                [ALL THE REMAINING FIELDS ARE OPTIONAL]
+                linked_to           The name of an existing Class node, to link to
+                rel_name            The name to give to the above relationship
+                rel_dir             The relationship direction, from the point of view of the newly-added node
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
-            cls.show_post_data(post_data, "create_new_record_class")
+            cls.show_post_data(post_data, "create_new_schema_class")
 
             try:
-                class_specs = cls.extract_post_pars(post_data, required_par_list=["data"])
-                APIRequestHandler.new_record_class(class_specs)
+                class_specs = cls.extract_post_pars(post_data, required_par_list=["new_class_name"])
+                APIRequestHandler.new_schema_class(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
-                err_status = f"UNABLE TO CREATE NEW CLASS WITH PROPERTIES. {ex}"
+                err_status = f"Unable to create a new Schema Class. {ex}"
                 return_value = cls.ERROR_PREFIX + err_status    # Failure
 
-            print(f"create_new_record_class() is returning: `{return_value}`")
+            print(f"create_new_schema_class() is returning: `{return_value}`")
 
             return return_value
+
 
 
 

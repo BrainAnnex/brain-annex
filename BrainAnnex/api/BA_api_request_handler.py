@@ -78,51 +78,72 @@ class APIRequestHandler:
     #######################     SCHEMA-RELATED  ("Records" related)     #######################
 
     @classmethod
-    def new_record_class(cls, class_specs: dict) -> None:
+    def new_schema_class(cls, class_specs: dict) -> None:
         """
-        Create a new Class that is an instance of the Records Class
+        Create a new Schema Class, possibly linked to another existing class,
+        and also - typically but optionally - with the special "INSTANCE_OF" link
+        to an existing class (often, "Records")
+        In case of error, an Exception is raised.
 
-        :param class_specs: EXAMPLE : {"data": "Favorite Quotes,quote,attribution,notes"}
-                                The first item in the comma-separated list is the Class name;
-                                the remaining items are the desired Properties, in the wanted order.
-                                Blanks before/after any name are ignored.
-                                Empty Properties are ignored.
-                                If the Class name is missing, an Exception is raised.
-        :return:
+        :param class_specs: A dictionary
+                DICTIONARY KEYS:
+                new_class_name      The name of the new Class (tolerant of leading/trailing blanks)
+                properties_list     The name of all desired Properties, in order
+                                    (all comma-separated).  Tolerant of leading/trailing blanks, and of missing property names
+                instance_of         Typically, "Records"
+
+                [ALL THE REMAINING KEYS ARE OPTIONAL]
+                linked_to           The name of an existing Class node, to link to
+                rel_name            The name to give to the above relationship
+                rel_dir             The relationship direction, from the point of view of the newly-added node
+
+        :return:            None
         """
+        new_class_name = class_specs["new_class_name"]
+        new_class_name = new_class_name.strip()
+        print("new_class_name: ", new_class_name)
 
-        if "data" not in class_specs:
-            raise Exception("new_record_class(): Missing 'data' key in argument")
+        properties_str = class_specs.get("properties_list", "") # Make allowance for an absent properties_list
+        property_list = properties_str.split(",")     # Note: if properties_str is an empty string, the result will be ['']
+        print("property_list: ", property_list)
 
-        specs = class_specs["data"]       # EXAMPLE:  "Quotes,quote,attribution,notes"
-
-        if specs.strip() == "":
-            raise Exception("new_record_class(): Empty 'data' value in argument")
-
-        listing = specs.split(",")
-        #print("listing: ", listing)
-
-        class_name = listing[0]
-        property_list = listing[1:]     # Ditch the initial (0-th) element
-
-        class_name = class_name.strip()
-        #print("class_name: ", class_name)
-
+        # Zap missing property names, and clean up the names that are present
         property_list_clean = []
         for p in property_list:
             prop_name = p.strip()
             if prop_name:
                 property_list_clean.append(prop_name)
 
-        #print("property_list_clean: ", property_list_clean)
+        print("property_list_clean: ", property_list_clean)
 
-        parent_id = NeoSchema.get_class_id(class_name = "Records")
-        #print("parent_id (ID of `Records` class): ", parent_id)
+        class_to_link_to = class_specs.get('instance_of')   # Will be None if key is missing
+        print(f"For INSTANCE_OF link, using class_to_link_to: `{class_to_link_to}`")
 
-        new_id = NeoSchema.new_class_with_properties(class_name, property_list_clean)
+        if  ( ("linked_to" in class_specs) or ("rel_name" in class_specs) or ("rel_dir" in class_specs) ) \
+            and not \
+            ( ("linked_to" in class_specs) and ("rel_name" in class_specs) and ("rel_dir" in class_specs) ):
+            raise Exception("The parameters `linked_to`, `rel_name` and `rel_dir` must all be present or all be missing")
 
-        status = NeoSchema.create_class_relationship(child=new_id, parent=parent_id, rel_name ="INSTANCE_OF")
-        assert status, f"Unable to link the newly-created Class ({class_name}) to the `Records` class"
+
+        new_id = NeoSchema.new_class_with_properties(new_class_name, property_list_clean,
+                                                     class_to_link_to=class_to_link_to, link_to_name="INSTANCE_OF")
+
+        linked_to = class_specs["linked_to"]
+        linked_to_id = NeoSchema.get_class_id(class_name = linked_to)
+        print(f"Linking the new class to the existing class `{linked_to}`, which has Schema ID {linked_to_id}")
+        rel_name = class_specs["rel_name"]
+        rel_dir = class_specs["rel_dir"]    # The link direction is relative to the newly-created class node
+        print(f"rel_name: `{rel_name}` | rel_dir: {rel_dir}")
+
+        assert rel_dir == "OUT" or rel_dir == "IN", f"The value for rel_dir must be either 'IN' or 'OUT' (passed value was {rel_dir})"
+
+        try:
+            if rel_dir == "OUT":
+                NeoSchema.create_class_relationship(from_id=new_id, to_id=linked_to_id, rel_name=rel_name)
+            elif rel_dir == "IN":
+                NeoSchema.create_class_relationship(from_id=linked_to_id, to_id=new_id, rel_name=rel_name)
+        except Exception as ex:
+            raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
 
 

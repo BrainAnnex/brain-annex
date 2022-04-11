@@ -411,7 +411,7 @@ class ServerCommunication
             ".catch()" statement in the original fetch() call.
 
         Example of response object:
-            { type: "basic", url: "http://localhost:5000/BA/api/simple/create_new_record_class", redirected: false,
+            { type: "basic", url: "http://localhost:5000/BA/api/simple/create_new_schema_class", redirected: false,
               status: 200, ok: true, statusText: "OK", headers: Headers, body: ReadableStream, bodyUsed: false }
      */
     {

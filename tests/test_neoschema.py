@@ -85,20 +85,30 @@ def test_get_all_classes(db):
 
 
 def test_create_class_relationship(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()        # Completely clear the database
     french_class_id = NeoSchema.create_class("French Vocabulary")
     foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
-    status = NeoSchema.create_class_relationship(child=french_class_id, parent=foreign_class_id, rel_name="INSTANCE_OF")
-    assert status
+    NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
 
     q = f'''
-        MATCH (c :CLASS {{name:"French Vocabulary"}})
+        MATCH (from :CLASS {{name:"French Vocabulary"}})
         -[:INSTANCE_OF]
-        ->(p :CLASS {{schema_id: {foreign_class_id}}}) 
-        RETURN count(c) AS number_found
+        ->(:CLASS {{schema_id: {foreign_class_id}}}) 
+        RETURN count(from) AS number_found
         '''
 
     assert db.query(q, single_cell="number_found") == 1
+
+    # Attempting to create an identical link between the same nodes will result in an Exception
+    with pytest.raises(Exception):
+        assert NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
+
+
+    # Blank or None name will also raise an Exception
+    with pytest.raises(Exception):
+        assert NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="")
+        assert NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name=None)
+
 
 
 #############   PROPERTIES-RELATED   #############
