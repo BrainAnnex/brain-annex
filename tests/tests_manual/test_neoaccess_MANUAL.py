@@ -12,7 +12,7 @@ def db():
 
 
 def test_get_single_record_by_key(db):
-    result = db.get_single_record_by_key("CLASS", primary_key_name = "name", primary_key_value = "Short lives courses")
+    result = db.get_record_by_primary_key("CLASS", primary_key_name ="name", primary_key_value ="Short live courses")
     print(result)
 
 

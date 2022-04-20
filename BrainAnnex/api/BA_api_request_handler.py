@@ -116,34 +116,39 @@ class APIRequestHandler:
 
         print("property_list_clean: ", property_list_clean)
 
-        class_to_link_to = class_specs.get('instance_of')   # Will be None if key is missing
-        print(f"For INSTANCE_OF link, using class_to_link_to: `{class_to_link_to}`")
+        instance_of_class = class_specs.get('instance_of')   # Will be None if key is missing
+        print(f"For 'INSTANCE_OF' relationship, requesting to link to Class: `{instance_of_class}`")
 
+        # Validate the optional relationship to another class
         if  ( ("linked_to" in class_specs) or ("rel_name" in class_specs) or ("rel_dir" in class_specs) ) \
             and not \
             ( ("linked_to" in class_specs) and ("rel_name" in class_specs) and ("rel_dir" in class_specs) ):
             raise Exception("The parameters `linked_to`, `rel_name` and `rel_dir` must all be present or all be missing")
 
 
+        # Create the new Class, and all of its Properties (as separate nodes, linked together)
         new_id = NeoSchema.new_class_with_properties(new_class_name, property_list_clean,
-                                                     class_to_link_to=class_to_link_to, link_to_name="INSTANCE_OF")
+                                                     class_to_link_to=instance_of_class, link_to_name="INSTANCE_OF")
 
-        linked_to = class_specs["linked_to"]
-        linked_to_id = NeoSchema.get_class_id(class_name = linked_to)
-        print(f"Linking the new class to the existing class `{linked_to}`, which has Schema ID {linked_to_id}")
-        rel_name = class_specs["rel_name"]
-        rel_dir = class_specs["rel_dir"]    # The link direction is relative to the newly-created class node
-        print(f"rel_name: `{rel_name}` | rel_dir: {rel_dir}")
 
-        assert rel_dir == "OUT" or rel_dir == "IN", f"The value for rel_dir must be either 'IN' or 'OUT' (passed value was {rel_dir})"
+        # If requested, link to another existing class
+        if ("linked_to" in class_specs) and ("rel_name" in class_specs) and ("rel_dir" in class_specs):
+            linked_to = class_specs["linked_to"]
+            linked_to_id = NeoSchema.get_class_id(class_name = linked_to)
+            print(f"Linking the new class to the existing class `{linked_to}`, which has Schema ID {linked_to_id}")
+            rel_name = class_specs["rel_name"]
+            rel_dir = class_specs["rel_dir"]    # The link direction is relative to the newly-created class node
+            print(f"rel_name: `{rel_name}` | rel_dir: {rel_dir}")
 
-        try:
-            if rel_dir == "OUT":
-                NeoSchema.create_class_relationship(from_id=new_id, to_id=linked_to_id, rel_name=rel_name)
-            elif rel_dir == "IN":
-                NeoSchema.create_class_relationship(from_id=linked_to_id, to_id=new_id, rel_name=rel_name)
-        except Exception as ex:
-            raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
+            assert rel_dir == "OUT" or rel_dir == "IN", f"The value for rel_dir must be either 'IN' or 'OUT' (passed value was {rel_dir})"
+
+            try:
+                if rel_dir == "OUT":
+                    NeoSchema.create_class_relationship(from_id=new_id, to_id=linked_to_id, rel_name=rel_name)
+                elif rel_dir == "IN":
+                    NeoSchema.create_class_relationship(from_id=linked_to_id, to_id=new_id, rel_name=rel_name)
+            except Exception as ex:
+                raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
 
 
@@ -607,7 +612,7 @@ class APIRequestHandler:
         """
         Delete the media file attached to the specified Content Item:
         """
-        record = cls.db.get_single_record_by_key("BA", "item_id", item_id)
+        record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
         if record is None:
             return False
 
@@ -733,7 +738,7 @@ class APIRequestHandler:
         """
         Delete the thumbnail file attached to the specified Content Item
         """
-        record = cls.db.get_single_record_by_key("BA", "item_id", item_id)
+        record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
         if record is None:
             return False
 
@@ -852,7 +857,7 @@ class APIRequestHandler:
 
 
         # Import the JSON data into the database
-        cls.db.import_json(file_contents, import_root_label, provenence=original_name)
+        cls.db.import_json(file_contents, import_root_label, provenance=original_name)
 
 
         return f"Upload successful. {file_size} characters were read in"
@@ -889,7 +894,7 @@ class APIRequestHandler:
             return f"File I/O failed. {return_link}"
 
         try:
-            details = cls.db.import_json_data(file_contents)
+            details = cls.db.import_json_dump(file_contents)
         except Exception as ex:
             return f"Import of JSON data failed: {ex}. {return_link}"
 

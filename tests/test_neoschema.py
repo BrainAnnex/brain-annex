@@ -116,6 +116,17 @@ def test_create_class_relationship(db):
 
 #############   SCHEMA-CODE  RELATED   ###########
 
+def test_get_schema_id(db):
+    db.empty_dbase()    # Completely clear the database
+    schema_id_i = NeoSchema.create_class("My_class", code="i")
+    schema_id_n = NeoSchema.create_class("My_other_class", code="n")
+
+    assert NeoSchema.get_schema_id(schema_code="i") == schema_id_i
+    assert NeoSchema.get_schema_id(schema_code="n") == schema_id_n
+    assert NeoSchema.get_schema_id(schema_code="x") == -1
+
+
+
 #############   DATA POINTS   ###########
 
 #############   EXPORT SCHEMA   ###########

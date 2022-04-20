@@ -10,7 +10,7 @@ from typing import Union
 
 class NeoAccess:
     """
-    VERSION 3.4.1
+    VERSION 3.5
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -53,7 +53,7 @@ class NeoAccess:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021 Julian A. West
+        Copyright (c) 2021-2022 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org).
         See "AUTHORS", above, for full credits.
@@ -474,58 +474,52 @@ class NeoAccess:
 
 
 
-    def get_single_record_by_key(self, labels: str, primary_key_name: str, primary_key_value, return_nodeid=False) -> Union[None, dict]:     # TODO: test
+    def get_record_by_primary_key(self, labels: str, primary_key_name: str, primary_key_value, return_nodeid=False) -> Union[dict, None]:
         """
         Return the first (and it ought to be only one) record with the given primary key, and the optional label(s),
         as a dictionary of all its attributes.
-        If no record is found, return None
+
+        If more than one record is found, an Exception is raised.
+        If no record is found, return None.
 
         :param labels:              A string or list/tuple of strings
         :param primary_key_name:    The name of the primary key by which to look the record up
         :param primary_key_value:   The desired value of the primary key
-        :return:
+        :param return_nodeid:       If True, an extra entry is present in the dictionary, with the key "neo4j_id"
+
+        :return:                    A dictionary, if a unique record was found; or None if not found
         """
         match = self.find(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
-        results = self.fetch_nodes(match=match, return_neo_id=return_nodeid)
+        result = self.fetch_nodes(match=match, return_neo_id=return_nodeid)
 
-        if results == []:
+        if len(result) == 0:
             return None
+        if len(result) > 1:
+            raise Exception(f"get_record_by_primary_key(): multiple records ({len(result)}) share the value (`{primary_key_value}`) in the primary key ({primary_key_name})")
 
-        return results[0]
+        return result[0]
 
 
 
-    def exists_by_key(self, labels: str, key_name: str, key_value) -> bool:     # TODO: test
+    def exists_by_key(self, labels: str, key_name: str, key_value) -> bool:
         """
+        Return True if a node with the given labels and key_name/key_value exists, or False otherwise
 
         :param labels:
         :param key_name:
         :param key_value:
         :return:
         """
-        record = self.get_single_record_by_key(labels, key_name, key_value)
+        record = self.get_record_by_primary_key(labels, key_name, key_value)
+
         if record is None:
             return False
         else:
             return True
 
 
-    def get_neo_id_by_key(self, labels: str, key_name: str, key_value) -> int:     # TODO: test
-        """
 
-        :param labels:
-        :param key_name:
-        :param key_value:
-        :return:
-        """
-        record = self.get_single_record_by_key(labels, key_name, key_value, return_nodeid=True)
-        if record is None:
-            return False
-        else:
-            return record["neo4j_id"]
-
-
-
+    # OBSOLETE
     def get_nodes(self, labels="", properties_condition=None, cypher_clause=None, cypher_dict=None,
                   return_nodeid=False, return_labels=False, order_by=None,
                   single_row=False, single_cell=""):        # TODO: being obsoleted by fetch_nodes()
@@ -613,14 +607,16 @@ class NeoAccess:
                                     Note: lower and uppercase names are treated differently in the sort order
         :param limit:           Optional integer to specify the maximum number of nodes returned
 
-        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one.  TODO: test
+        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one;
+                                    if not found, None will be returned [to distinguish it from a found record with no fields!]
+
         :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
                                 If single_cell is specified, return the value of the field by that name in the first node
                                 Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
                                 TODO: test and give examples.  single_cell="name" will return result[0].get("name")
 
         :return:                If single_cell is specified, return the value of the field by that name in the first node.
-                                If single_row is True, return a dictionaries with the information of the first record.
+                                If single_row is True, return a dictionary with the information of the first record (or None if no record exists)
                                 Otherwise, return a list whose entries are dictionaries with each record's information
                                     (the node's attribute names are the keys)
                                     EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
@@ -668,9 +664,9 @@ class NeoAccess:
         # Deal with empty result lists
         if len(result_list) == 0:   # If no results were produced
             if single_row:
-                return {}           # representing an empty record
+                return None             # representing a record not found (different from a record with no fields, which will be {})
             if single_cell:
-                return None
+                return None             # representing a field not found
             return []
 
         # Note: we already checked that result_list isn't empty
@@ -1964,105 +1960,129 @@ class NeoAccess:
 
 
 
-    def import_json(self, json_str: str, root_labels="import_root_label", parse_only=False, provenence=None):
-        """
-        Import into the database, data specified by a JSON string
 
-        :param json_str:    A JSON string
-        :param root_labels: To be used on the top-level nodes
+    def is_literal(self, value) -> bool:
+        """
+        Return True if the given value represents a literal (in terms of database storage)
+
+        :param value:
+        :return:
+        """
+        if type(value) == int or type(value) == str or type(value) == bool:
+            return True
+        else:
+            return False
+
+
+
+    def import_json(self, json_str: str, root_labels="import_root_label", parse_only=False, provenance=None):
+        """
+        Import the data specified by a JSON string into the database.
+        The top-level JSON structure must be either an object (which will lead to the creation of a tree with a root node),
+        or a list (which will lead to the creation of multiple unconnected trees); if not, an Exception is raised
+
+        :param json_str:    A JSON string representing (at the top level) an object or a list
+        :param root_labels: String to be used as Neo4j labels for the top-level nodes
         :param parse_only:  If True, the parsed data will NOT be added to the database
+        :param provenance:  Optional string to store in a "source" attribute in the top node
+                                (only used if the top-level JSON structure is an object)
         :return:            None
         """
-        # Try to obtain Python data (such as a dict or list) that corresponds to the passed JSON string
+        # Try to obtain Python data (which ought to be a dict or list) that corresponds to the passed JSON string
         try:
             json_data = json.loads(json_str)    # Turn the string (representing JSON data) into its Python counterpart;
-                                                # at the top level, it'll be a dict or list
+                                                # at the top level, it should be a dict or list
         except Exception as ex:
             raise Exception(f"Incorrectly-formatted JSON string. {ex}")
 
         #print("Python version of the JSON file:\n", json_data)
-        print()
 
         if parse_only:
             return      # Nothing else to do
 
-        if type(json_data) == list:     # If the top-level structure was a list
+        if type(json_data) == list:         # If the top-level JSON structure is a list
+            # Create multiple unconnected trees
             for item in json_data:
                 print("Top-level structure of the JSON data is a list")
                 self.create_nodes_from_json_data(item, root_labels)
-        else:                           # Else, the top-level structure should be a dictionary
-            assert type(json_data) == dict, f"The top-level structure is neither a list nor a dictionary; instead, it's {type(json_data)}"
+
+        elif type(json_data) == dict:       # If the top-level JSON structure is dictionary
             print("Top-level structure of the JSON data is a dictionary (object)")
             node_id = self.create_nodes_from_json_data(json_data, root_labels)
-            if provenence:
-                self.set_fields(node_id, set_dict={"source": provenence})
+            if provenance:
+                self.set_fields(node_id, set_dict={"source": provenance})
+
+        else:                               # If the top-level JSON structure is neither a list nor a dictionary
+            raise Exception(f"The top-level structure is neither a list nor a dictionary; instead, it's {type(json_data)}")
 
 
 
-
-    def create_nodes_from_json_data(self, json_data, labels, level=1) -> int:
+    def create_nodes_from_json_data(self, python_data, labels, level=1) -> int:
         """
-        Recursive function to add data from a JSON structure to the database
+        Recursive function to add data from a JSON structure to the database, to create a tree:
+        either a single node, or a root node with children.
+        A "postorder" approach is followed: create subtrees first (with recursive calls), then create root last.
 
-        :param json_data:   Python data (such as a dict or list) created in response to a JSON string
+        If the data is a literal, first turn it into a dictionary using a key named "value".
+
+        Return the Neo4j ID of the root node.
+
+        :param python_data: Python data (such as a dict or list) created in response to a JSON string
         :param labels:
         :param level:       Used for debugging, to make the indentation more readable
-        :return:            Integer with the Neo4j ID of the newly-created node, if applicable, or -1 otherwise
+        :return:            Integer with the Neo4j ID of the newly-created root node
         """
         indent_spaces = level*4
         indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
-
         print(f"{indent_str}{level}. ~~~~~:")
-        if type(json_data) == int or type(json_data) == str or type(json_data) == bool:
-            original_data = json_data   # Only used for debug-printing, below
-            json_data = {"value": json_data}
-            print(f"{indent_str}Turning literal ({original_data}) into dict, using `value` as key, as follows: {json_data}")
 
 
-        if type(json_data) == dict:
-            print(f"{indent_str}Input is a dict with {len(json_data)} keys: {list(json_data.keys())}")
+        # If the data is a literal, first turn it into a dictionary using a key named "value"
+        if self.is_literal(python_data):
+            # The data is a literal
+            original_data = python_data   # Only used for debug-printing, below
+            python_data = {"value": python_data}    # Turn the literal data into a dictionary
+            print(f"{indent_str}Turning literal ({original_data}) into dict, using `value` as key, as follows: {python_data}")
+
+
+        if type(python_data) == dict:
+            print(f"{indent_str}Input is a dict with {len(python_data)} keys: {list(python_data.keys())}")
             node_properties = {}
             children_info = []   # A list of pairs (Neo4j ID, relationship name)
 
             # Loop over all the dictionary entries
-            for k, v in json_data.items():
+            for k, v in python_data.items():
                 print(f"{indent_str}*** KEY-> VALUE: {k} -> {v}")
 
-                if type(v) == int or type(v) == str or type(v) == bool:
+                if self.is_literal(v):
                     node_properties[k] = v
                     print(f"{indent_str}Processing a literal of type {type(v)} (`{v}`). Node properties so far: {node_properties}")
 
-                if type(v) == dict:
+                elif type(v) == dict:
                     print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
-                    new_node_id = self.create_nodes_from_json_data(json_data=v, labels=k, level=level+1)        # Recursive call
-                    if new_node_id == -1:
-                        raise Exception(f"new_node_id is -1")
+                    new_node_id = self.create_nodes_from_json_data(python_data=v, labels=k, level=level + 1)        # Recursive call
                     children_info.append( (new_node_id, k) )
 
-                if type(v) == list:
+                elif type(v) == list:
                     print(f"{indent_str}Processing a list (with {len(v)} elements):")
                     if len(v) == 0:
                         print(f"{indent_str}The list is empty; so, ignoring it")
                     # Process each element of the list, in turn
                     for item in v:
                         print(f"{indent_str}Making recursive call to process list element...")
-                        new_node_id = self.create_nodes_from_json_data(json_data=item, labels=k, level=level+1)  # Recursive call
-                        if new_node_id == -1:
-                            raise Exception(f"new_node_id is -1")
+                        new_node_id = self.create_nodes_from_json_data(python_data=item, labels=k, level=level + 1)  # Recursive call
                         children_info.append( (new_node_id, k) )
             # End of loop over all the dictionary entries
 
             return self.create_node_with_children(children_list=children_info, labels=labels, node_properties=node_properties, indent_str=indent_str)
 
 
-        elif type(json_data) == list:
-            print(f"{indent_str}Input is a list with {len(json_data)} items")
+        elif type(python_data) == list:
+            print(f"{indent_str}Input is a list with {len(python_data)} items")
             children_info = []
-            for list_item in json_data:
+            for list_item in python_data:
                 print(f"{indent_str}Making recursive call to process list element...")
-                new_node_id = self.create_nodes_from_json_data(json_data=list_item, labels=labels, level=level+1)        # Recursive call
-                if new_node_id == -1:
-                    raise Exception(f"new_node_id is -1")
+                new_node_id = self.create_nodes_from_json_data(python_data=list_item, labels=labels, level=level + 1)        # Recursive call
                 children_info.append( (new_node_id, labels) )
             # End of loop over all the list items
 
@@ -2070,7 +2090,7 @@ class NeoAccess:
 
 
         else:
-            raise Exception(f"Unexpected data type: {type(json_data)}")
+            raise Exception(f"Unexpected data type: {type(python_data)}")
 
 
 
@@ -2088,8 +2108,8 @@ class NeoAccess:
         """
         new_node_id = self.create_node(labels, node_properties)
         # Add relationships to all children from the recursive call, if any
-        print(f"\n{indent_str}Created a new node with ID: ", new_node_id)
-        print(f"{indent_str}and {len(children_list)} children: ", children_list)
+        print(f"\n{indent_str}Created a new node with ID: {new_node_id}, "
+              f"with {len(node_properties)} attributes and {len(children_list)} children: ", children_list)
         print()
         node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
         for child_id, rel_name in children_list:
@@ -2100,7 +2120,8 @@ class NeoAccess:
 
 
 
-    def import_json_data(self, json_str: str) -> str:  # TODO: maybe rename import_json_dump()
+
+    def import_json_dump(self, json_str: str) -> str:
         """
         Used to import data from a database dump done with export_dbase_json() or export_nodes_rels_json()
         Import nodes and/or relationships into the database, as directed by the given data dump in JSON form.

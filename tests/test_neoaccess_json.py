@@ -281,10 +281,10 @@ def test_import_json_data(db):
 
     # Check various malformed JSON data dumps
     with pytest.raises(Exception):
-        assert db.import_json_data("Nonsensical JSON string")   # This ought to raise an Exception:
+        assert db.import_json_dump("Nonsensical JSON string")   # This ought to raise an Exception:
                                                                 # Incorrectly-formatted JSON string. Expecting value: line 1 column 1 (char 0)
     with pytest.raises(Exception):
-        assert db.import_json_data('{"a": "this is good JSON, but not a list!"}')   # This ought to raise an Exception:
+        assert db.import_json_dump('{"a": "this is good JSON, but not a list!"}')   # This ought to raise an Exception:
                                                                                     # "The JSON string does not represent the expected list"
     # TODO: extend
 
@@ -294,7 +294,7 @@ def test_import_json_data(db):
     db.empty_dbase()
 
     json = '[{"type":"node","id":"123","labels":["User"],"properties":{"name":"Eve"}}]'
-    details = db.import_json_data(json)
+    details = db.import_json_dump(json)
     assert details == "Successful import of 1 node(s) and 0 relationship(s)"
     match = db.find(labels="User", properties={"name": "Eve"})
     retrieved_records = db.fetch_nodes(match)

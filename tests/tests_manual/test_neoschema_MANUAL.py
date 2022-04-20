@@ -10,7 +10,7 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(debug=True)
+    neo_obj = neo_access.NeoAccess(debug=False)
     NeoSchema.db = neo_obj
     #yield neo_obj      # Shouldn't need to reach directly into NeoAccess in these tests
 
@@ -29,9 +29,11 @@ def test_class_exists(db):
 
 
 def test_class_name_exists(db):
+    assert NeoSchema.class_name_exists("Restaurants")
     assert NeoSchema.class_name_exists("Records")
     assert NeoSchema.class_name_exists("French Vocabulary")
     assert not NeoSchema.class_name_exists("Was ist das")
+
 
 
 def test_create_class_relationship(db):
@@ -42,13 +44,23 @@ def test_create_class_relationship(db):
 
 
 def test_get_class_relationships(db):
-    result = NeoSchema.get_class_relationships(47)
-    print(result)
-    assert result == (['INSTANCE_OF', 'BA_located_in', 'BA_cuisine_type'], ['BA_served_at'])
+    schema_id = NeoSchema.get_class_id("Restaurants")
+    print("schema_id is: ", schema_id)
 
-    result = NeoSchema.get_class_relationships(47, omit_instance=True)
-    print(result)
-    assert result == (['BA_located_in', 'BA_cuisine_type'], ['BA_served_at'])
+    result = NeoSchema.get_class_relationships(schema_id)
+    assert result == {'out': ['INSTANCE_OF', 'BA_located_in', 'BA_cuisine_type'], 'in': ['BA_served_at']}
+
+    result = NeoSchema.get_class_relationships(schema_id, link_dir="BOTH")
+    assert result == {'out': ['INSTANCE_OF', 'BA_located_in', 'BA_cuisine_type'], 'in': ['BA_served_at']}
+
+    result = NeoSchema.get_class_relationships(schema_id, omit_instance=True)
+    assert result == {'out': ['BA_located_in', 'BA_cuisine_type'], 'in': ['BA_served_at']}
+
+    result = NeoSchema.get_class_relationships(schema_id, link_dir="OUT", omit_instance=True)
+    assert result == ['BA_located_in', 'BA_cuisine_type']
+
+    result = NeoSchema.get_class_relationships(schema_id, link_dir="IN")
+    assert result == ['BA_served_at']
 
 
 
@@ -93,6 +105,13 @@ def test_remove_property_from_class(db):
 #############   SCHEMA-CODE  RELATED   ###########
 
 #############   DATA POINTS   ###########
+
+
+def test_create_tree_from_dict(db):
+    root_id = NeoSchema.create_tree_from_dict({}, class_name="Restaurants")
+
+
+
 
 #############   EXPORT SCHEMA   ###########
 
@@ -286,11 +305,11 @@ def test_add_data_point(db):
 def test_add_existing_data_point(db):
 
     neo_id = db.create_node("BA", {"note": "TO DELETE!"})
-    new_item_ID = NeoSchema.add_existing_data_point(schema_id=19, existing_neo_id=neo_id)
+    new_item_ID = NeoSchema.register_existing_data_point(schema_id=19, existing_neo_id=neo_id)
     print("new_item_ID: ", new_item_ID)
 
     neo_id = db.create_node("BA", {"formula": "NH3"})
-    new_item_ID = NeoSchema.add_existing_data_point(class_name="Chemicals", existing_neo_id=neo_id)
+    new_item_ID = NeoSchema.register_existing_data_point(class_name="Chemicals", existing_neo_id=neo_id)
     print("new_item_ID: ", new_item_ID)
 
 

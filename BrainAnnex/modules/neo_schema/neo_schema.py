@@ -1,4 +1,6 @@
 from BrainAnnex.modules.neo_access import neo_access
+from typing import Union, List
+import json
 
 
 class NeoSchema:
@@ -21,6 +23,17 @@ class NeoSchema:
 
         To infuse into Neo4j functionality that some people turn to RDF for.  However, carving out a new path
         rather than attempting to emulate RDF!
+
+
+    SECTIONS IN THIS CLASS:
+        * CLASS-related
+        * PROPERTIES-RELATED
+        * SCHEMA-CODE  RELATED
+        * DATA POINTS
+        * DATA IMPORT
+        * EXPORT SCHEMA
+        * INTERNAL  METHODS
+
 
 
     OVERVIEW
@@ -114,11 +127,11 @@ class NeoSchema:
 
 
 
-    ##################################################################################################
-    #                                                                                                #
-    #                                       CLASS-related                                            #
-    #                                                                                                #
-    ##################################################################################################
+    #####################################################################################################
+    #                                                                                                   #
+    #                                   ~ CLASS-related  ~                                              #
+    #                                                                                                   #
+    #####################################################################################################
 
     @classmethod
     def create_class(cls, name: str, code=None, schema_type="L", no_datanodes = False) -> int:
@@ -167,18 +180,24 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_id(cls, class_name: str) -> int:
+    def get_class_id(cls, class_name: str, namespace=None) -> int:
         """
         Returns the Schema ID of the Class with the given name, or -1 if not found
-        TODO: unique Class names are assumed
+        TODO: unique Class names are assumed.  Perhaps add an optional "namespace" attribute, to use in case
+              multiple classes with the same name must be used
 
         :param class_name:  The name of the desired class
+        :param namespace:   EXPERIMENTAL - not yet in use
         :return:            The Schema ID of the specified Class, or -1 if not found
         """
+        assert class_name is not None, "get_class_id(): argument `class_name` cannot be None"
+        assert type(class_name) == str, f"get_class_id(): argument `class_name` must be a string (value passed was `{class_name}`)"
+        assert class_name != "", "get_class_id(): argument `class_name` cannot be an empty string"
+
         match = cls.db.find(labels="CLASS", key_name="name", key_value=class_name)
         result = cls.db.fetch_nodes(match, single_cell="schema_id")
 
-        if not result:
+        if result is None:
             return -1
 
         return result
@@ -298,7 +317,7 @@ class NeoSchema:
         '''
         #print(q)
         result = cls.db.update_query(q)
-        print("result of rename_class_rel in remove_property_from_class(): ", result)
+        #print("result of rename_class_rel in remove_property_from_class(): ", result)
         if (result.get("relationships_deleted") == 1) and (result.get("relationships_created") == 1):
             return True
         else:
@@ -363,7 +382,7 @@ class NeoSchema:
         :return:            True if allowed, or False if not
                             If the Class doesn't exist, raise an Exception
         """
-        class_node_dict = cls.db.get_single_record_by_key(labels="CLASS", primary_key_name="name", primary_key_value=class_name)
+        class_node_dict = cls.db.get_record_by_primary_key(labels="CLASS", primary_key_name="name", primary_key_value=class_name)
 
         if class_node_dict == None:
             raise Exception(f"Class named {class_name} not found in the Schema")
@@ -408,53 +427,110 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_relationships(cls, schema_id:int, omit_instance=False) -> dict:
+    def get_related_class_names(cls, class_name: str, rel_name: str, enforce_unique=False) -> Union[str, List[str]]:
         """
-        Obtain and return the names of all the relationship attached to the given Class
+        Given a Class, specified by its name, locate and return the name(s) of the other Class(es)
+        that it's linked to by means of the relationship with the specified name.
+        Typically, the result will contain no more than 1 name, but it could be more;
+        it's probably a bad design to use the same relationship name to connect a class to multiple other classes
+        (though allowed.)
+        Relationships are followed in the OUTbound direction
 
-        :param schema_id:       To identify the desired Class
-        :param omit_instance:   If True, the common outbound relationship "INSTANCE_OF"
-                                is omitted
-        :return:                A dictionary of the form
+        :param class_name:      Name of a Class in the schema
+        :param rel_name:        Name of relationship to follow (in the OUTbound direction) from the above Class
+        :param enforce_unique:  If True, it raises an Exception if the number of results isn't exactly one
+        :return:                If enforce_unique is True, return a string with the class name;
+                                other return a list of names (typically just one)
+        """
+        q = f'''
+            MATCH (from :`CLASS` {{name: $class_name}})
+                  -[:{rel_name}]
+                  ->(to :`CLASS`)
+            RETURN to.name AS related_class_name
+        '''
+        result = cls.db.query(q, data_binding={"class_name": class_name}, single_column="related_class_name")
+
+        if enforce_unique:
+            if len(result) == 0:
+                raise Exception(f"This relationship (`{rel_name}`) doesn't connect to other classes in the Schema")
+            if len(result) > 1:
+                raise Exception(f"This relationship (`{rel_name}`) ambiguously leads to multiple other classes in the Schema: {result}")
+
+            return result[0]    # If we get thus far, there's exactly one element in result
+
+
+        return result
+
+
+
+    @classmethod
+    def get_class_relationships(cls, schema_id:int, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
+        """
+        Fetch and return the names of all the relationship (both inbound and outbound)
+        attached to the given Class.
+        Treat separately the inbound and outbound ones.
+
+        :param schema_id:       An integer to identify the desired Class
+        :param link_dir:        Desired direction(s) of the relationships; one of "BOTH" (default), "IN" or "OUT"
+        :param omit_instance:   If True, the common outbound relationship "INSTANCE_OF" is omitted
+
+        :return:                If link_dir is "BOTH", return a dictionary of the form
                                     {"in": list of inbound-relationship names,
                                      "out": list of outbound-relationship names}
+                                Otherwise, just return the inbound or outbound list, based on the value of link_dir
         """
-        if omit_instance:
-            q_out = '''
-                MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS)
-                WHERE type(r) <> "INSTANCE_OF"
-                RETURN type(r) AS rel_name
-                '''
+        assert link_dir in ["BOTH", "IN", "OUT"], \
+                f'The argument `link_dir` must be one of "BOTH", "IN" or "OUT" (value passed was {link_dir})'
+
+        if link_dir == "IN":
+            rel_out = []        # We only want the inbound relationships; disregard the outbound ones
         else:
-            q_out = '''
-                MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS) 
-                RETURN type(r) AS rel_name
-                '''
-        rel_out = cls.db.query(q_out,data_binding={"schema_id": schema_id}, single_column="rel_name")
-
-        q_in = '''
-                MATCH (n:CLASS {schema_id:$schema_id})<-[r]-(cl:CLASS) 
-                RETURN type(r) AS rel_name
-                '''
-        rel_in = cls.db.query(q_in,data_binding={"schema_id": schema_id}, single_column="rel_name")
-
-        return  {"in": rel_in, "out": rel_out}
-
+            if omit_instance:
+                q_out = '''
+                    MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS)
+                    WHERE type(r) <> "INSTANCE_OF"
+                    RETURN type(r) AS rel_name
+                    '''
+            else:
+                q_out = '''
+                    MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS) 
+                    RETURN type(r) AS rel_name
+                    '''
+            rel_out = cls.db.query(q_out, data_binding={"schema_id": schema_id}, single_column="rel_name")
 
 
+        if link_dir == "OUT":
+            rel_in = []        # We only want the outbound relationships; disregard the inbound ones
+        else:
+            q_in = '''
+                    MATCH (n:CLASS {schema_id:$schema_id})<-[r]-(cl:CLASS) 
+                    RETURN type(r) AS rel_name
+                    '''
+            rel_in = cls.db.query(q_in, data_binding={"schema_id": schema_id}, single_column="rel_name")
 
-    ###################################################
-    #                                                 #
-    #                PROPERTIES-RELATED               #
-    #                                                 #
-    ###################################################
+        if link_dir == "BOTH":
+            return  {"in": rel_in, "out": rel_out}
+        elif link_dir == "IN":
+           return rel_in
+        else:
+            return rel_out
+
+
+
+
+    #####################################################################################################
+    #                                                                                                   #
+    #                                   ~ PROPERTIES-RELATED ~                                          #
+    #                                                                                                   #
+    #####################################################################################################
 
     @classmethod
     def get_class_properties(cls, schema_id: int, include_ancestors=False, sort_by_path_len=False) -> list:
         """
         Return the list of all the names of the Properties associated with the given Class
-        (including those inherited thru ancestor nodes, if include_ancestors is True),
-        sorted by the schema-specified position.
+        (including those inherited thru ancestor nodes by means of "INSTANCE_OF" relationships,
+        if include_ancestors is True),
+        sorted by the schema-specified position (or, optionally, by path length)
 
         :param schema_id:           Integer with the ID of a Class node
         :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
@@ -598,8 +674,8 @@ class NeoSchema:
         :param schema_type      Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
         :param class_to_link_to If this name is specified, and a link_to_name (below) is also specified,
                                     then create an OUTBOUND relationship from the newly-created Class
-                                    to this existing one
-        :param link_to_name     Name to use for the above relationship.  Default is "INSTANCE_OF"
+                                    to this existing Class
+        :param link_to_name     Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
 
         :return:                If successful, the integer "schema_id" assigned to the new Class;
                                 otherwise, raise an Exception
@@ -608,10 +684,13 @@ class NeoSchema:
         #       adding a new Class and then leaving it w/o properties or links, in case of mid-operation error
 
         new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
+        print("Created new CLASS node with Schema ID: ", new_class_id)
 
         number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
         if number_properties_added != len(property_list):
             raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {property_list}")
+
+        print(f"{number_properties_added} Properties added to the new Class")
 
         if class_to_link_to and link_to_name:
             # Create a relationship from the newly-created Class to an existing Class whose name is given by class_to_link_to
@@ -655,8 +734,11 @@ class NeoSchema:
 
 
 
-
-    #############   SCHEMA-CODE  RELATED   ###########
+    #####################################################################################################
+    #                                                                                                   #
+    #                                    ~ SCHEMA-CODE  RELATED ~                                       #
+    #                                                                                                   #
+    #####################################################################################################
 
     @classmethod
     def get_schema_code(cls, class_name: str) -> str:
@@ -688,27 +770,36 @@ class NeoSchema:
         :return:    An integer with the Schema ID (or -1 if not present)
         """
 
-        result = cls.db.get_nodes("CLASS", properties_condition={"code": schema_code})
+        match = cls.db.find(labels="CLASS", key_name="code", key_value=schema_code)
+        result = cls.db.fetch_nodes(match, single_cell="schema_id")
 
-        if result == []:
+        if result is None:
             return -1
 
-        return result[0].get("schema_id")
+        return result
 
 
 
 
-    ########################################################
-    #                       DATA POINTS                    #
-    ########################################################
+    #####################################################################################################
+    #                                                                                                   #
+    #                                       ~ DATA POINTS ~                                             #
+    #                                                                                                   #
+    #####################################################################################################
+
 
     @classmethod
-    def all_properties(cls, label, primary_key_name, primary_key_value) -> list:
+    def all_properties(cls, label, primary_key_name, primary_key_value) -> [str]:
         """
-        Return the list of all the names of the Properties associated with the given DATA node,
-        based on the Schema it is associated with, sorted by schema-specified position.
+        Return the list of the names of all the Properties associated with the given DATA node,
+        based on the Schema it is associated with, sorted their by schema-specified position.
         The desired node is identified by specifying which one of its attributes is a primary key,
         and providing a value for it
+
+        :param label:
+        :param primary_key_name:
+        :param primary_key_value:
+        :return:
         """
         q = f'''
             MATCH  (d :`{label}` {{ {primary_key_name}: $primary_key_value}})
@@ -855,15 +946,15 @@ class NeoSchema:
 
 
     @classmethod
-    def add_existing_data_point(cls, class_name="", schema_id=None,
-                                existing_neo_id=None, new_item_id=None) -> int:
+    def register_existing_data_point(cls, class_name="", schema_id=None,
+                                     existing_neo_id=None, new_item_id=None) -> int:
         """
         Register an existing data node with the Schema Class specified by its name or ID.
         An item_id is generated for the data node and stored on it; likewise, for a schema_code (if applicable).
         Return the newly-assigned item_id
 
-        EXAMPLES:   add_existing_data_point(class_name="Chemicals", existing_neo_id=123)
-                    add_existing_data_point(schema_id=19, existing_neo_id=456)
+        EXAMPLES:   register_existing_data_point(class_name="Chemicals", existing_neo_id=123)
+                    register_existing_data_point(schema_id=19, existing_neo_id=456)
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
@@ -908,7 +999,7 @@ class NeoSchema:
         if not new_item_id:
             new_item_id = cls.next_available_datapoint_id()     # Generate, if not already provided
 
-        print("add_existing_data_point(). New item_id to be assigned to the data node: ", new_item_id)
+        print("register_existing_data_point(). New item_id to be assigned to the data node: ", new_item_id)
 
         data_binding = {"class_name": class_name, "new_item_id": new_item_id, "existing_neo_id": existing_neo_id}
 
@@ -929,7 +1020,7 @@ class NeoSchema:
         if schema_code != "":
             q += " , existing.schema_code = $schema_code"
 
-        cls.db.debug_print(q, data_binding, "add_existing_data_point")
+        cls.db.debug_print(q, data_binding, "register_existing_data_point")
         result = cls.db.update_query(q, data_binding)
         #print(result)
 
@@ -1039,7 +1130,7 @@ class NeoSchema:
     def data_points_of_class(cls, class_name) -> [int]:
         """
         Return the Item ID's of all the Data Points of the given Class
-        TODO: generalize "BA" label
+        TODO: generalize the "BA" label
 
         :param class_name:
         :return:
@@ -1062,7 +1153,7 @@ class NeoSchema:
     def data_points_lacking_schema(cls):
         """
         Locate and return all Data Points that aren't associated to any Class
-        TODO: generalize "BA" label
+        TODO: generalize the "BA" label
         TODO: test
 
         :return:
@@ -1074,6 +1165,208 @@ class NeoSchema:
             '''
 
         return cls.db.query(q)
+
+
+
+
+    #####################################################################################################
+    #                                                                                                   #
+    #                                      ~ DATA IMPORT ~                                              #
+    #                                                                                                   #
+    #####################################################################################################
+
+    @classmethod
+    def create_tree_from_python_data(cls, data, class_name: str, level) -> int:
+        pass
+
+
+    @classmethod
+    def create_tree_from_dict(cls, d: dict, class_name: str, level=1) -> Union[int, None]:
+        """
+        Add a new data node (the tree root) of the specified Class, with data from the given dictionary:
+            1) literal values in the dictionary are stored as attributes of the node, using the keys as names
+            2) other values (such as dictionaries or lists) are recursively turned into subtrees,
+               linked from the new data node through outbound relationships using the dictionary keys as names
+
+        Return the Neo4j ID of the newly created node
+        EXAMPLES:
+        (1) {"state": "California", "city": "Berkeley"}
+            results in the creation of a new node, with 2 attributes, named "state" and "city"
+
+        (2) {"name": "Julian", "address": {"state": "California", "city": "Berkeley"}}
+            results in the creation of 2 nodes, namely the tree root (with a single attribute "name"), with
+            an outbound link named "address" to another node (the subtree) that has the "state" and "city" attributes
+
+        (3) {"headquarter_state": [{"state": "CA"}, {"state": "NY"}, {"state": "FL"}]}
+            results in the creation of a node (the tree root), with no attributes, and 3 links named "headquarter_state" to,
+            respectively, 3 nodes - each of which containing a "state" attribute
+
+        (4) {"headquarter_state": ["CA", "NY", "FL"]}
+            similar to (3), above, but the children nodes will use the default attribute name "value"
+
+        :param d:           A dictionary with data from which to create a tree in the database
+        :param class_name:
+        :return:            The Neo4j ID of the newly created node
+        """
+        assert type(d) == dict, f"create_tree_from_dict(): the argument `d` must be a dictionary (instead, it's {type(d)})"
+
+        assert cls.class_name_exists(class_name), \
+                                f"The value passed for the argument `class_name` ({class_name}) is not a valid Class name"
+        schema_id = cls.get_class_id(class_name)
+
+
+        indent_spaces = level*4
+        indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
+        print(f"{indent_str}{level}. ~~~~~:")
+
+
+        print(f"{indent_str}Importing data dictionary, using class `{class_name}`")
+
+        declared_outlinks = cls.get_class_relationships(schema_id=schema_id, link_dir="OUT", omit_instance=True)
+        print(f"{indent_str}declared_outlinks: ", declared_outlinks)
+
+        declared_properties = cls.get_class_properties(schema_id, include_ancestors=False)
+        print(f"{indent_str}declared_properties: ", declared_properties)
+
+        print(f"{indent_str}Input is a dict with {len(d)} keys: {list(d.keys())}")
+        node_properties = {}
+        children_info = []   # A list of pairs (Neo4j ID, relationship name)
+
+        skipped_properties = []
+        skipped_relationships = []
+
+        # Loop over all the dictionary entries
+        for k, v in d.items():
+            print(f"{indent_str}*** KEY-> VALUE: {k} -> {v}")
+
+            if cls.db.is_literal(v):
+                print(f"{indent_str}(key: `{k}`) Processing a literal of type {type(v)} ({v})")
+                if k not in declared_properties:    # Check if the Property from the data is in the schema
+                    print(f"{indent_str}Disregarding this unexpected attribute: `{k}`")
+                    skipped_properties.append(k)
+                else:
+                    node_properties[k] = v                  # Save attribute for use when the node gets created
+                    print(f"{indent_str}Buffered properties for the new node so far: {node_properties}")
+
+            elif type(v) == dict:
+                print(f"{indent_str}(key: `{k}`) Processing a dictionary (with {len(v)} keys)")
+
+                if k not in declared_outlinks:       # Check if the Relationship from the data is in the schema
+                    print(f"{indent_str}Disregarding this unexpected relationship: `{k}`")
+                    skipped_relationships.append(k)
+                    continue
+
+                print(f"{indent_str}Examining the relationship `{k}`...")
+
+                try:
+                    subtree_root_class_name = cls.get_related_class_names(class_name, rel_name=k, enforce_unique=True)
+                    print(f"{indent_str}...the relationship `{k}` leads to the following Class: {subtree_root_class_name}")
+                except Exception as ex:
+                    print(f"{indent_str}Disregarding. {ex}")
+                    skipped_relationships.append(k)
+                    continue
+
+                # Recursive call
+                print(f"{indent_str}Making recursive call to process the above dictionary...")
+                new_node_id = cls.create_tree_from_dict(d=v, class_name=subtree_root_class_name , level=level + 1)
+
+                if new_node_id is not None:     # If a subtree actually got created
+                    children_info.append( (new_node_id, k) )    # Save relationship for use when the node gets created
+                    print(f"{indent_str}Buffered relationships for the new node so far: {children_info}")
+                else:
+                    print(f"{indent_str}No subtree was returned; so, skipping over this key (`{k}`)")
+
+            elif type(v) == list:
+                print(f"{indent_str}(key: `{k}`) Processing a list (with {len(v)} elements):")
+
+                if k not in declared_outlinks:       # Check if the Relationship from the data is in the schema
+                    print(f"{indent_str}Disregarding this unexpected relationship: `{k}`")
+                    skipped_relationships.append(k)
+                    continue
+
+                if len(v) == 0:
+                    print(f"{indent_str}The list is empty; so, ignoring it")
+                    continue
+
+                print(f"{indent_str}Examining the relationship `{k}`...")
+
+                try:
+                    subtree_root_class_name = cls.get_related_class_names(class_name, rel_name=k, enforce_unique=True)
+                    print(f"{indent_str}...the relationship `{k}` leads to the following Class: {subtree_root_class_name}")
+                except Exception as ex:
+                    print(f"{indent_str}Disregarding. {ex}")
+                    skipped_relationships.append(k)
+                    continue
+
+                # Recursive call
+                print(f"{indent_str}Making recursive call to process the above list...")
+                new_node_id_list = cls.create_trees_from_list(l=v, class_name=subtree_root_class_name, level=level + 1)
+                for child_id in new_node_id_list:
+                    children_info.append( (child_id, k) )
+
+            else:
+                raise Exception(f"Unexpected type: {type(v)}")
+
+        # End of loop over all the dictionary entries
+
+        # Now, finally create the new node, with its attributes and links to children (the roots of the subtrees)
+        if len(node_properties) == 0 and len(children_info) == 0:
+            print(f"{indent_str}Skipping creating node of class `{class_name}` that has no properties and no children")
+            return None   # Using None to indicate "skipped node/subtree"
+        else:
+            # TODO: this ought to be handled at the Schema layer
+            return cls.db.create_node_with_children(children_list=children_info, labels=class_name, node_properties=node_properties, indent_str=indent_str)
+
+
+
+    @classmethod
+    def create_trees_from_list(cls, l: list, class_name: str, level=1) -> [int]:    #TODO: test
+        """
+        Add a set of new data nodes (the roots of the trees), all of the specified Class,
+        with data from the given list.
+
+        Return a list of the Neo4j ID of the newly created nodes
+
+        :param l:           A list of data from which to create a set of trees in the database
+        :param class_name:
+        :return:            A list of the Neo4j ID of the newly created nodes
+        """
+        assert type(l) == list, f"create_tree_from_dict(): the argument `l` must be a list (instead, it's {type(l)})"
+
+        assert cls.class_name_exists(class_name), \
+            f"The value passed for the argument `class_name` ({class_name}) is not a valid Class name"
+
+        indent_spaces = level*4
+        indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
+        print(f"{indent_str}{level}. ~~~~~:")
+
+        print(f"{indent_str}Input is a list with {len(l)} items")
+
+        list_of_child_ids = []
+
+        # Process each element of the list, in turn
+        for i, item in enumerate(l):
+            print(f"{indent_str}Making recursive call to process the {i}-th list element...")
+            if cls.db.is_literal(item):
+                item_as_dict = {"value": item}
+                new_node_id = cls.create_tree_from_dict(d=item_as_dict, class_name=class_name, level=level + 1)  # Recursive call
+                if new_node_id  is not None:     # If a subtree actually got created
+                    list_of_child_ids.append(new_node_id)
+
+            elif type(item) == dict:
+                new_node_id = cls.create_tree_from_dict(d=item, class_name=class_name, level=level + 1)          # Recursive call
+                if new_node_id  is not None:     # If a subtree actually got created
+                    list_of_child_ids.append(new_node_id)
+
+            elif type(item) == list:
+                new_node_id_list = cls.create_trees_from_list(l=item, class_name=class_name, level=level + 1)   # Recursive call
+                list_of_child_ids += new_node_id_list       # Merge of lists
+
+            else:
+                raise Exception(f"Unexpected type: {type(item)}")
+
+
+        return list_of_child_ids
 
 
 

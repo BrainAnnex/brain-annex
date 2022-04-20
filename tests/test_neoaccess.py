@@ -251,18 +251,47 @@ def test_get_single_field(db):
 
 
 
-def test_get_single_record_by_key(db):
-    pass    # TODO
+def test_get_record_by_primary_key(db):
+    db.empty_dbase()
+
+    node_id_Valerie = db.create_node("person", {'SSN': 123, 'name': 'Valerie', 'gender': 'F'})
+    db.create_node("person", {'SSN': 456, 'name': 'Therese', 'gender': 'F'})
+
+
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123) \
+           == {'SSN': 123, 'name': 'Valerie', 'gender': 'F'}
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123, return_nodeid=True) \
+           == {'SSN': 123, 'name': 'Valerie', 'gender': 'F', 'neo4j_id': node_id_Valerie}
+
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=456) \
+           == {'SSN': 456, 'name': 'Therese', 'gender': 'F'}
+
+
+    db.create_node("person", {'SSN': 456, 'name': 'Therese clone', 'gender': 'F'})  # Irregular situation with 2 records sharing what
+                                                                                    # was meant to be a primary key
+    with pytest.raises(Exception):
+        db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=456)
+
+
+    # Now, try to find records that don't exist
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=99999) is None   # Not found
+    assert db.get_record_by_primary_key("wrong_label", primary_key_name="SSN", primary_key_value=123) is None   # Not found
+    assert db.get_record_by_primary_key("person", primary_key_name="bad_key", primary_key_value=123) is None   # Not found
 
 
 
 def test_exists_by_key(db):
-    pass    # TODO
+    db.empty_dbase()
+    db.create_node("person", {'SSN': 123, 'name': 'Valerie', 'gender': 'F'})
+    db.create_node("person", {'SSN': 456, 'name': 'Therese', 'gender': 'F'})
 
+    assert db.exists_by_key("person", key_name="SSN", key_value=123)
+    assert db.exists_by_key("person", key_name="SSN", key_value=456)
+    assert db.exists_by_key("person", key_name="name", key_value='Valerie')
 
-
-def test_get_neo_id_by_key(db):
-    pass    # TODO
+    assert not db.exists_by_key("person", key_name="SSN", key_value=5555)
+    assert not db.exists_by_key("person", key_name="name", key_value='Joe')
+    assert not db.exists_by_key("non_existent_label", key_name="SSN", key_value=123)
 
 
 
@@ -376,8 +405,7 @@ def test_fetch_nodes(db):
     assert compare_recordsets(retrieved_records, expected_records)
 
 
-    # Now, do a clean start, an investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
-
+    # Now, do a clean start, and investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
 
     db.empty_dbase()
 
@@ -394,6 +422,25 @@ def test_fetch_nodes(db):
                 {'gender': 'M', 'weight': 155}]
     assert compare_recordsets(retrieved_records, expected)
 
+    # Add a node with no attributes
+    empty_record_id = db.create_node("patient")
+    retrieved_records = db.fetch_nodes(match)
+    expected = [{'gender': 'F', 'age': 16},
+                {'gender': 'M', 'weight': 155},
+                {}]
+    assert compare_recordsets(retrieved_records, expected)
+
+    match = db.find(labels="patient", properties={"age": 16})
+    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    assert retrieved_single_record == {'gender': 'F', 'age': 16}
+
+    match = db.find(labels="patient", properties={"age": 11})
+    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    assert retrieved_single_record == None      # No record found
+
+    match = db.find(labels="patient", neo_id=empty_record_id)
+    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    assert retrieved_single_record == {}        # Record with no attributes found
 
 
 
