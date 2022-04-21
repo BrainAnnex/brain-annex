@@ -248,11 +248,12 @@ class NeoSchema:
 
 
     @classmethod
-    def get_all_classes(cls, only_names=True):
+    def get_all_classes(cls, only_names=True) -> [str]:
         """
-        Fetch and return a list of all existing classes - either just their names (sorted alphabetically)
+        Fetch and return a list of all the existing Schema classes - either just their names (sorted alphabetically)
         (or a fuller listing - TODO: not yet implemented)
-        :return:
+
+        :return:    A list of all the existing Class names
         """
         return cls.db.get_single_field("name", labels = cls.class_label, order_by="name")
 

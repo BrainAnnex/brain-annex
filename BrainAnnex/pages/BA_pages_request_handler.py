@@ -1,46 +1,21 @@
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+
+
 """
-    ----------------------------------------------------------------------------------
-	MIT License
-
-    Copyright (c) 2021 Julian A. West
-
-    This file is part of the "Brain Annex" project (https://BrainAnnex.org)
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-	----------------------------------------------------------------------------------
+    MIT License.  Copyright (c) 2021-2022 Julian A. West
 """
-from BrainAnnex.modules.neo_access import neo_access
 
 
 
 class PagesRequestHandler:
     """
-    For general database-interaction operations.
-    Used by the UI for Page Generation,
-    as well as by the API to produce data for the endpoints.
+    Used by the UI for Page Generation.
 
-    "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
+    This class does NOT get instantiated.
     """
 
-    db = None   # MUST be set before using this class!
-    #db = neo_access.NeoAccess()     # Saving database-interface object as a CLASS variable.
-                                    # This will only be executed once
+    db = None       # "NeoAccess" object.  MUST be set before using this class!
+
 
 
     @classmethod
@@ -95,6 +70,16 @@ class PagesRequestHandler:
         label_list = cls.db.get_labels()        # Fetch all the node labels in the database
 
         return label_list
+
+
+
+    @classmethod
+    def schema_manager_data(cls) -> [str]:
+        """
+        Return a list of all the existing Schema classes
+        :return:
+        """
+        return NeoSchema.get_all_classes()
 
 
 

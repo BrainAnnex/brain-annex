@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters:  current_page, site_pages
+{#  Flask-passed parameters:
+        current_page, site_pages,
+        class_list
  #}
 
 <html lang="en">
@@ -33,7 +35,7 @@
     {% include "navbar_top.htm" %}
 </div>
 
-<a href='/BA/pages/admin'>Admin</a> > Schema Manager
+<a href='/BA/pages/admin'>Admin</a> &raquo; Schema Manager
 
 <h2 class="page-title">Schema Manager</h2>
 
@@ -43,7 +45,8 @@
 <div class="content-block">
     <div class="content-block-title">New Schema</div>
 
-    <vue-schema-editor>
+    <vue-schema-editor
+        v-bind:class_list="class_list">
     </vue-schema-editor>
 
 </div>
@@ -78,9 +81,9 @@ new Vue({
     delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
     data: {     // GLOBAL DATA for the whole page (Vue root element).
-                // This is the handover of data from Flask to Vue
 
-        example: false
+       // Handover of data from Flask to Vue
+       class_list: {{class_list | tojson}}     // List of all the names of the Classes in the Schema
 
     }, // DATA
 

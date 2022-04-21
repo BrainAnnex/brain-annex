@@ -8,7 +8,6 @@ from flask import request, current_app
 from typing import Union
 import sys                  # Used to give better feedback on Exceptions
 import html
-import json
 
 """
     MIT License.  Copyright (c) 2021-2022 Julian A. West

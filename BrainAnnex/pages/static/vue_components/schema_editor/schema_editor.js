@@ -1,15 +1,13 @@
 Vue.component('vue-schema-editor',
     {
-        props: [],  <!-- NOTE:  Only lower cases in props names! -->
-        /*  some_data_a:
-            some_data_b:
+        props: ['class_list'],  <!-- NOTE:  Only lower cases in props names! -->
+        /*  class_list:     List of all the names of the Classes in the Schema
          */
 
         template: `
             <div class='form-container'>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
 
             <span class='title'>CREATE A NEW SCHEMA CLASS</span><br><br>
-
 
             <table border='0' cellspacing='5' cellpadding='0'>
                 <tr>
@@ -47,14 +45,23 @@ Vue.component('vue-schema-editor',
 
                 <tr>
                     <td height="30px">Class name:</td>
-                    <td style='padding-left:5px'><input type='text' v-model="linked_to" size='30' maxlength='40'></td>
+
+                    <td style='padding-left:5px'>
+                        <select  v-model="linked_to">
+                            <option value='-1'>[Choose an existing Class]</option>
+                            <template v-for="item in class_list">
+                                <option>{{item}}</option>
+                            </template>
+                        </select>
+                    </td>
                 </tr>
 
                 <tr>
                     <td height="30px">Direction:</td>
                     <td style='padding-left:5px'>
-                        NEW class -> Existing class <input type="radio" value="OUT" v-model="rel_dir" checked> &nbsp;&nbsp;
-                        Existing class -> NEW class <input type="radio" value="IN" v-model="rel_dir">
+                        {{this.name_of_class_to_link_to}} -> NEW class <input type="radio" value="IN" v-model="rel_dir">
+                        &nbsp;&nbsp;
+                        NEW class -> {{this.name_of_class_to_link_to}} <input type="radio" value="OUT" v-model="rel_dir">
                     </td>
                 </tr>
             </table>
@@ -88,13 +95,27 @@ Vue.component('vue-schema-editor',
 
                 instance_of: "Records",
 
-                linked_to: "",
+                linked_to: -1,
                 rel_name: "",
-                rel_dir: "OUT",
+                rel_dir: "IN",
 
                 waiting: false,         // Whether any server request is still pending
                 status_message: "",     // Message for user about the status of the last operation (NOT for "waiting" status)
                 error: false            // Whether the last server communication resulted in error
+            }
+        },
+
+
+
+        // ----------------  COMPUTED  -----------------
+        computed: {
+            name_of_class_to_link_to()
+            // Name to show on the page
+            {
+                if (this.linked_to == -1)
+                    return "Existing class ";
+                else
+                    return "'" + this.linked_to + "'";
             }
         },
 
