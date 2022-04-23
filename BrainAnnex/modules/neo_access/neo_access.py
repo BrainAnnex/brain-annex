@@ -1968,7 +1968,7 @@ class NeoAccess:
         :param value:
         :return:
         """
-        if type(value) == int or type(value) == str or type(value) == bool:
+        if type(value) == int or type(value) == float or type(value) == str or type(value) == bool:
             return True
         else:
             return False
@@ -2005,12 +2005,14 @@ class NeoAccess:
             for item in json_data:
                 print("Top-level structure of the JSON data is a list")
                 self.create_nodes_from_json_data(item, root_labels)
+            # TODO: return the list of top-level node_id's created
 
         elif type(json_data) == dict:       # If the top-level JSON structure is dictionary
             print("Top-level structure of the JSON data is a dictionary (object)")
             node_id = self.create_nodes_from_json_data(json_data, root_labels)
             if provenance:
                 self.set_fields(node_id, set_dict={"source": provenance})
+            return node_id
 
         else:                               # If the top-level JSON structure is neither a list nor a dictionary
             raise Exception(f"The top-level structure is neither a list nor a dictionary; instead, it's {type(json_data)}")

@@ -815,25 +815,28 @@ class APIRequestHandler:
     ############################################################
 
     @classmethod
-    def upload_import_json_file(cls, verbose=True) -> str:
+    def upload_import_json_file(cls, post_pars, verbose=False) -> str:
         """
         Manage the upload and import of a data file in JSON format.
 
         :return:    Status string, if successful.  In case of error, an Exception is raised
         """
-        #print("In upload_import_json_file()")
+        print("In upload_import_json_file()")
 
         upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
         # 'file' is just an identifier attached to the upload by the frontend
         (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
-                                                                     key_name=None, verbose=False)
+                                                                                    key_name=None, verbose=False)
         # basename and full name of the temporary file created during the upload
 
 
-        post_data = UploadHelper.get_form_data(request)
-        print("post_data: ", post_data)
-        import_root_label = post_data.get('import_root_label')
-        assert import_root_label, "Missing value for import_root_label"
+        assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"
+        if post_pars["use_schema"] == "SCHEMA":
+            assert post_pars["schema_class"], "Missing value for POST parameter `schema_class`"
+        elif post_pars["use_schema"] == "NO_SCHEMA":
+            assert post_pars["import_root_label"], "Missing value for POST parameter `import_root_label`"
+        else:
+            raise Exception(f"The value for the POST parameter `use_schema` must be 'SCHEMA' or 'NO_SCHEMA' (value passed: {post_pars['use_schema']})")
 
 
         # Read in the contents of the uploaded file
@@ -856,10 +859,14 @@ class APIRequestHandler:
 
 
         # Import the JSON data into the database
-        cls.db.import_json(file_contents, import_root_label, provenance=original_name)
+        new_ids = None
+        if post_pars["use_schema"] == "SCHEMA":
+            new_ids = NeoSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
+        else:
+            new_ids = cls.db.import_json(file_contents, post_pars["import_root_label"], provenance=original_name)
 
-
-        return f"Upload successful. {file_size} characters were read in"
+        status = f"New top-level Neo4j node ID: {new_ids}"
+        return f"Upload successful. {file_size} characters were read in. {status}"
 
 
 

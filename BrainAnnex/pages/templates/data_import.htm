@@ -47,8 +47,18 @@
             <input type="file" @change="upload_file">
         </p>
 
-        <input type="text" size="35" v-model="import_label">
-        <span style="color:gray"> label to use on root node(s) of import</span><br><br>
+
+        Use Schema (recommended) <input type="radio" value="SCHEMA"    v-model="use_schema">
+        &nbsp;&nbsp;
+        or without Schema        <input type="radio" value="NO_SCHEMA" v-model="use_schema"><br><br>
+
+        <input type="text" size="35" v-model="schema_class">
+        <span style="color:gray"> schema class to use for the top-level element</span>
+        <br><br>
+        OR<br><br>
+        <input type="text" size="35" v-model="import_root_label">
+        <span style="color:gray"> label to use on root node(s) of import</span>
+        <br><br>
 
         <button @click=submit_file style="margin-bottom:15px">
             Import JSON data file
@@ -97,7 +107,10 @@ new Vue({
 
     data: {
         file_to_import: null,
-        import_label: "Import_Root",    // Neo4j label to use on root node(s) of import
+
+        use_schema: "SCHEMA",               // Either "SCHEMA" or "NO_SCHEMA"
+        schema_class: "",                   // Name of schema class to use for the top-level element
+        import_root_label: "Import_Root",   // Neo4j label to use on root node(s) of import
 
         waiting: false,         // Whether any server request is still pending
         error: false,           // Whether the last server communication resulted in error
@@ -137,9 +150,13 @@ new Vue({
             this.server_output = "";    // Clear any message from the previous operation
 
             // Initiate asynchronous contact with the server
-             ServerCommunication.contact_server_UPLOAD(url_server,
+            ServerCommunication.contact_server_UPLOAD(url_server,
                                                       {file_to_import: this.file_to_import,
-                                                       post_obj: {import_root_label: this.import_label},
+                                                       post_obj: {
+                                                            use_schema: this.use_schema,
+                                                            schema_class: this.schema_class,
+                                                            import_root_label: this.import_root_label
+                                                       },
                                                        callback_fn: this.finish_upload}
                                                      );
         },

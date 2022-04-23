@@ -29,6 +29,7 @@ Vue.component('vue-schema-editor',
                 </tr>
 
 
+                <!-- Optional elements below -->
                 <tr>
                     <td height="40px">INSTANCE_OF</td>
                     <td style='padding-left:5px'><input type='text' v-model="instance_of" size='30' maxlength='40'></td>

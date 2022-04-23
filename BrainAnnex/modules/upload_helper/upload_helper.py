@@ -13,6 +13,7 @@ class UploadHelper:
     """
     Helper class to manage file uploads with Flask 1.1 (using Werkzeug 2.1)
     """
+
     @classmethod
     def get_form_data(cls, request_obj, flat=True) -> dict:
         """
@@ -24,7 +25,7 @@ class UploadHelper:
                                             const post_data = new FormData();
                                             post_data.append('categoryID', "123");
 
-        TODO: maybe merge with ApiRouting.extract_post_pars()
+        TODO: merge with ApiRouting.extract_post_pars()
 
         :param request_obj: A flask.request object
         :param flat:        A flag only relevant when there are non-unique keys;
@@ -78,7 +79,7 @@ class UploadHelper:
                                             post_data.append('file', this.file_to_import);
                             Basically, a label to tag the file being uploaded.
                             The "Dropzone" module uses "file".
-                            If not provided, the first key found is used.
+                            If not provided, the first key found in request.files is used.
                             (Note: in the ImmutableMultiDict data structure, multiple values are allowed for the same key;
                                    if more than one value is present, the first is picked)
         :param verbose:     Flag for debugging
@@ -135,7 +136,7 @@ class UploadHelper:
         else:                       # If no particular "name" (tag) was specified, just pick the first one
             key_name = list(files_multi_dict)[0]
             print(f"store_uploaded_file(): No specific key (tag associated with uploaded file) requested. "
-                  f"The first key found (`{key_name}`) will be used.")
+                  f"The first key found in request.files (`{key_name}`) will be used.")
 
 
         f = files_multi_dict[key_name]      # f is a Werkzeug FileStorage object

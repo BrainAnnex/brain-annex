@@ -112,15 +112,19 @@ class ApiRouting:
     @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
         """
-        Convert the given POST data (an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
-        into a dictionary,
+        Convert into a Python dictionary the given POST data
+        (expressed as an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
         while enforcing the optional given list of parameters that must be present.
         In case of errors (or missing required parameters), an Exception is raised.
+
+        EXAMPLE:
+                post_data = request.form
+                post_pars = cls.extract_post_pars(post_data, "name_of_calling_functions")
 
         TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
               Example - int_pars = ['item_id']
 
-        TODO: maybe merge with UploadHelper.get_form_data()
+        TODO: merge with UploadHelper.get_form_data()
 
         :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
                                     that can contain multiple values for the same key.
@@ -148,7 +152,11 @@ class ApiRouting:
     @classmethod
     def show_post_data(cls, post_data, method_name=None) -> None:
         """
-        Debug utility method.  Pretty-printing for POST data
+        Debug utility method.  Pretty-printing for POST data (expressed as an ImmutableMultiDict)
+
+        EXAMPLE:
+                post_data = request.form
+                cls.show_post_data(post_data, "name_of_calling_functions")
 
         :param post_data:   An ImmutableMultiDict, as for example returned by request.form
         :param method_name: (Optional) Name of invoking function
@@ -981,11 +989,16 @@ class ApiRouting:
             Upload and import of a data file in JSON format
             Invoke with the URL: http://localhost:5000/BA/api/import_json_file
             """
-            print("\nIn import_json_file().  request.files: ", request.files)
-            # EXAMPLE: request.files:  ImmutableMultiDict([('file', <FileStorage: 'julian_test.json' ('application/json')>)])
+            # Extract the POST values
+            post_data = request.form     # Example: ImmutableMultiDict([('use_schema', 'SCHEMA'), ('schema_class', 'my_class_name')])
+            cls.show_post_data(post_data, "import_json_file")
+
+            print("request.files: ", request.files)
+            # EXAMPLE: ImmutableMultiDict([('file', <FileStorage: 'julian_test.json' ('application/json')>)])
 
             try:
-                result = APIRequestHandler.upload_import_json_file()
+                post_pars = cls.extract_post_pars(post_data, required_par_list=["use_schema"])
+                result = APIRequestHandler.upload_import_json_file(post_pars)
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination

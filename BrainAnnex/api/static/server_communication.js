@@ -450,7 +450,7 @@ class ServerCommunication
         console.error('Error during fetch() operation. Details in the next line: ');
         console.log(err);
 
-        const fetch_failure_message = "Failed interaction with the server! (Try again.) Failed fetch() call. "
+        const fetch_failure_message = "Failed interaction with the server in the fetch() call. "
                                       + err.name + " - " + err.message;
         alert(fetch_failure_message);
 

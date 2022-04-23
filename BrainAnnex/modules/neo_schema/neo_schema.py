@@ -253,6 +253,8 @@ class NeoSchema:
         Fetch and return a list of all the existing Schema classes - either just their names (sorted alphabetically)
         (or a fuller listing - TODO: not yet implemented)
 
+        TODO: disregard capitalization is sorting
+
         :return:    A list of all the existing Class names
         """
         return cls.db.get_single_field("name", labels = cls.class_label, order_by="name")
@@ -950,7 +952,7 @@ class NeoSchema:
     def register_existing_data_point(cls, class_name="", schema_id=None,
                                      existing_neo_id=None, new_item_id=None) -> int:
         """
-        Register an existing data node with the Schema Class specified by its name or ID.
+        Register (declare to the Schema) an existing data node with the Schema Class specified by its name or ID.
         An item_id is generated for the data node and stored on it; likewise, for a schema_code (if applicable).
         Return the newly-assigned item_id
 
@@ -1177,8 +1179,59 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def create_tree_from_python_data(cls, data, class_name: str, level) -> int:
-        pass
+    def import_json_data(cls, json_str: str, class_name: str, parse_only=False, provenance=None) -> Union[None, int, List[int]]:
+        """
+
+        :param json_str:
+        :param class_name:
+        :param parse_only:  Flag indicating whether to stop after the parsing (i.e. no database import)
+        :param provenance:
+
+        :return:
+        """
+        print(f"In import_json_data().  class_name: {class_name} | parse_only: {parse_only} | provenance: {provenance}")
+        # Try to obtain Python data (which ought to be a dict or list) that corresponds to the passed JSON string
+        try:
+            python_data_from_json = json.loads(json_str)    # Turn the string (representing JSON data) into its Python counterpart;
+                                                            # at the top level, it should be a dict or list
+        except Exception as ex:
+            raise Exception(f"Incorrectly-formatted JSON string. {ex}")
+
+        #print("Python version of the JSON file:\n", python_data_from_json)
+        print(f"The result of the conversion from JSON is a {type(python_data_from_json)}")
+
+        if parse_only:
+            return      # Nothing else to do
+
+        return cls.create_data_nodes_from_python_data(python_data_from_json, class_name, provenance)
+
+
+
+    @classmethod
+    def create_data_nodes_from_python_data(cls, data, class_name: str, provenance=None) -> Union[int, List[int]]:
+        """
+
+        :param data:
+        :param class_name:
+        :param provenance:
+        :return:
+        """
+        if type(data) == dict:       # If the top-level JSON structure is dictionary
+            print("Top-level structure of the data to import is a Python dictionary")
+            node_id = cls.create_tree_from_dict(data, class_name)
+            if provenance:
+                cls.db.set_fields(node_id, set_dict={"source": provenance})
+            return node_id
+
+        elif type(data) == list:         # If the top-level JSON structure is a list
+            # Create multiple unconnected trees
+            print("Top-level structure of the data to import is a list")
+            node_id_list = cls.create_trees_from_list(data, class_name)
+            return node_id_list
+
+        else:                           # If the top-level data structure is neither a list nor a dictionary
+            raise Exception(f"The top-level structure is neither a list nor a dictionary; instead, it's {type(data)}")
+
 
 
     @classmethod
@@ -1238,13 +1291,24 @@ class NeoSchema:
 
         # Loop over all the dictionary entries
         for k, v in d.items():
-            print(f"{indent_str}*** KEY-> VALUE: {k} -> {v}")
+            info = f"{indent_str}*** KEY-> VALUE: {k} -> {v}"
+            # Abridge the info line if excessively long
+            max_length = 150
+            if len(info) > max_length:
+                info = info[:max_length] + " ..."
+            print(info)
+
+            if v is None:
+                print(f"{indent_str}Disregarding attribute (`{k}`) that has a None value")
+                skipped_properties.append(k)
+                continue
 
             if cls.db.is_literal(v):
                 print(f"{indent_str}(key: `{k}`) Processing a literal of type {type(v)} ({v})")
                 if k not in declared_properties:    # Check if the Property from the data is in the schema
                     print(f"{indent_str}Disregarding this unexpected attribute: `{k}`")
                     skipped_properties.append(k)
+                    continue
                 else:
                     node_properties[k] = v                  # Save attribute for use when the node gets created
                     print(f"{indent_str}Buffered properties for the new node so far: {node_properties}")
@@ -1321,7 +1385,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_trees_from_list(cls, l: list, class_name: str, level=1) -> [int]:    #TODO: test
+    def create_trees_from_list(cls, l: list, class_name: str, level=1) -> [int]:
         """
         Add a set of new data nodes (the roots of the trees), all of the specified Class,
         with data from the given list.
