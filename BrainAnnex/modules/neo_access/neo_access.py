@@ -2076,7 +2076,7 @@ class NeoAccess:
                         children_info.append( (new_node_id, k) )
             # End of loop over all the dictionary entries
 
-            return self.create_node_with_children(children_list=children_info, labels=labels, node_properties=node_properties, indent_str=indent_str)
+            return self.create_node_with_children(labels=labels, children_list=children_info, node_properties=node_properties, indent_str=indent_str)
 
 
         elif type(python_data) == list:
@@ -2088,7 +2088,7 @@ class NeoAccess:
                 children_info.append( (new_node_id, labels) )
             # End of loop over all the list items
 
-            return self.create_node_with_children(children_list=children_info, labels=labels, indent_str=indent_str)
+            return self.create_node_with_children(labels=labels, children_list=children_info, indent_str=indent_str)
 
 
         else:
@@ -2096,24 +2096,39 @@ class NeoAccess:
 
 
 
-    def create_node_with_children(self, children_list, labels, node_properties = None, indent_str=""):
+    def create_node_with_children(self, labels, children_list = None, node_properties = None, indent_str="") -> int:
         """
-        Create a new node, with the optional specified properties, and make it a parent of all the EXISTING nodes
-        specified in the list of children nodes (possibly empty), using the given relationship names
+        Create a new node, with the given labels and optional specified properties,
+        and make it a parent of all the EXISTING nodes
+        specified in the list of children nodes (possibly empty), using the given relationship names.
+        All the relationships are understood to be OUTbound from the newly-created node.
 
-        :param children_list:   A list of pairs of the form (Neo4j ID, relationship name)
-        :param labels:          Labels to assign to the newly-created node
-        :param node_properties: Optional properties to assign to the newly-created node
+        :param labels:          Labels to assign to the newly-created node (a string, possibly empty, or list of strings)
+        :param children_list:   Optional list of pairs of the form (Neo4j ID, relationship name);
+                                    use None, or an empty list, to indicate if there aren't any
+        :param node_properties: A dictionary of optional properties to assign to the newly-created node
         :param indent_str:      An optional string of blank characters, for more readability during debugging
 
         :return:                An integer with the Neo4j ID of the newly-created node
         """
+        assert children_list is None or type(children_list) == list, \
+            f"The argument `children_list` in create_node_with_children() must be a list or None; instead, it's {type(children_list)}"
+
+        # Create the new node
         new_node_id = self.create_node(labels, node_properties)
-        # Add relationships to all children from the recursive call, if any
+
+        number_properties = "NO" if node_properties is None  else len(node_properties)     # Only used for debugging
+
+        if children_list is None or children_list == []:
+            print(f"\n{indent_str}Created a new node with ID: {new_node_id} with {number_properties} attributes, and NO children")
+            return new_node_id
+
+        # Add relationships to all children, if any
         print(f"\n{indent_str}Created a new node with ID: {new_node_id}, "
-              f"with {len(node_properties)} attributes and {len(children_list)} children: ", children_list)
-        print()
+              f"with {number_properties} attributes and {len(children_list)} children: ", children_list)
+
         node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
+        # Add each relationship in turn (TODO: maybe do this with a single Cypher query)
         for child_id, rel_name in children_list:
             child_match = self.find(neo_id=child_id, dummy_node_name="to")
             self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)

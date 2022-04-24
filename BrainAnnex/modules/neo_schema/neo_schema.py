@@ -1380,7 +1380,7 @@ class NeoSchema:
             return None   # Using None to indicate "skipped node/subtree"
         else:
             # TODO: this ought to be handled at the Schema layer
-            return cls.db.create_node_with_children(children_list=children_info, labels=class_name, node_properties=node_properties, indent_str=indent_str)
+            return cls.db.create_node_with_children(labels=class_name, children_list=children_info, node_properties=node_properties, indent_str=indent_str)
 
 
 

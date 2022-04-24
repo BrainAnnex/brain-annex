@@ -45,7 +45,7 @@ Vue.component('vue-schema-editor',
                 </tr>
 
                 <tr>
-                    <td height="30px">Class name:</td>
+                    <td height="30px">Existing Class:</td>
 
                     <td style='padding-left:5px'>
                         <select  v-model="linked_to">
@@ -172,8 +172,6 @@ Vue.component('vue-schema-editor',
                 }
 
 
-                //let post_obj = {data: post_data};     // OLD
-
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
 
@@ -197,9 +195,9 @@ Vue.component('vue-schema-editor',
                     // Clear up the form
                     this.new_class_name = "";
                     this.property_list = [];
-                    this.linked_to = "";
+                    this.linked_to = -1;
                     this.rel_name = "";
-                    this.rel_dir = "OUT";
+                    this.rel_dir = "IN";
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
