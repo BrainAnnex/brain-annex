@@ -1,4 +1,5 @@
 # Testing of Import/Export of database dumps
+####  WARNING : the database will get erased!!!
 
 import pytest
 from BrainAnnex.modules.neo_access import neo_access

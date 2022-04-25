@@ -975,11 +975,15 @@ class NeoAccess:
 
     def create_node_with_relationships(self, labels, properties=None, connections=None) -> int:
         """
-        Create a new node with relationships to zero or more pre-existing nodes (identified by their labels and key/value pairs);
+        Create a new node with relationships to zero or more pre-existing nodes
+        (identified by their labels and key/value pairs);
         if the specified pre-existing nodes aren't found, then no new node is created.
 
         In case of failure (including not finding the requested pre-existing nodes) an Exception is raised;
         otherwise, the Neo4j internal ID of the new node just created is returned.
+
+        Note: if all connections are outbound, and to nodes with knownNeo4j internal IDs, then
+              the simpler method create_node_with_children() may be used instead
 
         EXAMPLE:
             create_node_with_relationships(
@@ -1135,6 +1139,62 @@ class NeoAccess:
             raise Exception("Unable to extract internal ID of the newly-created node")
 
         return neo4j_id    # Return the Neo4j ID of the new node
+
+
+
+    def create_node_with_children(self, labels, properties = None, children_list = None) -> int:
+        """
+        Create a new node, with the given labels and optional specified properties,
+        and make it a parent of all the EXISTING nodes
+        specified in the list of children nodes (possibly empty), using the given relationship names.
+        All the relationships are understood to be OUTbound from the newly-created node.
+
+        Note: this is a simpler version of create_node_with_relationships()
+
+        EXAMPLE:
+            create_node_with_children(
+                                        labels="PERSON",
+                                        properties={"name": "Julian", "city": "Berkeley"},
+                                        children_list=[ (123, "EMPLOYS") , (456, "OWNS") ]
+            )
+
+        :param labels:          Labels to assign to the newly-created node (a string, possibly empty, or list of strings)
+        :param children_list:   Optional list of pairs of the form (Neo4j ID, relationship name);
+                                    use None, or an empty list, to indicate if there aren't any
+        :param properties: A dictionary of optional properties to assign to the newly-created node
+
+        :return:                An integer with the Neo4j ID of the newly-created node
+        """
+        assert children_list is None or type(children_list) == list, \
+            f"The argument `children_list` in create_node_with_children() must be a list or None; instead, it's {type(children_list)}"
+
+        print(f"In create_node_with_children().  labels: {labels}, children_list: {children_list}, node_properties: {properties}")
+
+        # Create the new node
+        new_node_id = self.create_node(labels, properties)
+
+        number_properties = "NO" if properties is None  else len(properties)     # Only used for debugging
+
+        if children_list is None or children_list == []:
+            print(f"\nCreated a new node with ID: {new_node_id}, with {number_properties} attribute(s), and NO children")
+            return new_node_id
+
+        # Add relationships to all children, if any
+        print(f"\nCreated a new node with ID: {new_node_id}, "
+              f"with {number_properties} attributes and {len(children_list)} children: ", children_list)
+
+        node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
+        # Add each relationship in turn (TODO: maybe do this with a single Cypher query)
+        for item in children_list:
+            assert type(item) == tuple and len(item) == 2, \
+                f"The list items in `children_list` in create_node_with_children() must be pairs; instead, the following item was seen: {item}"
+
+            child_id, rel_name = item
+            child_match = self.find(neo_id=child_id, dummy_node_name="to")
+            self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
+
+        return new_node_id
+
 
 
 
@@ -2086,7 +2146,7 @@ class NeoAccess:
                 for child_id in children_info:
                     children_list.append( (child_id, root_labels) )
                 print(f"{indent_str}Attaching the root nodes of the list elements to a common parent")
-                return [self.create_node_with_children(labels=root_labels, children_list=children_list, node_properties=None, indent_str=indent_str)]
+                return [self.create_node_with_children(labels=root_labels, children_list=children_list, properties=None)]
 
         else:
             raise Exception(f"Unexpected data type: {type(python_data)}")
@@ -2136,7 +2196,7 @@ class NeoAccess:
 
 
         print(f"{indent_str}dict_importer assembled node_properties: {node_properties} | children_info: {children_info}")
-        return self.create_node_with_children(labels=labels, children_list=children_info, node_properties=node_properties, indent_str=indent_str)
+        return self.create_node_with_children(labels=labels, children_list=children_info, properties=node_properties)
 
 
 
@@ -2163,68 +2223,6 @@ class NeoAccess:
 
         print(f"{indent_str}list_importer() is returning: {list_of_child_ids}")
         return list_of_child_ids
-
-
-
-
-    def create_node_with_children(self, labels, children_list = None, node_properties = None, indent_str="") -> int:
-        """
-        Create a new node, with the given labels and optional specified properties,
-        and make it a parent of all the EXISTING nodes
-        specified in the list of children nodes (possibly empty), using the given relationship names.
-        All the relationships are understood to be OUTbound from the newly-created node.
-
-        :param labels:          Labels to assign to the newly-created node (a string, possibly empty, or list of strings)
-        :param children_list:   Optional list of pairs of the form (Neo4j ID, relationship name);
-                                    use None, or an empty list, to indicate if there aren't any
-        :param node_properties: A dictionary of optional properties to assign to the newly-created node
-        :param indent_str:      An optional string of blank characters, for more readability during debugging
-
-        :return:                An integer with the Neo4j ID of the newly-created node
-        """
-        assert children_list is None or type(children_list) == list, \
-            f"The argument `children_list` in create_node_with_children() must be a list or None; instead, it's {type(children_list)}"
-
-        print(f"In create_node_with_children().  labels: {labels}, children_list: {children_list}, node_properties: {node_properties}")
-
-        # Create the new node
-        new_node_id = self.create_node(labels, node_properties)
-
-        number_properties = "NO" if node_properties is None  else len(node_properties)     # Only used for debugging
-
-        if children_list is None or children_list == []:
-            print(f"\n{indent_str}Created a new node with ID: {new_node_id}, with {number_properties} attribute(s), and NO children")
-            return new_node_id
-
-        # Add relationships to all children, if any
-        print(f"\n{indent_str}Created a new node with ID: {new_node_id}, "
-              f"with {number_properties} attributes and {len(children_list)} children: ", children_list)
-
-        node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
-        # Add each relationship in turn (TODO: maybe do this with a single Cypher query)
-        for item in children_list:
-            assert type(item) == tuple and len(item) == 2, \
-                f"The list items in `children_list` in create_node_with_children() must be pairs; instead, the following item was seen: {item}"
-
-            child_id, rel_name = item
-            child_match = self.find(neo_id=child_id, dummy_node_name="to")
-            self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
-
-        return new_node_id
-
-
-
-    def debug_trim_print(self, text: str, max_len = 150):
-        # Abridge the info line if excessively long
-        if len(text) > max_len:
-            print(text[:max_len] + " ...")
-        else:
-            print(text)
-
-    def indent_chooser(self, level) -> str:
-        indent_spaces = level*4
-        indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
-        return indent_str
 
 
 
@@ -2347,6 +2345,34 @@ class NeoAccess:
             print(f"    {data_binding}")
 
         print()
+
+
+
+    def debug_trim_print(self, text: str, max_len = 150) -> None:
+        """
+        Abridge the output, if excessively long
+        :param text:
+        :param max_len:
+        :return:
+        """
+        if len(text) > max_len:
+            print(text[:max_len] + " ...")
+        else:
+            print(text)
+
+
+
+    def indent_chooser(self, level: int) -> str:
+        """
+        Create an indent based on a "level": handy for debugging recursive functions
+
+        :param level:
+        :return:
+        """
+        indent_spaces = level*4
+        indent_str = " " * indent_spaces        # Repeat a blank character the specified number of times
+        return indent_str
+
 
 
 

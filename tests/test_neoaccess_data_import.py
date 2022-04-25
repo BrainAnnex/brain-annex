@@ -1,4 +1,5 @@
 # Testing of Data Import
+####  WARNING : the database will get erased!!!
 
 import pytest
 from BrainAnnex.modules.utilities.comparisons import *
