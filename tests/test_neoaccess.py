@@ -1678,7 +1678,7 @@ def test_load_pandas(db):
 
 ###  ~ JSON IMPORT/EXPORT ~
 
-# =>  SEE test_neoaccess_json.py
+# =>  SEE test_neoaccess_import_export.py
 
 
 

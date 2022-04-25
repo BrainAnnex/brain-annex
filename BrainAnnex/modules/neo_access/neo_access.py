@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import os
 import json
-from typing import Union
+from typing import Union, List
 
 
 class NeoAccess:
@@ -590,13 +590,14 @@ class NeoAccess:
 
 
 
-    def fetch_nodes(self, match: dict,
+    def fetch_nodes(self, match: Union[int, dict],
                     return_neo_id=False, return_labels=False, order_by=None, limit=None,
                     single_row=False, single_cell=""):
         """
         NEW VERSION OF get_nodes()
 
-        :param match:           A dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param match:           Either an integer with a Neo4j node id,
+                                or a dictionary of data to identify a node, or set of nodes, as returned by find()
 
         :param return_neo_id:   Flag indicating whether to also include the Neo4j internal node ID in the returned data
                                     (using "neo4j_id" as its key in the returned dictionary)
@@ -634,7 +635,9 @@ class NeoAccess:
         # TODO: provide an option to specify the desired fields
         # TODO: provide an option to specify a limit
         """
-        CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
+        #CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
+        # TODO: do this change in all the methods that accept a "match" argument (and change the description of their "match" arg)
+        match = CypherUtils.validate_and_standardize(match) # Validate, and possibly transform, the match dictionary
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match)
@@ -789,6 +792,22 @@ class NeoAccess:
             print("\n*** match_structure : ", match_structure)
 
         return match_structure
+
+
+
+    def get_node_labels(self, neo4j_id: int) -> [str]:
+        """
+        Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
+
+        :param neo4j_id:
+        :return:
+        """
+        assert type(neo4j_id) == int and neo4j_id >= 0, \
+               "The argument of get_node_labels() must be a non-negative integer"
+
+        q = "MATCH (n) WHERE id(n)=$neo4j_id RETURN labels(n) AS all_labels"
+
+        return self.query(q, data_binding={"neo4j_id": neo4j_id}, single_cell="all_labels")
 
 
 
@@ -2095,6 +2114,120 @@ class NeoAccess:
             raise Exception(f"Unexpected data type: {type(python_data)}")
 
 
+    def indent_chooser(self, level) -> str:
+        indent_spaces = level*4
+        indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
+        return indent_str
+
+
+
+    def create_nodes_from_python_data(self, python_data, root_labels, level=1) -> List[int]:
+        """
+
+        :param python_data:
+        :param root_labels:
+        :param level:
+        :return:            List of integer ID's (possibly empty), of the root node(s) created
+        """
+        indent_str = self.indent_chooser(level)
+        print(f"{indent_str}{level}. ~~~~~:")
+
+        if python_data is None:
+            print(f"{indent_str}Handling a None.  Returning an empty list")
+            return []
+
+        # If the data is a literal, first turn it into a dictionary using a key named "value"
+        if self.is_literal(python_data):
+            # The data is a literal
+            original_data = python_data             # Only used for debug-printing, below
+            python_data = {"value": python_data}    # Turn the literal data into a dictionary
+            print(f"{indent_str}Turning literal ({original_data}) into dict, using `value` as key, as follows: {python_data}")
+
+        if type(python_data) == dict:
+            print(f"{indent_str}Input is a dict with {len(python_data)} key(s): {list(python_data.keys())}")
+            #return self.dict_helper(d=python_data, labels=labels, level=level)
+            node_properties, children_info  = self.dict_helper(d=python_data, level=level)
+            print(f"{indent_str}node_properties: {node_properties} | children_info: {children_info}")
+            return [self.create_node_with_children(labels=root_labels, children_list=children_info, node_properties=node_properties, indent_str=indent_str)]
+
+        elif type(python_data) == list:
+            print(f"{indent_str}Input is a list with {len(python_data)} items")
+            children_info = self.list_helper(l=python_data, labels=root_labels, level=level)
+            print(f"{indent_str}children_info: {children_info}")
+            return children_info
+            #root_id_list = [child[0] for child in children_info]
+            #return root_id_list
+            #return self.create_node_with_children(labels=root_labels, children_list=children_info, indent_str=indent_str)
+
+        else:
+            raise Exception(f"Unexpected data type: {type(python_data)}")
+
+
+    def dict_helper(self, d: dict, level: int) -> (dict, list):
+        """
+
+        :param d:       A Python dictionary
+        :param level:   Integer with recursion level (used to format debugging output)
+        :return:        The pair (node_properties, children_info)
+        """
+        indent_str = self.indent_chooser(level)
+
+        node_properties = {}    # Dictionary to be filled in with all the properties of the new node
+        children_info = []      # A list of pairs (Neo4j ID, relationship name)
+
+        # Loop over all the dictionary entries
+        for k, v in d.items():
+            self.debug_trim_print(f"{indent_str}*** KEY-> VALUE: {k} -> {v}")
+
+            if self.is_literal(v):
+                node_properties[k] = v      # Add the key/value to the running list of properties of the new node
+                print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}. Node properties so far: {node_properties}")
+
+            elif type(v) == dict:
+                print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
+                new_node_id_list = self.create_nodes_from_python_data(python_data=v, root_labels=k, level=level + 1)        # Recursive call
+                if len(new_node_id_list) > 1:
+                    raise Exception("Internal error: processing a dictionary is returning more than 1 root node")
+                elif len(new_node_id_list) == 1:
+                    new_node_id = new_node_id_list[0]
+                    children_info.append( (new_node_id, k) )
+                # Note: if the list is empty, do nothing
+
+            elif type(v) == list:
+                print(f"{indent_str}Processing a list (with {len(v)} elements):")
+                new_children = self.list_helper(l=v, labels=k, level=level)
+                children_info += new_children   # List concatenation
+
+            # Note: if v is None, no action is taken.  Dictionary entries with values of None are disregarded
+
+
+        return (node_properties, children_info)
+        #return self.create_node_with_children(labels=labels, children_list=children_info, node_properties=node_properties, indent_str=indent_str)
+
+
+    def list_helper(self, l: list, labels, level) -> [int]:
+        """
+
+        :param l:
+        :param labels:
+        :param level:
+        :return:        List (possibly empty) of integers with Neo4j node id'd
+        """
+        indent_str = self.indent_chooser(level)
+        if len(l) == 0:
+            print(f"{indent_str}The list is empty; so, ignoring it")
+            return []
+
+        list_of_child_ids = []
+        # Process each element of the list, in turn
+        for item in l:
+            print(f"{indent_str}Making recursive call to process list element...")
+            new_node_id_list = self.create_nodes_from_python_data(python_data=item, root_labels=labels, level=level + 1)  # Recursive call
+            list_of_child_ids += new_node_id_list   # List concatenation
+
+        return list_of_child_ids
+
+
 
     def create_node_with_children(self, labels, children_list = None, node_properties = None, indent_str="") -> int:
         """
@@ -2120,7 +2253,7 @@ class NeoAccess:
         number_properties = "NO" if node_properties is None  else len(node_properties)     # Only used for debugging
 
         if children_list is None or children_list == []:
-            print(f"\n{indent_str}Created a new node with ID: {new_node_id} with {number_properties} attributes, and NO children")
+            print(f"\n{indent_str}Created a new node with ID: {new_node_id}, with {number_properties} attribute(s), and NO children")
             return new_node_id
 
         # Add relationships to all children, if any
@@ -2134,6 +2267,15 @@ class NeoAccess:
             self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
 
         return new_node_id
+
+
+
+    def debug_trim_print(self, text: str, max_len = 150):
+        # Abridge the info line if excessively long
+        if len(text) > max_len:
+            print(text[:max_len] + " ...")
+        else:
+            print(text)
 
 
 
@@ -2429,7 +2571,7 @@ class CypherUtils:      # TODO: move to separate file
         :param match:   A dictionary of data to identify a node, or set of nodes, as returned by find()
         :return:        None
         """
-        assert type(match) == dict, "`match` argument is not a dictionary as expected"
+        assert type(match) == dict, f"`match` argument is not a dictionary as expected; instead, it is a {type(match)}"
 
         assert len(match) == 4, f"the `match` dictionary does not contain the expected 4 entries; instead, it has {len(match)}"
 
@@ -2448,18 +2590,20 @@ class CypherUtils:      # TODO: move to separate file
     @classmethod
     def validate_and_standardize(cls, match) -> dict:
         """
-        If match is a non-negative integer, it's assumed to be a Neo4j ID, and a match is created and returned
+        If match is a non-negative integer, it's assumed to be a Neo4j ID, and a match dictionary is created and returned.
+        Otherwise, verify that an alleged "match" dictionary is a valid one:
+        if yes, return it back; if not, raise an Exception
 
-        TODO:
-              Otherwise, validate it and, if correct, return it
-              At that point, calling methods that accept "match" arguments can have a line such as:
+        IN-PROGRESS:
+              Calling methods that accept "match" arguments can have a line such as:
                     match = CypherUtils.validate_and_standardize(match)
               and, at that point, they will be automatically accepting Neo4j IDs as "matches"
 
         TODO: also, accept as argument a list/tuple - and, in addition to the above ops, carry out checks for compatibilities
 
-        :param match:   Either a valid Neo4j internal ID or a "match" dictionary (or a list/tuple of those)
-        :return:
+        :param match:   Either a valid Neo4j internal ID, or a "match" dictionary (TODO: or a list/tuple of those)
+
+        :return:        A valid "match" structure, i.e. a dictionary of data to identify a node, or set of nodes
         """
         if type(match) == int and match >= 0:
             return cls.define_match(neo_id=match)

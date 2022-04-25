@@ -1,6 +1,7 @@
-# Testing of JSON-based Import/Export
+# Testing of Import/Export
 
 import pytest
+from BrainAnnex.modules.utilities.comparisons import *
 from BrainAnnex.modules.neo_access import neo_access
 
 
@@ -357,3 +358,63 @@ def test_import_json2(db):
             '''
     json_data = db.import_json(j_str, "ROOT")
     print(json_data)
+
+
+
+def test_create_nodes_from_python_data_1(db):
+    db.empty_dbase()
+
+    # 1-layer dictionaries
+
+    data = {"a": 123}
+    new_id_list = db.create_nodes_from_python_data(data, root_labels="dict1")
+    assert len(new_id_list) == 1
+    new_id = new_id_list[0]
+    result = db.fetch_nodes(match=new_id, single_row=True)
+    assert result == {"a": 123}
+    assert db.get_node_labels(new_id) == ["dict1"]
+
+
+    data = {"name": "Joe",
+            "sale": True,
+            "salary": 52000,
+            "performance scale": 3.4,
+            "team": None}
+    new_id_list = db.create_nodes_from_python_data(data, root_labels="dict2")
+    assert len(new_id_list) == 1
+    new_id = new_id_list[0]
+    result = db.fetch_nodes(match=new_id, single_row=True)
+    print(result)
+    assert result == {'name': 'Joe', 'sale': True, 'salary': 52000, 'performance scale': 3.4}
+    assert db.get_node_labels(new_id) == ["dict2"]
+
+
+    # 1-layer lists
+
+    data = [1, 2, 3]
+    new_id_list = db.create_nodes_from_python_data(data, root_labels="list1")
+    extracted_data = []
+    for new_id in new_id_list:
+        result = db.fetch_nodes(match=new_id, single_row=True)
+        print(result)
+        assert db.get_node_labels(new_id) == ["list1"]
+        assert len(result) == 1
+        extracted_data.append(result["value"])
+
+    print("extracted_data: ", extracted_data)
+    assert compare_unordered_lists(extracted_data, data)
+
+
+    data = [1, 2.5, True, False,  None, "hello"]
+    new_id_list = db.create_nodes_from_python_data(data, root_labels="list2")
+    extracted_data = []
+    for new_id in new_id_list:
+        result = db.fetch_nodes(match=new_id, single_row=True)
+        print(result)
+        assert db.get_node_labels(new_id) == ["list2"]
+        assert len(result) == 1
+        extracted_data.append(result["value"])
+
+    print("extracted_data: ", extracted_data)
+    assert compare_unordered_lists(extracted_data + [None] , data)  # Need to add [None] because dropped from import
+

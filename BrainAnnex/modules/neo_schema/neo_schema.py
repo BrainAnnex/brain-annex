@@ -1291,12 +1291,12 @@ class NeoSchema:
 
         # Loop over all the dictionary entries
         for k, v in d.items():
-            info = f"{indent_str}*** KEY-> VALUE: {k} -> {v}"
+            debug_info = f"{indent_str}*** KEY-> VALUE: {k} -> {v}"
             # Abridge the info line if excessively long
             max_length = 150
-            if len(info) > max_length:
-                info = info[:max_length] + " ..."
-            print(info)
+            if len(debug_info) > max_length:
+                debug_info = debug_info[:max_length] + " ..."
+            print(debug_info)
 
             if v is None:
                 print(f"{indent_str}Disregarding attribute (`{k}`) that has a None value")
@@ -1394,7 +1394,7 @@ class NeoSchema:
 
         :param l:           A list of data from which to create a set of trees in the database
         :param class_name:
-        :return:            A list of the Neo4j ID of the newly created nodes
+        :return:            A list of the Neo4j ID's of the newly created nodes
         """
         assert type(l) == list, f"create_tree_from_dict(): the argument `l` must be a list (instead, it's {type(l)})"
 
