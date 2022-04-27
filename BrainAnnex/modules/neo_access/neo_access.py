@@ -1172,7 +1172,8 @@ class NeoAccess:
         assert children_list is None or type(children_list) == list, \
             f"The argument `children_list` in create_node_with_children() must be a list or None; instead, it's {type(children_list)}"
 
-        print(f"In create_node_with_children().  labels: {labels}, children_list: {children_list}, node_properties: {properties}")
+        if self.debug:
+            print(f"In create_node_with_children().  labels: {labels}, children_list: {children_list}, node_properties: {properties}")
 
         # Create the new node
         new_node_id = self.create_node(labels, properties)
@@ -2130,7 +2131,8 @@ class NeoAccess:
             # The data is a literal
             original_data = python_data             # Only used for debug-printing, below
             python_data = {"value": python_data}    # Turn the literal data into a dictionary
-            print(f"{indent_str}Turning literal ({original_data}) into dict, using `value` as key, as follows: {python_data}")
+            print(f"{indent_str}Turning literal ({self.debug_trim(original_data, max_len=200)}) into dict, "
+                  f"using `value` as key, as follows: {self.debug_trim(python_data)}")
 
         if type(python_data) == dict:
             print(f"{indent_str}Input is a dict with {len(python_data)} key(s): {list(python_data.keys())}")
@@ -2141,7 +2143,9 @@ class NeoAccess:
         elif type(python_data) == list:
             print(f"{indent_str}Input is a list with {len(python_data)} items")
             children_info = self.list_importer(l=python_data, labels=root_labels, level=level)
-            print(f"{indent_str}children_info: {children_info}")
+            if self.debug:
+                print(f"{indent_str}children_info: {children_info}")
+
             if level == 1:
                 return children_info    # Top-level lists require a special treatment (no grouping)
             else:
@@ -2181,7 +2185,7 @@ class NeoAccess:
                 if self.debug:
                     print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}. Node properties so far: {node_properties}")
                 else:
-                    print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}")      # Concise version
+                    print(f"{indent_str}The value (`{self.debug_trim(v)}`) is a literal of type {type(v)}")      # Concise version
 
             elif type(v) == dict:
                 print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
@@ -2229,7 +2233,9 @@ class NeoAccess:
             new_node_id_list = self.create_nodes_from_python_data(python_data=item, root_labels=labels, level=level + 1)  # Recursive call
             list_of_child_ids += new_node_id_list   # List concatenation
 
-        print(f"{indent_str}list_importer() is returning: {list_of_child_ids}")
+        if self.debug:
+            print(f"{indent_str}list_importer() is returning: {list_of_child_ids}")
+
         return list_of_child_ids
 
 
@@ -2355,18 +2361,31 @@ class NeoAccess:
         print()
 
 
+    def debug_trim(self, data, max_len = 150) -> str:
+        """
+        Abridge the given data (first turning it into a string if needed), if excessively long
 
-    def debug_trim_print(self, text: str, max_len = 150) -> None:
-        """
-        Abridge the output, if excessively long
-        :param text:
+        :param data:    Data to possibly abridge
         :param max_len:
-        :return:
+        :return:        The (possibly) abridged text
         """
+        text = str(data)
         if len(text) > max_len:
-            print(text[:max_len] + " ...")
+            return text[:max_len] + " ..."
         else:
-            print(text)
+            return text
+
+
+    def debug_trim_print(self, data, max_len = 150) -> None:
+        """
+        Abridge the given data (first turning it into a string if needed), if excessively long, and then print it
+
+        :param data:    Data to possibly abridge, and then print
+        :param max_len:
+        :return:        None
+        """
+        print(self.debug_trim(data, max_len))
+
 
 
 
