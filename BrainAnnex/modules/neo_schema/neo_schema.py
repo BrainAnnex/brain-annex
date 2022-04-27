@@ -1208,20 +1208,22 @@ class NeoSchema:
 
 
     @classmethod
-    def create_data_nodes_from_python_data(cls, data, class_name: str, provenance=None) -> Union[int, List[int]]:
+    def create_data_nodes_from_python_data(cls, data, class_name: str, provenance=None) -> [int]:
         """
 
         :param data:
         :param class_name:
-        :param provenance:
-        :return:
+        :param provenance:  Optional string to store in a "source" attribute in the root node
+                                (only used if the top-level data structure is an object, i.e. if there's a single root node)
+
+        :return:            List of integer Neo4j internal ID's (possibly empty), of the root node(s) created
         """
         if type(data) == dict:       # If the top-level JSON structure is dictionary
             print("Top-level structure of the data to import is a Python dictionary")
             node_id = cls.create_tree_from_dict(data, class_name)
             if provenance:
                 cls.db.set_fields(node_id, set_dict={"source": provenance})
-            return node_id
+            return [node_id]
 
         elif type(data) == list:         # If the top-level JSON structure is a list
             # Create multiple unconnected trees
@@ -1380,7 +1382,7 @@ class NeoSchema:
             return None   # Using None to indicate "skipped node/subtree"
         else:
             # TODO: this ought to be handled at the Schema layer
-            return cls.db.create_node_with_children(labels=class_name, children_list=children_info, properties=node_properties, indent_str=indent_str)
+            return cls.db.create_node_with_children(labels=class_name, properties=node_properties, children_list=children_info)
 
 
 

@@ -2112,12 +2112,12 @@ class NeoAccess:
 
         If the data is a literal, first turn it into a dictionary using a key named "value".
 
-        Return the Neo4j ID of the root node(s)
+        Return the Neo4j ID's of the root node(s)
 
         :param python_data: Python data to import
         :param root_labels: String, or list of strings, to be used as Neo4j labels for the root node(s)
         :param level:       Recursion level (also used for debugging, to make the indentation more readable)
-        :return:            List of integer ID's (possibly empty), of the root node(s) created
+        :return:            List of integer Neo4j internal ID's (possibly empty), of the root node(s) created
         """
         indent_str = self.indent_chooser(level)
         print(f"{indent_str}{level}. ~~~~~:")

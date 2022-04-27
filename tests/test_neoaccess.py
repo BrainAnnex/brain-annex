@@ -16,6 +16,7 @@ def db():
     yield neo_obj
 
 
+
 ###  ~ INIT ~
 
 def test_construction():

@@ -106,7 +106,7 @@ def test_export_dbase_json(db):
 
 
 
-def test_export_nodes_rels_json(db):
+def test_export_nodes_rels_json(db):    # TODO: this test intermittently fails; probably an assert issue involving order
     db.empty_dbase()
 
     # Start by exporting everything in the empty database
