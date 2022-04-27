@@ -6,13 +6,13 @@ from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, co
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(verbose=True, debug=True)
+    neo_obj = neo_access.NeoAccess(debug=True)
     yield neo_obj
 
 
 
 def test_get_single_record_by_key(db):
-    result = db.get_single_record_by_key("CLASS", primary_key_name = "name", primary_key_value = "Short lives courses")
+    result = db.get_record_by_primary_key("CLASS", primary_key_name ="name", primary_key_value ="Short live courses")
     print(result)
 
 

@@ -5,17 +5,22 @@ import numpy as np
 import pandas as pd
 import os
 import json
-from typing import Union
+from typing import Union, List
 
 
 class NeoAccess:
     """
-    VERSION 3.4
+    VERSION 3.5
 
     High-level class to interface with the Neo4j graph database from Python.
+    Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
 
-    It provides a higher-level wrapper around the Neo4j python connectivity library "Neo4j Python Driver",
-    documented at: https://neo4j.com/docs/api/python-driver/current/api.html
+    Conceptually, there are two parts to NeoAccess:
+        1) A thin wrapper around the Neo4j python connectivity library "Neo4j Python Driver"
+          that is documented at: https://neo4j.com/docs/api/python-driver/current/api.html
+
+        2) A layer above, providing higher-level functionality for common database operations,
+           such as lookup, creation, deletion, modification, import, indices, etc.
 
     SECTIONS IN THIS CLASS:
         * INIT
@@ -36,24 +41,26 @@ class NeoAccess:
     Plus separate class "CypherUtils"
 
     ----------------------------------------------------------------------------------
-    AUTHORS:
+    HISTORY and AUTHORS:
         - NeoAccess (this library) is a fork of NeoInterface;
                 NeoAccess was created, and is being maintained, by Julian West,
                 primarily in the context of the BrainAnnex.org open-source project.
+                It started out in late 2021; for change log thru 2022,
+                see the "LIBRARIES" entries in https://brainannex.org/viewer.php?ac=2&cat=14
 
-        - NeoInterface is co-authored by Alexey Kuznetsov and Julian West,
+        - NeoInterface was co-authored by Alexey Kuznetsov and Julian West in 2021,
                 and is maintained by GSK pharmaceuticals
                 with an Apache License 2.0 (https://github.com/GSK-Biostatistics/neointerface).
                 NeoInterface is in part based on the earlier library Neo4jLiaison,
                 as well as a library developed by Alexey Kuznetsov.
 
-        - Neo4jLiaison, now deprecated, was authored by Julian West
+        - Neo4jLiaison, now deprecated, was authored by Julian West in 2020
                 (https://github.com/BrainAnnex/neo4j-liaison)
 
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021 Julian A. West
+        Copyright (c) 2021-2022 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org).
         See "AUTHORS", above, for full credits.
@@ -82,7 +89,6 @@ class NeoAccess:
                  host=os.environ.get("NEO4J_HOST"),
                  credentials=(os.environ.get("NEO4J_USER"), os.environ.get("NEO4J_PASSWORD")),
                  apoc=False,
-                 verbose=False,
                  debug=False,
                  autoconnect=True):
         """
@@ -96,20 +102,18 @@ class NeoAccess:
         :param apoc:        Flag indicating whether apoc library is used on Neo4j database to connect to
                                 Notes: APOC, if used, must also be enabled on the database.
                                        The only method currently requiring APOC is export_dbase_json()
-        :param verbose:     Flag indicating whether a verbose mode is to be used by all methods of this class
         :param debug:       Flag indicating whether a debug mode is to be used by all methods of this class
         :param autoconnect  Flag indicating whether the class should establish connection to database at initialization
 
         TODO: try os.getenv() in lieu of os.environ.get()
         """
-        self.verbose = verbose
         self.debug = debug
         self.autoconnect = autoconnect
         self.host = host
         self.credentials = credentials
         self.driver = None
         self.apoc = apoc
-        if self.verbose:
+        if self.debug:
             print ("~~~~~~~~~ Initializing NeoAccess ~~~~~~~~~")
         if self.autoconnect:    #TODO: add test for autoconnect == False
             # Attempt to create a driver object
@@ -132,7 +136,7 @@ class NeoAccess:
             else:
                 self.driver = GraphDatabase.driver(self.host,
                                                    auth=None)               # Object to connect to Neo4j's Bolt driver for Python
-            if self.verbose:
+            if self.debug:
                 print(f"Connection to {self.host} established")
         except Exception as ex:
             error_msg = f"CHECK WHETHER NEO4J IS RUNNING! While instantiating the NeoAccess object, it failed to create the driver: {ex}"
@@ -405,7 +409,7 @@ class NeoAccess:
                                     # This is a neo4j.ResultSummary object
                                     # See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.ResultSummary
 
-            if self.verbose:
+            if self.debug:
                 print("In update_query(). Attributes of ResultSummary object:", info.__dict__)  # Show as dictionary
                 '''
                 EXAMPLE: 
@@ -474,58 +478,52 @@ class NeoAccess:
 
 
 
-    def get_single_record_by_key(self, labels: str, primary_key_name: str, primary_key_value, return_nodeid=False) -> Union[None, dict]:     # TODO: test
+    def get_record_by_primary_key(self, labels: str, primary_key_name: str, primary_key_value, return_nodeid=False) -> Union[dict, None]:
         """
         Return the first (and it ought to be only one) record with the given primary key, and the optional label(s),
         as a dictionary of all its attributes.
-        If no record is found, return None
+
+        If more than one record is found, an Exception is raised.
+        If no record is found, return None.
 
         :param labels:              A string or list/tuple of strings
         :param primary_key_name:    The name of the primary key by which to look the record up
         :param primary_key_value:   The desired value of the primary key
-        :return:
+        :param return_nodeid:       If True, an extra entry is present in the dictionary, with the key "neo4j_id"
+
+        :return:                    A dictionary, if a unique record was found; or None if not found
         """
         match = self.find(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
-        results = self.fetch_nodes(match=match, return_neo_id=return_nodeid)
+        result = self.fetch_nodes(match=match, return_neo_id=return_nodeid)
 
-        if results == []:
+        if len(result) == 0:
             return None
+        if len(result) > 1:
+            raise Exception(f"get_record_by_primary_key(): multiple records ({len(result)}) share the value (`{primary_key_value}`) in the primary key ({primary_key_name})")
 
-        return results[0]
+        return result[0]
 
 
 
-    def exists_by_key(self, labels: str, key_name: str, key_value) -> bool:     # TODO: test
+    def exists_by_key(self, labels: str, key_name: str, key_value) -> bool:
         """
+        Return True if a node with the given labels and key_name/key_value exists, or False otherwise
 
         :param labels:
         :param key_name:
         :param key_value:
         :return:
         """
-        record = self.get_single_record_by_key(labels, key_name, key_value)
+        record = self.get_record_by_primary_key(labels, key_name, key_value)
+
         if record is None:
             return False
         else:
             return True
 
 
-    def get_neo_id_by_key(self, labels: str, key_name: str, key_value) -> int:     # TODO: test
-        """
 
-        :param labels:
-        :param key_name:
-        :param key_value:
-        :return:
-        """
-        record = self.get_single_record_by_key(labels, key_name, key_value, return_nodeid=True)
-        if record is None:
-            return False
-        else:
-            return record["neo4j_id"]
-
-
-
+    # OBSOLETE
     def get_nodes(self, labels="", properties_condition=None, cypher_clause=None, cypher_dict=None,
                   return_nodeid=False, return_labels=False, order_by=None,
                   single_row=False, single_cell=""):        # TODO: being obsoleted by fetch_nodes()
@@ -596,13 +594,14 @@ class NeoAccess:
 
 
 
-    def fetch_nodes(self, match: dict,
+    def fetch_nodes(self, match: Union[int, dict],
                     return_neo_id=False, return_labels=False, order_by=None, limit=None,
                     single_row=False, single_cell=""):
         """
         NEW VERSION OF get_nodes()
 
-        :param match:           A dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param match:           Either an integer with a Neo4j node id,
+                                or a dictionary of data to identify a node, or set of nodes, as returned by find()
 
         :param return_neo_id:   Flag indicating whether to also include the Neo4j internal node ID in the returned data
                                     (using "neo4j_id" as its key in the returned dictionary)
@@ -613,14 +612,16 @@ class NeoAccess:
                                     Note: lower and uppercase names are treated differently in the sort order
         :param limit:           Optional integer to specify the maximum number of nodes returned
 
-        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one.  TODO: test
+        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one;
+                                    if not found, None will be returned [to distinguish it from a found record with no fields!]
+
         :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
                                 If single_cell is specified, return the value of the field by that name in the first node
                                 Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
                                 TODO: test and give examples.  single_cell="name" will return result[0].get("name")
 
         :return:                If single_cell is specified, return the value of the field by that name in the first node.
-                                If single_row is True, return a dictionaries with the information of the first record.
+                                If single_row is True, return a dictionary with the information of the first record (or None if no record exists)
                                 Otherwise, return a list whose entries are dictionaries with each record's information
                                     (the node's attribute names are the keys)
                                     EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
@@ -638,7 +639,9 @@ class NeoAccess:
         # TODO: provide an option to specify the desired fields
         # TODO: provide an option to specify a limit
         """
-        CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
+        #CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
+        # TODO: do this change in all the methods that accept a "match" argument (and change the description of their "match" arg)
+        match = CypherUtils.validate_and_standardize(match) # Validate, and possibly transform, the match dictionary
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match)
@@ -668,9 +671,9 @@ class NeoAccess:
         # Deal with empty result lists
         if len(result_list) == 0:   # If no results were produced
             if single_row:
-                return {}           # representing an empty record
+                return None             # representing a record not found (different from a record with no fields, which will be {})
             if single_cell:
-                return None
+                return None             # representing a field not found
             return []
 
         # Note: we already checked that result_list isn't empty
@@ -793,6 +796,22 @@ class NeoAccess:
             print("\n*** match_structure : ", match_structure)
 
         return match_structure
+
+
+
+    def get_node_labels(self, neo4j_id: int) -> [str]:
+        """
+        Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
+
+        :param neo4j_id:
+        :return:
+        """
+        assert type(neo4j_id) == int and neo4j_id >= 0, \
+               "The argument of get_node_labels() must be a non-negative integer"
+
+        q = "MATCH (n) WHERE id(n)=$neo4j_id RETURN labels(n) AS all_labels"
+
+        return self.query(q, data_binding={"neo4j_id": neo4j_id}, single_cell="all_labels")
 
 
 
@@ -960,11 +979,15 @@ class NeoAccess:
 
     def create_node_with_relationships(self, labels, properties=None, connections=None) -> int:
         """
-        Create a new node with relationships to zero or more pre-existing nodes (identified by their labels and key/value pairs);
+        Create a new node with relationships to zero or more pre-existing nodes
+        (identified by their labels and key/value pairs);
         if the specified pre-existing nodes aren't found, then no new node is created.
 
         In case of failure (including not finding the requested pre-existing nodes) an Exception is raised;
         otherwise, the Neo4j internal ID of the new node just created is returned.
+
+        Note: if all connections are outbound, and to nodes with knownNeo4j internal IDs, then
+              the simpler method create_node_with_children() may be used instead
 
         EXAMPLE:
             create_node_with_relationships(
@@ -1123,6 +1146,63 @@ class NeoAccess:
 
 
 
+    def create_node_with_children(self, labels, properties = None, children_list = None) -> int:
+        """
+        Create a new node, with the given labels and optional specified properties,
+        and make it a parent of all the EXISTING nodes
+        specified in the list of children nodes (possibly empty), using the given relationship names.
+        All the relationships are understood to be OUTbound from the newly-created node.
+
+        Note: this is a simpler version of create_node_with_relationships()
+
+        EXAMPLE:
+            create_node_with_children(
+                                        labels="PERSON",
+                                        properties={"name": "Julian", "city": "Berkeley"},
+                                        children_list=[ (123, "EMPLOYS") , (456, "OWNS") ]
+            )
+
+        :param labels:          Labels to assign to the newly-created node (a string, possibly empty, or list of strings)
+        :param children_list:   Optional list of pairs of the form (Neo4j ID, relationship name);
+                                    use None, or an empty list, to indicate if there aren't any
+        :param properties: A dictionary of optional properties to assign to the newly-created node
+
+        :return:                An integer with the Neo4j ID of the newly-created node
+        """
+        assert children_list is None or type(children_list) == list, \
+            f"The argument `children_list` in create_node_with_children() must be a list or None; instead, it's {type(children_list)}"
+
+        if self.debug:
+            print(f"In create_node_with_children().  labels: {labels}, children_list: {children_list}, node_properties: {properties}")
+
+        # Create the new node
+        new_node_id = self.create_node(labels, properties)
+
+        number_properties = "NO" if properties is None  else len(properties)     # Only used for debugging
+
+        if children_list is None or children_list == []:
+            print(f"\nCreated a new node with ID: {new_node_id}, with {number_properties} attribute(s), and NO children")
+            return new_node_id
+
+        # Add relationships to all children, if any
+        print(f"\nCreated a new node with ID: {new_node_id}, "
+              f"with {number_properties} attributes and {len(children_list)} children: ", children_list)
+
+        node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
+        # Add each relationship in turn (TODO: maybe do this with a single Cypher query)
+        for item in children_list:
+            assert type(item) == tuple and len(item) == 2, \
+                f"The list items in `children_list` in create_node_with_children() must be pairs; instead, the following item was seen: {item}"
+
+            child_id, rel_name = item
+            child_match = self.find(neo_id=child_id, dummy_node_name="to")
+            self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
+
+        return new_node_id
+
+
+
+
 
     #---------------------------------------------------------------------------------------------------#
     #                                                                                                   #
@@ -1220,7 +1300,7 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def set_fields(self, match: dict, set_dict: dict ) -> int:
+    def set_fields(self, match, set_dict: dict ) -> int:
         """
         EXAMPLE - locate the "car" with vehicle id 123 and set its color to white and price to 7000
             match = find(labels = "car", properties = {"vehicle id": 123})
@@ -1243,7 +1323,7 @@ class NeoAccess:
         if set_dict == {}:
             return 0             # There's nothing to do
 
-        CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
+        match = CypherUtils.validate_and_standardize(match) # Validate, and possibly transform, the match dictionary
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match)
@@ -1964,72 +2044,204 @@ class NeoAccess:
 
 
 
-    def import_json(self, json_str: str, labels="test"):   # EXPERIMENTAL
-        """
-        Import into the database data specified by a JSON string
 
-        :param json_str:    A JSON string
-        :param labels:      To be used on the top-level nodes
-        :return:            Python data (such as a dict or list) that corresponds to the passed JSON string
+    def is_literal(self, value) -> bool:
         """
+        Return True if the given value represents a literal (in terms of database storage)
+
+        :param value:
+        :return:
+        """
+        if type(value) == int or type(value) == float or type(value) == str or type(value) == bool:
+            return True
+        else:
+            return False
+
+
+
+    def import_json(self, json_str: str, root_labels="import_root_label", parse_only=False, provenance=None) -> List[int]:
+        """
+        Import the data specified by a JSON string into the database.
+
+        CAUTION: A "postorder" approach is followed: create subtrees first (with recursive calls), then create root last;
+        as a consequence, in case of failure mid-import, there's no top root, and there could be several fragments.
+        A partial import might need to be manually deleted.
+        TODO: maintain a list of all created nodes - so as to be able to delete them all in case of failure.
+
+        :param json_str:    A JSON string representing (at the top level) an object or a list
+        :param root_labels: String, or list of strings, to be used as Neo4j labels for the root node(s)
+        :param parse_only:  If True, the parsed data will NOT be added to the database
+        :param provenance:  Optional string to store in a "source" attribute in the root node
+                                (only used if the top-level JSON structure is an object, i.e. if there's a single root node)
+
+        :return:            List of integer ID's (possibly empty), of the root node(s) created
+        """
+        # Try to obtain Python data (which ought to be a dict or list) that corresponds to the passed JSON string
         try:
-            json_data = json.loads(json_str)    # Turn the string (representing a JSON list) into a list
+            json_data = json.loads(json_str)    # Turn the string (representing JSON data) into its Python counterpart;
+                                                # at the top level, it should be a dict or list
         except Exception as ex:
             raise Exception(f"Incorrectly-formatted JSON string. {ex}")
 
-        if type(json_data) == list:
-            for item in json_data:
-                self.create_nodes_from_json_data(item, labels)
+        #print("Python version of the JSON file:\n"
+        #self.debug_trim_print(json_data, max_len = 250)
+
+        if parse_only:
+            return []      # Nothing else to do
+
+        # Import the structure into Neo4j
+        result = self.create_nodes_from_python_data(json_data, root_labels)
+
+        # TODO: implement a mechanism whereby, if the above call results in error, the partial database structure created gets erased
+
+        if provenance and type(json_data) == dict:       # If provenance is specified, and the top-level JSON structure is a dictionary
+            print("Stamping the root node of the import with provenance information in the `source` attribute")
+            node_id = result[0]
+            self.set_fields(node_id, set_dict={"source": provenance})
+
+        return result
+
+
+
+
+    def create_nodes_from_python_data(self, python_data, root_labels: Union[str, List[str]], level=1) -> List[int]:
+        """
+        Recursive function to add data from a JSON structure to the database, to create a tree:
+        either a single node, or a root node with children.
+        A "postorder" approach is followed: create subtrees first (with recursive calls), then create root last.
+
+        If the data is a literal, first turn it into a dictionary using a key named "value".
+
+        Return the Neo4j ID's of the root node(s)
+
+        :param python_data: Python data to import
+        :param root_labels: String, or list of strings, to be used as Neo4j labels for the root node(s)
+        :param level:       Recursion level (also used for debugging, to make the indentation more readable)
+        :return:            List of integer Neo4j internal ID's (possibly empty), of the root node(s) created
+        """
+        indent_str = self.indent_chooser(level)
+        print(f"{indent_str}{level}. ~~~~~:")
+
+        if python_data is None:
+            print(f"{indent_str}Handling a None.  Returning an empty list")
+            return []
+
+        # If the data is a literal, first turn it into a dictionary using a key named "value"
+        if self.is_literal(python_data):
+            # The data is a literal
+            original_data = python_data             # Only used for debug-printing, below
+            python_data = {"value": python_data}    # Turn the literal data into a dictionary
+            print(f"{indent_str}Turning literal ({self.debug_trim(original_data, max_len=200)}) into dict, "
+                  f"using `value` as key, as follows: {self.debug_trim(python_data)}")
+
+        if type(python_data) == dict:
+            print(f"{indent_str}Input is a dict with {len(python_data)} key(s): {list(python_data.keys())}")
+            new_root_id = self.dict_importer(d=python_data, labels=root_labels, level=level)
+            print(f"{indent_str}dict_importer returned new_root_id: {new_root_id}")
+            return [new_root_id]
+
+        elif type(python_data) == list:
+            print(f"{indent_str}Input is a list with {len(python_data)} items")
+            children_info = self.list_importer(l=python_data, labels=root_labels, level=level)
+            if self.debug:
+                print(f"{indent_str}children_info: {children_info}")
+
+            if level == 1:
+                return children_info    # Top-level lists require a special treatment (no grouping)
+            else:
+                # Lists that aren't top-level result in element nodes (or subtree roots)
+                # that are all attached to a special parent node that has no attributes
+                children_list = []
+                for child_id in children_info:
+                    children_list.append( (child_id, root_labels) )
+                print(f"{indent_str}Attaching the root nodes of the list elements to a common parent")
+                return [self.create_node_with_children(labels=root_labels, children_list=children_list, properties=None)]
+
         else:
-            self.create_nodes_from_json_data(json_data, labels)
-
-        return json_data
+            raise Exception(f"Unexpected data type: {type(python_data)}")
 
 
-    def create_nodes_from_json_data(self, json_data, labels):
+
+    def dict_importer(self, d: dict, labels, level: int) -> int:
         """
+        Import data from a Python dictionary.  It uses a recursive call to create_nodes_from_python_data()
 
-        :param json_data: Python data (such as a dict or list) created in response to a JSON string
-        :param labels:
-        :return:
+        :param d:       A Python dictionary with data to import
+        :param labels:  String, or list of strings, to be used as Neo4j labels for the node
+        :param level:   Integer with recursion level (used to format debugging output)
+        :return:        Integers with the Neo4j node id of the newly-created node
         """
-        if type(json_data) == int or type(json_data) == str or type(json_data) == bool:
-            print(f"Turning literal ({json_data}) into dict")
-            json_data = {"value": json_data}
+        indent_str = self.indent_chooser(level)
 
-        if type(json_data) == dict:
-            node_properties = {}
-            children = []
-            for k, v in json_data.items():
-                print(k , " -> " , v)
-                if type(v) == int or type(v) == str or type(v) == bool:
-                    node_properties[k] = v
-                if type(v) == dict:
-                    new_node_id = self.create_nodes_from_json_data(json_data=v, labels=k)
-                    children.append( (new_node_id, k) )
-                if type(v) == list:
-                    for item in v:
-                        new_node_id = self.create_nodes_from_json_data(json_data=item, labels=k)
-                        children.append( (new_node_id, k) )
+        node_properties = {}    # Dictionary to be filled in with all the properties of the new node
+        children_info = []      # A list of pairs (Neo4j ID, relationship name)
 
-            node_id = self.create_node(labels, node_properties)
+        # Loop over all the dictionary entries
+        for k, v in d.items():
+            self.debug_trim_print(f"{indent_str}*** KEY-> VALUE: {k} -> {v}")
 
-            # Add relationships to all children from the recursive call, if any
-            print("\nnode_id: ", node_id)
-            print(f"{len(children)} children: ", children)
-            print()
-            node_match = self.find(neo_id=node_id, dummy_node_name="from")
-            for child_id, rel_name in children:
-                child_match = self.find(neo_id=child_id, dummy_node_name="to")
-                self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
+            if self.is_literal(v):
+                node_properties[k] = v      # Add the key/value to the running list of properties of the new node
+                if self.debug:
+                    print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}. Node properties so far: {node_properties}")
+                else:
+                    print(f"{indent_str}The value (`{self.debug_trim(v)}`) is a literal of type {type(v)}")      # Concise version
 
-            return node_id
+            elif type(v) == dict:
+                print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
+                # Recursive call
+                new_node_id_list = self.create_nodes_from_python_data(python_data=v, root_labels=k, level=level + 1)
+                if len(new_node_id_list) > 1:
+                    raise Exception("Internal error: processing a dictionary is returning more than 1 root node")
+                elif len(new_node_id_list) == 1:
+                    new_node_id = new_node_id_list[0]
+                    children_info.append( (new_node_id, k) )
+                # Note: if the list is empty, do nothing
+
+            elif type(v) == list:
+                print(f"{indent_str}Processing a list (with {len(v)} elements):")
+                new_children = self.list_importer(l=v, labels=k, level=level)
+                for child_id in new_children:
+                    children_info.append( (child_id, k) )   # Append a pair to the running list
+
+            # Note: if v is None, no action is taken.  Dictionary entries with values of None are disregarded
+
+
+        print(f"{indent_str}dict_importer assembled node_properties: {node_properties} | children_info: {children_info}")
+        return self.create_node_with_children(labels=labels, children_list=children_info, properties=node_properties)
+
+
+
+    def list_importer(self, l: list, labels, level) -> [int]:
+        """
+        Import data from a list.  It uses a recursive call to create_nodes_from_python_data()
+
+        :param l:       A list with data to import
+        :param labels:  String, or list of strings, to be used as Neo4j labels for the node
+        :param level:   Integer with recursion level (used to format debugging output)
+        :return:        List (possibly empty) of integers with Neo4j node id's of the newly-created nodes
+        """
+        indent_str = self.indent_chooser(level)
+        if len(l) == 0:
+            print(f"{indent_str}The list is empty; so, ignoring it (Returning an empty list)")
+            return []
+
+        list_of_child_ids = []
+        # Process each element of the list, in turn
+        for item in l:
+            print(f"{indent_str}Making recursive call to process list element...")
+            new_node_id_list = self.create_nodes_from_python_data(python_data=item, root_labels=labels, level=level + 1)  # Recursive call
+            list_of_child_ids += new_node_id_list   # List concatenation
+
+        if self.debug:
+            print(f"{indent_str}list_importer() is returning: {list_of_child_ids}")
+
+        return list_of_child_ids
 
 
 
 
-
-    def import_json_data(self, json_str: str) -> str:  # TODO: maybe rename import_json_dump()
+    def import_json_dump(self, json_str: str) -> str:
         """
         Used to import data from a database dump done with export_dbase_json() or export_nodes_rels_json()
         Import nodes and/or relationships into the database, as directed by the given data dump in JSON form.
@@ -2147,6 +2359,47 @@ class NeoAccess:
             print(f"    {data_binding}")
 
         print()
+
+
+    def debug_trim(self, data, max_len = 150) -> str:
+        """
+        Abridge the given data (first turning it into a string if needed), if excessively long
+
+        :param data:    Data to possibly abridge
+        :param max_len:
+        :return:        The (possibly) abridged text
+        """
+        text = str(data)
+        if len(text) > max_len:
+            return text[:max_len] + " ..."
+        else:
+            return text
+
+
+    def debug_trim_print(self, data, max_len = 150) -> None:
+        """
+        Abridge the given data (first turning it into a string if needed), if excessively long, and then print it
+
+        :param data:    Data to possibly abridge, and then print
+        :param max_len:
+        :return:        None
+        """
+        print(self.debug_trim(data, max_len))
+
+
+
+
+    def indent_chooser(self, level: int) -> str:
+        """
+        Create an indent based on a "level": handy for debugging recursive functions
+
+        :param level:
+        :return:
+        """
+        indent_spaces = level*4
+        indent_str = " " * indent_spaces        # Repeat a blank character the specified number of times
+        return indent_str
+
 
 
 
@@ -2320,7 +2573,7 @@ class CypherUtils:      # TODO: move to separate file
         :param match:   A dictionary of data to identify a node, or set of nodes, as returned by find()
         :return:        None
         """
-        assert type(match) == dict, "`match` argument is not a dictionary as expected"
+        assert type(match) == dict, f"`match` argument is not a dictionary as expected; instead, it is a {type(match)}"
 
         assert len(match) == 4, f"the `match` dictionary does not contain the expected 4 entries; instead, it has {len(match)}"
 
@@ -2339,19 +2592,26 @@ class CypherUtils:      # TODO: move to separate file
     @classmethod
     def validate_and_standardize(cls, match) -> dict:
         """
-        TODO: if match is a nonzero integer, take it to be a Neo4j internal ID and return:
-                    return cls.define_match(neo_id=match)
-              Otherwise, validate it and, if correct, return it
-              At that point, calling methods that accept "match" arguments can have a line such as:
+        If match is a non-negative integer, it's assumed to be a Neo4j ID, and a match dictionary is created and returned.
+        Otherwise, verify that an alleged "match" dictionary is a valid one:
+        if yes, return it back; if not, raise an Exception
+
+        IN-PROGRESS:
+              Calling methods that accept "match" arguments can have a line such as:
                     match = CypherUtils.validate_and_standardize(match)
               and, at that point, they will be automatically accepting Neo4j IDs as "matches"
 
         TODO: also, accept as argument a list/tuple - and, in addition to the above ops, carry out checks for compatibilities
 
-        :param match:   Either a valid Neo4j internal ID or a "match" dictionary (or a list/tuple of those)
-        :return:
+        :param match:   Either a valid Neo4j internal ID, or a "match" dictionary (TODO: or a list/tuple of those)
+
+        :return:        A valid "match" structure, i.e. a dictionary of data to identify a node, or set of nodes
         """
-        pass
+        if type(match) == int and match >= 0:
+            return cls.define_match(neo_id=match)
+
+        cls.assert_valid_match_structure(match)
+        return match
 
 
 

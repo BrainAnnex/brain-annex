@@ -3,14 +3,15 @@
     MIT License.  Copyright (c) 2021-2022 Julian A. West
 """
 
-from flask import Blueprint, jsonify, request, make_response  # The request package makes available a GLOBAL request object
+from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer     # TODO: to phase out
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import sys                  # Used to give better feedback on Exceptions
 import shutil
-from time import sleep      # Used for tests of delays in asynchronous fetching
+#from time import sleep     # Used for tests of delays in asynchronous fetching
 
 
 
@@ -111,18 +112,29 @@ class ApiRouting:
     @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
         """
-        Convert the given POST data (an ImmutableMultiDict) into a dictionary,
+        Convert into a Python dictionary the given POST data
+        (expressed as an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
         while enforcing the optional given list of parameters that must be present.
         In case of errors (or missing required parameters), an Exception is raised.
+
+        EXAMPLE:
+                post_data = request.form
+                post_pars = cls.extract_post_pars(post_data, "name_of_calling_functions")
 
         TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
               Example - int_pars = ['item_id']
 
-        :param post_data:           EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at')])
+        TODO: merge with UploadHelper.get_form_data()
+
+        :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
+                                    that can contain multiple values for the same key.
+                                    EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at')])
+
         :param required_par_list:   A list or tuple.  EXAMPLE: ['item_id', 'rel_name']
         :return:                    A dict of POST data
         """
-        data_dict = dict(post_data)
+        data_dict = post_data.to_dict(flat=True)    # WARNING: if multiple identical keys occur,
+                                                    #          the values associated to the later keys will be discarded
 
         if required_par_list:
             for par in required_par_list:
@@ -140,7 +152,11 @@ class ApiRouting:
     @classmethod
     def show_post_data(cls, post_data, method_name=None) -> None:
         """
-        Debug utility method.  Pretty-printing for POST data
+        Debug utility method.  Pretty-printing for POST data (expressed as an ImmutableMultiDict)
+
+        EXAMPLE:
+                post_data = request.form
+                cls.show_post_data(post_data, "name_of_calling_functions")
 
         :param post_data:   An ImmutableMultiDict, as for example returned by request.form
         :param method_name: (Optional) Name of invoking function
@@ -421,33 +437,50 @@ class ApiRouting:
         #            SCHEMA-related (creating)        #
         #---------------------------------------------#
 
-        @bp.route('/simple/create_new_record_class', methods=['POST'])
-        def create_new_record_class():
+        @bp.route('/simple/create_new_schema_class', methods=['POST'])
+        def create_new_schema_class():
             """
-            TODO: this is a simple, interim version - to later switch to JSON
+            Create a new Schema Class, possibly linked to another existing class,
+            and also - typically but optionally - with the special "INSTANCE_OF" link
+            to an existing class (often, "Records")
 
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/create_new_record_class -d "data=Quotes,quote,attribution,notes"
+                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                    "new_class_name=my%20new%20class&properties_list=A,B,C,&instance_of=Records"
 
-            1 POST FIELD:
-                data    The name of the new Class, followed by the name of all desired Properties, in order
-                        (all comma-separated).  Tolerant of leading/trailing blanks, and of missing property names
+                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                    "new_class_name=Greek&properties_list=Greek,&instance_of=Foreign%20Vocabulary"
+
+                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                    "new_class_name=Entrees&properties_list=name,price,&instance_of=Records&linked_to=Restaurants&rel_name=served_at&rel_dir=OUT"
+
+            POST FIELDS:
+                new_class_name      The name of the new Class (tolerant of leading/trailing blanks)
+                properties_list     The name of all desired Properties, in order
+                                    (all comma-separated).  Tolerant of leading/trailing blanks, and of missing property names
+                instance_of         Typically, "Records"
+
+                [ALL THE REMAINING FIELDS ARE OPTIONAL]
+                linked_to           The name of an existing Class node, to link to
+                rel_name            The name to give to the above relationship
+                rel_dir             The relationship direction, from the point of view of the newly-added node
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
-            cls.show_post_data(post_data, "create_new_record_class")
+            cls.show_post_data(post_data, "create_new_schema_class")
 
             try:
-                class_specs = cls.extract_post_pars(post_data, required_par_list=["data"])
-                APIRequestHandler.new_record_class(class_specs)
+                class_specs = cls.extract_post_pars(post_data, required_par_list=["new_class_name"])
+                APIRequestHandler.new_schema_class(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
-                err_status = f"UNABLE TO CREATE NEW CLASS WITH PROPERTIES. {ex}"
+                err_status = f"Unable to create a new Schema Class. {ex}"
                 return_value = cls.ERROR_PREFIX + err_status    # Failure
 
-            print(f"create_new_record_class() is returning: `{return_value}`")
+            print(f"create_new_schema_class() is returning: `{return_value}`")
 
             return return_value
+
 
 
 
@@ -953,19 +986,19 @@ class ApiRouting:
         @bp.route('/import_json_file', methods=['POST'])
         def import_json_file() -> str:
             """
+            Upload and import of a data file in JSON format
             Invoke with the URL: http://localhost:5000/BA/api/import_json_file
             """
             # Extract the POST values
-            #post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
-            #cls.show_post_data(post_data, "import_json_file")
-            #data_dict = dict(post_data)
-            #print(data_dict)
+            post_data = request.form     # Example: ImmutableMultiDict([('use_schema', 'SCHEMA'), ('schema_class', 'my_class_name')])
+            cls.show_post_data(post_data, "import_json_file")
 
-            print("\nIn import_json_file().  request.files: ", request.files)
-            # EXAMPLE: request.files:  ImmutableMultiDict([('file', <FileStorage: 'julian_test.json' ('application/json')>)])
+            print("request.files: ", request.files)
+            # EXAMPLE: ImmutableMultiDict([('file', <FileStorage: 'julian_test.json' ('application/json')>)])
 
             try:
-                result = APIRequestHandler.upload_import_json_file()
+                post_pars = cls.extract_post_pars(post_data, required_par_list=["use_schema"])
+                result = APIRequestHandler.upload_import_json_file(post_pars)
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -1025,10 +1058,9 @@ class ApiRouting:
             print("Uploading content thru upload_media()")
             print("POST variables: ", dict(post_data))
         
-            err_status = ""
-        
             try:
-                (tmp_filename_for_upload, full_filename) = APIRequestHandler.upload_helper(request, html_name="file", verbose=True)
+                upload_dir = current_app.config['UPLOAD_FOLDER']
+                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1054,7 +1086,7 @@ class ApiRouting:
             category_id = int(post_data["category_id"])
         
             try:
-                properties = APIRequestHandler.process_uploaded_image(tmp_filename_for_upload, dest_fullname)
+                properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=cls.MEDIA_FOLDER)
             except Exception as ex:
                 (exc_type, _, _) = sys.exc_info()
                 err_status = "Unable save, or make a thumb from, the uploaded image. " + str(exc_type) + " : " + str(ex)
@@ -1098,7 +1130,8 @@ class ApiRouting:
             err_status = ""
         
             try:
-                (tmp_filename_for_upload, full_filename) = APIRequestHandler.upload_helper(request, html_name="file", verbose=True)
+                upload_dir = current_app.config['UPLOAD_FOLDER']
+                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1132,7 +1165,8 @@ class ApiRouting:
                 return "This endpoint requires POST data (you invoked it with a GET method.) No action taken..."   # Handy for testing
         
             try:
-                (tmp_filename_for_upload, full_filename) = APIRequestHandler.upload_helper(request, html_name="imported_datafile", verbose=False)
+                upload_dir = current_app.config['UPLOAD_FOLDER']
+                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         

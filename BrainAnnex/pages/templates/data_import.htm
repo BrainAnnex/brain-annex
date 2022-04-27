@@ -31,7 +31,7 @@
     {% include "navbar_top.htm" %}
 </div>
 
-<a href='/BA/pages/admin'>Admin</a> > Data Import
+<a href='/BA/pages/admin'>Admin</a> &raquo; Data Import
 
 <h2 class="page-title">Data Import</h2>
 
@@ -44,8 +44,22 @@
     <div>
         <p>
             JSON data file to parse :
-            <input type="file" @change="upload_file" ref="json_file" name="julian_test">
+            <input type="file" @change="upload_file">
         </p>
+
+
+        Use Schema (recommended) <input type="radio" value="SCHEMA"    v-model="use_schema">
+        &nbsp;&nbsp;
+        or without Schema        <input type="radio" value="NO_SCHEMA" v-model="use_schema"><br><br>
+
+        <input type="text" size="35" v-model="schema_class">
+        <span style="color:gray"> schema class to use for the top-level element</span>
+        <br><br>
+        OR<br><br>
+        <input type="text" size="35" v-model="import_root_label">
+        <span style="color:gray"> label to use on root node(s) of import</span>
+        <br><br>
+
         <button @click=submit_file style="margin-bottom:15px">
             Import JSON data file
         </button>
@@ -94,6 +108,10 @@ new Vue({
     data: {
         file_to_import: null,
 
+        use_schema: "SCHEMA",               // Either "SCHEMA" or "NO_SCHEMA"
+        schema_class: "",                   // Name of schema class to use for the top-level element
+        import_root_label: "Import_Root",   // Neo4j label to use on root node(s) of import
+
         waiting: false,         // Whether any server request is still pending
         error: false,           // Whether the last server communication resulted in error
         status_message: "",     // Message for the user about the status of the last operation (NOT used for "waiting" status)
@@ -103,40 +121,26 @@ new Vue({
 
 
 
-    // ---------------------  HOOKS  ----------------------
-
-    mounted() {
-    },
-
-
 
     // ----------------------------  METHODS  -----------------------------
 
     methods:  {
 
-        upload_file()   // UNTESTED: pass argument: event
+        upload_file(event)
         {
             console.log("In upload_file()");
 
-            var input_element = this.$refs.json_file;
+            this.file_to_import = event.target.files[0];
 
-            console.log("input_element :", input_element);
-            console.log("input_element.files[0] : ", input_element.files[0]);
-            console.log("input_element.files[0].name : ", input_element.files[0].name);
-
-            this.file_to_import = this.$refs.json_file.files[0];
-            // UNTESTED:  this.file_to_import = event.target.files[0];
+            console.log("event.target : ", event.target);
+            //console.log("event.target.files : ", event.target.files);
+            console.log("file_to_import : ", this.file_to_import);
+            console.log("file_to_import.name : ", this.file_to_import.name);
         },
 
         submit_file()
         {
             var url_server = "/BA/api/import_json_file";
-            var callback_fn = this.finish_upload;
-            var custom_data;            // This will be undefined
-            var success_flag;           // true if communication with the server succeeds, or false otherwise
-            var server_payload = "";    // Only applicable if success_flag is true
-            var error_message = "";     // Only applicable if success_flag is false
-            var fetch_options;
 
             console.log("In submit_file()");
 
@@ -146,64 +150,15 @@ new Vue({
             this.server_output = "";    // Clear any message from the previous operation
 
             // Initiate asynchronous contact with the server
-
-            const post_data = new FormData();
-            post_data.append('file', this.file_to_import);  // 'file' is just an identifier to attach to the upload;
-                                                            //      this is the counterpart of name="file" in forms
-
-            //post_data.append('file', this.file_to_import, "julian.json");
-            //post_data.append('extra_field', 'extra_value');   // Similar to passing "hidden" values thru a form, if we needed to
-
-            fetch_options = {
-                method: 'POST',
-                body: post_data
-            };
-            // UNTESTED:  You don't need to wrap the file contents in a FormData object if all you're uploading is the file
-            //            fetch will accept input.files[0] above as its body parameter
-            //            i.e. TODO: try body: this.file_to_import
-
-            //fetch(url_server, fetch_options);
-
-            /*
-            return;
-
-            console.log("post_data : ", post_data);
-
-            var fetch_options = this.prepare_POST_options_upload(post_data);
-            //var fetch_options = this.prepare_POST_options_upload(this.file_to_import);
-            */
-
-            fetch(url_server, fetch_options)
-            .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
-            .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
-                                                            //      TODO: turn into a method that first logs the first part of the response (helpful in case of parsing errors)
-            .then(server_response => {                      // Manage the server response
-                console.log("server_response received by contact_server_JSON(): ");
-                console.log(server_response);
-                // Check if the response indicates failure
-                const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
-                if (error_msg != "")   // If server reported failure
-                    throw new Error(error_msg);   // This will take us to the .catch portion, below
-                else
-                {   // Server reported SUCCESS
-                    server_payload = ServerCommunication.extract_server_data_JSON(server_response);
-                    //console.log("server reported success, and returned the following payload: ", server_payload);
-                    success_flag = true;
-                }
-            })
-            .catch(err => {  // All errors eventually go thru here
-                error_message = ServerCommunication.report_fetch_errors(err);
-                success_flag = false;
-            })
-            .finally(() => {  // Final operation regardless of error or success
-                //console.log("Completed the server call.  Passing control to the callback function");
-                if (callback_fn !== undefined) {
-                    if (custom_data === undefined)
-                        callback_fn(success_flag, server_payload, error_message);
-                    else
-                        callback_fn(success_flag, server_payload, error_message, custom_data);
-                }
-            });  // fetch
+            ServerCommunication.contact_server_UPLOAD(url_server,
+                                                      {file_to_import: this.file_to_import,
+                                                       post_obj: {
+                                                            use_schema: this.use_schema,
+                                                            schema_class: this.schema_class,
+                                                            import_root_label: this.import_root_label
+                                                       },
+                                                       callback_fn: this.finish_upload}
+                                                     );
         },
 
 

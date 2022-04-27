@@ -1112,7 +1112,7 @@ class Collections:
 
         new_neo_id = cls.db.create_node_with_relationships(labels="BA", properties=item_properties, connections=link_to)
 
-        item_id = NeoSchema.add_existing_data_point(class_name=item_class_name, existing_neo_id=new_neo_id, new_item_id=new_item_id)
+        item_id = NeoSchema.register_existing_data_point(class_name=item_class_name, existing_neo_id=new_neo_id, new_item_id=new_item_id)
 
         return item_id
 

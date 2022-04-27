@@ -1,15 +1,13 @@
 Vue.component('vue-schema-editor',
     {
-        props: [],  <!-- NOTE:  Only lower cases in props names! -->
-        /*  some_data_a:
-            some_data_b:
+        props: ['class_list'],  <!-- NOTE:  Only lower cases in props names! -->
+        /*  class_list:     List of all the names of the Classes in the Schema
          */
 
         template: `
             <div class='form-container'>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
 
             <span class='title'>CREATE A NEW SCHEMA CLASS</span><br><br>
-
 
             <table border='0' cellspacing='5' cellpadding='0'>
                 <tr>
@@ -23,13 +21,51 @@ Vue.component('vue-schema-editor',
                 </tr>
 
                 <tr>
-                    <td colspan="2" align="right">
+                    <td>&nbsp;</td>
+                    <td align="left">
                         <img @click="number_properties++" src='/BA/pages/static/graphics/plus_green_32_41688.png'
                              alt='Add an extra property' title='Add an extra property'>
                     </td>
                 </tr>
-            </table>
 
+
+                <!-- Optional elements below -->
+                <tr>
+                    <td height="40px">INSTANCE_OF</td>
+                    <td style='padding-left:5px'><input type='text' v-model="instance_of" size='30' maxlength='40'></td>
+                </tr>
+
+                <tr>
+                    <td colspan="2" height="40px" style="font-weight: bold">OPTIONAL additional relationship to an existing class:</td>
+                </tr>
+
+                <tr>
+                    <td height="30px">Relationship name:</td>
+                    <td style='padding-left:5px'><input type='text' v-model="rel_name" size='30' maxlength='40'></td>
+                </tr>
+
+                <tr>
+                    <td height="30px">Existing Class:</td>
+
+                    <td style='padding-left:5px'>
+                        <select  v-model="linked_to">
+                            <option value='-1'>[Choose an existing Class]</option>
+                            <template v-for="item in class_list">
+                                <option>{{item}}</option>
+                            </template>
+                        </select>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td height="30px">Direction:</td>
+                    <td style='padding-left:5px'>
+                        {{this.name_of_class_to_link_to}} -> NEW class <input type="radio" value="IN" v-model="rel_dir">
+                        &nbsp;&nbsp;
+                        NEW class -> {{this.name_of_class_to_link_to}} <input type="radio" value="OUT" v-model="rel_dir">
+                    </td>
+                </tr>
+            </table>
 
 
             <br>
@@ -41,11 +77,11 @@ Vue.component('vue-schema-editor',
                   Must specify a Class name
                 </template>
             </button>
-                <span v-if="waiting" class="waiting">Adding the subcategory...</span>
-                <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
-            <br><br>
-            IMPORTANT NOTE: the new class will be given an "INSTANCE_OF" relationship to the "Records" class.
-            <span style='color:gray'>Future versions will allow picking a different parent class</span>
+
+            <span v-if="waiting" class="waiting">Adding the subcategory...</span>
+            <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
+            <br>
+
             </div>		<!-- End of outer container -->
             `,
 
@@ -56,12 +92,31 @@ Vue.component('vue-schema-editor',
                 new_class_name: "",
 
                 number_properties: 3,
-
                 property_list: [],
+
+                instance_of: "Records",
+
+                linked_to: -1,
+                rel_name: "",
+                rel_dir: "IN",
 
                 waiting: false,         // Whether any server request is still pending
                 status_message: "",     // Message for user about the status of the last operation (NOT for "waiting" status)
                 error: false            // Whether the last server communication resulted in error
+            }
+        },
+
+
+
+        // ----------------  COMPUTED  -----------------
+        computed: {
+            name_of_class_to_link_to()
+            // Name to show on the page
+            {
+                if (this.linked_to == -1)
+                    return "Existing class ";
+                else
+                    return "'" + this.linked_to + "'";
             }
         },
 
@@ -87,20 +142,36 @@ Vue.component('vue-schema-editor',
                     return;
                 }
 
-                let post_data = this.new_class_name + ",";
+                let properties_list = "";   // EXAMPLE: "weight,length,cost,"  (note: the endpoint tolerates the final comma)
 
                 properties_length = this.property_list.length;
                 for (let i = 0; i < properties_length; i++) {
                     let property_name = this.property_list[i];
                     if (property_name)
-                        post_data += this.property_list[i] + ",";
+                        properties_list += this.property_list[i] + ",";
                 }
 
-                //console.log(post_data);
-
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/create_new_record_class";
-                let post_obj = {data: post_data};
+                let url_server = "/BA/api/simple/create_new_schema_class";
+                let post_obj = {new_class_name: this.new_class_name,
+                                properties_list: properties_list
+                               };
+
+                if (this.instance_of)
+                    post_obj.instance_of = this.instance_of;
+
+                if ((this.linked_to && !this.rel_name) || (!this.linked_to && this.rel_name)) {
+                    alert("If adding a new relationship, both a name and a class must be specified");
+                    return;
+                }
+
+                if (this.linked_to && this.rel_name) {
+                    post_obj.linked_to = this.linked_to;
+                    post_obj.rel_name = this.rel_name;
+                    post_obj.rel_dir = this.rel_dir;
+                }
+
+
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
 
@@ -124,6 +195,9 @@ Vue.component('vue-schema-editor',
                     // Clear up the form
                     this.new_class_name = "";
                     this.property_list = [];
+                    this.linked_to = -1;
+                    this.rel_name = "";
+                    this.rel_dir = "IN";
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;

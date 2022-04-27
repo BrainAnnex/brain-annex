@@ -205,7 +205,6 @@ class PagesRouting:
 
             EXAMPLE invocation: http://localhost:5000/BA/pages/admin
             """
-
             template = "admin.htm"
             return render_template(template, current_page=request.path, site_pages=cls.site_pages)
 
@@ -214,12 +213,13 @@ class PagesRouting:
         @bp.route('/schema-manager')
         def schema_manager() -> str:
             """
-            Generate a general administrative page (currently for import/exports)
+            Generate an administrative page to manage the Schema
             EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager
             """
-
             template = "schema_manager.htm"
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
+            class_list = PagesRequestHandler.schema_manager_data()
+            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+                                   class_list=class_list)
 
 
 
@@ -229,7 +229,6 @@ class PagesRouting:
             Generate a general administrative page (currently for import/exports)
             EXAMPLE invocation: http://localhost:5000/BA/pages/data-import
             """
-
             template = "data_import.htm"
             return render_template(template, current_page=request.path, site_pages=cls.site_pages)
 

@@ -1,15 +1,13 @@
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 import re               # For REGEX
 import pandas as pd
 import os
 from flask import request, current_app
 from typing import Union
-from PIL import Image
-import unicodedata
 import sys                  # Used to give better feedback on Exceptions
 import html
-import json
 
 """
     MIT License.  Copyright (c) 2021-2022 Julian A. West
@@ -79,51 +77,77 @@ class APIRequestHandler:
     #######################     SCHEMA-RELATED  ("Records" related)     #######################
 
     @classmethod
-    def new_record_class(cls, class_specs: dict) -> None:
+    def new_schema_class(cls, class_specs: dict) -> None:
         """
-        Create a new Class that is an instance of the Records Class
+        Create a new Schema Class, possibly linked to another existing class,
+        and also - typically but optionally - with the special "INSTANCE_OF" link
+        to an existing class (often, "Records")
+        In case of error, an Exception is raised.
 
-        :param class_specs: EXAMPLE : {"data": "Favorite Quotes,quote,attribution,notes"}
-                                The first item in the comma-separated list is the Class name;
-                                the remaining items are the desired Properties, in the wanted order.
-                                Blanks before/after any name are ignored.
-                                Empty Properties are ignored.
-                                If the Class name is missing, an Exception is raised.
-        :return:
+        :param class_specs: A dictionary
+                DICTIONARY KEYS:
+                new_class_name      The name of the new Class (tolerant of leading/trailing blanks)
+                properties_list     The name of all desired Properties, in order
+                                    (all comma-separated).  Tolerant of leading/trailing blanks, and of missing property names
+                instance_of         Typically, "Records"
+
+                [ALL THE REMAINING KEYS ARE OPTIONAL]
+                linked_to           The name of an existing Class node, to link to
+                rel_name            The name to give to the above relationship
+                rel_dir             The relationship direction, from the point of view of the newly-added node
+
+        :return:            None
         """
+        new_class_name = class_specs["new_class_name"]
+        new_class_name = new_class_name.strip()
+        print("new_class_name: ", new_class_name)
 
-        if "data" not in class_specs:
-            raise Exception("new_record_class(): Missing 'data' key in argument")
+        properties_str = class_specs.get("properties_list", "") # Make allowance for an absent properties_list
+        property_list = properties_str.split(",")     # Note: if properties_str is an empty string, the result will be ['']
+        print("property_list: ", property_list)
 
-        specs = class_specs["data"]       # EXAMPLE:  "Quotes,quote,attribution,notes"
-
-        if specs.strip() == "":
-            raise Exception("new_record_class(): Empty 'data' value in argument")
-
-        listing = specs.split(",")
-        #print("listing: ", listing)
-
-        class_name = listing[0]
-        property_list = listing[1:]     # Ditch the initial (0-th) element
-
-        class_name = class_name.strip()
-        #print("class_name: ", class_name)
-
+        # Zap missing property names, and clean up the names that are present
         property_list_clean = []
         for p in property_list:
             prop_name = p.strip()
             if prop_name:
                 property_list_clean.append(prop_name)
 
-        #print("property_list_clean: ", property_list_clean)
+        print("property_list_clean: ", property_list_clean)
 
-        parent_id = NeoSchema.get_class_id(class_name = "Records")
-        #print("parent_id (ID of `Records` class): ", parent_id)
+        instance_of_class = class_specs.get('instance_of')   # Will be None if key is missing
+        print(f"For 'INSTANCE_OF' relationship, requesting to link to Class: `{instance_of_class}`")
 
-        new_id = NeoSchema.new_class_with_properties(class_name, property_list_clean)
+        # Validate the optional relationship to another class
+        if  ( ("linked_to" in class_specs) or ("rel_name" in class_specs) or ("rel_dir" in class_specs) ) \
+            and not \
+            ( ("linked_to" in class_specs) and ("rel_name" in class_specs) and ("rel_dir" in class_specs) ):
+            raise Exception("The parameters `linked_to`, `rel_name` and `rel_dir` must all be present or all be missing")
 
-        status = NeoSchema.create_class_relationship(child=new_id, parent=parent_id, rel_name ="INSTANCE_OF")
-        assert status, f"Unable to link the newly-created Class ({class_name}) to the `Records` class"
+
+        # Create the new Class, and all of its Properties (as separate nodes, linked together)
+        new_id = NeoSchema.new_class_with_properties(new_class_name, property_list_clean,
+                                                     class_to_link_to=instance_of_class, link_to_name="INSTANCE_OF")
+
+
+        # If requested, link to another existing class
+        if ("linked_to" in class_specs) and ("rel_name" in class_specs) and ("rel_dir" in class_specs):
+            linked_to = class_specs["linked_to"]
+            linked_to_id = NeoSchema.get_class_id(class_name = linked_to)
+            print(f"Linking the new class to the existing class `{linked_to}`, which has Schema ID {linked_to_id}")
+            rel_name = class_specs["rel_name"]
+            rel_dir = class_specs["rel_dir"]    # The link direction is relative to the newly-created class node
+            print(f"rel_name: `{rel_name}` | rel_dir: {rel_dir}")
+
+            assert rel_dir == "OUT" or rel_dir == "IN", f"The value for rel_dir must be either 'IN' or 'OUT' (passed value was {rel_dir})"
+
+            try:
+                if rel_dir == "OUT":
+                    NeoSchema.create_class_relationship(from_id=new_id, to_id=linked_to_id, rel_name=rel_name)
+                elif rel_dir == "IN":
+                    NeoSchema.create_class_relationship(from_id=linked_to_id, to_id=new_id, rel_name=rel_name)
+            except Exception as ex:
+                raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
 
 
@@ -587,7 +611,7 @@ class APIRequestHandler:
         """
         Delete the media file attached to the specified Content Item:
         """
-        record = cls.db.get_single_record_by_key("BA", "item_id", item_id)
+        record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
         if record is None:
             return False
 
@@ -713,7 +737,7 @@ class APIRequestHandler:
         """
         Delete the thumbnail file attached to the specified Content Item
         """
-        record = cls.db.get_single_record_by_key("BA", "item_id", item_id)
+        record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
         if record is None:
             return False
 
@@ -786,210 +810,33 @@ class APIRequestHandler:
 
 
 
-    ###############################################################
-    #                       MEDIA UPLOAD                          #
-    ###############################################################
-
-    @classmethod
-    def upload_helper(cls, request_obj, html_name: str, verbose=False) -> (str, str):
-        """
-        It accepts a flask.request object, and it creates a file from the upload,
-        into the folder specified by current_app.config['UPLOAD_FOLDER'],
-        defined elsewhere (for example in the main file.)  EXAMPLE: "D:/tmp/"
-
-        It decides, from the name of the file being uploaded, a meaningful name for the temporary file
-        to create as part of the upload.
-
-        It returns both the basename and the full filename of the temporary file thus created.
-
-        In case of error, an Exception is raised
-
-        TODO: maybe allow to optionally provide the final location/name for the uploaded file
-
-        :param request_obj: A flask.request object
-        :param html_name:   The name that was used in the HTML form INPUT tag: <input type="file" name="some_name_to_refer_to_the_upload">
-                                TODO: maybe extract it from request.files
-        :param verbose:     Flag for debugging
-
-        :return:            The pair (filename, full_filename_including_path) where filename is the basename
-                            EXAMPLE: ("my_file_being_uploaded.txt", "D:/tmp/my_file_being_uploaded.txt")
-
-        """
-        if verbose:
-            request_dict = request_obj.__dict__     # A dictionary of all names and attributes of object.
-            keys_list = list(request_dict)
-            # EXAMPLE: ['method', 'scheme', 'server', 'root_path', 'path', 'query_string', 'headers', 'remote_addr', 'environ', 'shallow', 'cookies', 'url_rule', 'view_args']
-
-            print(f"Upload flask.request object contains {len(request_dict)} items:\n    {keys_list}\n")
-
-            for i, k in enumerate(keys_list):
-                print(f"    ({i}) * {k}: {request_dict[k]}")
-
-            # Note: somehow, cannot simply loop over request_dict, or it crashes with error "dictionary changed size during iteration"
-
-            print("\nrequest.files: ", request_obj.files)     # Somehow, that's NOT included in the previous listing!
-            # EXAMPLE: ImmutableMultiDict([('imported_datafile', <FileStorage: 'my_data.json' ('application/json')>)])
-            #               where 'imported_datafile' originates from <input type="file" name="imported_datafile">
-            #               and the name after FileStorage is the name of the file being uploaded
-
-            print("request.args: ", request_obj.args)
-            print("request.form: ", request_obj.form)
-            # EXAMPLE: ImmutableMultiDict([('categoryID', '123')])
-            #               if the HTML form included <input type="hidden" name="categoryID" value="123">
-
-            print("request.values: ", request_obj.values)
-            print("request.json: ", request_obj.json)
-            print("request.data: ", request_obj.data)
-
-
-        # Check if the POST request has the file part, indexed by the string specified by html_name
-        # Example from an invoking form:   <input type="file" name="some_name_to_refer_to_the_upload">
-        if html_name not in request_obj.files:
-            raise Exception(f"No file found in upload!  "
-                            f"Check the `name` attribute in the HTML `input` tag (it should be '{html_name}').  No action taken...")
-
-        f = request_obj.files[html_name]    # f is a Werkzeug FileStorage object
-        #print("f: ", f)     # EXAMPLE: <FileStorage: 'abc.txt' ('text/plain')>
-        #print("f.stream: ", f.stream)      # EXAMPLE: <tempfile.SpooledTemporaryFile object at 0x000001604F5E6700>
-        #print("f.filename: ", f.filename)  # EXAMPLE: abc.txt
-        #print("f.mimetype: ", f.mimetype)  # EXAMPLE: text/plain
-
-        # If the user does not select a file, the browser submits an
-        #       empty file without a filename
-        if f.filename == '':
-            raise Exception("No selected file!  Did you select a file to upload?")
-
-
-        # Construct, from the name of the file being uploaded, a "safe" name for the temporary file to create as part of the upload
-        tmp_filename_for_upload = cls.secure_filename_BA(f.filename)
-        print(f"Name given to temporary file to upload to: `{tmp_filename_for_upload}`")
-        # TODO: the "safe" name annoyingly has all the blank spaces replaced with underscores!  Maybe just eliminate slashes!
-        # TODO: f.filename should be returned as well (e.g. for use in captions, or to save the original name)
-
-        upload_dir = current_app.config['UPLOAD_FOLDER']        # Defined in main file.  EXAMPLE: "D:/tmp/"
-        print(f"Attempting to upload to directory `{upload_dir}`")
-
-        full_filename = f"{upload_dir}{tmp_filename_for_upload}"    # EXAMPLE: "D:/tmp/my_file_being_uploaded.txt"
-        f.save(full_filename)                                       # Create the temporary file, which concludes the upload
-
-        return (tmp_filename_for_upload, full_filename)             # Normal termination
-
-
-
-    @classmethod
-    def secure_filename_BA(cls, filename: str) -> str:
-        """
-        (ADAPTED FOR BRAIN ANNEX FROM werkzeug.utils.secure_filename(), version 0.5;
-        blank spaces are no longer transformed to underscores.
-        See: https://flask.palletsprojects.com/en/2.0.x/patterns/fileuploads/)
-
-        Return a secure version of a filename.
-        This filename can then safely be stored on a regular file system and passed
-        to :func:`os.path.join`.  The filename returned is an ASCII only string
-        for maximum portability.
-
-        On windows systems the function also makes sure that the file is not
-        named after one of the special device files.
-
-        EXAMPLES:   secure_filename_BA("My cool ++ movie.mov")          -> 'My cool  movie.mov'
-                    secure_filename_BA("../../../etc/passwd")           ->'etc_passwd'
-                    secure_filename_BA('i contain \xfcml\xe4uts.txt')   -> 'i contain umlauts.txt'
-                    secure_filename_BA("    blank-padded string  ")     -> 'blank-padded string'
-                    secure_filename_BA("COM1.txt")       [On Windows]   -> '_COM1.txt'
-
-        The function might return an empty filename.  It's your responsibility
-        to ensure that the filename is unique and that you abort or
-        generate a random filename if the function returned an empty one.
-
-        :param filename:    A string with the filename to secure
-        """
-        _filename_ascii_strip_re = re.compile(r"[^A-Za-z0-9_. -]")  # List of allowed characters in the name;
-                                                                    # note that blank is included
-        _windows_device_files = (
-            "CON",
-            "AUX",
-            "COM1", "COM2", "COM3", "COM4",
-            "LPT1", "LPT2", "LPT3",
-            "PRN",
-            "NUL"
-        )
-
-        # Convert non-ASCII characters to closest ASCII equivalent.  EXAMPLE: "Rüdiger" -> "Rudiger"
-        filename = unicodedata.normalize("NFKD", filename)  # Normal form "KD" (Compatibility Decomposition)
-        filename = filename.encode("ascii", "ignore").decode("ascii")
-
-        # Replace OS file path separators (such as forward and back slashes) with underscores.  EXAMPLE: "bin/src" -> "bin_src"
-        for sep in os.path.sep, os.path.altsep:
-            if sep:
-                filename = filename.replace(sep, "_")
-
-        #filename = "_".join(filename.split()   # Replace all blanks spaces with underscores
-        filename = _filename_ascii_strip_re.sub("", filename)   # Zap all characters except the allowed ones
-        filename = filename.strip("._ ")         # Zap periods and underscores at the start or end of the string
-
-        # On nt (such as Windows 7, etc) a couple of special files are present in each folder.  We
-        # have to ensure that the target file is not such a filename; if it is, we prepend an underline
-        if  (
-                os.name == "nt"
-                and filename
-                and filename.split(".")[0].upper() in _windows_device_files
-            ):
-            filename = f"_{filename}"
-
-        return filename
-
-
-
-    @classmethod
-    def process_uploaded_image(cls, filename: str, fullname: str):
-        """
-        Obtain the size of the image, resize it to a thumbnail,
-        and return a dictionary of properties that will go in the database
-
-        :param filename:    EXAMPLE: "my image.jpg"
-        :param fullname:    EXAMPLE (on Windows):  "D:/Docs/Brain Annex/media/my image.jpg"
-
-        :return:            A dictionary of properties that will go in the database
-        """
-        (width, height) = ImageProcessing.get_image_size(fullname)  # Extract the dimensions of the uploaded image
-
-        # Create and save a thumbnail version
-        ImageProcessing.save_thumbnail(src_folder = cls.MEDIA_FOLDER,
-                                       filename = filename,
-                                       save_to_folder = cls.MEDIA_FOLDER+"resized/",
-                                       src_width=width, src_height=height)
-
-
-        (basename, suffix) = os.path.splitext(filename)     # EXAMPLE: "test.jpg" becomes ("test", ".jpg")
-        suffix = suffix[1:]     # Drop the first character (the ".")  EXAMPLE: "jpg"
-
-        # Create a dictionary of properties that will go in the database
-        properties = {"caption": basename,
-                      "basename": basename, "suffix": suffix,
-                      "width": width, "height": height}
-
-        print(f"Uploaded image has width : {width} | height: {height}")
-
-        return properties
-
-
-
-
     ############################################################
     #                       IMPORT-EXPORT                      #
     ############################################################
 
     @classmethod
-    def upload_import_json_file(cls, verbose=True) -> str:   # IN-PROGRESS
+    def upload_import_json_file(cls, post_pars, verbose=False) -> str:
         """
+        Manage the upload and import of a data file in JSON format.
 
         :return:    Status string, if successful.  In case of error, an Exception is raised
         """
         print("In upload_import_json_file()")
 
+        upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
         # 'file' is just an identifier attached to the upload by the frontend
-        (basename, full_filename) = cls.upload_helper(request, html_name="file", verbose=False)
+        (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
+                                                                                    key_name=None, verbose=False)
         # basename and full name of the temporary file created during the upload
+
+
+        assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"
+        if post_pars["use_schema"] == "SCHEMA":
+            assert post_pars["schema_class"], "Missing value for POST parameter `schema_class`"
+        elif post_pars["use_schema"] == "NO_SCHEMA":
+            assert post_pars["import_root_label"], "Missing value for POST parameter `import_root_label`"
+        else:
+            raise Exception(f"The value for the POST parameter `use_schema` must be 'SCHEMA' or 'NO_SCHEMA' (value passed: {post_pars['use_schema']})")
 
 
         # Read in the contents of the uploaded file
@@ -1007,15 +854,19 @@ class APIRequestHandler:
 
 
         # Parse the JSON data
-        python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
-        print("Python version of the JSON file:\n", python_data)
+        #python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
+        # print("Python version of the JSON file:\n", python_data)
 
 
         # Import the JSON data into the database
-        details = cls.db.import_json(file_contents, "Import_Root")
+        new_ids = None
+        if post_pars["use_schema"] == "SCHEMA":
+            new_ids = NeoSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
+        else:
+            new_ids = cls.db.import_json(file_contents, post_pars["import_root_label"], provenance=original_name)
 
-
-        return f"Upload successful. {file_size} characters were read in"
+        status = f"New top-level Neo4j node ID: {new_ids}"
+        return f"Upload successful. {file_size} characters were read in. {status}"
 
 
 
@@ -1034,7 +885,8 @@ class APIRequestHandler:
         return_link = "" if return_url is None else f" <a href='{return_url}'>Go back</a>"
 
         try:
-            (basename, full_filename) = cls.upload_helper(request, html_name="imported_json", verbose=False)
+            upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
+            (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_json", verbose=False)
             # basename and full name of the temporary file created during the upload
         except Exception as ex:
             return f"ERROR in upload: {ex} {return_link}"
@@ -1048,7 +900,7 @@ class APIRequestHandler:
             return f"File I/O failed. {return_link}"
 
         try:
-            details = cls.db.import_json_data(file_contents)
+            details = cls.db.import_json_dump(file_contents)
         except Exception as ex:
             return f"Import of JSON data failed: {ex}. {return_link}"
 
@@ -1144,112 +996,6 @@ class APIRequestHandler:
         """
 
         return f"File `{basename}` uploaded and imported successfully"
-
-
-
-
-########################    IMAGES  (TODO: move to a separate module)  ############################################################
-
-class ImageProcessing:
-    """
-    The "th" format from the Classic BA, is:
-    "default (largish) thumbs - 3 fit in a row" : width sized to 300
-
-    formats =
-    {
-        "th": { "description": "default (largish) thumbs - 3 fit in a row",
-                "size": 300,
-                "affected": "w"
-        }
-    }
-    """
-
-    @classmethod
-    def save_thumbnail(cls, src_folder: str, filename: str, save_to_folder: str,
-                       src_width: int, src_height: int) -> None:
-        """
-        Make a thumbnail of the specified image, and save it in a file.
-        The "th" thumbnail format is being followed.
-
-        :param src_folder:      Full path of folder with the file to resize.  It MUST end with "/"
-                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
-        :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
-        :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
-                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/"
-        :param src_width:       Pixel width of the original image
-        :param src_height:      Pixel height of the original image
-        :return:                None.  In case of error, an Exception is raised
-        """
-        cls.scale_down_horiz(src_folder, filename, save_to_folder, src_width, src_height, target_width=300)
-
-
-
-    @classmethod
-    def scale_down_horiz(cls, src_folder: str, filename: str, save_to_folder: str,
-                              src_width: int, src_height: int, target_width: int) -> None:
-        """
-        Resize an image to the target WIDTH, and save it in a file.
-
-        :param src_folder:      Full path of folder with the file to resize.  It MUST end with "/"
-                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
-        :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
-        :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
-                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/"
-        :param src_width:       Pixel width of the original image
-        :param src_height:      Pixel height of the original image
-        :param target_width:    Desired pixel width of the resized image
-        :return:                None.  In case of error, an Exception is raised
-        """
-        image = Image.open(src_folder + filename)
-
-        resized_full_name = save_to_folder + filename
-
-        if target_width >= src_width:   # Don't transform the image; just save it as it is
-            image.save(resized_full_name)
-        else:
-            scaling_ratio = src_width / target_width    # This will be > 1 (indicative of reduction)
-            print("scaling_ratio: ", scaling_ratio)
-            target_height = int(src_height / scaling_ratio)
-            new_image = image.resize((target_width, target_height))
-            new_image.save(resized_full_name)
-
-
-
-    @classmethod
-    def get_image_size(cls, source_full_name) -> (int, int):
-        """
-        Return the size of the given image.
-
-        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/my image.jpg"
-        :return:                    The pair (width, height) with the image dimensions in pixels.  In case of error, an Exception is raised
-        """
-        image = Image.open(source_full_name)
-
-        return image.size   # EXAMPLE: (1920, 1280)
-
-
-
-    @classmethod
-    def describe_image(cls, source_full_name) -> None:
-        """
-        Print out some info about the given image.
-
-        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/my image.jpg"
-        :return:                    None.  In case of error, an Exception is raised
-        """
-        image = Image.open(source_full_name)
-
-        # The file format
-        print(image.format) # EXAMPLE: "JPEG" or "PNG"
-
-        # The pixel format used by the image
-        print(image.mode)   # Typical values are "RGB", "RGBA", "1", "L", "CMYK"
-
-        # Image size, in pixels, as a 2-tuple (width, height)
-        print(image.size)   # EXAMPLE: (1920, 1280)
-
-        # Color palette table, if any
-        print(image.palette) # EXAMPLE: None
 
 
 

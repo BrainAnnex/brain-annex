@@ -12,8 +12,9 @@ import pandas as pd
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(verbose=True, debug=True)
+    neo_obj = neo_access.NeoAccess(debug=True)
     yield neo_obj
+
 
 
 ###  ~ INIT ~
@@ -33,24 +34,24 @@ def test_construction():
 
 
     # One way of instantiating the class
-    obj1 = neo_access.NeoAccess(url, verbose=False)       # Rely on default username/pass
+    obj1 = neo_access.NeoAccess(url, debug=False)       # Rely on default username/pass
 
-    assert obj1.verbose is False
+    assert obj1.debug is False
     assert obj1.version() == "4.2.1"    # Test the version of the Neo4j driver
 
 
     # Another way of instantiating the class
-    obj2 = neo_access.NeoAccess(url, credentials_as_tuple, verbose=False) # Explicitly pass the credentials
+    obj2 = neo_access.NeoAccess(url, credentials_as_tuple, debug=False) # Explicitly pass the credentials
     assert obj2.driver is not None
 
 
     # Yet another way of instantiating the class
-    obj3 = neo_access.NeoAccess(url, credentials_as_list, verbose=False) # Explicitly pass the credentials
+    obj3 = neo_access.NeoAccess(url, credentials_as_list, debug=False) # Explicitly pass the credentials
     assert obj3.driver is not None
 
 
     with pytest.raises(Exception):
-        assert neo_access.NeoAccess(url, "bad_credentials", verbose=False)    # This ought to raise an Exception
+        assert neo_access.NeoAccess(url, "bad_credentials", debug=False)    # This ought to raise an Exception
 
 
 
@@ -251,18 +252,47 @@ def test_get_single_field(db):
 
 
 
-def test_get_single_record_by_key(db):
-    pass    # TODO
+def test_get_record_by_primary_key(db):
+    db.empty_dbase()
+
+    node_id_Valerie = db.create_node("person", {'SSN': 123, 'name': 'Valerie', 'gender': 'F'})
+    db.create_node("person", {'SSN': 456, 'name': 'Therese', 'gender': 'F'})
+
+
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123) \
+           == {'SSN': 123, 'name': 'Valerie', 'gender': 'F'}
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123, return_nodeid=True) \
+           == {'SSN': 123, 'name': 'Valerie', 'gender': 'F', 'neo4j_id': node_id_Valerie}
+
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=456) \
+           == {'SSN': 456, 'name': 'Therese', 'gender': 'F'}
+
+
+    db.create_node("person", {'SSN': 456, 'name': 'Therese clone', 'gender': 'F'})  # Irregular situation with 2 records sharing what
+                                                                                    # was meant to be a primary key
+    with pytest.raises(Exception):
+        db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=456)
+
+
+    # Now, try to find records that don't exist
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=99999) is None   # Not found
+    assert db.get_record_by_primary_key("wrong_label", primary_key_name="SSN", primary_key_value=123) is None   # Not found
+    assert db.get_record_by_primary_key("person", primary_key_name="bad_key", primary_key_value=123) is None   # Not found
 
 
 
 def test_exists_by_key(db):
-    pass    # TODO
+    db.empty_dbase()
+    db.create_node("person", {'SSN': 123, 'name': 'Valerie', 'gender': 'F'})
+    db.create_node("person", {'SSN': 456, 'name': 'Therese', 'gender': 'F'})
 
+    assert db.exists_by_key("person", key_name="SSN", key_value=123)
+    assert db.exists_by_key("person", key_name="SSN", key_value=456)
+    assert db.exists_by_key("person", key_name="name", key_value='Valerie')
 
-
-def test_get_neo_id_by_key(db):
-    pass    # TODO
+    assert not db.exists_by_key("person", key_name="SSN", key_value=5555)
+    assert not db.exists_by_key("person", key_name="name", key_value='Joe')
+    assert not db.exists_by_key("non_existent_label", key_name="SSN", key_value=123)
 
 
 
@@ -376,8 +406,7 @@ def test_fetch_nodes(db):
     assert compare_recordsets(retrieved_records, expected_records)
 
 
-    # Now, do a clean start, an investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
-
+    # Now, do a clean start, and investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
 
     db.empty_dbase()
 
@@ -394,6 +423,25 @@ def test_fetch_nodes(db):
                 {'gender': 'M', 'weight': 155}]
     assert compare_recordsets(retrieved_records, expected)
 
+    # Add a node with no attributes
+    empty_record_id = db.create_node("patient")
+    retrieved_records = db.fetch_nodes(match)
+    expected = [{'gender': 'F', 'age': 16},
+                {'gender': 'M', 'weight': 155},
+                {}]
+    assert compare_recordsets(retrieved_records, expected)
+
+    match = db.find(labels="patient", properties={"age": 16})
+    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    assert retrieved_single_record == {'gender': 'F', 'age': 16}
+
+    match = db.find(labels="patient", properties={"age": 11})
+    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    assert retrieved_single_record == None      # No record found
+
+    match = db.find(labels="patient", neo_id=empty_record_id)
+    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    assert retrieved_single_record == {}        # Record with no attributes found
 
 
 
@@ -476,7 +524,7 @@ def test_get_nodes(db):
 
     # Pass conflicting arguments; an Exception is expected
     with pytest.raises(Exception):
-        assert neo_access.NeoAccess(db.fetch_nodes_by_label("my 2nd label", verbose=False,
+        assert neo_access.NeoAccess(db.fetch_nodes_by_label("my 2nd label", debug=False,
                                                             cypher_clause="n.age > $age",
                                                             cypher_dict={"age": 22},
                                                             properties_condition={"age": 30}))
@@ -1631,7 +1679,7 @@ def test_load_pandas(db):
 
 ###  ~ JSON IMPORT/EXPORT ~
 
-# =>  SEE test_neoaccess_json.py
+# =>  SEE test_neoaccess_import_export.py
 
 
 

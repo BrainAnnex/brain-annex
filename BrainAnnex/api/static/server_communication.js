@@ -232,6 +232,92 @@ class ServerCommunication
 
 
 
+    static contact_server_UPLOAD(url_server,
+                                            {
+                                                file_to_import = undefined,
+                                                post_obj = {},
+                                                callback_fn = undefined,
+                                                custom_data = undefined
+                                            } = {} )
+    /*  Send a request to the server at the specified URL, with POST method, to perform a single file upload,
+        and optionally pass additional POST data.
+        The server response is expected to be JSON text.
+
+        custom_data is an OPTIONAL argument; if present, it is passed as a final argument to the callback function
+
+        Note: the fixed key name 'file' is used for the uploaded file.
+
+        TODO: factor out some parts to contact_server()
+     */
+    {
+        var success_flag;           // true if communication with the server succeeds, or false otherwise
+        var server_payload = "";    // Only applicable if success_flag is true
+        var error_message = "";     // Only applicable if success_flag is false
+
+        console.log("In contact_server_UPLOAD()");
+
+        const post_data = new FormData();
+        post_data.append('file', file_to_import);   // 'file' is just an identifier to attach to the upload;
+                                                    //       this is the counterpart of <input name="file"> in forms
+                                                    // Note: a 3rd argument may be passed with a name to use for the
+                                                    //       file being uploaded (rather than its actual name)
+
+        // Prepare the additional POST data, if any
+        var k, val;
+
+        for (k in post_obj) {   // Loop thru the keys
+            val = post_obj[k];      // Get the corresponding value
+            console.log(`    key: ${k}  |  value: ${val} `);
+
+            post_data.append(k, val);   // Similar to passing input values thru a form
+        }
+
+
+        const fetch_options = {     // Important: do NOT set a 'Content-Type' header!
+            method: 'POST',
+            body: post_data
+        };
+
+        console.log("fetch_options : ", fetch_options);
+
+
+        fetch(url_server, fetch_options)
+        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
+        .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
+                                                        //      TODO: turn into a method that first logs the first part of the response (helpful in case of parsing errors)
+        .then(server_response => {                      // Manage the server response
+            console.log("server_response received by contact_server_UPLOAD(): ");
+            console.log(server_response);
+            // Check if the response indicates failure
+            const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
+            if (error_msg != "")   // If server reported failure
+                throw new Error(error_msg);   // This will take us to the .catch portion, below
+            else
+            {   // Server reported SUCCESS
+                server_payload = ServerCommunication.extract_server_data_JSON(server_response);
+                //console.log("server reported success, and returned the following payload: ", server_payload);
+                success_flag = true;
+            }
+        })
+        .catch(err => {  // All errors eventually go thru here
+            error_message = ServerCommunication.report_fetch_errors(err);
+            success_flag = false;
+        })
+        .finally(() => {  // Final operation regardless of error or success
+            //console.log("Completed the server call.  Passing control to the callback function");
+            if (callback_fn !== undefined) {
+                if (custom_data === undefined)
+                    callback_fn(success_flag, server_payload, error_message);
+                else
+                    callback_fn(success_flag, server_payload, error_message, custom_data);
+            }
+        });  // fetch
+
+    }  // contact_server_UPLOAD
+
+
+
+
     static prepare_GET_options()
     /*  Prepare and return an object to be used as a 2nd ARGUMENT TO A fetch() call, in case there's a GET method involved.
      */
@@ -280,7 +366,7 @@ class ServerCommunication
         suitable for situations when we use 'Content-Type': 'application/x-www-form-urlencoded'
 
         Any non-blank string gets passed thru encodeURIComponent.
-        [NO! NO LONGER DONE: Any blank strings in the values gets dropped]
+        [NEW: Any blank strings in the values are left undisturbed]
 
         The returned result is ready for use as the "post_body" argument
         in contact_server(), contact_server_TEXT() and contact_server_JSON()
@@ -295,11 +381,9 @@ class ServerCommunication
         var k, val;
 
         for (k in post_obj) {   // Loop thru the keys
-            val = post_obj[k];
-            //console.log(` value: ${val} `);
+            val = post_obj[k];      // Get the corresponding value
+            //console.log(`    key: ${k}  |  value: ${val} `);
 
-            //if (val != "")  {   // If the value is blank, the whole entry gets skipped over
-            //console.log(` key: ${k} `);
             post_body += k + "=";
 
             if ((val != "") && (typeof val == "string"))
@@ -308,7 +392,6 @@ class ServerCommunication
                 post_body += val;
 
             post_body += "&";
-            //}
             //console.log(`post_body so far: ${post_body}`);
         }
 
@@ -328,7 +411,7 @@ class ServerCommunication
             ".catch()" statement in the original fetch() call.
 
         Example of response object:
-            { type: "basic", url: "http://localhost:5000/BA/api/simple/create_new_record_class", redirected: false,
+            { type: "basic", url: "http://localhost:5000/BA/api/simple/create_new_schema_class", redirected: false,
               status: 200, ok: true, statusText: "OK", headers: Headers, body: ReadableStream, bodyUsed: false }
      */
     {
@@ -367,7 +450,7 @@ class ServerCommunication
         console.error('Error during fetch() operation. Details in the next line: ');
         console.log(err);
 
-        const fetch_failure_message = "Failed interaction with the server! (Try again.) Failed fetch() call. "
+        const fetch_failure_message = "Failed interaction with the server in the fetch() call. "
                                       + err.name + " - " + err.message;
         alert(fetch_failure_message);
 
