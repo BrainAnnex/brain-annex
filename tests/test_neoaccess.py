@@ -12,7 +12,7 @@ import pandas as pd
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(verbose=True, debug=True)
+    neo_obj = neo_access.NeoAccess(debug=True)
     yield neo_obj
 
 
@@ -33,24 +33,24 @@ def test_construction():
 
 
     # One way of instantiating the class
-    obj1 = neo_access.NeoAccess(url, verbose=False)       # Rely on default username/pass
+    obj1 = neo_access.NeoAccess(url, debug=False)       # Rely on default username/pass
 
-    assert obj1.verbose is False
+    assert obj1.debug is False
     assert obj1.version() == "4.2.1"    # Test the version of the Neo4j driver
 
 
     # Another way of instantiating the class
-    obj2 = neo_access.NeoAccess(url, credentials_as_tuple, verbose=False) # Explicitly pass the credentials
+    obj2 = neo_access.NeoAccess(url, credentials_as_tuple, debug=False) # Explicitly pass the credentials
     assert obj2.driver is not None
 
 
     # Yet another way of instantiating the class
-    obj3 = neo_access.NeoAccess(url, credentials_as_list, verbose=False) # Explicitly pass the credentials
+    obj3 = neo_access.NeoAccess(url, credentials_as_list, debug=False) # Explicitly pass the credentials
     assert obj3.driver is not None
 
 
     with pytest.raises(Exception):
-        assert neo_access.NeoAccess(url, "bad_credentials", verbose=False)    # This ought to raise an Exception
+        assert neo_access.NeoAccess(url, "bad_credentials", debug=False)    # This ought to raise an Exception
 
 
 
@@ -523,7 +523,7 @@ def test_get_nodes(db):
 
     # Pass conflicting arguments; an Exception is expected
     with pytest.raises(Exception):
-        assert neo_access.NeoAccess(db.fetch_nodes_by_label("my 2nd label", verbose=False,
+        assert neo_access.NeoAccess(db.fetch_nodes_by_label("my 2nd label", debug=False,
                                                             cypher_clause="n.age > $age",
                                                             cypher_dict={"age": 22},
                                                             properties_condition={"age": 30}))

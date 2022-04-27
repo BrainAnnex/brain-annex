@@ -1,4 +1,4 @@
-# Testing of Import/Export of database dumps
+# Testing of Import/Export of database dumps : APOC must be installed first.
 ####  WARNING : the database will get erased!!!
 
 import pytest
@@ -9,7 +9,7 @@ from BrainAnnex.modules.neo_access import neo_access
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(debug=False, verbose=False)
+    neo_obj = neo_access.NeoAccess(debug=False)
     yield neo_obj
 
 

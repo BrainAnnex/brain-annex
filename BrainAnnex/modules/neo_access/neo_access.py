@@ -13,9 +13,14 @@ class NeoAccess:
     VERSION 3.5
 
     High-level class to interface with the Neo4j graph database from Python.
+    Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
 
-    It provides a higher-level wrapper around the Neo4j python connectivity library "Neo4j Python Driver",
-    documented at: https://neo4j.com/docs/api/python-driver/current/api.html
+    Conceptually, there are two parts to NeoAccess:
+        1) A thin wrapper around the Neo4j python connectivity library "Neo4j Python Driver"
+          that is documented at: https://neo4j.com/docs/api/python-driver/current/api.html
+
+        2) A layer above, providing higher-level functionality for common database operations,
+           such as lookup, creation, deletion, modification, import, indices, etc.
 
     SECTIONS IN THIS CLASS:
         * INIT
@@ -36,18 +41,20 @@ class NeoAccess:
     Plus separate class "CypherUtils"
 
     ----------------------------------------------------------------------------------
-    AUTHORS:
+    HISTORY and AUTHORS:
         - NeoAccess (this library) is a fork of NeoInterface;
                 NeoAccess was created, and is being maintained, by Julian West,
                 primarily in the context of the BrainAnnex.org open-source project.
+                It started out in late 2021; for change log thru 2022,
+                see the "LIBRARIES" entries in https://brainannex.org/viewer.php?ac=2&cat=14
 
-        - NeoInterface is co-authored by Alexey Kuznetsov and Julian West,
+        - NeoInterface was co-authored by Alexey Kuznetsov and Julian West in 2021,
                 and is maintained by GSK pharmaceuticals
                 with an Apache License 2.0 (https://github.com/GSK-Biostatistics/neointerface).
                 NeoInterface is in part based on the earlier library Neo4jLiaison,
                 as well as a library developed by Alexey Kuznetsov.
 
-        - Neo4jLiaison, now deprecated, was authored by Julian West
+        - Neo4jLiaison, now deprecated, was authored by Julian West in 2020
                 (https://github.com/BrainAnnex/neo4j-liaison)
 
     ----------------------------------------------------------------------------------
@@ -82,7 +89,6 @@ class NeoAccess:
                  host=os.environ.get("NEO4J_HOST"),
                  credentials=(os.environ.get("NEO4J_USER"), os.environ.get("NEO4J_PASSWORD")),
                  apoc=False,
-                 verbose=False,
                  debug=False,
                  autoconnect=True):
         """
@@ -96,20 +102,18 @@ class NeoAccess:
         :param apoc:        Flag indicating whether apoc library is used on Neo4j database to connect to
                                 Notes: APOC, if used, must also be enabled on the database.
                                        The only method currently requiring APOC is export_dbase_json()
-        :param verbose:     Flag indicating whether a verbose mode is to be used by all methods of this class
         :param debug:       Flag indicating whether a debug mode is to be used by all methods of this class
         :param autoconnect  Flag indicating whether the class should establish connection to database at initialization
 
         TODO: try os.getenv() in lieu of os.environ.get()
         """
-        self.verbose = verbose
         self.debug = debug
         self.autoconnect = autoconnect
         self.host = host
         self.credentials = credentials
         self.driver = None
         self.apoc = apoc
-        if self.verbose:
+        if self.debug:
             print ("~~~~~~~~~ Initializing NeoAccess ~~~~~~~~~")
         if self.autoconnect:    #TODO: add test for autoconnect == False
             # Attempt to create a driver object
@@ -132,7 +136,7 @@ class NeoAccess:
             else:
                 self.driver = GraphDatabase.driver(self.host,
                                                    auth=None)               # Object to connect to Neo4j's Bolt driver for Python
-            if self.verbose:
+            if self.debug:
                 print(f"Connection to {self.host} established")
         except Exception as ex:
             error_msg = f"CHECK WHETHER NEO4J IS RUNNING! While instantiating the NeoAccess object, it failed to create the driver: {ex}"
@@ -405,7 +409,7 @@ class NeoAccess:
                                     # This is a neo4j.ResultSummary object
                                     # See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.ResultSummary
 
-            if self.verbose:
+            if self.debug:
                 print("In update_query(). Attributes of ResultSummary object:", info.__dict__)  # Show as dictionary
                 '''
                 EXAMPLE: 
@@ -2059,7 +2063,8 @@ class NeoAccess:
         Import the data specified by a JSON string into the database.
 
         CAUTION: A "postorder" approach is followed: create subtrees first (with recursive calls), then create root last;
-        as a consequence, in case of failure, a partial import might need to be manually deleted.
+        as a consequence, in case of failure mid-import, there's no top root, and there could be several fragments.
+        A partial import might need to be manually deleted.
         TODO: maintain a list of all created nodes - so as to be able to delete them all in case of failure.
 
         :param json_str:    A JSON string representing (at the top level) an object or a list
@@ -2173,7 +2178,10 @@ class NeoAccess:
 
             if self.is_literal(v):
                 node_properties[k] = v      # Add the key/value to the running list of properties of the new node
-                print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}. Node properties so far: {node_properties}")
+                if self.debug:
+                    print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}. Node properties so far: {node_properties}")
+                else:
+                    print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}")      # Concise version
 
             elif type(v) == dict:
                 print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
