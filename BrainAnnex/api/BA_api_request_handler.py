@@ -183,9 +183,42 @@ class APIRequestHandler:
 
 
 
+    @classmethod
+    def delete_schema_relationship_handler(cls, class_specs: dict) -> None:
+        """
+        Delete the relationship(s) with the specified name
+        between the 2 existing Class nodes (identified by their respective names),
+        going in the from -> to direction direction.
+
+        In case of error, an Exception is raised.
+
+        :param class_specs: A dictionary with the following
+                DICTIONARY KEYS:
+                    from_class_name
+                    to_class_name
+                    rel_name
+
+        :return: None
+        """
+        from_class_name = class_specs["from_class_name"]
+        from_class_name = from_class_name.strip()
+        print("from_class_name: ", from_class_name)
+
+        to_class_name = class_specs["to_class_name"]
+        to_class_name = to_class_name.strip()
+        print("to_class_name: ", to_class_name)
+
+        rel_name = class_specs["rel_name"]
+        rel_name = rel_name.strip()
+        print("rel_name: ", rel_name)
+
+        # Delete the relationship(s)
+        NeoSchema.delete_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
+
+
+
 
     #######################     RECORDS-RELATED       #######################
-
 
     @classmethod
     def get_leaf_records(cls) -> [str]:

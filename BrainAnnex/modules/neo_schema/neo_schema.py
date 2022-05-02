@@ -185,6 +185,7 @@ class NeoSchema:
         Returns the Schema ID of the Class with the given name, or -1 if not found
         TODO: unique Class names are assumed.  Perhaps add an optional "namespace" attribute, to use in case
               multiple classes with the same name must be used
+        TODO: maybe raise an Exception if more than one is found
 
         :param class_name:  The name of the desired class
         :param namespace:   EXPERIMENTAL - not yet in use
@@ -293,9 +294,11 @@ class NeoSchema:
 
 
     @classmethod
-    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:
+    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:    #### NOT IN CURRENT USE
         """
         Rename the old relationship between the specified classes
+        TODO: if more than 1 relationship exists between the given Classes,
+              then they will all be replaced??  TO FIX!  (the old name ought be provided)
 
         :param from_class:
         :param to_class:
@@ -329,13 +332,48 @@ class NeoSchema:
 
 
     @classmethod
+    def delete_class_relationship(cls, from_class: str, to_class: str, rel_name) -> None:
+        """
+        Delete the relationship(s) with the specified name
+        between the 2 existing Class nodes (identified by their respective names),
+        going in the from -> to direction direction.
+
+        Note: there might be more than one - relationships with the same name between the same nodes
+              are allowed, provided that they have different properties.
+              If more than one is found, they will all be deleted  (TODO: test)
+
+        In case of error, an Exception is raised
+
+        :param from_class:  Name of one existing Class node (blanks allowed in name)
+        :param to_class:    Name of another existing Class node (blanks allowed in name)
+        :param rel_name:    Name of the relationship(s) to delete,
+                                if found in the from -> to direction (blanks allowed in name)
+
+        :return:            None
+        """
+        assert rel_name, "delete_class_relationship(): A name must be provided for the relationship to delete"
+
+        q = f'''
+            MATCH (from :CLASS {{name: $from_class}})-[r:`{rel_name}`]->(to :CLASS {{name: $to_class}})
+            DELETE r
+            '''
+
+        result = cls.db.update_query(q, {"from_class": from_class, "to_class": to_class})
+
+        print("result of update_query in delete_class_relationship(): ", result)
+        if result.get("relationships_deleted") < 1:
+            raise Exception(f"Failed to delete the `{rel_name}` relationship from Schema Class `{from_class}` to Schema Class `{to_class}`")
+
+
+
+    @classmethod
     def unlink_classes(cls, class1: int, class2: int) -> bool:
         """
-        Remove all relationships (in any direction) between the specified classes
+        Remove ALL relationships (in any direction) between the specified classes
 
-        :param class1:
-        :param class2:
-        :return:        True if a relationship (in either direction) was found, and successfully removed;
+        :param class1:  Integer ID to identify the first Class
+        :param class2:  Integer ID to identify the second Class
+        :return:        True if exactly one relationship (in either direction) was found, and successfully removed;
                         otherwise, False
         """
         q = f'''

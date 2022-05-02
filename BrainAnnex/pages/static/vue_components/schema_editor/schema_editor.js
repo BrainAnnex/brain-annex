@@ -119,14 +119,6 @@ Vue.component('vue-schema-editor',
 
         // ----------------  COMPUTED  -----------------
         computed: {
-            name_of_class_to_link_to()
-            // Name to show on the page
-            {
-                if (this.linked_to == -1)
-                    return "Existing class ";
-                else
-                    return "'" + this.linked_to + "'";
-            }
         },
 
 
@@ -138,23 +130,87 @@ Vue.component('vue-schema-editor',
                 SERVER CALLS
              */
 
+            delete_relationship()
+            /* Initiate request to server to delete the specified relationship between Classes
+             */
+            {
+                console.log(`Processing request to delete the relationship "${this.del_linked_from} - ${this.del_rel_name} -> ${this.del_linked_to}"`);
+
+                if (this.del_rel_name == "")  {
+                    alert("Must enter a relationship name");
+                    return;
+                }
+                if (this.del_linked_from == -1)  {
+                    alert("Must enter a class name that the link originates from");
+                    return;
+                }
+                if (this.del_linked_to == -1)  {
+                    alert("Must enter a class name that the link goes to");
+                    return;
+                }
+
+
+                // Send the request to the server, using a POST
+                let url_server = "/BA/api/simple/delete_schema_relationship";
+                let post_obj = {from_class_name: this.del_linked_from,
+                                to_class_name: this.del_linked_to,
+                                rel_name: this.del_rel_name
+                               };
+
+
+                console.log(`About to contact the server at ${url_server}.  POST object:`);
+                console.log(post_obj);
+
+                this.waiting = true;
+                this.status_message = "";   // Clear any message from the previous operation
+                this.error = false;         // Clear any error from the previous operation
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server,
+                            {post_obj: post_obj,
+                             callback_fn: this.finish_delete_relationship});
+            },
+
+            finish_delete_relationship(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of delete_relationship() upon getting a response from the server
+            {
+                console.log("Finalizing the finish_delete_relationship operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `New relationship added`;
+                    // Clear up the form
+                    this.del_linked_from = -1;
+                    this.del_linked_to = -1;
+                    this.del_rel_name = "";
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED deletion of relationship: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            },
+
+
+
+            // ---------------------------------------
+
             add_relationship()
-            /* Initiate request to server to add a new Class with the specified Properties,
-               in the given order
+            /* Initiate request to server to add a new relationship between specified Classes
              */
             {
                 console.log(`Processing request to add the relationship "${this.add_linked_from} - ${this.add_rel_name} -> ${this.add_linked_to}"`);
-                //console.log(this.property_list);
 
                 if (this.add_rel_name == "")  {
                     alert("Must enter a relationship name");
                     return;
                 }
-                if (this.from_class_name == -1)  {
+                if (this.add_linked_from == -1)  {
                     alert("Must enter a class name that the new link originates from");
                     return;
                 }
-                if (this.to_class_name == -1)  {
+                if (this.add_linked_to == -1)  {
                     alert("Must enter a class name that the new link goes to");
                     return;
                 }
@@ -182,7 +238,7 @@ Vue.component('vue-schema-editor',
             },
 
             finish_add_relationship(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of finish_add_relationship() upon getting a response from the server
+            // Callback function to wrap up the action of add_relationship() upon getting a response from the server
             {
                 console.log("Finalizing the finish_add_relationship operation...");
                 if (success)  {     // Server reported SUCCESS

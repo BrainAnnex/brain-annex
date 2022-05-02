@@ -492,7 +492,7 @@ class ApiRouting:
                 rel_name
 
             EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                curl http://localhost:5000/BA/api/simple/add_schema_relationship -d
                         "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
             """
             # Extract the POST values
@@ -511,6 +511,35 @@ class ApiRouting:
 
             return return_value
 
+
+
+        @bp.route('/simple/delete_schema_relationship', methods=['POST'])
+        def delete_schema_relationship() -> str:
+            """
+            POST FIELDS:
+                from_class_name
+                to_class_name
+                rel_name
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/simple/delete_schema_relationship -d
+                        "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict object
+            cls.show_post_data(post_data, "delete_schema_relationship")
+
+            try:
+                class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
+                APIRequestHandler.delete_schema_relationship_handler(class_specs)
+                return_value = cls.SUCCESS_PREFIX               # Success
+            except Exception as ex:
+                err_status = f"Unable to delete the relationship. {ex}"
+                return_value = cls.ERROR_PREFIX + err_status    # Failure
+
+            print(f"delete_schema_relationship() is returning: `{return_value}`")
+
+            return return_value
 
 
 
