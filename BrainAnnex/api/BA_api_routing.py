@@ -438,11 +438,11 @@ class ApiRouting:
         #---------------------------------------------#
 
         @bp.route('/simple/create_new_schema_class', methods=['POST'])
-        def create_new_schema_class():
+        def create_new_schema_class() -> str:
             """
             Create a new Schema Class, possibly linked to another existing class,
             and also - typically but optionally - with the special "INSTANCE_OF" link
-            to an existing class (often, "Records")
+            to an existing Class (often, the "Records" Class)
 
             EXAMPLES of invocation:
                 curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
@@ -478,6 +478,36 @@ class ApiRouting:
                 return_value = cls.ERROR_PREFIX + err_status    # Failure
 
             print(f"create_new_schema_class() is returning: `{return_value}`")
+
+            return return_value
+
+
+
+        @bp.route('/simple/add_schema_relationship', methods=['POST'])
+        def add_schema_relationship() -> str:
+            """
+            POST FIELDS:
+                from_class_name
+                to_class_name
+                rel_name
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                        "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict object
+            cls.show_post_data(post_data, "add_schema_relationship")
+
+            try:
+                class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
+                APIRequestHandler.add_schema_relationship_handler(class_specs)
+                return_value = cls.SUCCESS_PREFIX               # Success
+            except Exception as ex:
+                err_status = f"Unable to add a new relationship. {ex}"
+                return_value = cls.ERROR_PREFIX + err_status    # Failure
+
+            print(f"add_schema_relationship() is returning: `{return_value}`")
 
             return return_value
 

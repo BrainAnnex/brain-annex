@@ -74,7 +74,7 @@ class APIRequestHandler:
 
 
 
-    #######################     SCHEMA-RELATED  ("Records" related)     #######################
+    #######################     SCHEMA-RELATED       #######################
 
     @classmethod
     def new_schema_class(cls, class_specs: dict) -> None:
@@ -84,7 +84,7 @@ class APIRequestHandler:
         to an existing class (often, "Records")
         In case of error, an Exception is raised.
 
-        :param class_specs: A dictionary
+        :param class_specs: A dictionary with the following
                 DICTIONARY KEYS:
                 new_class_name      The name of the new Class (tolerant of leading/trailing blanks)
                 properties_list     The name of all desired Properties, in order
@@ -149,6 +149,42 @@ class APIRequestHandler:
             except Exception as ex:
                 raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
+
+
+    @classmethod
+    def add_schema_relationship_handler(cls, class_specs: dict) -> None:
+        """
+
+        In case of error, an Exception is raised.
+
+        :param class_specs: A dictionary with the following
+                DICTIONARY KEYS:
+                    from_class_name
+                    to_class_name
+                    rel_name
+
+        :return: None
+        """
+        from_class_name = class_specs["from_class_name"]
+        from_class_name = from_class_name.strip()
+        print("from_class_name: ", from_class_name)
+
+        to_class_name = class_specs["to_class_name"]
+        to_class_name = to_class_name.strip()
+        print("to_class_name: ", to_class_name)
+
+        rel_name = class_specs["rel_name"]
+        rel_name = rel_name.strip()
+        print("rel_name: ", rel_name)
+
+        from_class_id = NeoSchema.get_class_id(from_class_name)
+        to_class_id = NeoSchema.get_class_id(to_class_name)
+        NeoSchema.create_class_relationship(from_id=from_class_id, to_id=to_class_id, rel_name=rel_name)
+
+
+
+
+    #######################     RECORDS-RELATED       #######################
 
 
     @classmethod
