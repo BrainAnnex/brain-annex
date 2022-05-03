@@ -1259,7 +1259,7 @@ class NeoSchema:
         if type(data) == dict:       # If the top-level JSON structure is dictionary
             print("Top-level structure of the data to import is a Python dictionary")
             node_id = cls.create_tree_from_dict(data, class_name)
-            if provenance:
+            if provenance and node_id is not None:
                 cls.db.set_fields(node_id, set_dict={"source": provenance})
             return [node_id]
 
