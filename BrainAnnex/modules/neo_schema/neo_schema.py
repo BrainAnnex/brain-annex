@@ -271,6 +271,9 @@ class NeoSchema:
 
         In case of error, an Exception is raised
 
+        Note: multiple relationships by the same name between the same nodes are allowed by Neo4j,
+              as long as the relationships differ in their attributes
+
         TODO: add a method that reports on all existing relationships among Classes?
         TODO: allow to alternatively specify the classes by name
 
@@ -873,9 +876,9 @@ class NeoSchema:
         Return a dictionary with all the key/value pairs of the given data point
         TODO: test
 
-        :param item_id:
-        :param labels:      OPTIONAL (generally, redundant)
-        :param properties:  OPTIONAL (generally, redundant)
+        :param item_id:     To uniquely identify the data node
+        :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
+        :param properties:  OPTIONAL (generally, redundant) ways to locate the data node
         :return:            A dictionary with all the key/value pairs, if found; or {} if not
         """
         match = cls.db.find(key_name="item_id", key_value=item_id,
@@ -1006,7 +1009,8 @@ class NeoSchema:
 
         :param existing_neo_id: Internal ID to identify the node to register with the above Class.
                                 TODO: expand to use the find() structure
-        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_item_id:     OPTIONAL. Normally, the Item ID is auto-generated,
+                                but it can also be provided (Note: MUST be unique)
 
         :return:                If successful, an integer with the auto-increment "item_id" value of the node just created;
                                 otherwise, an Exception is raised
@@ -1100,7 +1104,7 @@ class NeoSchema:
         :param to_id:       The "item_id" value of the data node at which the new relationship is to end
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
-        :param labels:      OPTIONAL (generally, redundant)
+        :param labels:      NO LONGER IN USE.  TODO: DITCH
 
         :return:            None.  If the specified relationship didn't get created, raise an Exception
                             In case the the new relationship doesn't exist in the Schema, raise an Exception
@@ -1111,13 +1115,13 @@ class NeoSchema:
         Schema check
         """
         # Verify that the relationship exists IN THE SCHEMA, i.e. that the Classes of the data nodes have a relationship with that name between them
-        labels_str = neo_access.CypherUtils.prepare_labels(labels)
+        #labels_str = neo_access.CypherUtils.prepare_labels(labels)
         # Attempt to find a path from the "from" data node, to its Class in the schema, to another Class along a relationship
         #   with the same name as the one we're trying to add, and finally to the "to" data node that has that last Class as schema
         q = f'''
-        MATCH p=(from {labels_str} {{item_id: $from_id}}) -[:SCHEMA]-> 
+        MATCH p=(from {{item_id: $from_id}}) -[:SCHEMA]-> 
                 (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
-                <-[:SCHEMA]- (to {labels_str} {{item_id: $to_id}})
+                <-[:SCHEMA]- (to {{item_id: $to_id}})
         RETURN p
         '''
 
@@ -1129,10 +1133,10 @@ class NeoSchema:
 
 
         # Add the new relationship
-        match_from = cls.db.find(labels=labels, key_name="item_id", key_value=from_id,
+        match_from = cls.db.find(key_name="item_id", key_value=from_id,
                                  dummy_node_name="from")
 
-        match_to =   cls.db.find(labels=labels, key_name="item_id", key_value=to_id,
+        match_to =   cls.db.find(key_name="item_id", key_value=to_id,
                                  dummy_node_name="to")
 
         cls.db.add_edges(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is added
@@ -1249,19 +1253,37 @@ class NeoSchema:
     def create_data_nodes_from_python_data(cls, data, class_name: str, provenance=None) -> [int]:
         """
 
-        :param data:
-        :param class_name:
+        :param data:        A python dictionary or list, with the data to import
+        :param class_name:  The name of the Schema Class for the root node(s) of the imported data
         :param provenance:  Optional string to store in a "source" attribute in the root node
                                 (only used if the top-level data structure is an object, i.e. if there's a single root node)
 
-        :return:            List of integer Neo4j internal ID's (possibly empty), of the root node(s) created
+        :return:            List of item_id (in the case of dict imports),
+                            or of integer Neo4j internal ID's (possibly empty), of the root node(s) created
+                            TODO: turn all into item_id
         """
+        import_metadata = {}
+        if provenance:
+            import_metadata["source"] = provenance
+
+        metadata_id = cls.add_data_point(class_name="Import Data", data_dict=import_metadata)
+
+        q = f'''
+            MATCH (n :`Import Data`) WHERE n.item_id = {metadata_id}
+            SET n.date = date()
+            '''
+        cls.db.update_query(q)
+
         if type(data) == dict:       # If the top-level JSON structure is dictionary
             print("Top-level structure of the data to import is a Python dictionary")
-            node_id = cls.create_tree_from_dict(data, class_name)
-            if provenance and node_id is not None:
-                cls.db.set_fields(node_id, set_dict={"source": provenance})
-            return [node_id]
+            # Perform the import
+            root_id = cls.create_tree_from_dict(data, class_name)
+
+            if root_id is not None:
+                root_item_id = cls.register_existing_data_point(class_name=class_name, existing_neo_id=root_id)
+                print(f"*****Linking node with item_id={metadata_id} with node with Neo4j id={root_id} and item ID={root_item_id}, with relationship `imported_data`")
+                cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id,rel_name="imported_data")
+            return [root_item_id]
 
         elif type(data) == list:         # If the top-level JSON structure is a list
             # Create multiple unconnected trees
@@ -1525,7 +1547,7 @@ class NeoSchema:
         """
         Return the next available ID for nodes managed by this class
         For the ID to use on data points, use next_available_datapoint_id() instead
-        # TODO: *** THIS MAY FAIL IF MULTIPLE CALLS ARRIVE ALMOST SIMULTANEOUSLY
+        # TODO: *** THIS MAY FAIL IF MULTIPLE CALLS ARRIVE ALMOST SIMULTANEOUSLY -> swich to using next_autoincrement()
 
         :return:
         """
@@ -1533,7 +1555,41 @@ class NeoSchema:
 
 
     @classmethod
+    def next_autoincrement(cls, kind: str) -> int:
+        """
+        This utilizes an atomic database operation to both read and advance the autoincrement counter,
+        based on a (single) node with label `Schema Autoincrement`;
+        if no such node exists (for example, after a new installation), it gets created
+
+        :param kind:
+        :return:
+        """
+        q = '''
+            MATCH (n: `Schema Autoincrement` {kind: $kind})
+            SET n.last_id = n.last_id + 1
+            RETURN n.last_id AS last_id
+            '''
+        last_id = cls.db.query(q, data_binding={"kind": kind}, single_cell="last_id")
+
+        if last_id is None:
+            cls.db.create_node(labels="Schema Autoincrement", properties={"kind": kind, "last_id": 1})
+            return 1
+        else:
+            return last_id
+
+
+    @classmethod
     def next_available_datapoint_id(cls) -> int:
+        """
+
+        :return:
+        """
+        return cls.next_autoincrement("data_node")
+
+
+
+    @classmethod
+    def next_available_datapoint_id_OBSOLETE(cls) -> int:    # TODO: DITCH
         # TODO: *** THIS MAY FAIL IF MULTIPLE CALLS ARRIVE ALMOST SIMULTANEOUSLY
         new_id = cls.next_available_id_general("BA", "item_id")
         # TODO: Save the above result (only produced if no class-variable value is available) as a class variable.

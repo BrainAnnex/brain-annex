@@ -129,12 +129,34 @@ def test_get_schema_id(db):
 
 #############   DATA POINTS   ###########
 
+#############   DATA IMPORT   ###########
+
+# See separate file
+
+
 #############   EXPORT SCHEMA   ###########
 
 
 ###############   INTERNAL  METHODS   ###############
 
 def test_valid_schema_id(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
     result = NeoSchema.create_class("Records")
     assert NeoSchema.valid_schema_id(result)
+
+
+def test_next_autoincrement(db):
+    db.empty_dbase()
+    assert NeoSchema.next_autoincrement("a") == 1
+    assert NeoSchema.next_autoincrement("a") == 2
+    assert NeoSchema.next_autoincrement("a") == 3
+    assert NeoSchema.next_autoincrement("schema") == 1
+    assert NeoSchema.next_autoincrement("schema") == 2
+    assert NeoSchema.next_autoincrement("data_node") == 1
+    assert NeoSchema.next_autoincrement("data_node") == 2
+
+def test_next_available_datapoint_id(db):
+    db.empty_dbase()
+    assert NeoSchema.next_available_datapoint_id() == 1
+    assert NeoSchema.next_available_datapoint_id() == 2
+    assert NeoSchema.next_available_datapoint_id() == 3

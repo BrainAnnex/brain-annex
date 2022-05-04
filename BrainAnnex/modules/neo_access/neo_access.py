@@ -191,7 +191,7 @@ class NeoAccess:
                                 {'node_id': 20}
         :param single_row:      Return a dictionary with just the first (0-th) result row, if present - or {} in case of no results
         :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
-                                If single_cell is specified, return the value of the field by that name in the first node
+                                If single_cell is specified, return the value of the field by that name in the first returned record
                                 Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
                                 TODO: test and give examples.  single_cell="name" will return result[0].get("name")
 
@@ -802,6 +802,8 @@ class NeoAccess:
     def get_node_labels(self, neo4j_id: int) -> [str]:
         """
         Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
+
+        TODO: also accept a "match" structure as argument
 
         :param neo4j_id:
         :return:
