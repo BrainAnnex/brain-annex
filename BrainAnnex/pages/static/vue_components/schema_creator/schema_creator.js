@@ -50,7 +50,7 @@ Vue.component('vue-schema-creator',
                     <td style='padding-left:5px'>
                         <select  v-model="linked_to">
                             <option value='-1'>[Choose an existing Class]</option>
-                            <template v-for="item in class_list">
+                            <template v-for="item in all_class_names">
                                 <option>{{item}}</option>
                             </template>
                         </select>
@@ -89,6 +89,8 @@ Vue.component('vue-schema-creator',
 
         data: function() {
             return {
+                all_class_names: this.class_list,
+
                 new_class_name: "",
 
                 number_properties: 3,
@@ -160,7 +162,7 @@ Vue.component('vue-schema-creator',
                 if (this.instance_of)
                     post_obj.instance_of = this.instance_of;
 
-                if ((this.linked_to && !this.rel_name) || (!this.linked_to && this.rel_name)) {
+                if ((this.linked_to != -1 && !this.rel_name) || (this.linked_to == -1 && this.rel_name)) {
                     alert("If adding a new relationship, both a name and a class must be specified");
                     return;
                 }
@@ -192,6 +194,8 @@ Vue.component('vue-schema-creator',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `New Class added`;
+                    this.all_class_names.push(this.new_class_name);     // To update menus
+
                     // Clear up the form
                     this.new_class_name = "";
                     this.property_list = [];

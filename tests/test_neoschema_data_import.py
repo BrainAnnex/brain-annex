@@ -1,5 +1,7 @@
 # Testing of Schema-based Data Import
 # *** CAUTION! ***  The database gets cleared out during some of the tests!
+# NOTES: - some tests require APOC
+#        - some tests may fail their date check if done close to midnight, server time
 
 
 import pytest
