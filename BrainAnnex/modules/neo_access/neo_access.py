@@ -197,8 +197,9 @@ class NeoAccess:
 
         :param single_column:   Name of the column of interest.  Form a list from all the values of that particular column all records.
 
-        :return:        A (possibly empty) list of dictionaries.  Each dictionary in the list
-                                will depend on the nature of the Cypher query.
+        :return:        If any of single_row, single_cell or single_column are True, see info under their entries.
+                        If those arguments are all False, it returns a (possibly empty) list of dictionaries.
+                        Each dictionary in the list will depend on the nature of the Cypher query.
                         EXAMPLES:
                             Cypher returns nodes (after finding or creating them): RETURN n1, n2
                                     -> list item such as {'n1': {'gender': 'M', 'patient_id': 123}
@@ -212,7 +213,7 @@ class NeoAccess:
                             Cypher returns a single relationship, with or without attributes: MERGE (c)-[r:PAID_BY]->(p)
                                     -> a single list item such as [{ 'r': ({}, 'PAID_BY', {}) }]
                             Cypher returns a path:   MATCH p= .......   RETURN p
-                                 -> list item such as {'p': [ {'name': 'Eve'}, 'LOVES', {'name': 'Adam'} ] }
+                                    -> list item such as {'p': [ {'name': 'Eve'}, 'LOVES', {'name': 'Adam'} ] }
                             Cypher creates nodes (without returning them)
                                     -> empty list
         """
@@ -863,11 +864,11 @@ class NeoAccess:
 
 
 
-    def count_links(self, match: dict, rel_name: str, rel_dir, neighbor_labels = None) -> int:
+    def count_links(self, match: Union[int, dict], rel_name: str, rel_dir: str, neighbor_labels = None) -> int:
         """
-        From the given starting node(s), count all the relationships of the given name to and/or from it,
+        From the given starting node(s), count all the relationships OF THE GIVEN NAME to and/or from it,
         into/from neighbor nodes (optionally having the given labels)
-        TODO: test!
+        TODO: pytest!
 
         :param match:           A dictionary of data to identify a node, or set of nodes, as returned by find()
         :param rel_name:        A string with the name of relationship to follow.  (Note: any other relationships are ignored)
@@ -876,20 +877,21 @@ class NeoAccess:
 
         :return:                The total number of inbound and/or outbound relationships to the given node(s)
         """
-        CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
+        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
 
         neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
 
-        if rel_dir == "OUT":    # Follow outbound links
+        if rel_dir == "OUT":            # Follow outbound links
             q =  f"MATCH {node} - [:{rel_name}] -> (neighbor {neighbor_labels_str})"
-        elif rel_dir == "IN":   # Follow inbound links
+        elif rel_dir == "IN":           # Follow inbound links
             q =  f"MATCH {node} <- [:{rel_name}] - (neighbor {neighbor_labels_str})"
-        else:                   # Follow links in BOTH directions
+        elif rel_dir == "BOTH":         # Follow links in BOTH directions
             q =  f"MATCH {node}  - [:{rel_name}] - (neighbor {neighbor_labels_str})"
-
+        else:
+            raise Exception(f"count_links(): argument `rel_dir` must be one of: 'IN', 'OUT', 'BOTH'; value passed was `{rel_dir}`")
 
         q += CypherUtils.prepare_where(where) + " RETURN count(neighbor) AS link_count"
 
@@ -1152,7 +1154,8 @@ class NeoAccess:
         """
         Create a new node, with the given labels and optional specified properties,
         and make it a parent of all the EXISTING nodes
-        specified in the list of children nodes (possibly empty), using the given relationship names.
+        specified in the list of children nodes (possibly empty),
+        using the relationship names specified inside that list.
         All the relationships are understood to be OUTbound from the newly-created node.
 
         Note: this is a simpler version of create_node_with_relationships()
@@ -1302,7 +1305,7 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def set_fields(self, match, set_dict: dict ) -> int:
+    def set_fields(self, match: Union[int, dict], set_dict: dict ) -> int:
         """
         EXAMPLE - locate the "car" with vehicle id 123 and set its color to white and price to 7000
             match = find(labels = "car", properties = {"vehicle id": 123})
@@ -1325,7 +1328,7 @@ class NeoAccess:
         if set_dict == {}:
             return 0             # There's nothing to do
 
-        match = CypherUtils.validate_and_standardize(match) # Validate, and possibly transform, the match dictionary
+        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match)
