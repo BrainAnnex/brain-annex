@@ -285,8 +285,8 @@ class APIRequestHandler:
         :return:    The pair (status, data/error_message)   # TODO: generate an Exception in case of failure
 
         """
-        content_node = cls.db.get_nodes("BA", properties_condition = {"schema_code": schema_code, "item_id": item_id})
-        #print("properties_condition", {"schema_code": schema_code, "item_id": item_id})
+        match = cls.db.find(labels="BA", properties={"schema_code": schema_code, "item_id": item_id})
+        content_node = cls.db.fetch_nodes(match)
         #print("content_node:", content_node)
         if (content_node is None) or (content_node == []):
             return (False, "Metadata not found")     # Metadata not found
@@ -313,7 +313,8 @@ class APIRequestHandler:
         :return:    The binary data
 
         """
-        content_node = cls.db.get_nodes("BA", properties_condition = {"item_id": item_id})
+        match = cls.db.find(labels="BA", properties={"item_id": item_id})
+        content_node = cls.db.fetch_nodes(match)
         #print("content_node:", content_node)
         if (content_node is None) or (content_node == []):
             raise Exception("Metadata not found")

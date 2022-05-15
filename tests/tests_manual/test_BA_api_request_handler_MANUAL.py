@@ -20,16 +20,6 @@ def db():
 
 
 
-def test_secure_filename_BA():
-    assert UploadHelper.secure_filename_BA("My cool ++ movie.mov") == "My cool  movie.mov"
-    assert UploadHelper.secure_filename_BA("../../../etc/passwd") == "etc_passwd"
-    assert UploadHelper.secure_filename_BA('i contain \xfcml\xe4uts.txt') == 'i contain umlauts.txt'
-    assert UploadHelper.secure_filename_BA("COM1.txt") == "_COM1.txt"
-    assert UploadHelper.secure_filename_BA("    blank-padded string  ") == "blank-padded string"
-
-
-
-
 #######################     SCHEMA- RELATED      #######################
 
 def test_get_leaf_records(db):
@@ -42,9 +32,38 @@ def test_get_leaf_records(db):
 #########   Categories-related   #########
 
 
+def test_reposition_content():
+    Categories.reposition_content(60, item_id=576, move_after_n=4)
+
+
+
+def test_relocate_positions():
+    n_shifted = Categories.relocate_positions(60, n_to_skip=29, pos_shift=-295)
+    assert n_shifted == 2
 
 
 
 
 #########   ImageProcessing class  #########
 
+def test_make_thumbnail():
+    ImageProcessing.save_thumbnail(src_folder=MEDIA_FOLDER,
+                                   filename="test.PNG",
+                                   save_to_folder=MEDIA_FOLDER+"resized/",
+                                   src_width=1141, src_height=643)
+
+
+
+def test_scale_down_image():
+    ImageProcessing.scale_down_horiz(src_folder=MEDIA_FOLDER,
+                                     filename="test.PNG",
+                                     save_to_folder=MEDIA_FOLDER+"resized/",
+                                     src_width=1141, src_height=643,
+                                     target_width=100)
+
+
+
+def test_describe_image():
+    src = MEDIA_FOLDER + "test.PNG"
+    print()
+    ImageProcessing.describe_image(src)

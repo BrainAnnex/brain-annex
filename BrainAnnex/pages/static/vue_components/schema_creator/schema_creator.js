@@ -194,7 +194,7 @@ Vue.component('vue-schema-creator',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `New Class added`;
-                    this.all_class_names.push(this.new_class_name);     // To update menus
+                    this.all_class_names.push(this.new_class_name);     // To update menus (TODO: send signal to parent component, to update entire page)
 
                     // Clear up the form
                     this.new_class_name = "";

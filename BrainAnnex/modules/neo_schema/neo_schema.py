@@ -252,13 +252,14 @@ class NeoSchema:
     def get_all_classes(cls, only_names=True) -> [str]:
         """
         Fetch and return a list of all the existing Schema classes - either just their names (sorted alphabetically)
-        (or a fuller listing - TODO: not yet implemented)
+        (TODO: or a fuller listing - not yet implemented)
 
         TODO: disregard capitalization is sorting
 
         :return:    A list of all the existing Class names
         """
-        return cls.db.get_single_field("name", labels = cls.class_label, order_by="name")
+        match = cls.db.find(labels=cls.class_label)
+        return cls.db.get_single_field(match=match, field_name="name", order_by="name")
 
 
 
@@ -1422,7 +1423,7 @@ class NeoSchema:
                 continue
 
             if cls.db.is_literal(v):
-                print(f"{indent_str}(key: `{k}`) Processing a literal of type {type(v)} ({v})")
+                print(f"{indent_str}(key: `{k}`) Processing a literal of type {type(v)} ({v})")     #TODO: shorten the shown value
                 if k not in declared_properties:    # Check if the Property from the data is in the schema
                     print(f"{indent_str}Disregarding this unexpected attribute: `{k}`")
                     skipped_properties.append(k)

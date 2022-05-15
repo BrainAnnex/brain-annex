@@ -45,10 +45,10 @@ class NodeExplorer:
         :param label:   A Neo4j label
         :return:        A 6-tuple containing (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts)
         """
-        #db = neo_access.NeoAccess()
         db = self.neo
         # Retrieve ALL nodes with the specified label
-        recordset = db.get_nodes(label, return_nodeid=True, return_labels=True)
+        match = db.find(labels=label)
+        recordset = db.fetch_nodes(match=match, return_neo_id=True, return_labels=True)
                                     # EXAMPLE: [ {"neo4j_id": 145, "neo4j_labels": ["person", "client"], 'gender': 'M', 'age': 42},
                                     #            {"neo4j_id": 222, "neo4j_labels": ["person"], 'gender': 'F', 'age': 21, location: "Berkeley"} ]
 

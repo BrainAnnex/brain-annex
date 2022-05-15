@@ -55,11 +55,12 @@ def test_create_class(db):
     db.empty_dbase()
 
     french_class_id = NeoSchema.create_class("French Vocabulary")
-    result = db.get_nodes()
+    match = db.find()   # All nodes
+    result = db.fetch_nodes(match)
     assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
 
     class_A_id = NeoSchema.create_class("A", schema_type="S")
-    result = db.get_nodes()
+    result = db.fetch_nodes(match)
     expected = [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'},
                 {'name': 'A', 'schema_id': class_A_id, 'type': 'S'}]
     assert compare_recordsets(result, expected)
@@ -82,6 +83,16 @@ def test_get_class_id(db):
     assert NeoSchema.get_class_id("B") == class_B_id
 
     assert NeoSchema.get_class_id("NON-EXISTENT CLASS") == -1
+
+
+
+def test_class_exists(db):
+    pass    # TODO
+
+
+
+def test_class_name_exists(db):
+    pass    # TODO
 
 
 
@@ -144,10 +155,76 @@ def test_create_class_relationship(db):
 
 
 
+def test_rename_class_rel(db):
+    pass    # TODO
+
+
+
+def test_delete_class_relationship(db):
+    pass    # TODO
+
+
+
+def test_unlink_classes(db):
+    pass    # TODO
+
+
+
+def test_delete_class(db):
+    pass    # TODO
+
+
+def test_allows_data_nodes(db):
+    pass    # TODO
+
+
+
+def test_get_class_instances(db):
+    pass    # TODO
+
+
+
+def test_get_related_class_names(db):
+    pass    # TODO
+
+
+
+def test_get_class_relationships(db):
+    pass    # TODO
+
+
+
+
 #############   PROPERTIES-RELATED   #############
 
 
+def test_get_class_properties(db):
+    pass    # TODO
+
+
+
+def test_add_properties_to_class(db):
+    pass    # TODO
+
+
+
+def test_new_class_with_properties(db):
+    pass    # TODO
+
+
+
+def test_remove_property_from_class(db):
+    pass    # TODO
+
+
+
+
 #############   SCHEMA-CODE  RELATED   ###########
+
+def test_get_schema_code(db):
+    pass    # TODO
+
+
 
 def test_get_schema_id(db):
     db.empty_dbase()
@@ -161,6 +238,15 @@ def test_get_schema_id(db):
 
 
 #############   DATA POINTS   ###########
+
+def test_all_properties(db):
+    pass    # TODO
+
+
+def test_fetch_data_point(db):
+    pass    # TODO
+
+
 
 def test_add_data_point(db):
     db.empty_dbase()
@@ -241,6 +327,37 @@ def test_add_and_link_data_point(db):
 
 
 
+
+def test_register_existing_data_point(db):
+    pass    # TODO
+
+
+
+def test_delete_data_point(db):
+    pass    # TODO
+
+
+
+def test_add_data_relationship(db):
+    pass    # TODO
+
+
+
+def test_remove_data_relationship(db):
+    pass    # TODO
+
+
+
+def test_data_points_of_class(db):
+    pass    # TODO
+
+
+
+def test_data_points_lacking_schema(db):
+    pass    # TODO
+
+
+
 #############   DATA IMPORT   ###########
 
 # See separate file
@@ -257,6 +374,12 @@ def test_valid_schema_id(db):
     assert NeoSchema.valid_schema_id(result)
 
 
+
+def test_next_available_id(db):
+    pass    # TODO
+
+
+
 def test_next_autoincrement(db):
     db.empty_dbase()
     assert NeoSchema.next_autoincrement("a") == 1
@@ -266,6 +389,7 @@ def test_next_autoincrement(db):
     assert NeoSchema.next_autoincrement("schema") == 2
     assert NeoSchema.next_autoincrement("data_node") == 1
     assert NeoSchema.next_autoincrement("data_node") == 2
+
 
 def test_next_available_datapoint_id(db):
     db.empty_dbase()
