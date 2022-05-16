@@ -11,6 +11,9 @@ from flask import Flask
 
 # All the sub-modules making up this web app:
 
+# The site's home/top-level pages (possibly under the control of a co-hosted independent site
+from home.home_routing import Home
+
 # The navigation is shared by Brain Annex and possibly other independent sites
 # embedded (co-hosted) with it
 from navigation.navigation_routing import Navigation
@@ -77,6 +80,9 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
 #       and specify the URL prefixes to use for the various modules
 
+# The site's home/top-level pages
+Home.setup(app)
+
 # The navbar
 Navigation.setup(app)
 
@@ -84,7 +90,7 @@ Navigation.setup(app)
 PagesRouting.site_pages = site_pages
 PagesRouting.setup(app)
 
-# The BrainAnnex-provided endpoint
+# The BrainAnnex-provided endpoints
 ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
 ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
 ApiRouting.setup(app)

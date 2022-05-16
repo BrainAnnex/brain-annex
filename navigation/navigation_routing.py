@@ -9,7 +9,7 @@ from flask import Blueprint
 
 class Navigation:
     """
-    Setup, and routing for all the web pages served by this module
+    Setup, and routing, for all the web pages served by this module
     """
 
     # Module-specific parameters (as class variables)

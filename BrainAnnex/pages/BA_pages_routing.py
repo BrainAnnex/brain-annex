@@ -73,25 +73,6 @@ class PagesRouting:
 
         ##################  START OF ROUTING DEFINITIONS  ##################
 
-        #"@" signifies a decorator - a way to wrap a function and modify its behavior
-        @bp.route('/login')
-        def login() -> str:
-            """
-            NOT YET IN USE
-            EXAMPLE invocation: http://localhost:5000/BA/pages/login
-            """
-            template = "login.htm"
-            """
-            # DEBUGGING, TO DELETE
-            not_yet_used = current_app.config['UPLOAD_FOLDER']
-            print(not_yet_used)
-            not_yet_used2 = current_app.config['APP_NEO4J_DBASE']
-            print(not_yet_used2.credentials)
-            """
-            return render_template(template)
-
-
-
         @bp.route('/viewer')
         @bp.route('/viewer/<category_id>')
         def category_page_viewer(category_id=1) -> str:
