@@ -217,7 +217,7 @@ class PagesRouting:
             EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager
             """
             template = "schema_manager.htm"
-            class_list = PagesRequestHandler.schema_manager_data()
+            class_list = PagesRequestHandler.all_schema_classes()
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    class_list=class_list)
 
@@ -230,7 +230,9 @@ class PagesRouting:
             EXAMPLE invocation: http://localhost:5000/BA/pages/data-import
             """
             template = "data_import.htm"
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
+            class_list = PagesRequestHandler.all_schema_classes()
+            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+                                   class_list=class_list)
 
 
 
