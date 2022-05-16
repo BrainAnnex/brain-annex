@@ -1267,11 +1267,18 @@ class NeoSchema:
     @classmethod
     def import_json_data(cls, json_str: str, class_name: str, parse_only=False, provenance=None) -> Union[None, int, List[int]]:
         """
+        Import the data specified by a JSON string into the database - but only the data that is reflected in the existing Schema;
+        anything else is silently ignored.
 
-        :param json_str:
-        :param class_name:
+        CAUTION: A "postorder" approach is followed: create subtrees first (with recursive calls), then create root last;
+        as a consequence, in case of failure mid-import, there's no top root, and there could be several fragments.
+        A partial import might need to be manually deleted.
+        TODO: maintain a list of all created nodes - so as to be able to delete them all in case of failure.
+
+        :param json_str:    A JSON string representing (at the top level) an object or a list to import
+        :param class_name:  Name of Schema class to use for the top-level element(s)
         :param parse_only:  Flag indicating whether to stop after the parsing (i.e. no database import)
-        :param provenance:
+        :param provenance:  Metadata (such as a file name) to store in the "source" attribute of the node for the import data
 
         :return:
         """
@@ -1305,6 +1312,12 @@ class NeoSchema:
         :return:            List of item_id (in the case of dict imports),
                             or of integer Neo4j internal ID's (possibly empty), of the root node(s) created
                             TODO: turn all into item_id
+
+        TODO:   * DIRECTION OF RELATIONSHIP (cannot be specified by Python dict/JSON)
+                * LACK OF "Import Data" node (ought to be automatically created if needed)
+                * LACK OF "BA" labels being set
+                * INABILITY TO LINK TO EXISTING NODE (try using: "item_id": some_int  as the only property in nodes to merge)
+                * HAZY responsibility for "schema_code" (set correctly for all nodes)
         """
 
         # Create an `Import Data` node for the metadata of the import

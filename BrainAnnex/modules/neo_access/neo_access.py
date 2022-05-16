@@ -1990,7 +1990,7 @@ class NeoAccess:
         A partial import might need to be manually deleted.
         TODO: maintain a list of all created nodes - so as to be able to delete them all in case of failure.
 
-        :param json_str:    A JSON string representing (at the top level) an object or a list
+        :param json_str:    A JSON string representing the data to import
         :param root_labels: String, or list of strings, to be used as Neo4j labels for the root node(s)
         :param parse_only:  If True, the parsed data will NOT be added to the database
         :param provenance:  Optional string to store in a "source" attribute in the root node

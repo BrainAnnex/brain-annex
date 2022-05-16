@@ -62,7 +62,7 @@
                 </template>
             </select>
 
-            <label style="color:gray"> schema class to use for the top-level element</label>
+            <label style="color:gray"> schema class to use for the top-level element(s)</label>
         </template>
 
         <template v-else>
@@ -125,7 +125,7 @@ new Vue({
 
         all_class_names: {{class_list | tojson}},   // Handover of data from Flask to Vue
 
-        schema_class: -1,                           // Name of schema class to use for the top-level element
+        schema_class: -1,                           // Name of schema class to use for the top-level element(s)
         import_root_label: "Import_Root",           // Neo4j label to use on root node(s) of import
 
         waiting: false,         // Whether any server request is still pending
