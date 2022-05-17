@@ -4,7 +4,9 @@ from typing import Union
 
 class User():
     """
-    Flask-Login expects user objects to have:
+    The "flask_login" package used for authentication
+    expects user objects that have the following properties and methods:
+
         is_authenticated
         is_active
         is_anonymous
@@ -23,15 +25,19 @@ class User():
 
 
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """
+        :return:    A string with a brief description of this object
+        """
         return f"<User Object - ID: {self.user_id} , username: `{self.username}`>"
 
 
 
     def get_id(self):
         """
-        Method required by Flask-Login
-        From docs:
+        Method required by the "flask_login" package.
+
+        From the docs:
         "This method must return a unicode that uniquely identifies this user,
         and can be used to load the user from the user_loader callback.
         Note that this must be a unicode - if the ID is natively an int or some other type,
@@ -58,17 +64,9 @@ class UserManagerNeo4j:
     This class does NOT get instantiated.
     """
 
-    db = None       # "NeoAccess" object.  MUST be set before using this class!
+    db = None           # "NeoAccess" object.  MUST be set before using this class!
 
-    user_dict = {}     # Dictionary of "User" objects, indexed by the user ID (an integer value)
-
-
-    #def __init__(self):
-
-        # Instantiate and save a Neo4j connection object.  TODO: maybe centralize in a higher-level module?
-        #self.conn = neo4j_connection("neo4j://localhost:7687", "neo4j", "PASS")   # CHANGE PARAMETERS AS NEEDED!
-
-        #self.user_dict = {}     # Dictionary of "User" objects, indexed by the user ID (an integer value)
+    user_dict = {}      # Dictionary of "User" objects, indexed by the user ID (an integer value)
 
 
 

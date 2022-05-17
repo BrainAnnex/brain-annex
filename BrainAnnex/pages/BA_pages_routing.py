@@ -4,6 +4,7 @@
 """
 
 from flask import Blueprint, render_template, request   # The request package makes available a GLOBAL request object
+from flask_login import login_required
 from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler     # TODO: reorganize, to avoid this
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
@@ -179,6 +180,7 @@ class PagesRouting:
 
 
         @bp.route('/admin')
+        @login_required
         def admin() -> str:
             """
             Generate a general administrative page

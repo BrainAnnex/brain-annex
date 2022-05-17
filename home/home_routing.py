@@ -5,7 +5,7 @@ Router/generator for navigation pages:
 
 from flask import Blueprint, render_template, request, redirect
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user  # Not used: UserMixin
-from home.user_manager import UserManagerNeo4j
+from home.user_manager import UserManagerNeo4j, User
 
 
 
@@ -34,7 +34,7 @@ class Home:
     #############################################################
 
     @classmethod
-    def setup(cls, flask_app_obj, login_manager_obj) -> None:
+    def setup(cls, flask_app_obj) -> None:
         """
         Based on the module-specific class variables, and given a Flask app object,
         instantiate a "Blueprint" object,
@@ -44,12 +44,16 @@ class Home:
             the functions that will be assigned to the various URL endpoints [NOT USED IN THIS MODULE]
 
         :param flask_app_obj:	    The Flask app object
-        :param login_manager_obj:   Object of type "LoginManager" (from the "flask_login" package)
         :return:				    None
         """
         flask_blueprint = Blueprint(cls.blueprint_name, __name__,
                                     template_folder=cls.template_folder,
                                     static_folder=cls.static_folder, static_url_path='/assets')
+
+        login_manager_obj = LoginManager(app=flask_app_obj) # Object of type "LoginManager" (from the "flask_login" package)
+        login_manager_obj.login_view = "/login"     # Specify a page to redirect to whenever an attempt is made
+                                                    # to access a page requiring login, without being logged in
+                                                    # If not specified, a "401 Unauthorized" error is returned
 
         # Define the Flask routing (mapping URLs to Python functions) for all the web pages served by this module
         cls.set_routing(flask_blueprint, login_manager_obj)
@@ -57,11 +61,6 @@ class Home:
         # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
         flask_app_obj.register_blueprint(flask_blueprint)       # NOT USED:  url_prefix = cls.url_prefix
 
-
-        #cls.login_manager = LoginManager(app=flask_app_obj)
-        #cls.login_manager.login_view = "/login.htm" # Specify a page to redirect to whenever an attempt is made
-        # to access a page requiring login, without being logged in
-        # If not specified, a "401 Unauthorized" error is returned
 
 
 
@@ -76,8 +75,9 @@ class Home:
         for all the web pages served by this module,
         and provide the functions assigned to the various URL endpoints
 
-        :param bp:  The Flask "Blueprint" object that was created for this module
-        :return:    None
+        :param bp:                  The Flask "Blueprint" object that was created for this module
+        :param login_manager_obj:   Object of type "LoginManager" (from the "flask_login" package)
+        :return:                    None
         """
 
         ##################  START OF ROUTING DEFINITIONS  ##################
@@ -85,7 +85,7 @@ class Home:
         # "@" signifies a decorator - a way to wrap a function and modify its behavior
         @bp.route("/")    # Root  : SET BROWSER TO http://localhost:5000
         def index():
-            # Serve a minimalist home page
+            # Serve a minimalist top-level page
             return "Welcome to Brain Annex: the web server is running.<br><br><a href='/login'>Login</a>"
 
 
@@ -121,7 +121,7 @@ class Home:
             # Extract the POST values passed by the calling form
             username = request.form["username"]
             passwd = request.form["passwd"]
-            print(F"In do_login().  POST parameters -> username: `{username}` | passwd: `{passwd}`")
+            print(f"In do_login().  POST parameters -> username: `{username}` | passwd: `{passwd}`")
 
             # Verify the login credential and, if successful, obtain the User ID (-1 in case of failure)
             user_id = cls.user_handle.check_login_credentials(username, passwd)
@@ -151,10 +151,12 @@ class Home:
 
 
 
-        @login_manager_obj.user_loader       # NOTE THE DIFFERENT DECORATOR HERE
-        def load_user(flask_user_id: str):
+        @login_manager_obj.user_loader       # NOTE THE DIFFERENT DECORATOR HERE!
+        def load_user(flask_user_id: str) -> User:
             """
-            From docs:
+            Callback function required by the "flask_login" package.
+
+            From the docs:
             "This callback is used to reload the user object from the user ID stored in the session.
             It should take the unicode ID of a user, and return the corresponding user object.
             It should return None (not raise an exception) if the ID is not valid"
@@ -163,6 +165,7 @@ class Home:
             :return:                An object of type "User" if the ID is valid, or None if not
             """
 
+            # TODO: return None if the flask_user_id is invalid
             user_id_as_int = ord(flask_user_id)     # Take a one-character Unicode string and return the code point value (an integer)
             # Unclear whether flask_login would ever use more than 1 character
 
