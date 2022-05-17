@@ -4,7 +4,7 @@
 """
 
 from flask import Blueprint, render_template, request   # The request package makes available a GLOBAL request object
-from flask_login import login_required
+from flask_login import login_required, current_user
 from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler     # TODO: reorganize, to avoid this
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
@@ -188,8 +188,11 @@ class PagesRouting:
 
             EXAMPLE invocation: http://localhost:5000/BA/pages/admin
             """
+            print(f"User is logged in as: `{current_user.username}`")
             template = "admin.htm"
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
+            return render_template(template,
+                                   username=current_user.username,
+                                   current_page=request.path, site_pages=cls.site_pages)
 
 
 

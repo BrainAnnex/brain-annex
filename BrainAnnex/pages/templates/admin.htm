@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters:  current_page, site_pages
+{#  Flask-passed parameters:  current_page, site_pages, username
  #}
 
 <html lang="en">
@@ -27,7 +27,7 @@
 
 
 <h2 class="page-title">Admin Functions</h2>
-
+<span style="color:#444; font-style: italic">Logged in as '<b>{{username}}</b>' <a href="/logout">(log out)</a></span>
 
 <br><br>
 <div class="content-block">
