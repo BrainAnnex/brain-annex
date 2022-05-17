@@ -8,6 +8,8 @@ Note: this main program may also be started from the CLI with the "flask run" co
 
 
 from flask import Flask
+from flask_login import LoginManager
+
 
 # All the sub-modules making up this web app:
 
@@ -78,10 +80,14 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 
 ### DEFINE THE HIGH-LEVEL ROUTING
 #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
-#       and specify the URL prefixes to use for the various modules
+#   and specify the URL prefixes to use for the various modules
 
 # The site's home/top-level pages
-Home.setup(app)
+login_manager_obj = LoginManager(app=app)
+login_manager_obj.login_view = "/login"     # Specify a page to redirect to whenever an attempt is made
+                                            # to access a page requiring login, without being logged in
+                                            # If not specified, a "401 Unauthorized" error is returned
+Home.setup(app, login_manager_obj)
 
 # The navbar
 Navigation.setup(app)
