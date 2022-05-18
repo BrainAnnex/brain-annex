@@ -10,7 +10,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 3.5
+    VERSION 3.6
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -191,14 +191,15 @@ class NeoAccess:
                                 {'node_id': 20}
         :param single_row:      Return a dictionary with just the first (0-th) result row, if present - or {} in case of no results
         :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
-                                If single_cell is specified, return the value of the field by that name in the first node
+                                If single_cell is specified, return the value of the field by that name in the first returned record
                                 Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
                                 TODO: test and give examples.  single_cell="name" will return result[0].get("name")
 
         :param single_column:   Name of the column of interest.  Form a list from all the values of that particular column all records.
 
-        :return:        A (possibly empty) list of dictionaries.  Each dictionary in the list
-                                will depend on the nature of the Cypher query.
+        :return:        If any of single_row, single_cell or single_column are True, see info under their entries.
+                        If those arguments are all False, it returns a (possibly empty) list of dictionaries.
+                        Each dictionary in the list will depend on the nature of the Cypher query.
                         EXAMPLES:
                             Cypher returns nodes (after finding or creating them): RETURN n1, n2
                                     -> list item such as {'n1': {'gender': 'M', 'patient_id': 123}
@@ -212,7 +213,7 @@ class NeoAccess:
                             Cypher returns a single relationship, with or without attributes: MERGE (c)-[r:PAID_BY]->(p)
                                     -> a single list item such as [{ 'r': ({}, 'PAID_BY', {}) }]
                             Cypher returns a path:   MATCH p= .......   RETURN p
-                                 -> list item such as {'p': [ {'name': 'Eve'}, 'LOVES', {'name': 'Adam'} ] }
+                                    -> list item such as {'p': [ {'name': 'Eve'}, 'LOVES', {'name': 'Adam'} ] }
                             Cypher creates nodes (without returning them)
                                     -> empty list
         """
@@ -449,29 +450,22 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def get_single_field(self, field_name: str, labels="", properties_condition=None,
-                               cypher_clause=None, cypher_dict=None, order_by=None) -> list:
+    def get_single_field(self, match, field_name: str, order_by=None, limit=None) -> list:
         """
-        TODO: switch to using the "match" data.
         For situations where one is fetching just 1 field,
         and one desires a list of those values, rather than a dictionary of records.
-        In other respects, similar to the more general get_nodes()
+        In other respects, similar to the more general fetch_nodes()
 
-        EXAMPLES: fetch_single_field("car", "price", properties_condition={"car_make": "Toyota"})
-                        will RETURN a list of prices of all the Toyota models
-                  fetch_single_field("car", "price", properties_condition={"car_make": "Toyota"}, clause="n.price < 50000")
-                        will RETURN a list of prices of all the Toyota models that cost less than 50000
-
+        :param match:       see fetch_nodes()
         :param field_name:  A string with the name of the desired field (attribute)
-
-        For more information on the other parameters, see get_nodes()
+        :param order_by:    see fetch_nodes()
+        :param limit:       see fetch_nodes()
 
         :return:  A list of the values of the field_name attribute in the nodes that match the specified conditions
         """
 
-        record_list = self.get_nodes(labels, properties_condition=properties_condition,
-                                     cypher_clause=cypher_clause, cypher_dict=cypher_dict,
-                                     order_by=order_by)
+        record_list = self.fetch_nodes(match=match, order_by=order_by, limit=limit)
+
         single_field_list = [record.get(field_name) for record in record_list]
 
         return single_field_list
@@ -523,77 +517,6 @@ class NeoAccess:
 
 
 
-    # OBSOLETE
-    def get_nodes(self, labels="", properties_condition=None, cypher_clause=None, cypher_dict=None,
-                  return_nodeid=False, return_labels=False, order_by=None,
-                  single_row=False, single_cell=""):        # TODO: being obsoleted by fetch_nodes()
-        """
-        EXAMPLES:
-            get_nodes("")       # Get ALL nodes
-            get_nodes("client")
-            get_nodes("client", properties_condition = {"gender": "M", "ethnicity": "white"})
-            get_nodes("client", cypher_clause = "n.age > 40 OR n.income < 50000")
-            get_nodes("client", cypher_clause = "n.age > $some_age", cypher_dict = {"$some_age": 40})
-            get_nodes("client", properties_condition = {"gender": "M", "ethnicity": "white"} ,
-                                           cypher_clause = "n.age > 40 OR n.income < 50000")
-
-        RETURN a list of the records (as dictionaries of ALL the key/value node properties)
-        corresponding to all the Neo4j nodes with the specified label,
-            AND satisfying the given Cypher CLAUSE (if present),
-            AND exactly matching ALL of the specified property key/values pairs  (if present).
-            I.e. an implicit AND operation.
-        IMPORTANT: nodes referred to in the Cypher clause must be specified as "n."
-
-        A dictionary of data binding (cypher_dict) for the Cypher clause may be optionally specified.
-        In case of conflict (any key overlap) between the dictionaries cypher_dict and properties_condition, and Exception is raised.
-        Optionally, the Neo4j internal node ID and label name(s) may also be obtained and returned.
-
-        :param labels:          A string (or list/tuple of strings) specifying one or more Neo4j labels;
-                                    an empty string indicates that the match is to be carried out
-                                    across all labels - NOT RECOMMENDED for large databases!
-                                    (Note: blank spaces ARE allowed in the strings)
-        :param cypher_dict:     Dictionary of data binding for the Cypher string.  EXAMPLE: {"gender": "M", "age": 40}
-        :param cypher_clause:   String with a clause to refine the search; any nodes it refers to, MUST be specified as "n."
-                                    EXAMPLE with hardwired values:  "n.age > 40 OR n.income < 50000"
-                                    EXAMPLE with data-binding:      "n.age > $age OR n.income < $income"
-                                            (data-binding values are specified in cypher_dict)
-        :param properties_condition: A (possibly-empty) dictionary of property key/values pairs. Example: {"gender": "M", "age": 64}
-                                     IMPORTANT: cypher_dict and properties_dict must have no overlapping keys, or an Exception will be raised
-        :param return_nodeid:   Flag indicating whether to also include the Neo4j internal node ID in the returned data
-                                    (using "neo4j_id" as its key in the returned dictionary)
-        :param return_labels:   Flag indicating whether to also include the Neo4j label names in the returned data
-                                    (using "neo4j_labels" as its key in the returned dictionary)
-        :param order_by:        Optional string with the key (field) name to order by, in ascending order.
-                                    Note: lower and uppercase names are treated differently in the sort order.
-
-        :param single_row:      TODO: test and give examples.  It will return result[0]
-        :param single_cell:     TODO: test and give examples.  single_cell="name" will return result[0].get("name")
-
-        :return:        A list whose entries are dictionaries with each record's information
-                        (the node's attribute names are the keys)
-                        EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
-                                    {"gender": "M", "age": 76, "location": "Berkeley"}
-                                 ]
-                        Note that ALL the attributes of each node are returned - and that they may vary across records.
-                        If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
-                                of the form     "neo4j_id": some integer with the Neo4j internal node ID
-                        If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
-                                of the form     "neo4j_labels": [list of Neo4j label(s) attached to that node]
-                        EXAMPLE using both of the above flags:
-                            [  {"neo4j_id": 145, "neo4j_labels": ["person", "client"], "gender": "M", "age": 42, "condition_id": 3},
-                               {"neo4j_id": 222, "neo4j_labels": ["person"], "gender": "M", "age": 76, "location": "Berkeley"}
-                            ]
-        """
-
-        match = self.find(labels=labels, properties=properties_condition, subquery=(cypher_clause, cypher_dict))
-
-        return self.fetch_nodes(match=match,
-                                return_neo_id=return_nodeid, return_labels=return_labels,
-                                order_by=order_by,
-                                single_row=single_row, single_cell=single_cell)
-
-
-
     def fetch_nodes(self, match: Union[int, dict],
                     return_neo_id=False, return_labels=False, order_by=None, limit=None,
                     single_row=False, single_cell=""):
@@ -637,7 +560,7 @@ class NeoAccess:
                                            {"neo4j_id": 222, "neo4j_labels": ["person"], "gender": "M", "location": "Berkeley"}
                                         ]
         # TODO: provide an option to specify the desired fields
-        # TODO: provide an option to specify a limit
+
         """
         #CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
         # TODO: do this change in all the methods that accept a "match" argument (and change the description of their "match" arg)
@@ -687,23 +610,18 @@ class NeoAccess:
 
 
 
-    def get_df(self, labels="", properties_condition=None, cypher_clause=None, cypher_dict=None,
-                  return_nodeid=False, return_labels=False) -> pd.DataFrame:
+    def get_df(self, match: Union[int, dict], order_by=None, limit=None) -> pd.DataFrame:
         """
-        Same as get_nodes(), but the result is returned as a Pandas dataframe
+        Similar to fetch_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
 
-        [See get_nodes() for information about the arguments]
-        :param labels:
-        :param properties_condition:
-        :param cypher_clause:
-        :param cypher_dict:
-        :param return_nodeid:
-        :param return_labels:
-        :return:                A Pandas dataframe
+        [See fetch_nodes() for information about the arguments]
+        :param match:
+        :param order_by:
+        :param limit:
+        :return:            A Pandas dataframe
         """
-        result_list = self.get_nodes(labels=labels, properties_condition=properties_condition,
-                                    cypher_clause=cypher_clause, cypher_dict=cypher_dict,
-                                    return_nodeid=return_nodeid, return_labels=return_labels)
+
+        result_list = self.fetch_nodes(match=match, order_by=order_by, limit=limit)
         return pd.DataFrame(result_list)
 
 
@@ -803,6 +721,8 @@ class NeoAccess:
         """
         Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
 
+        TODO: also accept a "match" structure as argument
+
         :param neo4j_id:
         :return:
         """
@@ -861,11 +781,11 @@ class NeoAccess:
 
 
 
-    def count_links(self, match: dict, rel_name: str, rel_dir, neighbor_labels = None) -> int:
+    def count_links(self, match: Union[int, dict], rel_name: str, rel_dir: str, neighbor_labels = None) -> int:
         """
-        From the given starting node(s), count all the relationships of the given name to and/or from it,
+        From the given starting node(s), count all the relationships OF THE GIVEN NAME to and/or from it,
         into/from neighbor nodes (optionally having the given labels)
-        TODO: test!
+        TODO: pytest!
 
         :param match:           A dictionary of data to identify a node, or set of nodes, as returned by find()
         :param rel_name:        A string with the name of relationship to follow.  (Note: any other relationships are ignored)
@@ -874,20 +794,21 @@ class NeoAccess:
 
         :return:                The total number of inbound and/or outbound relationships to the given node(s)
         """
-        CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
+        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
 
         neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
 
-        if rel_dir == "OUT":    # Follow outbound links
+        if rel_dir == "OUT":            # Follow outbound links
             q =  f"MATCH {node} - [:{rel_name}] -> (neighbor {neighbor_labels_str})"
-        elif rel_dir == "IN":   # Follow inbound links
+        elif rel_dir == "IN":           # Follow inbound links
             q =  f"MATCH {node} <- [:{rel_name}] - (neighbor {neighbor_labels_str})"
-        else:                   # Follow links in BOTH directions
+        elif rel_dir == "BOTH":         # Follow links in BOTH directions
             q =  f"MATCH {node}  - [:{rel_name}] - (neighbor {neighbor_labels_str})"
-
+        else:
+            raise Exception(f"count_links(): argument `rel_dir` must be one of: 'IN', 'OUT', 'BOTH'; value passed was `{rel_dir}`")
 
         q += CypherUtils.prepare_where(where) + " RETURN count(neighbor) AS link_count"
 
@@ -1150,7 +1071,8 @@ class NeoAccess:
         """
         Create a new node, with the given labels and optional specified properties,
         and make it a parent of all the EXISTING nodes
-        specified in the list of children nodes (possibly empty), using the given relationship names.
+        specified in the list of children nodes (possibly empty),
+        using the relationship names specified inside that list.
         All the relationships are understood to be OUTbound from the newly-created node.
 
         Note: this is a simpler version of create_node_with_relationships()
@@ -1300,7 +1222,7 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def set_fields(self, match, set_dict: dict ) -> int:
+    def set_fields(self, match: Union[int, dict], set_dict: dict ) -> int:
         """
         EXAMPLE - locate the "car" with vehicle id 123 and set its color to white and price to 7000
             match = find(labels = "car", properties = {"vehicle id": 123})
@@ -1323,7 +1245,7 @@ class NeoAccess:
         if set_dict == {}:
             return 0             # There's nothing to do
 
-        match = CypherUtils.validate_and_standardize(match) # Validate, and possibly transform, the match dictionary
+        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match)
@@ -2068,7 +1990,7 @@ class NeoAccess:
         A partial import might need to be manually deleted.
         TODO: maintain a list of all created nodes - so as to be able to delete them all in case of failure.
 
-        :param json_str:    A JSON string representing (at the top level) an object or a list
+        :param json_str:    A JSON string representing the data to import
         :param root_labels: String, or list of strings, to be used as Neo4j labels for the root node(s)
         :param parse_only:  If True, the parsed data will NOT be added to the database
         :param provenance:  Optional string to store in a "source" attribute in the root node

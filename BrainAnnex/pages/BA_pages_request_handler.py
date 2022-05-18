@@ -74,7 +74,7 @@ class PagesRequestHandler:
 
 
     @classmethod
-    def schema_manager_data(cls) -> [str]:
+    def all_schema_classes(cls) -> [str]:
         """
         Return a list of all the existing Schema classes
         :return:

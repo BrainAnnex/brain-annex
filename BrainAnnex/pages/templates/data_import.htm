@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters:  current_page, site_pages
+{#  Flask-passed parameters:
+        current_page, site_pages,
+        class_list
  #}
 
 <html lang="en">
@@ -52,16 +54,27 @@
         &nbsp;&nbsp;
         or without Schema        <input type="radio" value="NO_SCHEMA" v-model="use_schema"><br><br>
 
-        <input type="text" size="35" v-model="schema_class">
-        <span style="color:gray"> schema class to use for the top-level element</span>
-        <br><br>
-        OR<br><br>
-        <input type="text" size="35" v-model="import_root_label">
-        <span style="color:gray"> label to use on root node(s) of import</span>
-        <br><br>
+        <template v-if="use_schema=='SCHEMA'">
+            <select  v-model="schema_class">
+                <option value='-1'>[Choose an existing Class]</option>
+                <template v-for="item in all_class_names">
+                    <option>[[item]]</option>
+                </template>
+            </select>
 
-        <button @click=submit_file style="margin-bottom:15px">
+            <label style="color:gray"> schema class to use for the top-level element(s)</label>
+        </template>
+
+        <template v-else>
+            <input type="text" size="35" v-model="import_root_label">
+            <label style="color:gray"> label to use on root node(s) of import</label>
+        </template>
+
+        <br>
+        <button @click=submit_file style="margin-bottom:15px; margin-top:40px; padding:5px">
             Import JSON data file
+            <template v-if="use_schema=='SCHEMA'">using the Schema</template>
+            <template v-else>WITHOUT Schema</template>
         </button>
 
         <!-- Status info -->
@@ -108,9 +121,12 @@ new Vue({
     data: {
         file_to_import: null,
 
-        use_schema: "SCHEMA",               // Either "SCHEMA" or "NO_SCHEMA"
-        schema_class: "",                   // Name of schema class to use for the top-level element
-        import_root_label: "Import_Root",   // Neo4j label to use on root node(s) of import
+        use_schema: "SCHEMA",                       // Either "SCHEMA" or "NO_SCHEMA"
+
+        all_class_names: {{class_list | tojson}},   // Handover of data from Flask to Vue
+
+        schema_class: -1,                           // Name of schema class to use for the top-level element(s)
+        import_root_label: "Import_Root",           // Neo4j label to use on root node(s) of import
 
         waiting: false,         // Whether any server request is still pending
         error: false,           // Whether the last server communication resulted in error

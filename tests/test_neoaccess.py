@@ -238,16 +238,21 @@ def test_get_single_field(db):
                        (:`my label`:`make`  {                `field B`: 'more test', `field C`: 3.14})
              ''')
 
-    result = db.get_single_field(labels="my label", field_name="field A")
+    match = db.find(labels="my label")
+
+    result = db.get_single_field(match=match, field_name="field A")
     assert compare_unordered_lists(result, [123, None])
 
-    result = db.get_single_field(labels="my label", field_name="field B")
+    result = db.get_single_field(match=match, field_name="field B")
     assert compare_unordered_lists(result, ['test', 'more test'])
 
-    result = db.get_single_field(labels="make", field_name="field C")
+    match = db.find(labels="make")
+
+    result = db.get_single_field(match=match, field_name="field C")
     assert compare_unordered_lists(result, [3.14])
 
-    result = db.get_single_field(labels="", field_name="field C")      # No labels specified
+    match = db.find(labels="")      # No labels specified
+    result = db.get_single_field(match=match, field_name="field C")
     assert compare_unordered_lists(result, [None, 3.14])
 
 
@@ -437,115 +442,11 @@ def test_fetch_nodes(db):
 
     match = db.find(labels="patient", properties={"age": 11})
     retrieved_single_record = db.fetch_nodes(match, single_row=True)
-    assert retrieved_single_record == None      # No record found
+    assert retrieved_single_record is None      # No record found
 
     match = db.find(labels="patient", neo_id=empty_record_id)
     retrieved_single_record = db.fetch_nodes(match, single_row=True)
     assert retrieved_single_record == {}        # Record with no attributes found
-
-
-
-def test_get_nodes(db):
-    db.empty_dbase()
-
-    # Create a 1st new node
-    db.create_node("test_label", {'patient_id': 123, 'gender': 'M'})
-
-    # Retrieve the record just created (using values embedded in the Cypher query)
-    retrieved_records = db.get_nodes(labels="test_label", cypher_clause="n.patient_id = 123 AND n.gender = 'M'")
-    assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
-
-    # Retrieve the record just created (using data-binding in the Cypher query, and values passed as a separate dictionary)
-    retrieved_records = db.get_nodes(labels="test_label",
-                                     cypher_clause="n.patient_id = $patient_id AND n.gender = $gender",
-                                     cypher_dict={"patient_id": 123, "gender": "M"})
-    assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
-
-
-    # Retrieve ALL records with the label "test_label", by using no clause, or an empty clause
-    retrieved_records = db.get_nodes(labels="test_label")
-    assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
-
-    retrieved_records = db.get_nodes(labels="test_label",
-                                     cypher_clause="           ")
-    assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
-
-
-    # Create a 2nd new node, using a BLANK in an attribute key
-    db.create_node("my 2nd label", {'age': 21, 'gender': 'F', 'client id': 123})
-
-    # Retrieve the record just created (using values embedded in the Cypher query)
-    retrieved_records = db.get_nodes("my 2nd label", cypher_clause="n.`client id` = 123")
-    assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
-
-    # Retrieve the record just created (another method, with data-binding in Cypher query, and values passed as a separate dictionary)
-    retrieved_records = db.get_nodes("my 2nd label",
-                                     cypher_clause="n.age = $age AND n.gender = $gender",
-                                     cypher_dict={"age": 21, "gender": "F"})
-    assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
-
-    # Retrieve ALL records with the label "my 2nd label"
-    retrieved_records = db.get_nodes("my 2nd label")
-    assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
-
-    # Same as above, but using a blank clause
-    retrieved_records = db.get_nodes("my 2nd label", cypher_clause="           ")
-    assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
-
-    # Retrieve the record just created (using a dictionary of properties)
-    retrieved_records = db.get_nodes("my 2nd label", properties_condition={"age": 21, "gender": "F"})
-    assert retrieved_records == [{'client id': 123, 'gender': 'F', 'age': 21}]
-
-
-    # Add a 2nd new node
-    db.create_node("my 2nd label", {'age': 30, 'gender': 'M', 'client id': 999})
-
-    # Retrieve records using a clause
-    retrieved_records = db.get_nodes("my 2nd label", cypher_clause="n.age > 22")
-    assert retrieved_records == [{'gender': 'M', 'client id': 999, 'age': 30}]
-
-
-    # Retrieve nodes REGARDLESS of label (and also retrieve the labels)
-    retrieved_records = db.get_nodes("",
-                                     properties_condition={"gender": "M"},
-                                     return_labels=True)       # Locate all males, across all node labels
-    expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
-    assert compare_recordsets(retrieved_records, expected_records)
-
-
-    # Retrieve ALL nodes in the database (and also retrieve the labels)
-    retrieved_records = db.get_nodes("", return_labels=True)
-    expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 123, 'gender': 'F', 'age': 21}]
-    assert compare_recordsets(retrieved_records, expected_records)
-
-
-    # Pass conflicting arguments; an Exception is expected
-    with pytest.raises(Exception):
-        assert neo_access.NeoAccess(db.fetch_nodes_by_label("my 2nd label", debug=False,
-                                                            cypher_clause="n.age > $age",
-                                                            cypher_dict={"age": 22},
-                                                            properties_condition={"age": 30}))
-
-
-    # Now, do a clean start, an investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
-
-
-    db.empty_dbase()
-
-    # Create a first node, with attributes 'age' and 'gender'
-    db.create_node("patient", {'age': 16, 'gender': 'F'})
-
-    # Create a second node, with attributes 'weight' and 'gender' (notice the PARTIAL overlap in attributes with the previous node)
-    db.create_node("patient", {'weight': 155, 'gender': 'M'})
-
-    # Retrieve combined records created: note how different records have different keys
-    retrieved_records = db.get_nodes(labels="patient")
-    expected = [{'gender': 'F', 'age': 16},
-                {'gender': 'M', 'weight': 155}]
-    assert compare_recordsets(retrieved_records, expected)
 
 
 
@@ -556,7 +457,8 @@ def test_get_df(db):
     df_original = pd.DataFrame({"patient_id": [1, 2], "name": ["Jack", "Jill"]})
     db.load_pandas(df_original, label="A")
 
-    df_new = db.get_df("A")
+    match = db.find(labels="A")
+    df_new = db.get_df(match=match)
 
     # Sort the columns and then sort the rows, in order to disregard both row and column order (TODO: turn into utility)
     df_original_sorted = df_original.sort_index(axis=1)
@@ -785,8 +687,9 @@ def test_create_node(db):
     db.create_node("test_label", {'patient id': 123, 'gender': 'M'})
 
     # Retrieve the record just created (one method, with values embedded in the Cypher query)
-    retrieved_records_A = db.get_nodes(labels="test_label",
-                                       cypher_clause="n.`patient id` = 123 AND n.gender = 'M'")
+    match = db.find(labels="test_label", subquery="n.`patient id` = 123 AND n.gender = 'M'")
+
+    retrieved_records_A = db.fetch_nodes(match)
     assert retrieved_records_A == [{'patient id': 123, 'gender': 'M'}]
 
 
@@ -794,8 +697,7 @@ def test_create_node(db):
     db.create_node("test_label", {'patient id': 123, 'gender': 'M', 'condition_id': 'happy'})
 
     # Retrieve cumulative 2 records created so far
-    retrieved_records_B = db.get_nodes(labels="test_label",
-                                       cypher_clause="n.`patient id` = 123 AND n.gender = 'M'")
+    retrieved_records_B = db.fetch_nodes(match)
 
     # The lists defining the expected dataset can be expressed in any order - and, likewise, the order of entries in dictionaries doesn't matter
     expected_record_list = [{'patient id': 123, 'gender': 'M'} , {'patient id': 123, 'gender': 'M', 'condition_id': 'happy'}]
@@ -808,8 +710,7 @@ def test_create_node(db):
     # Create a 3rd node with a duplicate of the first new node
     db.create_node("test_label", {'patient id': 123, 'gender': 'M'})
     # Retrieve cumulative 3 records created so far
-    retrieved_records_C = db.get_nodes("test_label",
-                                       cypher_clause="n.`patient id` = 123 AND n.gender = 'M'")
+    retrieved_records_C = db.fetch_nodes(match)
     expected_record_list = [{'patient id': 123, 'gender': 'M'} ,
                             {'patient id': 123, 'gender': 'M'} ,
                             {'patient id': 123, 'gender': 'M', 'condition_id': 'happy'}]
@@ -821,7 +722,8 @@ def test_create_node(db):
     db.create_node("new_label", {})
 
     # Retrieve just this last node
-    retrieved_records_D = db.get_nodes("new_label")
+    match = db.find(labels="new_label")
+    retrieved_records_D = db.fetch_nodes(match)
     expected_record_list = [{}]
     assert compare_recordsets(retrieved_records_D, expected_record_list)
 
@@ -829,15 +731,18 @@ def test_create_node(db):
     # Create a 5th node with labels
     db.create_node(["label 1", "label 2"], {'name': "double label"})
     # Look it up by one label
-    retrieved_records = db.get_nodes("label 1")
+    match = db.find(labels="label 1")
+    retrieved_records = db.fetch_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
     # Look it up by the other label
-    retrieved_records = db.get_nodes("label 2")
+    match = db.find(labels="label 2")
+    retrieved_records = db.fetch_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
     # Look it up by both labels
-    retrieved_records = db.get_nodes(["label 1", "label 2"])
+    match = db.find(labels=["label 1", "label 2"])
+    retrieved_records = db.fetch_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
 
@@ -990,7 +895,8 @@ def test_delete_nodes(db):
 
 def test_delete_nodes_by_label(db):
     db.delete_nodes_by_label()
-    number_nodes = len(db.get_nodes())
+    match = db.find()   # Everything in the dbase
+    number_nodes = len(db.fetch_nodes(match))
     assert number_nodes == 0
 
     db.create_node("appetizers", {'name': 'spring roll'})
@@ -999,16 +905,16 @@ def test_delete_nodes_by_label(db):
     db.create_node("fruit", {'type': 'citrus'})
     db.create_node("dessert", {'name': 'chocolate'})
 
-    assert len(db.get_nodes()) == 5
+    assert len(db.fetch_nodes(match)) == 5
 
     db.delete_nodes_by_label(delete_labels="fruit")
-    assert len(db.get_nodes()) == 4
+    assert len(db.fetch_nodes(match)) == 4
 
     db.delete_nodes_by_label(delete_labels=["vegetable"])
-    assert len(db.get_nodes()) == 2
+    assert len(db.fetch_nodes(match)) == 2
 
     db.delete_nodes_by_label(delete_labels=["dessert", "appetizers"])
-    assert len(db.get_nodes()) == 0
+    assert len(db.fetch_nodes(match)) == 0
 
     # Rebuild the same dataset as before
     db.create_node("appetizers", {'name': 'spring roll'})
@@ -1018,20 +924,19 @@ def test_delete_nodes_by_label(db):
     db.create_node("dessert", {'name': 'chocolate'})
 
     db.delete_nodes_by_label(keep_labels=["dessert", "vegetable", "appetizers"])
-    assert len(db.get_nodes()) == 4
+    assert len(db.fetch_nodes(match)) == 4
 
     db.delete_nodes_by_label(keep_labels="dessert", delete_labels="dessert")
     # Keep has priority over delete
-    assert len(db.get_nodes()) == 4
+    assert len(db.fetch_nodes(match)) == 4
 
     db.delete_nodes_by_label(keep_labels="dessert")
-    assert len(db.get_nodes()) == 1
+    assert len(db.fetch_nodes(match)) == 1
 
 
 
 def test_empty_dbase(db):
     # Tests of completely clearing the database
-
 
     db.empty_dbase()
     # Verify nothing is left
@@ -1074,7 +979,8 @@ def test_empty_dbase(db):
     labels = db.get_labels()
     assert compare_unordered_lists(labels , ["label_4", "label_3"])
     # Doubly-verify that one of the saved nodes can be read in
-    recordset = db.get_nodes("label_3")
+    match = db.find(labels="label_3")
+    recordset = db.fetch_nodes(match)
     assert compare_recordsets(recordset, [{'client_id': 456, 'name': 'Julian'}])
 
 
@@ -1092,7 +998,8 @@ def test_set_fields(db):
     db.set_fields(match=match, set_dict = {"color": "white", "price": 7000})
 
     # Look up the updated record
-    retrieved_records = db.get_nodes("car")
+    match = db.find(labels="car")
+    retrieved_records = db.fetch_nodes(match)
     expected_record_list = [{'vehicle id': 123, 'color': 'white', 'price': 7000}]
     assert compare_recordsets(retrieved_records, expected_record_list)
 
@@ -1625,51 +1532,54 @@ def test_load_pandas(db):
 
     df = pd.DataFrame([[123]], columns = ["col1"])  # One row, one column
     db.load_pandas(df, "A")
-    result = db.get_nodes("A")
+    match_A = db.find(labels="A")
+    result = db.fetch_nodes(match_A)
     assert result == [{'col1': 123}]
 
     df = pd.DataFrame([[999]], columns = ["col1"])
     db.load_pandas(df, "A")
-    result = db.get_nodes("A")
+    result = db.fetch_nodes(match_A)
     expected = [{'col1': 123}, {'col1': 999}]
     assert compare_recordsets(result, expected)
 
     df = pd.DataFrame([[2222]], columns = ["col2"])
     db.load_pandas(df, "A")
-    result = db.get_nodes("A")
+    result = db.fetch_nodes(match_A)
     expected = [{'col1': 123}, {'col1': 999}, {'col2': 2222}]
     assert compare_recordsets(result, expected)
 
     df = pd.DataFrame([[3333]], columns = ["col3"])
     db.load_pandas(df, "B")
-    A_nodes = db.get_nodes("A")
+    A_nodes = db.fetch_nodes(match_A)
     expected_A = [{'col1': 123}, {'col1': 999}, {'col2': 2222}]
     assert compare_recordsets(A_nodes, expected_A)
-    B_nodes = db.get_nodes("B")
+    match_B = db.find(labels="B")
+    B_nodes = db.fetch_nodes(match_B)
     assert B_nodes == [{'col3': 3333}]
 
     db.load_pandas(df, "B")    # Re-add the same record
-    B_nodes = db.get_nodes("B")
+    B_nodes = db.fetch_nodes(match_B)
     assert B_nodes == [{'col3': 3333}, {'col3': 3333}]
 
     # Add a 2x2 dataframe
     df = pd.DataFrame({"col3": [100, 200], "name": ["Jack", "Jill"]})
     db.load_pandas(df, "A")
-    A_nodes = db.get_nodes("A")
+    A_nodes = db.fetch_nodes(match_A)
     expected = [{'col1': 123}, {'col1': 999}, {'col2': 2222}, {'col3': 100, 'name': 'Jack'}, {'col3': 200, 'name': 'Jill'}]
     assert compare_recordsets(A_nodes, expected)
 
     # Change the column names during import
     df = pd.DataFrame({"alternate_name": [1000]})
     db.load_pandas(df, "B", rename={"alternate_name": "col3"})     # Map "alternate_name" into "col3"
-    B_nodes = db.get_nodes("B")
+    B_nodes = db.fetch_nodes(match_B)
     expected_B = [{'col3': 3333}, {'col3': 3333}, {'col3': 1000}]
     assert compare_recordsets(B_nodes, expected_B)
 
     # Test primary_key with merge
     df = pd.DataFrame({"patient_id": [100, 200], "name": ["Jack", "Jill"]})
     db.load_pandas(df, "X")
-    X_nodes = db.get_nodes("X")
+    match_X = db.find(labels="X")
+    X_nodes = db.fetch_nodes(match_X)
     expected_X = [{'patient_id': 100, 'name': 'Jack', }, {'patient_id': 200, 'name': 'Jill'}]
     assert compare_recordsets(X_nodes, expected_X)
 

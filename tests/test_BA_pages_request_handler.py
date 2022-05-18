@@ -1,4 +1,4 @@
-from BrainAnnex.api.BA_api_request_handler import ImageProcessing, APIRequestHandler
+from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
 
 

@@ -4,6 +4,7 @@
 """
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
+from flask_login import login_required
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer     # TODO: to phase out
@@ -438,11 +439,12 @@ class ApiRouting:
         #---------------------------------------------#
 
         @bp.route('/simple/create_new_schema_class', methods=['POST'])
-        def create_new_schema_class():
+        @login_required
+        def create_new_schema_class() -> str:
             """
             Create a new Schema Class, possibly linked to another existing class,
             and also - typically but optionally - with the special "INSTANCE_OF" link
-            to an existing class (often, "Records")
+            to an existing Class (often, the "Records" Class)
 
             EXAMPLES of invocation:
                 curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
@@ -481,6 +483,67 @@ class ApiRouting:
 
             return return_value
 
+
+
+        @bp.route('/simple/add_schema_relationship', methods=['POST'])
+        @login_required
+        def add_schema_relationship() -> str:
+            """
+            POST FIELDS:
+                from_class_name
+                to_class_name
+                rel_name
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/simple/add_schema_relationship -d
+                        "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict object
+            cls.show_post_data(post_data, "add_schema_relationship")
+
+            try:
+                class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
+                APIRequestHandler.add_schema_relationship_handler(class_specs)
+                return_value = cls.SUCCESS_PREFIX               # Success
+            except Exception as ex:
+                err_status = f"Unable to add a new relationship. {ex}"
+                return_value = cls.ERROR_PREFIX + err_status    # Failure
+
+            print(f"add_schema_relationship() is returning: `{return_value}`")
+
+            return return_value
+
+
+
+        @bp.route('/simple/delete_schema_relationship', methods=['POST'])
+        @login_required
+        def delete_schema_relationship() -> str:
+            """
+            POST FIELDS:
+                from_class_name
+                to_class_name
+                rel_name
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/simple/delete_schema_relationship -d
+                        "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict object
+            cls.show_post_data(post_data, "delete_schema_relationship")
+
+            try:
+                class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
+                APIRequestHandler.delete_schema_relationship_handler(class_specs)
+                return_value = cls.SUCCESS_PREFIX               # Success
+            except Exception as ex:
+                err_status = f"Unable to delete the relationship. {ex}"
+                return_value = cls.ERROR_PREFIX + err_status    # Failure
+
+            print(f"delete_schema_relationship() is returning: `{return_value}`")
+
+            return return_value
 
 
 
@@ -626,6 +689,7 @@ class ApiRouting:
         ################   MODIFYING EXISTING CONTENT ITEMS   ################
 
         @bp.route('/simple/update', methods=['POST'])
+        @login_required
         def update() -> str:
             """
             Update an existing Content Item.
@@ -654,6 +718,7 @@ class ApiRouting:
         
         
         @bp.route('/simple/delete/<item_id>/<schema_code>')
+        @login_required
         def delete(item_id, schema_code) -> str:
             """
             Delete the specified Content Item.
@@ -679,6 +744,7 @@ class ApiRouting:
         #---------------------------------------------#
         
         @bp.route('/simple/add_item_to_category', methods=['POST'])
+        @login_required
         def add_item_to_category() -> str:
             """
             Create a new Content Item attached to a particular Category
@@ -710,6 +776,7 @@ class ApiRouting:
         
         
         @bp.route('/simple/add_subcategory', methods=['POST'])
+        @login_required
         def add_subcategory() -> str:
             """
             Add a new Subcategory to a given Category
@@ -738,6 +805,7 @@ class ApiRouting:
         
         
         @bp.route('/simple/delete_category/<category_id>')
+        @login_required
         def delete_category(category_id) -> str:
             """
             Delete the specified Category, provided that there are no Content Items linked to it
@@ -757,6 +825,7 @@ class ApiRouting:
         
         @bp.route('/simple/add_subcategory_relationship')
         # TODO: phase out in favor of the more general /simple/add_relationship
+        @login_required
         def add_subcategory_relationship() -> str:
             """
             Create a subcategory relationship between 2 existing Categories.
@@ -783,6 +852,7 @@ class ApiRouting:
 
 
         @bp.route('/simple/remove_relationship', methods=['POST'])
+        @login_required
         def remove_relationship() -> str:
             """
             Remove the specified relationship (edge)
@@ -823,6 +893,7 @@ class ApiRouting:
 
 
         @bp.route('/simple/add_relationship', methods=['POST'])
+        @login_required
         def add_relationship() -> str:
             """
             Add the specified relationship (edge)
@@ -866,6 +937,7 @@ class ApiRouting:
         #############    POSITIONING WITHIN CATEGORIES    #############
         
         @bp.route('/simple/swap/<item_id_1>/<item_id_2>/<cat_id>')
+        @login_required
         def swap(item_id_1, item_id_2, cat_id) -> str:
             """
             Swap the positions of the specified Content Items within the given Category.
@@ -886,6 +958,7 @@ class ApiRouting:
         
         
         @bp.route('/simple/reposition/<category_id>/<item_id>/<move_after_n>')
+        @login_required
         def reposition(category_id, item_id, move_after_n) -> str:
             """
             Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
@@ -912,6 +985,7 @@ class ApiRouting:
         #---------------------------------------------#
         
         @bp.route('/get-filtered-json', methods=['POST'])
+        @login_required
         def get_filtered_JSON() -> str:     # *** NOT IN CURRENT USE; see get_filtered() ***
             """
             Note: a form-data version is also available
@@ -947,6 +1021,7 @@ class ApiRouting:
         
         
         @bp.route('/get_filtered', methods=['POST'])
+        @login_required
         def get_filtered() -> str:
             """
             Note: a JSON version is also available
@@ -984,6 +1059,7 @@ class ApiRouting:
         #---------------------------------------------#
 
         @bp.route('/import_json_file', methods=['POST'])
+        @login_required
         def import_json_file() -> str:
             """
             Upload and import of a data file in JSON format
@@ -1011,6 +1087,7 @@ class ApiRouting:
 
 
         @bp.route('/import_json_dump', methods=['GET', 'POST'])
+        @login_required
         def import_json_dump() -> str:
             """
             EXAMPLE invocation: http://localhost:5000/BA/api/import_json_dump
@@ -1032,6 +1109,7 @@ class ApiRouting:
         
         
         @bp.route('/upload_media', methods=['POST'])
+        @login_required
         def upload_media():
             """
             Upload new media Content, to the (currently hardwired) media folder, and attach it to the Category
@@ -1107,6 +1185,7 @@ class ApiRouting:
         
         
         @bp.route('/upload_file', methods=['POST'])
+        @login_required
         def upload_file():
             """
             Handle the request to upload a file to the temporary directory (defined in main.py).
@@ -1148,6 +1227,7 @@ class ApiRouting:
         
         
         @bp.route('/parse_datafile', methods=['GET', 'POST'])
+        @login_required
         def parse_datafile() -> str:
             """
             EXPERIMENTAL!  Upload and parse a datafile.
@@ -1185,6 +1265,7 @@ class ApiRouting:
         
         
         @bp.route('/download_dbase_json/<download_type>')
+        @login_required
         def download_dbase_json(download_type="full"):
             """
             Download the full Neo4j database as a JSON file
@@ -1235,6 +1316,7 @@ class ApiRouting:
         #---------------------------------------------#
         
         @bp.route('/add_label/<new_label>')
+        @login_required
         def add_label(new_label) -> str:
             """
             Add a new blank node with the specified label

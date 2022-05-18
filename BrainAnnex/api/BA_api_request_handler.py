@@ -74,7 +74,7 @@ class APIRequestHandler:
 
 
 
-    #######################     SCHEMA-RELATED  ("Records" related)     #######################
+    #######################     SCHEMA-RELATED       #######################
 
     @classmethod
     def new_schema_class(cls, class_specs: dict) -> None:
@@ -84,7 +84,7 @@ class APIRequestHandler:
         to an existing class (often, "Records")
         In case of error, an Exception is raised.
 
-        :param class_specs: A dictionary
+        :param class_specs: A dictionary with the following
                 DICTIONARY KEYS:
                 new_class_name      The name of the new Class (tolerant of leading/trailing blanks)
                 properties_list     The name of all desired Properties, in order
@@ -152,6 +152,75 @@ class APIRequestHandler:
 
 
     @classmethod
+    def add_schema_relationship_handler(cls, class_specs: dict) -> None:
+        """
+
+        In case of error, an Exception is raised.
+
+        :param class_specs: A dictionary with the following
+                DICTIONARY KEYS:
+                    from_class_name
+                    to_class_name
+                    rel_name
+
+        :return: None
+        """
+        from_class_name = class_specs["from_class_name"]
+        from_class_name = from_class_name.strip()
+        print("from_class_name: ", from_class_name)
+
+        to_class_name = class_specs["to_class_name"]
+        to_class_name = to_class_name.strip()
+        print("to_class_name: ", to_class_name)
+
+        rel_name = class_specs["rel_name"]
+        rel_name = rel_name.strip()
+        print("rel_name: ", rel_name)
+
+        from_class_id = NeoSchema.get_class_id(from_class_name)
+        to_class_id = NeoSchema.get_class_id(to_class_name)
+        NeoSchema.create_class_relationship(from_id=from_class_id, to_id=to_class_id, rel_name=rel_name)
+
+
+
+    @classmethod
+    def delete_schema_relationship_handler(cls, class_specs: dict) -> None:
+        """
+        Delete the relationship(s) with the specified name
+        between the 2 existing Class nodes (identified by their respective names),
+        going in the from -> to direction direction.
+
+        In case of error, an Exception is raised.
+
+        :param class_specs: A dictionary with the following
+                DICTIONARY KEYS:
+                    from_class_name
+                    to_class_name
+                    rel_name
+
+        :return: None
+        """
+        from_class_name = class_specs["from_class_name"]
+        from_class_name = from_class_name.strip()
+        print("from_class_name: ", from_class_name)
+
+        to_class_name = class_specs["to_class_name"]
+        to_class_name = to_class_name.strip()
+        print("to_class_name: ", to_class_name)
+
+        rel_name = class_specs["rel_name"]
+        rel_name = rel_name.strip()
+        print("rel_name: ", rel_name)
+
+        # Delete the relationship(s)
+        NeoSchema.delete_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
+
+
+
+
+    #######################     RECORDS-RELATED       #######################
+
+    @classmethod
     def get_leaf_records(cls) -> [str]:
         """
         Get all Classes that are, directly or indirectly, INSTANCE_OF the Class "Records",
@@ -216,8 +285,8 @@ class APIRequestHandler:
         :return:    The pair (status, data/error_message)   # TODO: generate an Exception in case of failure
 
         """
-        content_node = cls.db.get_nodes("BA", properties_condition = {"schema_code": schema_code, "item_id": item_id})
-        #print("properties_condition", {"schema_code": schema_code, "item_id": item_id})
+        match = cls.db.find(labels="BA", properties={"schema_code": schema_code, "item_id": item_id})
+        content_node = cls.db.fetch_nodes(match)
         #print("content_node:", content_node)
         if (content_node is None) or (content_node == []):
             return (False, "Metadata not found")     # Metadata not found
@@ -244,7 +313,8 @@ class APIRequestHandler:
         :return:    The binary data
 
         """
-        content_node = cls.db.get_nodes("BA", properties_condition = {"item_id": item_id})
+        match = cls.db.find(labels="BA", properties={"item_id": item_id})
+        content_node = cls.db.fetch_nodes(match)
         #print("content_node:", content_node)
         if (content_node is None) or (content_node == []):
             raise Exception("Metadata not found")

@@ -4,6 +4,7 @@
 """
 
 from flask import Blueprint, render_template, request   # The request package makes available a GLOBAL request object
+from flask_login import login_required, current_user
 from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler     # TODO: reorganize, to avoid this
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
@@ -73,27 +74,9 @@ class PagesRouting:
 
         ##################  START OF ROUTING DEFINITIONS  ##################
 
-        #"@" signifies a decorator - a way to wrap a function and modify its behavior
-        @bp.route('/login')
-        def login() -> str:
-            """
-            NOT YET IN USE
-            EXAMPLE invocation: http://localhost:5000/BA/pages/login
-            """
-            template = "login.htm"
-            """
-            # DEBUGGING, TO DELETE
-            not_yet_used = current_app.config['UPLOAD_FOLDER']
-            print(not_yet_used)
-            not_yet_used2 = current_app.config['APP_NEO4J_DBASE']
-            print(not_yet_used2.credentials)
-            """
-            return render_template(template)
-
-
-
         @bp.route('/viewer')
         @bp.route('/viewer/<category_id>')
+        @login_required
         def category_page_viewer(category_id=1) -> str:
             """
             General viewer/editor for the Content Items attached to the specified Category
@@ -198,6 +181,7 @@ class PagesRouting:
 
 
         @bp.route('/admin')
+        @login_required
         def admin() -> str:
             """
             Generate a general administrative page
@@ -205,32 +189,39 @@ class PagesRouting:
 
             EXAMPLE invocation: http://localhost:5000/BA/pages/admin
             """
+            print(f"User is logged in as: `{current_user.username}`")
             template = "admin.htm"
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
+            return render_template(template,
+                                   username=current_user.username,
+                                   current_page=request.path, site_pages=cls.site_pages)
 
 
 
         @bp.route('/schema-manager')
+        @login_required
         def schema_manager() -> str:
             """
             Generate an administrative page to manage the Schema
             EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager
             """
             template = "schema_manager.htm"
-            class_list = PagesRequestHandler.schema_manager_data()
+            class_list = PagesRequestHandler.all_schema_classes()
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    class_list=class_list)
 
 
 
         @bp.route('/data-import')
+        @login_required
         def data_import() -> str:
             """
             Generate a general administrative page (currently for import/exports)
             EXAMPLE invocation: http://localhost:5000/BA/pages/data-import
             """
             template = "data_import.htm"
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
+            class_list = PagesRequestHandler.all_schema_classes()
+            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+                                   class_list=class_list)
 
 
 
@@ -238,6 +229,7 @@ class PagesRouting:
         #############################   CATEGORY-RELATED   #############################
 
         @bp.route('/category_manager/<category_id>')
+        @login_required
         def category_manager(category_id) -> str:
             """
             Generate a page for administration of the Categories
@@ -312,6 +304,7 @@ class PagesRouting:
 
 
         @bp.route('/manage_labels')
+        @login_required
         def manage_labels() -> str:
             """
             Generate a page to manage nodes in the database; in particular,
@@ -334,8 +327,8 @@ class PagesRouting:
             template = "node_explorer.htm"
 
             label_list = PagesRequestHandler.get_node_labels()
-
-            ne_obj = NodeExplorer()
+            return "TEMPORARILY DISABLED"
+            ne_obj = NodeExplorer()     # TODO: fix infinite loop in print statements
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = ne_obj.all_nodes_by_label(label)
 
             return render_template(template, current_page="node", site_pages=cls.site_pages,   # Maybe it should be current_page=request.path
@@ -383,6 +376,7 @@ class PagesRouting:
 
 
         @bp.route('/test/upload')
+        @login_required
         def test_upload() -> str:
             """
             Test of file upload

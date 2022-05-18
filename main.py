@@ -9,7 +9,12 @@ Note: this main program may also be started from the CLI with the "flask run" co
 
 from flask import Flask
 
-# All the sub-modules making up this web app:
+
+### Import sub-modules making up this web app:
+
+# The site's home/login/top-level pages
+# (possibly under the control of a co-hosted independent site)
+from home.home_routing import Home
 
 # The navigation is shared by Brain Annex and possibly other independent sites
 # embedded (co-hosted) with it
@@ -75,7 +80,12 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 
 ### DEFINE THE HIGH-LEVEL ROUTING
 #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
-#       and specify the URL prefixes to use for the various modules
+#   and specify the URL prefixes to use for the various modules
+#   TODO: maybe all the various setup() methods could take an optional 2nd arg, a dict,
+#         to pass module-specific data
+
+# The site's home/top-level pages, incl. login
+Home.setup(app)
 
 # The navbar
 Navigation.setup(app)
@@ -84,7 +94,7 @@ Navigation.setup(app)
 PagesRouting.site_pages = site_pages
 PagesRouting.setup(app)
 
-# The BrainAnnex-provided endpoint
+# The BrainAnnex-provided endpoints
 ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
 ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
 ApiRouting.setup(app)

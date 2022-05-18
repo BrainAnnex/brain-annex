@@ -15,6 +15,7 @@
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/schema_creator/schema_creator.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/schema_editor/schema_editor.css">
 
     <!-- JavaScript -->
@@ -45,12 +46,23 @@
 <div class="content-block">
     <div class="content-block-title">New Schema</div>
 
-    <vue-schema-editor
+    <vue-schema-creator
         v-bind:class_list="class_list">
-    </vue-schema-editor>
+    </vue-schema-creator>
 
 </div>
 
+
+<br><br>
+
+<div class="content-block">
+    <div class="content-block-title">Edit Schema</div>
+
+    <vue-schema-editor
+            v-bind:class_list="class_list">
+    </vue-schema-editor>
+
+</div>
 
 
 <br><br>
@@ -61,7 +73,6 @@
         <a href="/BA/api/download_dbase_json/schema">EXPORT the Database Schema as JSON file</a>
     </p>
 </div>
-
 
 
 <br><br>
@@ -82,6 +93,7 @@
 <!--
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
+<script src="/BA/pages/static/vue_components/schema_creator/schema_creator.js"></script>
 <script src="/BA/pages/static/vue_components/schema_editor/schema_editor.js"></script>
 
 
