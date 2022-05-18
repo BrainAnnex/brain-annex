@@ -85,8 +85,9 @@ class Home:
         # "@" signifies a decorator - a way to wrap a function and modify its behavior
         @bp.route("/")    # Root  : SET BROWSER TO http://localhost:5000
         def index():
-            # Serve a minimalist top-level page
-            return "Welcome to Brain Annex: the web server is running.<br><br><a href='/login'>Login</a>"
+            # Serve a top-level page
+            template = "index.htm"
+            return render_template(template)
 
 
 

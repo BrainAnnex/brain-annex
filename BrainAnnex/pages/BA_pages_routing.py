@@ -76,6 +76,7 @@ class PagesRouting:
 
         @bp.route('/viewer')
         @bp.route('/viewer/<category_id>')
+        @login_required
         def category_page_viewer(category_id=1) -> str:
             """
             General viewer/editor for the Content Items attached to the specified Category
@@ -197,6 +198,7 @@ class PagesRouting:
 
 
         @bp.route('/schema-manager')
+        @login_required
         def schema_manager() -> str:
             """
             Generate an administrative page to manage the Schema
@@ -210,6 +212,7 @@ class PagesRouting:
 
 
         @bp.route('/data-import')
+        @login_required
         def data_import() -> str:
             """
             Generate a general administrative page (currently for import/exports)
@@ -226,6 +229,7 @@ class PagesRouting:
         #############################   CATEGORY-RELATED   #############################
 
         @bp.route('/category_manager/<category_id>')
+        @login_required
         def category_manager(category_id) -> str:
             """
             Generate a page for administration of the Categories
@@ -300,6 +304,7 @@ class PagesRouting:
 
 
         @bp.route('/manage_labels')
+        @login_required
         def manage_labels() -> str:
             """
             Generate a page to manage nodes in the database; in particular,
@@ -322,8 +327,8 @@ class PagesRouting:
             template = "node_explorer.htm"
 
             label_list = PagesRequestHandler.get_node_labels()
-
-            ne_obj = NodeExplorer()
+            return "TEMPORARILY DISABLED"
+            ne_obj = NodeExplorer()     # TODO: fix infinite loop in print statements
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = ne_obj.all_nodes_by_label(label)
 
             return render_template(template, current_page="node", site_pages=cls.site_pages,   # Maybe it should be current_page=request.path
@@ -371,6 +376,7 @@ class PagesRouting:
 
 
         @bp.route('/test/upload')
+        @login_required
         def test_upload() -> str:
             """
             Test of file upload

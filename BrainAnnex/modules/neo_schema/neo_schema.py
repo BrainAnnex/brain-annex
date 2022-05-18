@@ -1,4 +1,3 @@
-from BrainAnnex.modules.neo_access import neo_access
 from typing import Union, List
 import json
 
@@ -112,6 +111,8 @@ class NeoSchema:
     data_class_rel = "SCHEMA"           # The name to use for the relationships from data nodes to `Property` nodes
                                         #       Alt. name ideas: "IS", "HAS_CLASS", "HAS_SCHEMA", "TYPE", "TYPE_OF"
 
+    debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
+                                        #       (currently, in very limited use)
 
 
 
@@ -1108,7 +1109,7 @@ class NeoSchema:
         if schema_code != "":
             q += " , existing.schema_code = $schema_code"
 
-        cls.db.debug_print(q, data_binding, "register_existing_data_point")
+        cls.db.debug_print(q, data_binding, "register_existing_data_point") # Note: this is the special debug print for NeoAccess
         result = cls.db.update_query(q, data_binding)
         #print(result)
 
@@ -1337,7 +1338,7 @@ class NeoSchema:
 
         if type(data) == dict:       # If the top-level Python data structure is dictionary
             # Create a single tree
-            print("Top-level structure of the data to import is a Python dictionary")
+            cls.debug_print("Top-level structure of the data to import is a Python dictionary")
             # Perform the import
             root_id = cls.create_tree_from_dict(data, class_name)   # This returns a Neo4j ID
 
@@ -1345,16 +1346,16 @@ class NeoSchema:
                 return []
             else:
                 root_item_id = root_id
-                print(f"***Linking import node (item_id={metadata_id}) with data root node (item ID={root_item_id}), thru relationship `imported_data`")
+                cls.debug_print(f"***Linking import node (item_id={metadata_id}) with data root node (item ID={root_item_id}), thru relationship `imported_data`")
                 cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id,rel_name="imported_data")
                 return [root_item_id]
 
         elif type(data) == list:         # If the top-level Python data structure is a list
             # Create multiple unconnected trees
-            print("Top-level structure of the data to import is a list")
+            cls.debug_print("Top-level structure of the data to import is a list")
             node_id_list = cls.create_trees_from_list(data, class_name)
             for root_item_id in node_id_list:
-                print(f"***Linking import node (item_id={metadata_id}) with data root node (item ID={root_item_id}), thru relationship `imported_data`")
+                cls.debug_print(f"***Linking import node (item_id={metadata_id}) with data root node (item ID={root_item_id}), thru relationship `imported_data`")
                 cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id,rel_name="imported_data")
 
             return node_id_list
@@ -1403,18 +1404,18 @@ class NeoSchema:
 
         indent_spaces = level*4
         indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
-        print(f"{indent_str}{level}. ~~~~~:")
+        cls.debug_print(f"{indent_str}{level}. ~~~~~:")
 
 
-        print(f"{indent_str}Importing data dictionary, using class `{class_name}`")
+        cls.debug_print(f"{indent_str}Importing data dictionary, using class `{class_name}`")
 
         declared_outlinks = cls.get_class_relationships(schema_id=schema_id, link_dir="OUT", omit_instance=True)
-        print(f"{indent_str}declared_outlinks: ", declared_outlinks)
+        cls.debug_print(f"{indent_str}declared_outlinks: {declared_outlinks}")
 
         declared_properties = cls.get_class_properties(schema_id, include_ancestors=False)
-        print(f"{indent_str}declared_properties: ", declared_properties)
+        cls.debug_print(f"{indent_str}declared_properties: {declared_properties}")
 
-        print(f"{indent_str}Input is a dict with {len(d)} keys: {list(d.keys())}")
+        cls.debug_print(f"{indent_str}Input is a dict with {len(d)} keys: {list(d.keys())}")
         node_properties = {}
         children_info = []   # A list of pairs (Neo4j ID, relationship name)
 
@@ -1428,75 +1429,75 @@ class NeoSchema:
             max_length = 150
             if len(debug_info) > max_length:
                 debug_info = debug_info[:max_length] + " ..."
-            print(debug_info)
+            cls.debug_print(debug_info)
 
             if v is None:
-                print(f"{indent_str}Disregarding attribute (`{k}`) that has a None value")
+                cls.debug_print(f"{indent_str}Disregarding attribute (`{k}`) that has a None value")
                 skipped_properties.append(k)
                 continue
 
             if cls.db.is_literal(v):
-                print(f"{indent_str}(key: `{k}`) Processing a literal of type {type(v)} ({v})")     #TODO: shorten the shown value
+                cls.debug_print(f"{indent_str}(key: `{k}`) Processing a literal of type {type(v)} ({v})")     #TODO: shorten the shown value
                 if k not in declared_properties:    # Check if the Property from the data is in the schema
-                    print(f"{indent_str}Disregarding this unexpected attribute: `{k}`")
+                    cls.debug_print(f"{indent_str}Disregarding this unexpected attribute: `{k}`")
                     skipped_properties.append(k)
                     continue
                 else:
                     node_properties[k] = v                  # Save attribute for use when the node gets created
-                    print(f"{indent_str}Buffered properties for the new node so far: {node_properties}")
+                    cls.debug_print(f"{indent_str}Buffered properties for the new node so far: {node_properties}")
 
             elif type(v) == dict:
-                print(f"{indent_str}(key: `{k}`) Processing a dictionary (with {len(v)} keys)")
+                cls.debug_print(f"{indent_str}(key: `{k}`) Processing a dictionary (with {len(v)} keys)")
 
                 if k not in declared_outlinks:       # Check if the Relationship from the data is in the schema
-                    print(f"{indent_str}Disregarding this unexpected relationship: `{k}`")
+                    cls.debug_print(f"{indent_str}Disregarding this unexpected relationship: `{k}`")
                     skipped_relationships.append(k)
                     continue
 
-                print(f"{indent_str}Examining the relationship `{k}`...")
+                cls.debug_print(f"{indent_str}Examining the relationship `{k}`...")
 
                 try:
                     subtree_root_class_name = cls.get_related_class_names(class_name, rel_name=k, enforce_unique=True)
-                    print(f"{indent_str}...the relationship `{k}` leads to the following Class: {subtree_root_class_name}")
+                    cls.debug_print(f"{indent_str}...the relationship `{k}` leads to the following Class: {subtree_root_class_name}")
                 except Exception as ex:
-                    print(f"{indent_str}Disregarding. {ex}")
+                    cls.debug_print(f"{indent_str}Disregarding. {ex}")
                     skipped_relationships.append(k)
                     continue
 
                 # Recursive call
-                print(f"{indent_str}Making recursive call to process the above dictionary...")
+                cls.debug_print(f"{indent_str}Making recursive call to process the above dictionary...")
                 new_node_id = cls.create_tree_from_dict(d=v, class_name=subtree_root_class_name , level=level + 1)
 
                 if new_node_id is not None:     # If a subtree actually got created
                     children_info.append( (new_node_id, k) )    # Save relationship for use when the node gets created
-                    print(f"{indent_str}Buffered relationships for the new node so far: {children_info}")
+                    cls.debug_print(f"{indent_str}Buffered relationships for the new node so far: {children_info}")
                 else:
-                    print(f"{indent_str}No subtree was returned; so, skipping over this key (`{k}`)")
+                    cls.debug_print(f"{indent_str}No subtree was returned; so, skipping over this key (`{k}`)")
 
             elif type(v) == list:
-                print(f"{indent_str}(key: `{k}`) Processing a list (with {len(v)} elements):")
+                cls.debug_print(f"{indent_str}(key: `{k}`) Processing a list (with {len(v)} elements):")
 
                 if k not in declared_outlinks:       # Check if the Relationship from the data is in the schema
-                    print(f"{indent_str}Disregarding this unexpected relationship: `{k}`")
+                    cls.debug_print(f"{indent_str}Disregarding this unexpected relationship: `{k}`")
                     skipped_relationships.append(k)
                     continue
 
                 if len(v) == 0:
-                    print(f"{indent_str}The list is empty; so, ignoring it")
+                    cls.debug_print(f"{indent_str}The list is empty; so, ignoring it")
                     continue
 
-                print(f"{indent_str}Examining the relationship `{k}`...")
+                cls.debug_print(f"{indent_str}Examining the relationship `{k}`...")
 
                 try:
                     subtree_root_class_name = cls.get_related_class_names(class_name, rel_name=k, enforce_unique=True)
-                    print(f"{indent_str}...the relationship `{k}` leads to the following Class: {subtree_root_class_name}")
+                    cls.debug_print(f"{indent_str}...the relationship `{k}` leads to the following Class: {subtree_root_class_name}")
                 except Exception as ex:
-                    print(f"{indent_str}Disregarding. {ex}")
+                    cls.debug_print(f"{indent_str}Disregarding. {ex}")
                     skipped_relationships.append(k)
                     continue
 
                 # Recursive call
-                print(f"{indent_str}Making recursive call to process the above list...")
+                cls.debug_print(f"{indent_str}Making recursive call to process the above list...")
                 new_node_id_list = cls.create_trees_from_list(l=v, class_name=subtree_root_class_name, level=level + 1)
                 for child_id in new_node_id_list:
                     children_info.append( (child_id, k) )
@@ -1508,7 +1509,7 @@ class NeoSchema:
 
         # Now, finally CREATE THE  NEW NODE, with its attributes and links to children (the roots of the subtrees)
         if len(node_properties) == 0 and len(children_info) == 0:
-            print(f"{indent_str}Skipping creating node of class `{class_name}` that has no properties and no children")
+            cls.debug_print(f"{indent_str}Skipping creating node of class `{class_name}` that has no properties and no children")
             return None   # Using None to indicate "skipped node/subtree"
         else:
             # TODO: test this switch to the Schema layer
@@ -1537,15 +1538,15 @@ class NeoSchema:
 
         indent_spaces = level*4
         indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
-        print(f"{indent_str}{level}. ~~~~~:")
+        cls.debug_print(f"{indent_str}{level}. ~~~~~:")
 
-        print(f"{indent_str}Input is a list with {len(l)} items")
+        cls.debug_print(f"{indent_str}Input is a list with {len(l)} items")
 
         list_of_child_ids = []
 
         # Process each element of the list, in turn
         for i, item in enumerate(l):
-            print(f"{indent_str}Making recursive call to process the {i}-th list element...")
+            cls.debug_print(f"{indent_str}Making recursive call to process the {i}-th list element...")
             if cls.db.is_literal(item):
                 item_as_dict = {"value": item}
                 new_node_id = cls.create_tree_from_dict(d=item_as_dict, class_name=class_name, level=level + 1)  # Recursive call
@@ -1704,3 +1705,10 @@ class NeoSchema:
             return 1        # Arbitrarily use 1 as the first Auto-Increment value, if no other value is present
 
         return result
+
+
+
+    @classmethod
+    def debug_print(cls, info):
+        if cls.debug:
+            print(info)
