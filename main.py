@@ -40,12 +40,11 @@ from BrainAnnex.initialize import InitializeBrainAnnex
 #        CHANGE AS NEEDED!                                                      #
 #################################################################################
 
-# Location where the media for Content Items is stored.  Use forward slashes even on Windows
-#MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+# Location where the media for Content Items is stored.  Use forward slashes even on Windows.  End name with "/"
 MEDIA_FOLDER = "D:/media/"
 # IMPORTANT: for now, the media folder MUST include a subfolder called "resized"
 
-# Temporary location for uploads
+# Temporary location for uploads.  End name with "/"
 UPLOAD_FOLDER = "D:/tmp/"
 
 PORT_NUMBER = 5000      # The Flask default is 5000
