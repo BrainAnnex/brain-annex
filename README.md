@@ -11,7 +11,7 @@
 * **Vue2.js** has expanded to take on a full role, replacing the old vanilla-JavaScript parts
 
 This major new release is currently in a *late Beta* stage.  
-CURRENT VERSION: **VERSION 5.0-beta14**
+CURRENT VERSION: **VERSION 5.0-beta14.1**
 
 
 **[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
@@ -31,10 +31,9 @@ If you're new, here's a
 
 # How to set up and use Brain Annex
 
-This beta version support both local and remote databases, but the app is meant to be run or your local computer.
+This beta version support both local and remote setup of the web app and the Neo4j database.
 
-No authentication is yet implemented; so, if you use a remote database, 
-you may want to set up a firewall that only lets in authorized IP addresses.
+The database and web app may reside on the same or different machines.
 
 Due to the Beta stage, the installation stages aren't yet simplified.
 
@@ -66,6 +65,17 @@ If you're using PyCharm, you can set them from Run > Edit Configurations...
 **Python 3.7+**
 
 We test on Python 3.7/3.8 (3.6 *might* work - not tested - but not any earlier version, because of the use of Python f-strings.)
+
+**Clone the repository**
+
+Clone the repository to either your local machine or to your server.
+
+To clone on a Linux machine - after doing an SSH connection to it, if remote - you may use commands  
+such as (change the location directory, if desired):
+
+    cd /
+    sudo mkdir brain_annex
+    sudo git clone --verbose --config http.sslVerify=false https://github.com/BrainAnnex/brain-annex.git brain_annex
 
 **Set up the local environment**
 
