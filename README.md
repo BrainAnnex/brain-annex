@@ -11,7 +11,7 @@
 * **Vue2.js** has expanded to take on a full role, replacing the old vanilla-JavaScript parts
 
 This major new release is currently in a *late Beta* stage.  
-CURRENT VERSION: **VERSION 5.0-beta14.1**
+CURRENT VERSION: **VERSION 5.0-beta15**
 
 
 **[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
@@ -35,7 +35,7 @@ This beta version support both local and remote setup of the web app and the Neo
 
 The database and web app may reside on the same or different machines.
 
-Due to the Beta stage, the installation stages aren't yet simplified.
+## PART 1 - Set up the Database
 
 **Install Neo4j**
 
@@ -48,49 +48,6 @@ use a Neo4j service provider such as [Neo4j Aura](https://neo4j.com/aura/).
 
 If you're just testing, we highly recommend 
 the free and super-easy [Neo4j Sandbox](https://neo4j.com/sandbox/).
-
-
-**To Connect to the Neo4j Database from Python**
-
-You must set the following Environmental Variables 
-(based on your Neo4 installation/setup):
-
-    NEO4J_HOST
-    NEO4J_USER
-    NEO4J_PASSWORD
-
-If you're using PyCharm, you can set them from Run > Edit Configurations...
-(Example: `NEO4J_PASSWORD=your_passwd;NEO4J_HOST=neo4j://localhost:7687;NEO4J_USER=neo4j`)
-
-**Python 3.7+**
-
-We test on Python 3.7/3.8 (3.6 *might* work - not tested - but not any earlier version, because of the use of Python f-strings.)
-
-**Clone the repository**
-
-Clone the repository to either your local machine or to your server.
-
-To clone on a Linux machine - after doing an SSH connection to it, if remote - you may use commands  
-such as (change the location directory, if desired):
-
-    cd /
-    sudo mkdir brain_annex
-    sudo git clone --verbose --config http.sslVerify=false https://github.com/BrainAnnex/brain-annex.git brain_annex
-
-**Set up the local environment**
-
-All dependencies (such as Flask, pandas, etc) are specified in the file `requirements.txt`
-
-**Configuration (currently inside main.py)**
-
--  `MEDIA_FOLDER` (where the images, formatted text, documents, etc, are stored)  
-   EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/media/"`  
-   IMPORTANT: for now, the media folder MUST include a subfolder called `"resized"`
-
-- `UPLOAD_FOLDER` (temporary location for uploads)  
-   EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/tmp/"`
-
-- `PORT_NUMBER` (ok keep the default 5000, unless you have a conflict)
 
 **Start the Neo4j database**
 
@@ -114,24 +71,179 @@ in the Neo4j configuration file, typically found in locations such as
 `/etc/neo4j/neo4j.conf` or (for the Bitnami image) `/opt/bitnami/neo4j/conf/neo4j.conf`
 
 
-**Start the main program**
 
-Launch `main.py`, which starts Flask and the included Werkzeug web server.
+## PART 2 - Set up the Brain Annex web app
+
+**Clone the repository**
+
+Clone the repository to either your local machine or to your server.
+
+To clone on a Linux machine - after doing an SSH connection to it, if remote - you may use commands  
+such as (change the location directory, if desired):
+
+    cd /
+    sudo mkdir brain_annex
+    sudo git clone --verbose --config http.sslVerify=false https://github.com/BrainAnnex/brain-annex.git brain_annex
+
+**Python 3.7+**
+
+We test on Python 3.7/3.8 (3.6 *might* work - not tested - but not any earlier version, because of the use of Python f-strings.)
+Make sure that you have the right version of Python installed.
+
+    python3 --version       (on Linux)
+    python --version        (on the Windows command prompt or Power shell)
+
+**Folder setup**
+
+Create or designate:
+- A folder for the **media** files  
+IMPORTANT: for now, the media folder MUST include a subfolder called `"resized"`  
+EXAMPLE (on Windows): create a folder named "media" on the "D" drive, and a subfolder named "resized" inside of it  
+EXAMPLE (on Linux):
+
+        cd ~
+        mkdir media
+        mkdir media/resized
+
+- A folder for the **uploaded** files  
+EXAMPLE (on Windows): create a folder named "tmp" on the "D" drive  
+EXAMPLE (on Linux): do nothing. Just use `/tmp/`
+
+
+
+**Brain Annex Configuration**
+
+Edit main.py (for example, open with "notepad" on Windows, or `sudo vim` on Linux),  
+in the part where it says "CONFIGURABLE PARAMETERS", to set values for:
+
+-  `MEDIA_FOLDER` (where the images, formatted text, documents, etc, are stored)  
+   EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/media/"`  
+   EXAMPLE (on Linux): `MEDIA_FOLDER = "/home/ubuntu/media/"`
+
+- `UPLOAD_FOLDER` (temporary location for uploads)  
+   EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/tmp/"`  
+   EXAMPLE (on Linux): `MEDIA_FOLDER = "/tmp/"`
+
+- `PORT_NUMBER` (ok keep the default 5000, unless you have a conflict)
+
+- Comment out all the 3 lines at the very bottom, below where it says "COMMENT OUT ALL THE LINES BELOW DURING DEPLOYMENT"
+
+**Install all dependencies in the virtual environment**
+
+All dependencies (such as Flask, pandas, etc) are specified in the file `requirements.txt`
+If you're running Brain Annex locally with PyCharm, you'll be prompted
+as to whether you want to install the requirements - and that's the end of it.
+
+If you're installing Brain Annex on a Linux server, you need
+to manually create a virtual environment, using pip3 or your fa.  For example (change "brain_annex" if you used a different location):
+
+    $ ls /brain_annex                    (all project files should be there, incl. README.md, but NO venv folder)
+    $ sudo chmod go+w /brain_annex       (because /brain_annex is owned by the root; to avoid trouble during pip3 install later!)
+    $ sudo apt install python3.8-venv    (didn't come pre-installed; only needed if the next command fails)
+    $ python3 -m venv /brain_annex/venv  (IMPORTANT: do NOT use sudo here, or permissions will get messsed up!  It creates a new virtual environment, but doesn't install any Packages)
+    $ ls -alF /brain_annex/venv/bin      (it shows the various "Activate" files, and the links to the python executables)
+    $ cd /brain_annex
+    $ source venv/bin/activate           (to enter the context of the new virtual environment)
+    
+    [Notice how the prompt is now prefixed with the name of your environment (venv, in our case). This is the indicator that venv is currently active, 
+    which means the python executable will only use this environment’s packages and settings.]
+    
+    (venv) $ pip3 install -r requirements.txt   (IMPORTANT: no worries about "ERROR: Failed building wheel for neo4j"; it automatically recovers from it!)
+    (venv) $ pip3 list                          (to see all the installed packages; note that neo4j is there, in spite of the earlier error message)
+    (venv) $ deactivate                         (to leave the context of the new virtual environment)
+
+
+**Starting Brain Annex**
+
+The first order of business is to Connect to the Neo4j Database from Python.
+
+To do that, you must set the following Environment Variables:
+
+    NEO4J_HOST
+    NEO4J_USER
+    NEO4J_PASSWORD
+
+_For LOCAL installations:_
+
+If you're running locally, using PyCharm, you can set the environment variables from Run > Edit Configurations...  
+(Example, if dbase is on the same machine:    `NEO4J_PASSWORD=your_passwd;NEO4J_USER=neo4j;NEO4J_HOST=neo4j://localhost:7687`)  
+(Example, if dbase is on a different machine: `NEO4J_PASSWORD=your_passwd;NEO4J_USER=neo4j;NEO4J_HOST=bolt://123.123.123.123:7687`)
+
+IMPORTANT: did you start the Neo4j server?
+
+At this point, just run `main.py`, which starts Flask and the included Werkzeug web server.
 If it doesn't find the database (e.g., if you forgot to start Neo4j),
 it'll give you an error message such as:
 "Exception: CHECK WHETHER NEO4J IS RUNNING!"
+
+In case of database-connection problems, you may also try to run the following 2 diagnostic files:
+1. tests/tests_manual/db_connection_1_MANUAL.py
+2. tests/tests_manual/db_connection_2_MANUAL.py
+
+
+_For SERVER installations:_
+
+If you're setting things up on a Linux server, you can do:
+
+    (you may skip the first 2 steps, if you never deactivated from earlier)
+    $ cd /brain_annex  
+    $ source venv/bin/activate 
+    
+    (venv) $ export PYTHONPATH=$PYTHONPATH:`pwd`/venv/lib/python3.8/site-packages
+    (venv) $ python3 diagnostics.py    (just for testing, if desired; make sure that '/brain_annex' appears in the sys.path)
+    
+    [In the next 3 lines, change the values based on your Neo4j installation]
+    (venv) $ export NEO4J_USER="neo4j"
+    (venv) $ export NEO4J_HOST="neo4j://localhost:7687"  (if dbase is on the same machine), OR  NEO4J_HOST="bolt://123.123.123.123:7687" if located elsewhere
+    (venv) $ export NEO4J_PASSWORD="your_passwd"
+    
+    (venv) $ python3 tests/tests_manual/db_connection_1_MANUAL.py       (just for testing, if desired)
+    (venv) $ python3 tests/tests_manual/db_connection_2_MANUAL.py       (just for testing, if desired)
+    
+    (venv) $ tail main.py                    (to double-check that the last lines were indeed commented out!)
+    
+    (venv) $ export FLASK_APP=main.py
+    (venv) $ flask run --host=0.0.0.0 --port 5000 &> flask_log.txt &    (to redirect both stdout and stderr; change port if desired - but 80 won't work)
+    (venv) $ ps -e | grep flask              (to double-check there's a 'flask' process running in the background)
+    (venv) $ cat /brain_annex/flask_log.txt  (to check the log) 
+
+IMPORTANT:
+1. is the port number that you're using open on your server's firewall?
+2. did you start the Neo4j server
+
+
+
+ Now, just set your browser to  `http://YOUR_SERVER_IP_ADDRESS:5000`
+
+
 
 **Open your favorite browser**
 
 We test on Firefox and Chrome.
 
-Set the URL to `http://localhost:5000/BA/pages/admin` (or whatever port number you used in your configuration)
+If running remotely, set your browser to `http://YOUR_SERVER_IP_ADDRESS:5000`
 
-You're now on the "Admin" page of the Brain Annex UI (the layout of this page may be different):
+If running locally, set your browser to  `http://localhost:5000`
 
-![Brain Annex Admin page](BrainAnnex/docs/JSON_import.png)
+(replace 5000 with whatever port number you used in your configuration.)
+
+Click on "Test page", which doesn't require login.  Then use the back button on your browser; this time,
+select the "Login" link.  But, first, you'll need to create login accounts (see the next section.)
+
+**Create login account**
+
+For now, those need to be manually created from the Neo4j browser interface.
+
+Use Cypher queries such as:
+
+    CREATE  (n:`User Login` {user_id: 1, username: "the_derired_username", password: "the_desired_password"})
+
 
 **Import the Schema**
+
+Go to the "Admin" page of the Brain Annex UI (the layout of this page may be different):
+
+![Brain Annex Admin page](BrainAnnex/docs/JSON_import.png)
 
 Brain Annex is schema-based, and **it's critical that you import the standard schema.**
 Use the **"IMPORT from JSON"** box on that "Admin" page.
