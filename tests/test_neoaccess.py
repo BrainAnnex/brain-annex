@@ -1077,10 +1077,7 @@ def test_remove_edges(db):
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
 
-    match_car = db.find(neo_id=neo_car, dummy_node_name="from")
-    match_julian = db.find(neo_id=neo_julian, dummy_node_name="to")
-
-    number_added = db.add_edges(match_car, match_julian, rel_name="OWNED_BY")
+    number_added = db.add_edges(neo_car, neo_julian, rel_name="OWNED_BY")
     assert number_added == 1
 
     match_car = db.find(labels="car", dummy_node_name="from")
@@ -1249,6 +1246,37 @@ def test_remove_edges_2(db):
     result = db.query(find_query)
     assert result[0]["n_relationships"] == 0       # The 2 links from the white car are now gone
 
+
+
+def test_edges_exists(db):
+    db.empty_dbase()
+
+    neo_car = db.create_node("car", {'color': 'white'})
+    neo_julian = db.create_node("owner", {'name': 'Julian'})
+
+    assert not db.edges_exists(neo_car, neo_julian, rel_name="OWNED_BY")    # No relationship exists yet
+
+    db.add_edges(neo_car, neo_julian, rel_name="OWNED_BY")
+    assert db.edges_exists(neo_car, neo_julian, rel_name="OWNED_BY")        # By now, it exists
+    assert not db.edges_exists(neo_julian, neo_car, rel_name="OWNED_BY")    # But not in the reverse direction
+    assert not db.edges_exists(neo_car, neo_julian, rel_name="DRIVEN_BY")   # Nor by a different name
+
+    db.add_edges(neo_car, neo_julian, rel_name="DRIVEN_BY")
+    assert db.edges_exists(neo_car, neo_julian, rel_name="DRIVEN_BY")       # Now it exists
+
+    db.remove_edges(neo_car, neo_julian, rel_name="DRIVEN_BY")
+    assert not db.edges_exists(neo_car, neo_julian, rel_name="DRIVEN_BY")   # Now it's gone
+
+    neo_sailboat = db.create_node("sailboat", {'type': 'sloop', 'color': 'white'})
+    db.add_edges(neo_julian, neo_sailboat, rel_name="SAILS")
+    assert db.edges_exists(neo_julian, neo_sailboat, rel_name="SAILS")
+
+    match_vehicle = db.find(properties={'color': 'white'})                  # To select both car and boat
+    assert db.edges_exists(neo_julian, match_vehicle, rel_name="SAILS")
+
+    assert not db.edges_exists(neo_car, neo_car, rel_name="SELF_DRIVES")    # A relationship from a node to itself
+    db.add_edges(neo_car, neo_car, rel_name="SELF_DRIVES")
+    assert db.edges_exists(neo_car, neo_car, rel_name="SELF_DRIVES")
 
 
 

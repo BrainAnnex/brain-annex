@@ -1027,7 +1027,7 @@ class NeoSchema:
 
         for link in connected_to_list:
             node_id, rel_name = link    # Unpack
-            cls.add_data_relationship(from_id=new_node_id, to_id=node_id, rel_name=rel_name)
+            cls.add_data_relationship(from_id=new_node_id, to_id=node_id, rel_name=rel_name, key_name="item_id")
 
         return new_node_id
 
@@ -1138,18 +1138,25 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_relationship(cls, from_id: int, to_id: int, rel_name: str, rel_props = None, labels=None) -> None:
+    def add_data_relationship(cls, from_id: int, to_id: int, rel_name: str, rel_props = None,
+                              labels_from=None, labels_to=None, key_name=None) -> None:
         """
         Add a new relationship with the given name, from one to the other of the 2 given data nodes.
         They new relationship must be present in the Schema, or an Exception will be raised.
 
+        The data nodes may be identified either by their Neo4j ID's, or by a primary key (with option label)
+
         Note that if a relationship with the same name already exists, nothing gets created (and an Exception is raised)
 
-        :param from_id:     The "item_id" value of the data node at which the new relationship is to originate
-        :param to_id:       The "item_id" value of the data node at which the new relationship is to end
+        :param from_id:     The ID of the data node at which the new relationship is to originate;
+                                this will be the Neo4j ID, unless a key_name is specified
+        :param to_id:       The ID of the data node at which the new relationship is to end;
+                                this will be the Neo4j ID, unless a key_name is specified
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
-        :param labels:      NO LONGER IN USE.  TODO: DITCH
+        :param labels_from: Optional
+        :param labels_to:   Optional
+        :param key_name:    For example, "item_id"
 
         :return:            None.  If the specified relationship didn't get created, raise an Exception
                             In case the the new relationship doesn't exist in the Schema, raise an Exception
@@ -1160,31 +1167,38 @@ class NeoSchema:
         Schema check
         """
         # Verify that the relationship exists IN THE SCHEMA, i.e. that the Classes of the data nodes have a relationship with that name between them
+        # TODO: make use of db.edges_exists()
         #labels_str = neo_access.CypherUtils.prepare_labels(labels)
         # Attempt to find a path from the "from" data node, to its Class in the schema, to another Class along a relationship
         #   with the same name as the one we're trying to add, and finally to the "to" data node that has that last Class as schema
-        q = f'''
-        MATCH p=(from {{item_id: $from_id}}) -[:SCHEMA]-> 
-                (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
-                <-[:SCHEMA]- (to {{item_id: $to_id}})
-        RETURN p
-        '''
+        if key_name:    # TODO: verify in situations where key_name isn't given
+            q = f'''
+            MATCH p=(from {{item_id: $from_id}}) -[:SCHEMA]-> 
+                    (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
+                    <-[:SCHEMA]- (to {{item_id: $to_id}})
+            RETURN p
+            '''
 
-        data_binding = {"from_id": from_id, "to_id": to_id}
-        path = cls.db.query(q, data_binding)
-        if path == []:
-            raise Exception(f"Cannot add the relationship `{rel_name}` between the data nodes, "
-                            f"because no such relationship exists between their Classes. The Schema needs to be modified first")
+            data_binding = {"from_id": from_id, "to_id": to_id}
+            path = cls.db.query(q, data_binding)
+            if path == []:
+                raise Exception(f"Cannot add the relationship `{rel_name}` between the data nodes, "
+                                f"because no such relationship exists between their Classes. The Schema needs to be modified first")
 
 
-        # Add the new relationship
-        match_from = cls.db.find(key_name="item_id", key_value=from_id,
-                                 dummy_node_name="from")
+        if key_name:
+            # Locate the "from" and "to" nodes
+            match_from = cls.db.find(key_name=key_name, key_value=from_id, labels=labels_from,
+                                     dummy_node_name="from")
 
-        match_to =   cls.db.find(key_name="item_id", key_value=to_id,
-                                 dummy_node_name="to")
+            match_to =   cls.db.find(key_name=key_name, key_value=to_id, labels=labels_to,
+                                     dummy_node_name="to")
 
-        cls.db.add_edges(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is added
+            # Add the new relationship
+            cls.db.add_edges(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is added
+        else:
+            # Add the new relationship
+            cls.db.add_edges(from_id, to_id, rel_name=rel_name)         # This will raise an Exception if no relationship is added
 
 
 
@@ -1348,7 +1362,7 @@ class NeoSchema:
             else:
                 root_item_id = root_id
                 cls.debug_print(f"***Linking import node (item_id={metadata_id}) with data root node (item ID={root_item_id}), thru relationship `imported_data`")
-                cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id,rel_name="imported_data")
+                cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id, rel_name="imported_data", key_name="item_id")
                 return [root_item_id]
 
         elif type(data) == list:         # If the top-level Python data structure is a list
@@ -1357,7 +1371,7 @@ class NeoSchema:
             node_id_list = cls.create_trees_from_list(data, class_name)
             for root_item_id in node_id_list:
                 cls.debug_print(f"***Linking import node (item_id={metadata_id}) with data root node (item ID={root_item_id}), thru relationship `imported_data`")
-                cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id,rel_name="imported_data")
+                cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id, rel_name="imported_data", key_name="item_id")
 
             return node_id_list
 

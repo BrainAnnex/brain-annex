@@ -128,6 +128,7 @@ class NeoAccess:
         """
         assert self.host, "Host name must be specified in order to connect to the Neo4j database"
         print(f"Attempting to connect to {self.host}, with username '{self.credentials[0]}'")
+
         try:
             if self.credentials:
                 user, password = self.credentials  # This unpacking will work whether the credentials were passed as a tuple or list
@@ -140,6 +141,8 @@ class NeoAccess:
                 print(f"Connection to {self.host} established")
         except Exception as ex:
             error_msg = f"CHECK WHETHER NEO4J IS RUNNING! While instantiating the NeoAccess object, it failed to create the driver: {ex}"
+            # In case of sluggish server connection, a ConnectionResetError seems to be generated;
+            # TODO: maybe try to detect that, and give a more informative message
             raise Exception(error_msg)
 
 
@@ -681,7 +684,9 @@ class NeoAccess:
         :param labels:      A string (or list/tuple of strings) specifying one or more Neo4j labels.
                                 (Note: blank spaces ARE allowed in the strings)
                                 EXAMPLES:  "cars"
-                                            ("cars", "vehicles")
+                                            ("cars", "powered vehicles")
+                            Note that if multiple labels are given, then only nodes with ALL of them will be matched;
+                            at present, there's no way to request an "OR" operation
 
         :param neo_id:      An integer with the node's internal ID.
                                 If specified, it OVER-RIDES all the remaining arguments, except for the labels
@@ -871,7 +876,7 @@ class NeoAccess:
         Create a new node with the given label and with the attributes/values specified in the items dictionary
         Return the Neo4j internal ID of the node just created.
 
-        :param labels:      A string, or list/tuple of strings, of Neo4j label (ok to include blank spaces)
+        :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces)
         :param properties:  An optional (possibly empty or None) dictionary of properties to set for the new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
 
@@ -903,7 +908,7 @@ class NeoAccess:
 
     def create_node_with_relationships(self, labels, properties=None, connections=None) -> int:
         """
-        Create a new node with relationships to zero or more pre-existing nodes
+        Create a new node with relationships to zero or more PRE-EXISTING nodes
         (identified by their labels and key/value pairs);
         if the specified pre-existing nodes aren't found, then no new node is created.
 
@@ -1321,33 +1326,31 @@ class NeoAccess:
         :param match_to:    EITHER an integer with a Neo4j node id,
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by find()
                             IMPORTANT: match_from and match_to, if created by calls to find(), MUST use different node dummy names;
-                                       e.g., make sure that match_from find() used the option: dummy_node_name="from"
-                                                        and match_from find() used the option: dummy_node_name="to"
+                                       e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
+                                                        and for match_to,   find() used the option: dummy_node_name="to"
 
         :param rel_name:    The name to give to the new relationship between the 2 specified nodes
         :param rel_props:   TODO: not currently used.
                                   Unclear what multiple calls would do in this case: update the props or create a new relationship???
 
-        :return:            The number of edges added.  If none got deleted, or in case of error, an Exception is raised
+        :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
         """
-        #CypherUtils.assert_valid_match_structure(match_from)   # Validate the match dictionary
-        #CypherUtils.assert_valid_match_structure(match_to)     # Validate the match dictionary
         match_from = CypherUtils.validate_and_standardize(match_from, dummy_node_name="from")   # Validate, and possibly create, the match dictionary
         match_to   = CypherUtils.validate_and_standardize(match_to, dummy_node_name="to")       # Validate, and possibly create, the match dictionary
 
         # Make sure there's no conflict in node dummy names
         CypherUtils.check_match_compatibility(match_from, match_to)
 
-        # Unpack needed values from the match_from and match_to dictionaries  [Note: only  node_from  and  node_to  are used]
-        (node_from, where_from, data_binding_from) = CypherUtils.unpack_match(match_from, include_dummy=False)
-        (node_to, where_to, data_binding_to)       = CypherUtils.unpack_match(match_to, include_dummy=False)
+        # Unpack needed values from the match_from and match_to structures
+        nodes_from = CypherUtils.extract_node(match_from)
+        nodes_to   = CypherUtils.extract_node(match_to)
 
         where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
                                                                             # and also prefix (if appropriate) the WHERE keyword
 
         # Prepare the query to add the requested edge between the given nodes
         q = f'''
-            MATCH {node_from}, {node_to}
+            MATCH {nodes_from}, {nodes_to}
             {where_clause}
             MERGE (from) -[:{rel_name}]-> (to)           
             '''
@@ -1389,25 +1392,23 @@ class NeoAccess:
         :param match_to:    EITHER an integer with a Neo4j node id,
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by find()
                             IMPORTANT: match_from and match_to, if created by calls to find(), MUST use different node dummy names;
-                                       e.g., make sure that match_from find() used the option: dummy_node_name="from"
-                                                        and match_from find() used the option: dummy_node_name="to"
+                                       e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
+                                                        and for match_to,   find() used the option: dummy_node_name="to"
 
         :param rel_name:    (OPTIONAL) The name of the relationship to delete between the 2 specified nodes;
                                 if None or a blank string, all relationships between those 2 nodes will get deleted
 
         :return:            The number of edges removed.  If none got deleted, or in case of error, an Exception is raised
         """
-        #CypherUtils.assert_valid_match_structure(match_from)   # Validate the match dictionary
-        #CypherUtils.assert_valid_match_structure(match_to)     # Validate the match dictionary
         match_from = CypherUtils.validate_and_standardize(match_from, dummy_node_name="from")   # Validate, and possibly create, the match dictionary
         match_to   = CypherUtils.validate_and_standardize(match_to, dummy_node_name="to")       # Validate, and possibly create, the match dictionary
 
         # Make sure there's no conflict in the dummy node names
         CypherUtils.check_match_compatibility(match_from, match_to)
 
-        # Unpack needed values from the match_from and match_to dictionaries  [Note: only  node_from  and  node_to  are used]
-        (node_from, where_from, data_binding_from) = CypherUtils.unpack_match(match_from, include_dummy=False)
-        (node_to, where_to, data_binding_to)       = CypherUtils.unpack_match(match_to, include_dummy=False)
+        # Unpack needed values from the match_from and match_to structures
+        nodes_from = CypherUtils.extract_node(match_from)
+        nodes_to   = CypherUtils.extract_node(match_to)
 
         where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
                                                                             # and also prefix (if appropriate) the WHERE keyword
@@ -1415,13 +1416,13 @@ class NeoAccess:
         # Prepare the query
         if rel_name is None or rel_name == "":  # Delete all relationships
             q = f'''
-                MATCH {node_from} -[r]-> {node_to}
+                MATCH {nodes_from} -[r]-> {nodes_to}
                 {where_clause}
                 DELETE r           
                 '''
         else: # Delete a specific relationship
             q = f'''
-                MATCH {node_from} -[r :{rel_name}]-> {node_to}
+                MATCH {nodes_from} -[r :{rel_name}]-> {nodes_to}
                 {where_clause}
                 DELETE r           
                 '''
@@ -1440,6 +1441,58 @@ class NeoAccess:
             raise Exception("No relationship was deleted")
 
         return number_relationships_deleted
+
+
+
+    def edges_exists(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name: str) -> bool:
+        """
+        Return True if one or more edges (relationships) with the specified name exist in the direction
+        from and to the nodes (individual nodes or set of nodes) specified in the first two arguments.
+
+        :param match_from:  EITHER an integer with a Neo4j node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param match_to:    EITHER an integer with a Neo4j node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+                            IMPORTANT: match_from and match_to, if created by calls to find(), MUST use different node dummy names;
+                                       e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
+                                                        and for match_to,   find() used the option: dummy_node_name="to"
+
+        :param rel_name:    The name of the relationship to look for between the 2 specified nodes
+
+        :return:            True if the relationship was found, or False if not
+        """
+        match_from = CypherUtils.validate_and_standardize(match_from, dummy_node_name="from")   # Validate, and possibly create, the match dictionary
+        match_to   = CypherUtils.validate_and_standardize(match_to, dummy_node_name="to")       # Validate, and possibly create, the match dictionary
+
+        # Make sure there's no conflict in the dummy node names
+        CypherUtils.check_match_compatibility(match_from, match_to)
+
+        # Unpack needed values from the match_from and match_to structures
+        nodes_from = CypherUtils.extract_node(match_from)
+        nodes_to   = CypherUtils.extract_node(match_to)
+
+        where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
+                                                                            # and also prefix (if appropriate) the WHERE keyword
+        # Prepare the query
+        q = f'''
+            MATCH {nodes_from} -[r :{rel_name}]-> {nodes_to}
+            {where_clause} 
+            RETURN r          
+            '''
+
+        # Merge the data-binding dict's
+        combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
+
+        self.debug_print(q, combined_data_binding, "edges_exists")
+
+        result = self.query(q, combined_data_binding)
+        if self.debug:
+            print("    result of query in edges_exists(): ", result)
+
+        if len(result) == 0:       # This could be more than 1
+            return False
+        else:
+            return True
 
 
 
@@ -2328,7 +2381,6 @@ class NeoAccess:
 
 
 
-
     def indent_chooser(self, level: int) -> str:
         """
         Create an indent based on a "level": handy for debugging recursive functions
@@ -2380,6 +2432,7 @@ class CypherUtils:      # TODO: move to separate file
                  "data_binding": {"n_par_1": "F", "n_par_2": 22, "min_income": 90000},
                  "dummy_node_name": "n"}
     """
+
 
     @classmethod
     def define_match(cls, labels=None, neo_id=None, key_name=None, key_value=None, properties=None, subquery=None,
@@ -2558,6 +2611,17 @@ class CypherUtils:      # TODO: move to separate file
 
 
     @classmethod
+    def extract_node(cls, match: dict) -> str:
+        """
+        Return the node information from the given "match" data structure
+
+        :param match:   A dictionary, as created by define_match()
+        :return:
+        """
+        return match.get("node")
+
+
+    @classmethod
     def unpack_match(cls, match: dict, include_dummy=True) -> list:
         """
         Turn the passed "match" dictionary structure into a list containing:
@@ -2569,7 +2633,7 @@ class CypherUtils:      # TODO: move to separate file
         TODO:   gradually phase out, as more advanced util methods make the unpacking of all the "match" internal structure unnecessary
                 Maybe switch default value for include_dummy to False...
 
-        :param match:
+        :param match:           A dictionary, as created by define_match()
         :param include_dummy:   Flag indicating whether to also include the "dummy_node_name" value, as a 4th element in the returned list
         :return:
         """
@@ -2676,6 +2740,8 @@ class CypherUtils:      # TODO: move to separate file
         """
         Given a list of "match" structures, returned the combined version of all their data binding dictionaries.
         TODO: Make sure there's no conflicts
+        TODO: Since this also works with a 1-element list, it can be use to simply unpack the data binding from the match structure
+              (i.e. ought to drop the "combined" from the name)
         """
         first_match = match_list[0]
         combined_data_binding = first_match.get("data_binding", {})

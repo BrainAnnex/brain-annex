@@ -438,7 +438,7 @@ class Categories:
         #   (the originator) of the relationship
         try:
             NeoSchema.add_data_relationship(from_id=subcategory_id, to_id=category_id,
-                                                     rel_name="BA_subcategory_of", labels="BA")
+                                            rel_name="BA_subcategory_of", key_name="item_id")
         except Exception as ex:
             raise Exception(f"Unable to create a subcategory relationship. {ex}")
 
