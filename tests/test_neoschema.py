@@ -56,11 +56,11 @@ def test_create_class(db):
 
     french_class_id = NeoSchema.create_class("French Vocabulary")
     match = db.find()   # All nodes
-    result = db.fetch_nodes(match)
+    result = db.get_nodes(match)
     assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
 
     class_A_id = NeoSchema.create_class("A", schema_type="S")
-    result = db.fetch_nodes(match)
+    result = db.get_nodes(match)
     expected = [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'},
                 {'name': 'A', 'schema_id': class_A_id, 'type': 'S'}]
     assert compare_recordsets(result, expected)

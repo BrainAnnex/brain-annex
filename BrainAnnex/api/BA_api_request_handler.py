@@ -286,7 +286,7 @@ class APIRequestHandler:
 
         """
         match = cls.db.find(labels="BA", properties={"schema_code": schema_code, "item_id": item_id})
-        content_node = cls.db.fetch_nodes(match)
+        content_node = cls.db.get_nodes(match)
         #print("content_node:", content_node)
         if (content_node is None) or (content_node == []):
             return (False, "Metadata not found")     # Metadata not found
@@ -314,7 +314,7 @@ class APIRequestHandler:
 
         """
         match = cls.db.find(labels="BA", properties={"item_id": item_id})
-        content_node = cls.db.fetch_nodes(match)
+        content_node = cls.db.get_nodes(match)
         #print("content_node:", content_node)
         if (content_node is None) or (content_node == []):
             raise Exception("Metadata not found")
@@ -859,7 +859,7 @@ class APIRequestHandler:
         if limit > 500:
             limit = 500     # Set an upper bound
 
-        result = cls.db.fetch_nodes(match, limit=limit)
+        result = cls.db.get_nodes(match, limit=limit)
 
         return result
 

@@ -197,7 +197,7 @@ class NeoSchema:
         assert class_name != "", "get_class_id(): argument `class_name` cannot be an empty string"
 
         match = cls.db.find(labels="CLASS", key_name="name", key_value=class_name)
-        result = cls.db.fetch_nodes(match, single_cell="schema_id")
+        result = cls.db.get_nodes(match, single_cell="schema_id")
 
         if result is None:
             return -1
@@ -240,7 +240,7 @@ class NeoSchema:
         assert type(schema_id) == int, "The schema id MUST be an integer"
 
         match = cls.db.find(labels="CLASS", key_name="schema_id", key_value=schema_id)
-        result = cls.db.fetch_nodes(match, single_cell="name")
+        result = cls.db.get_nodes(match, single_cell="name")
 
         if not result :
             return ""
@@ -817,7 +817,7 @@ class NeoSchema:
         """
 
         match = cls.db.find(labels="CLASS", key_name="code", key_value=schema_code)
-        result = cls.db.fetch_nodes(match, single_cell="schema_id")
+        result = cls.db.get_nodes(match, single_cell="schema_id")
 
         if result is None:
             return -1
@@ -884,7 +884,7 @@ class NeoSchema:
         """
         match = cls.db.find(key_name="item_id", key_value=item_id,
                             labels=labels, properties=properties)
-        return cls.db.fetch_nodes(match, single_row=True)
+        return cls.db.get_nodes(match, single_row=True)
 
 
 

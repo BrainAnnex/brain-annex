@@ -454,18 +454,18 @@ class NeoAccess:
         """
         For situations where one is fetching just 1 field,
         and one desires a list of those values, rather than a dictionary of records.
-        In other respects, similar to the more general fetch_nodes()
+        In other respects, similar to the more general get_nodes()
 
         :param match:       EITHER an integer with a Neo4j node id,
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by find()
         :param field_name:  A string with the name of the desired field (attribute)
-        :param order_by:    see fetch_nodes()
-        :param limit:       see fetch_nodes()
+        :param order_by:    see get_nodes()
+        :param limit:       see get_nodes()
 
         :return:  A list of the values of the field_name attribute in the nodes that match the specified conditions
         """
 
-        record_list = self.fetch_nodes(match=match, order_by=order_by, limit=limit)
+        record_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
 
         single_field_list = [record.get(field_name) for record in record_list]
 
@@ -489,7 +489,7 @@ class NeoAccess:
         :return:                    A dictionary, if a unique record was found; or None if not found
         """
         match = self.find(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
-        result = self.fetch_nodes(match=match, return_neo_id=return_nodeid)
+        result = self.get_nodes(match=match, return_neo_id=return_nodeid)
 
         if len(result) == 0:
             return None
@@ -518,11 +518,12 @@ class NeoAccess:
 
 
 
-    def fetch_nodes(self, match: Union[int, dict],
-                    return_neo_id=False, return_labels=False, order_by=None, limit=None,
-                    single_row=False, single_cell=""):
+    def get_nodes(self, match: Union[int, dict],
+                  return_neo_id=False, return_labels=False, order_by=None, limit=None,
+                  single_row=False, single_cell=""):
         """
-        NEW VERSION OF get_nodes()
+        RETURN a list of the records (as dictionaries of ALL the key/value node properties)
+        corresponding to all the Neo4j nodes specified by the given match data.
 
         :param match:           EITHER an integer with a Neo4j node id,
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by find()
@@ -578,7 +579,7 @@ class NeoAccess:
         if limit:
             cypher += f" LIMIT {limit}"
 
-        self.debug_print(cypher, data_binding, "fetch_nodes")
+        self.debug_print(cypher, data_binding, "get_nodes")
 
 
         # Note: the flatten=True takes care of returning just the fields of the matched node "n", rather than dictionaries indexes by "n"
@@ -613,9 +614,9 @@ class NeoAccess:
 
     def get_df(self, match: Union[int, dict], order_by=None, limit=None) -> pd.DataFrame:
         """
-        Similar to fetch_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
+        Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
 
-        [See fetch_nodes() for more information about the arguments]
+        [See get_nodes() for more information about the arguments]
         :param match:       EITHER an integer with a Neo4j node id,
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by find()
         :param order_by:
@@ -623,7 +624,7 @@ class NeoAccess:
         :return:            A Pandas dataframe
         """
 
-        result_list = self.fetch_nodes(match=match, order_by=order_by, limit=limit)
+        result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
         return pd.DataFrame(result_list)
 
 
@@ -789,7 +790,6 @@ class NeoAccess:
         """
         From the given starting node(s), count all the relationships OF THE GIVEN NAME to and/or from it,
         into/from neighbor nodes (optionally having the given labels)
-        TODO: pytest!
 
         :param match:           EITHER an integer with a Neo4j node id,
                                     OR a dictionary of data to identify a node, or set of nodes, as returned by find()
@@ -2302,7 +2302,8 @@ class NeoAccess:
 
     def debug_trim(self, data, max_len = 150) -> str:
         """
-        Abridge the given data (first turning it into a string if needed), if excessively long
+        Abridge the given data (first turning it into a string if needed), if excessively long,
+        using ellipses " ..." for the omitted data
 
         :param data:    Data to possibly abridge
         :param max_len:
@@ -2508,6 +2509,7 @@ class CypherUtils:      # TODO: move to separate file
     def assert_valid_match_structure(cls, match: dict) -> None:
         """
         Verify that an alleged "match" dictionary is a valid one; if not, raise an Exception
+        TODO: tighten up the checks
 
         :param match:   A dictionary of data to identify a node, or set of nodes, as returned by find()
         :return:        None
