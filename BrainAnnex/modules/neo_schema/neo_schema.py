@@ -1014,14 +1014,14 @@ class NeoSchema:
 
         Note: this is the Schema layer's counterpart of NeoAccess.create_node_with_children()
 
-        :param class_name:
-        :param connected_to_list:
-        :param data_dict:
-        :param labels:          OPTIONAL string or list of strings with label(s) to assign to new data node;
-                                    if not specified, use the Class name
+        :param class_name:          Name of the Class specifying the schema for this new data point
+        :param connected_to_list:   A list of pairs ("item_id" value, relationship name)
+        :param data_dict:           A dictionary of attributes to give to the new node
+        :param labels:              OPTIONAL string or list of strings with label(s) to assign to new data node;
+                                        if not specified, use the Class name
 
-        :return:                If successful, an integer with auto-increment "item_id" (URI) value of the node just created;
-                                    otherwise, an Exception is raised
+        :return:                    If successful, an integer with auto-increment "item_id" (URI) value of the node just created;
+                                        otherwise, an Exception is raised
         """
         new_node_id = cls.add_data_point(class_name=class_name, data_dict=data_dict, labels=labels)
 
@@ -1319,6 +1319,7 @@ class NeoSchema:
                 * LACK OF "BA" labels being set
                 * INABILITY TO LINK TO EXISTING NODE (try using: "item_id": some_int  as the only property in nodes to merge)
                 * HAZY responsibility for "schema_code" (set correctly for all nodes)
+                * OFFER AN OPTION TO IGNORE BLANK STRINGS IN ATTRIBUTES
         """
 
         # Create an `Import Data` node for the metadata of the import
@@ -1393,7 +1394,7 @@ class NeoSchema:
         :param d:           A dictionary with data from which to create a tree in the database
         :param class_name:
         :param level:
-        :return:            The Neo4j ID of the newly created node
+        :return:            The auto-increment "item_id" (URI) of the newly created node
         """
         assert type(d) == dict, f"create_tree_from_dict(): the argument `d` must be a dictionary (instead, it's {type(d)})"
 
@@ -1417,7 +1418,7 @@ class NeoSchema:
 
         cls.debug_print(f"{indent_str}Input is a dict with {len(d)} keys: {list(d.keys())}")
         node_properties = {}
-        children_info = []   # A list of pairs (Neo4j ID, relationship name)
+        children_info = []   # A list of pairs ("item_id" value, relationship name)
 
         skipped_properties = []
         skipped_relationships = []
@@ -1507,13 +1508,11 @@ class NeoSchema:
 
         # End of loop over all the dictionary entries
 
-        # Now, finally CREATE THE  NEW NODE, with its attributes and links to children (the roots of the subtrees)
+        # Now, finally CREATE THE NEW NODE, with its attributes and links to children (the roots of the subtrees)
         if len(node_properties) == 0 and len(children_info) == 0:
             cls.debug_print(f"{indent_str}Skipping creating node of class `{class_name}` that has no properties and no children")
             return None   # Using None to indicate "skipped node/subtree"
         else:
-            # TODO: test this switch to the Schema layer
-            #return cls.db.create_node_with_children(labels=class_name, properties=node_properties, children_list=children_info)
             return cls.add_and_link_data_point(class_name=class_name, data_dict=node_properties, connected_to_list=children_info)
 
 
@@ -1529,7 +1528,7 @@ class NeoSchema:
         :param l:           A list of data from which to create a set of trees in the database
         :param class_name:
         :param level:
-        :return:            A list of the Neo4j ID's of the newly created nodes
+        :return:            A list of the "item_ID" values of the newly created nodes
         """
         assert type(l) == list, f"create_tree_from_dict(): the argument `l` must be a list (instead, it's {type(l)})"
 
