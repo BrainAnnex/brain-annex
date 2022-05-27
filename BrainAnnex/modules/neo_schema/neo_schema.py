@@ -1,4 +1,5 @@
 from typing import Union, List
+from BrainAnnex.modules.neo_access.neo_access import CypherUtils
 import json
 
 
@@ -473,20 +474,20 @@ class NeoSchema:
 
 
     @classmethod
-    def get_related_class_names(cls, class_name: str, rel_name: str, enforce_unique=False) -> Union[str, List[str]]:
+    def get_linked_class_names(cls, class_name: str, rel_name: str, enforce_unique=False) -> Union[str, List[str]]:
         """
         Given a Class, specified by its name, locate and return the name(s) of the other Class(es)
         that it's linked to by means of the relationship with the specified name.
         Typically, the result will contain no more than 1 name, but it could be more;
         it's probably a bad design to use the same relationship name to connect a class to multiple other classes
-        (though allowed.)
+        (though currently allowed.)
         Relationships are followed in the OUTbound direction
 
         :param class_name:      Name of a Class in the schema
         :param rel_name:        Name of relationship to follow (in the OUTbound direction) from the above Class
         :param enforce_unique:  If True, it raises an Exception if the number of results isn't exactly one
         :return:                If enforce_unique is True, return a string with the class name;
-                                other return a list of names (typically just one)
+                                otherwise, return a list of names (typically just one)
         """
         q = f'''
             MATCH (from :`CLASS` {{name: $class_name}})
@@ -514,7 +515,7 @@ class NeoSchema:
         """
         Fetch and return the names of all the relationship (both inbound and outbound)
         attached to the given Class.
-        Treat separately the inbound and outbound ones.
+        Treat separately the inbound and the outbound ones.
 
         :param schema_id:       An integer to identify the desired Class
         :param link_dir:        Desired direction(s) of the relationships; one of "BOTH" (default), "IN" or "OUT"
@@ -875,7 +876,7 @@ class NeoSchema:
     @classmethod
     def fetch_data_point(cls, item_id: int, labels=None, properties=None) -> dict:
         """
-        Return a dictionary with all the key/value pairs of the given data point
+        Return a dictionary with all the key/value pairs of the attributes of given data point
 
         :param item_id:     To uniquely identify the data node
         :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
@@ -896,6 +897,7 @@ class NeoSchema:
         """
         Add a new data node, of the Class specified by name or ID,
         optionally linked to another, already existing, data node.
+        Optionally specify another DATA node to connect the new node to.
         The new data node, if successfully created, will be assigned a unique value for its field item_id
         If the requested Class doesn't exist, an Exception is raised
 
@@ -910,7 +912,7 @@ class NeoSchema:
 
         :param class_name:      The name of the Class that this new data point is an instance of
         :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
-        :param data_dict:       A dictionary with the properties of the new data point.  EXAMPLE: {"make": "Toyota", "color": "white"}
+        :param data_dict:       An optional dictionary with the properties of the new data point.  EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:          String or list of strings with label(s) to assign to new data node; if not specified, use the Class name
 
         :param connected_to_id: Int or None.  To optionally specify another DATA node to connect the new node to
@@ -941,7 +943,10 @@ class NeoSchema:
             # If not specified, use the Class name
             labels = class_name
 
-        assert type(data_dict) == dict, "The data_dict argument MUST be a dictionary"
+        if data_dict is None:
+            data_dict = {}
+
+        assert type(data_dict) == dict, "The data_dict argument, if provided, MUST be a dictionary"
 
         cypher_props_dict = data_dict
 
@@ -1146,7 +1151,8 @@ class NeoSchema:
 
         The data nodes may be identified either by their Neo4j ID's, or by a primary key (with option label)
 
-        Note that if a relationship with the same name already exists, nothing gets created (and an Exception is raised)
+        Note that if a relationship with the same name already exists between the data nodes exists,
+        nothing gets created (and an Exception is raised)
 
         :param from_id:     The ID of the data node at which the new relationship is to originate;
                                 this will be the Neo4j ID, unless a key_name is specified
@@ -1154,14 +1160,40 @@ class NeoSchema:
                                 this will be the Neo4j ID, unless a key_name is specified
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
-        :param labels_from: Optional
-        :param labels_to:   Optional
+        :param labels_from: (OPTIONAL) Labels on the 1st data node
+        :param labels_to:   (OPTIONAL) Labels on the 2nd data node
         :param key_name:    For example, "item_id"
 
         :return:            None.  If the specified relationship didn't get created, raise an Exception
                             In case the the new relationship doesn't exist in the Schema, raise an Exception
         """
         assert rel_name != "", f"add_data_relationship(): no name was provided for the new relationship"
+
+        if key_name:    # TODO: add labels
+            q = f'''
+            MATCH  (from {{item_id: $from_id}}) -[:SCHEMA]-> 
+                   (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
+                   <-[:SCHEMA]- (to {{item_id: $to_id}})
+            MERGE (from)-[:{rel_name}]->(to)
+            '''
+        else:
+            q = f'''
+            MATCH  (from) -[:SCHEMA]-> 
+                   (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
+                   <-[:SCHEMA]- (to)
+            WHERE id(from) = $from_id AND id(to) = to_id 
+            MERGE (from)-[:{rel_name}]->(to)
+            '''
+
+        data_binding = {"from_id": from_id, "to_id": to_id}
+        result = cls.db.update_query(q, data_binding)
+        number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
+        if number_relationships_added != 1:
+            class_name_from = cls.class_of_data_point(node_id=from_id, key_name=key_name, labels=labels_from)
+            class_name_to = cls.class_of_data_point(node_id=to_id, key_name=key_name, labels=labels_to)
+            cls.get_linked_class_names(class_name = "TBA", rel_name=rel_name)
+            #TODO: continue
+
 
         """
         Schema check
@@ -1231,16 +1263,60 @@ class NeoSchema:
 
 
     @classmethod
+    def class_of_data_point(cls, node_id: int, key_name=None, labels=None) -> str:
+        """
+        Return the name of the Class of the given data point: identified
+        either by its Neo4j ID's, or by a primary key (with optional label)
+
+        :param node_id:     Either a Neo4j ID or a primary key value
+        :param key_name:    OPTIONAL - name of a primary key used to identify the data node
+        :param labels:      Optional string, or list/tuple of strings, with Neo4j labels
+        :return:            A string with the name of the Class of the given data point
+        """
+        # TODO: turn into a method of this Schema class
+        if key_name:
+            match = cls.db.find(key_name=key_name, key_value=node_id, labels=labels)
+        else:
+            match = cls.db.find(neo_id=node_id)
+
+        node = CypherUtils.extract_node(match)
+        where_clause = CypherUtils.combined_where([match])
+        data_binding = CypherUtils.combined_data_binding([match])
+
+        q = f'''
+            MATCH  {node} -[:SCHEMA]-> (class_node :CLASS)
+            {where_clause}
+            RETURN class_node.name AS name
+            '''
+        cls.db.debug_print(q, data_binding, "class_of_data_point")
+
+        result = cls.db.query(q, data_binding)
+
+        if len(result) == 0:    # TODO: separate the 2 scenarios leading to this
+            raise Exception(f"The given data node (id: {node_id}) does not exist or is not associated to any schema class")
+        elif len(result) > 1:
+            raise Exception(f"The given data node (id: {node_id}) is associated to more than 1 schema class (forbidden scenario)")
+
+        class_node = result[0]
+
+        if "name" not in class_node:
+            raise Exception("The associate schema class node lacks a name")
+
+        return class_node["name"]
+
+
+
+    @classmethod
     def data_points_of_class(cls, class_name) -> [int]:
         """
         Return the Item ID's of all the Data Points of the given Class
-        TODO: generalize the "BA" label
+        TODO: offer to optionally use a label
 
         :param class_name:
         :return:
         """
         q = '''
-            MATCH (n:BA)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.item_id AS item_id
+            MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.item_id AS item_id
             '''
 
         res = cls.db.query(q, {"class_name": class_name}, single_column="item_id")
@@ -1472,7 +1548,7 @@ class NeoSchema:
                 cls.debug_print(f"{indent_str}Examining the relationship `{k}`...")
 
                 try:
-                    subtree_root_class_name = cls.get_related_class_names(class_name, rel_name=k, enforce_unique=True)
+                    subtree_root_class_name = cls.get_linked_class_names(class_name, rel_name=k, enforce_unique=True)
                     cls.debug_print(f"{indent_str}...the relationship `{k}` leads to the following Class: {subtree_root_class_name}")
                 except Exception as ex:
                     cls.debug_print(f"{indent_str}Disregarding. {ex}")
@@ -1504,7 +1580,7 @@ class NeoSchema:
                 cls.debug_print(f"{indent_str}Examining the relationship `{k}`...")
 
                 try:
-                    subtree_root_class_name = cls.get_related_class_names(class_name, rel_name=k, enforce_unique=True)
+                    subtree_root_class_name = cls.get_linked_class_names(class_name, rel_name=k, enforce_unique=True)
                     cls.debug_print(f"{indent_str}...the relationship `{k}` leads to the following Class: {subtree_root_class_name}")
                 except Exception as ex:
                     cls.debug_print(f"{indent_str}Disregarding. {ex}")

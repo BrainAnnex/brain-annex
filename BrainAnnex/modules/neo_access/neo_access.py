@@ -640,8 +640,8 @@ class NeoAccess:
         and return a dictionary suitable to be passed as argument to various other functions in this library.
         No arguments at all means "match everything in the database".
 
-        If neo_id is provided, all other conditions are disregarded;
-        otherwise, an implicit AND applies to all the specified conditions.
+        IMPORTANT:  if neo_id is provided, all other conditions are DISREGARDED;
+                    otherwise, an implicit AND applies to all the specified conditions.
 
         Note:   NO database operation is actually performed by this function.
                 It merely turns the set of specification into the MATCH part, and (if applicable) the WHERE part,
@@ -1148,7 +1148,6 @@ class NeoAccess:
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by find()
         :return:        The number of nodes deleted (possibly zero)
         """
-        #CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
         match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
 
         # Unpack needed values from the match dictionary
@@ -2665,14 +2664,15 @@ class CypherUtils:      # TODO: move to separate file
         """
         Turn the given string, or list/tuple of strings - representing Neo4j labels - into a string
         suitable for inclusion in a Cypher query.
-        Blanks ARE allowed in names.
+        Blanks ARE allowed in the names.
         EXAMPLES:
+            "" or None          give rise to    ""
             "client"            gives rise to   ":`client`"
             "my label"          gives rise to   ":`my label`"
             ["car", "vehicle"]  gives rise to   ":`car`:`vehicle`"
 
         :param labels:  A string, or list/tuple of strings, representing one or multiple Neo4j labels
-        :return:        A string suitable for inclusion in a Cypher query
+        :return:        A string suitable for inclusion in the node part of a Cypher query
         """
         if not labels:
             return ""   # No labels
@@ -2692,7 +2692,7 @@ class CypherUtils:      # TODO: move to separate file
     @classmethod
     def combined_where(cls, match_list: list) -> str:
         """
-        Given a list of "match" structures, returned the combined version of all their WHERE statements.
+        Given a list of "match" structures, return the combined version of all their WHERE statements.
         For details, see prepare_where()
         TODO: Make sure there's no conflict in the dummy node names
 
@@ -2705,9 +2705,10 @@ class CypherUtils:      # TODO: move to separate file
         
 
     @classmethod
-    def prepare_where(cls, where_list) -> str:
+    def prepare_where(cls, where_list: Union[str, list]) -> str:
         """
-        Combine all the WHERE clauses, and also prefix to the result (if appropriate) the WHERE keyword.
+        Given a WHERE clauses, or list/tuple of them, combined them all into one -
+        and also prefix to the result (if appropriate) the WHERE keyword.
         The combined clauses of the WHERE statement are parentheses-enclosed, to protect against code injection
 
         EXAMPLES:   "" or "      " or [] or ("  ", "") all result in  ""

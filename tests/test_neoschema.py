@@ -37,6 +37,7 @@ def create_sample_schema_1():
 
 
 def create_sample_schema_2():
+    # Class "quotes" with relationship "in_category" to class "Categories"
     sch_1 = NeoSchema.new_class_with_properties(class_name="quotes",
                                                 property_list=["quote", "attribution", "verified"])
 
@@ -345,6 +346,40 @@ def test_add_data_relationship(db):
 
 def test_remove_data_relationship(db):
     pass    # TODO
+
+
+
+def test_class_of_data_point(db):
+    db.empty_dbase()
+    with pytest.raises(Exception):
+        NeoSchema.class_of_data_point(node_id=123)  # No such data node exists
+
+    neo_id = db.create_node("random")
+    with pytest.raises(Exception):
+        NeoSchema.class_of_data_point(node_id=neo_id)     # It's not a data node
+
+    NeoSchema.create_class("Person")
+    item_id = NeoSchema.add_data_point("Person")
+
+    assert NeoSchema.class_of_data_point(node_id=item_id, key_name="item_id") == "Person"
+    assert NeoSchema.class_of_data_point(node_id=item_id, key_name="item_id", labels="Person") == "Person"
+
+    # Now locate thru the Neo4j ID
+    q = f"MATCH (n {{item_id: {item_id} }}) RETURN id(n) AS neo_id"
+    neo_id = db.query(q, single_cell="neo_id")
+    #print("neo_id: ", neo_id)
+    assert NeoSchema.class_of_data_point(node_id=neo_id) == "Person"
+
+    NeoSchema.create_class("Extra")
+    # Create a forbidden scenario with a data node having 2 Schema classes
+    q = f'''
+        MATCH (n {{item_id: {item_id} }}), (c :CLASS {{name: 'Extra'}})
+        MERGE (n)-[:SCHEMA]->(c)
+        '''
+    #db.debug_print(q, {}, "test")
+    db.update_query(q)
+    with pytest.raises(Exception):
+        assert NeoSchema.class_of_data_point(node_id=neo_id) == "Person"    # Data node is associated to multiple classes
 
 
 
