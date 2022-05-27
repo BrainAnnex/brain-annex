@@ -10,7 +10,7 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(debug=True)
+    neo_obj = neo_access.NeoAccess(debug=False)
     NeoSchema.set_database(neo_obj)
     yield neo_obj
 
@@ -19,7 +19,9 @@ def db():
 # ************  CREATE SAMPLE SCHEMAS  **************
 
 def create_sample_schema_1():
-    # patient/result/doctor
+    # Schema with patient/result/doctor Classes,
+    # and relationships HAS_RESULT, IS_ATTENDED_BY
+
     sch_1 = NeoSchema.new_class_with_properties(class_name="patient",
                                                 property_list=["name", "age", "balance"])
 
@@ -250,27 +252,33 @@ def test_fetch_data_point(db):
 
 
 def test_add_data_point(db):
+    #TODO: also test the connected_to_id arguments
     db.empty_dbase()
 
-    create_sample_schema_1()
+    create_sample_schema_1()    # Schema with patient/result/doctor
 
+    # For thus new data point, get its item_id
     doctor_data_id = NeoSchema.add_data_point(class_name="doctor",
-                             data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"})
+                                        data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
+                                        return_item_ID=True)
 
-    result_data_id = NeoSchema.add_data_point(class_name="result",
-                             data_dict={"biomarker": "glucose", "value": 99.0})
+    # For thus new data point, get its Neo4j ID
+    result_neo_id = NeoSchema.add_data_point(class_name="result",
+                                        data_dict={"biomarker": "glucose", "value": 99.0},
+                                        return_item_ID=False)
 
     q = '''
         MATCH (d:doctor {item_id: $doctor, name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]-(c1:CLASS)
             -[*]-
-            (c2:CLASS)<-[:SCHEMA]-(r:result {item_id: $result, biomarker: "glucose", value: 99.0})
+            (c2:CLASS)<-[:SCHEMA]-(r:result {biomarker: "glucose", value: 99.0})
+        WHERE id(r) = $result_neo_id
         RETURN d, c1, c2, r
         '''
 
-    #db.debug_print(q, data_binding={"doctor": doctor_data_id, "result": result_data_id}, force_output=True)
+    #db.debug_print(q, data_binding={"doctor": doctor_data_id, "result_neo_id": result_neo_id}, force_output=True)
 
-    result = db.query(q, data_binding={"doctor": doctor_data_id, "result": result_data_id})
-    print("result:", result)
+    result = db.query(q, data_binding={"doctor": doctor_data_id, "result_neo_id": result_neo_id})
+    #print("result:", result)
     assert len(result) == 1
 
     record = result[0]
@@ -282,30 +290,35 @@ def test_add_data_point(db):
 def test_add_and_link_data_point(db):
     db.empty_dbase()
 
-    create_sample_schema_1()
+    create_sample_schema_1()    # Schema with patient/result/doctor
 
-    doctor_data_id = NeoSchema.add_data_point(class_name="doctor",
-                                              data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"})
+    doctor_neo_id = NeoSchema.add_data_point(class_name="doctor",
+                                             data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
+                                             return_item_ID=False)
 
-    result_data_id = NeoSchema.add_data_point(class_name="result",
-                                              data_dict={"biomarker": "glucose", "value": 99.0})
+    result_neo_id = NeoSchema.add_data_point(class_name="result",
+                                            data_dict={"biomarker": "glucose", "value": 99.0},
+                                            return_item_ID=False)
 
-    patient_data_id = NeoSchema.add_and_link_data_point(class_name="patient",
+    patient_neo_id = NeoSchema.add_and_link_data_point(class_name="patient",
                                       data_dict={"name": "Jill", "age": 19, "balance": 312.15},
-                                      connected_to_list = [ (doctor_data_id, "IS_ATTENDED_BY") , (result_data_id, "HAS_RESULT") ])
+                                      connected_to_list = [ (doctor_neo_id, "IS_ATTENDED_BY") , (result_neo_id, "HAS_RESULT") ])
 
     # Traverse a loop in the graph, from the patient data node, back to itself - going thru data and schema nodes
     q = '''
-        MATCH (p:patient {item_id: $patient, name: "Jill", age: 19, balance: 312.15})-[:IS_ATTENDED_BY]->
-            (d:doctor {item_id: $doctor, name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]-(c1:CLASS)
-            -[*]-
-            (c2:CLASS)<-[:SCHEMA]-(r:result {item_id: $result, biomarker: "glucose", value: 99.0})
-            <-[:HAS_RESULT]-(p)
+        MATCH (p:patient {name: "Jill", age: 19, balance: 312.15})-[:IS_ATTENDED_BY]->
+              (d:doctor {name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]-(c1:CLASS)
+              -[*]-
+              (c2:CLASS)<-[:SCHEMA]-(r:result {biomarker: "glucose", value: 99.0})
+              <-[:HAS_RESULT]-(p)
+        WHERE id(p) = $patient AND id(d) = $doctor AND id(r) = $result
         RETURN d, c1, c2, r
         '''
 
-    result = db.query(q, data_binding={"patient": patient_data_id, "doctor": doctor_data_id, "result": result_data_id})
-    print("result:", result)
+    data_binding = {"patient": patient_neo_id, "doctor": doctor_neo_id, "result": result_neo_id}
+    #db.debug_print(q, data_binding=data_binding, force_output=True)
+    result = db.query(q, data_binding=data_binding)
+    #print("result:", result)
     assert len(result) == 1
 
     record = result[0]
@@ -317,7 +330,7 @@ def test_add_and_link_data_point(db):
     with pytest.raises(Exception):
         NeoSchema.add_and_link_data_point(class_name="patient",
                           data_dict={"name": "Jill", "age": 19, "balance": 312.15},
-                          connected_to_list = [ (doctor_data_id, "NOT_A_DECLARED_RELATIONSHIP") , (result_data_id, "HAS_RESULT") ])
+                          connected_to_list = [ (doctor_neo_id, "NOT_A_DECLARED_RELATIONSHIP") , (result_neo_id, "HAS_RESULT") ])
 
 
     # Attempt to use a Class not in the Schema

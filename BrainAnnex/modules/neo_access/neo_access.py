@@ -1507,9 +1507,9 @@ class NeoAccess:
         :return:                True if the process was successful, or False otherwise
         """
         # Unpack the data to locate the 3 affected nodes
-        (node_start, where_start, data_binding_start) = CypherUtils.unpack_match(node, include_dummy=False)
-        (node_old, where_old, data_binding_old) = CypherUtils.unpack_match(old_attachment, include_dummy=False)
-        (node_new, where_new, data_binding_new) = CypherUtils.unpack_match(new_attachment, include_dummy=False)
+        node_start = CypherUtils.extract_node(node)
+        node_old = CypherUtils.extract_node(old_attachment)
+        node_new = CypherUtils.extract_node(new_attachment)
 
         # Combine the 3 WHERE clauses, and also prefix (if appropriate) the WHERE keyword
         where_clause = CypherUtils.combined_where([node, old_attachment, new_attachment])
@@ -2355,7 +2355,8 @@ class NeoAccess:
     def debug_trim(self, data, max_len = 150) -> str:
         """
         Abridge the given data (first turning it into a string if needed), if excessively long,
-        using ellipses " ..." for the omitted data
+        using ellipses " ..." for the omitted data.
+        Return the abridged data.
 
         :param data:    Data to possibly abridge
         :param max_len:
@@ -2370,7 +2371,8 @@ class NeoAccess:
 
     def debug_trim_print(self, data, max_len = 150) -> None:
         """
-        Abridge the given data (first turning it into a string if needed), if excessively long, and then print it
+        Abridge the given data (first turning it into a string if needed),
+        if it is excessively long; then print it
 
         :param data:    Data to possibly abridge, and then print
         :param max_len:
