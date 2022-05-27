@@ -1147,51 +1147,58 @@ class NeoSchema:
                               labels_from=None, labels_to=None, id_type=None) -> None:
         """
         Add a new relationship with the given name, from one to the other of the 2 given data nodes.
-        They new relationship must be present in the Schema, or an Exception will be raised.
+        The new relationship must be present in the Schema, or an Exception will be raised.
 
-        The data nodes may be identified either by their Neo4j ID's, or by a primary key (with option label)
+        The data nodes may be identified either by their Neo4j ID's, or by a primary key (with optional label.)
 
         Note that if a relationship with the same name already exists between the data nodes exists,
         nothing gets created (and an Exception is raised)
 
         :param from_id:     The ID of the data node at which the new relationship is to originate;
-                                this will be the Neo4j ID, unless a key_name is specified
+                                this is understood be the Neo4j ID, unless an id_type is specified
         :param to_id:       The ID of the data node at which the new relationship is to end;
-                                this will be the Neo4j ID, unless a key_name is specified
+                                this is understood be the Neo4j ID, unless an id_type is specified
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
         :param labels_from: (OPTIONAL) Labels on the 1st data node
         :param labels_to:   (OPTIONAL) Labels on the 2nd data node
-        :param id_type:    For example, "item_id"; if not specified, all the node ID's are assumed to be Neo4j ID's
+        :param id_type:     For example, "item_id";
+                            if not specified, all the node ID's are assumed to be Neo4j ID's
 
-        :return:            None.  If the specified relationship didn't get created, raise an Exception
-                            In case the the new relationship doesn't exist in the Schema, raise an Exception
+        :return:            None.  If the specified relationship didn't get created (for example,
+                            in case the the new relationship doesn't exist in the Schema), raise an Exception
         """
         assert rel_name, f"add_data_relationship(): no name was provided for the new relationship"
 
-        if id_type:    # TODO: add labels
-            q = f'''
-            MATCH  (from {{item_id: $from_id}}) -[:SCHEMA]-> 
-                   (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
-                   <-[:SCHEMA]- (to {{item_id: $to_id}})
-            MERGE (from)-[:{rel_name}]->(to)
-            '''
-        else:
-            q = f'''
-            MATCH  (from) -[:SCHEMA]-> 
-                   (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) 
-                   <-[:SCHEMA]- (to)
-            WHERE id(from) = $from_id AND id(to) = $to_id 
+        # Create structures later used to locate the two data node
+        from_match = NeoSchema.locate_node(node_id=from_id, id_type=id_type, labels=labels_from, dummy_node_name="from")
+        to_match   = NeoSchema.locate_node(node_id=to_id,   id_type=id_type, labels=labels_to,   dummy_node_name="to")
+
+        # Get Cypher fragments related to matching the data nodes
+        from_node = CypherUtils.extract_node(from_match)
+        to_node = CypherUtils.extract_node(to_match)
+        where_clause = CypherUtils.combined_where([from_match, to_match])
+        data_binding = CypherUtils.combined_data_binding([from_match, to_match])
+
+        # Using the Cypher fragments from above, create a query that looks for a path
+        # from the first to the second data nodes, passing thru their classes
+        # and thru a link with the same relationship name between those classes;
+        # upon finding such a path, join the data points with a relationship
+        q = f'''
+            MATCH   {from_node} 
+                    -[:SCHEMA]-> (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) <-[:SCHEMA]- 
+                    {to_node}
+            {where_clause}
             MERGE (from)-[:{rel_name}]->(to)
             '''
 
-        data_binding = {"from_id": from_id, "to_id": to_id}
         result = cls.db.update_query(q, data_binding)
         number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
+
         if number_relationships_added != 1:
             # The following 2 lines will raise an Exception if either data point doesn't exist or lacks a Class
-            class_from = cls.class_of_data_point(node_id=from_id, key_name=id_type, labels=labels_from)
-            class_to = cls.class_of_data_point(node_id=to_id, key_name=id_type, labels=labels_to)
+            class_from = cls.class_of_data_point(node_id=from_id, id_type=id_type, labels=labels_from)
+            class_to = cls.class_of_data_point(node_id=to_id, id_type=id_type, labels=labels_to)
 
             #TODO: maybe double-check that the following reported problem is indeed what caused the failure
             raise Exception(f"Cannot add the relationship `{rel_name}` between the data nodes, "
@@ -1228,21 +1235,42 @@ class NeoSchema:
 
 
     @classmethod
-    def class_of_data_point(cls, node_id: int, key_name=None, labels=None) -> str:
+    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> dict:
+        """
+        EXPERIMENTAL
+
+        Return the "match" structure to locate a node identified
+        either by its Neo4j ID, or by a primary key (with optional label.)
+
+        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
+        :param id_type: For example, "item_id";
+                            if not specified, the node ID is assumed to be Neo4j ID's
+        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
+        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
+
+        :return:        A "match" structure
+        """
+        if id_type:
+            match = cls.db.find(key_name=id_type, key_value=node_id, labels=labels, dummy_node_name=dummy_node_name)
+        else:
+            match = cls.db.find(neo_id=node_id, dummy_node_name=dummy_node_name)
+
+        return match
+
+
+
+    @classmethod
+    def class_of_data_point(cls, node_id: int, id_type=None, labels=None) -> str:
         """
         Return the name of the Class of the given data point: identified
         either by its Neo4j ID's, or by a primary key (with optional label)
 
         :param node_id:     Either a Neo4j ID or a primary key value
-        :param key_name:    OPTIONAL - name of a primary key used to identify the data node
+        :param id_type:     OPTIONAL - name of a primary key used to identify the data node
         :param labels:      Optional string, or list/tuple of strings, with Neo4j labels
         :return:            A string with the name of the Class of the given data point
         """
-        # TODO: turn into a method of this Schema class
-        if key_name:
-            match = cls.db.find(key_name=key_name, key_value=node_id, labels=labels)
-        else:
-            match = cls.db.find(neo_id=node_id)
+        match = NeoSchema.locate_node(node_id=node_id, id_type=id_type, labels=labels)
 
         node = CypherUtils.extract_node(match)
         where_clause = CypherUtils.combined_where([match])

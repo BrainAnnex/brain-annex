@@ -397,6 +397,11 @@ def test_remove_data_relationship(db):
 
 
 
+def test_locate_node(db):
+    pass    # TODO
+
+
+
 def test_class_of_data_point(db):
     db.empty_dbase()
     with pytest.raises(Exception):
@@ -409,8 +414,8 @@ def test_class_of_data_point(db):
     NeoSchema.create_class("Person")
     item_id = NeoSchema.add_data_point("Person")
 
-    assert NeoSchema.class_of_data_point(node_id=item_id, key_name="item_id") == "Person"
-    assert NeoSchema.class_of_data_point(node_id=item_id, key_name="item_id", labels="Person") == "Person"
+    assert NeoSchema.class_of_data_point(node_id=item_id, id_type="item_id") == "Person"
+    assert NeoSchema.class_of_data_point(node_id=item_id, id_type="item_id", labels="Person") == "Person"
 
     # Now locate thru the Neo4j ID
     neo_id = NeoSchema.get_data_point_id(item_id)
