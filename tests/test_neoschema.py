@@ -340,7 +340,55 @@ def test_delete_data_point(db):
 
 
 def test_add_data_relationship(db):
-    pass    # TODO
+    db.empty_dbase()
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship(from_id=123, to_id=456, rel_name="junk")  # No such nodes exist
+
+    neo_id_1 = db.create_node("random A")
+    neo_id_2 = db.create_node("random B")
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship(from_id=neo_id_1, to_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
+
+    person_class_id = NeoSchema.create_class("Person")
+    person_id = NeoSchema.add_data_point("Person")
+
+    car_class_id = NeoSchema.create_class("Car")
+    car_id = NeoSchema.add_data_point("Car")
+
+    with pytest.raises(Exception):
+        # No such relationship exists between their Classes
+        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+
+    # Add the "DRIVE" relationship between the classes
+    NeoSchema.create_class_relationship(from_id=person_class_id, to_id=car_class_id, rel_name="DRIVES")
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="", id_type="item_id")  # Lacks relationship name
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name=None, id_type="item_id")  # Lacks relationship name
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship(from_id=car_id, to_id=person_id, rel_name="DRIVES", id_type="item_id")  # Wrong direction
+
+    # Now it works
+    NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+
+    with pytest.raises(Exception):
+        # Attempting to add it again
+        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+
+    with pytest.raises(Exception):
+        # Relationship name not declared in the Schema
+        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="SOME_OTHER_NAME", id_type="item_id")
+
+
+    # Now add reverse a relationship, and this use the Neo4j ID's to locate the nodes
+    NeoSchema.create_class_relationship(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
+
+    neo_person_id = NeoSchema.get_data_point_id(person_id)
+    neo_car_id = NeoSchema.get_data_point_id(car_id)
+    NeoSchema.add_data_relationship(from_id=neo_car_id, to_id=neo_person_id, rel_name="IS_DRIVEN_BY")
 
 
 
@@ -365,8 +413,7 @@ def test_class_of_data_point(db):
     assert NeoSchema.class_of_data_point(node_id=item_id, key_name="item_id", labels="Person") == "Person"
 
     # Now locate thru the Neo4j ID
-    q = f"MATCH (n {{item_id: {item_id} }}) RETURN id(n) AS neo_id"
-    neo_id = db.query(q, single_cell="neo_id")
+    neo_id = NeoSchema.get_data_point_id(item_id)
     #print("neo_id: ", neo_id)
     assert NeoSchema.class_of_data_point(node_id=neo_id) == "Person"
 
@@ -390,6 +437,12 @@ def test_data_points_of_class(db):
 
 def test_data_points_lacking_schema(db):
     pass    # TODO
+
+
+
+def test_get_data_point_id(db):
+    pass    # TODO
+
 
 
 

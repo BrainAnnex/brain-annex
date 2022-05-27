@@ -922,7 +922,7 @@ class ApiRouting:
                                                 rel_name=rel_name)       # Category-specific action
 
                 NeoSchema.add_data_relationship(from_id=from_id, to_id=to_id,
-                                                rel_name=rel_name, key_name="item_id")
+                                                rel_name=rel_name, id_type="item_id")
 
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
