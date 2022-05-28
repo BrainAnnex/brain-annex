@@ -1458,7 +1458,7 @@ class NeoSchema:
                 return []
             else:
                 root_item_id = root_id
-                cls.debug_print(f"***Linking import node (item_id={metadata_id}) with data root node (Neo4j ID={root_item_id}), thru relationship `imported_data`")
+                cls.debug_print(f"***Linking import node (Neo4j ID={metadata_id}) with data root node (Neo4j ID={root_item_id}), thru relationship `imported_data`")
                 cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id, rel_name="imported_data")
                 return [root_item_id]
 
