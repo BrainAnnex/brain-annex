@@ -275,37 +275,47 @@ class APIRequestHandler:
     #######################     CONTENT-ITEM RELATED      #######################
 
     @classmethod
-    def get_content(cls, schema_code, item_id: int) -> (bool, str):
+    def get_text_media_content(cls, item_id: int, schema_code, public_required = False) -> str:
         """
-        Fetch and return the contents of a media item stored on a local file
+        Fetch and return the contents of a media item stored on a local file,
+        optionally requiring it to be marked as "public".
+        In case of error, raise an Exception
 
-        :param schema_code:     TODO: phase out
-        :param item_id:
+        :param item_id:         An integer identifying the desired Content Item, which ought to be text media
+        :param schema_code:     TODO: maybe phase out
+        :param public_required: If True, the Content Item is returned only if has an the attribute "public: true"
 
-        :return:    The pair (status, data/error_message)   # TODO: generate an Exception in case of failure
+        :return:                A string with the HTML text of the requested note;
+                                    or an Exception in case of failure
+                                    (e.g., if public_required is True and the item isn't public)
 
         """
-        match = cls.db.find(labels="BA", properties={"schema_code": schema_code, "item_id": item_id})
-        content_node = cls.db.get_nodes(match)
+        properties = {"item_id": item_id, "schema_code": schema_code}
+        if public_required:
+            properties["public"] = True     # Extend the match requirements
+
+        match = cls.db.find(labels="BA", properties=properties)
+        content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
-        if (content_node is None) or (content_node == []):
-            return (False, "Metadata not found")     # Metadata not found
+        if not content_node:    # Metadata not found
+            raise Exception(f"The metadata for the Content Item (id {item_id}) wasn't found, or the items is not publicly accessible")
 
-        basename = content_node[0]['basename']
-        suffix = content_node[0]['suffix']
+        basename = content_node['basename']
+        suffix = content_node['suffix']
         filename = f"{basename}.{suffix}"
 
         try:
             file_contents = cls.get_from_file(filename)
-            return (True, file_contents)
+            return file_contents
         except Exception as ex:
-            return (False, f"I/O failed. {ex}")     # File I/O failed
+            return f"I/O failure while reading in contents of item {item_id}. {ex}"     # File I/O failed
+
 
 
     @classmethod
     def get_binary_content(cls, item_id: int, th: str) -> (str, bytes):
         """
-        Fetch and return the contents of a media item stored on a local file
+        Fetch and return the contents of a media item stored on a local file.
         In case of error, raise an Exception
 
         :param th:
