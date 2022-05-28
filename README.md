@@ -143,7 +143,6 @@ in the part where it says "CONFIGURABLE PARAMETERS", to set values for:
 
 - `PORT_NUMBER` (ok keep the default 5000, unless you have a conflict)
 
-- Comment out all the 3 lines at the very bottom, below where it says "COMMENT OUT ALL THE LINES BELOW DURING DEPLOYMENT"
 
 **Install all dependencies in the virtual environment**
 
@@ -223,9 +222,7 @@ On a Linux server, you can do:
     
     (venv) $ python3 tests/tests_manual/db_connection_1_MANUAL.py       (just for testing, if desired)
     (venv) $ python3 tests/tests_manual/db_connection_2_MANUAL.py       (just for testing, if desired)
-    
-    (venv) $ tail main.py                    (to double-check that the last lines were indeed commented out!)
-    
+        
     (venv) $ export FLASK_APP=main.py
     (venv) $ flask run --host=0.0.0.0 --port 5000 &> flask_log.txt &    (to redirect both stdout and stderr; change port if desired - but 80 won't work)
     (venv) $ ps -e | grep flask              (to double-check there's a 'flask' process running in the background)
@@ -308,10 +305,11 @@ any sample user customization.  Also shown here is the ROOT node for the Categor
 
 Not strictly needed for test runs, but at some point Neo4j Indexes and Constraints 
 ought to be added, for speed and reliability.
-From the Neo4j browser interface, issue the following 3 Cypher commands:
+From the Neo4j browser interface, issue the following Cypher commands:
 
     CREATE CONSTRAINT unique_BA_ID ON (n:BA) ASSERT n.item_id IS UNIQUE
     CREATE CONSTRAINT unique_CLASS_ID ON (n:CLASS) ASSERT n.schema_id IS UNIQUE
+    CREATE CONSTRAINT unique_CLASS_NAME ON (n:CLASS) ASSERT n.name IS UNIQUE
     CREATE CONSTRAINT unique_PROPERTY_ID ON (n:PROPERTY) ASSERT n.schema_id IS UNIQUE
 
 

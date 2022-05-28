@@ -10,7 +10,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 3.6     - TODO: UPDATE VERSION #
+    VERSION 3.7
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -148,7 +148,7 @@ class NeoAccess:
 
 
     def version(self) -> str:
-        # Return the version of the Neo4j driver being used.  EXAMPLE: "4.3.1"
+        # Return the version of the Neo4j driver being used.  EXAMPLE: "4.3.9"
         return neo4j_driver_version
 
 

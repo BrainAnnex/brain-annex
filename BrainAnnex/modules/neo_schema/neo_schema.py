@@ -1558,7 +1558,8 @@ class NeoSchema:
                     continue
                 else:
                     node_properties[k] = v                  # Save attribute for use when the node gets created
-                    cls.debug_print(f"{indent_str}Buffered properties for the new node so far: {node_properties}")
+                    cls.debug_print(f"{indent_str}Buffered properties for the new node so far: {node_properties}",
+                                    trim=True)
 
             elif type(v) == dict:
                 cls.debug_print(f"{indent_str}(key: `{k}`) Processing a dictionary (with {len(v)} keys)")
