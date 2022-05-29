@@ -1,6 +1,6 @@
-# Brain Annex, version 5
+# Brain Annex, version 5.0-beta16
 
-**Version 5** of Brain Annex is a complete overhaul of its internal structure:
+**Version 5** of is a *complete overhaul* of Brain Annex's  internal structure:
 
 * **Neo4j graph database** (v. 4.3) replaces MySQL and the built-in triplestore database
 
@@ -10,9 +10,7 @@
 
 * **Vue2.js** has expanded to take on a full role, replacing the old vanilla-JavaScript parts
 
-This major new release is currently in a *late Beta* stage.  
-CURRENT VERSION: **VERSION 5.0-beta15**
-
+This major new release is currently in a *late Beta* stage, appproaching "release candidate".
 
 **[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
 
@@ -43,21 +41,41 @@ All testing is done with *Neo4j version 4.3*, community version.  (Use of
 the enterprise version is NOT required for Brain Annex!)
 
 You may install Neo4j on your computer, or on a virtual machine on the Cloud 
-(we use the excellent pre-made Bitnami images on the Google cloud,  
-as well as the inexpensive Oracle cloud), or
-use a Neo4j service provider such as [Neo4j Aura](https://neo4j.com/aura/).
+(we use the excellent pre-made Bitnami images on the Google cloud,
+as well as the inexpensive Oracle cloud);  
+or use a Neo4j hosting service such as [Neo4j Aura](https://neo4j.com/aura/).
 
 If you're just testing, we highly recommend 
 the free and super-easy [Neo4j Sandbox](https://neo4j.com/sandbox/).
 
+To download and install Neo4j on your local machine or server: [link](https://neo4j.com/download-center/#community).
+
+Note: for installations on a local machine, the [Neo4j Desktop](https://neo4j.com/download-center/#desktop) is a very convenient alternative  
+(but be aware that it ties you to a trial copy of the *Enterprise* version of Neo4j!)
+
+
+**Install Java, if needed**
+
+If doing your own installation, *Java SE Development Kit 11* is needed.
+(NOT needed if you use the Neo4j Desktop; the pre-made Bitnami images on the Google cloud already includes Java.)
+
+You can check if Java is already installed by issuing `java -version`  
+on your Linux shell or Windows PowerShell or Command Prompt window.
+
+On Ubuntu and other Linux versions, Java may be installed, if needed, with:
+
+    sudo apt install openjdk-11-jre-headless
+
+On Windows, use [this link from Oracle](https://www.oracle.com/java/technologies/downloads/#java11)  (look for the Windows x64 Installer.)
+
 **Start the Neo4j database**
 
-If you went the local database route, using Neo4j Desktop is very convenient.
+If you went the local database route, it's very convenient to use the Neo4j Desktop to stop/start the database.
 
 If you installed Neo4j on a Linux machine, it can typically
 be started with `sudo neo4j start`
 
-If you're using the Bitnami image, it should start automatically,
+If you're using the Bitnami image, it should start automatically;
 but you can also issue `sudo gonit start neo4j`
 
 **Allow remote access to Neo4j (if applicable)**
@@ -68,8 +86,9 @@ and uncomment the line
 
 `#dbms.default_listen_address=0.0.0.0`
 
-in the Neo4j configuration file, typically found in locations such as
-`/etc/neo4j/neo4j.conf` or (for the Bitnami image) `/opt/bitnami/neo4j/conf/neo4j.conf`
+in the Neo4j configuration file,  
+typically found in locations such as `/etc/neo4j/neo4j.conf`  
+or (for the Bitnami image) `/opt/bitnami/neo4j/conf/neo4j.conf`
 
 **Test Neo4j access thru its Browser Interface**
 ![Neo4j access thru its Browser Interface](BrainAnnex/docs/Login_Neo4j_browser_interface.png)
