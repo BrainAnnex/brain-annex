@@ -37,7 +37,7 @@ def test_construction():
     obj1 = neo_access.NeoAccess(url, debug=False)       # Rely on default username/pass
 
     assert obj1.debug is False
-    assert obj1.version() == "4.2.1"    # Test the version of the Neo4j driver
+    assert obj1.version() == "4.3.9"    # Test the version of the Neo4j driver (this ought to match the value in requirements.txt)
 
 
     # Another way of instantiating the class
@@ -52,6 +52,17 @@ def test_construction():
 
     with pytest.raises(Exception):
         assert neo_access.NeoAccess(url, "bad_credentials", debug=False)    # This ought to raise an Exception
+
+
+
+def test_connect(db):
+    db.connect()
+    assert db.driver is not None
+
+
+
+def test_version(db):
+    assert type (db.version()) == str
 
 
 
@@ -301,7 +312,7 @@ def test_exists_by_key(db):
 
 
 
-def test_fetch_nodes(db):
+def test_get_nodes(db):
     db.empty_dbase()
 
     # Create a 1st new node
@@ -309,7 +320,7 @@ def test_fetch_nodes(db):
 
     # Retrieve the record just created (using values embedded in the Cypher query)
     match = db.find(labels="test_label", subquery="n.patient_id = 123 AND n.gender = 'M'")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
     # Again, retrieve the record (this time using data-binding in the Cypher query, and values passed as a separate dictionary)
@@ -318,17 +329,17 @@ def test_fetch_nodes(db):
                                        {"patient_id": 123, "gender": "M"}
                                      )
                     )
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
 
     # Retrieve ALL records with the label "test_label", by using no clause or an empty clause
     match = db.find(labels="test_label")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
     match = db.find(labels="test_label", subquery="           ")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
 
@@ -337,29 +348,29 @@ def test_fetch_nodes(db):
 
     # Retrieve the record just created (using values embedded in the Cypher query)
     match = db.find(labels="my 2nd label", subquery="n.`client id` = 123")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Retrieve the record just created (in a different way, using a Cypher subquery with its own data binding)
     match = db.find(labels="my 2nd label", subquery=("n.age = $age AND n.gender = $gender",
                                                      {"age": 21, "gender": "F"}
                                                     ))
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
      # Retrieve ALL records with the label "my 2nd label"
     match = db.find(labels="my 2nd label")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Same as above, but using a blank subquery
     match = db.find(labels="my 2nd label", subquery="           ")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Retrieve the record just created (using a dictionary of properties)
     match = db.find(labels="my 2nd label", properties={"age": 21, "gender": "F"})
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'client id': 123, 'gender': 'F', 'age': 21}]
 
 
@@ -368,19 +379,19 @@ def test_fetch_nodes(db):
 
     # Retrieve records using a clause
     match = db.find(labels="my 2nd label", subquery="n.age > 22")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'gender': 'M', 'client id': 999, 'age': 30}]
 
     # Retrieve nodes REGARDLESS of label (and also retrieve the labels)
     match = db.find(properties={"gender": "M"})       # Locate all males, across all node labels
-    retrieved_records = db.fetch_nodes(match, return_labels=True)
+    retrieved_records = db.get_nodes(match, return_labels=True)
     expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
                         {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
     assert compare_recordsets(retrieved_records, expected_records)
 
     # Retrieve ALL nodes in the database (and also retrieve the labels)
     match = db.find()
-    retrieved_records = db.fetch_nodes(match, return_labels=True)
+    retrieved_records = db.get_nodes(match, return_labels=True)
     expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
                         {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
                         {'neo4j_labels': ['my 2nd label'], 'client id': 123, 'gender': 'F', 'age': 21}]
@@ -389,7 +400,7 @@ def test_fetch_nodes(db):
     # Re-use of same key names in subquery data-binding and in properties dictionaries is ok, because the keys in
     #   properties dictionaries get internally changed
     match = db.find(labels="my 2nd label", subquery=("n.age > $age" , {"age": 22}), properties={"age": 30})
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     # Note: internally, the final Cypher query is: "MATCH (n :`my 2nd label` {`age`: $n_par_1}) WHERE (n.age > $age) RETURN n"
     #                           with data binding: {'age': 22, 'n_par_1': 30}
     # The joint requirement (age > 22 and age = 30) lead to the following record:
@@ -400,14 +411,14 @@ def test_fetch_nodes(db):
     # an Exception is expected is such a case
     with pytest.raises(Exception):
         match = db.find(labels="my 2nd label", subquery=("n.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
-        assert db.fetch_nodes(match)
+        assert db.get_nodes(match)
 
     # If we really wanted to use a key called "n_par_1" in our subquery dictionary, we
     #       can simply alter the dummy name internally used, from the default "n" to something else
     match = db.find(dummy_node_name="person", labels="my 2nd label", subquery=("person.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
     # All good now, because internally the Cypher query is "MATCH (person :`my 2nd label` {`age`: $person_par_1}) WHERE (person.age > $n_par_1) RETURN person"
     #                                    with data binding {'n_par_1': 22, 'person_par_1': 30}
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert compare_recordsets(retrieved_records, expected_records)
 
 
@@ -423,29 +434,29 @@ def test_fetch_nodes(db):
 
     # Retrieve combined records created: note how different records have different keys
     match = db.find(labels="patient")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     expected = [{'gender': 'F', 'age': 16},
                 {'gender': 'M', 'weight': 155}]
     assert compare_recordsets(retrieved_records, expected)
 
     # Add a node with no attributes
     empty_record_id = db.create_node("patient")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     expected = [{'gender': 'F', 'age': 16},
                 {'gender': 'M', 'weight': 155},
                 {}]
     assert compare_recordsets(retrieved_records, expected)
 
     match = db.find(labels="patient", properties={"age": 16})
-    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record == {'gender': 'F', 'age': 16}
 
     match = db.find(labels="patient", properties={"age": 11})
-    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record is None      # No record found
 
     match = db.find(labels="patient", neo_id=empty_record_id)
-    retrieved_single_record = db.fetch_nodes(match, single_row=True)
+    retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record == {}        # Record with no attributes found
 
 
@@ -469,10 +480,6 @@ def test_get_df(db):
 
     assert df_original_sorted.equals(df_new_sorted)
 
-
-
-def test_is_valid_match_structure(db):
-    pass
 
 
 def test_find(db):
@@ -549,6 +556,14 @@ def test_find(db):
     with pytest.raises(Exception):
         # Bad key name "n_par_1", which conflicts with an internally-used name
         assert db.find(labels="person", properties={"gender": "F"}, subquery=["n.income > $n_par_1", {"n_par_1": 90000}])
+
+
+
+def test_get_node_labels(db):
+    #TODO
+    pass
+
+
 
 
 
@@ -671,6 +686,7 @@ def test_get_parents_and_children(db):
 
 
 
+
 ###  ~ CREATE NODES ~
 
 def test_create_node(db):
@@ -689,7 +705,7 @@ def test_create_node(db):
     # Retrieve the record just created (one method, with values embedded in the Cypher query)
     match = db.find(labels="test_label", subquery="n.`patient id` = 123 AND n.gender = 'M'")
 
-    retrieved_records_A = db.fetch_nodes(match)
+    retrieved_records_A = db.get_nodes(match)
     assert retrieved_records_A == [{'patient id': 123, 'gender': 'M'}]
 
 
@@ -697,7 +713,7 @@ def test_create_node(db):
     db.create_node("test_label", {'patient id': 123, 'gender': 'M', 'condition_id': 'happy'})
 
     # Retrieve cumulative 2 records created so far
-    retrieved_records_B = db.fetch_nodes(match)
+    retrieved_records_B = db.get_nodes(match)
 
     # The lists defining the expected dataset can be expressed in any order - and, likewise, the order of entries in dictionaries doesn't matter
     expected_record_list = [{'patient id': 123, 'gender': 'M'} , {'patient id': 123, 'gender': 'M', 'condition_id': 'happy'}]
@@ -710,7 +726,7 @@ def test_create_node(db):
     # Create a 3rd node with a duplicate of the first new node
     db.create_node("test_label", {'patient id': 123, 'gender': 'M'})
     # Retrieve cumulative 3 records created so far
-    retrieved_records_C = db.fetch_nodes(match)
+    retrieved_records_C = db.get_nodes(match)
     expected_record_list = [{'patient id': 123, 'gender': 'M'} ,
                             {'patient id': 123, 'gender': 'M'} ,
                             {'patient id': 123, 'gender': 'M', 'condition_id': 'happy'}]
@@ -723,7 +739,7 @@ def test_create_node(db):
 
     # Retrieve just this last node
     match = db.find(labels="new_label")
-    retrieved_records_D = db.fetch_nodes(match)
+    retrieved_records_D = db.get_nodes(match)
     expected_record_list = [{}]
     assert compare_recordsets(retrieved_records_D, expected_record_list)
 
@@ -732,17 +748,17 @@ def test_create_node(db):
     db.create_node(["label 1", "label 2"], {'name': "double label"})
     # Look it up by one label
     match = db.find(labels="label 1")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
     # Look it up by the other label
     match = db.find(labels="label 2")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
     # Look it up by both labels
     match = db.find(labels=["label 1", "label 2"])
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
 
@@ -810,14 +826,21 @@ def test_create_node_with_relationships(db):
                      "data_binding": {"n_par_1": "Berkeley"},
                      "dummy_node_name": "n"
                     }
-    result = db.fetch_nodes(match, single_row=True)
+    result = db.get_nodes(match, single_row=True)
     assert result == {'name': 'Berkeley', 'state': 'CA'}
 
     db.delete_nodes(match)
 
     # Try to locate the node just deleted
-    result = db.fetch_nodes(match)
+    result = db.get_nodes(match)
     assert result == []             # No longer there
+
+
+
+def test_create_node_with_children(db):
+    #TODO
+    pass
+
 
 
 
@@ -896,7 +919,7 @@ def test_delete_nodes(db):
 def test_delete_nodes_by_label(db):
     db.delete_nodes_by_label()
     match = db.find()   # Everything in the dbase
-    number_nodes = len(db.fetch_nodes(match))
+    number_nodes = len(db.get_nodes(match))
     assert number_nodes == 0
 
     db.create_node("appetizers", {'name': 'spring roll'})
@@ -905,16 +928,16 @@ def test_delete_nodes_by_label(db):
     db.create_node("fruit", {'type': 'citrus'})
     db.create_node("dessert", {'name': 'chocolate'})
 
-    assert len(db.fetch_nodes(match)) == 5
+    assert len(db.get_nodes(match)) == 5
 
     db.delete_nodes_by_label(delete_labels="fruit")
-    assert len(db.fetch_nodes(match)) == 4
+    assert len(db.get_nodes(match)) == 4
 
     db.delete_nodes_by_label(delete_labels=["vegetable"])
-    assert len(db.fetch_nodes(match)) == 2
+    assert len(db.get_nodes(match)) == 2
 
     db.delete_nodes_by_label(delete_labels=["dessert", "appetizers"])
-    assert len(db.fetch_nodes(match)) == 0
+    assert len(db.get_nodes(match)) == 0
 
     # Rebuild the same dataset as before
     db.create_node("appetizers", {'name': 'spring roll'})
@@ -924,14 +947,14 @@ def test_delete_nodes_by_label(db):
     db.create_node("dessert", {'name': 'chocolate'})
 
     db.delete_nodes_by_label(keep_labels=["dessert", "vegetable", "appetizers"])
-    assert len(db.fetch_nodes(match)) == 4
+    assert len(db.get_nodes(match)) == 4
 
     db.delete_nodes_by_label(keep_labels="dessert", delete_labels="dessert")
     # Keep has priority over delete
-    assert len(db.fetch_nodes(match)) == 4
+    assert len(db.get_nodes(match)) == 4
 
     db.delete_nodes_by_label(keep_labels="dessert")
-    assert len(db.fetch_nodes(match)) == 1
+    assert len(db.get_nodes(match)) == 1
 
 
 
@@ -980,8 +1003,9 @@ def test_empty_dbase(db):
     assert compare_unordered_lists(labels , ["label_4", "label_3"])
     # Doubly-verify that one of the saved nodes can be read in
     match = db.find(labels="label_3")
-    recordset = db.fetch_nodes(match)
+    recordset = db.get_nodes(match)
     assert compare_recordsets(recordset, [{'client_id': 456, 'name': 'Julian'}])
+
 
 
 
@@ -999,7 +1023,7 @@ def test_set_fields(db):
 
     # Look up the updated record
     match = db.find(labels="car")
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     expected_record_list = [{'vehicle id': 123, 'color': 'white', 'price': 7000}]
     assert compare_recordsets(retrieved_records, expected_record_list)
 
@@ -1024,7 +1048,7 @@ def test_get_relationship_types(db):
 
 
 
-def test_add_edge(db):
+def test_add_edges(db):
     db.empty_dbase()
 
     neo_from = db.create_node("car", {'color': 'white'})
@@ -1047,16 +1071,13 @@ def test_add_edge(db):
 
 
 
-def test_remove_edge(db):
+def test_remove_edges(db):
     db.empty_dbase()
 
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
 
-    match_car = db.find(neo_id=neo_car, dummy_node_name="from")
-    match_julian = db.find(neo_id=neo_julian, dummy_node_name="to")
-
-    number_added = db.add_edges(match_car, match_julian, rel_name="OWNED_BY")
+    number_added = db.add_edges(neo_car, neo_julian, rel_name="OWNED_BY")
     assert number_added == 1
 
     match_car = db.find(labels="car", dummy_node_name="from")
@@ -1190,7 +1211,7 @@ def test_remove_edge(db):
     assert result[0]["n_relationships"] == 0    # All gone
 
 
-def test_remove_edge_2(db):
+def test_remove_edges_2(db):
     # This set of test focuses on removing edges between GROUPS of nodes
     db.empty_dbase()
 
@@ -1225,6 +1246,37 @@ def test_remove_edge_2(db):
     result = db.query(find_query)
     assert result[0]["n_relationships"] == 0       # The 2 links from the white car are now gone
 
+
+
+def test_edges_exists(db):
+    db.empty_dbase()
+
+    neo_car = db.create_node("car", {'color': 'white'})
+    neo_julian = db.create_node("owner", {'name': 'Julian'})
+
+    assert not db.edges_exists(neo_car, neo_julian, rel_name="OWNED_BY")    # No relationship exists yet
+
+    db.add_edges(neo_car, neo_julian, rel_name="OWNED_BY")
+    assert db.edges_exists(neo_car, neo_julian, rel_name="OWNED_BY")        # By now, it exists
+    assert not db.edges_exists(neo_julian, neo_car, rel_name="OWNED_BY")    # But not in the reverse direction
+    assert not db.edges_exists(neo_car, neo_julian, rel_name="DRIVEN_BY")   # Nor by a different name
+
+    db.add_edges(neo_car, neo_julian, rel_name="DRIVEN_BY")
+    assert db.edges_exists(neo_car, neo_julian, rel_name="DRIVEN_BY")       # Now it exists
+
+    db.remove_edges(neo_car, neo_julian, rel_name="DRIVEN_BY")
+    assert not db.edges_exists(neo_car, neo_julian, rel_name="DRIVEN_BY")   # Now it's gone
+
+    neo_sailboat = db.create_node("sailboat", {'type': 'sloop', 'color': 'white'})
+    db.add_edges(neo_julian, neo_sailboat, rel_name="SAILS")
+    assert db.edges_exists(neo_julian, neo_sailboat, rel_name="SAILS")
+
+    match_vehicle = db.find(properties={'color': 'white'})                  # To select both car and boat
+    assert db.edges_exists(neo_julian, match_vehicle, rel_name="SAILS")
+
+    assert not db.edges_exists(neo_car, neo_car, rel_name="SELF_DRIVES")    # A relationship from a node to itself
+    db.add_edges(neo_car, neo_car, rel_name="SELF_DRIVES")
+    assert db.edges_exists(neo_car, neo_car, rel_name="SELF_DRIVES")
 
 
 
@@ -1421,6 +1473,7 @@ def test_drop_all_indexes(db):
 
 
 
+
 ###  ~ CONSTRAINTS ~
 
 def test_get_constraints(db):
@@ -1533,45 +1586,45 @@ def test_load_pandas(db):
     df = pd.DataFrame([[123]], columns = ["col1"])  # One row, one column
     db.load_pandas(df, "A")
     match_A = db.find(labels="A")
-    result = db.fetch_nodes(match_A)
+    result = db.get_nodes(match_A)
     assert result == [{'col1': 123}]
 
     df = pd.DataFrame([[999]], columns = ["col1"])
     db.load_pandas(df, "A")
-    result = db.fetch_nodes(match_A)
+    result = db.get_nodes(match_A)
     expected = [{'col1': 123}, {'col1': 999}]
     assert compare_recordsets(result, expected)
 
     df = pd.DataFrame([[2222]], columns = ["col2"])
     db.load_pandas(df, "A")
-    result = db.fetch_nodes(match_A)
+    result = db.get_nodes(match_A)
     expected = [{'col1': 123}, {'col1': 999}, {'col2': 2222}]
     assert compare_recordsets(result, expected)
 
     df = pd.DataFrame([[3333]], columns = ["col3"])
     db.load_pandas(df, "B")
-    A_nodes = db.fetch_nodes(match_A)
+    A_nodes = db.get_nodes(match_A)
     expected_A = [{'col1': 123}, {'col1': 999}, {'col2': 2222}]
     assert compare_recordsets(A_nodes, expected_A)
     match_B = db.find(labels="B")
-    B_nodes = db.fetch_nodes(match_B)
+    B_nodes = db.get_nodes(match_B)
     assert B_nodes == [{'col3': 3333}]
 
     db.load_pandas(df, "B")    # Re-add the same record
-    B_nodes = db.fetch_nodes(match_B)
+    B_nodes = db.get_nodes(match_B)
     assert B_nodes == [{'col3': 3333}, {'col3': 3333}]
 
     # Add a 2x2 dataframe
     df = pd.DataFrame({"col3": [100, 200], "name": ["Jack", "Jill"]})
     db.load_pandas(df, "A")
-    A_nodes = db.fetch_nodes(match_A)
+    A_nodes = db.get_nodes(match_A)
     expected = [{'col1': 123}, {'col1': 999}, {'col2': 2222}, {'col3': 100, 'name': 'Jack'}, {'col3': 200, 'name': 'Jill'}]
     assert compare_recordsets(A_nodes, expected)
 
     # Change the column names during import
     df = pd.DataFrame({"alternate_name": [1000]})
     db.load_pandas(df, "B", rename={"alternate_name": "col3"})     # Map "alternate_name" into "col3"
-    B_nodes = db.fetch_nodes(match_B)
+    B_nodes = db.get_nodes(match_B)
     expected_B = [{'col3': 3333}, {'col3': 3333}, {'col3': 1000}]
     assert compare_recordsets(B_nodes, expected_B)
 
@@ -1579,7 +1632,7 @@ def test_load_pandas(db):
     df = pd.DataFrame({"patient_id": [100, 200], "name": ["Jack", "Jill"]})
     db.load_pandas(df, "X")
     match_X = db.find(labels="X")
-    X_nodes = db.fetch_nodes(match_X)
+    X_nodes = db.get_nodes(match_X)
     expected_X = [{'patient_id': 100, 'name': 'Jack', }, {'patient_id': 200, 'name': 'Jill'}]
     assert compare_recordsets(X_nodes, expected_X)
 
@@ -1601,9 +1654,67 @@ def test_debug_print(db):
 
 
 
+def test_debug_trim(db):
+    assert db.debug_trim("hello") == "hello"
+    assert db.debug_trim(44) == "44"
+    assert db.debug_trim("1234567890", max_len=5) == "12345 ..."
+
+
+def test_debug_trim_print(db):
+    pass    # TODO
+
+
+
+def test_indent_chooser(db):
+    pass    # TODO
+
+
 
 
 #####################   For the "CypherUtils" class   #################
+
+
+def test_define_match(db):
+    pass    # TODO
+
+
+def test_assert_valid_match_structure(db):
+    with pytest.raises(Exception):
+        assert CypherUtils.assert_valid_match_structure(3)
+
+    with pytest.raises(Exception):
+        assert CypherUtils.assert_valid_match_structure("hello")
+
+    with pytest.raises(Exception):
+        assert CypherUtils.assert_valid_match_structure(["hi there"])
+
+    with pytest.raises(Exception):
+        assert CypherUtils.assert_valid_match_structure({"a": 1, "b": 2, "c": 3, "d": 4})
+
+    with pytest.raises(Exception):
+        assert CypherUtils.assert_valid_match_structure({"node": 1, "where": 2, "data_binding": 3, "dummy_node_name": 4})
+
+    CypherUtils.assert_valid_match_structure({"node": "hi", "where": "there", "data_binding": {}, "dummy_node_name": "the end"})
+
+    match = db.find()
+    CypherUtils.assert_valid_match_structure(match)
+
+
+
+def test_validate_and_standardize(db):
+    pass    # TODO
+
+
+
+def test_unpack_match(db):
+    pass    # TODO
+
+
+
+def test_check_match_compatibility(db):
+    pass    # TODO
+
+
 
 def test_prepare_labels():
     lbl = ""
@@ -1615,6 +1726,10 @@ def test_prepare_labels():
     lbl = ["car", "car manufacturer"]
     assert CypherUtils.prepare_labels(lbl) == ":`car`:`car manufacturer`"
 
+
+
+def test_combined_where(db):
+    pass    # TODO
 
 
 def test_prepare_where():
@@ -1635,6 +1750,11 @@ def test_prepare_where():
 
     with pytest.raises(Exception):
         assert CypherUtils.prepare_where(123)    # Not a string, nor tuple, nor list
+
+
+
+def test_combined_data_binding(db):
+    pass    # TODO
 
 
 

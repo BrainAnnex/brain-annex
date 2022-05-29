@@ -8,6 +8,7 @@ Note: this main program may also be started from the CLI with the "flask run" co
 
 
 from flask import Flask
+import os
 
 
 ### Import sub-modules making up this web app:
@@ -123,9 +124,15 @@ app.secret_key = b"pqE3_t(4!x"
 
 
 
-###  Fire up the web app.
-###  IMPORTANT : COMMENT OUT ALL THE LINES BELOW DURING DEPLOYMENT, to start the webapp from the CLI
-debug_mode = True
-print(f" * SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
-app.run(debug=debug_mode, port=PORT_NUMBER)   # CORE of UI : transfer control to the "Flask object"
-                                              # This  will start a local WSGI server.  Threaded mode is enabled by default
+###  Fire up the web app
+
+if os.environ.get("FLASK_APP"):
+    # Remote deployment.  The web app is started from the CLI,
+    # with the command "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
+    print(f" * Remote deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:{PORT_NUMBER}/BA/pages/admin")
+else:
+    # Local deployment.  The web app is started by running this main.py
+    debug_mode = True
+    print(f" * Local deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
+    app.run(debug=debug_mode, port=PORT_NUMBER)     # CORE of UI : transfer control to the "Flask object"
+    # This  will start a local WSGI server.  Threaded mode is enabled by default

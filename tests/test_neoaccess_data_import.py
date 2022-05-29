@@ -23,7 +23,7 @@ def test_create_nodes_from_python_data_1(db):
     new_id_list = db.create_nodes_from_python_data(data, root_labels="literal")
     assert len(new_id_list) == 1
     new_id = new_id_list[0]
-    result = db.fetch_nodes(match=new_id, single_row=True)
+    result = db.get_nodes(match=new_id, single_row=True)
     assert result == {"value": 123}
     assert db.get_node_labels(new_id) == ["literal"]
 
@@ -34,7 +34,7 @@ def test_create_nodes_from_python_data_1(db):
     new_id_list = db.create_nodes_from_python_data(data, root_labels="dict1")
     assert len(new_id_list) == 1
     new_id = new_id_list[0]
-    result = db.fetch_nodes(match=new_id, single_row=True)
+    result = db.get_nodes(match=new_id, single_row=True)
     assert result == {"a": 123}
     assert db.get_node_labels(new_id) == ["dict1"]
 
@@ -47,7 +47,7 @@ def test_create_nodes_from_python_data_1(db):
     new_id_list = db.create_nodes_from_python_data(data, root_labels="dict2")
     assert len(new_id_list) == 1
     new_id = new_id_list[0]
-    result = db.fetch_nodes(match=new_id, single_row=True)
+    result = db.get_nodes(match=new_id, single_row=True)
     print(result)
     assert result == {'name': 'Joe', 'sales': True, 'salary': 52000, 'performance scale': 3.4}
     assert db.get_node_labels(new_id) == ["dict2"]
@@ -59,7 +59,7 @@ def test_create_nodes_from_python_data_1(db):
     new_id_list = db.create_nodes_from_python_data(data, root_labels="list1")
     extracted_data = []
     for new_id in new_id_list:
-        result = db.fetch_nodes(match=new_id, single_row=True)
+        result = db.get_nodes(match=new_id, single_row=True)
         print(result)
         assert db.get_node_labels(new_id) == ["list1"]
         assert len(result) == 1
@@ -72,7 +72,7 @@ def test_create_nodes_from_python_data_1(db):
     new_id_list = db.create_nodes_from_python_data(data, root_labels="list2")
     extracted_data = []
     for new_id in new_id_list:
-        result = db.fetch_nodes(match=new_id, single_row=True)
+        result = db.get_nodes(match=new_id, single_row=True)
         print(result)
         assert db.get_node_labels(new_id) == ["list2"]
         assert len(result) == 1

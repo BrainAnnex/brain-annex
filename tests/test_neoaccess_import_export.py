@@ -298,7 +298,7 @@ def test_import_json_data(db):
     details = db.import_json_dump(json)
     assert details == "Successful import of 1 node(s) and 0 relationship(s)"
     match = db.find(labels="User", properties={"name": "Eve"})
-    retrieved_records = db.fetch_nodes(match)
+    retrieved_records = db.get_nodes(match)
     assert len(retrieved_records) == 1
 
     # TODO: extend

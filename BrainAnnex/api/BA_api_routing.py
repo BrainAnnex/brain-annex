@@ -19,6 +19,26 @@ import shutil
 class ApiRouting:
     """
     Setup, routing and endpoints for all the web pages served by this module
+
+    SECTIONS:
+        - UTILITY methods
+        - For DEBUGGING
+        - ROUTING:
+            * SCHEMA-related (reading)
+            * SCHEMA-related (creating)
+            * CONTENT-ITEM MANAGEMENT
+                VIEWING CONTENT ITEMS
+                MODIFYING EXISTING CONTENT ITEMS
+            * CATEGORY-RELATED
+                POSITIONING WITHIN CATEGORIES
+            * FILTERS
+            * IMPORT-EXPORT  (upload/download)
+            * EXPERIMENTAL
+
+
+
+
+        (TODO: complete)
     """
 
     # Module-specific parameters (as class variables)
@@ -171,6 +191,7 @@ class ApiRouting:
         for k, v in post_data.items():
             print("    ", k , " -> " , v)   # TODO: if v is a string, put quotes around it
         print("-----------")
+
 
 
 
@@ -554,8 +575,9 @@ class ApiRouting:
 
         ################   VIEWING CONTENT ITEMS   ################
 
-        @bp.route('/simple/get_media/<item_id>')
-        def get_media(item_id) -> str:
+        @bp.route('/simple/get_media/<item_id_str>')
+        @login_required
+        def get_media(item_id_str) -> str:
             """
             Retrieve and return the contents of a text media item (for now, just "notes"),
             including the request status
@@ -564,22 +586,50 @@ class ApiRouting:
             """
             #sleep(1)    # For debugging
 
-            status, content = APIRequestHandler.get_content("n", int(item_id))
-        
-            if status is False:
-                err_details = f"Unable to retrieve note id {item_id} : {content}"
+            try:
+                item_id = int(item_id_str)
+                payload = APIRequestHandler.get_text_media_content(item_id, "n")
+                response = cls.SUCCESS_PREFIX + payload
+            except Exception as ex:
+                err_details = f"Unable to retrieve the requested note: {ex}"
                 print(f"get_media() encountered the following error: {err_details}")
-                return_value = cls.ERROR_PREFIX + err_details
-            else:
-                return_value = cls.SUCCESS_PREFIX + content
-                #print(f"get_media() is returning the following text [first 30 chars]: `{return_value[:30]}`")
+                response = cls.ERROR_PREFIX + err_details
+
+                #print(f"get_media() is returning the following text [first 30 chars]: `{response[:30]}`")
         
-            return return_value
+            return response
+
+
+
+        @bp.route('/simple/remote_access_note/<item_id_str>')
+        def remote_access_note(item_id_str) -> str:     # NO LOGIN REQUIRED
+            """
+            Similar to get_media(), but:
+                1) no login required
+                2) specifically for notes
+                3) it only serves items marked as "public"
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/simple/remote_access_note/123
+            """
+
+            try:
+                item_id = int(item_id_str)
+                payload = APIRequestHandler.get_text_media_content(item_id, "n", public_required=True)
+                response = cls.SUCCESS_PREFIX + payload
+            except Exception as ex:
+                err_details = f"Unable to retrieve the requested note: {ex}"
+                print(f"remote_access_note() encountered the following error: {err_details}")
+                response = cls.ERROR_PREFIX + err_details
+
+            #print(f"remote_access_note() is returning the following text [first 30 chars]: `{response[:30]}`")
+
+            return response
 
 
 
         @bp.route('/simple/serve_media/<item_id>')
         @bp.route('/simple/serve_media/<item_id>/<th>')
+        @login_required
         def serve_media(item_id, th=None):
             """
             Retrieve and return the contents of a data media item (for now, just images or documents)
@@ -922,7 +972,7 @@ class ApiRouting:
                                                 rel_name=rel_name)       # Category-specific action
 
                 NeoSchema.add_data_relationship(from_id=from_id, to_id=to_id,
-                                                rel_name=rel_name, labels="BA")
+                                                rel_name=rel_name, id_type="item_id")
 
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
