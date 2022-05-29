@@ -112,7 +112,7 @@ class NeoSchema:
     data_class_rel = "SCHEMA"           # The name to use for the relationships from data nodes to `Property` nodes
                                         #       Alt. name ideas: "IS", "HAS_CLASS", "HAS_SCHEMA", "TYPE", "TYPE_OF"
 
-    debug = True                       # Flag indicating whether a debug mode is to be used by all methods of this class
+    debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
                                         #       (currently, in very limited use)
 
 

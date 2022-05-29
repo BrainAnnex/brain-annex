@@ -172,7 +172,7 @@ class Home:
 
             #user_id_as_int = flask_user_id         # In my test, this also worked if User.get_id is changed to return an integer
 
-            print("Inside callback function load_user().  flask_user_id = ", flask_user_id, " , with integer representation : ", user_id_as_int)
+            print(f"Inside callback function load_user().  flask_user_id = `{flask_user_id}` , with integer representation : {user_id_as_int}")
 
             return cls.user_handle.fetch_user_obj(user_id_as_int)
 

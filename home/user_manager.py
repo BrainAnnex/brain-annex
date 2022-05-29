@@ -157,10 +157,11 @@ class UserManagerNeo4j:
         """
 
         # Query the database to get back a list of values for User ID's (ideally, exactly 1)
-        match = cls.db.find(labels="User Login", properties={"username": username, "password": password})
+        credentials = {"username": username, "password": password}
+        match = cls.db.find(labels="User Login", properties=credentials)
         result_list = cls.db.get_single_field(match=match, field_name="user_id")
 
-        print("In check_login_credentials(): list of matching User ID's", result_list)
+        print("In check_login_credentials(). List of matching User ID's:", result_list)
 
         if len(result_list) == 1:
             user_id = result_list[0]
@@ -168,4 +169,5 @@ class UserManagerNeo4j:
             return user_id
         else:
             print("In check_login_credentials(): failed validation of user credentials. No matches or more than one")
+            print(f"Credentials used in database query: {credentials}")
             return -1           # Unsuccessful login
