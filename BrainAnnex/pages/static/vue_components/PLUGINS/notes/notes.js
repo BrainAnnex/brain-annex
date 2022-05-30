@@ -17,7 +17,7 @@ Vue.component('vue-plugin-n',
             <!-- Show when NOT in editing mode  -->
             <div class="notes" v-if="!editing_mode" v-html="body_of_note">
                 <!-- Body of Note, and status of last edit  -->
-                <span v-bind:class="{'n-waiting': waiting_mode}">{{status}}</span>
+                <span v-bind:class="{'n-waiting': waiting}">{{status}}</span>
             </div>
 
 
@@ -78,8 +78,8 @@ Vue.component('vue-plugin-n',
                 // Clone, used to restore the data in case of a Cancel or failed save
                 original_data: Object.assign({}, this.item_data),
 
-                waiting_mode: true,         // Flag to indicate whether the Note is still being fetched from the server
-                save_waiting_mode: false,   // To distinguish from waiting_mode (from fetching value)
+                waiting: true,         // Flag to indicate whether the Note is still being fetched from the server
+                save_waiting_mode: false,   // To distinguish from waiting (from fetching value)
                 error_indicator: false,
                 status: ""
             }
@@ -135,7 +135,7 @@ Vue.component('vue-plugin-n',
             {
                 console.log("In get_note. Item to look up : `" + item_data.item_id + "`");
 
-                this.waiting_mode = true;
+                this.waiting = true;
 
                 // Prepare a URL to communicate with the server's endpoint
                 url_server = "/BA/api/simple/get_media/" + item_data.item_id;
@@ -159,7 +159,7 @@ Vue.component('vue-plugin-n',
                 else  {             // Server reported FAILURE
                     this.body_of_note = "Unable to retrieve note contents. " + error_message;
                 }
-                this.waiting_mode = false;
+                this.waiting = false;
 
             }, // finish_get_note
 
@@ -331,7 +331,7 @@ Vue.component('vue-plugin-n',
                 }
 
 
-                this.save_waiting_mode = true;
+                this.save_waiting = true;
                 this.error_indicator = false;   // Clear possible past message
 
                 //console.log("In 'vue-plugin-n', do_box_save().  post_obj: ", post_obj);
@@ -393,7 +393,7 @@ Vue.component('vue-plugin-n',
                 this.body_of_note = boxValue;   // Set the Note content (to either the new value or the restored old value)
 
                 this.editing_mode = false;      // Exit the editing mode
-                this.save_waiting_mode = false;
+                this.save_waiting = false;
 
                 //console.log("attempting to reload mathjax just before exiting finish_save()");
                 //this.reload_mathjax();    // NOT WORKING! [Presumably b/c Vue then refreshes the page from the change in this.editing_mode]
