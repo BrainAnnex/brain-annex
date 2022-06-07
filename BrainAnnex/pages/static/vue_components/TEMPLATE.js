@@ -15,7 +15,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
             <!-- Status info -->
             <span v-if="waiting" class="waiting">Performing the requested operation... [OR A MORE SPECIFIC DESCRIPTION]</span>
-            <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+            <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
 
             </div>		<!-- End of outer container -->
             `,
@@ -24,7 +24,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
         data: function() {
             return {
-                my_count: 0,
+                count: 0,
                 nickname: this.some_data_a,
 
                 waiting: false,         // Whether any server request is still pending
@@ -46,7 +46,9 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
         mounted() {
-           //console.log('The component is now mounted');
+            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component
+             */
+            //console.log('The component is now mounted');
         },
 
 
@@ -78,7 +80,8 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             {
                 // Send the request to the server, using a POST
                 let url_server = "/BA/api/SOME_API_ENDPOINT";
-                let post_obj = {item_id: record_id, rel_name: rel_name, dir: dir};
+                let my_var = "some value";
+                let post_obj = {my_var: my_var};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
 
@@ -91,7 +94,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                             {payload_type: "JSON",
                              post_obj: post_obj,
                              callback_fn: this.finish_get_linked_records_from_server,
-                             custom_data: [rel_name, dir]});
+                             custom_data: [my_var]});
             },
 
             finish_get_data_from_server(success, server_payload, error_message, custom_data)

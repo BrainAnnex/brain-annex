@@ -34,11 +34,6 @@ class ApiRouting:
             * FILTERS
             * IMPORT-EXPORT  (upload/download)
             * EXPERIMENTAL
-
-
-
-
-        (TODO: complete)
     """
 
     # Module-specific parameters (as class variables)
@@ -615,7 +610,13 @@ class ApiRouting:
             try:
                 item_id = int(item_id_str)
                 payload = APIRequestHandler.get_text_media_content(item_id, "n", public_required=True)
-                response = cls.SUCCESS_PREFIX + payload
+
+                text_response = cls.SUCCESS_PREFIX + payload
+                response = make_response(text_response)
+                response.headers['Access-Control-Allow-Origin'] = '*'   # This will send the header line: "Access-Control-Allow-Origin: *"
+                                                                        # without it, web clients on other domains won't be able to use the payload!
+                                                                        # An alternative to '*' would be a site name, such as  'https://foo.example'
+
             except Exception as ex:
                 err_details = f"Unable to retrieve the requested note: {ex}"
                 print(f"remote_access_note() encountered the following error: {err_details}")

@@ -2,7 +2,7 @@
     ----------------------------------------------------------------------------------
 	MIT License
 
-    Copyright (c) 2021 Julian A. West
+    Copyright (c) 2021-22 Julian A. West
 
     This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -56,7 +56,7 @@ class ServerCommunication
                                 (disregarded if a non-empty post_obj was passed,
                                  i.e. post_obj has higher priority over post_obj)
 
-            payload_type:   Either "TEXT" or "JSON" - optional, by default "TEXT"
+            payload_type:   Either "TEXT" or "JSON" - optional; by default "TEXT"
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data     If present, it is passed as a final argument to the callback function
 

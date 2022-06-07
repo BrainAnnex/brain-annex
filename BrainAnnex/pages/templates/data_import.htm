@@ -54,24 +54,26 @@
         &nbsp;&nbsp;
         or without Schema        <input type="radio" value="NO_SCHEMA" v-model="use_schema"><br><br>
 
-        <template v-if="use_schema=='SCHEMA'">
-            <select  v-model="schema_class">
-                <option value='-1'>[Choose an existing Class]</option>
-                <template v-for="item in all_class_names">
-                    <option>[[item]]</option>
-                </template>
-            </select>
+        <div style="margin-left:25px">
+            <template v-if="use_schema=='SCHEMA'">
+                <select  v-model="schema_class">
+                    <option value='-1'>[Choose an existing Class]</option>
+                    <template v-for="item in all_class_names">
+                        <option>[[item]]</option>
+                    </template>
+                </select>
 
-            <label style="color:gray"> schema class to use for the top-level element(s)</label>
-        </template>
+                <label style="color:gray"> schema class to use for the top-level element(s)</label>
+            </template>
 
-        <template v-else>
-            <input type="text" size="35" v-model="import_root_label">
-            <label style="color:gray"> label to use on root node(s) of import</label>
-        </template>
+            <template v-else>
+                <input type="text" size="35" v-model="import_root_label">
+                <label style="color:gray"> label to use on root node(s) of import</label>
+            </template>
+        </div>
 
         <br>
-        <button @click=submit_file style="margin-bottom:15px; margin-top:40px; padding:5px">
+        <button @click=submit_file style="margin-bottom:15px; margin-top:40px; padding:10px">
             Import JSON data file
             <template v-if="use_schema=='SCHEMA'">using the Schema</template>
             <template v-else>WITHOUT Schema</template>

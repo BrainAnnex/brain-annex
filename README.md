@@ -1,4 +1,4 @@
-# Brain Annex, version 5.0-beta15.1
+# Brain Annex, version 5.0-beta16
 
 **Version 5** of is a *complete overhaul* of Brain Annex's  internal structure:
 
@@ -149,19 +149,29 @@ EXAMPLE (on Linux): do nothing. Just use `/tmp/`
 
 **Brain Annex Configuration**
 
-Edit main.py (for example, open with "notepad" on Windows, or  `sudo vim` on Linux),  
-in the part where it says "CONFIGURABLE PARAMETERS", to set values for:
+Duplicate the file `config.defaults.ini` and rename the copy as `config.ini`
 
--  `MEDIA_FOLDER` (where the images, formatted text, documents, etc, are stored)  
+Edit `config.ini` (for example, open with "notepad" on Windows, or  `sudo vim` on Linux),  
+to change, as needed, values for:
+
+- `NEO4J_HOST` (the default `neo4j://localhost:7687` is for situations when the databse is on the same machine;
+if it is on another machine, use values such as `bolt://123.456.0.29:7687` or `bolt://your_domain.com:7687`)
+
+- `NEO4J_USER`
+- `NEO4J_PASSWORD`
+
+- `MEDIA_FOLDER` (where the images, formatted text, documents, etc, are stored)  
    EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/media/"`  
    EXAMPLE (on Linux): `MEDIA_FOLDER = "/home/your_user_name/media/"`
 
 - `UPLOAD_FOLDER` (temporary location for uploads)  
-   EXAMPLE (on Windows): `MEDIA_FOLDER = "D:/tmp/"`  
-   EXAMPLE (on Linux): `MEDIA_FOLDER = "/tmp/"`
+   EXAMPLE (on Windows): `UPLOAD_FOLDER = "D:/tmp/"`  
+   EXAMPLE (on Linux): `UPLOAD_FOLDER = "/tmp/"`
 
-- `PORT_NUMBER` (ok keep the default 5000, unless you have a conflict)
+- `PORT_NUMBER` (ok to keep the default 5000, unless you have a conflict)
 
+(Note: an alternate way to set the database credentials is thru environment variables;
+if you're running locally, using PyCharm, you can set the environment variables from Run > Edit Configurations...)
 
 **Install all dependencies in the virtual environment**
 
@@ -197,23 +207,13 @@ In case of failures during the installation, try:
 
 **Starting Brain Annex**
 
-The first order of business is to connect to the Neo4j Database from Python.
-
-To do that, you must set the following Environment Variables:
-
-    NEO4J_HOST
-    NEO4J_USER
-    NEO4J_PASSWORD
-
-_For **LOCAL** installations:_
-
-If you're running locally, using PyCharm, you can set the environment variables from Run > Edit Configurations...  
-(Example, if dbase is on the same machine:    `NEO4J_PASSWORD=your_passwd;NEO4J_USER=neo4j;NEO4J_HOST=neo4j://localhost:7687`)  
-(Example, if dbase is on a different machine: `NEO4J_PASSWORD=your_passwd;NEO4J_USER=neo4j;NEO4J_HOST=bolt://123.123.123.123:7687`)
+The first order of business is to test the connection to the Neo4j Database from Python.
 
 IMPORTANT: did you remember to start the Neo4j server?
 
-At this point, just run `main.py`, which starts Flask and the included Werkzeug web server.
+_For **LOCAL** installations:_
+
+Run `main.py`, which starts Flask and the included Werkzeug web server.
 If it doesn't find the database (e.g., if you forgot to start Neo4j),
 it'll give you an error message such as:
 "Exception: CHECK WHETHER NEO4J IS RUNNING!"
@@ -233,12 +233,7 @@ On a Linux server, you can do:
     
     (venv) $ export PYTHONPATH=$PYTHONPATH:`pwd`/venv/lib/python3.8/site-packages   [OR 3.7, depending which one you have]
     (venv) $ python3 diagnostics.py    (just for testing, if desired; make sure that '/brain_annex' appears in the sys.path)
-    
-    [In the next 3 lines, change the values based on your Neo4j installation]
-    (venv) $ export NEO4J_USER="neo4j"
-    (venv) $ export NEO4J_HOST="neo4j://localhost:7687"  (if dbase is on the same machine), OR  NEO4J_HOST="bolt://123.123.123.123:7687" if located elsewhere
-    (venv) $ export NEO4J_PASSWORD="your_passwd"
-    
+     
     (venv) $ python3 tests/tests_manual/db_connection_1_MANUAL.py       (just for testing, if desired)
     (venv) $ python3 tests/tests_manual/db_connection_2_MANUAL.py       (just for testing, if desired)
         

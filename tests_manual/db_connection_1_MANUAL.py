@@ -3,7 +3,7 @@
 import os
 from BrainAnnex.modules.neo_access.neo_access import NeoAccess
 
-print("About to test the database connection...  Enter the host IP: (EXAMPLES:  bolt://1.2.3.4  OR  neo4j://localhost)")
+print("About to test the database connection...  Enter the host IP: (EXAMPLES:  bolt://1.2.3.4  OR  neo4j://localhost )\n")
 host = input()
 host += ":7687"
 print("Enter the password:")
