@@ -6,9 +6,9 @@ MAIN PROGRAM : it starts up a server for web User Interface and an API
 Note: this main program may also be started from the CLI with the "flask run" command
 """
 
-
-from flask import Flask
 import os
+from flask import Flask
+from configparser import ConfigParser
 
 
 ### Import sub-modules making up this web app:
@@ -37,18 +37,61 @@ from BrainAnnex.initialize import InitializeBrainAnnex
 
 
 #################################################################################
-#        CONFIGURABLE PARAMETERS (TODO: move to a separate config file)         #
-#        CHANGE AS NEEDED!                                                      #
+#                                                                               #
+#               IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS                 #
+#                                                                               #
 #################################################################################
 
-# Location where the media for Content Items is stored.  Use forward slashes even on Windows.  End name with "/"
-MEDIA_FOLDER = "D:/media/"
-# IMPORTANT: for now, the media folder MUST include a subfolder called "resized"
+def extract_par(name, d, display=True) -> str:
+    if name not in d:
+        raise Exception(f"The configuration file needs a line with a value for {name}")
+    value = d[name]
+    if display:
+        print(f"{name}: {value}")
+    else:
+        print(f"{name}: *********")
 
-# Temporary location for uploads.  End name with "/"
-UPLOAD_FOLDER = "D:/tmp/"
+    return value
+#########################################
 
-PORT_NUMBER = 5000      # The Flask default is 5000
+config = ConfigParser()
+
+# Attempt to import parameters from the default config file first, then from 'config.ini'
+# (possibly overwriting some or all values from the default config file)
+found_files = config.read(['config.defaults.ini', 'config.ini'])
+#print("found_files: ", found_files)    # This will be a list of the names of the files that were found
+
+if found_files == []:
+    raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
+
+if found_files == ['config.defaults.ini']:
+    raise Exception("Only found a DEFAULT version of the config file ('config.defaults.ini'); make sure to duplicate it, name it 'config.ini' and personalize it")
+
+if found_files == ['config.ini']:
+    print("A local, personalized, version of the config file found ('config.ini'); all configuration will be based on this file")
+else:
+    print("Two config files found: anything in 'config.ini' will over-ride any counterpart in 'config.defaults.ini'")
+
+
+#print ("Sections found in config file(s): ", config.sections())
+
+if "SETTINGS" not in config:
+    raise Exception("Incorrectly set up configuration file - the following line should be present at the top: [SETTINGS]")
+
+SETTINGS = config['SETTINGS']
+
+NEO4J_HOST = extract_par("NEO4J_HOST", SETTINGS)
+NEO4J_USER = extract_par("NEO4J_USER", SETTINGS)
+NEO4J_PASSWORD = extract_par("NEO4J_PASSWORD", SETTINGS, display=False)
+MEDIA_FOLDER = extract_par("MEDIA_FOLDER", SETTINGS)
+UPLOAD_FOLDER = extract_par("UPLOAD_FOLDER", SETTINGS)
+PORT_NUMBER = extract_par("PORT_NUMBER", SETTINGS)       # The Flask default is 5000
+
+try:
+    PORT_NUMBER = int(PORT_NUMBER)
+except Exception:
+    raise Exception(f"The passed value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
+
 
 # END OF CONFIGURABLE PART
 
@@ -61,7 +104,7 @@ PORT_NUMBER = 5000      # The Flask default is 5000
 
 ### INITIALIZATION of various static classes that need the database object
 #   (to avoid multiple dbase connections)
-APP_NEO4J_DBASE = neo_access.NeoAccess()
+APP_NEO4J_DBASE = neo_access.NeoAccess(host=NEO4J_HOST, credentials=(NEO4J_USER, NEO4J_PASSWORD))
 
 InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
 InitializeBrainAnnex.set_media_folder(MEDIA_FOLDER)

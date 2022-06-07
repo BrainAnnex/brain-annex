@@ -4,13 +4,14 @@ import neo4j.graph                                      # To check returned data
 import numpy as np
 import pandas as pd
 import os
+import sys
 import json
 from typing import Union, List
 
 
 class NeoAccess:
     """
-    VERSION 3.7
+    VERSION 3.7.1
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -95,55 +96,82 @@ class NeoAccess:
         If unable to create a Neo4j driver object, raise an Exception
         reminding the user to check whether the Neo4j database is running
 
-        :param host:        URL to connect to database with.  DEFAULT: read from NEO4J_HOST environmental variable
+        :param host:        URL to connect to database with.
+                                EXAMPLES: bolt://123.456.0.29:7687  ,  bolt://your_domain.com:7687  ,  neo4j://localhost:7687
+                                DEFAULT: read from NEO4J_HOST environmental variable
         :param credentials: Pair of strings (tuple or list) containing, respectively, the database username and password
-                            DEFAULT: read from NEO4J_USER and NEO4J_PASSWORD environmental variables
-                            if None then no authentication is used
+                                DEFAULT: read from NEO4J_USER and NEO4J_PASSWORD environmental variables
         :param apoc:        Flag indicating whether apoc library is used on Neo4j database to connect to
                                 Notes: APOC, if used, must also be enabled on the database.
-                                       The only method currently requiring APOC is export_dbase_json()
+                                The only method currently requiring APOC is export_dbase_json()
         :param debug:       Flag indicating whether a debug mode is to be used by all methods of this class
         :param autoconnect  Flag indicating whether the class should establish connection to database at initialization
 
         TODO: try os.getenv() in lieu of os.environ.get()
         """
         self.debug = debug
-        self.autoconnect = autoconnect
+
         self.host = host
         self.credentials = credentials
-        self.driver = None
+
         self.apoc = apoc
         if self.debug:
-            print ("~~~~~~~~~ Initializing NeoAccess ~~~~~~~~~")
-        if self.autoconnect:    #TODO: add test for autoconnect == False
-            # Attempt to create a driver object
+            print ("~~~~~~~~~ Initializing NeoAccess object ~~~~~~~~~")
+
+        self.driver = None
+        if autoconnect:
+            # Attempt to establish a connection to the Neo4j database, and to create a driver object
             self.connect()
 
 
 
     def connect(self) -> None:
         """
-        Establish a connection to the Neo4j database.
-        In the process, create and save a driver object
+        Attempt to establish a connection to the Neo4j database, using the credentials stored in the object.
+        In the process, create and save a driver object.
         """
         assert self.host, "Host name must be specified in order to connect to the Neo4j database"
-        print(f"Attempting to connect to {self.host}, with username '{self.credentials[0]}'")
+        assert self.credentials, "Neo4j database credentials (username and password) must be specified in order to connect to it"
 
         try:
-            if self.credentials:
-                user, password = self.credentials  # This unpacking will work whether the credentials were passed as a tuple or list
-                self.driver = GraphDatabase.driver(self.host,
-                                                   auth=(user, password))   # Object to connect to Neo4j's Bolt driver for Python
-            else:
-                self.driver = GraphDatabase.driver(self.host,
-                                                   auth=None)               # Object to connect to Neo4j's Bolt driver for Python
-            if self.debug:
-                print(f"Connection to {self.host} established")
+            user, password = self.credentials  # This unpacking will work whether the credentials were passed as a tuple or list
+            print(f"Attempting to connect to Neo4j host '{self.host}', with username '{user}'")
+            self.driver = GraphDatabase.driver(self.host,
+                                               auth=(user, password))   # Object to connect to Neo4j's Bolt driver for Python
+                                                                        # https://neo4j.com/docs/api/python-driver/4.3/api.html#driver
         except Exception as ex:
             error_msg = f"CHECK WHETHER NEO4J IS RUNNING! While instantiating the NeoAccess object, it failed to create the driver: {ex}"
             # In case of sluggish server connection, a ConnectionResetError seems to be generated;
             # TODO: maybe try to detect that, and give a more informative message
             raise Exception(error_msg)
+
+        if self.debug:
+            print(f"Connection to host '{self.host}' established")
+
+        # If we get thus far, the connection to the host was successfully established,
+        # BUT this doesn't prove that we can actually connect to the database;
+        # for example, with bad credentials, the connection to the host can still be established
+        try:
+            self.test_dbase_connection()
+        except Exception as ex:
+            (exc_type, _, _) = sys.exc_info()   # This is for the purpose of giving more informative error messages;
+                                                # for example, a bad database passwd will show "<class 'neo4j.exceptions.AuthError'>"
+            error_msg = f"Unable to access the Neo4j database; " \
+                        f"CHECK THE DATABASE USERNAME/PASSWORD in the credentials your provided: {str(exc_type)} - {ex}"
+            raise Exception(error_msg)
+
+
+
+    def test_dbase_connection(self) -> None:
+        """
+        Attempt to perform a trivial Neo4j query, for the purpose of validating
+        whether a connection to the database is possible.
+        A failure at start time is typically indicative of invalid credentials
+
+        :return:    None
+        """
+        q = "MATCH (n) RETURN n LIMIT 1"
+        self.query(q)
 
 
 
@@ -369,9 +397,9 @@ class NeoAccess:
 
     def update_query(self, cypher: str, cypher_dict=None) -> dict:
         """
-        Run a Cypher query and return statistics about its actions.
+        Run a Cypher query and return statistics about its actions (such number of nodes created, etc.)
         Typical use is for queries that update the database.
-        If the query returns any values, a list of them is also made available, as the value of the key 'returned_data'
+        If the query returns any values, a list of them is also made available, as the value of the key 'returned_data'.
 
         Note: if the query creates nodes and one wishes to obtain their Neo4j internal ID's,
               one can include Cypher code such as "RETURN id(n) AS neo4j_id" (where n is the dummy name of the newly-created node)
@@ -456,7 +484,7 @@ class NeoAccess:
     def get_single_field(self, match: Union[int, dict], field_name: str, order_by=None, limit=None) -> list:
         """
         For situations where one is fetching just 1 field,
-        and one desires a list of those values, rather than a dictionary of records.
+        and one desires a list of the values of that field, rather than a dictionary of records.
         In other respects, similar to the more general get_nodes()
 
         :param match:       EITHER an integer with a Neo4j node id,
@@ -646,7 +674,7 @@ class NeoAccess:
         Note:   NO database operation is actually performed by this function.
                 It merely turns the set of specification into the MATCH part, and (if applicable) the WHERE part,
                 of a Cypher query (using the specified dummy variable name),
-                together with its data-binding dictionary.
+                together with its data-binding dictionary - all "packaged" into a dict that can be passed around.
 
                 The calling functions typically will make use the returned dictionary to assemble a Cypher query,
                 to MATCH all the Neo4j nodes satisfying the specified conditions,

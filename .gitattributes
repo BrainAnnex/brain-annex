@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Add an extra guarantee that one will never export the "config.ini" file even if accidentally added to the repo
+config.ini export-ignore
