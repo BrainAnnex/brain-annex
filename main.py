@@ -93,7 +93,7 @@ except Exception:
     raise Exception(f"The passed value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
 
 
-# END OF CONFIGURABLE PART
+# END OF CONFIGURATION IMPORT
 
 
 
@@ -172,7 +172,7 @@ app.secret_key = b"pqE3_t(4!x"
 if os.environ.get("FLASK_APP"):
     # Remote deployment.  The web app is started from the CLI,
     # with the command "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
-    print(f" * Remote deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:{PORT_NUMBER}/BA/pages/admin")
+    print(f" * Remote deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:PORT_NUMBER_USED_IN_STARTING_UP/BA/pages/admin")
 else:
     # Local deployment.  The web app is started by running this main.py
     debug_mode = True

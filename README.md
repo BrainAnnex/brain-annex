@@ -1,4 +1,4 @@
-# Brain Annex, version 5.0-beta17 IN-PROGRESS
+# Brain Annex, version 5.0-beta16.2
 
 **Version 5** of is a *complete overhaul* of Brain Annex's  internal structure:
 
@@ -218,9 +218,9 @@ If it doesn't find the database (e.g., if you forgot to start Neo4j),
 it'll give you an error message such as:
 "Exception: CHECK WHETHER NEO4J IS RUNNING!"
 
-In case of database-connection problems, you may also try to run the following 2 diagnostic files:
-1. tests/tests_manual/db_connection_1_MANUAL.py
-2. tests/tests_manual/db_connection_2_MANUAL.py
+In case of database-connection problems, you may also try to run the following diagnostic files:
+tests/tests_manual/db_connection_1_MANUAL.py
+tests/tests_manual/db_connection_3_FROM_CONFIG.py
 
 
 _For **SERVER** installations:_
@@ -235,7 +235,7 @@ On a Linux server, you can do:
     (venv) $ python3 diagnostics.py    (just for testing, if desired; make sure that '/brain_annex' appears in the sys.path)
      
     (venv) $ python3 tests/tests_manual/db_connection_1_MANUAL.py       (just for testing, if desired)
-    (venv) $ python3 tests/tests_manual/db_connection_2_MANUAL.py       (just for testing, if desired)
+    (venv) $ python3 tests/tests_manual/db_connection_3_FROM_CONFIG.py  (just for testing, if desired)
         
     (venv) $ export FLASK_APP=main.py
     (venv) $ flask run --host=0.0.0.0 --port 5000 &> flask_log.txt &    (to redirect both stdout and stderr; change port if desired - but 80 won't work)
