@@ -1136,6 +1136,41 @@ class ApiRouting:
 
 
 
+        @bp.route('/bulk_import')   # , methods=['POST']
+        #@login_required
+        def bulk_import() -> str:       # TODO: IN-PROGRESS
+            """
+            Bulk import (for now of JSON files)
+
+            Invoke with the URL: http://localhost:5000/BA/api/bulk_import
+
+            POST FIELDS:
+                TBA                     TBA
+
+            :return:
+            """
+            # Extract the POST values
+            #post_data = request.form
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            #cls.show_post_data(post_data)
+
+            try:
+                #data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                #from_id = cls.str_to_int(data_dict['from'])
+                APIRequestHandler.do_bulk_import()
+
+                response = {"status": "ok"}              # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message":  APIRequestHandler.exception_helper(ex)}    # Error termination
+
+            print(f"bulk_import() is returning: `{response}`")
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
+
+
 
         @bp.route('/import_json_dump', methods=['GET', 'POST'])
         @login_required

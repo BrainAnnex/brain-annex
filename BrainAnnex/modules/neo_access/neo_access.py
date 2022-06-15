@@ -11,7 +11,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 3.7.1
+    VERSION 3.8
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -395,7 +395,7 @@ class NeoAccess:
 
 
 
-    def update_query(self, cypher: str, cypher_dict=None) -> dict:
+    def update_query(self, cypher: str, data_binding=None) -> dict:
         """
         Run a Cypher query and return statistics about its actions (such number of nodes created, etc.)
         Typical use is for queries that update the database.
@@ -411,7 +411,7 @@ class NeoAccess:
                                  } , assuming 123 is the Neo4j internal ID of the newly-created node
 
         :param cypher:      Any Cypher query, but typically one that doesn't return anything
-        :param cypher_dict: Data-binding dictionary for the Cypher query
+        :param data_binding: Data-binding dictionary for the Cypher query
         :return:            A dictionary of statistics (counters) about the query just run
                             EXAMPLES -
                                 {}      The query had no effect
@@ -431,7 +431,7 @@ class NeoAccess:
 
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
-            result = new_session.run(cypher, cypher_dict)
+            result = new_session.run(cypher, data_binding)
             # Note: result is a neo4j.Result iterable object
             #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
 

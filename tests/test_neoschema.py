@@ -173,8 +173,9 @@ def test_unlink_classes(db):
 
 
 
-def test_delete_class(db):
-    pass    # TODO
+def test_delete_class(db):  # IN-PROGRESS
+    NeoSchema.delete_class("I_dont_exist")
+
 
 
 def test_allows_data_nodes(db):

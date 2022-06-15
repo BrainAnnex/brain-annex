@@ -8,6 +8,7 @@ from flask import request, current_app
 from typing import Union
 import sys                  # Used to give better feedback on Exceptions
 import html
+import shutil
 
 """
     MIT License.  Copyright (c) 2021-2022 Julian A. West
@@ -995,6 +996,35 @@ class APIRequestHandler:
         status += return_link
 
         return  status
+
+
+
+
+    @classmethod
+    def do_bulk_import(cls) -> None:
+        """
+
+        :return:
+        """
+        intake_path = "D:/bulk_import_intake/"
+        outtake_path = "D:/bulk_import_done/"
+
+        file_list = os.listdir(intake_path)
+
+        print(file_list)
+
+        for f in file_list:
+            print(f"Processing file `{f}`...")
+
+            src_fullname = f"{intake_path}{f}"
+            dest_fullname = f"{outtake_path}{f}"
+
+            try:
+                print(f"    ...processing complete.  Moving file to folder `{outtake_path}`\n")
+                shutil.move(src_fullname, dest_fullname)
+            except Exception as ex:
+                print(f"Failed move of file `{f}` to destination folder `{outtake_path}`", ex)
+
 
 
 

@@ -3,6 +3,8 @@ MAIN PROGRAM : it starts up a server for web User Interface and an API
     Run this file, and then set the browser to http://localhost:5000/some_url
     (the actual port number is configurable; the URL's are specified in the various modules)
 
+IMPORTANT: first change the config.ini file as needed
+
 Note: this main program may also be started from the CLI with the "flask run" command
 """
 
@@ -70,7 +72,7 @@ if found_files == ['config.defaults.ini']:
 if found_files == ['config.ini']:
     print("A local, personalized, version of the config file found ('config.ini'); all configuration will be based on this file")
 else:
-    print("Two config files found: anything in 'config.ini' will over-ride any counterpart in 'config.defaults.ini'")
+    print("Two config files found: settings in 'config.ini' will over-ride any counterpart in 'config.defaults.ini'")
 
 
 #print ("Sections found in config file(s): ", config.sections())
@@ -172,7 +174,7 @@ app.secret_key = b"pqE3_t(4!x"
 if os.environ.get("FLASK_APP"):
     # Remote deployment.  The web app is started from the CLI,
     # with the command "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
-    print(f" * Remote deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:PORT_NUMBER_USED_IN_STARTING_UP/BA/pages/admin")
+    print(f" * Remote deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:PORT_NUMBER_USED_IN_STARTING_UP")
 else:
     # Local deployment.  The web app is started by running this main.py
     debug_mode = True
