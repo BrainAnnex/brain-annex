@@ -420,26 +420,32 @@ class NeoSchema:
                                      then data nodes may be left without a Schema
         :return:            None.  In case of no node deletion, an Exception is raised
         """
-        if safe_delete:
+        if safe_delete:     # A clause is added in this branch: "WHERE NOT EXISTS (()-[:SCHEMA]->(c))"
             q = '''
-            MATCH (c :CLASS {name: $name})-[:HAS_PROPERTY]->(p :PROPERTY)
+            MATCH (c :CLASS {name: $name})
             WHERE NOT EXISTS (()-[:SCHEMA]->(c))
+            WITH c
+            OPTIONAL MATCH (c)-[:HAS_PROPERTY]->(p :PROPERTY)         
             DETACH DELETE c, p
             '''
         else:
             q = '''
-            MATCH (c :CLASS {name: $name})-[:HAS_PROPERTY]->(p :PROPERTY)
+            MATCH (c :CLASS {name: $name})
+            WITH c
+            OPTIONAL MATCH (c)-[:HAS_PROPERTY]->(p :PROPERTY)
             DETACH DELETE c, p
             '''
         #print(q)
 
         result = cls.db.update_query(q, data_binding={"name": name})
         print("result of update query in delete_class(): ", result)
-        if result.get("nodes_deleted") < 1:     # If no nodes were deleted
+        number_nodes_deleted = result.get("nodes_deleted", 0)   # 0 is given as default value, if not present
+
+        if number_nodes_deleted < 1:     # If no nodes were deleted
             if safe_delete:
-                raise Exception("Nothing was deleted; potential cause: data nodes attached to the Class to delete")
+                raise Exception(f"Nothing was deleted; potential cause: the specified Class (`{name}`) doesn't exist, or data nodes are attached to it")
             else:
-                raise Exception(f"Nothing was deleted; potential cause: the specified Class ({name}) doesn't exist")
+                raise Exception(f"Nothing was deleted; potential cause: the specified Class (`{name}`) doesn't exist")
 
 
 
@@ -509,6 +515,7 @@ class NeoSchema:
         :param class_name:      Name of a Class in the schema
         :param rel_name:        Name of relationship to follow (in the OUTbound direction) from the above Class
         :param enforce_unique:  If True, it raises an Exception if the number of results isn't exactly one
+
         :return:                If enforce_unique is True, return a string with the class name;
                                 otherwise, return a list of names (typically just one)
         """

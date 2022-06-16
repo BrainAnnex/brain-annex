@@ -19,8 +19,8 @@ def db():
 # ************  CREATE SAMPLE SCHEMAS  **************
 
 def create_sample_schema_1():
-    # Schema with patient/result/doctor Classes,
-    # and relationships HAS_RESULT, IS_ATTENDED_BY
+    # Schema with patient/result/doctor Classes (each with some Properties),
+    # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY
 
     sch_1 = NeoSchema.new_class_with_properties(class_name="patient",
                                                 property_list=["name", "age", "balance"])
@@ -39,11 +39,12 @@ def create_sample_schema_1():
 
 
 def create_sample_schema_2():
-    # Class "quotes" with relationship "in_category" to class "Categories"
+    # Class "quotes" with relationship named "in_category" to Class "categories";
+    # each Class has some properties
     sch_1 = NeoSchema.new_class_with_properties(class_name="quotes",
                                                 property_list=["quote", "attribution", "verified"])
 
-    sch_2 = NeoSchema.new_class_with_properties(class_name="Categories",
+    sch_2 = NeoSchema.new_class_with_properties(class_name="categories",
                                                 property_list=["name", "remarks"])
 
     NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="in_category")
@@ -173,8 +174,77 @@ def test_unlink_classes(db):
 
 
 
-def test_delete_class(db):  # IN-PROGRESS
-    NeoSchema.delete_class("I_dont_exist")
+def test_delete_class(db):
+    db.empty_dbase()        # Completely clear the database
+
+    # Nonexistent classes
+    with pytest.raises(Exception):
+        NeoSchema.delete_class("I_dont_exist")
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_class("I_dont_exist", safe_delete=False)
+
+
+    # Classes with no properties and no relationships
+    NeoSchema.create_class("French Vocabulary")
+    NeoSchema.create_class("German Vocabulary")
+
+    NeoSchema.delete_class("French Vocabulary", safe_delete=False)
+    # French should be gone; but German still there
+    assert not NeoSchema.class_name_exists("French Vocabulary")
+    assert NeoSchema.class_name_exists("German Vocabulary")
+
+    NeoSchema.delete_class("German Vocabulary")
+    # Both classes gone
+    assert not NeoSchema.class_name_exists("French Vocabulary")
+    assert not NeoSchema.class_name_exists("German Vocabulary")
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_class("German Vocabulary")     # Was already deleted
+
+
+    # Interlinked Classes with properties, but no data nodes
+    db.empty_dbase()            # Completely clear the database
+    create_sample_schema_1()    # Schema with patient/result/doctor
+    NeoSchema.delete_class("doctor")
+    assert NeoSchema.class_name_exists("patient")
+    assert NeoSchema.class_name_exists("result")
+    assert not NeoSchema.class_name_exists("doctor")
+    # The Class "patient" is still linked to the Class "result"
+    assert NeoSchema.get_linked_class_names(class_name="patient", rel_name="HAS_RESULT") == ["result"]
+
+    NeoSchema.delete_class("patient")
+    assert not NeoSchema.class_name_exists("patient")
+    assert NeoSchema.class_name_exists("result")
+    assert not NeoSchema.class_name_exists("doctor")
+
+    NeoSchema.delete_class("result")
+    assert not NeoSchema.class_name_exists("patient")
+    assert not NeoSchema.class_name_exists("result")
+    assert not NeoSchema.class_name_exists("doctor")
+
+
+    # Interlinked Classes with properties; one of the Classes has an attached data node
+    db.empty_dbase()            # Completely clear the database
+    create_sample_schema_2()    # Schema with quotes and categories
+    NeoSchema.add_data_point(class_name="quotes",
+                             data_dict={"quote": "Comparison is the thief of joy"})
+
+    NeoSchema.delete_class("categories")    # No problem in deleting this Class with no attached data nodes
+    assert NeoSchema.class_name_exists("quotes")
+    assert not NeoSchema.class_name_exists("categories")
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_class("quotes")    # But cannot by default delete Classes with data nodes
+
+    NeoSchema.delete_class("quotes", safe_delete=False)     # Over-ride default protection mechanism
+
+    q = '''
+    MATCH (d :quotes)
+    WHERE NOT EXISTS ((d)-[:SCHEMA]->())
+    RETURN count(d) AS number_orphaned
+    '''
+    assert db.query(q, single_cell="number_orphaned") == 1  # Now there's an "orphaned" data node
 
 
 
