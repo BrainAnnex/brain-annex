@@ -43,7 +43,10 @@ class ApiRouting:
     static_folder = "static"            # Relative to this module's location
 
     MEDIA_FOLDER = None                 # Location where the media for Content Items is stored
-    UPLOAD_FOLDER = None                # Temporary location for uploads    
+    UPLOAD_FOLDER = None                # Temporary location for uploads
+
+    debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
+                                        #       (currently, in very limited use)
 
     #######################################################################################################################
     #                                                                                                                     #
@@ -154,7 +157,7 @@ class ApiRouting:
 
         if required_par_list:
             for par in required_par_list:
-                assert par in data_dict, f"The expected parameter `{par}` in the POST request is missing"
+                assert par in data_dict, f"The expected parameter `{par}` is missing from the POST request"
 
         return data_dict
 
@@ -223,6 +226,58 @@ class ApiRouting:
         #---------------------------------------------#
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
+        @bp.route('/get_properties_by_class_name', methods=['POST'])
+        def get_properties_by_class_name():
+            """
+            Get all Properties of the given Class node (as specified by its name passed as a POST variable),
+            including indirect ones thru chains of outbound "INSTANCE_OF" relationships.
+            Return a JSON object with a list of the Property names of that Class.
+
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/get_properties_by_class_name  -d "class_name=French Vocabulary"
+
+            1 POST FIELD:
+                class_name
+
+            :return:  A JSON with a list of the Property names of the specified Class,
+                      including indirect ones thru chains of outbound "INSTANCE_OF" relationships
+                         EXAMPLE:
+                            {
+                                "payload":  [
+                                              "Notes",
+                                              "English",
+                                              "French"
+                                            ],
+                                "status":   "ok"
+                            }
+            """
+
+            # Extract the POST values
+            post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
+            cls.show_post_data(post_data, "get_properties_by_class_name")
+
+            data_dict = dict(post_data)
+            if "class_name" not in data_dict:
+                response = {"status": "error", "error_message": "The expected POST parameter `class_name` is not present"}
+            else:
+                class_name = data_dict["class_name"]
+                schema_id = NeoSchema.get_class_id(class_name)
+                if schema_id == -1:
+                    response = {"status": "error", "error_message": f"Unable to locate any Class named `{class_name}`"}
+                else:
+                    try:
+                        # Fetch all the Properties
+                        prop_list = NeoSchema.get_class_properties(schema_id, include_ancestors=True)
+                        response = {"status": "ok", "payload": prop_list}
+                    except Exception as ex:
+                        response = {"status": "error", "error_message": str(ex)}
+
+            print(f"get_properties_by_class_name() is returning: `{response}`")
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
         @bp.route('/get_properties/<schema_id>')
         def get_properties(schema_id):
             """
@@ -285,59 +340,6 @@ class ApiRouting:
             return jsonify(response)   # This function also takes care of the Content-Type header
 
 
-        
-        @bp.route('/get_properties_by_class_name', methods=['POST'])
-        def get_properties_by_class_name():
-            """
-            Get all Properties of the given Class node (as specified by its name passed as a POST variable),
-            including indirect ones thru chains of outbound "INSTANCE_OF" relationships.
-            Return a JSON object with a list of the Property names of that Class.
-        
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/get_properties_by_class_name  -d "class_name=French Vocabulary"
-        
-            1 POST FIELD:
-                class_name
-        
-            :return:  A JSON with a list of the Property names of the specified Class,
-                      including indirect ones thru chains of outbound "INSTANCE_OF" relationships
-                         EXAMPLE:
-                            {
-                                "payload":  [
-                                              "Notes",
-                                              "English",
-                                              "French"
-                                            ],
-                                "status":   "ok"
-                            }
-            """
-        
-            # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
-            cls.show_post_data(post_data, "get_properties_by_class_name")
-        
-            data_dict = dict(post_data)
-            if "class_name" not in data_dict:
-                response = {"status": "error", "error_message": "The expected POST parameter `class_name` is not present"}
-            else:
-                class_name = data_dict["class_name"]
-                schema_id = NeoSchema.get_class_id(class_name)
-                if schema_id == -1:
-                    response = {"status": "error", "error_message": f"Unable to locate any Class named `{class_name}`"}
-                else:
-                    try:
-                        # Fetch all the Properties
-                        prop_list = NeoSchema.get_class_properties(schema_id, include_ancestors=True)
-                        response = {"status": "ok", "payload": prop_list}
-                    except Exception as ex:
-                        response = {"status": "error", "error_message": str(ex)}
-        
-            print(f"get_properties_by_class_name() is returning: `{response}`")
-        
-            return jsonify(response)   # This function also takes care of the Content-Type header
-
-
-
 
         @bp.route('/get_class_schema', methods=['POST'])
         def get_class_schema():
@@ -398,31 +400,6 @@ class ApiRouting:
 
 
 
-
-        @bp.route('/get_properties_by_item_id/<item_id>')
-        def get_properties_by_item_id(item_id):
-            """
-            Get all properties by item_id
-        
-            EXAMPLE invocation: http://localhost:5000/BA/api/get_properties_by_item_id/123
-        
-            :param item_id:
-            :return:            A JSON object with a list of the Properties of the specified Class
-                                EXAMPLE:
-                                    [
-                                      "Notes",
-                                      "English",
-                                      "French"
-                                    ]
-            """
-            prop_list = NeoSchema.all_properties("BA", "item_id", int(item_id))
-            response = {"status": "ok", "payload": prop_list}
-            # TODO: handle error scenarios
-        
-            return jsonify(response)   # This function also takes care of the Content-Type header
-        
-
-        
         @bp.route('/get_record_classes')
         def get_record_classes() -> str:
             """
@@ -449,10 +426,34 @@ class ApiRouting:
 
 
 
+        @bp.route('/get_properties_by_item_id/<item_id>')
+        def get_properties_by_item_id(item_id):
+            """
+            Get all properties of a DATA node specified by item_id
 
-        #---------------------------------------------#
-        #            SCHEMA-related (creating)        #
-        #---------------------------------------------#
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_properties_by_item_id/123
+
+            :param item_id:
+            :return:            A JSON object with a list of the Properties of the specified Class
+                                EXAMPLE:
+                                    [
+                                      "Notes",
+                                      "English",
+                                      "French"
+                                    ]
+            """
+            prop_list = NeoSchema.all_properties("BA", "item_id", int(item_id))
+            response = {"status": "ok", "payload": prop_list}
+            # TODO: handle error scenarios
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
+
+        #------------------------------------------------------#
+        #        SCHEMA-related (creating/editing/deleting)    #
+        #------------------------------------------------------#
 
         @bp.route('/simple/create_new_schema_class', methods=['POST'])
         @login_required
@@ -505,6 +506,8 @@ class ApiRouting:
         @login_required
         def add_schema_relationship() -> str:
             """
+            Add a relationship with the specified name between 2 existing Classes
+
             POST FIELDS:
                 from_class_name
                 to_class_name
@@ -536,6 +539,7 @@ class ApiRouting:
         @login_required
         def delete_schema_relationship() -> str:
             """
+            Delete the relationship with the specified name between 2 existing Classes
             POST FIELDS:
                 from_class_name
                 to_class_name
@@ -557,9 +561,45 @@ class ApiRouting:
                 err_status = f"Unable to delete the relationship. {ex}"
                 return_value = cls.ERROR_PREFIX + err_status    # Failure
 
-            print(f"delete_schema_relationship() is returning: `{return_value}`")
+            if cls.debug:
+                print(f"delete_schema_relationship() is returning: `{return_value}`")
 
             return return_value
+
+
+
+        @bp.route('/simple/delete_class', methods=['POST'])
+        #@login_required
+        def delete_class() -> str:
+            """
+            Delete the specified Class.
+            The operation will fail if the Class doesn't exist,
+            or if data nodes attached to that Class are present (those need to be deleted first)
+
+            POST FIELDS:
+                class_name
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/simple/delete_class -d
+                        "class_name=some_class_1"
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict object
+            cls.show_post_data(post_data, "delete_class")
+
+            try:
+                pars = cls.extract_post_pars(post_data, required_par_list=["class_name"])
+                NeoSchema.delete_class(name=pars["class_name"], safe_delete=True)
+                return_value = cls.SUCCESS_PREFIX               # Success
+            except Exception as ex:
+                err_status = f"Unable to delete the class. {ex}"
+                return_value = cls.ERROR_PREFIX + err_status    # Failure
+
+            #if cls.debug:
+            print(f"delete_class() is returning: `{return_value}`")
+
+            return return_value
+
 
 
 

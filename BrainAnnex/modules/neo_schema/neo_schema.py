@@ -407,7 +407,7 @@ class NeoSchema:
 
 
     @classmethod
-    def delete_class(cls, name: str, safe_delete=True) -> None:             # TODO: test
+    def delete_class(cls, name: str, safe_delete=True) -> None:
         """
         Delete the given Class AND all its attached Properties.
         If safe_delete is True (recommended) delete ONLY if there are no data nodes of that Class
