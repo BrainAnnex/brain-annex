@@ -94,7 +94,44 @@ Vue.component('vue-schema-editor',
             <button @click="add_relationship()" v-bind:disabled="!add_rel_name" style='padding: 15px'>
                 Add the {{add_rel_name}} Relationship
             </button>
-            </div>		<!-- End of outer container -->
+
+
+
+            <br><br>
+            <hr>
+
+
+
+            <template>
+                <span class='title'>DELETE AN EXISTING CLASS</span><br><br>
+
+                <table border='0' cellspacing='5' cellpadding='0'>
+
+                    <tr>
+                        <td style='padding-left:5px'>
+                            <select  v-model="del_class_name">
+                                <option value=''>[Choose an existing Class]</option>
+                                <template v-for="item in class_list">
+                                    <option>{{item}}</option>
+                                </template>
+                            </select>
+                        </td>
+                        <td style='font-style:italic'>
+                        Classes can be deleted only if there are no data points of that class
+                        </td>
+
+                    </tr>
+                </table>
+
+                <br>
+                <button @click="delete_class()" v-bind:disabled="!del_class_name" style='padding: 15px'>
+                    Delete the Class {{del_class_name}}
+                </button>
+
+            </template>  <!-- END DELETE AN EXISTING CLASS -->
+
+
+            </div>		<!-- END of outer container -->
             `,
 
 
@@ -108,6 +145,8 @@ Vue.component('vue-schema-editor',
                 add_linked_from: -1,
                 add_linked_to: -1,
                 add_rel_name: "",
+
+                del_class_name: "",     // Name of Class to delete
 
                 waiting: false,         // Whether any server request is still pending
                 status_message: "",     // Message for user about the status of the last operation (NOT for "waiting" status)
@@ -130,6 +169,58 @@ Vue.component('vue-schema-editor',
                 SERVER CALLS
              */
 
+            delete_class()
+            /* Initiate request to server to delete the specified Class
+             */
+            {
+                console.log(`Processing request to delete the Class "${this.del_class_name}"`);
+
+                if (this.del_class_name == "")  {
+                    alert("Must enter a relationship name");
+                    return;
+                }
+
+                // Send the request to the server, using a POST
+                let url_server = "/BA/api/simple/delete_class";
+                let post_obj = {class_name: this.del_class_name
+                               };
+
+                console.log(`About to contact the server at ${url_server}.  POST object:`);
+                console.log(post_obj);
+
+                this.waiting = true;
+                this.status_message = "";   // Clear any message from the previous operation
+                this.error = false;         // Clear any error from the previous operation
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server,
+                            {post_obj: post_obj,
+                             callback_fn: this.finish_delete_class});
+            },
+
+            finish_delete_class(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of delete_relationship() upon getting a response from the server
+            {
+                console.log("Finalizing the delete_class operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Class deleted`;
+                    // Clear up the form
+                    this.del_class_name = "";
+                    // TODO: ought to change the list of Class (currently kept as a prop) accordingly
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED deletion of class: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            },
+
+
+            // ---------------------------------------
+
             delete_relationship()
             /* Initiate request to server to delete the specified relationship between Classes
              */
@@ -149,14 +240,12 @@ Vue.component('vue-schema-editor',
                     return;
                 }
 
-
                 // Send the request to the server, using a POST
                 let url_server = "/BA/api/simple/delete_schema_relationship";
                 let post_obj = {from_class_name: this.del_linked_from,
                                 to_class_name: this.del_linked_to,
                                 rel_name: this.del_rel_name
                                };
-
 
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
@@ -174,7 +263,7 @@ Vue.component('vue-schema-editor',
             finish_delete_relationship(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of delete_relationship() upon getting a response from the server
             {
-                console.log("Finalizing the finish_delete_relationship operation...");
+                console.log("Finalizing the delete_relationship operation...");
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `New relationship added`;

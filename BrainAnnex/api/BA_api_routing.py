@@ -569,7 +569,7 @@ class ApiRouting:
 
 
         @bp.route('/simple/delete_class', methods=['POST'])
-        #@login_required
+        @login_required
         def delete_class() -> str:
             """
             Delete the specified Class.
@@ -592,6 +592,9 @@ class ApiRouting:
                 NeoSchema.delete_class(name=pars["class_name"], safe_delete=True)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
+                # TODO: in case of failure, investigate further the problem
+                #       (e.g. no class by that name vs. class has data points still attached to it)
+                #       and give a more specific error message
                 err_status = f"Unable to delete the class. {ex}"
                 return_value = cls.ERROR_PREFIX + err_status    # Failure
 
