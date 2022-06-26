@@ -212,16 +212,17 @@ class PagesRouting:
 
 
         @bp.route('/data-import')
-        @login_required
+        #@login_required            #TODO: restore login requirement
         def data_import() -> str:
             """
-            Generate a general administrative page (currently for import/exports)
+            Generate an administrative page for data imports
             EXAMPLE invocation: http://localhost:5000/BA/pages/data-import
             """
             template = "data_import.htm"
             class_list = PagesRequestHandler.all_schema_classes()
+            intake_status = APIRequestHandler.data_intake_status()
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
-                                   class_list=class_list)
+                                   class_list=class_list, intake_status=intake_status)
 
 
 

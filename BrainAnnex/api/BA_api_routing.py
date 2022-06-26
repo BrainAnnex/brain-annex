@@ -1179,8 +1179,26 @@ class ApiRouting:
 
 
 
-        @bp.route('/bulk_import')   # , methods=['POST']
+        @bp.route('/simple/stop_data_intake')
         #@login_required
+        def stop_data_intake() -> str:
+            """
+            Invoke with the URL: http://localhost:5000/BA/api/simple/stop_data_intake
+            :return:
+            """
+            try:
+                APIRequestHandler.do_stop_data_intake()
+                return_value = cls.SUCCESS_PREFIX              # If no errors
+            except Exception as ex:
+                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
+
+            print(f"stop_data_intake() is returning: `{return_value}`")
+
+            return return_value
+
+
+        @bp.route('/bulk_import')   # , methods=['POST']
+        #@login_required                # TODO: RESTORE
         def bulk_import() -> str:       # TODO: IN-PROGRESS
             """
             Bulk import (for now of JSON files)
@@ -1200,9 +1218,9 @@ class ApiRouting:
             try:
                 #data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
                 #from_id = cls.str_to_int(data_dict['from'])
-                APIRequestHandler.do_bulk_import()
+                result = APIRequestHandler.do_bulk_import()
 
-                response = {"status": "ok"}              # Successful termination
+                response = {"status": "ok", "result": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message":  APIRequestHandler.exception_helper(ex)}    # Error termination
 

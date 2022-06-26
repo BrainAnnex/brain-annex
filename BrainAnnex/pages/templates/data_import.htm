@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 {#  Flask-passed parameters:
         current_page, site_pages,
-        class_list
+        class_list,
+        intake_status
  #}
 
 <html lang="en">
@@ -89,6 +90,32 @@
     </div>
 </div>
 
+
+
+<br><br><br>
+
+<div class="content-block">
+    <div class="content-block-title">Continuous Data Ingestion</div>
+
+    <p style="font-weight:bold">Status of Data Intake: [[intake_status]]</p>
+
+    <p v-if="intake_status">
+        <button @click="terminate_continuous_intake()">STOP the continuous intake</button>
+        <span v-if="waiting2" class="waiting">The data ingestion is in progress, and will continue even if the browser is closed</span>
+        <span v-bind:class="{'error-message': error2, 'status-message': !error2 }">{{status_message2}}</span>
+    </p>
+
+    <p v-if="!intake_status">
+        Initiate a continuous data import from all files found in fixed folder<br>
+        <button @click="engage_continuous_intake()">START the continuous intake</button>
+        <span v-if="waiting2" class="waiting">Attempting to stop the continuous data ingestion</span>
+        <span v-bind:class="{'error-message': error2, 'status-message': !error2 }">{{status_message2}}</span>
+    </p>
+
+</div>
+
+
+
 <!-- UNTESTED:  @change="handleFileUpload( $event )"   -->
 
 <br><br><br>
@@ -125,15 +152,22 @@ new Vue({
 
         use_schema: "SCHEMA",                       // Either "SCHEMA" or "NO_SCHEMA"
 
-        all_class_names: {{class_list | tojson}},   // Handover of data from Flask to Vue
+        // Handover of data from Flask to Vue
+        all_class_names: {{class_list | tojson}},
+        intake_status: {{intake_status | tojson}},
 
         schema_class: -1,                           // Name of schema class to use for the top-level element(s)
         import_root_label: "Import_Root",           // Neo4j label to use on root node(s) of import
 
         waiting: false,         // Whether any server request is still pending
         error: false,           // Whether the last server communication resulted in error
-        status_message: "",     // Message for the user about the status of the last operation (NOT used for "waiting" status)
-        server_output: ""
+        status_message: "",     // Message for user about status of last operation upon server response (NOT for "waiting" status)
+        server_output: "",
+
+        // TODO: move to a Vue component
+        waiting2: false,         // Whether any server request is still pending
+        error2: false,           // Whether the last server communication resulted in error
+        status_message2: ""     // Message for user about status of last operation upon server response (NOT for "waiting" status)
 
     }, // DATA
 
@@ -143,6 +177,88 @@ new Vue({
     // ----------------------------  METHODS  -----------------------------
 
     methods:  {
+
+        engage_continuous_intake()
+        {
+            var url_server_api = "/BA/api/bulk_import";
+
+            console.log("In engage_continuous_intake()");
+
+            console.log(`About to contact the server at ${url_server_api}`);
+
+            this.waiting2 = true;
+            this.error2 = false;         // Clear any error from the previous operation
+            this.status_message2 = "";   // Clear any message from the previous operation
+
+            this.intake_status = true;  // The continuous intake is initiated
+
+            // Initiate asynchronous contact with the server
+            ServerCommunication.contact_server(url_server_api,
+                        {payload_type: "JSON",
+                         callback_fn: this.finish_engage_continuous_intake
+                         });
+        },
+
+        finish_engage_continuous_intake(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of engage_continuous_intake() upon getting a response from the server
+        {
+            console.log("Finalizing the engage_continuous_intake operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message2 = `Operation completed`;
+                //...
+            }
+            else  {             // Server reported FAILURE
+                this.error2 = true;
+                this.status_message2 = `FAILED operation: ${error_message}`;
+                //...
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting2 = false;      // Make a note that the asynchronous operation has come to an end
+            this.intake_status = false; // The continuous intake is terminated
+        },
+
+
+
+        terminate_continuous_intake()
+        {
+            var url_server_api = "/BA/api/simple/stop_data_intake";
+
+            console.log("In terminate_continuous_intake()");
+
+            console.log(`About to contact the server at ${url_server_api}`);
+
+            this.waiting2 = true;
+            this.error2 = false;         // Clear any error from the previous operation
+            this.status_message2 = "";   // Clear any message from the previous operation
+
+            // Initiate asynchronous contact with the server
+            ServerCommunication.contact_server(url_server_api,
+                        {payload_type: "TEXT",
+                         callback_fn: this.finish_terminate_continuous_intake
+                         });
+        },
+
+        finish_terminate_continuous_intake(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of engage_continuous_intake() upon getting a response from the server
+        {
+            console.log("Finalizing the terminate_continuous_intake operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message2 = `Operation completed`;
+                this.intake_status = false;  // The continuous intake is terminated
+            }
+            else  {             // Server reported FAILURE
+                this.error2 = true;
+                this.status_message2 = `FAILED operation: ${error_message}`;
+                //...
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting2 = false;      // Make a note that the asynchronous operation has come to an end
+        },
+
 
         upload_file(event)
         {

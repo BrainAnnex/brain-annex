@@ -9,6 +9,8 @@ from typing import Union
 import sys                  # Used to give better feedback on Exceptions
 import html
 import shutil
+from time import sleep
+
 
 """
     MIT License.  Copyright (c) 2021-2022 Julian A. West
@@ -31,6 +33,8 @@ class APIRequestHandler:
     MEDIA_FOLDER = None # Location where the media for Content Items is stored
                         # Example: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
 
+    experimental = 1                # TODO: experimental scenario being evaluated
+    ongoing_data_intake = False     # TODO: experimental scenario being evaluated
 
 
     @classmethod
@@ -998,14 +1002,36 @@ class APIRequestHandler:
         return  status
 
 
+    @classmethod
+    def data_intake_status(cls):
+        return cls.ongoing_data_intake
 
 
     @classmethod
-    def do_bulk_import(cls) -> None:
+    def do_stop_data_intake(cls) -> None:
+        cls.ongoing_data_intake = False
+
+
+    @classmethod
+    def do_bulk_import(cls) -> str:
         """
 
         :return:
         """
+        # TEST (TODO: zap)
+        cls.ongoing_data_intake = True
+        while cls.ongoing_data_intake:
+            print(f"In infinite loop, with index {cls.experimental}")
+            cls.experimental += 1
+            sleep(2)
+
+
+        #current_value = cls.experimental
+        #cls.experimental += 1
+        #raise Exception(f"experimental value is {cls.experimental}")
+        return f"experimental value is {cls.experimental}"
+        # END OF TEST
+
         intake_path = "D:/bulk_import_intake/"
         outtake_path = "D:/bulk_import_done/"
 
