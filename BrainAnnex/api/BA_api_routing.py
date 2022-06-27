@@ -1180,7 +1180,7 @@ class ApiRouting:
 
 
         @bp.route('/simple/stop_data_intake')
-        #@login_required
+        #@login_required                # TODO: RESTORE
         def stop_data_intake() -> str:
             """
             Invoke with the URL: http://localhost:5000/BA/api/simple/stop_data_intake

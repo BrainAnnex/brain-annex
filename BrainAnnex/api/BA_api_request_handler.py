@@ -10,6 +10,7 @@ import sys                  # Used to give better feedback on Exceptions
 import html
 import shutil
 from time import sleep
+from datetime import datetime
 
 
 """
@@ -33,8 +34,9 @@ class APIRequestHandler:
     MEDIA_FOLDER = None # Location where the media for Content Items is stored
                         # Example: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
 
-    experimental = 1                # TODO: experimental scenario being evaluated
-    ongoing_data_intake = False     # TODO: experimental scenario being evaluated
+    ongoing_data_intake = False
+    import_file_count = 0
+
 
 
     @classmethod
@@ -1002,6 +1004,7 @@ class APIRequestHandler:
         return  status
 
 
+
     @classmethod
     def data_intake_status(cls):
         return cls.ongoing_data_intake
@@ -1018,39 +1021,81 @@ class APIRequestHandler:
 
         :return:
         """
-        # TEST (TODO: zap)
+
+        """
+        # Simple test
         cls.ongoing_data_intake = True
+        
         while cls.ongoing_data_intake:
             print(f"In infinite loop, with index {cls.experimental}")
             cls.experimental += 1
             sleep(2)
-
 
         #current_value = cls.experimental
         #cls.experimental += 1
         #raise Exception(f"experimental value is {cls.experimental}")
         return f"experimental value is {cls.experimental}"
         # END OF TEST
+        """
 
         intake_path = "D:/bulk_import_intake/"
         outtake_path = "D:/bulk_import_done/"
 
-        file_list = os.listdir(intake_path)
+        log_filename = "IMPORT_LOG.txt"
 
-        print(file_list)
+        # Open (creating it if necessary) the log file
+        try:
+            log_file_handle = open(outtake_path + log_filename, "a")  # If not present, create it
+        except Exception as ex:
+            error_msg = f"Unable to open or create a log file named {outtake_path + log_filename} : {ex}"
+            print(error_msg)
+            raise Exception(error_msg)
 
-        for f in file_list:
-            print(f"Processing file `{f}`...")
 
-            src_fullname = f"{intake_path}{f}"
-            dest_fullname = f"{outtake_path}{f}"
+        cls.ongoing_data_intake = True      # Activate the continuous intake
 
-            try:
-                print(f"    ...processing complete.  Moving file to folder `{outtake_path}`\n")
-                shutil.move(src_fullname, dest_fullname)
-            except Exception as ex:
-                print(f"Failed move of file `{f}` to destination folder `{outtake_path}`", ex)
+        file_list = os.listdir(intake_path) # List of filenames in the folder
 
+        while file_list:
+            print(file_list)
+
+            for f in file_list:
+                if not cls.ongoing_data_intake:
+                    return f"Detected request to stop ongoing import. Running total count of imported files is {cls.import_file_count}"
+
+                print(f"Processing file `{f}`...")
+
+                src_fullname = f"{intake_path}{f}"
+                dest_fullname = f"{outtake_path}{f}"
+
+                sleep(3)
+
+                try:
+                    # TODO: the Import operation will go here
+
+                    cls.import_file_count += 1
+                    print(f"    ...processing complete.  Moving file to folder `{outtake_path}`\n")
+                    shutil.move(src_fullname, dest_fullname)
+
+                    # Prepare timestamp
+                    now = datetime.now()
+                    dt_string = now.strftime("%m/%d/%Y %H:%M:%S")   # mm/dd/YY H:M:S
+
+                    # Make a log of the operation
+                    log_msg = f'({cls.import_file_count}) {dt_string} Imported data file "{f}"\n'
+                    log_file_handle.write(log_msg)
+                    log_file_handle.flush()    # To avoid buffering issues
+
+                except Exception as ex:
+                    error_msg = f"Failed move of file `{f}` to destination folder `{outtake_path}` : {ex}"
+                    print(error_msg)
+                    raise Exception(error_msg)
+
+            file_list = os.listdir(intake_path)         # Check if new files have arrived, while processing the earlier folder contents
+
+        # END WHILE
+
+        return f"Processed all files. Running total count of imported files is {cls.import_file_count}"
 
 
 
