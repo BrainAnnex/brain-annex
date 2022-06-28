@@ -104,6 +104,13 @@
         <span v-else>NOT Running</span>
     </p>
 
+    <select  v-model="schema_class" style="margin-bottom:20px">
+        <option value='-1'>[Choose an existing Class]</option>
+        <template v-for="item in all_class_names">
+            <option>[[item]]</option>
+        </template>
+    </select>
+
     <p v-if="intake_status">
         <button @click="terminate_continuous_intake()">STOP the continuous intake</button>
         <span v-if="waiting2" class="waiting">The data ingestion is in progress, and will continue even if the browser is closed</span>
@@ -189,7 +196,9 @@ new Vue({
 
             console.log("In engage_continuous_intake()");
 
-            console.log(`About to contact the server at ${url_server_api}`);
+            let post_obj = {schema_class: this.schema_class};
+            console.log(`About to contact the server at ${url_server_api}.  POST object:`);
+            console.log(post_obj);
 
             this.waiting2 = true;
             this.error2 = false;         // Clear any error from the previous operation
@@ -200,6 +209,7 @@ new Vue({
             // Initiate asynchronous contact with the server
             ServerCommunication.contact_server(url_server_api,
                         {payload_type: "JSON",
+                         post_obj: post_obj,
                          callback_fn: this.finish_engage_continuous_intake
                          });
         },

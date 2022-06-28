@@ -1197,32 +1197,32 @@ class ApiRouting:
             return return_value
 
 
-        @bp.route('/bulk_import')   # , methods=['POST']
+        @bp.route('/bulk_import', methods=['POST'])
         #@login_required                # TODO: RESTORE
-        def bulk_import() -> str:       # TODO: IN-PROGRESS
+        def bulk_import() -> str:
             """
             Bulk import (for now of JSON files)
 
-            Invoke with the URL: http://localhost:5000/BA/api/bulk_import
+            EXAMPLE of invocation: curl http://localhost:5000/BA/api/bulk_import -d "schema_class=my_schema_class"
 
             POST FIELDS:
-                TBA                     TBA
+                schema_class   TBA
 
             :return:
             """
             # Extract the POST values
-            #post_data = request.form
+            post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            #cls.show_post_data(post_data)
+            cls.show_post_data(post_data)
 
             try:
-                #data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                #from_id = cls.str_to_int(data_dict['from'])
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=['schema_class'])
+                schema_class = pars_dict['schema_class']
 
                 # Extract some config parameters
                 intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
                 outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
-                result = APIRequestHandler.do_bulk_import(intake_folder, outtake_folder)
+                result = APIRequestHandler.do_bulk_import(intake_folder, outtake_folder, schema_class)
 
                 response = {"status": "ok", "result": result}              # Successful termination
             except Exception as ex:

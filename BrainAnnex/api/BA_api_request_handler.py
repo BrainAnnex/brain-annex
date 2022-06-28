@@ -36,6 +36,7 @@ class APIRequestHandler:
 
     ongoing_data_intake = False
     import_file_count = 0
+    log_file_handle = None
 
 
 
@@ -986,21 +987,14 @@ class APIRequestHandler:
         # TODO: maybe the API could offer the option to save the file as a Document
         cls.delete_file(full_filename)
 
-
-        # Parse the JSON data
-        #python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
-        # print("Python version of the JSON file:\n", python_data)
-
-
         # Import the JSON data into the database
-        new_ids = None
         if post_pars["use_schema"] == "SCHEMA":
             new_ids = NeoSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
         else:
             new_ids = cls.db.import_json(file_contents, post_pars["import_root_label"], provenance=original_name)
 
         status = f"New top-level Neo4j node ID: {new_ids}"
-        return f"Upload successful. {file_size} characters were read in. {status}"
+        return f"Upload and import successful. {file_size} characters were read in. {status}"
 
 
 
@@ -1015,42 +1009,32 @@ class APIRequestHandler:
 
 
     @classmethod
-    def do_bulk_import(cls, intake_folder: str, outtake_folder: str) -> str:
+    def do_bulk_import(cls, intake_folder: str, outtake_folder: str, schema_class: str) -> str:
         """
-        
+        Failure of individual imports is logged, but does not terminate the operation.
+        An Exception is raised if any of the following happens:
+            * The log file cannot be accessed/created
+            * Any of the data files cannot be moved to their final destination
+
         :param intake_folder: 
-        :param outtake_folder: 
+        :param outtake_folder:
+        :param schema_class:
         :return: 
-        """
-
-        """
-        # Simple test
-        cls.ongoing_data_intake = True
-        
-        while cls.ongoing_data_intake:
-            print(f"In infinite loop, with index {cls.experimental}")
-            cls.experimental += 1
-            sleep(2)
-
-        #current_value = cls.experimental
-        #cls.experimental += 1
-        #raise Exception(f"experimental value is {cls.experimental}")
-        return f"experimental value is {cls.experimental}"
-        # END OF TEST
         """
 
         log_filename = "IMPORT_LOG.txt"
 
-        # Open (creating it if necessary) the log file
-        try:
-            log_file_handle = open(outtake_folder + log_filename, "a")  # If not present, create it
-        except Exception as ex:
-            error_msg = f"Unable to open or create a log file named {outtake_folder + log_filename} : {ex}"
-            print(error_msg)
-            raise Exception(error_msg)
+        if cls.log_file_handle is None:
+            # Open (creating it if necessary) the log file
+            try:
+                cls.log_file_handle = open(outtake_folder + log_filename, "a")  # If not present, create it
+            except Exception as ex:
+                error_msg = f"Unable to open or create a log file named {outtake_folder + log_filename} : {ex}"
+                print(error_msg)
+                raise Exception(error_msg)
 
 
-        cls.ongoing_data_intake = True      # Activate the continuous intake
+        cls.ongoing_data_intake = True          # Activate the continuous intake
 
         file_list = os.listdir(intake_folder) # List of filenames in the folder ("snapshot" of folder contents)
 
@@ -1071,31 +1055,82 @@ class APIRequestHandler:
                 sleep(3)
 
                 try:
-                    # TODO: the Import operation will go here
+                    # Read in the contents of the data file to import
+                    with open(src_fullname, 'r') as fh:
+                        file_contents = fh.read()
 
-                    cls.import_file_count += 1
-                    print(f"    ...processing complete.  Moving file to folder `{outtake_folder}`\n")
-                    shutil.move(src_fullname, dest_fullname)
-
-                    # Prepare timestamp
-                    now = datetime.now()
-                    dt_string = now.strftime("%m/%d/%Y %H:%M:%S")   # mm/dd/YY H:M:S
-
-                    # Make a log of the operation
-                    log_msg = f'({cls.import_file_count}) {dt_string} Imported data file "{f}"\n'
-                    log_file_handle.write(log_msg)
-                    log_file_handle.flush()    # To avoid buffering issues
+                    file_size = len(file_contents)
 
                 except Exception as ex:
-                    error_msg = f"Failed move of file `{f}` to destination folder `{outtake_folder}` : {ex}"
+                    error_msg = f"Failed to open/read file `{f}` : {ex}"
                     print(error_msg)
-                    raise Exception(error_msg)
+                    cls.append_to_log(error_msg)
+                    cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
+                    continue    # The import loop now resumes
+
+
+                # Import the JSON data into the database
+                try:
+
+                    #
+                    if len(file_contents) > 25:
+                        abridged_file_contents = file_contents[:25] + " ..."
+                    else:
+                        abridged_file_contents = file_contents
+
+                    print(f"About to import using: "
+                          f"file_contents: `{abridged_file_contents}`, schema_class: `{schema_class}`, provenance: `{f}`")
+
+                    # IMPORT
+                    new_ids = NeoSchema.import_json_data(file_contents, schema_class, provenance=f)
+
+                    cls.import_file_count += 1
+
+                    # Make a log of the operation
+                    log_msg = f'({cls.import_file_count}) Imported data file "{f}", {file_size} bytes, new IDs: {new_ids}'
+                    cls.append_to_log(log_msg)
+
+                    cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
+                    #print(f"    ...processing complete.  Moving file to folder `{outtake_folder}`\n")
+                    #shutil.move(src_fullname, dest_fullname)
+
+                except Exception as ex:
+                    error_msg = f"Failed import of of file `{f}` : {ex}"
+                    print(error_msg)
+                    cls.append_to_log(error_msg)
+                    # The import loop now resumes
+
 
             file_list = os.listdir(intake_folder)         # Check if new files have arrived, while processing the earlier folder contents
 
         # END WHILE
 
         return f"Processed all files. Running total count of imported files is {cls.import_file_count}"
+
+
+
+    @classmethod
+    def archive_data_file(cls, src_fullname, dest_fullname, outtake_folder):
+        print(f"    ...processing complete.  Moving file to folder `{outtake_folder}`\n\n")
+        try:
+            shutil.move(src_fullname, dest_fullname)
+        except Exception as ex:
+            error_msg = f"Failed move of file `{src_fullname}` to destination folder `{outtake_folder}` : {ex}"
+            print(error_msg)
+            cls.append_to_log(error_msg)
+            raise Exception(error_msg)      # The Exception is re-raised, because failure to move a file must stop the continuous import
+
+
+    @classmethod
+    def append_to_log(cls, msg) -> None:
+        # Prepare timestamp
+        now = datetime.now()
+        dt_string = now.strftime("%m/%d/%Y %H:%M")   # mm/dd/YY H:M    (for seconds, add  :%S)
+
+        # Make a log of the operation
+        cls.log_file_handle.write(f"{dt_string} - {msg}\n\n")
+        cls.log_file_handle.flush()             # To avoid buffering issues
+
 
 
 
