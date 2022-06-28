@@ -1218,7 +1218,11 @@ class ApiRouting:
             try:
                 #data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
                 #from_id = cls.str_to_int(data_dict['from'])
-                result = APIRequestHandler.do_bulk_import()
+
+                # Extract some config parameters
+                intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
+                outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
+                result = APIRequestHandler.do_bulk_import(intake_folder, outtake_folder)
 
                 response = {"status": "ok", "result": result}              # Successful termination
             except Exception as ex:

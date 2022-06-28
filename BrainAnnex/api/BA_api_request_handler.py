@@ -4,7 +4,7 @@ from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 import re               # For REGEX
 import pandas as pd
 import os
-from flask import request, current_app
+from flask import request, current_app  # TODO: phase out (?)
 from typing import Union
 import sys                  # Used to give better feedback on Exceptions
 import html
@@ -902,63 +902,6 @@ class APIRequestHandler:
     ############################################################
 
     @classmethod
-    def upload_import_json_file(cls, post_pars, verbose=False) -> str:
-        """
-        Manage the upload and import of a data file in JSON format.
-
-        :return:    Status string, if successful.  In case of error, an Exception is raised
-        """
-        print("In upload_import_json_file()")
-
-        upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
-        # 'file' is just an identifier attached to the upload by the frontend
-        (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
-                                                                                    key_name=None, verbose=False)
-        # basename and full name of the temporary file created during the upload
-
-
-        assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"
-        if post_pars["use_schema"] == "SCHEMA":
-            assert post_pars["schema_class"], "Missing value for POST parameter `schema_class`"
-        elif post_pars["use_schema"] == "NO_SCHEMA":
-            assert post_pars["import_root_label"], "Missing value for POST parameter `import_root_label`"
-        else:
-            raise Exception(f"The value for the POST parameter `use_schema` must be 'SCHEMA' or 'NO_SCHEMA' (value passed: {post_pars['use_schema']})")
-
-
-        # Read in the contents of the uploaded file
-        with open(full_filename, 'r') as fh:
-            file_contents = fh.read()
-            if verbose:
-                print(f"Contents of uploaded file:\n{file_contents}")
-
-        file_size = len(file_contents)
-
-
-        # Now delete the temporary file created during the upload.
-        # TODO: maybe the API could offer the option to save the file as a Document
-        cls.delete_file(full_filename)
-
-
-        # Parse the JSON data
-        #python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
-        # print("Python version of the JSON file:\n", python_data)
-
-
-        # Import the JSON data into the database
-        new_ids = None
-        if post_pars["use_schema"] == "SCHEMA":
-            new_ids = NeoSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
-        else:
-            new_ids = cls.db.import_json(file_contents, post_pars["import_root_label"], provenance=original_name)
-
-        status = f"New top-level Neo4j node ID: {new_ids}"
-        return f"Upload successful. {file_size} characters were read in. {status}"
-
-
-
-
-    @classmethod
     def upload_import_json(cls, verbose=False, return_url=None) -> str:
         """
         Modify the database, based on the contents of the uploaded file (expected to contain the JSON format
@@ -1006,6 +949,62 @@ class APIRequestHandler:
 
 
     @classmethod
+    def upload_import_json_file(cls, post_pars, verbose=False) -> str:
+        """
+        Manage the upload and import into the database of a data file in JSON format.
+
+        :return:    Status string, if successful.  In case of error, an Exception is raised
+        """
+        print("In upload_import_json_file()")
+
+        upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
+                                                                    # TODO: maybe extract in the api_routing file
+        # 'file' is just an identifier attached to the upload by the frontend
+        (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
+                                                                                    key_name=None, verbose=False)
+        # basename and full name of the temporary file created during the upload
+
+        assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"
+        if post_pars["use_schema"] == "SCHEMA":
+            assert post_pars["schema_class"], "Missing value for POST parameter `schema_class`"
+        elif post_pars["use_schema"] == "NO_SCHEMA":
+            assert post_pars["import_root_label"], "Missing value for POST parameter `import_root_label`"
+        else:
+            raise Exception(f"The value for the POST parameter `use_schema` must be 'SCHEMA' or 'NO_SCHEMA' (value passed: {post_pars['use_schema']})")
+
+
+        # Read in the contents of the uploaded file
+        with open(full_filename, 'r') as fh:
+            file_contents = fh.read()
+            if verbose:
+                print(f"Contents of uploaded file:\n{file_contents}")
+
+        file_size = len(file_contents)
+
+
+        # Now delete the temporary file created during the upload.
+        # TODO: maybe the API could offer the option to save the file as a Document
+        cls.delete_file(full_filename)
+
+
+        # Parse the JSON data
+        #python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
+        # print("Python version of the JSON file:\n", python_data)
+
+
+        # Import the JSON data into the database
+        new_ids = None
+        if post_pars["use_schema"] == "SCHEMA":
+            new_ids = NeoSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
+        else:
+            new_ids = cls.db.import_json(file_contents, post_pars["import_root_label"], provenance=original_name)
+
+        status = f"New top-level Neo4j node ID: {new_ids}"
+        return f"Upload successful. {file_size} characters were read in. {status}"
+
+
+
+    @classmethod
     def data_intake_status(cls):
         return cls.ongoing_data_intake
 
@@ -1016,10 +1015,12 @@ class APIRequestHandler:
 
 
     @classmethod
-    def do_bulk_import(cls) -> str:
+    def do_bulk_import(cls, intake_folder: str, outtake_folder: str) -> str:
         """
-
-        :return:
+        
+        :param intake_folder: 
+        :param outtake_folder: 
+        :return: 
         """
 
         """
@@ -1038,35 +1039,34 @@ class APIRequestHandler:
         # END OF TEST
         """
 
-        intake_path = "D:/bulk_import_intake/"
-        outtake_path = "D:/bulk_import_done/"
-
         log_filename = "IMPORT_LOG.txt"
 
         # Open (creating it if necessary) the log file
         try:
-            log_file_handle = open(outtake_path + log_filename, "a")  # If not present, create it
+            log_file_handle = open(outtake_folder + log_filename, "a")  # If not present, create it
         except Exception as ex:
-            error_msg = f"Unable to open or create a log file named {outtake_path + log_filename} : {ex}"
+            error_msg = f"Unable to open or create a log file named {outtake_folder + log_filename} : {ex}"
             print(error_msg)
             raise Exception(error_msg)
 
 
         cls.ongoing_data_intake = True      # Activate the continuous intake
 
-        file_list = os.listdir(intake_path) # List of filenames in the folder
+        file_list = os.listdir(intake_folder) # List of filenames in the folder ("snapshot" of folder contents)
 
+        # As long as files are present in the intake folder
         while file_list:
             print(file_list)
 
+            # Process all the files that were in the folder
             for f in file_list:
                 if not cls.ongoing_data_intake:
                     return f"Detected request to stop ongoing import. Running total count of imported files is {cls.import_file_count}"
 
                 print(f"Processing file `{f}`...")
 
-                src_fullname = f"{intake_path}{f}"
-                dest_fullname = f"{outtake_path}{f}"
+                src_fullname = f"{intake_folder}{f}"
+                dest_fullname = f"{outtake_folder}{f}"
 
                 sleep(3)
 
@@ -1074,7 +1074,7 @@ class APIRequestHandler:
                     # TODO: the Import operation will go here
 
                     cls.import_file_count += 1
-                    print(f"    ...processing complete.  Moving file to folder `{outtake_path}`\n")
+                    print(f"    ...processing complete.  Moving file to folder `{outtake_folder}`\n")
                     shutil.move(src_fullname, dest_fullname)
 
                     # Prepare timestamp
@@ -1087,11 +1087,11 @@ class APIRequestHandler:
                     log_file_handle.flush()    # To avoid buffering issues
 
                 except Exception as ex:
-                    error_msg = f"Failed move of file `{f}` to destination folder `{outtake_path}` : {ex}"
+                    error_msg = f"Failed move of file `{f}` to destination folder `{outtake_folder}` : {ex}"
                     print(error_msg)
                     raise Exception(error_msg)
 
-            file_list = os.listdir(intake_path)         # Check if new files have arrived, while processing the earlier folder contents
+            file_list = os.listdir(intake_folder)         # Check if new files have arrived, while processing the earlier folder contents
 
         # END WHILE
 
