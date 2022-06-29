@@ -1222,6 +1222,7 @@ class ApiRouting:
                 # Extract some config parameters
                 intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
                 outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
+
                 result = APIRequestHandler.do_bulk_import(intake_folder, outtake_folder, schema_class)
 
                 response = {"status": "ok", "result": result}              # Successful termination

@@ -104,7 +104,9 @@ INTAKE_FOLDER = extract_par("INTAKE_FOLDER", SETTINGS)
 OUTTAKE_FOLDER = extract_par("OUTTAKE_FOLDER", SETTINGS)
 
 PORT_NUMBER = extract_par("PORT_NUMBER", SETTINGS)      # The Flask default is 5000
-DEPLOYMENT = extract_par("DEPLOYMENT", SETTINGS)        # Should be either "LOCAL" or "REMOTE"
+DEPLOYMENT = extract_par("DEPLOYMENT", SETTINGS)        # Should be either "LOCAL" or "REMOTE"  (TODO: maybe use "SERVER" instead of "REMOTE")
+
+# TODO: PORT_NUMBER is only used for Local runs
 
 try:
     PORT_NUMBER = int(PORT_NUMBER)
