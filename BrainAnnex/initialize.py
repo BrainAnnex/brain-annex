@@ -9,11 +9,17 @@ from home.user_manager import UserManagerNeo4j
 
 class InitializeBrainAnnex:
     """
-    INITIALIZATION of various static classes that need the database object
-    (to avoid multiple dbase connections)
+    INITIALIZATION of various static classes
     """
+
     @classmethod
     def set_dbase(cls, db_handle):
+        """
+        Initialize various static classes that need the database object
+        (to avoid multiple dbase connections)
+        :param db_handle:
+        :return:
+        """
         PagesRequestHandler.db = db_handle
         APIRequestHandler.db = db_handle
         Categories.db = db_handle
@@ -24,5 +30,14 @@ class InitializeBrainAnnex:
 
 
     @classmethod
-    def set_media_folder(cls, media_folder):
+    def set_folders(cls, media_folder, log_folder):
+        """
+        Initialize various static classes that need folder locations from the
+        configuration file
+        (another approach, currently partially used, would be to pass them thru Flask's app.config)
+
+        :param media_folder:
+        :return:
+        """
         APIRequestHandler.MEDIA_FOLDER = media_folder
+        APIRequestHandler.LOG_FOLDER = log_folder

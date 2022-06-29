@@ -3,6 +3,8 @@ MAIN PROGRAM : it starts up a server for web User Interface and an API
     Run this file, and then set the browser to http://localhost:5000/some_url
     (the actual port number is configurable; the URL's are specified in the various modules)
 
+IMPORTANT: first change the config.ini file as needed
+
 Note: this main program may also be started from the CLI with the "flask run" command
 """
 
@@ -42,7 +44,16 @@ from BrainAnnex.initialize import InitializeBrainAnnex
 #                                                                               #
 #################################################################################
 
-def extract_par(name, d, display=True) -> str:
+def extract_par(name: str, d, display=True) -> str:
+    """
+    Extract the parameter with the given name from a dictionary of parameters.
+    If not found, an Exception is raised
+
+    :param name:    Name of the config parameter of interest.  EXAMPLE: "PORT_NUMBER"
+    :param d:       Object of type "configparser.SectionProxy" .  Can be treated as a dict
+    :param display: Flag indicating whether to print the parameter
+    :return:
+    """
     if name not in d:
         raise Exception(f"The configuration file needs a line with a value for {name}")
     value = d[name]
@@ -59,39 +70,49 @@ config = ConfigParser()
 # Attempt to import parameters from the default config file first, then from 'config.ini'
 # (possibly overwriting some or all values from the default config file)
 found_files = config.read(['config.defaults.ini', 'config.ini'])
-#print("found_files: ", found_files)    # This will be a list of the names of the files that were found
+#print("found_files: ", found_files)    # This will be a list of the names of the config files that were found
 
 if found_files == []:
     raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
 
 if found_files == ['config.defaults.ini']:
-    raise Exception("Only found a DEFAULT version of the config file ('config.defaults.ini'); make sure to duplicate it, name it 'config.ini' and personalize it")
+    raise Exception("Only found a DEFAULT version of the config file ('config.defaults.ini'); "
+                    "make sure to duplicate it, name it 'config.ini' and optionally customize it")
 
 if found_files == ['config.ini']:
-    print("A local, personalized, version of the config file found ('config.ini'); all configuration will be based on this file")
+    print("A local, customized, version of the config file found ('config.ini'); all configuration will be based on this file")
 else:
-    print("Two config files found: anything in 'config.ini' will over-ride any counterpart in 'config.defaults.ini'")
+    print("Two config files found: settings in 'config.ini' will over-ride any counterpart in 'config.defaults.ini'")
 
 
-#print ("Sections found in config file(s): ", config.sections())
+#print("Sections found in config file(s): ", config.sections())    # EXAMPLE: ['SETTINGS']
 
 if "SETTINGS" not in config:
     raise Exception("Incorrectly set up configuration file - the following line should be present at the top: [SETTINGS]")
 
 SETTINGS = config['SETTINGS']
+#print(SETTINGS)                 # EXAMPLE:  <Section: SETTINGS>
 
 NEO4J_HOST = extract_par("NEO4J_HOST", SETTINGS)
 NEO4J_USER = extract_par("NEO4J_USER", SETTINGS)
 NEO4J_PASSWORD = extract_par("NEO4J_PASSWORD", SETTINGS, display=False)
+
 MEDIA_FOLDER = extract_par("MEDIA_FOLDER", SETTINGS)
 UPLOAD_FOLDER = extract_par("UPLOAD_FOLDER", SETTINGS)
-PORT_NUMBER = extract_par("PORT_NUMBER", SETTINGS)       # The Flask default is 5000
+LOG_FOLDER = extract_par("LOG_FOLDER", SETTINGS)
+INTAKE_FOLDER = extract_par("INTAKE_FOLDER", SETTINGS)
+OUTTAKE_FOLDER = extract_par("OUTTAKE_FOLDER", SETTINGS)
+
+PORT_NUMBER = extract_par("PORT_NUMBER", SETTINGS)      # The Flask default is 5000
+DEPLOYMENT = extract_par("DEPLOYMENT", SETTINGS)        # Should be either "LOCAL" or "REMOTE"
 
 try:
     PORT_NUMBER = int(PORT_NUMBER)
 except Exception:
-    raise Exception(f"The passed value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
+    raise Exception(f"The passed configuration value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
 
+assert DEPLOYMENT == "LOCAL" or DEPLOYMENT == "REMOTE", \
+    f"The passed configuration value for DEPLOYMENT (`{DEPLOYMENT}`) must be either 'LOCAL' or 'REMOTE'"
 
 # END OF CONFIGURATION IMPORT
 
@@ -107,7 +128,7 @@ except Exception:
 APP_NEO4J_DBASE = neo_access.NeoAccess(host=NEO4J_HOST, credentials=(NEO4J_USER, NEO4J_PASSWORD))
 
 InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
-InitializeBrainAnnex.set_media_folder(MEDIA_FOLDER)
+InitializeBrainAnnex.set_folders(MEDIA_FOLDER, LOG_FOLDER)
 
 site_pages = get_site_pages()     # Data for the site navigation
 
@@ -155,6 +176,10 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 #APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 #UPLOAD_FOLDER = os.path.join(APP_ROOT, 'api/static/')
 
+# STORE OTHER PARAMETERS IN FLASK
+app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
+app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
+
 
 
 # Configure the Jinja template engine embedded in Flask
@@ -169,13 +194,14 @@ app.secret_key = b"pqE3_t(4!x"
 
 ###  Fire up the web app
 
-if os.environ.get("FLASK_APP"):
+#if os.environ.get("FLASK_APP"):
+if DEPLOYMENT == "REMOTE":
     # Remote deployment.  The web app is started from the CLI,
     # with the command "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
-    print(f" * Remote deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:PORT_NUMBER_USED_IN_STARTING_UP/BA/pages/admin")
+    print(f" * REMOTE deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:PORT_NUMBER_USED_IN_STARTING_UP")
 else:
     # Local deployment.  The web app is started by running this main.py
     debug_mode = True
-    print(f" * Local deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
+    print(f" * LOCAL deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
     app.run(debug=debug_mode, port=PORT_NUMBER)     # CORE of UI : transfer control to the "Flask object"
     # This  will start a local WSGI server.  Threaded mode is enabled by default

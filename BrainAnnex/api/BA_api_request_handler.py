@@ -4,10 +4,14 @@ from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 import re               # For REGEX
 import pandas as pd
 import os
-from flask import request, current_app
+from flask import request, current_app  # TODO: phase out (?)
 from typing import Union
 import sys                  # Used to give better feedback on Exceptions
 import html
+import shutil
+from time import sleep
+from datetime import datetime
+
 
 """
     MIT License.  Copyright (c) 2021-2022 Julian A. West
@@ -23,12 +27,20 @@ class APIRequestHandler:
 
     "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
+    # The "db" and "FOLDER" properties get set by InitializeBrainAnnex
 
     db = None           # MUST be set before using this class!
                         # Database-interface object is a CLASS variable, accessible as cls.db
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored
-                        # Example: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+                        # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+    LOG_FOLDER = None   # Location where the log file is stored
+
+    ongoing_data_intake = False
+    import_file_count = 0
+
+    log_filename = "IMPORT_LOG.txt"     # TODO: generalize to BrainAnnex-wide
+    log_file_handle = None
 
 
 
@@ -835,7 +847,6 @@ class APIRequestHandler:
     #############################################################
 
 
-
     @classmethod
     def get_nodes_by_filter(cls, filter_dict) -> [dict]:
         """
@@ -895,63 +906,6 @@ class APIRequestHandler:
     ############################################################
 
     @classmethod
-    def upload_import_json_file(cls, post_pars, verbose=False) -> str:
-        """
-        Manage the upload and import of a data file in JSON format.
-
-        :return:    Status string, if successful.  In case of error, an Exception is raised
-        """
-        print("In upload_import_json_file()")
-
-        upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
-        # 'file' is just an identifier attached to the upload by the frontend
-        (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
-                                                                                    key_name=None, verbose=False)
-        # basename and full name of the temporary file created during the upload
-
-
-        assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"
-        if post_pars["use_schema"] == "SCHEMA":
-            assert post_pars["schema_class"], "Missing value for POST parameter `schema_class`"
-        elif post_pars["use_schema"] == "NO_SCHEMA":
-            assert post_pars["import_root_label"], "Missing value for POST parameter `import_root_label`"
-        else:
-            raise Exception(f"The value for the POST parameter `use_schema` must be 'SCHEMA' or 'NO_SCHEMA' (value passed: {post_pars['use_schema']})")
-
-
-        # Read in the contents of the uploaded file
-        with open(full_filename, 'r') as fh:
-            file_contents = fh.read()
-            if verbose:
-                print(f"Contents of uploaded file:\n{file_contents}")
-
-        file_size = len(file_contents)
-
-
-        # Now delete the temporary file created during the upload.
-        # TODO: maybe the API could offer the option to save the file as a Document
-        cls.delete_file(full_filename)
-
-
-        # Parse the JSON data
-        #python_data = json.loads(file_contents)    # Turn the string (representing a JSON list) into a list
-        # print("Python version of the JSON file:\n", python_data)
-
-
-        # Import the JSON data into the database
-        new_ids = None
-        if post_pars["use_schema"] == "SCHEMA":
-            new_ids = NeoSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
-        else:
-            new_ids = cls.db.import_json(file_contents, post_pars["import_root_label"], provenance=original_name)
-
-        status = f"New top-level Neo4j node ID: {new_ids}"
-        return f"Upload successful. {file_size} characters were read in. {status}"
-
-
-
-
-    @classmethod
     def upload_import_json(cls, verbose=False, return_url=None) -> str:
         """
         Modify the database, based on the contents of the uploaded file (expected to contain the JSON format
@@ -995,6 +949,218 @@ class APIRequestHandler:
         status += return_link
 
         return  status
+
+
+
+    @classmethod
+    def upload_import_json_file(cls, post_pars, verbose=False) -> str:
+        """
+        Manage the upload and import into the database of a data file in JSON format.
+
+        :return:    Status string, if successful.  In case of error, an Exception is raised
+        """
+        print("In upload_import_json_file()")
+
+        upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
+                                                                    # TODO: maybe extract in the api_routing file
+        # 'file' is just an identifier attached to the upload by the frontend
+        (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
+                                                                                    key_name=None, verbose=False)
+        # basename and full name of the temporary file created during the upload
+
+        assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"
+        if post_pars["use_schema"] == "SCHEMA":
+            assert post_pars["schema_class"], "Missing value for POST parameter `schema_class`"
+        elif post_pars["use_schema"] == "NO_SCHEMA":
+            assert post_pars["import_root_label"], "Missing value for POST parameter `import_root_label`"
+        else:
+            raise Exception(f"The value for the POST parameter `use_schema` must be 'SCHEMA' or 'NO_SCHEMA' (value passed: {post_pars['use_schema']})")
+
+
+        # Read in the contents of the uploaded file
+        with open(full_filename, 'r') as fh:
+            file_contents = fh.read()
+            if verbose:
+                print(f"Contents of uploaded file:\n{file_contents}")
+
+        file_size = len(file_contents)
+
+
+        # Now delete the temporary file created during the upload.
+        # TODO: maybe the API could offer the option to save the file as a Document
+        cls.delete_file(full_filename)
+
+        # Import the JSON data into the database
+        if post_pars["use_schema"] == "SCHEMA":
+            new_ids = NeoSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
+        else:
+            new_ids = cls.db.import_json(file_contents, post_pars["import_root_label"], provenance=original_name)
+
+        status = f"New top-level Neo4j node ID: {new_ids}"
+        return f"Upload and import successful. {file_size} characters were read in. {status}"
+
+
+
+    @classmethod
+    def data_intake_status(cls):
+        return cls.ongoing_data_intake
+
+
+    @classmethod
+    def do_stop_data_intake(cls) -> None:
+        cls.ongoing_data_intake = False
+
+
+
+    @classmethod
+    def do_bulk_import(cls, intake_folder: str, outtake_folder: str, schema_class: str) -> str:
+        """
+        Bulk-import all the JSON files in the intake_folder directory.
+        The import will continue until the folder is empty,
+        or until the cls.ongoing_data_intake property is set to False
+
+        Failure of individual imports is logged, but does not terminate the operation.
+        An Exception is raised if any of the following happens:
+            * The log file cannot be accessed/created
+            * Any of the data files cannot be moved to their final destination
+
+        :param intake_folder:   Name of folder (ending with "/") where the files to import are located
+        :param outtake_folder:
+        :param schema_class:
+        :return: 
+        """
+
+        cls.ongoing_data_intake = True          # Activate the continuous intake
+
+        file_list = os.listdir(intake_folder)   # List of filenames in the folder ("snapshot" of folder contents)
+
+        # As long as files are present in the intake folder
+        while file_list:
+            print(file_list)
+
+            # Process all the files that were in the folder
+            for f in file_list:
+                if not cls.ongoing_data_intake:     # Before each import, check a switch aborting the continuous-intake mode
+                    return f"Detected request to stop ongoing import. Running total count of imported files is {cls.import_file_count}"
+
+                cls.process_file_to_import(f, intake_folder, outtake_folder, schema_class)
+
+            file_list = os.listdir(intake_folder)    # Check if new files have arrived, while processing the earlier folder contents
+
+        # TODO: instead of returning, sleep for progressively longer times, checking for new file arrivals
+
+        return f"Processed all files. Running total count of imported files is {cls.import_file_count}"
+
+
+
+    @classmethod
+    def process_file_to_import(cls, f: str, intake_folder: str, outtake_folder: str, schema_class: str) -> None:
+        """
+        Import a JSON file, located in a particular folder, and then move it to a designated folder.
+        Keep a log of the operations.
+        Exceptions are caught and logged; if the Exceptions involves moving the process file, a new one is raised
+
+        :param f:               Name of file to import
+        :param intake_folder:   Name of folder (ending with "/") where the files to import are located
+        :param outtake_folder:
+        :param schema_class:
+        :return:                None
+        """
+
+        print(f"Processing file `{f}`...")
+
+        src_fullname = f"{intake_folder}{f}"
+        dest_fullname = f"{outtake_folder}{f}"
+
+        sleep(2)    # TODO: temp, for testing
+
+        try:
+            # Read in the contents of the data file to import
+            with open(src_fullname, 'r') as fh:
+                file_contents = fh.read()
+
+            file_size = len(file_contents)
+
+        except Exception as ex:
+            error_msg = f"Failed to open/read file `{f}` : {ex}"
+            print(error_msg)
+            cls.append_to_log(error_msg)
+            cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
+            return    # Go back to resume the import loop
+
+
+        # Import the JSON data into the database
+        try:
+            if len(file_contents) > 25:
+                abridged_file_contents = file_contents[:25] + " ..."
+            else:
+                abridged_file_contents = file_contents
+
+            print(f"About to import using: "
+                  f"file_contents: `{abridged_file_contents}`, schema_class: `{schema_class}`, provenance: `{f}`")
+
+            # ** THE ACTUAL IMPORT
+            new_ids = NeoSchema.import_json_data(file_contents, schema_class, provenance=f)
+
+            cls.import_file_count += 1
+
+            # Make a log of the operation
+            log_msg = f'({cls.import_file_count}) Imported data file "{f}", {file_size} bytes, new Neo4j IDs: {new_ids}'
+            cls.append_to_log(log_msg)
+
+            cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
+
+        except Exception as ex:
+            error_msg = f"Failed import of of file `{f}` : {ex}"
+            print(error_msg)
+            cls.append_to_log(error_msg)
+            cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
+            return    # Go back to resume the import loop
+
+
+
+    @classmethod
+    def archive_data_file(cls, src_fullname, dest_fullname, outtake_folder) -> None:
+        """
+        Move the processed file to its final location.
+        In case of error, the Exception is caught, logged and re-raised
+
+        :param src_fullname:
+        :param dest_fullname:
+        :param outtake_folder:
+        :return:                None
+        """
+        print(f"    ...processing complete.  Moving file to folder `{outtake_folder}`\n\n")
+        try:
+            shutil.move(src_fullname, dest_fullname)
+        except Exception as ex:
+            error_msg = f"Failed move of file `{src_fullname}` to destination folder `{outtake_folder}` : {ex}"
+            print(error_msg)
+            cls.append_to_log(error_msg)
+            raise Exception(error_msg)      # The Exception is re-raised, because failure to move a file must stop the continuous import
+
+
+
+    @classmethod
+    def append_to_log(cls, msg) -> None:
+        # Prepare timestamp
+        now = datetime.now()
+        dt_string = now.strftime("%m/%d/%Y %H:%M")   # mm/dd/YY H:M    (for seconds, add  :%S)
+
+        # Make a log of the operation
+
+        if cls.log_file_handle is None:
+            # Open (creating it if necessary) the log file
+            try:
+                cls.log_file_handle = open(cls.LOG_FOLDER + cls.log_filename, "a")  # If not present, create it
+            except Exception as ex:
+                error_msg = f"Unable to open or create a log file named {cls.LOG_FOLDER + cls.log_filename} : {ex}"
+                print(error_msg)
+                #raise Exception(error_msg)     # TODO: This should happen at program startup, in main
+
+        cls.log_file_handle.write(f"{dt_string} - {msg}\n\n")
+        cls.log_file_handle.flush()             # To avoid buffering issues
+
 
 
 

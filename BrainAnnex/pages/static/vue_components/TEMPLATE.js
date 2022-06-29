@@ -29,7 +29,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
-                status_message: ""      // Message for the user about the status of the last operation (NOT used for "waiting" status)
+                status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
             }
         },
 
@@ -74,33 +74,58 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 SERVER CALLS
              */
 
-            get_data_from_server()
+            get_data_from_server_POST()          /* "POST"  version */
             /* Initiate request to server
              */
             {
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/SOME_API_ENDPOINT";
-                let my_var = "some value";
+                let url_server_api = "/BA/api/SOME_API_ENDPOINT";
+                let my_var = "some value";  // Optional parameter, if needed
                 let post_obj = {my_var: my_var};
-                console.log(`About to contact the server at ${url_server}.  POST object:`);
+                console.log(`About to contact the server at ${url_server_api}.  POST object:`);
                 console.log(post_obj);
 
                 this.waiting = true;
-                this.status_message = "";   // Clear any message from the previous operation
                 this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server(url_server_api,
                             {payload_type: "JSON",
                              post_obj: post_obj,
-                             callback_fn: this.finish_get_linked_records_from_server,
-                             custom_data: [my_var]});
+                             callback_fn: this.finish_get_data_from_server,
+                             custom_data: [my_var]
+                             });
             },
 
-            finish_get_data_from_server(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of get_data_from_server() upon getting a response from the server
+
+            get_data_from_server_GET()          /* "GET"  version */
+            /* Initiate request to server
+             */
             {
-                console.log("Finalizing the get_data_from_server operation...");
+                // Send the request to the server, using a GET
+                let url_server_api = "/BA/api/SOME_API_ENDPOINT";
+                let my_var = "some value";  // Optional parameter, if needed
+                console.log(`About to contact the server at ${url_server_api}`);
+
+                this.waiting = true;
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {payload_type: "JSON",
+                             callback_fn: this.finish_get_data_from_server,
+                             custom_data: [my_var]
+                             });
+            },
+
+
+
+            finish_get_data_from_server(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of get_data_from_server_GET() upon getting a response from the server
+            {
+                console.log("Finalizing the get_data_from_server_GET operation...");
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;

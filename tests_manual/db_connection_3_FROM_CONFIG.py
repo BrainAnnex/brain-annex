@@ -1,6 +1,7 @@
 # Test of ability to connect to the Neo4j database from the credentials
 # in config file(s) variables NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD
 
+import os
 from configparser import ConfigParser
 from BrainAnnex.modules.neo_access.neo_access import NeoAccess
 
@@ -8,7 +9,7 @@ print("About to test the database connection, using the credentials STORED in th
 
 
 
-#               IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS                 #
+###  IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS  ###
 
 def extract_par(name, d, display=True) -> str:
     if name not in d:
@@ -26,7 +27,13 @@ config = ConfigParser()
 
 # Attempt to import parameters from the default config file first, then from 'config.ini'
 # (possibly overwriting some or all values from the default config file)
-found_files = config.read(['../config.defaults.ini', '../config.ini'])
+
+if os.environ.get("FLASK_APP"):
+    # Remote deployment.
+    found_files = config.read(['config.defaults.ini', 'config.ini'])            # For server
+else:
+    found_files = config.read(['../config.defaults.ini', '../config.ini'])     # For local machine
+
 #print("found_files: ", found_files)    # This will be a list of the names of the files that were found
 
 if found_files == []:

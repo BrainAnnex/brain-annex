@@ -407,16 +407,45 @@ class NeoSchema:
 
 
     @classmethod
-    def delete_class(cls, class_name = "", schema_id:int = None) -> None:
+    def delete_class(cls, name: str, safe_delete=True) -> None:
         """
-        Delete the given Class (specified by its name or schema_id) AND all its attached Properties -
-        but ONLY if there are no data nodes of that Class (i.e., linked to it.)
+        Delete the given Class AND all its attached Properties.
+        If safe_delete is True (recommended) delete ONLY if there are no data nodes of that Class
+        (i.e., linked to it by way of "SCHEMA" relationships.)
 
-        :param class_name:  Name of the Class to delete
-        :param schema_id:
-        :return:
+        :param name:        Name of the Class to delete
+        :param safe_delete: Flag indicating whether the deletion is to be restricted to
+                            situations where no data node would be left "orphaned".
+                            CAUTION: if safe_delete is False,
+                                     then data nodes may be left without a Schema
+        :return:            None.  In case of no node deletion, an Exception is raised
         """
-        pass    # TODO: implement
+        if safe_delete:     # A clause is added in this branch: "WHERE NOT EXISTS (()-[:SCHEMA]->(c))"
+            q = '''
+            MATCH (c :CLASS {name: $name})
+            WHERE NOT EXISTS (()-[:SCHEMA]->(c))
+            WITH c
+            OPTIONAL MATCH (c)-[:HAS_PROPERTY]->(p :PROPERTY)         
+            DETACH DELETE c, p
+            '''
+        else:
+            q = '''
+            MATCH (c :CLASS {name: $name})
+            WITH c
+            OPTIONAL MATCH (c)-[:HAS_PROPERTY]->(p :PROPERTY)
+            DETACH DELETE c, p
+            '''
+        #print(q)
+
+        result = cls.db.update_query(q, data_binding={"name": name})
+        print("result of update query in delete_class(): ", result)
+        number_nodes_deleted = result.get("nodes_deleted", 0)   # 0 is given as default value, if not present
+
+        if number_nodes_deleted < 1:     # If no nodes were deleted
+            if safe_delete:
+                raise Exception(f"Nothing was deleted; potential cause: the specified Class (`{name}`) doesn't exist, or data nodes are attached to it")
+            else:
+                raise Exception(f"Nothing was deleted; potential cause: the specified Class (`{name}`) doesn't exist")
 
 
 
@@ -486,6 +515,7 @@ class NeoSchema:
         :param class_name:      Name of a Class in the schema
         :param rel_name:        Name of relationship to follow (in the OUTbound direction) from the above Class
         :param enforce_unique:  If True, it raises an Exception if the number of results isn't exactly one
+
         :return:                If enforce_unique is True, return a string with the class name;
                                 otherwise, return a list of names (typically just one)
         """
@@ -1402,8 +1432,7 @@ class NeoSchema:
         except Exception as ex:
             raise Exception(f"Incorrectly-formatted JSON string. {ex}")
 
-        #print("Python version of the JSON file:\n", python_data_from_json)
-        print(f"The result of the conversion from JSON is a {type(python_data_from_json)}")
+        #print("Python version of the JSON file:\n", python_data_from_json)     # A dictionary
 
         if parse_only:
             return      # Nothing else to do
