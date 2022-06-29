@@ -847,7 +847,6 @@ class APIRequestHandler:
     #############################################################
 
 
-
     @classmethod
     def get_nodes_by_filter(cls, filter_dict) -> [dict]:
         """
