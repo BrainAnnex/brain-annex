@@ -1432,8 +1432,7 @@ class NeoSchema:
         except Exception as ex:
             raise Exception(f"Incorrectly-formatted JSON string. {ex}")
 
-        #print("Python version of the JSON file:\n", python_data_from_json)
-        print(f"The result of the conversion from JSON is a {type(python_data_from_json)}")
+        #print("Python version of the JSON file:\n", python_data_from_json)     # A dictionary
 
         if parse_only:
             return      # Nothing else to do

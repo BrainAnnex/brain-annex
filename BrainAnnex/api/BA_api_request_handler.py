@@ -27,15 +27,19 @@ class APIRequestHandler:
 
     "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
+    # The "db" and "FOLDER" properties get set by InitializeBrainAnnex
 
     db = None           # MUST be set before using this class!
                         # Database-interface object is a CLASS variable, accessible as cls.db
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored
-                        # Example: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+                        # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+    LOG_FOLDER = None   # Location where the log file is stored
 
     ongoing_data_intake = False
     import_file_count = 0
+
+    log_filename = "IMPORT_LOG.txt"     # TODO: generalize to BrainAnnex-wide
     log_file_handle = None
 
 
@@ -1008,35 +1012,28 @@ class APIRequestHandler:
         cls.ongoing_data_intake = False
 
 
+
     @classmethod
     def do_bulk_import(cls, intake_folder: str, outtake_folder: str, schema_class: str) -> str:
         """
+        Bulk-import all the JSON files in the intake_folder directory.
+        The import will continue until the folder is empty,
+        or until the cls.ongoing_data_intake property is set to False
+
         Failure of individual imports is logged, but does not terminate the operation.
         An Exception is raised if any of the following happens:
             * The log file cannot be accessed/created
             * Any of the data files cannot be moved to their final destination
 
-        :param intake_folder: 
+        :param intake_folder:   Name of folder (ending with "/") where the files to import are located
         :param outtake_folder:
         :param schema_class:
         :return: 
         """
 
-        log_filename = "IMPORT_LOG.txt"
-
-        if cls.log_file_handle is None:
-            # Open (creating it if necessary) the log file
-            try:
-                cls.log_file_handle = open(outtake_folder + log_filename, "a")  # If not present, create it
-            except Exception as ex:
-                error_msg = f"Unable to open or create a log file named {outtake_folder + log_filename} : {ex}"
-                print(error_msg)
-                raise Exception(error_msg)
-
-
         cls.ongoing_data_intake = True          # Activate the continuous intake
 
-        file_list = os.listdir(intake_folder) # List of filenames in the folder ("snapshot" of folder contents)
+        file_list = os.listdir(intake_folder)   # List of filenames in the folder ("snapshot" of folder contents)
 
         # As long as files are present in the intake folder
         while file_list:
@@ -1044,73 +1041,96 @@ class APIRequestHandler:
 
             # Process all the files that were in the folder
             for f in file_list:
-                if not cls.ongoing_data_intake:
+                if not cls.ongoing_data_intake:     # Before each import, check a switch aborting the continuous-intake mode
                     return f"Detected request to stop ongoing import. Running total count of imported files is {cls.import_file_count}"
 
-                print(f"Processing file `{f}`...")
+                cls.process_file_to_import(f, intake_folder, outtake_folder, schema_class)
 
-                src_fullname = f"{intake_folder}{f}"
-                dest_fullname = f"{outtake_folder}{f}"
+            file_list = os.listdir(intake_folder)    # Check if new files have arrived, while processing the earlier folder contents
 
-                sleep(3)
-
-                try:
-                    # Read in the contents of the data file to import
-                    with open(src_fullname, 'r') as fh:
-                        file_contents = fh.read()
-
-                    file_size = len(file_contents)
-
-                except Exception as ex:
-                    error_msg = f"Failed to open/read file `{f}` : {ex}"
-                    print(error_msg)
-                    cls.append_to_log(error_msg)
-                    cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
-                    continue    # The import loop now resumes
-
-
-                # Import the JSON data into the database
-                try:
-
-                    #
-                    if len(file_contents) > 25:
-                        abridged_file_contents = file_contents[:25] + " ..."
-                    else:
-                        abridged_file_contents = file_contents
-
-                    print(f"About to import using: "
-                          f"file_contents: `{abridged_file_contents}`, schema_class: `{schema_class}`, provenance: `{f}`")
-
-                    # IMPORT
-                    new_ids = NeoSchema.import_json_data(file_contents, schema_class, provenance=f)
-
-                    cls.import_file_count += 1
-
-                    # Make a log of the operation
-                    log_msg = f'({cls.import_file_count}) Imported data file "{f}", {file_size} bytes, new IDs: {new_ids}'
-                    cls.append_to_log(log_msg)
-
-                    cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
-                    #print(f"    ...processing complete.  Moving file to folder `{outtake_folder}`\n")
-                    #shutil.move(src_fullname, dest_fullname)
-
-                except Exception as ex:
-                    error_msg = f"Failed import of of file `{f}` : {ex}"
-                    print(error_msg)
-                    cls.append_to_log(error_msg)
-                    # The import loop now resumes
-
-
-            file_list = os.listdir(intake_folder)         # Check if new files have arrived, while processing the earlier folder contents
-
-        # END WHILE
+        # TODO: instead of returning, sleep for progressively longer times, checking for new file arrivals
 
         return f"Processed all files. Running total count of imported files is {cls.import_file_count}"
 
 
 
     @classmethod
-    def archive_data_file(cls, src_fullname, dest_fullname, outtake_folder):
+    def process_file_to_import(cls, f: str, intake_folder: str, outtake_folder: str, schema_class: str) -> None:
+        """
+        Import a JSON file, located in a particular folder, and then move it to a designated folder.
+        Keep a log of the operations.
+        Exceptions are caught and logged; if the Exceptions involves moving the process file, a new one is raised
+
+        :param f:               Name of file to import
+        :param intake_folder:   Name of folder (ending with "/") where the files to import are located
+        :param outtake_folder:
+        :param schema_class:
+        :return:                None
+        """
+
+        print(f"Processing file `{f}`...")
+
+        src_fullname = f"{intake_folder}{f}"
+        dest_fullname = f"{outtake_folder}{f}"
+
+        sleep(2)    # TODO: temp, for testing
+
+        try:
+            # Read in the contents of the data file to import
+            with open(src_fullname, 'r') as fh:
+                file_contents = fh.read()
+
+            file_size = len(file_contents)
+
+        except Exception as ex:
+            error_msg = f"Failed to open/read file `{f}` : {ex}"
+            print(error_msg)
+            cls.append_to_log(error_msg)
+            cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
+            return    # Go back to resume the import loop
+
+
+        # Import the JSON data into the database
+        try:
+            if len(file_contents) > 25:
+                abridged_file_contents = file_contents[:25] + " ..."
+            else:
+                abridged_file_contents = file_contents
+
+            print(f"About to import using: "
+                  f"file_contents: `{abridged_file_contents}`, schema_class: `{schema_class}`, provenance: `{f}`")
+
+            # ** THE ACTUAL IMPORT
+            new_ids = NeoSchema.import_json_data(file_contents, schema_class, provenance=f)
+
+            cls.import_file_count += 1
+
+            # Make a log of the operation
+            log_msg = f'({cls.import_file_count}) Imported data file "{f}", {file_size} bytes, new Neo4j IDs: {new_ids}'
+            cls.append_to_log(log_msg)
+
+            cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
+
+        except Exception as ex:
+            error_msg = f"Failed import of of file `{f}` : {ex}"
+            print(error_msg)
+            cls.append_to_log(error_msg)
+            cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
+            return    # Go back to resume the import loop
+
+
+
+    @classmethod
+    def archive_data_file(cls, src_fullname, dest_fullname, outtake_folder) -> None:
+        """
+        Move the processed file to its final location.
+        In case of error, the Exception is caught, logged and re-raised
+
+        :param src_fullname:
+        :param dest_fullname:
+        :param outtake_folder:
+        :return:                None
+        """
         print(f"    ...processing complete.  Moving file to folder `{outtake_folder}`\n\n")
         try:
             shutil.move(src_fullname, dest_fullname)
@@ -1121,6 +1141,7 @@ class APIRequestHandler:
             raise Exception(error_msg)      # The Exception is re-raised, because failure to move a file must stop the continuous import
 
 
+
     @classmethod
     def append_to_log(cls, msg) -> None:
         # Prepare timestamp
@@ -1128,6 +1149,16 @@ class APIRequestHandler:
         dt_string = now.strftime("%m/%d/%Y %H:%M")   # mm/dd/YY H:M    (for seconds, add  :%S)
 
         # Make a log of the operation
+
+        if cls.log_file_handle is None:
+            # Open (creating it if necessary) the log file
+            try:
+                cls.log_file_handle = open(cls.LOG_FOLDER + cls.log_filename, "a")  # If not present, create it
+            except Exception as ex:
+                error_msg = f"Unable to open or create a log file named {cls.LOG_FOLDER + cls.log_filename} : {ex}"
+                print(error_msg)
+                #raise Exception(error_msg)     # TODO: This should happen at program startup, in main
+
         cls.log_file_handle.write(f"{dt_string} - {msg}\n\n")
         cls.log_file_handle.flush()             # To avoid buffering issues
 

@@ -99,6 +99,7 @@ NEO4J_PASSWORD = extract_par("NEO4J_PASSWORD", SETTINGS, display=False)
 
 MEDIA_FOLDER = extract_par("MEDIA_FOLDER", SETTINGS)
 UPLOAD_FOLDER = extract_par("UPLOAD_FOLDER", SETTINGS)
+LOG_FOLDER = extract_par("LOG_FOLDER", SETTINGS)
 INTAKE_FOLDER = extract_par("INTAKE_FOLDER", SETTINGS)
 OUTTAKE_FOLDER = extract_par("OUTTAKE_FOLDER", SETTINGS)
 
@@ -127,7 +128,7 @@ assert DEPLOYMENT == "LOCAL" or DEPLOYMENT == "REMOTE", \
 APP_NEO4J_DBASE = neo_access.NeoAccess(host=NEO4J_HOST, credentials=(NEO4J_USER, NEO4J_PASSWORD))
 
 InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
-InitializeBrainAnnex.set_media_folder(MEDIA_FOLDER)
+InitializeBrainAnnex.set_folders(MEDIA_FOLDER, LOG_FOLDER)
 
 site_pages = get_site_pages()     # Data for the site navigation
 
