@@ -1,5 +1,6 @@
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.PLUGINS.notes import Notes
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 import re               # For REGEX
 import pandas as pd
@@ -605,6 +606,7 @@ class APIRequestHandler:
         #               some files are saved,
         #               some attributes are added to post_data, and some are whisked away)
         #             Note: the plugin might want to do some ops regardless of missing required Properties
+        #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
         if schema_code == "n":
             post_data = cls.plugin_n_add_content(new_item_id, post_data)
 
@@ -625,7 +627,7 @@ class APIRequestHandler:
             Categories.add_content_at_end(category_id=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_item_id=new_item_id)
-        else:
+        else:   # Insert at a position that is not the top nor bottom
             try:
                 insert_after = int(insert_after)
             except Exception:
@@ -634,6 +636,10 @@ class APIRequestHandler:
             Categories.add_content_after_element(category_id=category_id,
                                              item_class_name=class_name, item_properties=post_data,
                                              insert_after=insert_after, new_item_id=new_item_id)
+
+        if schema_code == "n":
+            Notes.new_content_item_in_category_SUCCESSFUL(new_item_id, post_data)
+
 
         return new_item_id     # Success
 

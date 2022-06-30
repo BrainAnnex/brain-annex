@@ -150,7 +150,7 @@ class ApiRouting:
                                     EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at')])
 
         :param required_par_list:   A list or tuple.  EXAMPLE: ['item_id', 'rel_name']
-        :return:                    A dict of POST data
+        :return:                    A dict populated with the POST data
         """
         data_dict = post_data.to_dict(flat=True)    # WARNING: if multiple identical keys occur,
                                                     #          the values associated to the later keys will be discarded
@@ -588,8 +588,8 @@ class ApiRouting:
             cls.show_post_data(post_data, "delete_class")
 
             try:
-                pars = cls.extract_post_pars(post_data, required_par_list=["class_name"])
-                NeoSchema.delete_class(name=pars["class_name"], safe_delete=True)
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=["class_name"])
+                NeoSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 # TODO: in case of failure, investigate further the problem
@@ -841,15 +841,18 @@ class ApiRouting:
         @login_required
         def add_item_to_category() -> str:
             """
-            Create a new Content Item attached to a particular Category
+            Create a new Content Item attached to a particular Category,
+            at a particular location in the "collection" (page)
+
             EXAMPLE invocation:
-            curl http://localhost:5000/BA/api/simple/add_item_to_category -d "category_id=708&insert_after=711&schema_code=h&text=New Header"
+            curl http://localhost:5000/BA/api/simple/add_item_to_category
+                            -d "category_id=708&insert_after=711&schema_code=h&text=New Header"
         
             POST FIELDS:
-                category_id
-                schema_code
+                category_id         Integer identifying the Category to which attach the new Content Item
+                schema_code         A string to identify the Schema that the new Content Item belongs to
                 insert_after        Either an item_id, or one of the special values "TOP" or "BOTTOM"
-                PLUS all applicable plugin-specific fields
+                PLUS any applicable plugin-specific fields
             """
             # Extract the POST values
             post_data = request.form
@@ -858,7 +861,8 @@ class ApiRouting:
         
             # Create a new Content Item with the POST data
             try:
-                new_id = APIRequestHandler.new_content_item_in_category(dict(post_data))
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
+                new_id = APIRequestHandler.new_content_item_in_category(pars_dict)
                 return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)

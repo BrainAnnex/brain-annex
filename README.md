@@ -168,7 +168,8 @@ if it is on another machine, use values such as `bolt://123.456.0.29:7687` or `b
    EXAMPLE (on Windows): `UPLOAD_FOLDER = "D:/tmp/"`  
    EXAMPLE (on Linux): `UPLOAD_FOLDER = "/tmp/"`
 
-- `PORT_NUMBER` (ok to keep the default 5000, unless you have a conflict)
+- `PORT_NUMBER` (ok to keep the default 5000, unless you have a conflict.  
+  Not applicable if you use gunicorn or other web server)
 
 (Note: an alternate way to set the database credentials is thru environment variables;
 if you're running locally, using PyCharm, you can set the environment variables from Run > Edit Configurations...)
