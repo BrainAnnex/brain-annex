@@ -2,6 +2,7 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
+from BrainAnnex.modules.media_manager.media_manager import MediaManager
 import re               # For REGEX
 import pandas as pd
 import os
@@ -318,7 +319,7 @@ class APIRequestHandler:
         filename = f"{basename}.{suffix}"
 
         try:
-            file_contents = cls.get_from_file(filename)
+            file_contents = MediaManager.get_from_file(filename)
             return file_contents
         except Exception as ex:
             return f"I/O failure while reading in contents of item {item_id}. {ex}"     # File I/O failed
@@ -348,9 +349,9 @@ class APIRequestHandler:
 
         try:
             if th:
-                file_contents = cls.get_from_binary_file(cls.MEDIA_FOLDER + "resized/", filename)
+                file_contents = MediaManager.get_from_binary_file(cls.MEDIA_FOLDER + "resized/", filename)
             else:
-                file_contents = cls.get_from_binary_file(cls.MEDIA_FOLDER, filename)
+                file_contents = MediaManager.get_from_binary_file(cls.MEDIA_FOLDER, filename)
 
             return (suffix, file_contents)
         except Exception as ex:
@@ -483,7 +484,7 @@ class APIRequestHandler:
         #       TODO: try to infer them from the Schema
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
-            set_dict = cls.plugin_n_update_content(data_binding, set_dict)
+            set_dict = Notes.plugin_n_update_content(data_binding, set_dict)
 
         # TODO: utilize the schema layer, rather than directly access the database
         match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
@@ -521,10 +522,18 @@ class APIRequestHandler:
         # PLUGIN-SPECIFIC OPERATIONS that perform filesystem operations
         #       (TODO: try to infer them from the Schema)
         if schema_code in ["n", "i", "d"]:
-            status = cls.delete_attached_media_file(item_id)   # If there's media involved, delete the media, too
+            # If there's media involved, delete the media, too
+            ###status = cls.delete_attached_media_file(item_id)
+            status, record = cls.lookup_media_record(item_id)
+            if status:
+                MediaManager.delete_media_file(record["basename"], record["suffix"])
 
         if schema_code == "i":
-            status = cls.plugin_i_delete_content(item_id)   # Extra processing for the "Images" plugin
+            # Extra processing for the "Images" plugin
+            ###status = cls.plugin_i_delete_content(item_id)
+            status, record = cls.lookup_media_record(item_id)
+            if status:
+                MediaManager.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
 
         match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_deleted = cls.db.delete_nodes(match)
@@ -614,7 +623,7 @@ class APIRequestHandler:
         #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
-            post_data = cls.plugin_n_add_content(new_item_id, post_data)
+            post_data = Notes.plugin_n_add_content(new_item_id, post_data)
 
 
         print("Revised post_data: ", post_data)
@@ -655,201 +664,20 @@ class APIRequestHandler:
     #######################     MEDIA-RELATED      #######################
 
     @classmethod
-    def get_from_file(cls, filename: str) -> str:
-        """
-
-        :param filename:    EXCLUSIVE of MEDIA_FOLDER part (stored as class variable)
-        :return:            The contents of the file
-        """
-        full_file_name = cls.MEDIA_FOLDER + filename
-        with open(full_file_name, 'r', encoding='utf8') as fh:
-            file_contents = fh.read()
-            return file_contents
-
-
-    @classmethod
-    def get_from_binary_file(cls, path: str, filename: str) -> bytes:
-        """
-
-        :param path:
-        :param filename:    EXCLUSIVE of path
-        :return:            The contents of the binary file
-        """
-        #full_file_name = cls.MEDIA_FOLDER + filename
-        full_file_name = path + filename
-        with open(full_file_name, 'rb') as fh:
-            file_contents = fh.read()
-            return file_contents
-
-
-
-    @classmethod
-    def save_into_file(cls, contents: str, filename: str) -> None:
-        """
-        Save the given data into the specified file in the class-wide media folder.  UTF8 encoding is used.
-        In case of error, detailed Exceptions are raised
-
-        :param contents:    String to store into the file
-        :param filename:    EXCLUSIVE of MEDIA_FOLDER part (stored as class variable)
-        :return:            None.  In case of errors, detailed Exceptions are raised
-        """
-
-        full_file_name = cls.MEDIA_FOLDER + filename
-
-        try:
-            f = open(full_file_name, "w", encoding='utf8')
-        except Exception as ex:
-            raise Exception(f"Unable to open file {full_file_name} for writing. {ex}")
-
-        try:
-            f.write(contents)
-        except Exception as ex:
-            raise Exception(f"Unable write data to file {full_file_name}. First 20 characters: `{contents[:20]}`. {cls.exception_helper(ex)}")
-
-        f.close()
-
-
-
-    @classmethod
-    def delete_attached_media_file(cls, item_id: int) -> bool:
+    def lookup_media_record(cls, item_id: int) -> tuple:
         """
         Delete the media file attached to the specified Content Item:
         """
         record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
         if record is None:
-            return False
+            return False, None
 
         if ("basename" not in record) or ("suffix" not in record):
-            return False
+            return False, None
 
-        cls.delete_media_file(record["basename"], record["suffix"])
-        return True
+        MediaManager.delete_media_file(record["basename"], record["suffix"])
+        return True, record
 
-
-
-    @classmethod
-    def delete_media_file(cls, basename: str, suffix: str, subfolder = "") -> bool:
-        """
-        Delete the specified media file, assumed in a standard location
-
-        :param basename:
-        :param suffix:
-        :param subfolder:   It must end with "/"  .  EXAMPLE:  "resized/"
-        :return:
-        """
-        filename = basename + "." + suffix
-        print(f"Attempting to delete file `{filename}`")
-
-        full_file_name = cls.MEDIA_FOLDER + subfolder + filename
-
-        return cls.delete_file(full_file_name)
-
-
-
-    @classmethod
-    def delete_file(cls, fullname: str) -> bool:
-        """
-        Delete the specified file, assumed in a standard location
-
-        :param fullname:
-        :return:            True if successful, or False otherwise
-        """
-
-        if os.path.exists(fullname):
-            os.remove(fullname)
-            return True
-        else:
-            return False    # "The file does not exist"
-
-
-
-
-    #######################     PLUGIN-SPECIFIC      #######################
-
-    # TODO: move to a separate module
-
-    #####  For "n" plugin
-
-    @classmethod
-    def plugin_n_add_content(cls, item_id: int, data_binding: dict) -> dict:
-        """
-        Special handling for Notes (ought to be specified in its Schema):
-               the "body" value is to be stored in a file named "notes-ID.htm", where ID is the item_id,
-               and NOT be stored in the database.  Instead, store in the database:
-                       basename: "notes-ID"
-                       suffix: "htm"
-
-        :return: The altered data_binding dictionary.  In case of error, an Exception is raised.
-        """
-        # Save and ditch the "body" attribute - which is not to be stored in the database
-        body = data_binding["body"]
-        del data_binding["body"]
-
-        # Create a file
-        basename = f"notes-{item_id}"
-        suffix = "htm"
-        filename = basename + "." + suffix
-        print(f"Creating file named `{filename}`, with contents:")
-        print(body)
-        cls.save_into_file(body, filename)
-
-        # Introduce new attributes, "basename" and "suffix", to be stored in the database
-        data_binding["basename"] = basename
-        data_binding["suffix"] = suffix
-
-        return data_binding
-
-
-
-    @classmethod
-    def plugin_n_update_content(cls, data_binding: dict, set_dict: dict) -> dict:
-        """
-        Special handling for Notes (ought to be specified in its Schema):
-               the "body" value is to be stored in a file named "notes-ID.htm", where ID is the item_id,
-               and NOT be stored in the database.  Instead, store in the database:
-                       basename: "notes-ID"
-                       suffix: "htm"
-
-        :return: The altered data_binding dictionary
-        """
-        body = data_binding["body"]
-        item_id = data_binding["item_id"]
-
-
-        # Overwrite the a file
-        basename = f"notes-{item_id}"
-        filename = basename + ".htm"
-        print(f"Overwriting file named `{filename}`, with contents:")
-        print(body)
-        cls.save_into_file(body, filename)
-
-        # Ditch the "body" attribute - which is not to be stored in the database
-        #del data_binding["body"]
-        del set_dict["body"]
-        # In its place, introduce 2 new attributes, "basename" and "suffix"
-        #data_binding["basename"] = basename
-        #data_binding["suffix"] = "htm"
-
-        return set_dict
-
-
-
-    #####  For "i" plugin
-
-    @classmethod
-    def plugin_i_delete_content(cls, item_id):
-        """
-        Delete the thumbnail file attached to the specified Content Item
-        """
-        record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
-        if record is None:
-            return False
-
-        if ("basename" not in record) or ("suffix" not in record):
-            return False
-
-        cls.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
-        return True
 
 
 
@@ -951,7 +779,7 @@ class APIRequestHandler:
             return f"Import of JSON data failed: {ex}. {return_link}"
 
         # Now delete the temporary file created during the upload
-        delete_status = cls.delete_file(full_filename)
+        delete_status = MediaManager.delete_file(full_filename)
 
         # Prepare a status message to return
         status = f"File `{basename}` uploaded and imported successfully: {details}."
@@ -1000,7 +828,7 @@ class APIRequestHandler:
 
         # Now delete the temporary file created during the upload.
         # TODO: maybe the API could offer the option to save the file as a Document
-        cls.delete_file(full_filename)
+        MediaManager.delete_file(full_filename)
 
         # Import the JSON data into the database
         if post_pars["use_schema"] == "SCHEMA":
