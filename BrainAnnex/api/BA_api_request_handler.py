@@ -439,7 +439,7 @@ class APIRequestHandler:
     @classmethod
     def update_content_item(cls, post_data: dict) -> None:
         """
-        Update an existing Content Item
+        Update an existing Content Item.
         In case of error, an Exception is raised
 
         NOTE: the "schema_code" field is currently required, but it's redundant.  Only
@@ -479,14 +479,19 @@ class APIRequestHandler:
             if k not in ("schema_code", "item_id"):    # Exclude some keys
                 set_dict[k] = v
 
-        # PLUGIN-SPECIFIC OPERATIONS that change set_dict and perform filesystem operations
+        # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
         #       TODO: try to infer them from the Schema
+        original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
             set_dict = cls.plugin_n_update_content(data_binding, set_dict)
 
         # TODO: utilize the schema layer, rather than directly access the database
         match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
+
+        if schema_code == "n":
+            Notes.update_content_item_SUCCESSFUL(item_id, original_post_data)
+
         # If the update was NOT for a "note" (in which case it might only be about the note than its metadata)
         # verify that some fields indeed got changed
         if schema_code != "n" and number_updated == 0:
@@ -607,6 +612,7 @@ class APIRequestHandler:
         #               some attributes are added to post_data, and some are whisked away)
         #             Note: the plugin might want to do some ops regardless of missing required Properties
         #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
+        original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
             post_data = cls.plugin_n_add_content(new_item_id, post_data)
 
@@ -638,7 +644,7 @@ class APIRequestHandler:
                                              insert_after=insert_after, new_item_id=new_item_id)
 
         if schema_code == "n":
-            Notes.new_content_item_in_category_SUCCESSFUL(new_item_id, post_data)
+            Notes.new_content_item_in_category_SUCCESSFUL(new_item_id, original_post_data)
 
 
         return new_item_id     # Success
