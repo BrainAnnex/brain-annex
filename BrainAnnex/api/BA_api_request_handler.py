@@ -464,10 +464,10 @@ class APIRequestHandler:
 
         print("Item Type: ", item_id)
 
-        print("All Item Data: ")
-        print("-----------")
-        for k, v in post_data.items():
-            print(k , " -> " , v)
+        #print("All Item Data: ")
+        #print("-----------")
+        #for k, v in post_data.items():
+            #print(k , " -> " , v)
 
         data_binding = post_data
 

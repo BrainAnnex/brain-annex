@@ -28,8 +28,9 @@ class Notes:
         basename = f"notes-{item_id}"
         suffix = "htm"
         filename = basename + "." + suffix
-        print(f"Creating file named `{filename}`, with contents:")
-        print(body)
+        print(f"Creating file named `{filename}`")
+        #print("    File contents:")
+        #print(body)
         MediaManager.save_into_file(body, filename)
 
         # Introduce new attributes, "basename" and "suffix", to be stored in the database
@@ -58,8 +59,9 @@ class Notes:
         # Overwrite the a file
         basename = f"notes-{item_id}"
         filename = basename + ".htm"
-        print(f"Overwriting file named `{filename}`, with contents:")
-        print(body)
+        print(f"Overwriting file named `{filename}`")
+        #print("    File contents:")
+        #print(body)
         MediaManager.save_into_file(body, filename)
 
         # Ditch the "body" attribute - which is not to be stored in the database
@@ -98,21 +100,72 @@ class Notes:
         if body is None:
             raise Exception("The notes plugin in unable to index the contents because none were passed")
 
-        # printing original string
-        print("The original string is : " +  body)
+        #print("The original string is : \n" +  body)
 
         # Extract words from string
-        res = cls.split_into_words(body)
+        split_text = cls.split_into_words(body)
+        #print("The split text is : ", split_text)
 
-        # printing result
-        print("The list of words is : ", res)
+        word_list = []
+        # List of common English words to skip from indexing (stopword list)
+        # See https://github.com/Alir3z4/stop-words
+        # TODO: allow over-ride in config file
+        COMMON_WORDS = ['and', 'or', 'either', 'nor', 'neither',
+                        'the', 'an', 'with', 'without', 'within',
+                        'in', 'on', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by',
+                        'if', 'whether', 'then', 'else',
+                        'me', 'my', 'mine', 'he', 'she', 'it', 'him', 'his', 'her', 'its',
+                        'we', 'our', 'you', 'your', 'yours', 'they', 'them', 'their',
+                        'why', 'because', 'since', 'how', 'for', 'both', 'indeed',
+                        'help', 'helps', 'let', 'lets',
+                        'go', 'goes', 'going', 'gone', 'became', 'become',
+                        'be', 'is', 'isn', 'am', 'are', 'aren', 'been', 'was', 'wasn',
+                        'can', 'could', 'might', 'may', 'do', 'does', 'did', 'didn', 'done', 'make', 'made', 'making',
+                        'have', 'haven', 'has', 'had', 'hadn', 'having',
+                        'must', 'need', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
+                        'will', 'would',
+                        'get', 'gets', 'got',
+                        'ask', 'asks', 'answer', 'answers',
+                        'when', 'where', 'which', 'who', 'why', 'what',
+                        'no', 'yes', 'maybe', 'ok', 'oh',
+                        'll', 've', 'hr', 'ie', 'so', 'min',
+                        'good', 'better', 'best', 'great', 'well', 'bad',  'worse', 'worst',
+                        'just', 'about', 'above', 'again', 'ago',
+                        'times', 'date', 'dates', 'today', 'day', 'month', 'year', 'days', 'months', 'years',
+                        'after', 'before', 'yet', 'whenever', 'while', 'ever', 'never', 'often', 'sometimes', 'occasionally',
+                        'old', 'older', 'new', 'newer', 'begin', 'began',
+                        'up', 'down', 'over', 'above', 'under', 'below', 'between', 'wherever',
+                        'next', 'previous', 'other', 'thing', 'things',
+                        'like', 'as', 'fairly',
+                        'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than',
+                        'full', 'empty', 'lot', 'very',
+                        'part', 'parts', 'wide', 'narrow', 'side',
+                        'hence', 'therefore', 'whereas',
+                        'whom', 'whoever', 'whose',
+                        'this', 'that',
+                        'too', 'also',
+                        'related', 'issues', 'issue',
+                        'com', 'www',
+                        'one', 'two']
+
+
+
+        for word in split_text:
+            if len(word) > 1 \
+                    and not word.isnumeric() \
+                    and word not in COMMON_WORDS \
+                    and word not in word_list:
+                word_list.append(word)
+
+        print("The word list for the index is: ", word_list)
+
 
         # TODO: Continue the indexing
 
 
 
     @classmethod
-    def split_into_words(cls, text: str) ->[str]:
+    def split_into_words(cls, text: str, to_lower_case=True) ->[str]:
         """
         Zap HTML, HTML entities (such as &ndash;) and punctuation; then, break up into individual words.
 
@@ -123,14 +176,19 @@ class Notes:
         EXAMPLE demonstrated in the code, below:
             '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
 
-        :param text:    A string with the text to parse
-        :return:        A list of words in the text, free of punctuation, HTML and HTML entities (such as &ndash;)
+        :param text:            A string with the text to parse
+        :param to_lower_case:   If True, all text is converted to lower case
+        :return:                A list of words in the text,
+                                    free of punctuation, HTML and HTML entities (such as &ndash;)
         """
         unescaped_text = html.unescape(text)
         #print(unescaped_text)  # <p>Mr. Joe&sons<br>A Long–Term business! Find it at > (http://example.com/home)<br>Visit Joe's "NOW!"</p>
 
         stripped_text = cls.TAG_RE.sub(' ', unescaped_text)
         #print(stripped_text)   # Mr. Joe&sons A Long–Term business! Find it at > (http://example.com/home) Visit Joe's "NOW!"
+
+        if to_lower_case:
+            stripped_text = stripped_text.lower()   # If requested, turn everything to lower case
 
         result = re.findall(r'\w+', stripped_text)
         # EXAMPLE:  ['Mr', 'Joe', 'sons', 'A', 'Long', 'Term', 'business', 'Find', 'it', 'at', 'http', 'example', 'com', 'home', 'Visit', 'Joe', 's', 'NOW']

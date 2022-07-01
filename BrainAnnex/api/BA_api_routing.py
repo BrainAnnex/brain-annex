@@ -172,6 +172,7 @@ class ApiRouting:
     def show_post_data(cls, post_data, method_name=None) -> None:
         """
         Debug utility method.  Pretty-printing for POST data (expressed as an ImmutableMultiDict)
+        Long values are shown in abridged form
 
         EXAMPLE:
                 post_data = request.form
@@ -186,8 +187,15 @@ class ApiRouting:
         else:
             print(f"POST data: ")
 
+        max_length = 100
         for k, v in post_data.items():
-            print("    ", k , " -> " , v)   # TODO: if v is a string, put quotes around it
+            # Show an abridged (if appropriate) version of the value
+            if len(v) > max_length:
+                v_print = v[:max_length] + " ..."
+            else:
+                v_print = v
+
+            print("    ", k , " -> " , v_print)
         print("-----------")
 
 
