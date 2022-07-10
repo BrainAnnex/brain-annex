@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test of Cytoscape.js</title>
+    <style type="text/css">
+        #cy {
+            width: 600px;
+            height: 350px;
+            display: block;
+            background-color: #f2f2f2;
+            border: 1px solid gray;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js" integrity="sha512-f2pi4FT6LCwl93apc24uOUnAg8FtnkcSI1TLTQ96We8bzniiO8z7+S6qXBthmvJSFORTTjCmQL82MY7Jhi5FVA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    </script>
+
+</head>
+<body>
+
+<div id="cy">
+<!-- THE GRAPH WILL GO HERE -->
+</div>
+
+<script>
+    var cy = cytoscape({
+
+        container: document.getElementById('cy'),    // container to render in
+
+        elements: [ // list of graph elements (nodes & edges)
+            {
+                data: { id: 'jul' }, selected: true
+            },
+            {
+                data: { id: 'val' }
+            },
+            {
+                data: { id: 'rese' }
+            },
+            { // edge
+                data: { id: 'jv', source: 'jul', target: 'val', label: 'friend_with' }
+            },
+            { // edge
+                data: { id: 'jr', source: 'jul', target: 'rese', label: 'knows' }
+            }
+        ],
+
+
+        style: [ // the stylesheet for the graph
+            {
+                selector: 'node',
+                style: {
+                    'label': 'data(id)',
+                    'background-color': 'cyan',
+                    'border-width': 1,
+                    'border-color': '#666'
+                }
+            },
+
+            {
+                selector: 'edge',
+                style: {
+                    'width': 2,
+                    'line-color': '#666',
+                    'target-arrow-color': '#666',
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'bezier',
+                    'label': 'data(label)',
+                    'font-size': '14px',
+                    'color': 'brown'
+                }
+            },
+
+            {
+                selector: ':selected',
+                style: {
+                    'background-color': 'yellow',
+                    'line-color': 'red'
+                }
+            }
+
+        ],  // END of style
+
+
+        layout: {
+            name: 'circle',   // OR: 'grid'
+            rows: 1
+        }
+
+    });
+
+
+    cy.add([
+        { data: { id: 'h' }, position: {x: 80, y: 100} }
+    ]);
+
+
+    cy.$('#val').select();
+
+
+    cy.on('click', 'node', function(ev) {
+        var node = ev.target;
+        console.log(node.position());
+        }
+    );
+</script>
+
+</body>
+</html>

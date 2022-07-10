@@ -1409,10 +1409,11 @@ class NeoSchema:
     @classmethod
     def import_json_data(cls, json_str: str, class_name: str, parse_only=False, provenance=None) -> Union[None, int, List[int]]:
         """
-        Import the data specified by a JSON string into the database - but only the data that is reflected in the existing Schema;
+        Import the data specified by a JSON string into the database -
+        but only the data that is described in the existing Schema;
         anything else is silently ignored.
 
-        CAUTION: A "postorder" approach is followed: create subtrees first (with recursive calls), then create root last;
+        CAUTION: A "postorder" approach is followed: create subtrees first (with recursive calls), then create the root last;
         as a consequence, in case of failure mid-import, there's no top root, and there could be several fragments.
         A partial import might need to be manually deleted.
         TODO: maintain a list of all created nodes - so as to be able to delete them all in case of failure.
@@ -1458,6 +1459,7 @@ class NeoSchema:
                 * INABILITY TO LINK TO EXISTING NODES IN DBASE (try using: "item_id": some_int  as the only property in nodes to merge)
                 * HAZY responsibility for "schema_code" (set correctly for all nodes); maybe ditch to speed up execution
                 * OFFER AN OPTION TO IGNORE BLANK STRINGS IN ATTRIBUTES
+                * INTERCEPT AND BLOCK IMPORTS FROM FILES ALREADY IMPORTED
         """
 
         # Create an `Import Data` node for the metadata of the import
