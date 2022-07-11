@@ -1,9 +1,18 @@
 Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names! -->
     {
-        props: ['some_data_a', 'some_data_b'],  <!-- NOTE:  Only lower cases in props names! -->
-        /*  some_data_a:
-            some_data_b:
-         */
+        props: {
+            <!-- NOTE:  Only lower cases in props names! -->
+
+            some_data_a: {
+                type: Boolean,
+                required: true
+            },
+
+            some_data_b: {
+                type: Number,
+                default: 0
+            }
+        },
 
         my_optional_component_metadata: 123,   <!-- Available thru this.$options.metadata -->
 
