@@ -31,6 +31,7 @@
 
     <vue-cyto
         v-bind:graph="graph"
+        v-bind:color_mapping="color_mapping"
     >
     </vue-cyto>
 
@@ -64,7 +65,14 @@ new Vue({
             {id: 10, label: 'CLASS', name: "French voc"},
             {id: 11, label: 'PROPERTY', name: 'French'},
             {id: 12, source: 10, target: 11, name: 'HAS_PROPERTY'},
-        ]
+        ],
+
+        // Mapping the node label to its interior color
+        color_mapping:  {
+            CLASS: 'neo4j_green',
+            PROPERTY: 'neo4j_orange',
+            import: 'neo4j_gold'
+        }
     }
 
 });

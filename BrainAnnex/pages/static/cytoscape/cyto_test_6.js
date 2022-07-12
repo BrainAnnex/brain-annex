@@ -4,6 +4,10 @@ Vue.component('vue-cyto',  <!-- NOTE:  Only lower cases in component names! -->
             <!-- NOTE:  Only lower cases in props names! -->
 
             graph: {
+            },
+
+            color_mapping: {        // Mapping the node label to its interior color
+                required: true      // For now (TODO: auto-assign if unspecified)
             }
 
         },
@@ -24,11 +28,17 @@ Vue.component('vue-cyto',  <!-- NOTE:  Only lower cases in component names! -->
 
         data: function() {
             return {
-                // Mapping the node label to its interior color
-                color_mapping:  {
-                    CLASS: '#8DCC93',
-                    PROPERTY: '#F79767',
-                    import: '#4C8EDA'
+                // Convenient extra colors, not available thru standard CSS names
+                nonstandard_colors:  {
+                    neo4j_green: '#8DCC93',
+                    neo4j_teal: '#569480',
+                    neo4j_orange: '#F79767',
+                    neo4j_blue: '#4C8EDA',
+                    neo4j_red: '#F16667',
+                    neo4j_darkbrown: '#604A0E',
+                    neo4j_lightbrown: '#D9C8AE',
+                    neo4j_orchid: '#C990C0',
+                    neo4j_gold: '#FFC454'     // Has a bit more orange than 'gold'
                 },
 
                 graph_structure: this.graph
@@ -190,13 +200,20 @@ Vue.component('vue-cyto',  <!-- NOTE:  Only lower cases in component names! -->
                 passed as argument (as a graph element)
              */
             {
+                const default_color = '#FFFFFF';    // TODO: assign colors on rotation instead
+
                 //console.log(this.color_mapping);
                 //console.log(ele.data("label"));
                 const label = ele.data("label");  // Counterpart of Neo4j node label (but only 1 for now)
-                if (label in this.color_mapping)
-                    return this.color_mapping[label];
+                if (label in this.color_mapping)  {
+                    let requested_color = this.color_mapping[label];
+                    if (requested_color in this.nonstandard_colors)
+                        return this.nonstandard_colors[requested_color];
+                    else
+                        return requested_color;
+                }
                 else
-                    return '#FFFFFF';       // Default color
+                    return default_color;
             },
 
 
