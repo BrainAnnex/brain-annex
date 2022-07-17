@@ -16,7 +16,7 @@ def db():
 
 
 
-# ************  CREATE SAMPLE SCHEMAS  **************
+# ************  CREATE SAMPLE SCHEMAS for the testing  **************
 
 def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
@@ -90,18 +90,31 @@ def test_get_class_id(db):
 
 
 
-def test_class_exists(db):
-    pass    # TODO
+def test_class_id_exists(db):
+    db.empty_dbase()
+    assert not NeoSchema.class_id_exists(123)
 
+    with pytest.raises(Exception):
+        assert NeoSchema.class_id_exists("not_a_number")
+
+    class_A_id = NeoSchema.create_class("A")
+    assert NeoSchema.class_id_exists(class_A_id)
 
 
 def test_class_name_exists(db):
-    pass    # TODO
+    db.empty_dbase()
+
+    assert not NeoSchema.class_name_exists("A")
+    NeoSchema.create_class("A")
+    assert NeoSchema.class_name_exists("A")
+
+    with pytest.raises(Exception):
+        assert NeoSchema.class_id_exists(123)
 
 
 
 def test_get_class_name(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
     class_A_id = NeoSchema.create_class("A")
     assert NeoSchema.get_class_name(class_A_id) == "A"
 
@@ -115,7 +128,7 @@ def test_get_class_name(db):
 
 
 def test_get_all_classes(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     class_list = NeoSchema.get_all_classes()
     assert class_list == []
@@ -133,7 +146,7 @@ def test_get_all_classes(db):
 
 
 def test_create_class_relationship(db):
-    db.empty_dbase()        # Completely clear the database
+    db.empty_dbase()
     french_class_id = NeoSchema.create_class("French Vocabulary")
     foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
     NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
@@ -165,7 +178,41 @@ def test_rename_class_rel(db):
 
 
 def test_delete_class_relationship(db):
-    pass    # TODO
+    db.empty_dbase()
+    class_A_id = NeoSchema.create_class("A")    # The returned value is the "Schema ID"
+    class_B_id = NeoSchema.create_class("B")
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name=None)
+        NeoSchema.delete_class_relationship(from_class="", to_class="B", rel_name="some name")
+        NeoSchema.delete_class_relationship(from_class="A", to_class=None, rel_name="some name")
+        NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+
+    # Create a relationship, and then immediately delete it
+    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    n_del = NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+    assert n_del == 1
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    with pytest.raises(Exception):  # Attempting to re-delete it, will cause error
+        NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+
+    # Create 2 different relationships between the same classes, then delete each relationship at a time
+    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
+    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="LINKED_TO")
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="LINKED_TO")
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="BOGUS_RELATIONSHIP")
+
+    n_del = NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+    assert n_del == 1
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="LINKED_TO")
+
+    n_del = NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="LINKED_TO")
+    assert n_del == 1
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="LINKED_TO")
 
 
 
@@ -175,7 +222,7 @@ def test_unlink_classes(db):
 
 
 def test_delete_class(db):
-    db.empty_dbase()        # Completely clear the database
+    db.empty_dbase()
 
     # Nonexistent classes
     with pytest.raises(Exception):
@@ -204,7 +251,7 @@ def test_delete_class(db):
 
 
     # Interlinked Classes with properties, but no data nodes
-    db.empty_dbase()            # Completely clear the database
+    db.empty_dbase()
     create_sample_schema_1()    # Schema with patient/result/doctor
     NeoSchema.delete_class("doctor")
     assert NeoSchema.class_name_exists("patient")
@@ -225,7 +272,7 @@ def test_delete_class(db):
 
 
     # Interlinked Classes with properties; one of the Classes has an attached data node
-    db.empty_dbase()            # Completely clear the database
+    db.empty_dbase()
     create_sample_schema_2()    # Schema with quotes and categories
     NeoSchema.add_data_point(class_name="quotes",
                              data_dict={"quote": "Comparison is the thief of joy"})

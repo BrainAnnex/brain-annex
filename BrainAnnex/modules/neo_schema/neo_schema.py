@@ -27,6 +27,7 @@ class NeoSchema:
 
     SECTIONS IN THIS CLASS:
         * CLASS-related
+            - RELATIONSHIPS AMONG CLASSES
         * PROPERTIES-RELATED
         * SCHEMA-CODE  RELATED
         * DATA POINTS
@@ -99,6 +100,7 @@ class NeoSchema:
 
     db = None           # MUST be set before using this class!
                         # Database-interface object is a CLASS variable, accessible as cls.db
+                        # For use with the NeoAccess library
 
 
     class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;
@@ -122,7 +124,7 @@ class NeoSchema:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object
+        :param db:  Database-interface object, to be used with the NeoAccess library
         :return:    None
         """
         cls.db = db
@@ -193,9 +195,9 @@ class NeoSchema:
         :param namespace:   EXPERIMENTAL - not yet in use
         :return:            The Schema ID of the specified Class, or -1 if not found
         """
-        assert class_name is not None, "get_class_id(): argument `class_name` cannot be None"
-        assert type(class_name) == str, f"get_class_id(): argument `class_name` must be a string (value passed was `{class_name}`)"
-        assert class_name != "", "get_class_id(): argument `class_name` cannot be an empty string"
+        assert class_name is not None, "NeoSchema.get_class_id(): argument `class_name` cannot be None"
+        assert type(class_name) == str, f"NeoSchema.get_class_id(): argument `class_name` must be a string (value passed was `{class_name}`)"
+        assert class_name != "", "NeoSchema.get_class_id(): argument `class_name` cannot be an empty string"
 
         match = cls.db.find(labels="CLASS", key_name="name", key_value=class_name)
         result = cls.db.get_nodes(match, single_cell="schema_id")
@@ -208,13 +210,16 @@ class NeoSchema:
 
 
     @classmethod
-    def class_exists(cls, schema_id: int) -> bool:
+    def class_id_exists(cls, schema_id: int) -> bool:
         """
         Return True if a Class by the given schema ID already exists, or False otherwise
 
         :param schema_id:
         :return:
         """
+        assert type(schema_id) == int, \
+            f"NeoSchema.class_id_exists(): argument `schema_id` must be an integer (value passed was `{schema_id}`)"
+
         return cls.db.exists_by_key(labels="CLASS", key_name="schema_id", key_value=schema_id)
 
 
@@ -223,9 +228,12 @@ class NeoSchema:
         """
         Return True if a Class by the given name already exists, or False otherwise
 
-        :param class_name:
+        :param class_name:  The name of the class of interest
         :return:
         """
+        assert type(class_name) == str, \
+            f"NeoSchema.class_name_exists(): argument `class_name` must be a string (value passed has type {type(class_name)})"
+
         return cls.db.exists_by_key(labels="CLASS", key_name="name", key_value=class_name)
 
 
@@ -262,147 +270,6 @@ class NeoSchema:
         """
         match = cls.db.find(labels=cls.class_label)
         return cls.db.get_single_field(match=match, field_name="name", order_by="name")
-
-
-
-    @classmethod
-    def create_class_relationship(cls, from_id: int, to_id: int, rel_name="INSTANCE_OF") -> None:
-        """
-        Create a relationship (provided that it doesn't already exist) with the specified name
-        between the 2 existing Class nodes (identified by their schema_id),
-        going in the from -> to direction direction.
-
-        In case of error, an Exception is raised
-
-        Note: multiple relationships by the same name between the same nodes are allowed by Neo4j,
-              as long as the relationships differ in their attributes
-
-        TODO: add a method that reports on all existing relationships among Classes?
-        TODO: allow to alternatively specify the classes by name
-
-        :param from_id:     schema_id of one existing Class node
-        :param to_id:       schema_id of another existing Class node
-        :param rel_name:    Name of the relationship to create, in the from -> to direction (blanks allowed)
-        :return:            None
-        """
-        assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
-
-        q = f'''
-            MATCH (from:CLASS {{schema_id: $from_id}}), (to:CLASS {{schema_id: $to_id}})
-            MERGE (from)-[:`{rel_name}`]->(to)
-            '''
-
-        result = cls.db.update_query(q, {"from_id": from_id, "to_id": to_id})
-        #print("result of update_query in create_subclass_relationship(): ", result)
-        if result.get("relationships_created") != 1:
-            raise Exception(f"Failed to create new relationship from node with Schema_id {from_id} to node with Schema_id {to_id}")
-
-
-
-    @classmethod
-    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:    #### NOT IN CURRENT USE
-        """
-        Rename the old relationship between the specified classes
-        TODO: if more than 1 relationship exists between the given Classes,
-              then they will all be replaced??  TO FIX!  (the old name ought be provided)
-
-        :param from_class:
-        :param to_class:
-        :param new_rel_name:
-        :return:            True if another relationship was found, and successfully renamed;
-                            otherwise, False
-        """
-        q = f'''
-            MATCH (from :`{cls.class_label}` {{ schema_id: {from_class} }})
-                  -[rel]
-                  ->(to :`{cls.class_label}` {{ schema_id: {to_class} }})
-            MERGE (from)-[:{new_rel_name}]->(to)
-            DELETE rel 
-            '''
-        # EXAMPLE:
-        '''
-            MATCH (from :`CLASS` { schema_id: 4 })
-                  -[rel]
-                  ->(to :`CLASS` { schema_id: 19 })
-            MERGE (from)-[:INSTANCE_OF]->(to)
-            DELETE rel
-        '''
-        #print(q)
-        result = cls.db.update_query(q)
-        #print("result of rename_class_rel in remove_property_from_class(): ", result)
-        if (result.get("relationships_deleted") == 1) and (result.get("relationships_created") == 1):
-            return True
-        else:
-            return False
-
-
-
-    @classmethod
-    def delete_class_relationship(cls, from_class: str, to_class: str, rel_name) -> None:
-        """
-        Delete the relationship(s) with the specified name
-        between the 2 existing Class nodes (identified by their respective names),
-        going in the from -> to direction direction.
-
-        Note: there might be more than one - relationships with the same name between the same nodes
-              are allowed, provided that they have different properties.
-              If more than one is found, they will all be deleted  (TODO: test)
-
-        In case of error, an Exception is raised
-
-        :param from_class:  Name of one existing Class node (blanks allowed in name)
-        :param to_class:    Name of another existing Class node (blanks allowed in name)
-        :param rel_name:    Name of the relationship(s) to delete,
-                                if found in the from -> to direction (blanks allowed in name)
-
-        :return:            None
-        """
-        assert rel_name, "delete_class_relationship(): A name must be provided for the relationship to delete"
-
-        q = f'''
-            MATCH (from :CLASS {{name: $from_class}})-[r:`{rel_name}`]->(to :CLASS {{name: $to_class}})
-            DELETE r
-            '''
-
-        result = cls.db.update_query(q, {"from_class": from_class, "to_class": to_class})
-
-        print("result of update_query in delete_class_relationship(): ", result)
-        if result.get("relationships_deleted") < 1:
-            raise Exception(f"Failed to delete the `{rel_name}` relationship from Schema Class `{from_class}` to Schema Class `{to_class}`")
-
-
-
-    @classmethod
-    def unlink_classes(cls, class1: int, class2: int) -> bool:
-        """
-        Remove ALL relationships (in any direction) between the specified classes
-
-        :param class1:  Integer ID to identify the first Class
-        :param class2:  Integer ID to identify the second Class
-        :return:        True if exactly one relationship (in either direction) was found, and successfully removed;
-                        otherwise, False
-        """
-        q = f'''
-            MATCH (c1: `{cls.class_label}` {{ schema_id: {class1} }})
-                  -[r]
-                  -(c2: `{cls.class_label}` {{ schema_id: {class2} }})
-            DELETE r
-            '''
-        # EXAMPLE:
-        '''
-        MATCH (c1: `CLASS` { schema_id: 1 })
-              -[r]
-              -(c2: `CLASS` { schema_id: 15})
-        DELETE r
-        '''
-        #print(q)
-
-        result = cls.db.update_query(q)
-        #print("result of unlink_classes in remove_property_from_class(): ", result)
-        if result.get("relationships_deleted") == 1:
-            return True
-        else:
-            return False
 
 
 
@@ -467,6 +334,174 @@ class NeoSchema:
             return not class_node_dict["no_datanodes"]
 
         return True    # If key is not in dictionary, then it defaults to True
+
+
+
+
+    ###########     RELATIONSHIPS AMONG CLASSES     ###########
+
+    @classmethod
+    def create_class_relationship(cls, from_id: int, to_id: int, rel_name="INSTANCE_OF") -> None:
+        """
+        Create a relationship (provided that it doesn't already exist) with the specified name
+        between the 2 existing Class nodes (identified by their schema_id),
+        going in the from -> to direction direction.
+
+        In case of error, an Exception is raised
+
+        Note: multiple relationships by the same name between the same nodes are allowed by Neo4j,
+              as long as the relationships differ in their attributes
+
+        TODO: add a method that reports on all existing relationships among Classes?
+        TODO: allow to alternatively specify the classes by name
+        TODO: allow properties on the relationship
+
+        :param from_id:     schema_id of one existing Class node
+        :param to_id:       schema_id of another existing Class node
+        :param rel_name:    Name of the relationship to create, in the from -> to direction
+                                (blanks allowed)
+        :return:            None
+        """
+        assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
+
+        q = f'''
+            MATCH (from:CLASS {{schema_id: $from_id}}), (to:CLASS {{schema_id: $to_id}})
+            MERGE (from)-[:`{rel_name}`]->(to)
+            '''
+
+        result = cls.db.update_query(q, {"from_id": from_id, "to_id": to_id})
+        #print("result of update_query in create_subclass_relationship(): ", result)
+        if result.get("relationships_created") != 1:
+            raise Exception(f"Failed to create new relationship from node with Schema_id {from_id} to node with Schema_id {to_id}")
+
+
+
+    @classmethod
+    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:    #### NOT IN CURRENT USE
+        """
+        Rename the old relationship between the specified classes
+        TODO: if more than 1 relationship exists between the given Classes,
+              then they will all be replaced??  TO FIX!  (the old name ought be provided)
+
+        :param from_class:
+        :param to_class:
+        :param new_rel_name:
+        :return:            True if another relationship was found, and successfully renamed;
+                            otherwise, False
+        """
+        q = f'''
+            MATCH (from :`{cls.class_label}` {{ schema_id: {from_class} }})
+                  -[rel]
+                  ->(to :`{cls.class_label}` {{ schema_id: {to_class} }})
+            MERGE (from)-[:{new_rel_name}]->(to)
+            DELETE rel 
+            '''
+        # EXAMPLE:
+        '''
+            MATCH (from :`CLASS` { schema_id: 4 })
+                  -[rel]
+                  ->(to :`CLASS` { schema_id: 19 })
+            MERGE (from)-[:INSTANCE_OF]->(to)
+            DELETE rel
+        '''
+        #print(q)
+        result = cls.db.update_query(q)
+        #print("result of rename_class_rel in remove_property_from_class(): ", result)
+        if (result.get("relationships_deleted") == 1) and (result.get("relationships_created") == 1):
+            return True
+        else:
+            return False
+
+
+
+    @classmethod
+    def delete_class_relationship(cls, from_class: str, to_class: str, rel_name) -> int:
+        """
+        Delete the relationship(s) with the specified name
+        between the 2 existing Class nodes (identified by their respective names),
+        going in the from -> to direction direction.
+        In case of error or if no relationship was found, an Exception is raised
+
+        Note: there might be more than one - relationships with the same name between the same nodes
+              are allowed, provided that they have different properties.
+              If more than one is found, they will all be deleted.  (TODO: test)
+              The number of relationships deleted will be returned
+
+        :param from_class:  Name of one existing Class node (blanks allowed in name)
+        :param to_class:    Name of another existing Class node (blanks allowed in name)
+        :param rel_name:    Name of the relationship(s) to delete,
+                                if found in the from -> to direction (blanks allowed in name)
+
+        :return:            The number of relationships deleted.
+                            In case of error, or if no relationship was found, an Exception is raised
+        """
+        assert from_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'from_class' argument"
+        assert to_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'to_class' argument"
+        assert rel_name, "NeoSchema.delete_class_relationship(): A name must be provided for the relationship to delete"
+
+        try:
+            # Define the criteria to identify the given Class nodes
+            match_from = cls.db.find(labels="CLASS", key_name="name", key_value=from_class, dummy_node_name="from")
+            match_to = cls.db.find(labels="CLASS", key_name="name", key_value=to_class, dummy_node_name="to")
+            # Remove the specified relationship between them
+            number_removed = cls.db.remove_edges(match_from=match_from, match_to=match_to, rel_name=rel_name)
+        except Exception as ex:
+            raise Exception(f"Failed to delete the `{rel_name}` relationship from Schema Class `{from_class}` to Schema Class `{to_class}`. {ex}")
+
+        return number_removed
+
+
+
+    @classmethod
+    def unlink_classes(cls, class1: int, class2: int) -> bool:
+        """
+        Remove ALL relationships (in any direction) between the specified classes
+
+        :param class1:  Integer ID to identify the first Class
+        :param class2:  Integer ID to identify the second Class
+        :return:        True if exactly one relationship (in either direction) was found, and successfully removed;
+                        otherwise, False
+        """
+        q = f'''
+            MATCH (c1: `{cls.class_label}` {{ schema_id: {class1} }})
+                  -[r]
+                  -(c2: `{cls.class_label}` {{ schema_id: {class2} }})
+            DELETE r
+            '''
+        # EXAMPLE:
+        '''
+        MATCH (c1: `CLASS` { schema_id: 1 })
+              -[r]
+              -(c2: `CLASS` { schema_id: 15})
+        DELETE r
+        '''
+        #print(q)
+
+        result = cls.db.update_query(q)
+        #print("result of unlink_classes in remove_property_from_class(): ", result)
+        if result.get("relationships_deleted") == 1:
+            return True
+        else:
+            return False
+
+
+
+    @classmethod
+    def class_relationship_exists(cls, from_class: str, to_class: str, rel_name) -> bool:
+        """     # TODO: pytest
+        Return True if a relationship with the specified name exists between the two given Classes,
+        in the specified direction
+
+        :param from_class:  Name of one existing Class node (blanks allowed in name)
+        :param to_class:    Name of another existing Class node (blanks allowed in name)
+        :param rel_name:    Name of the relationship(s) to delete,
+                                if found in the from -> to direction (blanks allowed in name)
+        :return:
+        """
+        # Define the criteria to identify the given Class nodes
+        match_from = cls.db.find(labels="CLASS", key_name="name", key_value=from_class, dummy_node_name="from")
+        match_to = cls.db.find(labels="CLASS", key_name="name", key_value=to_class, dummy_node_name="to")
+        return cls.db.edges_exist(match_from=match_from, match_to=match_to, rel_name=rel_name)
 
 
 
@@ -681,7 +716,7 @@ class NeoSchema:
 
         assert type(class_id) == int, "Argument `class_id` in add_properties_to_class() must be an integer"
         assert type(property_list) == list, "Argument `property_list` in add_properties_to_class() must be a list"
-        assert cls.class_exists(class_id), f"No Class with ID {class_id} found in the Schema"
+        assert cls.class_id_exists(class_id), f"No Class with ID {class_id} found in the Schema"
 
 
         clean_property_list = [prop.strip() for prop in property_list]
@@ -792,7 +827,7 @@ class NeoSchema:
         :param property_id: The schema ID of the Property node
         :return:            None
         """
-        assert NeoSchema.class_exists(class_id), f"The schema has no Class with the requested ID of {class_id}"
+        assert NeoSchema.class_id_exists(class_id), f"The schema has no Class with the requested ID of {class_id}"
 
         q = f'''
             MATCH (c :CLASS {{ schema_id: {class_id} }})

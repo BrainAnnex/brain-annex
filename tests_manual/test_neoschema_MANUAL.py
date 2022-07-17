@@ -23,19 +23,6 @@ def test_create_class(db):
 
 
 
-def test_class_exists(db):
-    assert NeoSchema.class_exists(19)
-    assert not NeoSchema.class_exists(9999)
-
-
-def test_class_name_exists(db):
-    assert NeoSchema.class_name_exists("Restaurants")
-    assert NeoSchema.class_name_exists("Records")
-    assert NeoSchema.class_name_exists("French Vocabulary")
-    assert not NeoSchema.class_name_exists("Was ist das")
-
-
-
 def test_create_class_relationship(db):
     #french_class_id = NeoSchema.create_class("French Vocabulary")
     #foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")

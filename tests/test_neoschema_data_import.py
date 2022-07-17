@@ -345,7 +345,7 @@ def test_create_data_nodes_from_python_data_6(db):
 def test_create_data_nodes_from_python_data_7(db):
     db.empty_dbase()
 
-    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "Categories"
+    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "categories"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     sch_import = NeoSchema.new_class_with_properties(class_name="Import Data",
@@ -394,7 +394,7 @@ def test_create_data_nodes_from_python_data_8(db):
     # and introducing non-Schema data
     db.empty_dbase()
 
-    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "Categories"
+    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "categories"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     sch_import = NeoSchema.new_class_with_properties(class_name="Import Data",
@@ -445,10 +445,10 @@ def test_create_data_nodes_from_python_data_8(db):
 
 
 def test_create_data_nodes_from_python_data_9(db):
-    # Similar to test_create_data_nodes_from_python_data_8, but also using the class "Categories"
+    # Similar to test_create_data_nodes_from_python_data_8, but also using the class "categories"
     db.empty_dbase()
 
-    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "Categories"
+    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "categories"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     sch_import = NeoSchema.new_class_with_properties(class_name="Import Data",
@@ -484,7 +484,7 @@ def test_create_data_nodes_from_python_data_9(db):
         # Locate the "quotes" data node, and count the links in/out of it
         assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
         assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
-        assert db.count_links(match=root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Categories") == 1
+        assert db.count_links(match=root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="categories") == 1
 
         # Traverse a loop in the graph, from the `quotes` data node, back to itself,
         # going thru the data and schema nodes
@@ -503,8 +503,8 @@ def test_create_data_nodes_from_python_data_9(db):
         # Traverse a longer loop in the graph, again from the `quotes` data node to itself,
         # but this time also passing thru the category data and schema nodes
         q = '''
-            MATCH (q :quotes)-[:in_category]->(cat :Categories)
-                -[:SCHEMA]->(cl_c :CLASS {name:"Categories"})<-[:in_category]-
+            MATCH (q :quotes)-[:in_category]->(cat :categories)
+                -[:SCHEMA]->(cl_c :CLASS {name:"categories"})<-[:in_category]-
                 (cl_q :CLASS {name:"quotes"})
                 <-[:imported_data]-(cl_i :CLASS {name:"Import Data"})<-[:SCHEMA]-(i: `Import Data`)
                 -[:imported_data]->(q)
@@ -549,15 +549,15 @@ def test_create_data_nodes_from_python_data_9(db):
 
     # Locate the latest "quotes" data node, and count the links in/out of it
     assert db.count_links(match=new_root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
-    assert db.count_links(match=new_root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Categories") == 2
+    assert db.count_links(match=new_root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="categories") == 2
     assert db.count_links(match=new_root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Traverse a loop in the graph, from the `quotes` data node back to itself,
     # going thru the 2 category data nodes and their shared Schema node
     q = '''
-            MATCH (q :quotes)-[:in_category]->(cat1 :Categories {name: "French Literature"})
-            -[:SCHEMA]->(cl_c :CLASS {name:"Categories"})
-            <-[:SCHEMA]-(cat2 :Categories {name: "Philosophy"})
+            MATCH (q :quotes)-[:in_category]->(cat1 :categories {name: "French Literature"})
+            -[:SCHEMA]->(cl_c :CLASS {name:"categories"})
+            <-[:SCHEMA]-(cat2 :categories {name: "Philosophy"})
             <-[:in_category]-(q)
             WHERE id(q) = $quote_id
             RETURN q, cat1, cl_c, cat2

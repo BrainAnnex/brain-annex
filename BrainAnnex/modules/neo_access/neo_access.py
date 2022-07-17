@@ -11,7 +11,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 3.8
+    VERSION 3.9
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -1330,6 +1330,7 @@ class NeoAccess:
         """
         Extract and return a list of all the Neo4j relationship names (i.e. types of relationships)
         present in the database, in no particular order.
+
         :return:    A list of strings
         """
         results = self.query("call db.relationshipTypes() yield relationshipType return relationshipType")
@@ -1356,8 +1357,8 @@ class NeoAccess:
                                        e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
                                                         and for match_to,   find() used the option: dummy_node_name="to"
 
-        :param rel_name:    The name to give to the new relationship between the 2 specified nodes
-        :param rel_props:   TODO: not currently used.
+        :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed.
+        :param rel_props:   TODO: not currently used.  To implement!
                                   Unclear what multiple calls would do in this case: update the props or create a new relationship???
 
         :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
@@ -1379,7 +1380,7 @@ class NeoAccess:
         q = f'''
             MATCH {nodes_from}, {nodes_to}
             {where_clause}
-            MERGE (from) -[:{rel_name}]-> (to)           
+            MERGE (from) -[:`{rel_name}`]-> (to)           
             '''
 
         # Merge the data-binding dict's
@@ -1404,7 +1405,7 @@ class NeoAccess:
         Remove one or more edges (relationships)
         originating in any of the nodes specified by the match_from specifications,
         and terminating in any of the nodes specified by the match_to specifications,
-        optionally matching the given relationship name.
+        optionally matching the given relationship name (will remove all edges if the name is blank or None)
 
         Return the number of edges removed; if none found, or in case of error, raise an Exception.
 
@@ -1423,7 +1424,8 @@ class NeoAccess:
                                                         and for match_to,   find() used the option: dummy_node_name="to"
 
         :param rel_name:    (OPTIONAL) The name of the relationship to delete between the 2 specified nodes;
-                                if None or a blank string, all relationships between those 2 nodes will get deleted
+                                if None or a blank string, all relationships between those 2 nodes will get deleted.
+                                Blanks allowed.
 
         :return:            The number of edges removed.  If none got deleted, or in case of error, an Exception is raised
         """
@@ -1441,15 +1443,15 @@ class NeoAccess:
                                                                             # and also prefix (if appropriate) the WHERE keyword
 
         # Prepare the query
-        if rel_name is None or rel_name == "":  # Delete all relationships
+        if rel_name is None or rel_name == "":  # Delete ALL relationships
             q = f'''
                 MATCH {nodes_from} -[r]-> {nodes_to}
                 {where_clause}
                 DELETE r           
                 '''
-        else: # Delete a specific relationship
+        else:                                   # Delete a SPECIFIC relationship
             q = f'''
-                MATCH {nodes_from} -[r :{rel_name}]-> {nodes_to}
+                MATCH {nodes_from} -[r :`{rel_name}`]-> {nodes_to}
                 {where_clause}
                 DELETE r           
                 '''
@@ -1471,9 +1473,32 @@ class NeoAccess:
 
 
 
-    def edges_exists(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name: str) -> bool:
+    def edges_exist(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name: str) -> bool:
         """
         Return True if one or more edges (relationships) with the specified name exist in the direction
+        from and to the nodes (individual nodes or set of nodes) specified in the first two arguments.
+        Typically used to find whether 2 given nodes have a direct link between them.
+
+        :param match_from:  EITHER an integer with a Neo4j node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param match_to:    EITHER an integer with a Neo4j node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+                            IMPORTANT: match_from and match_to, if created by calls to find(), MUST use different node dummy names;
+                                       e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
+                                                        and for match_to,   find() used the option: dummy_node_name="to"
+
+        :param rel_name:    The name of the relationship to look for between the 2 specified nodes.
+                                Blanks are allowed
+
+        :return:            True if one or more relationships were found, or False if not
+        """
+        return self.number_of_edges(match_from=match_from, match_to=match_to, rel_name=rel_name) >= 1   # True if at least 1
+
+
+
+    def number_of_edges(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name: str) -> int:
+        """     #TODO: add pytest
+        Return the number of edges (relationships) with the specified name exist in the direction
         from and to the nodes (individual nodes or set of nodes) specified in the first two arguments.
 
         :param match_from:  EITHER an integer with a Neo4j node id,
@@ -1484,9 +1509,10 @@ class NeoAccess:
                                        e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
                                                         and for match_to,   find() used the option: dummy_node_name="to"
 
-        :param rel_name:    The name of the relationship to look for between the 2 specified nodes
+        :param rel_name:    The name of the relationship to look for between the 2 specified nodes.
+                                Blanks are allowed
 
-        :return:            True if the relationship was found, or False if not
+        :return:            True if one or more relationships were found, or False if not
         """
         match_from = CypherUtils.validate_and_standardize(match_from, dummy_node_name="from")   # Validate, and possibly create, the match dictionary
         match_to   = CypherUtils.validate_and_standardize(match_to, dummy_node_name="to")       # Validate, and possibly create, the match dictionary
@@ -1502,7 +1528,7 @@ class NeoAccess:
                                                                             # and also prefix (if appropriate) the WHERE keyword
         # Prepare the query
         q = f'''
-            MATCH {nodes_from} -[r :{rel_name}]-> {nodes_to}
+            MATCH {nodes_from} -[r :`{rel_name}`]-> {nodes_to}
             {where_clause} 
             RETURN r          
             '''
@@ -1510,11 +1536,11 @@ class NeoAccess:
         # Merge the data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
 
-        self.debug_print(q, combined_data_binding, "edges_exists")
+        self.debug_print(q, combined_data_binding, "edges_exist")
 
         result = self.query(q, combined_data_binding)
         if self.debug:
-            print("    result of query in edges_exists(): ", result)
+            print("    result of query in edges_exist(): ", result)
 
         if len(result) == 0:       # This could be more than 1
             return False
@@ -2439,6 +2465,10 @@ class CypherUtils:      # TODO: move to separate file
             3) "data_binding": a (possibly empty) data-binding dictionary
             4) "dummy_node_name": a string used for the node name inside the Cypher query (by default, "n");
                                   potentially relevant to the "node" and "where" values
+
+        TODO: explore the possibility of storing in the structure all the args passed to define_match -
+                so that, in case of later conflicts in "dummy_node_name", the "dummy_node_name" can be
+                automatically changed, and the structure re-constructed
 
         EXAMPLES:
             *   {"node": "(n  )" , "where": "" , "data_binding": {}, "dummy_node_name": "n"}
