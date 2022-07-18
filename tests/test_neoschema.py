@@ -53,13 +53,14 @@ def create_sample_schema_2():
 
 
 
+
 #############   CLASS-related   #############
 
 def test_create_class(db):
     db.empty_dbase()
 
     french_class_id = NeoSchema.create_class("French Vocabulary")
-    match = db.find()   # All nodes
+    match = db.find(labels="CLASS")   # All Class nodes
     result = db.get_nodes(match)
     assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
 

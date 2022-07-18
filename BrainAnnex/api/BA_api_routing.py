@@ -29,7 +29,7 @@ class ApiRouting:
             * CONTENT-ITEM MANAGEMENT
                 VIEWING CONTENT ITEMS
                 MODIFYING EXISTING CONTENT ITEMS
-            * CATEGORY-RELATED
+            * CATEGORY-RELATED (incl. adding new Content Items)
                 POSITIONING WITHIN CATEGORIES
             * FILTERS
             * IMPORT-EXPORT  (upload/download)
@@ -841,9 +841,9 @@ class ApiRouting:
 
 
 
-        #---------------------------------------------#
-        #               CATEGORY-RELATED              #
-        #---------------------------------------------#
+        #-----------------------------------------------------------------#
+        #         CATEGORY-RELATED  (incl. adding new Content Items)      #
+        #-----------------------------------------------------------------#
         
         @bp.route('/simple/add_item_to_category', methods=['POST'])
         @login_required
@@ -859,7 +859,7 @@ class ApiRouting:
             POST FIELDS:
                 category_id         Integer identifying the Category to which attach the new Content Item
                 schema_code         A string to identify the Schema that the new Content Item belongs to
-                insert_after        Either an item_id, or one of the special values "TOP" or "BOTTOM"
+                insert_after        Either an item_id (int), or one of the special values "TOP" or "BOTTOM"
                 PLUS any applicable plugin-specific fields
             """
             # Extract the POST values

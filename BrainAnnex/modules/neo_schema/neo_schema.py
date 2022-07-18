@@ -1799,22 +1799,30 @@ class NeoSchema:
         """
         Return the next available ID for nodes managed by this class
         For the ID to use on data points, use next_available_datapoint_id() instead
-        # TODO: *** THIS MAY FAIL IF MULTIPLE CALLS ARRIVE ALMOST SIMULTANEOUSLY -> swich to using next_autoincrement()
+        # TODO: *** THIS MAY FAIL IF MULTIPLE CALLS ARRIVE ALMOST SIMULTANEOUSLY -> finish switch to using next_autoincrement()
 
         :return:
         """
-        return cls.next_available_id_general([cls.class_label, cls.property_label], "schema_id")
+        future_value = cls.next_autoincrement("schema_node")    # The better way to do it
+        currently_used_value = cls.next_available_id_general([cls.class_label, cls.property_label], "schema_id")    # Old way
+
+        assert future_value == currently_used_value, \
+            f"NeoSchema.next_available_id() : mismatch in the 2 auto-incr. values ({future_value} vs. {currently_used_value})"
+
+        return currently_used_value
+
 
 
     @classmethod
     def next_autoincrement(cls, kind: str) -> int:
         """
-        This utilizes an atomic database operation to both read and advance the autoincrement counter,
-        based on a (single) node with label `Schema Autoincrement`;
-        if no such node exists (for example, after a new installation), it gets created
+        This utilizes an ATOMIC database operation to both read and advance the autoincrement counter,
+        based on a (single) node with label `Schema Autoincrement`
+        and an attribute indicating the desired kind (group);
+        if no such node exists (for example, after a new installation), it gets created, and 1 is returned
 
-        :param kind:
-        :return:
+        :param kind:    A string used to maintain completely separate groups of auto-increment values
+        :return:        An integer that is a unique auto-increment for the specified group
         """
         q = '''
             MATCH (n: `Schema Autoincrement` {kind: $kind})
@@ -1825,7 +1833,7 @@ class NeoSchema:
 
         if last_id is None:
             cls.db.create_node(labels="Schema Autoincrement", properties={"kind": kind, "last_id": 1})
-            return 1
+            return 1       # Start a new count for this group
         else:
             return last_id
 
@@ -1833,8 +1841,13 @@ class NeoSchema:
     @classmethod
     def next_available_datapoint_id(cls) -> int:
         """
+        Reserve and return the next available auto-increment ID,
+        in the separately-maintained group called "data_node".
+        This value (currently often referred to as "item_id", and not to be confused
+        with the internal ID assigned by Neo4j to each node),
+        is meant as a permanent primary key, on which a URI could be based.
 
-        :return:
+        :return:    A unique auto-increment integer used for data nodes
         """
         return cls.next_autoincrement("data_node")
 

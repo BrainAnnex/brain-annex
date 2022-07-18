@@ -552,14 +552,14 @@ class APIRequestHandler:
         """
         Create a new Content Item attached to a particular Category
 
-        :param post_data:
+        :param post_data:   A dict containing the following keys
             - "category_id"  (for the linking to a Category)
             - Schema-related keys:
                     * schema_code (Required)
                     * schema_id (Optional)
                     * class_name (Required only for Class Items of type "record")
 
-            - insert_after        Either an item_id, or one of the special values "TOP" or "BOTTOM"
+            - insert_after        Either an item_id (int), or one of the special values "TOP" or "BOTTOM"
             - PLUS all applicable plugin-specific fields (all the key/values for the new Content Item)
 
         :return:    The item_id of the newly-created node
