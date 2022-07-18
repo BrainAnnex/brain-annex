@@ -1953,7 +1953,8 @@ class NeoAccess:
 
     def export_dbase_json(self) -> {}:
         """
-        Export the entire Neo4j database as a JSON string
+        Export the entire Neo4j database as a JSON string.
+        TODO: offer an option to automatically include today's date in name of exported file
 
         IMPORTANT: APOC must be activated in the database, to use this function.
                    Otherwise it'll raise an Exception

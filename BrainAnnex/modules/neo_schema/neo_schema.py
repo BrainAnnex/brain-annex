@@ -961,8 +961,9 @@ class NeoSchema:
                        new_item_id=None, return_item_ID=True) -> int:
         """
         Add a new data node, of the Class specified by name or ID,
-        optionally linked to another, already existing, data node.
-        Optionally specify another DATA node to connect the new node to.
+        with the given (possibly none) attributes and label(s),
+        optionally linked to another DATA node, already existing.
+
         The new data node, if successfully created, will be assigned a unique value for its field item_id
         If the requested Class doesn't exist, an Exception is raised
 
@@ -977,10 +978,16 @@ class NeoSchema:
 
         :param class_name:      The name of the Class that this new data point is an instance of
         :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
-        :param data_dict:       An optional dictionary with the properties of the new data point.  EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param labels:          String or list of strings with label(s) to assign to new data node; if not specified, use the Class name
 
-        :param connected_to_id: Int or None.  To optionally specify another DATA node to connect the new node to
+        :param data_dict:       An optional dictionary with the properties of the new data point.
+                                TODO: a better name might be "properties"
+                                    EXAMPLE: {"make": "Toyota", "color": "white"}
+        :param labels:          String or list of strings with label(s) to assign to the new data node;
+                                    if not specified, use the Class name
+
+        :param connected_to_id: Int or None.  To optionally specify another (already existing) DATA node
+                                        to connect the new node to, specified by its item_id.
+                                        TODO: for efficiency, use the Neo4j ID instead
                                         EXAMPLE: the item_id of a data point representing a particular salesperson or dealership
 
         The following group only applicable if connected_to_id isn't None
@@ -991,8 +998,9 @@ class NeoSchema:
         :param rel_prop_value:  Str or None.  Ignored if rel_prop_key is missing
 
         :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-        :param return_item_ID:  If True, the returned value is the auto-increment "item_id" value of the node just created;
-                                    otherwise, it's its Neo4j ID
+        :param return_item_ID:  Default to True.    TODO: change to False
+                                If True, the returned value is the auto-increment "item_id" value of the node just created;
+                                    otherwise, it returns its Neo4j ID
 
         :return:                If successful, an integer with either the auto-increment "item_id" value or the Neo4j ID
                                     of the node just created (based on the flag "return_item_ID");
@@ -1024,7 +1032,7 @@ class NeoSchema:
 
         # In addition to the passed properties for the new node, data nodes contain 2 special attributes: "item_id" and "schema_code";
         # expand cypher_props_dict accordingly
-        # TODO: male this part optional
+        # TODO: make this part optional
         if not new_item_id:
             new_id = cls.next_available_datapoint_id()      # Obtain (and reserve) the next auto-increment value
         else:

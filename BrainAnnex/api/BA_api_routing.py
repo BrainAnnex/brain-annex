@@ -18,7 +18,8 @@ import shutil
 
 class ApiRouting:
     """
-    Setup, routing and endpoints for all the web pages served by this module
+    Setup, routing and endpoints for all the web pages served by this module.
+    Note that this class does not directly interact with the Neo4j database.
 
     SECTIONS:
         - UTILITY methods
@@ -1443,9 +1444,7 @@ class ApiRouting:
             """
             try:
                 if download_type == "full":
-                    ne = NodeExplorer()     # TODO: use a more direct way to get to the NeoAccess object;
-                                            #       this part of the code belongs in  APIRequestHandler
-                    result = ne.neo.export_dbase_json()
+                    result = APIRequestHandler.export_full_dbase()
                     export_filename = "exported_dbase.json"
                 elif download_type == "schema":
                     result = NeoSchema.export_schema()
@@ -1455,7 +1454,8 @@ class ApiRouting:
             except Exception as ex:
                     response = APIRequestHandler.exception_helper(ex, safe_html=True)
                     error_page_body = f'''<b>Unable to perform download</b>. <br>
-                                          This is typically due to the 'APOC' library not being installed on Neo4j. 
+                                          This is typically due to the 'APOC' library not being installed on Neo4j,
+                                          unless the error message below indicates something else. 
                                           Contact your Neo4j database administrator.
                                           <br><br>{response}"
                                        '''

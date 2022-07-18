@@ -603,6 +603,8 @@ class Categories:
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
+        :param insert_after:
+        :param new_item_id:
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
         new_item_id = Collections.add_to_collection_after_element(collection_id=category_id, membership_rel_name="BA_in_category",
@@ -860,13 +862,11 @@ class Collections:
 
     # Class variables
 
-    db = None   # MUST be set before using this class!
-    #db = neo_access.NeoAccess()    # Saving database-interface object as a CLASS variable.
-                                        # This will only be executed once
+    db = None                       # MUST be set before using this class!
 
-    DELTA_POS = 20                      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large
+    DELTA_POS = 20                  # Arbitrary shift in "pos" value; best to be even, and not too small nor too large
 
-    membership_rel_name = None          # NOT IN USE.   TODO: maybe use instantiation, and set at that time
+    membership_rel_name = None      # NOT IN USE.   TODO: maybe use instantiation, and set at that time
 
 
     @classmethod
@@ -880,9 +880,9 @@ class Collections:
         :return:                True if the given data node is a Collection, or False i
         """
         q = '''
-        MATCH p=(n :BA {item_id: $collection_id}) -[:SCHEMA]-> (s :CLASS) -[:INSTANCE_OF]-> (coll :CLASS {name: "Collections"})
-        RETURN count(p) AS number_paths
-        '''
+            MATCH p=(n :BA {item_id: $collection_id}) -[:SCHEMA]-> (s :CLASS) -[:INSTANCE_OF]-> (coll :CLASS {name: "Collections"})
+            RETURN count(p) AS number_paths
+            '''
         data_binding = {"collection_id": collection_id}
         number_paths = cls.db.query(q, data_binding, single_cell="number_paths")
 
@@ -907,9 +907,9 @@ class Collections:
             assert cls.is_collection(collection_id), f"The data node with item_id {collection_id} doesn't exist or is not a Collection"
 
         q = f'''
-        MATCH (coll :BA {{item_id: $collection_id}}) <- [:{membership_rel_name}] - (i :BA) 
-        RETURN count(i) AS node_count
-        '''
+            MATCH (coll :BA {{item_id: $collection_id}}) <- [:{membership_rel_name}] - (i :BA) 
+            RETURN count(i) AS node_count
+            '''
         data_binding = {"collection_id": collection_id}
 
         number_items_attached = cls.db.query(q, data_binding, single_cell="node_count")
@@ -966,7 +966,7 @@ class Collections:
 
         return NeoSchema.add_data_point(class_name=item_class_name,
                                         data_dict=data_binding,
-                                        labels="BA",
+                                        labels=["BA", item_class_name],
                                         connected_to_id=collection_id, connected_to_labels="BA",
                                         rel_name=membership_rel_name,
                                         rel_prop_key="pos", rel_prop_value=pos,
@@ -1018,7 +1018,7 @@ class Collections:
 
         return NeoSchema.add_data_point(class_name=item_class_name,
                                         data_dict=data_binding,
-                                        labels="BA",
+                                        labels=["BA", item_class_name],
                                         connected_to_id=collection_id, connected_to_labels="BA",
                                         rel_name=membership_rel_name,
                                         rel_prop_key="pos", rel_prop_value=pos,
@@ -1105,16 +1105,26 @@ class Collections:
             cls.shift_down(collection_id=collection_id, membership_rel_name=membership_rel_name, first_to_move=pos_after)
             new_pos = pos_before + int(cls.DELTA_POS/2)			# This will be now be the empty halfway point
         else:
-            new_pos = int((pos_before + pos_after) / 2)		# Take the halfway point, rounded down
+            new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
 
-        link_to = [{"labels": "BA", "key": "item_id", "value": collection_id,
-                    "rel_name": membership_rel_name, "rel_attrs": {"pos": new_pos}}]
 
-        new_neo_id = cls.db.create_node_with_relationships(labels="BA", properties=item_properties, connections=link_to)
+        return NeoSchema.add_data_point(class_name=item_class_name,
+                                        data_dict=item_properties,
+                                        labels=["BA", item_class_name],
+                                        connected_to_id=collection_id, connected_to_labels="BA",
+                                        rel_name=membership_rel_name,
+                                        rel_prop_key="pos", rel_prop_value=new_pos,
+                                        new_item_id=new_item_id
+                                        )
 
-        item_id = NeoSchema.register_existing_data_point(class_name=item_class_name, existing_neo_id=new_neo_id, new_item_id=new_item_id)
+        #link_to = [{"labels": "BA", "key": "item_id", "value": collection_id,
+        #            "rel_name": membership_rel_name, "rel_attrs": {"pos": new_pos}}]
 
-        return item_id
+        #new_neo_id = cls.db.create_node_with_relationships(labels="BA", properties=item_properties, connections=link_to)
+
+        #item_id = NeoSchema.register_existing_data_point(class_name=item_class_name, existing_neo_id=new_neo_id, new_item_id=new_item_id)
+
+        #return item_id
 
 
 

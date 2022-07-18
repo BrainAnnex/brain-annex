@@ -47,6 +47,12 @@ class APIRequestHandler:
 
 
     @classmethod
+    def export_full_dbase(cls):
+        return cls.db.export_dbase_json()
+
+
+
+    @classmethod
     def exception_helper(cls, ex, safe_html=False) -> str:
         """
         To give better info on an Exception, in the form:
@@ -629,7 +635,7 @@ class APIRequestHandler:
         print("Revised post_data: ", post_data)
         # EXAMPLE:  {'text': 'My New Header'}
         # Note that several entries got removed from the dictionary;
-        #       only attributes of the new node are still present.
+        #       only the attributes that will go into the new node are still present.
         #       Some attributes may have been added by a plugin-specific module
 
 
@@ -652,6 +658,8 @@ class APIRequestHandler:
                                              item_class_name=class_name, item_properties=post_data,
                                              insert_after=insert_after, new_item_id=new_item_id)
 
+
+        # A final round of PLUGIN-SPECIFIC OPERATIONS
         if schema_code == "n":
             Notes.new_content_item_in_category_SUCCESSFUL(new_item_id, original_post_data)
 
