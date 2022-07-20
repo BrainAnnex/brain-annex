@@ -59,12 +59,12 @@ def create_sample_schema_2():
 def test_create_class(db):
     db.empty_dbase()
 
-    french_class_id = NeoSchema.create_class("French Vocabulary")
+    _ , french_class_id = NeoSchema.create_class("French Vocabulary")
     match = db.find(labels="CLASS")   # All Class nodes
     result = db.get_nodes(match)
     assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
 
-    class_A_id = NeoSchema.create_class("A", schema_type="S")
+    _ , class_A_id = NeoSchema.create_class("A", schema_type="S")
     result = db.get_nodes(match)
     expected = [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'},
                 {'name': 'A', 'schema_id': class_A_id, 'type': 'S'}]
@@ -78,12 +78,26 @@ def test_create_class(db):
 
 
 
+def test_get_class_neo_id(db):
+    db.empty_dbase()
+    A_neo_id, _ = NeoSchema.create_class("A")
+    assert NeoSchema.get_class_neo_id("A") == A_neo_id
+
+    B_neo_id, _ = NeoSchema.create_class("B")
+    assert NeoSchema.get_class_neo_id("A") == A_neo_id
+    assert NeoSchema.get_class_neo_id("B") == B_neo_id
+
+    with pytest.raises(Exception):
+        assert NeoSchema.get_class_neo_id("NON-EXISTENT CLASS")
+
+
+
 def test_get_class_id(db):
     db.empty_dbase()
-    class_A_id = NeoSchema.create_class("A")
+    _ , class_A_id = NeoSchema.create_class("A")
     assert NeoSchema.get_class_id("A") == class_A_id
 
-    class_B_id = NeoSchema.create_class("B")
+    _ , class_B_id = NeoSchema.create_class("B")
     assert NeoSchema.get_class_id("A") == class_A_id
     assert NeoSchema.get_class_id("B") == class_B_id
 
@@ -98,7 +112,7 @@ def test_class_id_exists(db):
     with pytest.raises(Exception):
         assert NeoSchema.class_id_exists("not_a_number")
 
-    class_A_id = NeoSchema.create_class("A")
+    _ , class_A_id = NeoSchema.create_class("A")
     assert NeoSchema.class_id_exists(class_A_id)
 
 
@@ -116,10 +130,10 @@ def test_class_name_exists(db):
 
 def test_get_class_name(db):
     db.empty_dbase()
-    class_A_id = NeoSchema.create_class("A")
+    _ , class_A_id = NeoSchema.create_class("A")
     assert NeoSchema.get_class_name(class_A_id) == "A"
 
-    class_B_id = NeoSchema.create_class("B")
+    _ , class_B_id = NeoSchema.create_class("B")
     assert NeoSchema.get_class_name(class_A_id) == "A"
     assert NeoSchema.get_class_name(class_B_id) == "B"
 
@@ -148,8 +162,8 @@ def test_get_all_classes(db):
 
 def test_create_class_relationship(db):
     db.empty_dbase()
-    french_class_id = NeoSchema.create_class("French Vocabulary")
-    foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
+    _ , french_class_id = NeoSchema.create_class("French Vocabulary")
+    _ , foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
     NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
 
     q = f'''
@@ -180,8 +194,8 @@ def test_rename_class_rel(db):
 
 def test_delete_class_relationship(db):
     db.empty_dbase()
-    class_A_id = NeoSchema.create_class("A")    # The returned value is the "Schema ID"
-    class_B_id = NeoSchema.create_class("B")
+    _ , class_A_id = NeoSchema.create_class("A")    # The returned value is the "Schema ID"
+    _ , class_B_id = NeoSchema.create_class("B")
 
     with pytest.raises(Exception):
         NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name=None)
@@ -350,8 +364,8 @@ def test_get_schema_code(db):
 
 def test_get_schema_id(db):
     db.empty_dbase()
-    schema_id_i = NeoSchema.create_class("My_class", code="i")
-    schema_id_n = NeoSchema.create_class("My_other_class", code="n")
+    _ , schema_id_i = NeoSchema.create_class("My_class", code="i")
+    _ , schema_id_n = NeoSchema.create_class("My_other_class", code="n")
 
     assert NeoSchema.get_schema_id(schema_code="i") == schema_id_i
     assert NeoSchema.get_schema_id(schema_code="n") == schema_id_n
@@ -481,10 +495,10 @@ def test_add_data_relationship(db):
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=neo_id_1, to_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
 
-    person_class_id = NeoSchema.create_class("Person")
+    _ , person_class_id = NeoSchema.create_class("Person")
     person_id = NeoSchema.add_data_point("Person")
 
-    car_class_id = NeoSchema.create_class("Car")
+    _ , car_class_id = NeoSchema.create_class("Car")
     car_id = NeoSchema.add_data_point("Car")
 
     with pytest.raises(Exception):
@@ -595,7 +609,7 @@ def test_get_data_point_id(db):
 
 def test_valid_schema_id(db):
     db.empty_dbase()
-    result = NeoSchema.create_class("Records")
+    _ , result = NeoSchema.create_class("Records")
     assert NeoSchema.valid_schema_id(result)
 
 

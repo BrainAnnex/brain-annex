@@ -560,7 +560,7 @@ class NeoAccess:
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by find()
 
         :param return_neo_id:   Flag indicating whether to also include the Neo4j internal node ID in the returned data
-                                    (using "neo4j_id" as its key in the returned dictionary)
+                                    (using "neo4j_id" as its key in the returned dictionary)    TODO: change to "neo_id"
         :param return_labels:   Flag indicating whether to also include the Neo4j label names in the returned data
                                     (using "neo4j_labels" as its key in the returned dictionary)
 

@@ -138,13 +138,14 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def create_class(cls, name: str, code=None, schema_type="L", no_datanodes = False) -> int:
+    def create_class(cls, name: str, code=None, schema_type="L", no_datanodes = False) -> (int, int):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
 
-        Return the auto-incremented unique ID assigned to the new Class,
-        or raise an Exception if a class by that name already exists
+        Return a pair with the Neo4j ID of the new ID,
+        and the auto-incremented unique ID assigned to the new Class.
+        Raise an Exception if a class by that name already exists
 
         NOTE: if you want to add Properties at the same time that you create a new Class,
               use the function new_class_with_properties() instead.
@@ -178,8 +179,35 @@ class NeoSchema:
             attributes["no_datanodes"] = True       # TODO: test this option
 
         #print(f"create_class(): about to call db.create_node with parameters `{cls.class_label}` and `{attributes}`")
-        cls.db.create_node(cls.class_label, attributes)
-        return schema_id
+        neo_id = cls.db.create_node(cls.class_label, attributes)
+        return (neo_id, schema_id)
+
+
+
+    @classmethod
+    def get_class_neo_id(cls, class_name: str) -> int:
+        """
+        Returns the Neo4j ID of the Class node with the given name,
+        or raise an Exception if not found, or if more than one is found.
+        Note: unique Class names are assumed.
+
+        :param class_name:  The name of the desired class
+        :return:            The Neo4j ID of the specified Class
+        """
+        assert class_name is not None, "NeoSchema.get_class_neo_id(): argument `class_name` cannot be None"
+        assert type(class_name) == str, f"NeoSchema.get_class_neo_id(): argument `class_name` must be a string (value passed was `{class_name}`)"
+        assert class_name != "", "NeoSchema.get_class_neo_id(): argument `class_name` cannot be an empty string"
+
+        match = cls.db.find(labels="CLASS", key_name="name", key_value=class_name)
+        result = cls.db.get_nodes(match, return_neo_id=True)
+
+        if not result:
+            raise Exception(f"no Class node named {class_name} was found")
+
+        if len(result) > 1:
+            raise Exception(f"more than 1 Class node named {class_name} was found")
+
+        return result[0]["neo4j_id"]
 
 
 
@@ -795,7 +823,7 @@ class NeoSchema:
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
         #       adding a new Class and then leaving it w/o properties or links, in case of mid-operation error
 
-        new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
+        _ , new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
         cls.debug_print(f"Created new schema CLASS node (name: `{class_name}`, Schema ID: {new_class_id})")
 
         number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
@@ -987,7 +1015,7 @@ class NeoSchema:
                                     if not specified, use the Class name
 
         :param connected_to_neo_id: Int or None.  To optionally specify another (already existing) DATA node
-                                        to connect the new node to, specified by its Neo4j          TODO: NEW - switched to Neo4j ID, and changed name
+                                        to connect the new node to, specified by its Neo4j     TODO: NEW - switched to Neo4j ID, and changed name
                                         EXAMPLE: the item_id of a data point representing a particular salesperson or dealership
 
         The following group only applicable if connected_to_id isn't None
@@ -1016,6 +1044,8 @@ class NeoSchema:
 
         if not class_name:
             class_name = cls.get_class_name(schema_id)      # Derive the Class name from its ID
+
+        class_neo_id = cls.get_class_neo_id(class_name)
 
         if labels is None:
             # If not specified, use the Class name
@@ -1058,19 +1088,22 @@ class NeoSchema:
             else:
                 rel_attrs = None
 
-            neo_id = cls.db.create_node_with_relationships(labels, properties=cypher_prop_dict,
-                                                           connections=[{"labels": "CLASS", "key": "name", "value": class_name,
-                                                                         "rel_name": "SCHEMA"},
+            neo_id = cls.db.create_node_with_links(labels,
+                                                   properties=cypher_prop_dict,
+                                                   links=[  {"neo_id": class_neo_id,
+                                                             "rel_name": "SCHEMA", "rel_dir": "OUT"},
 
-                                                                        {"labels": connected_to_labels, "key": "item_id", "value": connected_to_neo_id,
-                                                                         "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
-                                                                        ]
-                                                           )
-        else:                   # simpler case : only a link to the Class node
-            neo_id = cls.db.create_node_with_relationships(labels, properties=cypher_prop_dict,
-                                                           connections=[{"labels": "CLASS", "key": "name", "value": class_name,
-                                                                         "rel_name": "SCHEMA", "rel_dir": "OUT"}]
-                                                           )
+                                                            {"neo_id": connected_to_neo_id,
+                                                             "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
+                                                            ]
+                                                   )
+        else:                   # Simpler case : only a link to the Class node
+            neo_id = cls.db.create_node_with_links(labels,
+                                                   properties=cypher_prop_dict,
+                                                   links=[{"neo_id": class_neo_id,
+                                                            "rel_name": "SCHEMA", "rel_dir": "OUT"}
+                                                          ]
+                                                   )
 
 
         return neo_id
