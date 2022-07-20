@@ -986,7 +986,7 @@ class NeoSchema:
     def add_data_point_fast(cls, class_name="", schema_id=None,
                             properties=None, labels=None,
                             connected_to_neo_id=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                            assign_item_id=None, new_item_id=None, return_item_ID=True) -> int:
+                            assign_item_id=False, new_item_id=None) -> int:
         """
         EXPERIMENTAL : a faster version of add_data_point()
         Add a new data node, of the Class specified by name or ID,
@@ -1027,13 +1027,10 @@ class NeoSchema:
 
         :param assign_item_id:  If True, the new node is given an extra attribute named "item_id" with a unique auto-increment value
         :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                    If new_item_id is provided, then assign_item_id is automatically made True
 
-        :param return_item_ID:  Default to True.        TODO: NEW - ditched
-                                If True, the returned value is the auto-increment "item_id" value of the node just created;
-                                    otherwise, it returns its Neo4j ID
-
-        :return:                If successful, an integer with either the auto-increment "item_id" value or the Neo4j ID
-                                    of the node just created (based on the flag "return_item_ID");
+        :return:                If successful, an integer with the Neo4j ID
+                                    of the node just created;
                                     otherwise, an Exception is raised       TODO: NEW - now always returning Neo4j ID
         """
         #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
