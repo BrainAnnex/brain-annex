@@ -1618,7 +1618,8 @@ class NeoSchema:
         :param json_str:    A JSON string representing (at the top level) an object or a list to import
         :param class_name:  Name of Schema class to use for the top-level element(s)
         :param parse_only:  Flag indicating whether to stop after the parsing (i.e. no database import)
-        :param provenance:  Metadata (such as a file name) to store in the "source" attribute of the node for the import data
+        :param provenance:  Metadata (such as a file name) to store in the "source" attribute
+                                of a special extra node ("Import Data")
 
         :return:
         """
@@ -1642,15 +1643,20 @@ class NeoSchema:
     @classmethod
     def create_data_nodes_from_python_data(cls, data, class_name: str, provenance=None) -> [int]:
         """
+        Import the data specified by the "data" python structure into the database -
+        but only the data that is described in the existing Schema;
+        anything else is silently ignored.
+        For additional notes, see import_json_data()
 
         :param data:        A python dictionary or list, with the data to import
         :param class_name:  The name of the Schema Class for the root node(s) of the imported data
-        :param provenance:  Optional string to store in a "source" attribute in the root node
-                                (only used if the top-level data structure is an object, i.e. if there's a single root node)
+        :param provenance:  Optional string to be stored in a "source" attribute
+                                in a special "Import Data" node for metadata about the import
 
         :return:            List of Neo4j ID's of the root node(s) created
 
-        TODO:   * DIRECTION OF RELATIONSHIP (cannot be specified by Python dict/JSON)
+        TODO:   * The "Import Data" Class must already be in the Schema; should automatically add it, if not already present
+                * DIRECTION OF RELATIONSHIP (cannot be specified by Python dict/JSON)
                 * LACK OF "Import Data" node (ought to be automatically created if needed)
                 * LACK OF "BA" (or "DATA"?) labels being set
                 * INABILITY TO LINK TO EXISTING NODES IN DBASE (try using: "item_id": some_int  as the only property in nodes to merge)
@@ -1659,36 +1665,37 @@ class NeoSchema:
                 * INTERCEPT AND BLOCK IMPORTS FROM FILES ALREADY IMPORTED
         """
 
-        # Create an `Import Data` node for the metadata of the import
+        # Create a special `Import Data` node for the metadata of the import
         import_metadata = {}
         if provenance:
             import_metadata["source"] = provenance
 
-        metadata_id = cls.add_data_point(class_name="Import Data", data_dict=import_metadata,
-                                         return_item_ID=False)      # Return the Neo4j ID
+        metadata_neo_id = cls.add_data_point_fast(class_name="Import Data", properties=import_metadata)
 
-        # Store the import date
+        # Store the import date in the node with the metadata
+        # Note: this is done as a separate step, so that the attribute will be a DATE (""LocalDate") field, not a text one
         q = f'''
-            MATCH (n :`Import Data`) WHERE id(n) = {metadata_id}
+            MATCH (n :`Import Data`) WHERE id(n) = {metadata_neo_id}
             SET n.date = date()
             '''
         cls.db.update_query(q)
 
-        # TODO: catch Exceptions, and store the status and error message on the `Import Data` node
+        # TODO: catch Exceptions, and store the status and error message on the `Import Data` node;
+        #       in particular, add "Import Data" to the Schema if not already present
 
-        if type(data) == dict:       # If the top-level Python data structure is dictionary
+        if type(data) == dict:       # If the top-level Python data structure is a dictionary
             # Create a single tree
             cls.debug_print("Top-level structure of the data to import is a Python dictionary")
             # Perform the import
             root_id = cls.create_tree_from_dict(data, class_name)           # This returns a Neo4j ID
 
             if root_id is None:
+                cls.debug_print("None returned by create_tree_from_dict()")
                 return []
             else:
-                root_item_id = root_id
-                cls.debug_print(f"***Linking import node (Neo4j ID={metadata_id}) with data root node (Neo4j ID={root_item_id}), thru relationship `imported_data`")
-                cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id, rel_name="imported_data")
-                return [root_item_id]
+                cls.debug_print(f"***Linking import node (Neo4j ID={metadata_neo_id}) with data root node (Neo4j ID={root_id}), thru relationship `imported_data`")
+                cls.add_data_relationship(from_id=metadata_neo_id, to_id=root_id, rel_name="imported_data")
+                return [root_id]
 
         elif type(data) == list:         # If the top-level Python data structure is a list
             # Create multiple unconnected trees
@@ -1696,8 +1703,8 @@ class NeoSchema:
             node_id_list = cls.create_trees_from_list(data, class_name)         # This returns a list of Neo4j ID's
 
             for root_item_id in node_id_list:
-                cls.debug_print(f"***Linking import node (item_id={metadata_id}) with data root node (Neo4j ID={root_item_id}), thru relationship `imported_data`")
-                cls.add_data_relationship(from_id=metadata_id, to_id=root_item_id, rel_name="imported_data")
+                cls.debug_print(f"***Linking import node (item_id={metadata_neo_id}) with data root node (Neo4j ID={root_item_id}), thru relationship `imported_data`")
+                cls.add_data_relationship(from_id=metadata_neo_id, to_id=root_item_id, rel_name="imported_data")
 
             return node_id_list
 
@@ -1734,7 +1741,7 @@ class NeoSchema:
         :param d:           A dictionary with data from which to create a tree in the database
         :param class_name:
         :param level:
-        :return:            The auto-increment "item_id" (URI) of the newly created node
+        :return:            The Neo4j ID of the newly created node
         """
         assert type(d) == dict, f"create_tree_from_dict(): the argument `d` must be a dictionary (instead, it's {type(d)})"
 
