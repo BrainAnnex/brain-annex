@@ -667,6 +667,8 @@ class NeoAccess:
         Register a set of conditions that must be matched to identify a node or nodes of interest,
         and return a dictionary suitable to be passed as argument to various other functions in this library.
         No arguments at all means "match everything in the database".
+        TODO:   maybe rename to "identify()"
+                maybe save all arguments, in case the dummy_node_name later needs changing
 
         IMPORTANT:  if neo_id is provided, all other conditions are DISREGARDED;
                     otherwise, an implicit AND applies to all the specified conditions.
@@ -936,14 +938,19 @@ class NeoAccess:
 
     def create_node_with_relationships(self, labels, properties=None, connections=None) -> int:
         """
+        TODO: this method may no longer be needed, given the new method create_node_with_links()
+              Maybe ditch, or extract the Neo4j ID's from the connections,
+              and call create_node_with_links()
+
         Create a new node with relationships to zero or more PRE-EXISTING nodes
-        (identified by their labels and key/value pairs);
-        if the specified pre-existing nodes aren't found, then no new node is created.
+        (identified by their labels and key/value pairs).
 
-        In case of failure (including not finding the requested pre-existing nodes) an Exception is raised;
-        otherwise, the Neo4j internal ID of the new node just created is returned.
+        If the specified pre-existing nodes aren't found, then no new node is created,
+        and an Exception is raised.
 
-        Note: if all connections are outbound, and to nodes with knownNeo4j internal IDs, then
+        On success, return the Neo4j internal ID of the new node just created.
+
+        Note: if all connections are outbound, and to nodes with known Neo4j internal IDs, then
               the simpler method create_node_with_children() may be used instead
 
         EXAMPLE:
@@ -999,6 +1006,9 @@ class NeoAccess:
 
         # Define the portion of the Cypher query to link up the new node to any of the existing ones
         q_MERGE = ""
+
+        if properties is None:
+            properties = []
 
         number_props_to_set = len(properties)   # Start building the total number of properties to set on the new node and on the relationships
                                                 # (used to verify that the query ran as expected)
@@ -1103,6 +1113,215 @@ class NeoAccess:
 
 
 
+    def create_node_with_links(self, labels, properties = None, links = None) -> int:
+        """
+        Create a new node, with the given labels and optional properties,
+        and make it a parent of all the EXISTING nodes that are specified
+        in the (possibly empty) list of children nodes, identified by their Neo4j ID.
+
+        The list of children nodes also contains the names to gives to each link,
+        as well as their directions (by default OUTbound from the newly-created node)
+        and, optionally, properties on the links.
+
+        If any of the requested link nodes isn't found,
+        then no new node is created, and an Exception is raised.
+
+        Note: the new node may be created even in situations where Exceptions are raised;
+              for example, if attempting to create two identical relationships to the same existing node.
+
+        EXAMPLE (assuming the nodes with the specified Neo4j IDs already exist):
+            create_node_with_links(
+                                labels="PERSON",
+                                properties={"name": "Julian", "city": "Berkeley"},
+                                links=[ {"neo_id": 123, "rel_name": "LIVES IN"},
+                                        {"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
+                                        {"neo_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
+                                      ]
+            )
+
+        :param labels:      Labels to assign to the newly-created node (optional but recommended):
+                                a string or list/tuple of strings; blanks allowed inside strings
+        :param properties:  A dictionary of optional properties to assign to the newly-created node
+        :param links:       Optional list of dicts identifying existing nodes,
+                                and specifying the name, direction and optional properties
+                                to give to the links connecting to them;
+                                use None, or an empty list, to indicate if there aren't any
+                                Each dict contains the following keys:
+                                    "neo_id"        REQUIRED - to identify an existing node
+                                    "rel_name"      REQUIRED - the name to give to the link
+                                    "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
+                                    "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
+
+        :return:                An integer with the Neo4j ID of the newly-created node
+        """
+        assert properties is None or type(properties) == dict, \
+            f"NeoAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
+
+        assert links is None or type(links) == list, \
+            f"NeoAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
+
+        if self.debug:
+            print(f"In create_node_with_links().  labels: {labels}, links: {links}, properties: {properties}")
+
+
+        # Prepare strings suitable for inclusion in a Cypher query,
+        #   to define the new node to be created
+        labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
+        (cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(properties)
+        # EXAMPLE:
+        #   cypher_props_str = "{`name`: $par_1, `city`: $par_2}"
+        #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
+
+        # Define the portion of the Cypher query to create the new node
+        q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
+        # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
+
+
+        if links:
+            q_MATCH, q_WHERE, q_MERGE, additional_data_binding = self._assemble_query_for_linking(links)
+            # Put all the parts of the Cypher query together (*except* for a RETURN statement)
+            q = q_MATCH + "\n" + q_WHERE + "\n" + q_CREATE + "\n" + q_MERGE
+
+            # Merge additional_data_binding into the data_binding dict
+            data_binding.update(additional_data_binding)
+        else:
+            links = []      # To avoid problems with the None value, further down
+            q = q_CREATE
+
+
+        # Put all the parts of the Cypher query together (*except* for a RETURN statement)
+        q += "\nRETURN id(n) AS neo_id"
+        print("\n")
+        print(q)
+        print("\n", data_binding)
+        # EXAMPLE of q:
+        '''
+        MATCH (ex0), (ex1)
+        WHERE id(ex0) = 4 AND id(ex1) = 3
+        CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})
+        MERGE (n)<-[:`EMPLOYS` ]-(ex0)
+        MERGE (n)-[:`OWNS` {`since`: $EDGE1_1}]->(ex1)
+        RETURN id(n) AS neo_id       
+        '''
+        # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'EDGE1_1': 2021}
+
+        result = self.update_query(q, data_binding)
+        print("Result of update_query in create_node_with_links():\n", result)
+        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'neo_id': 604}]}
+
+
+        # Assert that the query produced the expected actions
+        if result.get("nodes_created") != 1:
+            raise Exception("Failed to create 1 new node")
+
+        expected_number_labels = (1 if type(labels) == str else len(labels))
+        if result.get("labels_added") != expected_number_labels:
+            raise Exception(f"Failed to set the {expected_number_labels} label(s) expected on the new node")
+
+        if result.get("relationships_created", 0) != len(links):
+            raise Exception(f"New node created as expected, but failed to create all the {len(links)} requested relationships")
+
+        if result.get("properties_set") != len(data_binding):
+            raise Exception(f"Failed to set all the {len(data_binding)} properties on the new node and its relationships")
+
+        returned_data = result.get("returned_data")
+        #print("returned_data", returned_data)
+        if len(returned_data) == 0:
+            raise Exception("Unable to extract internal ID of the newly-created node")
+
+        neo_id = returned_data[0].get("neo_id", None)
+        if neo_id is None:    # Note: neo_id might be zero
+            raise Exception("Unable to extract internal ID of the newly-created node")
+
+        return neo_id    # Return the Neo4j ID of the new node
+
+
+
+    def _assemble_query_for_linking(self, links: list) -> tuple:
+        """
+        Helper function for create_node_with_links(), and perhaps future methods.
+
+        Given a list of existing nodes, and info on links to create to/from them,
+        define the portions of the Cypher query to locate the existing nodes,
+        and to link up to them.
+        No query is actually run.
+
+        :param links:   A list: SEE explanation in create_node_with_links()
+        :return:        A 4-tuple with the parts of the query, as well as the needed data binding
+                            1) q_MATCH
+                            2) q_WHERE
+                            3) q_MERGE
+                            4) data_binding
+        """
+
+        assert links and type(links) == list and len(links) > 0, \
+            f"NeoAccess._assemble_query_for_linking(): the argument must be a non-empty list"
+
+        # Define the portion of the Cypher query to locate the existing nodes
+        q_MATCH = "MATCH"
+        q_WHERE = "WHERE"
+
+        # Define the portion of the Cypher query to link up to any of the existing nodes
+        q_MERGE = ""
+
+        data_binding = {}
+        for i, edge in enumerate(links):
+            match_neo_id = edge.get("neo_id")
+            if match_neo_id is None:    # Caution: it might be zero
+                raise Exception(f"NeoAccess._assemble_query_for_linking(): Missing 'neo_id' key for the node to link to (in list element {edge})")
+
+            assert type(match_neo_id) == int, \
+                f"NeoAccess._assemble_query_for_linking(): The value of the 'neo_id' key must be an integer. The type was {type(match_neo_id)}"
+
+            rel_name = edge.get("rel_name")
+            if not rel_name:
+                raise Exception(f"NeoAccess._assemble_query_for_linking(): Missing name ('rel_name' key) for the new relationship (in list element {edge})")
+
+            node_dummy_name = f"ex{i}"  # EXAMPLE: "ex3".   The "ex" stands for "existing node"
+            q_MATCH += f" (ex{i})"      # EXAMPLE: " (ex3)"
+
+            q_WHERE += f" id({node_dummy_name}) = {match_neo_id}"   # EXAMPLE: " id(ex3) = 123"
+
+
+            rel_dir = edge.get("rel_dir", "OUT")        # "OUT" is the default value
+            rel_attrs = edge.get("rel_attrs", None)     # By default, no relationship attributes
+
+            # Process the optional relationship properties
+            (rel_attrs_str, cypher_dict_for_edge) = CypherUtils.dict_to_cypher(rel_attrs, prefix=f"EDGE{i}_")
+            # EXAMPLE of rel_attrs_str:         '{since: $EDGE1_par_1}'  (possibly a blank string)
+            # EXAMPLE of cypher_dict_for_edge:  {'EDGE1_par_1': 2021}    (possibly an empty dict)
+
+            data_binding.update(cypher_dict_for_edge)           # Merge cypher_dict_for_edge into the data_binding dictionary
+
+            if rel_dir == "OUT":
+                q_MERGE += f"MERGE (n)-[:`{rel_name}` {rel_attrs_str}]->({node_dummy_name})"  # Form an OUT-bound connection
+                # EXAMPLE of term:  "MERGE (n)-[:`OWNS` {since: $EDGE1_par_1}]->(ex1)"
+            else:
+                q_MERGE += f"MERGE (n)<-[:`{rel_name}` {rel_attrs_str}]-({node_dummy_name})"  # Form an IN-bound connection
+                # EXAMPLE of term:  "MERGE (n)<-[:`EMPLOYS` ]-(ex0)"
+
+            if i+1 < len(links):
+                q_MATCH += ","          # Comma separator, except at the end
+                q_WHERE += " AND"
+                q_MERGE += "\n"
+            # END for
+
+        # EXAMPLE of q_MATCH at this stage; note that (ex0), etc, refer to EXisting nodes:
+        # "MATCH (ex0), (ex1)"
+
+        # EXAMPLE of q_MERGE:
+        '''
+        MERGE (n)<-[:`EMPLOYS` ]-(ex0)
+        MERGE (n)-[:`OWNS` {since: $EDGE1_par_1}]->(ex1)
+        '''
+
+        # EXAMPLE of q_WHERE:
+        # "WHERE id(ex0) = 123 AND id(ex1) = 456"
+
+        return q_MATCH, q_WHERE, q_MERGE, data_binding
+
+
+
     def create_node_with_children(self, labels, properties = None, children_list = None) -> int:
         """
         Create a new node, with the given labels and optional specified properties,
@@ -1111,7 +1330,9 @@ class NeoAccess:
         using the relationship names specified inside that list.
         All the relationships are understood to be OUTbound from the newly-created node.
 
-        Note: this is a simpler version of create_node_with_relationships()
+        Note: this is a simpler version of create_node_with_links()
+
+        TODO: re-implement, making use of create_node_with_links()
 
         EXAMPLE:
             create_node_with_children(
@@ -1147,7 +1368,7 @@ class NeoAccess:
               f"with {number_properties} attributes and {len(children_list)} children: ", children_list)
 
         node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
-        # Add each relationship in turn (TODO: maybe do this with a single Cypher query)
+        # Add each relationship in turn     TODO: maybe do this with a single Cypher query, as done by create_node_with_relationships()
         for item in children_list:
             assert type(item) == tuple and len(item) == 2, \
                 f"The list items in `children_list` in create_node_with_children() must be pairs; instead, the following item was seen: {item}"

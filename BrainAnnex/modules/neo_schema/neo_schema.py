@@ -955,6 +955,129 @@ class NeoSchema:
 
 
     @classmethod
+    def add_data_point_fast(cls, class_name="", schema_id=None,
+                            properties=None, labels=None,
+                            connected_to_neo_id=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
+                            assign_item_id=None, new_item_id=None, return_item_ID=True) -> int:
+        """
+        EXPERIMENTAL : a faster version of add_data_point()
+        Add a new data node, of the Class specified by name or ID,
+        with the given (possibly none) attributes and label(s),
+        optionally linked to another, already existing, DATA node.
+
+        The new data node, if successfully created, will be assigned a unique value for its field item_id
+        If the requested Class doesn't exist, an Exception is raised
+
+        EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
+                    add_data_point(schema_id=123,     data_dict={"make": "Toyota", "color": "white"}, labels="car",
+                                   connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
+                    assuming there's an existing class named "Cars" and an existing data point with item_id = 999, and label "salesperson"
+
+        TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
+        TODO: verify that required attributes are present
+        TODO: invoke special plugin-code, if applicable
+        TODO: make the issuance of a new item_id optional
+
+        :param class_name:      The name of the Class that this new data point is an instance of
+        :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
+
+        :param properties:      An optional dictionary with the properties of the new data point.   TODO: NEW - changed name
+                                    EXAMPLE: {"make": "Toyota", "color": "white"}
+        :param labels:          String or list of strings with label(s) to assign to the new data node;
+                                    if not specified, use the Class name
+
+        :param connected_to_neo_id: Int or None.  To optionally specify another (already existing) DATA node
+                                        to connect the new node to, specified by its Neo4j          TODO: NEW - switched to Neo4j ID, and changed name
+                                        EXAMPLE: the item_id of a data point representing a particular salesperson or dealership
+
+        The following group only applicable if connected_to_id isn't None
+        ###:param connected_to_labels:     EXAMPLE: "salesperson"      TODO: NEW - ditched
+        :param rel_name:        Str or None.  EXAMPLE: "SOLD_BY"
+        :param rel_dir:         Str or None.  Either "OUT" (default) or "IN"
+        :param rel_prop_key:    Str or None.  Ignored if rel_prop_value is missing
+        :param rel_prop_value:  Str or None.  Ignored if rel_prop_key is missing
+
+        :param assign_item_id:  If True, the new node is given an extra attribute named "item_id" with a unique auto-increment value
+        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+
+        :param return_item_ID:  Default to True.        TODO: NEW - ditched
+                                If True, the returned value is the auto-increment "item_id" value of the node just created;
+                                    otherwise, it returns its Neo4j ID
+
+        :return:                If successful, an integer with either the auto-increment "item_id" value or the Neo4j ID
+                                    of the node just created (based on the flag "return_item_ID");
+                                    otherwise, an Exception is raised       TODO: NEW - now always returning Neo4j ID
+        """
+        #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
+
+        # Make sure that at least either class_name or schema_id is present
+        if (not class_name) and (not schema_id):
+            raise Exception("NeoSchema.add_data_point(): Must specify at least either the class_name or the schema_id")
+
+        if not class_name:
+            class_name = cls.get_class_name(schema_id)      # Derive the Class name from its ID
+
+        if labels is None:
+            # If not specified, use the Class name
+            labels = class_name
+
+        if properties is None:
+            properties = {}
+
+        assert type(properties) == dict, "NeoSchema.add_data_point(): The properties argument, if provided, MUST be a dictionary"
+
+        cypher_prop_dict = properties
+
+        if not cls.allows_data_nodes(class_name):
+            raise Exception(f"NeoSchema.add_data_point(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+
+        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
+        # if requested, expand cypher_prop_dict accordingly
+        if assign_item_id or new_item_id:
+            if not new_item_id:
+                new_id = cls.next_available_datapoint_id()      # Obtain (and reserve) the next auto-increment value
+            else:
+                new_id = new_item_id
+            #print("New ID assigned to new data node: ", new_id)
+            cypher_prop_dict["item_id"] = new_id               # Expand the dictionary
+
+            schema_code = cls.get_schema_code(class_name)
+            if schema_code != "":
+                cypher_prop_dict["schema_code"] = schema_code  # Expand the dictionary
+
+            # EXAMPLE of cypher_prop_dict at this stage:
+            #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
+            #       where 123 is the next auto-assigned item_id
+
+
+        # Create a new data node, with a "SCHEMA" relationship to its Class node and, if requested, also a relationship to another data node
+        if connected_to_neo_id:     # if requesting a relationship to an existing data node
+            if rel_prop_key and (rel_prop_value != '' and rel_prop_value is not None):  # Note: cannot just say "and rel_prop_value" or it'll get dropped if zero
+                rel_attrs = {rel_prop_key: rel_prop_value}
+            else:
+                rel_attrs = None
+
+            neo_id = cls.db.create_node_with_relationships(labels, properties=cypher_prop_dict,
+                                                           connections=[{"labels": "CLASS", "key": "name", "value": class_name,
+                                                                         "rel_name": "SCHEMA"},
+
+                                                                        {"labels": connected_to_labels, "key": "item_id", "value": connected_to_neo_id,
+                                                                         "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
+                                                                        ]
+                                                           )
+        else:                   # simpler case : only a link to the Class node
+            neo_id = cls.db.create_node_with_relationships(labels, properties=cypher_prop_dict,
+                                                           connections=[{"labels": "CLASS", "key": "name", "value": class_name,
+                                                                         "rel_name": "SCHEMA", "rel_dir": "OUT"}]
+                                                           )
+
+
+        return neo_id
+
+
+
+    @classmethod
     def add_data_point(cls, class_name="", schema_id=None,
                        data_dict=None, labels=None,
                        connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
@@ -967,14 +1090,15 @@ class NeoSchema:
         The new data node, if successfully created, will be assigned a unique value for its field item_id
         If the requested Class doesn't exist, an Exception is raised
 
-        EXAMPLES:   add_data_point(class_name="Cars", {"make": "Toyota", "color": "white"}, labels="car")
-                    add_data_point(schema_id=123,     {"make": "Toyota", "color": "white"}, labels="car",
+        EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
+                    add_data_point(schema_id=123,     data_dict={"make": "Toyota", "color": "white"}, labels="car",
                                    connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
                     assuming there's an existing class named "Cars" and an existing data point with item_id = 999, and label "salesperson"
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
         TODO: invoke special plugin-code, if applicable
+        TODO: make the issuance of a new item_id optional
 
         :param class_name:      The name of the Class that this new data point is an instance of
         :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
@@ -987,7 +1111,7 @@ class NeoSchema:
 
         :param connected_to_id: Int or None.  To optionally specify another (already existing) DATA node
                                         to connect the new node to, specified by its item_id.
-                                        TODO: for efficiency, use the Neo4j ID instead
+                                        TODO: --> for efficiency, use the Neo4j ID instead [and ditch the arg "connected_to_labels"]
                                         EXAMPLE: the item_id of a data point representing a particular salesperson or dealership
 
         The following group only applicable if connected_to_id isn't None

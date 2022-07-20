@@ -12,7 +12,7 @@ import pandas as pd
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(debug=True)
+    neo_obj = neo_access.NeoAccess(debug=False)
     yield neo_obj
 
 
@@ -796,44 +796,128 @@ def test_create_node_with_relationships(db):
     result = db.query(q)
     assert result[0]['neo4j_id'] == new_id
 
-    """
-    db.create_node_with_relationships(
-        labels="PERSON",
-        properties={"name": "Julian", "city": "Berkeley"},
-        connections=[
-            {"labels": "DEPARTMENT",
-             "key": "dept_name", "value": "IT",
-             "rel_name": "EMPLOYS", "rel_dir": "IN"}
-        ]
-    )
 
-    db.create_node_with_relationships(
-        labels="PERSON",
-        properties={"name": "Julian", "city": "Berkeley"},
-        connections=[
-        ]
-    )
-    """
+
+
+def test_create_node_with_links(db):
+
     db.empty_dbase()
 
-    # Create a new node
-    db.create_node("city", properties={'name': 'Berkeley', 'state': 'CA'})
+    with pytest.raises(Exception):
+        db.create_node_with_links(labels="A", properties="Not a dictionary")
+        db.create_node_with_links(labels="A", links=666)    # links isn't a list/None
+        db.create_node_with_links(labels="A", links=[{"neo_id": 9999, "rel_name": "GHOST"}])   # Linking to non-existing node
 
-    # Locate the node just created
-    match = db.find(labels="city", key_name='name', key_value='Berkeley')
-    assert match == {"node": "(n :`city` {`name`: $n_par_1})",
-                     "where": "",
-                     "data_binding": {"n_par_1": "Berkeley"},
-                     "dummy_node_name": "n"
-                    }
-    result = db.get_nodes(match, single_row=True)
-    assert result == {'name': 'Berkeley', 'state': 'CA'}
+    # Create a first node, with no links
+    car_id = db.create_node_with_links(labels = ["CAR", "INVENTORY"],
+                                       properties = {'vehicle_id': 12345})
+    # Verify it
+    match = db.find(neo_id=car_id, labels=["CAR", "INVENTORY"])
+    lookup = db.get_nodes(match)
+    assert lookup == [{'vehicle_id': 12345}]
 
-    db.delete_nodes(match)
+    # Create a 2nd node, also with no links
+    dept_id = db.create_node_with_links(labels = "DEPARTMENT",
+                                        properties = {'dept name': 'IT'},
+                                        links = [])
+    # Verify it
+    match = db.find(neo_id=dept_id, labels = "DEPARTMENT")
+    lookup = db.get_nodes(match)
+    assert lookup == [{'dept name': 'IT'}]
 
-    # Try to locate the node just deleted
-    result = db.get_nodes(match)
-    assert result == []             # No longer there
+
+    # Create a new node linked to the 2 ones just created
+    new_id = \
+        db.create_node_with_links(
+            labels="PERSON",
+            properties={"name": "Julian", "city": "Berkeley"},
+            links=[
+                {"neo_id": dept_id,
+                 "rel_name": "EMPLOYS",
+                 "rel_dir": "IN"},
+
+                {"neo_id": car_id,
+                 "rel_name": "OWNS",
+                 "rel_attrs": {"since": 2021} }
+            ]
+        )
+    #print("ID of the newly-created node: ", new_id)
+
+    q = '''
+    MATCH (:DEPARTMENT {`dept name`:'IT'})-[:EMPLOYS]
+          ->(p:PERSON {name: 'Julian', city: 'Berkeley'})
+          -[:OWNS {since:2021}]->(:CAR:INVENTORY {vehicle_id: 12345}) 
+          RETURN id(p) AS neo_id
+    '''
+    result = db.query(q)
+    assert result[0]['neo_id'] == new_id
+
+
+    # Attempt to create another new node with 2 identical links to the SAME existing node
+    with pytest.raises(Exception):
+        db.create_node_with_links(
+            labels="PERSON",
+            properties={"name": "Val", "city": "San Francisco"},
+            links=[
+                {"neo_id": car_id,
+                 "rel_name": "DRIVES"},
+
+                {"neo_id": car_id,
+                 "rel_name": "DRIVES"}
+            ]
+        )
+
+    # In spite of the Exception, above, a new node was indeed created
+    match = db.find(labels = "PERSON", properties={"name": "Val"})
+    lookup = db.get_nodes(match)
+    assert lookup == [{"name": "Val", "city": "San Francisco"}]
+
+
+
+def test_assemble_query_for_linking(db):
+    with pytest.raises(Exception):
+        db._assemble_query_for_linking(None)
+        db._assemble_query_for_linking("I'm not a list :(")
+        db._assemble_query_for_linking([])
+
+        db._assemble_query_for_linking([{}])
+        db._assemble_query_for_linking([{'rel_name': 'OWNS'}])
+
+        db._assemble_query_for_linking([{'neo_id': 'do I look like a number??'}])
+        db._assemble_query_for_linking([{'neo_id': 123}])
+
+
+    result = db._assemble_query_for_linking([{"neo_id": 123, "rel_name": "LIVES IN"}])
+    assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 123', 'MERGE (n)-[:`LIVES IN` ]->(ex0)', {})
+
+    result = db._assemble_query_for_linking([{"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
+    assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 456', 'MERGE (n)<-[:`EMPLOYS` ]-(ex0)', {})
+
+    result = db._assemble_query_for_linking([{"neo_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}])
+    assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 789', 'MERGE (n)-[:`OWNS` {`since`: $EDGE0_1}]->(ex0)', {'EDGE0_1': 2022})
+
+
+    result = db._assemble_query_for_linking([{"neo_id": 123, "rel_name": "LIVES IN"} ,
+                                             {"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
+    assert result == ('MATCH (ex0), (ex1)',
+                      'WHERE id(ex0) = 123 AND id(ex1) = 456',
+                      'MERGE (n)-[:`LIVES IN` ]->(ex0)\nMERGE (n)<-[:`EMPLOYS` ]-(ex1)',
+                      {}
+                     )
+
+
+    result = db._assemble_query_for_linking(
+                        [
+                            {"neo_id": 123, "rel_name": "LIVES IN"},
+                            {"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
+                            {"neo_id": 789, "rel_name": "IS OWNED BY", "rel_dir": "IN", "rel_attrs": {"since": 2022, "tax rate": "X 23"}}
+                        ])
+    assert result == (
+                        'MATCH (ex0), (ex1), (ex2)',
+                        'WHERE id(ex0) = 123 AND id(ex1) = 456 AND id(ex2) = 789',
+                        'MERGE (n)-[:`LIVES IN` ]->(ex0)\nMERGE (n)<-[:`EMPLOYS` ]-(ex1)\nMERGE (n)<-[:`IS OWNED BY` {`since`: $EDGE2_1, `tax rate`: $EDGE2_2}]-(ex2)',
+                        {'EDGE2_1': 2022, 'EDGE2_2': "X 23"}
+                      )
 
 
 
