@@ -20,6 +20,99 @@ def db():
 
 
 
+def test_create_tree_from_dict_1(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.new_class_with_properties(class_name="address",
+                                        property_list=["state", "city"])
+
+    # Import a data dictionary
+    data = {"state": "California", "city": "Berkeley"}
+    # This import will result in the creation of a new node, with 2 attributes, named "state" and "city"
+    root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="address")
+    print(root_neo_id)
+
+    assert root_neo_id is not None
+
+    q = '''
+    MATCH (root :address {state: "California", city: "Berkeley"})
+    -[:SCHEMA]->(c : CLASS {name: "address"})
+    WHERE id(root) = $root_neo_id
+    RETURN root
+    '''
+
+    root_node = db.query(q, data_binding={"root_neo_id": root_neo_id})
+    assert root_node == [{'root': {'city': 'Berkeley', 'state': 'California'}}]
+
+
+
+def test_create_tree_from_dict_2(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    sch_1 = NeoSchema.new_class_with_properties(class_name="person",
+                                                property_list=["name"])
+    sch_2 = NeoSchema.new_class_with_properties(class_name="address",
+                                                property_list=["state", "city"])
+
+    NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="address")
+
+    # Import a data dictionary
+    data = {"name": "Julian", "address": {"state": "California", "city": "Berkeley"}}
+    # This import will result in the creation of 2 nodes, namely the tree root (with a single attribute "name"), with
+    # an outbound link named "address" to another node (the subtree) that has the "state" and "city" attributes
+    root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="person")
+    print(root_neo_id)
+
+    assert root_neo_id is not None
+
+
+    q = '''
+    MATCH (c1 :CLASS {name: "person"})<-[:SCHEMA]-
+    (root :person {name: "Julian"})-[:address]->
+    (a :address {state: "California", city: "Berkeley"})
+    -[:SCHEMA]->(c2 :CLASS {name: "address"})
+    WHERE id(root) = $root_neo_id
+    RETURN root
+    '''
+
+    root_node = db.query(q, data_binding={"root_neo_id": root_neo_id})
+    assert root_node == [{'root': {'name': 'Julian'}}]
+
+
+
+def test_create_tree_from_list_1(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.new_class_with_properties(class_name="address",
+                                        property_list=["state", "city"])
+
+    # Import a data dictionary
+    data = [{"state": "California", "city": "Berkeley"}, {"state": "Texas", "city": "Dallas"}]
+    # This import will result in the creation of a new node, with 2 attributes, named "state" and "city"
+    root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address")
+    print(root_neo_id_list)
+
+    assert root_neo_id_list is not None
+
+    q = '''
+    MATCH (root1 :address {state: "California", city: "Berkeley"})
+    -[:SCHEMA]->(c : CLASS {name: "address"})
+    <-[:SCHEMA]-(root2 :address {state: "Texas", city: "Dallas"})
+    RETURN id(root1) as id_1, id(root2) as id_2
+    '''
+
+    result = db.query(q)
+    #print(result)   # EXAMPLE: [{'id_1': 8, 'id_2': 9}]
+    actual_root_ids_dict = result[0]
+    actual_root_ids_list = [actual_root_ids_dict['id_1'], actual_root_ids_dict['id_2']]
+    assert actual_root_ids_list == root_neo_id_list or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
+
+
+
+
 def test_create_data_nodes_from_python_data_1(db):
     db.empty_dbase()
 
@@ -38,6 +131,7 @@ def test_create_data_nodes_from_python_data_1(db):
     data = {"legit": 123, "unexpected": 456}
     # Import step
     node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="my_class_1")
+
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
@@ -52,7 +146,7 @@ def test_create_data_nodes_from_python_data_1(db):
 
     root_record = root_node["n2"]
     assert root_record["legit"] == 123
-    assert "item_id" in root_record
+    #assert "item_id" in root_record            # Not currently is use
     assert "unexpected" not in root_record      # Only the key in the Schema gets imported
 
 
@@ -122,7 +216,7 @@ def test_create_data_nodes_from_python_data_3(db):
     root_record = root_node["n2"]
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
-    assert "item_id" in root_record
+    #assert "item_id" in root_record            # Not currently is use
     assert len(root_record) == 3     # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
@@ -174,8 +268,8 @@ def test_create_data_nodes_from_python_data_4(db):
     assert root_record["name"] == "Stephanie"
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
-    assert "item_id" in root_record
-    assert len(root_record) == 4     # Only the keys in the Schema gets imported
+    #assert "item_id" in root_record        # Not currently is use
+    assert len(root_record) == 4            # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
     res = db.query(q)

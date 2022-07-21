@@ -996,6 +996,8 @@ class NeoSchema:
         The new data node, if successfully created, will be assigned a unique value for its field item_id
         If the requested Class doesn't exist, an Exception is raised
 
+        NOTE: if the new node requires MULTIPLE links to existing data points, use add_and_link_data_point() instead
+
         EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
                     add_data_point(schema_id=123,     data_dict={"make": "Toyota", "color": "white"}, labels="car",
                                    connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
@@ -1111,7 +1113,7 @@ class NeoSchema:
     def add_data_point(cls, class_name="", schema_id=None,
                        data_dict=None, labels=None,
                        connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                       new_item_id=None, return_item_ID=True) -> int:
+                       new_item_id=None, return_item_ID=True) -> int:   # TODO: replace by add_data_point_fast()
         """
         Add a new data node, of the Class specified by name or ID,
         with the given (possibly none) attributes and label(s),
@@ -1231,7 +1233,8 @@ class NeoSchema:
 
 
     @classmethod
-    def add_and_link_data_point(cls, class_name: str, connected_to_list: [], data_dict=None, labels=None) -> int:
+    def add_and_link_data_point(cls, class_name: str, connected_to_list: [tuple], properties=None, labels=None,
+                                assign_item_id=False) -> int:
         """
         Create a new data node, of the Class with the given name,
         with the specified optional labels and properties,
@@ -1244,12 +1247,12 @@ class NeoSchema:
 
         If the requested Class doesn't exist, an Exception is raised
 
-        The new data node gets assigned a unique "item_id" value (TODO: make optional)
+        The new data node optionally gets assigned a unique "item_id" value (TODO: make optional)
 
         EXAMPLE:
             add_and_link_data_point(
                                 class_name="PERSON",
-                                data_dict={"name": "Julian", "city": "Berkeley"},
+                                properties={"name": "Julian", "city": "Berkeley"},
                                 connected_to_list=[ (123, "IS_EMPLOYED_BY") , (456, "OWNS") ]
             )
 
@@ -1257,19 +1260,23 @@ class NeoSchema:
 
         :param class_name:          Name of the Class specifying the schema for this new data point
         :param connected_to_list:   A list of pairs (Neo4j ID value, relationship name)
-        :param data_dict:           A dictionary of attributes to give to the new node
+        :param properties:          A dictionary of attributes to give to the new node
         :param labels:              OPTIONAL string or list of strings with label(s) to assign to new data node;
                                         if not specified, use the Class name
+        :param assign_item_id:      If True, the new node is given an extra attribute named "item_id" with a unique auto-increment value
 
         :return:                    If successful, an integer with Neo4j ID of the node just created;
                                         otherwise, an Exception is raised
         """
-        new_neo_id = cls.add_data_point(class_name=class_name, data_dict=data_dict, labels=labels,
-                                        return_item_ID=False)    # Request that the Neo4j ID be returned
+        #new_neo_id = cls.add_data_point(class_name=class_name, data_dict=data_dict, labels=labels,
+                                        #return_item_ID=False)    # Request that the Neo4j ID be returned
+
+        new_neo_id = cls.add_data_point_fast(class_name=class_name, properties=properties, labels=labels,
+                                             assign_item_id=assign_item_id)
 
         for link in connected_to_list:
-            node_id, rel_name = link    # Unpack
-            cls.add_data_relationship(from_id=new_neo_id, to_id=node_id, rel_name=rel_name)
+            node_neo_id, rel_name = link    # Unpack
+            cls.add_data_relationship(from_id=new_neo_id, to_id=node_neo_id, rel_name=rel_name)
 
         return new_neo_id
 
@@ -1477,7 +1484,7 @@ class NeoSchema:
         EXPERIMENTAL
 
         Return the "match" structure to locate a node identified
-        either by its Neo4j ID, or by a primary key (with optional label.)
+        either by its Neo4j ID (default), or by a primary key (with optional label.)
 
         :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
         :param id_type: For example, "item_id";
@@ -1500,7 +1507,7 @@ class NeoSchema:
     def class_of_data_point(cls, node_id: int, id_type=None, labels=None) -> str:
         """
         Return the name of the Class of the given data point: identified
-        either by its Neo4j ID's, or by a primary key (with optional label)
+        either by its Neo4j ID's (default), or by a primary key (with optional label)
 
         :param node_id:     Either a Neo4j ID or a primary key value
         :param id_type:     OPTIONAL - name of a primary key used to identify the data node
@@ -1653,7 +1660,8 @@ class NeoSchema:
         :param provenance:  Optional string to be stored in a "source" attribute
                                 in a special "Import Data" node for metadata about the import
 
-        :return:            List of Neo4j ID's of the root node(s) created
+        :return:            List of Neo4j ID's of the root node(s) created,
+                                or None is nothing is created
 
         TODO:   * The "Import Data" Class must already be in the Schema; should automatically add it, if not already present
                 * DIRECTION OF RELATIONSHIP (cannot be specified by Python dict/JSON)
@@ -1722,7 +1730,9 @@ class NeoSchema:
             2) other values (such as dictionaries or lists) are recursively turned into subtrees,
                linked from the new data node through outbound relationships using the dictionary keys as names
 
-        Return the Neo4j ID of the newly created root node
+        Return the Neo4j ID of the newly created root node,
+        or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
+
         EXAMPLES:
         (1) {"state": "California", "city": "Berkeley"}
             results in the creation of a new node, with 2 attributes, named "state" and "city"
@@ -1739,9 +1749,10 @@ class NeoSchema:
             similar to (3), above, but the children nodes will use the default attribute name "value"
 
         :param d:           A dictionary with data from which to create a tree in the database
-        :param class_name:
-        :param level:
-        :return:            The Neo4j ID of the newly created node
+        :param class_name:  The name of the Schema Class for the root node(s) of the imported data
+        :param level:       The level of the recursive call (used for debug printing)
+        :return:            The Neo4j ID of the newly created node,
+                                or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
         """
         assert type(d) == dict, f"create_tree_from_dict(): the argument `d` must be a dictionary (instead, it's {type(d)})"
 
@@ -1816,10 +1827,10 @@ class NeoSchema:
 
                 # Recursive call
                 cls.debug_print(f"{indent_str}Making recursive call to process the above dictionary...")
-                new_node_id = cls.create_tree_from_dict(d=v, class_name=subtree_root_class_name , level=level + 1)
+                new_node_neo_id = cls.create_tree_from_dict(d=v, class_name=subtree_root_class_name , level=level + 1)
 
-                if new_node_id is not None:     # If a subtree actually got created
-                    children_info.append( (new_node_id, k) )    # Save relationship for use when the node gets created
+                if new_node_neo_id is not None:     # If a subtree actually got created
+                    children_info.append( (new_node_neo_id, k) )    # Save relationship for use when the node gets created
                     cls.debug_print(f"{indent_str}Buffered relationships for the new node so far: {children_info}")
                 else:
                     cls.debug_print(f"{indent_str}No subtree was returned; so, skipping over this key (`{k}`)")
@@ -1857,12 +1868,18 @@ class NeoSchema:
 
         # End of loop over all the dictionary entries
 
-        # Now, finally CREATE THE NEW NODE, with its attributes and links to children (the roots of the subtrees)
+        # A "postorder" approach is followed: the subtrees were created first (with recursive calls);
+        # now, finally CREATE THE NEW NODE, the ROOT, with its attributes
+        # and links to the previously-created children (the roots of all the sub-trees)
         if len(node_properties) == 0 and len(children_info) == 0:
             cls.debug_print(f"{indent_str}Skipping creating node of class `{class_name}` that has no properties and no children")
             return None   # Using None to indicate "skipped node/subtree"
         else:
-            return cls.add_and_link_data_point(class_name=class_name, data_dict=node_properties, connected_to_list=children_info)
+            # Note: a Neo4j ID is returned by the next call
+            return cls.add_and_link_data_point(class_name=class_name,
+                                               properties=node_properties,
+                                               connected_to_list=children_info,
+                                               assign_item_id=False)
 
 
 
@@ -1871,13 +1888,26 @@ class NeoSchema:
         """
         Add a set of new data nodes (the roots of the trees), all of the specified Class,
         with data from the given list.
+        Each list elements MUST be a literal, or dictionary or a list:
+            - if a literal, it first gets turned into a dictionary of the form {"value": literal_element};
+            - if a dictionary, it gets processed by create_tree_from_dict()
+            - if a list, it generates a recursive call
 
         Return a list of the Neo4j ID of the newly created nodes
 
+        EXAMPLE:
+            If the Class is named "address" and has 2 properties, "state" and "city",
+            then the data:
+                    [{"state": "California", "city": "Berkeley"}, {"state": "Texas", "city": "Dallas"}]
+            will give rise to 2 new data nodes with label "address", and each of them having a "SCHEMA"
+            link to the shared Class node.
+
         :param l:           A list of data from which to create a set of trees in the database
-        :param class_name:
-        :param level:
-        :return:            A list of the Neo4j values of the newly created nodes
+        :param class_name:  The name of the Schema Class for the root node(s) of the imported data
+        :param level:       The level of the recursive call (used for debug printing)
+
+        :return:            A list of the Neo4j values of the newly created nodes (each of which
+                                might be a root of a tree)
         """
         assert type(l) == list, f"create_tree_from_dict(): the argument `l` must be a list (instead, it's {type(l)})"
 
@@ -1890,31 +1920,31 @@ class NeoSchema:
 
         cls.debug_print(f"{indent_str}Input is a list with {len(l)} items")
 
-        list_of_child_ids = []
+        list_of_root_neo_ids = []
 
         # Process each element of the list, in turn
         for i, item in enumerate(l):
             cls.debug_print(f"{indent_str}Making recursive call to process the {i}-th list element...")
             if cls.db.is_literal(item):
                 item_as_dict = {"value": item}
-                new_node_id = cls.create_tree_from_dict(d=item_as_dict, class_name=class_name, level=level + 1)  # Recursive call
-                if new_node_id  is not None:     # If a subtree actually got created
-                    list_of_child_ids.append(new_node_id)
+                new_node_id = cls.create_tree_from_dict(d=item_as_dict, class_name=class_name, level=level + 1)
+                if new_node_id is not None:                      # If a subtree actually got created
+                    list_of_root_neo_ids.append(new_node_id)
 
             elif type(item) == dict:
-                new_node_id = cls.create_tree_from_dict(d=item, class_name=class_name, level=level + 1)          # Recursive call
-                if new_node_id  is not None:     # If a subtree actually got created
-                    list_of_child_ids.append(new_node_id)
+                new_node_id = cls.create_tree_from_dict(d=item, class_name=class_name, level=level + 1)
+                if new_node_id is not None:                     # If a subtree actually got created
+                    list_of_root_neo_ids.append(new_node_id)
 
             elif type(item) == list:
                 new_node_id_list = cls.create_trees_from_list(l=item, class_name=class_name, level=level + 1)   # Recursive call
-                list_of_child_ids += new_node_id_list       # Merge of lists
+                list_of_root_neo_ids += new_node_id_list        # Merge of lists
 
             else:
-                raise Exception(f"Unexpected type: {type(item)}")
+                raise Exception(f"NeoSchema.create_trees_from_list(): Unexpected type in list item: {type(item)}")
 
 
-        return list_of_child_ids
+        return list_of_root_neo_ids
 
 
 

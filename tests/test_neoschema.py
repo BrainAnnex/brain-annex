@@ -521,8 +521,8 @@ def test_add_and_link_data_point(db):
                                             return_item_ID=False)
 
     patient_neo_id = NeoSchema.add_and_link_data_point(class_name="patient",
-                                      data_dict={"name": "Jill", "age": 19, "balance": 312.15},
-                                      connected_to_list = [ (doctor_neo_id, "IS_ATTENDED_BY") , (result_neo_id, "HAS_RESULT") ])
+                                                       properties={"name": "Jill", "age": 19, "balance": 312.15},
+                                                       connected_to_list = [ (doctor_neo_id, "IS_ATTENDED_BY") , (result_neo_id, "HAS_RESULT") ])
 
     # Traverse a loop in the graph, from the patient data node, back to itself - going thru data and schema nodes
     q = '''
@@ -549,14 +549,14 @@ def test_add_and_link_data_point(db):
     # Attempt to sneak in a relationship not in the Schema
     with pytest.raises(Exception):
         NeoSchema.add_and_link_data_point(class_name="patient",
-                          data_dict={"name": "Jill", "age": 19, "balance": 312.15},
-                          connected_to_list = [ (doctor_neo_id, "NOT_A_DECLARED_RELATIONSHIP") , (result_neo_id, "HAS_RESULT") ])
+                                          properties={"name": "Jill", "age": 19, "balance": 312.15},
+                                          connected_to_list = [ (doctor_neo_id, "NOT_A_DECLARED_RELATIONSHIP") , (result_neo_id, "HAS_RESULT") ])
 
 
     # Attempt to use a Class not in the Schema
     with pytest.raises(Exception):
         NeoSchema.add_and_link_data_point(class_name="NO_SUCH CLASS",
-                                          data_dict={"name": "Jill", "age": 19, "balance": 312.15},
+                                          properties={"name": "Jill", "age": 19, "balance": 312.15},
                                           connected_to_list = [ ])
 
 

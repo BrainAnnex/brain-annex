@@ -221,6 +221,8 @@ class NeoAccess:
                         EXAMPLE, assuming that the cypher string contains the substrings "$node_id":
                                 {'node_id': 20}
         :param single_row:      Return a dictionary with just the first (0-th) result row, if present - or {} in case of no results
+                                TODO: maybe this should be None
+
         :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
                                 If single_cell is specified, return the value of the field by that name in the first returned record
                                 Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
@@ -1212,26 +1214,26 @@ class NeoAccess:
 
         # Assert that the query produced the expected actions
         if result.get("nodes_created") != 1:
-            raise Exception("Failed to create 1 new node")
+            raise Exception("NeoAccess.create_node_with_links(): Failed to create 1 new node")
 
         expected_number_labels = (1 if type(labels) == str else len(labels))
         if result.get("labels_added") != expected_number_labels:
-            raise Exception(f"Failed to set the {expected_number_labels} label(s) expected on the new node")
+            raise Exception(f"NeoAccess.create_node_with_links(): Failed to set the {expected_number_labels} label(s) expected on the new node")
 
         if result.get("relationships_created", 0) != len(links):
-            raise Exception(f"New node created as expected, but failed to create all the {len(links)} requested relationships")
+            raise Exception(f"NeoAccess.create_node_with_links(): New node created as expected, but failed to create all the {len(links)} requested relationships")
 
-        if result.get("properties_set") != len(data_binding):
-            raise Exception(f"Failed to set all the {len(data_binding)} properties on the new node and its relationships")
+        if result.get("properties_set", 0) != len(data_binding):
+            raise Exception(f"NeoAccess.create_node_with_links(): Was expecting to set {len(data_binding)} properties on the new node and its relationships; instead, {result.get('properties_set')} got set")
 
         returned_data = result.get("returned_data")
         #print("returned_data", returned_data)
         if len(returned_data) == 0:
-            raise Exception("Unable to extract internal ID of the newly-created node")
+            raise Exception("NeoAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
         neo_id = returned_data[0].get("neo_id", None)
         if neo_id is None:    # Note: neo_id might be zero
-            raise Exception("Unable to extract internal ID of the newly-created node")
+            raise Exception("NeoAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
         return neo_id    # Return the Neo4j ID of the new node
 
