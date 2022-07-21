@@ -115,7 +115,6 @@ class NeoSchema:
                                         #       Alt. name ideas: "IS", "HAS_CLASS", "HAS_SCHEMA", "TYPE", "TYPE_OF"
 
     debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
-                                        #       (currently, in very limited use)
 
 
 
@@ -333,7 +332,7 @@ class NeoSchema:
         #print(q)
 
         result = cls.db.update_query(q, data_binding={"name": name})
-        print("result of update query in delete_class(): ", result)
+        cls.debug_print("result of update query in delete_class(): ", result)
         number_nodes_deleted = result.get("nodes_deleted", 0)   # 0 is given as default value, if not present
 
         if number_nodes_deleted < 1:     # If no nodes were deleted
@@ -835,7 +834,7 @@ class NeoSchema:
         if class_to_link_to and link_to_name:
             # Create a relationship from the newly-created Class to an existing Class whose name is given by class_to_link_to
             parent_id = NeoSchema.get_class_id(class_name = class_to_link_to)
-            print(f"parent_id (ID of `{class_to_link_to}` class): ", parent_id)
+            cls.debug_print(f"parent_id (ID of `{class_to_link_to}` class): ", parent_id)
             try:
                 NeoSchema.create_class_relationship(from_id=new_class_id, to_id=parent_id, rel_name =link_to_name)
             except Exception as ex:
@@ -1337,7 +1336,7 @@ class NeoSchema:
         if not new_item_id:
             new_item_id = cls.next_available_datapoint_id()     # Generate, if not already provided
 
-        print("register_existing_data_point(). New item_id to be assigned to the data node: ", new_item_id)
+        cls.debug_print("register_existing_data_point(). New item_id to be assigned to the data node: ", new_item_id)
 
         data_binding = {"class_name": class_name, "new_item_id": new_item_id, "existing_neo_id": existing_neo_id}
 
@@ -1358,7 +1357,7 @@ class NeoSchema:
         if schema_code != "":
             q += " , existing.schema_code = $schema_code"
 
-        cls.db.debug_print(q, data_binding, "register_existing_data_point") # Note: this is the special debug print for NeoAccess
+        cls.db.debug_query_print(q, data_binding, "register_existing_data_point") # Note: this is the special debug print for NeoAccess
         result = cls.db.update_query(q, data_binding)
         #print(result)
 
@@ -1525,7 +1524,7 @@ class NeoSchema:
             {where_clause}
             RETURN class_node.name AS name
             '''
-        cls.db.debug_print(q, data_binding, "class_of_data_point")
+        cls.db.debug_query_print(q, data_binding, "class_of_data_point")
 
         result = cls.db.query(q, data_binding)
 
@@ -1630,7 +1629,7 @@ class NeoSchema:
 
         :return:
         """
-        print(f"In import_json_data().  class_name: {class_name} | parse_only: {parse_only} | provenance: {provenance}")
+        cls.debug_print(f"In import_json_data().  class_name: {class_name} | parse_only: {parse_only} | provenance: {provenance}")
         # Try to obtain Python data (which ought to be a dict or list) that corresponds to the passed JSON string
         try:
             python_data_from_json = json.loads(json_str)    # Turn the string (representing JSON data) into its Python counterpart;
@@ -1671,6 +1670,7 @@ class NeoSchema:
                 * HAZY responsibility for "schema_code" (set correctly for all nodes); maybe ditch to speed up execution
                 * OFFER AN OPTION TO IGNORE BLANK STRINGS IN ATTRIBUTES
                 * INTERCEPT AND BLOCK IMPORTS FROM FILES ALREADY IMPORTED
+                * issue some report about any part of the data that doesn't match the Schema, and got silently dropped
         """
 
         # Create a special `Import Data` node for the metadata of the import
@@ -1732,6 +1732,9 @@ class NeoSchema:
 
         Return the Neo4j ID of the newly created root node,
         or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
+
+        IMPORTANT:  any part of the data that doesn't match the Schema,
+                    gets silently dropped.  TODO: issue some report about that
 
         EXAMPLES:
         (1) {"state": "California", "city": "Berkeley"}
@@ -1893,7 +1896,10 @@ class NeoSchema:
             - if a dictionary, it gets processed by create_tree_from_dict()
             - if a list, it generates a recursive call
 
-        Return a list of the Neo4j ID of the newly created nodes
+        Return a list of the Neo4j ID of the newly created nodes.
+
+        IMPORTANT:  any part of the data that doesn't match the Schema,
+                    gets silently dropped.  TODO: issue some report about that
 
         EXAMPLE:
             If the Class is named "address" and has 2 properties, "state" and "city",
@@ -1912,7 +1918,7 @@ class NeoSchema:
         assert type(l) == list, f"create_tree_from_dict(): the argument `l` must be a list (instead, it's {type(l)})"
 
         assert cls.class_name_exists(class_name), \
-            f"The value passed for the argument `class_name` ({class_name}) is not a valid Class name"
+                f"The value passed for the argument `class_name` ({class_name}) is not a valid Class name"
 
         indent_spaces = level*4
         indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
@@ -1924,7 +1930,7 @@ class NeoSchema:
 
         # Process each element of the list, in turn
         for i, item in enumerate(l):
-            cls.debug_print(f"{indent_str}Making recursive call to process the {i}-th list element...")
+            cls.debug_print(f"{indent_str}Processing the {i}-th list element...")
             if cls.db.is_literal(item):
                 item_as_dict = {"value": item}
                 new_node_id = cls.create_tree_from_dict(d=item_as_dict, class_name=class_name, level=level + 1)
@@ -1937,6 +1943,7 @@ class NeoSchema:
                     list_of_root_neo_ids.append(new_node_id)
 
             elif type(item) == list:
+                cls.debug_print(f"{indent_str}Making recursive call")
                 new_node_id_list = cls.create_trees_from_list(l=item, class_name=class_name, level=level + 1)   # Recursive call
                 list_of_root_neo_ids += new_node_id_list        # Merge of lists
 
@@ -2092,12 +2099,15 @@ class NeoSchema:
 
 
     @classmethod
-    def debug_print(cls, info, trim=False):
+    def debug_print(cls, info: str, trim=False) -> None:
         """
+        If the class' property "debug" is set to True,
+        print out the passed info string,
+        optionally trimming it, if too long
 
         :param info:
         :param trim:
-        :return:
+        :return:        None
         """
         if cls.debug:
             if trim:

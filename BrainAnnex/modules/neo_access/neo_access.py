@@ -145,8 +145,7 @@ class NeoAccess:
             # TODO: maybe try to detect that, and give a more informative message
             raise Exception(error_msg)
 
-        if self.debug:
-            print(f"Connection to host '{self.host}' established")
+        self.debug_print(f"Connection to host '{self.host}' established")
 
         # If we get thus far, the connection to the host was successfully established,
         # BUT this doesn't prove that we can actually connect to the database;
@@ -612,7 +611,7 @@ class NeoAccess:
         if limit:
             cypher += f" LIMIT {limit}"
 
-        self.debug_print(cypher, data_binding, "get_nodes")
+        self.debug_query_print(cypher, data_binding, "get_nodes")
 
 
         # Note: the flatten=True takes care of returning just the fields of the matched node "n", rather than dictionaries indexes by "n"
@@ -815,7 +814,7 @@ class NeoAccess:
 
         q += CypherUtils.prepare_where(where) + " RETURN neighbor"
 
-        self.debug_print(q, data_binding, "follow_links")
+        self.debug_query_print(q, data_binding, "follow_links")
 
         result = self.query(q, data_binding, single_column='neighbor')
 
@@ -854,7 +853,7 @@ class NeoAccess:
 
         q += CypherUtils.prepare_where(where) + " RETURN count(neighbor) AS link_count"
 
-        self.debug_print(q, data_binding, "count_links")
+        self.debug_query_print(q, data_binding, "count_links")
 
         return self.query(q, data_binding, single_cell="link_count")
 
@@ -931,7 +930,7 @@ class NeoAccess:
         # Assemble the complete Cypher query
         cypher = f"CREATE (n {cypher_labels} {attributes_str}) RETURN n"
 
-        self.debug_print(cypher, data_dictionary, "create_node")
+        self.debug_query_print(cypher, data_dictionary, "create_node")
 
         result_list = self.query_extended(cypher, data_dictionary, flatten=True)
         return result_list[0]['neo4j_id']           # Return the Neo4j internal ID of the node just created
@@ -1193,9 +1192,8 @@ class NeoAccess:
 
         # Put all the parts of the Cypher query together (*except* for a RETURN statement)
         q += "\nRETURN id(n) AS neo_id"
-        print("\n")
-        print(q)
-        print("\n", data_binding)
+        self.debug_print(f"\n{q}\n")
+        self.debug_print(data_binding)
         # EXAMPLE of q:
         '''
         MATCH (ex0), (ex1)
@@ -1208,7 +1206,7 @@ class NeoAccess:
         # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'EDGE1_1': 2021}
 
         result = self.update_query(q, data_binding)
-        print("Result of update_query in create_node_with_links():\n", result)
+        self.debug_print(f"Result of update_query in create_node_with_links():\n{result}")
         # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'neo_id': 604}]}
 
 
@@ -1362,12 +1360,12 @@ class NeoAccess:
         number_properties = "NO" if properties is None  else len(properties)     # Only used for debugging
 
         if children_list is None or children_list == []:
-            print(f"\nCreated a new node with ID: {new_node_id}, with {number_properties} attribute(s), and NO children")
+            self.debug_print(f"\nCreated a new node with ID: {new_node_id}, with {number_properties} attribute(s), and NO children")
             return new_node_id
 
         # Add relationships to all children, if any
-        print(f"\nCreated a new node with ID: {new_node_id}, "
-              f"with {number_properties} attributes and {len(children_list)} children: ", children_list)
+        self.debug_print(f"\nCreated a new node with ID: {new_node_id}, "
+                         f"with {number_properties} attributes and {len(children_list)} children: {children_list}")
 
         node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
         # Add each relationship in turn     TODO: maybe do this with a single Cypher query, as done by create_node_with_relationships()
@@ -1405,7 +1403,7 @@ class NeoAccess:
         (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
 
         q = f"MATCH {node} {CypherUtils.prepare_where(where)} DETACH DELETE n"
-        self.debug_print(q, data_binding, "delete_nodes")
+        self.debug_query_print(q, data_binding, "delete_nodes")
 
         stats = self.update_query(q, data_binding)
         number_nodes_deleted = stats.get("nodes_deleted", 0)
@@ -1450,7 +1448,7 @@ class NeoAccess:
         for label in delete_labels:
             if not (label in keep_labels):
                 q = f"MATCH (x:`{label}`) DETACH DELETE x"
-                self.debug_print(q, method="delete_nodes_by_label")
+                self.debug_query_print(q, method="delete_nodes_by_label")
                 self.query(q)
 
 
@@ -1532,7 +1530,7 @@ class NeoAccess:
         # Example of data binding:
         #       {'n_par_1': 123, 'n_par_2': 7500, 'color': 'white', 'price': 7000}
 
-        self.debug_print(cypher, data_binding, "set_fields")
+        self.debug_query_print(cypher, data_binding, "set_fields")
 
         #self.query(cypher, data_binding)
         stats = self.update_query(cypher, data_binding)
@@ -1609,7 +1607,7 @@ class NeoAccess:
         # Merge the data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
 
-        self.debug_print(q, combined_data_binding, "add_edges")
+        self.debug_query_print(q, combined_data_binding, "add_edges")
 
         result = self.update_query(q, combined_data_binding)
         if self.debug:
@@ -1682,7 +1680,7 @@ class NeoAccess:
         # Merge the data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
 
-        self.debug_print(q, combined_data_binding, "remove_edges")
+        self.debug_query_print(q, combined_data_binding, "remove_edges")
 
         result = self.update_query(q, combined_data_binding)
         if self.debug:
@@ -1759,7 +1757,7 @@ class NeoAccess:
         # Merge the data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
 
-        self.debug_print(q, combined_data_binding, "edges_exist")
+        self.debug_query_print(q, combined_data_binding, "edges_exist")
 
         result = self.query(q, combined_data_binding)
         if self.debug:
@@ -1800,7 +1798,7 @@ class NeoAccess:
         # Merge all the 3data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([node, old_attachment, new_attachment])
 
-        self.debug_print(q, combined_data_binding, "add_edges")
+        self.debug_query_print(q, combined_data_binding, "add_edges")
 
         result = self.update_query(q, combined_data_binding)
         #print("result of update_query in reattach_node(): ", result)
@@ -1842,7 +1840,7 @@ class NeoAccess:
         cypher_dict["node_id1"] = node_id1
         cypher_dict["node_id2"] = node_id2
 
-        self.debug_print(q, cypher_dict, "link_nodes_by_ids")
+        self.debug_query_print(q, cypher_dict, "link_nodes_by_ids")
 
         self.query(q, cypher_dict)
 
@@ -2364,7 +2362,7 @@ class NeoAccess:
         # TODO: implement a mechanism whereby, if the above call results in error, the partial database structure created gets erased
 
         if provenance and type(json_data) == dict:       # If provenance is specified, and the top-level JSON structure is a dictionary
-            print("Stamping the root node of the import with provenance information in the `source` attribute")
+            self.debug_print("Stamping the root node of the import with provenance information in the `source` attribute")
             node_id = result[0]
             self.set_fields(node_id, set_dict={"source": provenance})
 
@@ -2389,10 +2387,10 @@ class NeoAccess:
         :return:            List of integer Neo4j internal ID's (possibly empty), of the root node(s) created
         """
         indent_str = self.indent_chooser(level)
-        print(f"{indent_str}{level}. ~~~~~:")
+        self.debug_print(f"{indent_str}{level}. ~~~~~:")
 
         if python_data is None:
-            print(f"{indent_str}Handling a None.  Returning an empty list")
+            self.debug_print(f"{indent_str}Handling a None.  Returning an empty list")
             return []
 
         # If the data is a literal, first turn it into a dictionary using a key named "value"
@@ -2400,17 +2398,17 @@ class NeoAccess:
             # The data is a literal
             original_data = python_data             # Only used for debug-printing, below
             python_data = {"value": python_data}    # Turn the literal data into a dictionary
-            print(f"{indent_str}Turning literal ({self.debug_trim(original_data, max_len=200)}) into dict, "
+            self.debug_print(f"{indent_str}Turning literal ({self.debug_trim(original_data, max_len=200)}) into dict, "
                   f"using `value` as key, as follows: {self.debug_trim(python_data)}")
 
         if type(python_data) == dict:
-            print(f"{indent_str}Input is a dict with {len(python_data)} key(s): {list(python_data.keys())}")
+            self.debug_print(f"{indent_str}Input is a dict with {len(python_data)} key(s): {list(python_data.keys())}")
             new_root_id = self.dict_importer(d=python_data, labels=root_labels, level=level)
-            print(f"{indent_str}dict_importer returned new_root_id: {new_root_id}")
+            self.debug_print(f"{indent_str}dict_importer returned new_root_id: {new_root_id}")
             return [new_root_id]
 
         elif type(python_data) == list:
-            print(f"{indent_str}Input is a list with {len(python_data)} items")
+            self.debug_print(f"{indent_str}Input is a list with {len(python_data)} items")
             children_info = self.list_importer(l=python_data, labels=root_labels, level=level)
             if self.debug:
                 print(f"{indent_str}children_info: {children_info}")
@@ -2423,7 +2421,7 @@ class NeoAccess:
                 children_list = []
                 for child_id in children_info:
                     children_list.append( (child_id, root_labels) )
-                print(f"{indent_str}Attaching the root nodes of the list elements to a common parent")
+                self.debug_print(f"{indent_str}Attaching the root nodes of the list elements to a common parent")
                 return [self.create_node_with_children(labels=root_labels, children_list=children_list, properties=None)]
 
         else:
@@ -2457,7 +2455,7 @@ class NeoAccess:
                     print(f"{indent_str}The value (`{self.debug_trim(v)}`) is a literal of type {type(v)}")      # Concise version
 
             elif type(v) == dict:
-                print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
+                self.debug_print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
                 # Recursive call
                 new_node_id_list = self.create_nodes_from_python_data(python_data=v, root_labels=k, level=level + 1)
                 if len(new_node_id_list) > 1:
@@ -2468,7 +2466,7 @@ class NeoAccess:
                 # Note: if the list is empty, do nothing
 
             elif type(v) == list:
-                print(f"{indent_str}Processing a list (with {len(v)} elements):")
+                self.debug_print(f"{indent_str}Processing a list (with {len(v)} elements):")
                 new_children = self.list_importer(l=v, labels=k, level=level)
                 for child_id in new_children:
                     children_info.append( (child_id, k) )   # Append a pair to the running list
@@ -2476,7 +2474,7 @@ class NeoAccess:
             # Note: if v is None, no action is taken.  Dictionary entries with values of None are disregarded
 
 
-        print(f"{indent_str}dict_importer assembled node_properties: {node_properties} | children_info: {children_info}")
+        self.debug_print(f"{indent_str}dict_importer assembled node_properties: {node_properties} | children_info: {children_info}")
         return self.create_node_with_children(labels=labels, children_list=children_info, properties=node_properties)
 
 
@@ -2492,13 +2490,13 @@ class NeoAccess:
         """
         indent_str = self.indent_chooser(level)
         if len(l) == 0:
-            print(f"{indent_str}The list is empty; so, ignoring it (Returning an empty list)")
+            self.debug_print(f"{indent_str}The list is empty; so, ignoring it (Returning an empty list)")
             return []
 
         list_of_child_ids = []
         # Process each element of the list, in turn
         for item in l:
-            print(f"{indent_str}Making recursive call to process list element...")
+            self.debug_print(f"{indent_str}Making recursive call to process list element...")
             new_node_id_list = self.create_nodes_from_python_data(python_data=item, root_labels=labels, level=level + 1)  # Recursive call
             list_of_child_ids += new_node_id_list   # List concatenation
 
@@ -2601,7 +2599,7 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def debug_print(self, q: str, data_binding=None, method=None, force_output=False) -> None:
+    def debug_query_print(self, q: str, data_binding=None, method=None, force_output=False) -> None:
         """
         Print out some info on the given Cypher query (and, optionally, on the passed data binding and/or method name),
         BUT only if self.debug is True, or if force_output is True
@@ -2628,6 +2626,25 @@ class NeoAccess:
             print(f"    {data_binding}")
 
         print()
+
+
+
+    def debug_print(self, info: str, trim=False) -> None:
+        """
+        If the class' property "debug" is set to True,
+        print out the passed info string,
+        optionally trimming it, if too long
+
+        :param info:
+        :param trim:
+        :return:        None
+        """
+        if self.debug:
+            if trim:
+                info = self.debug_trim(info)
+
+            print(info)
+
 
 
     def debug_trim(self, data, max_len = 150) -> str:

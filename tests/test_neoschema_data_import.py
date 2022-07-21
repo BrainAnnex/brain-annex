@@ -16,6 +16,7 @@ from tests.test_neoschema import create_sample_schema_1, create_sample_schema_2
 def db():
     neo_obj = neo_access.NeoAccess(debug=False)
     NeoSchema.set_database(neo_obj)
+    NeoSchema.debug = False
     yield neo_obj
 
 
@@ -81,6 +82,7 @@ def test_create_tree_from_dict_2(db):
     assert root_node == [{'root': {'name': 'Julian'}}]
 
 
+####################################################################################################
 
 def test_create_tree_from_list_1(db):
     db.empty_dbase()
@@ -91,7 +93,7 @@ def test_create_tree_from_list_1(db):
 
     # Import a data dictionary
     data = [{"state": "California", "city": "Berkeley"}, {"state": "Texas", "city": "Dallas"}]
-    # This import will result in the creation of a new node, with 2 attributes, named "state" and "city"
+    # This import will result in the creation of two new nodes, each with 2 attributes, named "state" and "city"
     root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address")
     print(root_neo_id_list)
 
@@ -108,10 +110,44 @@ def test_create_tree_from_list_1(db):
     #print(result)   # EXAMPLE: [{'id_1': 8, 'id_2': 9}]
     actual_root_ids_dict = result[0]
     actual_root_ids_list = [actual_root_ids_dict['id_1'], actual_root_ids_dict['id_2']]
-    assert actual_root_ids_list == root_neo_id_list or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
+    assert actual_root_ids_list == root_neo_id_list \
+           or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
 
 
 
+
+def test_create_tree_from_list_2(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.new_class_with_properties(class_name="address",
+                                        property_list=["value"])
+
+    # Import a data dictionary
+    data = ["California", "Texas"]
+    # This import will result in the creation of two new nodes, each with a property by default named "value"
+    root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address")
+    print("root_neo_id_list: ", root_neo_id_list)
+
+    assert len(root_neo_id_list) == 2
+
+    q = '''
+    MATCH (root1 :address {value: "California"})
+    -[:SCHEMA]->(c : CLASS {name: "address"})
+    <-[:SCHEMA]-(root2 :address {value: "Texas"})
+    RETURN id(root1) as id_1, id(root2) as id_2
+    '''
+
+    result = db.query(q)
+    print(result)   # EXAMPLE: [{'id_1': 8, 'id_2': 9}]
+
+    actual_root_ids_dict = result[0]
+    actual_root_ids_list = [actual_root_ids_dict['id_1'], actual_root_ids_dict['id_2']]
+    assert actual_root_ids_list == root_neo_id_list \
+           or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
+
+
+####################################################################################################
 
 def test_create_data_nodes_from_python_data_1(db):
     db.empty_dbase()
@@ -217,7 +253,7 @@ def test_create_data_nodes_from_python_data_3(db):
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
     #assert "item_id" in root_record            # Not currently is use
-    assert len(root_record) == 3     # Only the keys in the Schema gets imported
+    assert len(root_record) == 2     # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
     res = db.query(q)
@@ -269,7 +305,7 @@ def test_create_data_nodes_from_python_data_4(db):
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
     #assert "item_id" in root_record        # Not currently is use
-    assert len(root_record) == 4            # Only the keys in the Schema gets imported
+    assert len(root_record) == 3            # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
     res = db.query(q)
@@ -677,4 +713,4 @@ def test_create_data_nodes_from_python_data_9(db):
     '''
     data_types = db.query(q, data_binding={"quote_id": new_root_id}, single_cell="data_types")
     #print(data_types)
-    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING', 'item_id': 'INTEGER'}
+    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING'}    # 'item_id': 'INTEGER' (not in current use)
