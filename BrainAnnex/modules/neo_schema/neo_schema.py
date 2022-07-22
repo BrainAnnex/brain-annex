@@ -1011,6 +1011,7 @@ class NeoSchema:
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
+        TODO: verify that all the requested links conform to the Schema
         TODO: invoke special plugin-code, if applicable
 
         :param class_name:  The name of the Class that this new data point is an instance of
@@ -1218,7 +1219,7 @@ class NeoSchema:
     def add_data_point(cls, class_name="", schema_id=None,
                        data_dict=None, labels=None,
                        connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                       new_item_id=None, return_item_ID=True) -> int:   # TODO: replace by add_data_point_fast()
+                       new_item_id=None, return_item_ID=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_point_with_links()
         """
         Add a new data node, of the Class specified by name or ID,
         with the given (possibly none) attributes and label(s),
@@ -1835,7 +1836,6 @@ class NeoSchema:
         if provenance:
             import_metadata["source"] = provenance
 
-        #metadata_neo_id = cls.add_data_point_fast(class_name="Import Data", properties=import_metadata)
         metadata_neo_id = cls.add_data_point_with_links(class_name="Import Data", properties=import_metadata)
 
         # Store the import date in the node with the metadata
@@ -1848,6 +1848,7 @@ class NeoSchema:
 
         # TODO: catch Exceptions, and store the status and error message on the `Import Data` node;
         #       in particular, add "Import Data" to the Schema if not already present
+
 
         if type(data) == dict:       # If the top-level Python data structure is a dictionary
             # Create a single tree
@@ -1929,7 +1930,7 @@ class NeoSchema:
 
         cls.debug_print(f"{indent_str}Importing data dictionary, using class `{class_name}`")
 
-        # Determin properties and relationships declared in (allowed by) the Schema
+        # Determine the properties and relationships declared in (allowed by) the Schema
         declared_outlinks = cls.get_class_relationships(schema_id=schema_id, link_dir="OUT", omit_instance=True)
         cls.debug_print(f"{indent_str}declared_outlinks: {declared_outlinks}")
 
