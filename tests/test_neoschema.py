@@ -16,7 +16,7 @@ def db():
 
 
 
-# ************  CREATE SAMPLE SCHEMAS  **************
+# ************  CREATE SAMPLE SCHEMAS for the testing  **************
 
 def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
@@ -53,17 +53,18 @@ def create_sample_schema_2():
 
 
 
+
 #############   CLASS-related   #############
 
 def test_create_class(db):
     db.empty_dbase()
 
-    french_class_id = NeoSchema.create_class("French Vocabulary")
-    match = db.find()   # All nodes
+    _ , french_class_id = NeoSchema.create_class("French Vocabulary")
+    match = db.find(labels="CLASS")   # All Class nodes
     result = db.get_nodes(match)
     assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
 
-    class_A_id = NeoSchema.create_class("A", schema_type="S")
+    _ , class_A_id = NeoSchema.create_class("A", schema_type="S")
     result = db.get_nodes(match)
     expected = [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'},
                 {'name': 'A', 'schema_id': class_A_id, 'type': 'S'}]
@@ -77,12 +78,26 @@ def test_create_class(db):
 
 
 
+def test_get_class_neo_id(db):
+    db.empty_dbase()
+    A_neo_id, _ = NeoSchema.create_class("A")
+    assert NeoSchema.get_class_neo_id("A") == A_neo_id
+
+    B_neo_id, _ = NeoSchema.create_class("B")
+    assert NeoSchema.get_class_neo_id("A") == A_neo_id
+    assert NeoSchema.get_class_neo_id("B") == B_neo_id
+
+    with pytest.raises(Exception):
+        assert NeoSchema.get_class_neo_id("NON-EXISTENT CLASS")
+
+
+
 def test_get_class_id(db):
     db.empty_dbase()
-    class_A_id = NeoSchema.create_class("A")
+    _ , class_A_id = NeoSchema.create_class("A")
     assert NeoSchema.get_class_id("A") == class_A_id
 
-    class_B_id = NeoSchema.create_class("B")
+    _ , class_B_id = NeoSchema.create_class("B")
     assert NeoSchema.get_class_id("A") == class_A_id
     assert NeoSchema.get_class_id("B") == class_B_id
 
@@ -90,22 +105,35 @@ def test_get_class_id(db):
 
 
 
-def test_class_exists(db):
-    pass    # TODO
+def test_class_id_exists(db):
+    db.empty_dbase()
+    assert not NeoSchema.class_id_exists(123)
 
+    with pytest.raises(Exception):
+        assert NeoSchema.class_id_exists("not_a_number")
+
+    _ , class_A_id = NeoSchema.create_class("A")
+    assert NeoSchema.class_id_exists(class_A_id)
 
 
 def test_class_name_exists(db):
-    pass    # TODO
+    db.empty_dbase()
+
+    assert not NeoSchema.class_name_exists("A")
+    NeoSchema.create_class("A")
+    assert NeoSchema.class_name_exists("A")
+
+    with pytest.raises(Exception):
+        assert NeoSchema.class_id_exists(123)
 
 
 
 def test_get_class_name(db):
-    db.empty_dbase()    # Completely clear the database
-    class_A_id = NeoSchema.create_class("A")
+    db.empty_dbase()
+    _ , class_A_id = NeoSchema.create_class("A")
     assert NeoSchema.get_class_name(class_A_id) == "A"
 
-    class_B_id = NeoSchema.create_class("B")
+    _ , class_B_id = NeoSchema.create_class("B")
     assert NeoSchema.get_class_name(class_A_id) == "A"
     assert NeoSchema.get_class_name(class_B_id) == "B"
 
@@ -115,7 +143,7 @@ def test_get_class_name(db):
 
 
 def test_get_all_classes(db):
-    db.empty_dbase()    # Completely clear the database
+    db.empty_dbase()
 
     class_list = NeoSchema.get_all_classes()
     assert class_list == []
@@ -133,9 +161,9 @@ def test_get_all_classes(db):
 
 
 def test_create_class_relationship(db):
-    db.empty_dbase()        # Completely clear the database
-    french_class_id = NeoSchema.create_class("French Vocabulary")
-    foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
+    db.empty_dbase()
+    _ , french_class_id = NeoSchema.create_class("French Vocabulary")
+    _ , foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
     NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
 
     q = f'''
@@ -165,7 +193,41 @@ def test_rename_class_rel(db):
 
 
 def test_delete_class_relationship(db):
-    pass    # TODO
+    db.empty_dbase()
+    _ , class_A_id = NeoSchema.create_class("A")    # The returned value is the "Schema ID"
+    _ , class_B_id = NeoSchema.create_class("B")
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name=None)
+        NeoSchema.delete_class_relationship(from_class="", to_class="B", rel_name="some name")
+        NeoSchema.delete_class_relationship(from_class="A", to_class=None, rel_name="some name")
+        NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+
+    # Create a relationship, and then immediately delete it
+    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    n_del = NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+    assert n_del == 1
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    with pytest.raises(Exception):  # Attempting to re-delete it, will cause error
+        NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+
+    # Create 2 different relationships between the same classes, then delete each relationship at a time
+    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
+    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="LINKED_TO")
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="LINKED_TO")
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="BOGUS_RELATIONSHIP")
+
+    n_del = NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+    assert n_del == 1
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="LINKED_TO")
+
+    n_del = NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="LINKED_TO")
+    assert n_del == 1
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="LINKED_TO")
 
 
 
@@ -175,7 +237,7 @@ def test_unlink_classes(db):
 
 
 def test_delete_class(db):
-    db.empty_dbase()        # Completely clear the database
+    db.empty_dbase()
 
     # Nonexistent classes
     with pytest.raises(Exception):
@@ -204,7 +266,7 @@ def test_delete_class(db):
 
 
     # Interlinked Classes with properties, but no data nodes
-    db.empty_dbase()            # Completely clear the database
+    db.empty_dbase()
     create_sample_schema_1()    # Schema with patient/result/doctor
     NeoSchema.delete_class("doctor")
     assert NeoSchema.class_name_exists("patient")
@@ -225,7 +287,7 @@ def test_delete_class(db):
 
 
     # Interlinked Classes with properties; one of the Classes has an attached data node
-    db.empty_dbase()            # Completely clear the database
+    db.empty_dbase()
     create_sample_schema_2()    # Schema with quotes and categories
     NeoSchema.add_data_point(class_name="quotes",
                              data_dict={"quote": "Comparison is the thief of joy"})
@@ -302,8 +364,8 @@ def test_get_schema_code(db):
 
 def test_get_schema_id(db):
     db.empty_dbase()
-    schema_id_i = NeoSchema.create_class("My_class", code="i")
-    schema_id_n = NeoSchema.create_class("My_other_class", code="n")
+    _ , schema_id_i = NeoSchema.create_class("My_class", code="i")
+    _ , schema_id_n = NeoSchema.create_class("My_other_class", code="n")
 
     assert NeoSchema.get_schema_id(schema_code="i") == schema_id_i
     assert NeoSchema.get_schema_id(schema_code="n") == schema_id_n
@@ -322,21 +384,206 @@ def test_fetch_data_point(db):
 
 
 
+def test_add_data_point_with_links(db):
+    db.empty_dbase()
+
+    create_sample_schema_1()    # Schema with patient/result/doctor
+
+    # Create a new data point, and get its Neo4j ID
+    doctor_neo_id = NeoSchema.add_data_point_with_links(class_name="doctor",
+                                                  properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+
+    q = '''
+        MATCH (d:doctor {name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]->(c:CLASS {name: "doctor"})
+        WHERE id(d) = $doctor_neo_id
+        RETURN d, c
+        '''
+    result = db.query(q, data_binding={"doctor_neo_id": doctor_neo_id})
+    #print("result:", result)
+    assert len(result) == 1
+
+    record = result[0]
+    assert record["c"]["name"] == "doctor"
+    assert record["d"] == {"name":"Dr. Preeti", "specialty":"sports medicine"}
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_point_with_links(class_name="patient",
+                                            properties={"name": "Jill", "age": 22, "balance": 145.50},
+                                            links={}
+                                            )   # links must be a list
+        NeoSchema.add_data_point_with_links(class_name="patient",
+                                            properties="NOT a dict",
+                                            links={}
+                                            )   # properties must be a dict
+        NeoSchema.add_data_point_with_links(class_name="",
+                                            properties={},
+                                            links={}
+                                            )   # class_name cannot be empty
+
+    # Create a new data point for a "patient", linked to the existing "doctor" data point
+    patient_neo_id = NeoSchema.add_data_point_with_links(class_name="patient",
+                                                   properties={"name": "Jill", "age": 22, "balance": 145.50},
+                                                   links=[{"neo_id": doctor_neo_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
+                                                    )
+
+    q = '''
+        MATCH (cp:CLASS {name: "patient"})<-[:SCHEMA]
+        - (p :patient {name: "Jill", age: 22, balance: 145.50})-[:IS_ATTENDED_BY]
+        -> (d :doctor {name:"Dr. Preeti", specialty:"sports medicine"})
+        -[:SCHEMA]->(cd:CLASS {name: "doctor"})<-[:IS_ATTENDED_BY]-(cp)
+        WHERE id(d) = $doctor_neo_id AND id(p) = $patient_neo_id
+        RETURN p, d, cp, cd
+        '''
+    result = db.query(q, data_binding={"doctor_neo_id": doctor_neo_id, "patient_neo_id": patient_neo_id})
+    assert len(result) == 1
+
+
+    # Create a new data point for a "result", linked to the existing "patient" data point;
+    #   this time, request the assignment of an autoincrement "item_id" to the new data node
+    result_neo_id = NeoSchema.add_data_point_with_links(class_name="result",
+                                                  properties={"biomarker": "glucose", "value": 99.0},
+                                                  links=[{"neo_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                  assign_item_id= True)
+
+    q = '''
+        MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
+        -[:HAS_RESULT]->(cr:CLASS {name: "result"})<-[:SCHEMA]-(r :result {biomarker: "glucose", value: 99.0})
+        WHERE id(p) = $patient_neo_id AND id(r) = $result_neo_id
+        RETURN p, cp, cr, r
+        '''
+    result = db.query(q, data_binding={"patient_neo_id": patient_neo_id,
+                                       "result_neo_id": result_neo_id
+                                       })
+    assert len(result) == 1
+    record = result[0]
+    assert record['r']['item_id'] == 1  # The first auto-increment value
+
+
+    # Create a 2nd data point for a "result", linked to the existing "patient" data point;
+    #   this time, request the assignment of specific "item_id" to the new data node
+    result2_neo_id = NeoSchema.add_data_point_with_links(class_name="result",
+                                                        properties={"biomarker": "cholesterol", "value": 180.0},
+                                                        links=[{"neo_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                        new_item_id=9999)
+    q = '''
+        MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
+        -[:HAS_RESULT]->(cr:CLASS {name: "result"})<-[:SCHEMA]-(r2 :result {biomarker: "cholesterol", value: 180.0})
+        WHERE id(p) = $patient_neo_id AND id(r2) = $result_neo_id
+        RETURN p, cp, cr, r2
+        '''
+    result = db.query(q, data_binding={"patient_neo_id": patient_neo_id,
+                                       "result_neo_id": result2_neo_id
+                                       })
+    assert len(result) == 1
+    print(result)
+    record = result[0]
+    assert record['r2']['item_id'] == 9999      # The specific "item_id" that was passed
+
+
+
+
+def test_add_data_point_fast(db):
+    db.empty_dbase()
+
+    create_sample_schema_1()    # Schema with patient/result/doctor
+
+    # Create a new data point, and get its Neo4j ID
+    doctor_neo_id = NeoSchema.add_data_point_fast_OBSOLETE(class_name="doctor",
+                                                           properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+
+    q = '''
+        MATCH (d:doctor {name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]->(c:CLASS {name: "doctor"})
+        WHERE id(d) = $doctor_neo_id
+        RETURN d, c
+        '''
+    result = db.query(q, data_binding={"doctor_neo_id": doctor_neo_id})
+    #print("result:", result)
+    assert len(result) == 1
+
+    record = result[0]
+    assert record["c"]["name"] == "doctor"
+    assert record["d"] == {"name":"Dr. Preeti", "specialty":"sports medicine"}
+
+
+    # Create a new data point for a "patient", linked to the existing "doctor" data point
+    patient_neo_id = NeoSchema.add_data_point_fast_OBSOLETE(class_name="patient",
+                                                            properties={"name": "Jill", "age": 22, "balance": 145.50},
+                                                            connected_to_neo_id = doctor_neo_id,
+                                                            rel_name= "IS_ATTENDED_BY", rel_dir="OUT")
+
+    q = '''
+        MATCH (cp:CLASS {name: "patient"})<-[:SCHEMA]
+        - (p :patient {name: "Jill", age: 22, balance: 145.50})-[:IS_ATTENDED_BY]
+        -> (d :doctor {name:"Dr. Preeti", specialty:"sports medicine"})
+        -[:SCHEMA]->(cd:CLASS {name: "doctor"})<-[:IS_ATTENDED_BY]-(cp)
+        WHERE id(d) = $doctor_neo_id AND id(p) = $patient_neo_id
+        RETURN p, d, cp, cd
+        '''
+    result = db.query(q, data_binding={"doctor_neo_id": doctor_neo_id, "patient_neo_id": patient_neo_id})
+    assert len(result) == 1
+
+
+    # Create a new data point for a "result", linked to the existing "patient" data point;
+    #   this time, request the assignment of an autoincrement "item_id" to the new data node
+    result_neo_id = NeoSchema.add_data_point_fast_OBSOLETE(class_name="result",
+                                                           properties={"biomarker": "glucose", "value": 99.0},
+                                                           connected_to_neo_id = patient_neo_id,
+                                                           rel_name= "HAS_RESULT", rel_dir="IN",
+                                                           assign_item_id= True)
+
+    q = '''
+        MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
+        -[:HAS_RESULT]->(cr:CLASS {name: "result"})<-[:SCHEMA]-(r :result {biomarker: "glucose", value: 99.0})
+        WHERE id(p) = $patient_neo_id AND id(r) = $result_neo_id
+        RETURN p, cp, cr, r
+        '''
+    result = db.query(q, data_binding={"patient_neo_id": patient_neo_id,
+                                       "result_neo_id": result_neo_id
+                                       })
+    assert len(result) == 1
+    #print(result)
+    record = result[0]
+    assert record['r']['item_id'] == 1  # The first auto-increment value
+
+
+    # Create a 2nd data point for a "result", linked to the existing "patient" data point;
+    #   this time, request the assignment of specific "item_id" to the new data node
+    result2_neo_id = NeoSchema.add_data_point_fast_OBSOLETE(class_name="result",
+                                                            properties={"biomarker": "cholesterol", "value": 180.0},
+                                                            connected_to_neo_id = patient_neo_id,
+                                                            rel_name="HAS_RESULT", rel_dir="IN",
+                                                            new_item_id=9999)
+    q = '''
+        MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
+        -[:HAS_RESULT]->(cr:CLASS {name: "result"})<-[:SCHEMA]-(r2 :result {biomarker: "cholesterol", value: 180.0})
+        WHERE id(p) = $patient_neo_id AND id(r2) = $result_neo_id
+        RETURN p, cp, cr, r2
+        '''
+    result = db.query(q, data_binding={"patient_neo_id": patient_neo_id,
+                                       "result_neo_id": result2_neo_id
+                                       })
+    assert len(result) == 1
+    print(result)
+    record = result[0]
+    assert record['r2']['item_id'] == 9999      # The specific "item_id" that was passed
+
+
+
 def test_add_data_point(db):
     #TODO: also test the connected_to_id arguments
     db.empty_dbase()
 
     create_sample_schema_1()    # Schema with patient/result/doctor
 
-    # For thus new data point, get its item_id
+    # Create a new data point, and get its item_id
     doctor_data_id = NeoSchema.add_data_point(class_name="doctor",
-                                        data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
-                                        return_item_ID=True)
+                                              data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
+                                              return_item_ID=True)
 
-    # For thus new data point, get its Neo4j ID
+    # Create a new data point, and this time get its Neo4j ID
     result_neo_id = NeoSchema.add_data_point(class_name="result",
-                                        data_dict={"biomarker": "glucose", "value": 99.0},
-                                        return_item_ID=False)
+                                             data_dict={"biomarker": "glucose", "value": 99.0},
+                                             return_item_ID=False)
 
     q = '''
         MATCH (d:doctor {item_id: $doctor, name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]-(c1:CLASS)
@@ -371,9 +618,9 @@ def test_add_and_link_data_point(db):
                                             data_dict={"biomarker": "glucose", "value": 99.0},
                                             return_item_ID=False)
 
-    patient_neo_id = NeoSchema.add_and_link_data_point(class_name="patient",
-                                      data_dict={"name": "Jill", "age": 19, "balance": 312.15},
-                                      connected_to_list = [ (doctor_neo_id, "IS_ATTENDED_BY") , (result_neo_id, "HAS_RESULT") ])
+    patient_neo_id = NeoSchema.add_and_link_data_point_OBSOLETE(class_name="patient",
+                                                                properties={"name": "Jill", "age": 19, "balance": 312.15},
+                                                                connected_to_list = [ (doctor_neo_id, "IS_ATTENDED_BY") , (result_neo_id, "HAS_RESULT") ])
 
     # Traverse a loop in the graph, from the patient data node, back to itself - going thru data and schema nodes
     q = '''
@@ -399,16 +646,16 @@ def test_add_and_link_data_point(db):
 
     # Attempt to sneak in a relationship not in the Schema
     with pytest.raises(Exception):
-        NeoSchema.add_and_link_data_point(class_name="patient",
-                          data_dict={"name": "Jill", "age": 19, "balance": 312.15},
-                          connected_to_list = [ (doctor_neo_id, "NOT_A_DECLARED_RELATIONSHIP") , (result_neo_id, "HAS_RESULT") ])
+        NeoSchema.add_and_link_data_point_OBSOLETE(class_name="patient",
+                                                   properties={"name": "Jill", "age": 19, "balance": 312.15},
+                                                   connected_to_list = [ (doctor_neo_id, "NOT_A_DECLARED_RELATIONSHIP") , (result_neo_id, "HAS_RESULT") ])
 
 
     # Attempt to use a Class not in the Schema
     with pytest.raises(Exception):
-        NeoSchema.add_and_link_data_point(class_name="NO_SUCH CLASS",
-                                          data_dict={"name": "Jill", "age": 19, "balance": 312.15},
-                                          connected_to_list = [ ])
+        NeoSchema.add_and_link_data_point_OBSOLETE(class_name="NO_SUCH CLASS",
+                                                   properties={"name": "Jill", "age": 19, "balance": 312.15},
+                                                   connected_to_list = [ ])
 
 
 
@@ -433,10 +680,10 @@ def test_add_data_relationship(db):
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=neo_id_1, to_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
 
-    person_class_id = NeoSchema.create_class("Person")
+    _ , person_class_id = NeoSchema.create_class("Person")
     person_id = NeoSchema.add_data_point("Person")
 
-    car_class_id = NeoSchema.create_class("Car")
+    _ , car_class_id = NeoSchema.create_class("Car")
     car_id = NeoSchema.add_data_point("Car")
 
     with pytest.raises(Exception):
@@ -467,12 +714,64 @@ def test_add_data_relationship(db):
         NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="SOME_OTHER_NAME", id_type="item_id")
 
 
-    # Now add reverse a relationship, and this use the Neo4j ID's to locate the nodes
+    # Now add reverse a relationship, and this time use the Neo4j ID's to locate the nodes
     NeoSchema.create_class_relationship(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
 
     neo_person_id = NeoSchema.get_data_point_id(person_id)
     neo_car_id = NeoSchema.get_data_point_id(car_id)
     NeoSchema.add_data_relationship(from_id=neo_car_id, to_id=neo_person_id, rel_name="IS_DRIVEN_BY")
+
+
+
+def test_add_data_relationship_fast(db):
+    db.empty_dbase()
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship_fast(from_neo_id=123, to_neo_id=456, rel_name="junk")  # No such nodes exist
+
+    neo_id_1 = db.create_node("random A")
+    neo_id_2 = db.create_node("random B")
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship_fast(from_neo_id=neo_id_1, to_neo_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
+
+    _ , person_class_id = NeoSchema.create_class("Person")
+    person_neo_id = NeoSchema.add_data_point_fast_OBSOLETE("Person")
+
+    _ , car_class_id = NeoSchema.create_class("Car")
+    car_neo_id = NeoSchema.add_data_point_fast_OBSOLETE("Car")
+
+    with pytest.raises(Exception):
+        # No such relationship exists between their Classes
+        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="DRIVES")
+
+    # Add the "DRIVE" relationship between the Classes
+    NeoSchema.create_class_relationship(from_id=person_class_id, to_id=car_class_id, rel_name="DRIVES")
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="")  # Lacks relationship name
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name=None)  # Lacks relationship name
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship_fast(from_neo_id=car_neo_id, to_neo_id=person_neo_id, rel_name="DRIVES")  # Wrong direction
+
+    # Now it works
+    NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="DRIVES")
+
+    with pytest.raises(Exception):
+        # Attempting to add it again
+        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="DRIVES")
+
+    with pytest.raises(Exception):
+        # Relationship name not declared in the Schema
+        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="SOME_OTHER_NAME")
+
+
+    # Now add reverse a relationship between the Classes
+    NeoSchema.create_class_relationship(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
+
+    # Add that same reverse relationship between the data points
+    NeoSchema.add_data_relationship_fast(from_neo_id=car_neo_id, to_neo_id=person_neo_id, rel_name="IS_DRIVEN_BY")
 
 
 
@@ -547,7 +846,7 @@ def test_get_data_point_id(db):
 
 def test_valid_schema_id(db):
     db.empty_dbase()
-    result = NeoSchema.create_class("Records")
+    _ , result = NeoSchema.create_class("Records")
     assert NeoSchema.valid_schema_id(result)
 
 

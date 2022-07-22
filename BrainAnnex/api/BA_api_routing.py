@@ -18,7 +18,8 @@ import shutil
 
 class ApiRouting:
     """
-    Setup, routing and endpoints for all the web pages served by this module
+    Setup, routing and endpoints for all the web pages served by this module.
+    Note that this class does not directly interact with the Neo4j database.
 
     SECTIONS:
         - UTILITY methods
@@ -29,7 +30,7 @@ class ApiRouting:
             * CONTENT-ITEM MANAGEMENT
                 VIEWING CONTENT ITEMS
                 MODIFYING EXISTING CONTENT ITEMS
-            * CATEGORY-RELATED
+            * CATEGORY-RELATED (incl. adding new Content Items)
                 POSITIONING WITHIN CATEGORIES
             * FILTERS
             * IMPORT-EXPORT  (upload/download)
@@ -150,7 +151,7 @@ class ApiRouting:
                                     EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at')])
 
         :param required_par_list:   A list or tuple.  EXAMPLE: ['item_id', 'rel_name']
-        :return:                    A dict of POST data
+        :return:                    A dict populated with the POST data
         """
         data_dict = post_data.to_dict(flat=True)    # WARNING: if multiple identical keys occur,
                                                     #          the values associated to the later keys will be discarded
@@ -172,6 +173,7 @@ class ApiRouting:
     def show_post_data(cls, post_data, method_name=None) -> None:
         """
         Debug utility method.  Pretty-printing for POST data (expressed as an ImmutableMultiDict)
+        Long values are shown in abridged form
 
         EXAMPLE:
                 post_data = request.form
@@ -186,8 +188,15 @@ class ApiRouting:
         else:
             print(f"POST data: ")
 
+        max_length = 100
         for k, v in post_data.items():
-            print("    ", k , " -> " , v)   # TODO: if v is a string, put quotes around it
+            # Show an abridged (if appropriate) version of the value
+            if len(v) > max_length:
+                v_print = v[:max_length] + " ..."
+            else:
+                v_print = v
+
+            print("    ", k , " -> " , v_print)
         print("-----------")
 
 
@@ -588,8 +597,8 @@ class ApiRouting:
             cls.show_post_data(post_data, "delete_class")
 
             try:
-                pars = cls.extract_post_pars(post_data, required_par_list=["class_name"])
-                NeoSchema.delete_class(name=pars["class_name"], safe_delete=True)
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=["class_name"])
+                NeoSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 # TODO: in case of failure, investigate further the problem
@@ -833,23 +842,26 @@ class ApiRouting:
 
 
 
-        #---------------------------------------------#
-        #               CATEGORY-RELATED              #
-        #---------------------------------------------#
+        #-----------------------------------------------------------------#
+        #         CATEGORY-RELATED  (incl. adding new Content Items)      #
+        #-----------------------------------------------------------------#
         
         @bp.route('/simple/add_item_to_category', methods=['POST'])
         @login_required
         def add_item_to_category() -> str:
             """
-            Create a new Content Item attached to a particular Category
+            Create a new Content Item attached to a particular Category,
+            at a particular location in the "collection" (page)
+
             EXAMPLE invocation:
-            curl http://localhost:5000/BA/api/simple/add_item_to_category -d "category_id=708&insert_after=711&schema_code=h&text=New Header"
+            curl http://localhost:5000/BA/api/simple/add_item_to_category
+                            -d "category_id=708&insert_after=711&schema_code=h&text=New Header"
         
             POST FIELDS:
-                category_id
-                schema_code
-                insert_after        Either an item_id, or one of the special values "TOP" or "BOTTOM"
-                PLUS all applicable plugin-specific fields
+                category_id         Integer identifying the Category to which attach the new Content Item
+                schema_code         A string to identify the Schema that the new Content Item belongs to
+                insert_after        Either an item_id (int), or one of the special values "TOP" or "BOTTOM"
+                PLUS any applicable plugin-specific fields
             """
             # Extract the POST values
             post_data = request.form
@@ -858,7 +870,8 @@ class ApiRouting:
         
             # Create a new Content Item with the POST data
             try:
-                new_id = APIRequestHandler.new_content_item_in_category(dict(post_data))
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
+                new_id = APIRequestHandler.new_content_item_in_category(pars_dict)
                 return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
@@ -1222,6 +1235,7 @@ class ApiRouting:
                 # Extract some config parameters
                 intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
                 outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
+
                 result = APIRequestHandler.do_bulk_import(intake_folder, outtake_folder, schema_class)
 
                 response = {"status": "ok", "result": result}              # Successful termination
@@ -1430,9 +1444,7 @@ class ApiRouting:
             """
             try:
                 if download_type == "full":
-                    ne = NodeExplorer()     # TODO: use a more direct way to get to the NeoAccess object;
-                                            #       this part of the code belongs in  APIRequestHandler
-                    result = ne.neo.export_dbase_json()
+                    result = APIRequestHandler.export_full_dbase()
                     export_filename = "exported_dbase.json"
                 elif download_type == "schema":
                     result = NeoSchema.export_schema()
@@ -1442,7 +1454,8 @@ class ApiRouting:
             except Exception as ex:
                     response = APIRequestHandler.exception_helper(ex, safe_html=True)
                     error_page_body = f'''<b>Unable to perform download</b>. <br>
-                                          This is typically due to the 'APOC' library not being installed on Neo4j. 
+                                          This is typically due to the 'APOC' library not being installed on Neo4j,
+                                          unless the error message below indicates something else. 
                                           Contact your Neo4j database administrator.
                                           <br><br>{response}"
                                        '''

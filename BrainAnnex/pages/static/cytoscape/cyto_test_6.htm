@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test of Cytoscape.js</title>
+
+    <style type="text/css">
+        #cy {
+            width: 600px;
+            height: 350px;
+            display: block;
+            background-color: #f6f6f6;
+            border: 1px solid gray;
+        }
+    </style>
+
+
+    <script src="../Vue2/vue2.js"></script>   <!-- Vue.js (version 2.6) -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js" integrity="sha512-f2pi4FT6LCwl93apc24uOUnAg8FtnkcSI1TLTQ96We8bzniiO8z7+S6qXBthmvJSFORTTjCmQL82MY7Jhi5FVA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3-color@3">
+    </script>
+
+</head>
+<body>
+
+
+<div id="vue-root">   <!-- Container for VUE COMPONENT below : ROOT element -->
+
+    <vue-cyto
+        v-bind:graph="graph"
+        v-bind:color_mapping="color_mapping"
+    >
+    </vue-cyto>
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="cyto_test_6.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+
+<script>
+// Instantiation of the ROOT component must come after the definition of the descendant components
+new Vue({
+    el: '#vue-root',
+
+    data: {
+        graph:
+        [
+            {id: 1, label: 'CLASS', name: 'Headers'},
+            {id: 2, label: 'PROPERTY', name: 'text'},
+            {id: 3, source: 1, target: 2, name: 'HAS_PROPERTY'},
+
+            {id: 4, label: 'import' , name: 'Restaurants'},
+            {id: 5, label: 'SOME_OTHER_LABEL' , name: 'Mr. Node'},
+
+            {id: 10, label: 'CLASS', name: "French voc"},
+            {id: 11, label: 'PROPERTY', name: 'French'},
+            {id: 12, source: 10, target: 11, name: 'HAS_PROPERTY'},
+        ],
+
+        // Mapping the node label to its interior color
+        color_mapping:  {
+            CLASS: 'neo4j_green',
+            PROPERTY: 'neo4j_orange',
+            import: 'neo4j_gold'
+        }
+    }
+
+});
+</script>
+
+
+</body>
+</html>

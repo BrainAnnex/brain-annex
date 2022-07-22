@@ -2,7 +2,9 @@
 {#  Flask-passed parameters:
         current_page, site_pages,
         class_list,
-        intake_status
+        intake_status,
+        intake_folder,
+        outtake_folder
  #}
 
 <html lang="en">
@@ -111,6 +113,8 @@
         </template>
     </select>
 
+    <label style="color:gray"> schema class to use for the top-level element(s)</label>
+
     <p v-if="intake_status">
         <button @click="terminate_continuous_intake()">STOP the continuous intake</button>
         <span v-if="waiting2" class="waiting">The data ingestion is in progress, and will continue even if the browser is closed</span>
@@ -118,8 +122,11 @@
     </p>
 
     <p v-if="!intake_status">
-        Initiate a continuous data import from all files found in fixed folder<br>
-        <button @click="engage_continuous_intake()">START the continuous intake</button>
+        Initiate a continuous data import from all files found in folder {{intake_folder}}<br>
+       <span style="color:gray">Upon completion, the files will be moved to {{outtake_folder}}</span><br>
+        <button @click="engage_continuous_intake()" style="padding:10px; margin-top:4px">
+            START the continuous intake
+        </button>
         <span v-if="waiting2" class="waiting">Attempting to stop the continuous data ingestion</span>
         <span v-bind:class="{'error-message': error2, 'status-message': !error2 }">{{status_message2}}</span>
     </p>

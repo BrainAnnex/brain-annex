@@ -347,7 +347,7 @@ Vue.component('vue-plugin-n',
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID.
 
                 Exit the editing mode.  Invoked upon a SAVE operation on an existing note.
-                Restore all <input> fields to strings, using the values saved in global arrays.
+                Restore all <input> fields to strings, using the values saved in the Vue object.
                 Turn the SAVE & CANCEL buttons back into edit links
              */
             {
@@ -361,7 +361,7 @@ Vue.component('vue-plugin-n',
                             old_note_value is the counterpart of this.original_data
                  */
 
-                if (success) {    // Server reported SUCCESS
+                if (success) {          // Server reported SUCCESS
                     this.status = "Successful edit";
                     this.error_indicator = false;
 
@@ -378,7 +378,7 @@ Vue.component('vue-plugin-n',
                     // Synchronize the accepted baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);      // Clone
                 }
-                else  {		        // Server reported FAILURE
+                else  {		            // Server reported FAILURE
                     this.status = "FAILED SAVE. " + error_message;
                     this.error_indicator = true;
                     boxValue = this.old_note_value;         // Restore the old value

@@ -1,6 +1,5 @@
 /*  Vue component to display and edit Content Items of any type.  Based on the specific type,
     it dispatches to components specialized for that type.
-    MIT License.  Copyright (c) 2021-22 Julian A. West
  */
 
 Vue.component('vue-content-items',
@@ -26,7 +25,7 @@ Vue.component('vue-content-items',
             <a v-bind:name="item.schema_code + '_' + item.item_id"></a>  <!-- Anchor for page scrolling -->
 
             <!--
-                 The line with "v-bind:is" dispatches to the appropriate specialized component.
+                 The line with "v-bind:is" dynamically dispatches to the appropriate specialized component.
 
                  All signals from descendant components get relayed (with v-on="$listeners")
                  to the parent of this component,

@@ -3,6 +3,7 @@ from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.categories.categories import Collections
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from home.user_manager import UserManagerNeo4j
 
 
@@ -41,3 +42,5 @@ class InitializeBrainAnnex:
         """
         APIRequestHandler.MEDIA_FOLDER = media_folder
         APIRequestHandler.LOG_FOLDER = log_folder
+
+        MediaManager.MEDIA_FOLDER = media_folder

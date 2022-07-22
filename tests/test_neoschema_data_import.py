@@ -16,9 +16,138 @@ from tests.test_neoschema import create_sample_schema_1, create_sample_schema_2
 def db():
     neo_obj = neo_access.NeoAccess(debug=False)
     NeoSchema.set_database(neo_obj)
+    NeoSchema.debug = False
     yield neo_obj
 
 
+
+def test_create_tree_from_dict_1(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.new_class_with_properties(class_name="address",
+                                        property_list=["state", "city"])
+
+    # Import a data dictionary
+    data = {"state": "California", "city": "Berkeley"}
+    # This import will result in the creation of a new node, with 2 attributes, named "state" and "city"
+    root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="address")
+    print(root_neo_id)
+
+    assert root_neo_id is not None
+
+    q = '''
+    MATCH (root :address {state: "California", city: "Berkeley"})
+    -[:SCHEMA]->(c : CLASS {name: "address"})
+    WHERE id(root) = $root_neo_id
+    RETURN root
+    '''
+
+    root_node = db.query(q, data_binding={"root_neo_id": root_neo_id})
+    assert root_node == [{'root': {'city': 'Berkeley', 'state': 'California'}}]
+
+
+
+def test_create_tree_from_dict_2(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    sch_1 = NeoSchema.new_class_with_properties(class_name="person",
+                                                property_list=["name"])
+    sch_2 = NeoSchema.new_class_with_properties(class_name="address",
+                                                property_list=["state", "city"])
+
+    NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="address")
+
+    # Import a data dictionary
+    data = {"name": "Julian", "address": {"state": "California", "city": "Berkeley"}}
+    # This import will result in the creation of 2 nodes, namely the tree root (with a single attribute "name"), with
+    # an outbound link named "address" to another node (the subtree) that has the "state" and "city" attributes
+    root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="person")
+    print(root_neo_id)
+
+    assert root_neo_id is not None
+
+
+    q = '''
+    MATCH (c1 :CLASS {name: "person"})<-[:SCHEMA]-
+    (root :person {name: "Julian"})-[:address]->
+    (a :address {state: "California", city: "Berkeley"})
+    -[:SCHEMA]->(c2 :CLASS {name: "address"})
+    WHERE id(root) = $root_neo_id
+    RETURN root
+    '''
+
+    root_node = db.query(q, data_binding={"root_neo_id": root_neo_id})
+    assert root_node == [{'root': {'name': 'Julian'}}]
+
+
+####################################################################################################
+
+def test_create_tree_from_list_1(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.new_class_with_properties(class_name="address",
+                                        property_list=["state", "city"])
+
+    # Import a data dictionary
+    data = [{"state": "California", "city": "Berkeley"}, {"state": "Texas", "city": "Dallas"}]
+    # This import will result in the creation of two new nodes, each with 2 attributes, named "state" and "city"
+    root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address")
+    print(root_neo_id_list)
+
+    assert root_neo_id_list is not None
+
+    q = '''
+    MATCH (root1 :address {state: "California", city: "Berkeley"})
+    -[:SCHEMA]->(c : CLASS {name: "address"})
+    <-[:SCHEMA]-(root2 :address {state: "Texas", city: "Dallas"})
+    RETURN id(root1) as id_1, id(root2) as id_2
+    '''
+
+    result = db.query(q)
+    #print(result)   # EXAMPLE: [{'id_1': 8, 'id_2': 9}]
+    actual_root_ids_dict = result[0]
+    actual_root_ids_list = [actual_root_ids_dict['id_1'], actual_root_ids_dict['id_2']]
+    assert actual_root_ids_list == root_neo_id_list \
+           or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
+
+
+
+
+def test_create_tree_from_list_2(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.new_class_with_properties(class_name="address",
+                                        property_list=["value"])
+
+    # Import a data dictionary
+    data = ["California", "Texas"]
+    # This import will result in the creation of two new nodes, each with a property by default named "value"
+    root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address")
+    print("root_neo_id_list: ", root_neo_id_list)
+
+    assert len(root_neo_id_list) == 2
+
+    q = '''
+    MATCH (root1 :address {value: "California"})
+    -[:SCHEMA]->(c : CLASS {name: "address"})
+    <-[:SCHEMA]-(root2 :address {value: "Texas"})
+    RETURN id(root1) as id_1, id(root2) as id_2
+    '''
+
+    result = db.query(q)
+    print(result)   # EXAMPLE: [{'id_1': 8, 'id_2': 9}]
+
+    actual_root_ids_dict = result[0]
+    actual_root_ids_list = [actual_root_ids_dict['id_1'], actual_root_ids_dict['id_2']]
+    assert actual_root_ids_list == root_neo_id_list \
+           or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
+
+
+####################################################################################################
 
 def test_create_data_nodes_from_python_data_1(db):
     db.empty_dbase()
@@ -38,6 +167,7 @@ def test_create_data_nodes_from_python_data_1(db):
     data = {"legit": 123, "unexpected": 456}
     # Import step
     node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="my_class_1")
+
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
@@ -52,7 +182,7 @@ def test_create_data_nodes_from_python_data_1(db):
 
     root_record = root_node["n2"]
     assert root_record["legit"] == 123
-    assert "item_id" in root_record
+    #assert "item_id" in root_record            # Not currently is use
     assert "unexpected" not in root_record      # Only the key in the Schema gets imported
 
 
@@ -122,8 +252,8 @@ def test_create_data_nodes_from_python_data_3(db):
     root_record = root_node["n2"]
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
-    assert "item_id" in root_record
-    assert len(root_record) == 3     # Only the keys in the Schema gets imported
+    #assert "item_id" in root_record            # Not currently is use
+    assert len(root_record) == 2     # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
     res = db.query(q)
@@ -174,8 +304,8 @@ def test_create_data_nodes_from_python_data_4(db):
     assert root_record["name"] == "Stephanie"
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
-    assert "item_id" in root_record
-    assert len(root_record) == 4     # Only the keys in the Schema gets imported
+    #assert "item_id" in root_record        # Not currently is use
+    assert len(root_record) == 3            # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
     res = db.query(q)
@@ -345,7 +475,7 @@ def test_create_data_nodes_from_python_data_6(db):
 def test_create_data_nodes_from_python_data_7(db):
     db.empty_dbase()
 
-    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "Categories"
+    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "categories"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     sch_import = NeoSchema.new_class_with_properties(class_name="Import Data",
@@ -394,7 +524,7 @@ def test_create_data_nodes_from_python_data_8(db):
     # and introducing non-Schema data
     db.empty_dbase()
 
-    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "Categories"
+    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "categories"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     sch_import = NeoSchema.new_class_with_properties(class_name="Import Data",
@@ -445,10 +575,10 @@ def test_create_data_nodes_from_python_data_8(db):
 
 
 def test_create_data_nodes_from_python_data_9(db):
-    # Similar to test_create_data_nodes_from_python_data_8, but also using the class "Categories"
+    # Similar to test_create_data_nodes_from_python_data_8, but also using the class "categories"
     db.empty_dbase()
 
-    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "Categories"
+    sch_info = create_sample_schema_2()     # Class "quotes" with relationship "in_category" to class "categories"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     sch_import = NeoSchema.new_class_with_properties(class_name="Import Data",
@@ -484,7 +614,7 @@ def test_create_data_nodes_from_python_data_9(db):
         # Locate the "quotes" data node, and count the links in/out of it
         assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
         assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
-        assert db.count_links(match=root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Categories") == 1
+        assert db.count_links(match=root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="categories") == 1
 
         # Traverse a loop in the graph, from the `quotes` data node, back to itself,
         # going thru the data and schema nodes
@@ -503,8 +633,8 @@ def test_create_data_nodes_from_python_data_9(db):
         # Traverse a longer loop in the graph, again from the `quotes` data node to itself,
         # but this time also passing thru the category data and schema nodes
         q = '''
-            MATCH (q :quotes)-[:in_category]->(cat :Categories)
-                -[:SCHEMA]->(cl_c :CLASS {name:"Categories"})<-[:in_category]-
+            MATCH (q :quotes)-[:in_category]->(cat :categories)
+                -[:SCHEMA]->(cl_c :CLASS {name:"categories"})<-[:in_category]-
                 (cl_q :CLASS {name:"quotes"})
                 <-[:imported_data]-(cl_i :CLASS {name:"Import Data"})<-[:SCHEMA]-(i: `Import Data`)
                 -[:imported_data]->(q)
@@ -549,15 +679,15 @@ def test_create_data_nodes_from_python_data_9(db):
 
     # Locate the latest "quotes" data node, and count the links in/out of it
     assert db.count_links(match=new_root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
-    assert db.count_links(match=new_root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Categories") == 2
+    assert db.count_links(match=new_root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="categories") == 2
     assert db.count_links(match=new_root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Traverse a loop in the graph, from the `quotes` data node back to itself,
     # going thru the 2 category data nodes and their shared Schema node
     q = '''
-            MATCH (q :quotes)-[:in_category]->(cat1 :Categories {name: "French Literature"})
-            -[:SCHEMA]->(cl_c :CLASS {name:"Categories"})
-            <-[:SCHEMA]-(cat2 :Categories {name: "Philosophy"})
+            MATCH (q :quotes)-[:in_category]->(cat1 :categories {name: "French Literature"})
+            -[:SCHEMA]->(cl_c :CLASS {name:"categories"})
+            <-[:SCHEMA]-(cat2 :categories {name: "Philosophy"})
             <-[:in_category]-(q)
             WHERE id(q) = $quote_id
             RETURN q, cat1, cl_c, cat2
@@ -583,4 +713,4 @@ def test_create_data_nodes_from_python_data_9(db):
     '''
     data_types = db.query(q, data_binding={"quote_id": new_root_id}, single_cell="data_types")
     #print(data_types)
-    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING', 'item_id': 'INTEGER'}
+    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING'}    # 'item_id': 'INTEGER' (not in current use)

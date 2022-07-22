@@ -3,7 +3,7 @@
     MIT License.  Copyright (c) 2021-2022 Julian A. West
 """
 
-from flask import Blueprint, render_template, request   # The request package makes available a GLOBAL request object
+from flask import Blueprint, render_template, current_app, request   # The request package makes available a GLOBAL request object
 from flask_login import login_required, current_user
 from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler     # TODO: reorganize, to avoid this
@@ -221,8 +221,14 @@ class PagesRouting:
             template = "data_import.htm"
             class_list = PagesRequestHandler.all_schema_classes()
             intake_status = APIRequestHandler.data_intake_status()
+
+            # Extract some config parameters
+            intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
+            outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
+
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
-                                   class_list=class_list, intake_status=intake_status)
+                                   class_list=class_list, intake_status=intake_status,
+                                   intake_folder=intake_folder, outtake_folder=outtake_folder)
 
 
 

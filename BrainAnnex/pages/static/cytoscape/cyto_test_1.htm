@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test of Cytoscape.js</title>
+    <style type="text/css">
+        #cy {
+            width: 600px;
+            height: 350px;
+            display: block;
+            background-color: #f2f2f2;
+            border: 1px solid gray;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js" integrity="sha512-f2pi4FT6LCwl93apc24uOUnAg8FtnkcSI1TLTQ96We8bzniiO8z7+S6qXBthmvJSFORTTjCmQL82MY7Jhi5FVA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    </script>
+
+</head>
+<body>
+
+<div id="cy">
+<!-- THE GRAPH WILL GO HERE -->
+</div>
+
+<script>
+    var cy = cytoscape({
+        container: document.getElementById('cy'),    // container to render in
+
+        elements: [ // list of graph elements
+            {
+              data: { id: 'jul' }
+            },
+            {
+              data: { id: 'val' }
+            },
+            {
+              data: { id: 'rese' }
+            },
+            { // edge ab
+              data: { id: 'ab', source: 'jul', target: 'val' }
+            }
+        ],
+
+
+        style: [ // the stylesheet for the graph
+            {
+                selector: 'node',
+                style: {
+                    'background-color': 'cyan',
+                    'label': 'data(id)'
+                }
+            },
+
+            {
+                selector: 'edge',
+                style: {
+                    'width': 2,
+                    'line-color': '#444',
+                    'target-arrow-color': '#444',
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'bezier'
+                }
+            }
+        ],  // END of style
+
+
+        layout: {
+            name: 'grid',
+            rows: 1
+        }
+
+    });
+</script>
+
+</body>
+</html>
