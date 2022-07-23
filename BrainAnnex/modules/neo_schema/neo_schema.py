@@ -144,8 +144,8 @@ class NeoSchema:
         :param class_name:
         :return:
         """
-        assert class_name, "NeoSchema.valid_class_name(): Class name cannot be empty"
         assert type(class_name) == str, f"NeoSchema.valid_class_name(): The class name must be a string (instead, it's {type(class_name)})"
+        assert class_name != "", "NeoSchema.valid_class_name(): Class name cannot be an empty string"
 
 
 
@@ -214,10 +214,10 @@ class NeoSchema:
         result = cls.db.get_nodes(match, return_neo_id=True)
 
         if not result:
-            raise Exception(f"no Class node named {class_name} was found")
+            raise Exception(f"NeoSchema.get_class_neo_id(): no Class node named {class_name} was found")
 
         if len(result) > 1:
-            raise Exception(f"more than 1 Class node named {class_name} was found")
+            raise Exception(f"NeoSchema.get_class_neo_id(): more than 1 Class node named {class_name} was found")
 
         return result[0]["neo4j_id"]
 
@@ -357,17 +357,21 @@ class NeoSchema:
 
 
     @classmethod
-    def allows_data_nodes(cls, class_name: str) -> bool:
+    def allows_data_nodes(cls, class_name = None, class_neo_id = None) -> bool:
         """
         Determine if the given Class allows data nodes directly linked to it
 
-        :param class_name:  Name of the Class
-        :return:            True if allowed, or False if not
-                            If the Class doesn't exist, raise an Exception
+        :param class_name:      Name of the Class
+        :param class_neo_id :   OPTIONAL alternate way to specify the class; if both specified, this one prevails
+        :return:                True if allowed, or False if not
+                                    If the Class doesn't exist, raise an Exception
         """
-        class_node_dict = cls.db.get_record_by_primary_key(labels="CLASS", primary_key_name="name", primary_key_value=class_name)
+        if class_neo_id is not None:    # Note: class_neo_id might legitimately be zero
+            class_node_dict = cls.db.get_nodes(match=class_neo_id, single_row=True)
+        else:
+            class_node_dict = cls.db.get_record_by_primary_key(labels="CLASS", primary_key_name="name", primary_key_value=class_name)
 
-        if class_node_dict == None:
+        if class_node_dict is None:
             raise Exception(f"NeoSchema.allows_data_nodes(): Class named `{class_name}` not found in the Schema")
 
         if "no_datanodes" in class_node_dict:
@@ -1110,7 +1114,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_with_links(cls, class_name: str, properties = None, labels = None, links = None,
+    def add_data_point_with_links(cls, class_name = None, class_neo_id = None, properties = None, labels = None, links = None,
                                   assign_item_id=False, new_item_id=None) -> int:
         """
         This is NeoSchema's counterpart of NeoAccess.create_node_with_links()
@@ -1135,7 +1139,10 @@ class NeoSchema:
         TODO: verify that all the requested links conform to the Schema
         TODO: invoke special plugin-code, if applicable
 
-        :param class_name:  The name of the Class that this new data point is an instance of
+        :param class_name:  The name of the Class that this new data point is an instance of.
+                                Also use to set a label on the new node, if labels isn't specified
+        :param class_neo_id: OPTIONAL alternative to class_name.  If both specified,
+                                class_neo_id prevails
         :param properties:  An optional dictionary with the properties of the new data point.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:      OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
@@ -1158,8 +1165,8 @@ class NeoSchema:
         :return:                If successful, an integer with the Neo4j ID of the node just created;
                                     otherwise, an Exception is raised
         """
-
-        class_neo_id = cls.get_class_neo_id(class_name)     # This call will also validate the class name
+        if not class_neo_id:
+            class_neo_id = cls.get_class_neo_id(class_name)     # This call will also validate the class name
 
         if labels is None:
             # If not specified, use the Class name
@@ -1175,7 +1182,7 @@ class NeoSchema:
         assert links is None or type(links) == list, \
             f"NeoAccess.add_data_point_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
 
-        if not cls.allows_data_nodes(class_name):
+        if not cls.allows_data_nodes(class_neo_id=class_neo_id):
             raise Exception(f"NeoSchema.add_data_point_with_links(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
         # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
@@ -1285,7 +1292,7 @@ class NeoSchema:
 
         cypher_prop_dict = properties
 
-        if not cls.allows_data_nodes(class_name):
+        if not cls.allows_data_nodes(class_name=class_name):
             raise Exception(f"NeoSchema.add_data_point(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
@@ -1409,7 +1416,7 @@ class NeoSchema:
 
         cypher_props_dict = data_dict
 
-        if not cls.allows_data_nodes(class_name):
+        if not cls.allows_data_nodes(class_name=class_name):
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
@@ -1547,7 +1554,7 @@ class NeoSchema:
             if not class_name:
                 raise Exception(f"Unable to locate a Class with schema ID {schema_id}")
 
-        if not cls.allows_data_nodes(class_name):
+        if not cls.allows_data_nodes(class_name=class_name):
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
@@ -2172,7 +2179,9 @@ class NeoSchema:
             links = [{"neo_id": child[0], "rel_name": child[1], "rel_dir": "OUT"}
                             for child in children_info]
             # Note: a Neo4j ID is returned by the next call
-            return cls.add_data_point_with_links(class_name=class_name,
+            #return cls.add_data_point_with_links(class_name=class_name,
+            return cls.add_data_point_with_links(class_neo_id=cached_data['neo_id'],
+                                                 labels=class_name,
                                                  properties=node_properties,
                                                  links=links,
                                                  assign_item_id=False)
@@ -2449,6 +2458,7 @@ class SchemaCache:
         and the values are the names of the Class nodes on the other side of those links.
         EXAMPLE: {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
         '''
+
         declared_outlinks = list(declared_outlinks_map)     # The keys of the dictionary, as a list
 
         class_data = {"neo_id": neo_id,

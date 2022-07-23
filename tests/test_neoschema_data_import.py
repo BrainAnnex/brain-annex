@@ -31,10 +31,10 @@ def test_create_tree_from_dict_1(db):
     # Import a data dictionary
     data = {"state": "California", "city": "Berkeley"}
     cache = SchemaCache()       # All needed Schema-related data will be automatically queried and cached here
+
     # This import will result in the creation of a new node, with 2 attributes, named "state" and "city"
     root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="address", cache=cache)
     print(root_neo_id)
-
     assert root_neo_id is not None
 
     q = '''

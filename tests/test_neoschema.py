@@ -312,7 +312,14 @@ def test_delete_class(db):
 
 
 def test_allows_data_nodes(db):
-    pass    # TODO
+    db.empty_dbase()
+    neo_id , _ = NeoSchema.create_class("French Vocabulary")
+    assert NeoSchema.allows_data_nodes(class_name="French Vocabulary") == True
+    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id) == True
+
+    neo_id , _ = NeoSchema.create_class("Vocabulary", no_datanodes = True)
+    assert NeoSchema.allows_data_nodes(class_name="Vocabulary") == False
+    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id) == False
 
 
 
