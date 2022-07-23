@@ -90,7 +90,7 @@ class NeoAccess:
                  host=os.environ.get("NEO4J_HOST"),
                  credentials=(os.environ.get("NEO4J_USER"), os.environ.get("NEO4J_PASSWORD")),
                  apoc=False,
-                 debug=False,
+                 debug=True,
                  autoconnect=True):
         """
         If unable to create a Neo4j driver object, raise an Exception
@@ -253,6 +253,7 @@ class NeoAccess:
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
             result = new_session.run(q, data_binding)
+            print("- 1 ----------", q, data_binding)    ################################# TODO: TEMP
             # Note: A neo4j.Result object (printing it, shows an object of type "neo4j.work.result.Result")
             #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
             if result is None:
@@ -329,6 +330,7 @@ class NeoAccess:
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
             result = new_session.run(q, params)
+            print("- 2 ----------", q, params)    ################################# TODO: TEMP
             # Note: A neo4j.Result iterable object (printing it, shows an object of type "neo4j.work.result.Result")
             #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
             if result is None:
@@ -433,6 +435,7 @@ class NeoAccess:
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
             result = new_session.run(cypher, data_binding)
+            print("- 3 ----------", cypher, data_binding)    ################################# TODO: TEMP
             # Note: result is a neo4j.Result iterable object
             #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
 
