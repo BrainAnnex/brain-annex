@@ -212,7 +212,7 @@ class PagesRouting:
 
 
         @bp.route('/data-import')
-        #@login_required            #TODO: restore login requirement
+        @login_required
         def data_import() -> str:
             """
             Generate an administrative page for data imports

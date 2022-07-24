@@ -11,7 +11,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 3.9
+    VERSION 3.9.1
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -117,6 +117,8 @@ class NeoAccess:
         self.apoc = apoc
         if self.debug:
             print ("~~~~~~~~~ Initializing NeoAccess object ~~~~~~~~~")
+
+        self.profiling = False      # If set to True, it'll print all the Cypher queries being executed
 
         self.driver = None
         if autoconnect:
@@ -253,6 +255,9 @@ class NeoAccess:
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
             result = new_session.run(q, data_binding)
+            if self.profiling:
+                print("-- query() PROFILING ----------\n", q, "\n", data_binding)
+
             # Note: A neo4j.Result object (printing it, shows an object of type "neo4j.work.result.Result")
             #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
             if result is None:
@@ -329,6 +334,9 @@ class NeoAccess:
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
             result = new_session.run(q, params)
+            if self.profiling:
+                print("-- query_extended() PROFILING ----------\n", q, "\n", params)
+
             # Note: A neo4j.Result iterable object (printing it, shows an object of type "neo4j.work.result.Result")
             #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
             if result is None:
@@ -433,6 +441,9 @@ class NeoAccess:
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
             result = new_session.run(cypher, data_binding)
+            if self.profiling:
+                print("-- update_query() PROFILING ----------\n", cypher, "\n", data_binding)
+
             # Note: result is a neo4j.Result iterable object
             #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
 
@@ -513,20 +524,26 @@ class NeoAccess:
         If more than one record is found, an Exception is raised.
         If no record is found, return None.
 
-        :param labels:              A string or list/tuple of strings
+        :param labels:              A string or list/tuple of strings.  Use None if not to be included in search
         :param primary_key_name:    The name of the primary key by which to look the record up
         :param primary_key_value:   The desired value of the primary key
         :param return_nodeid:       If True, an extra entry is present in the dictionary, with the key "neo4j_id"
 
         :return:                    A dictionary, if a unique record was found; or None if not found
         """
+        assert primary_key_name, \
+            f"NeoAccess.get_record_by_primary_key(): the primary key name cannot be absent or empty (value: {primary_key_name})"
+
+        assert primary_key_value is not None, \
+            "NeoAccess.get_record_by_primary_key(): the primary key value cannot be None" # Note: 0 or "" could be legit
+
         match = self.find(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
         result = self.get_nodes(match=match, return_neo_id=return_nodeid)
 
         if len(result) == 0:
             return None
         if len(result) > 1:
-            raise Exception(f"get_record_by_primary_key(): multiple records ({len(result)}) share the value (`{primary_key_value}`) in the primary key ({primary_key_name})")
+            raise Exception(f"NeoAccess.get_record_by_primary_key(): multiple records ({len(result)}) share the value (`{primary_key_value}`) in the primary key ({primary_key_name})")
 
         return result[0]
 
@@ -1162,7 +1179,7 @@ class NeoAccess:
             f"NeoAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
 
         if self.debug:
-            print(f"In create_node_with_links().  labels: {labels}, links: {links}, properties: {properties}")
+            print(f"NeoAccess.In create_node_with_links().  labels: {labels}, links: {links}, properties: {properties}")
 
 
         # Prepare strings suitable for inclusion in a Cypher query,
@@ -1214,8 +1231,14 @@ class NeoAccess:
         if result.get("nodes_created") != 1:
             raise Exception("NeoAccess.create_node_with_links(): Failed to create 1 new node")
 
-        expected_number_labels = (1 if type(labels) == str else len(labels))
-        if result.get("labels_added") != expected_number_labels:
+        if not labels:
+            expected_number_labels = 0
+        elif type(labels) == str:
+            expected_number_labels = 1
+        else:
+            expected_number_labels = len(labels)
+
+        if result.get("labels_added", 0) != expected_number_labels:
             raise Exception(f"NeoAccess.create_node_with_links(): Failed to set the {expected_number_labels} label(s) expected on the new node")
 
         if result.get("relationships_created", 0) != len(links):
@@ -2786,7 +2809,7 @@ class CypherUtils:      # TODO: move to separate file
             return {"node": cypher_match, "where": cypher_where, "data_binding": {}, "dummy_node_name": dummy_node_name}
 
 
-        if key_name and not key_value:
+        if key_name and key_value is None:  # CAUTION: key_value might legitimately be 0 or "" (hence the "is None")
             raise Exception("If key_name is specified, so must be key_value")
 
         if key_value and not key_name:
