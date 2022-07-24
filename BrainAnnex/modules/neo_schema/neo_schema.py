@@ -114,7 +114,7 @@ class NeoSchema:
     data_class_rel = "SCHEMA"           # The name to use for the relationships from data nodes to `Property` nodes
                                         #       Alt. name ideas: "IS", "HAS_CLASS", "HAS_SCHEMA", "TYPE", "TYPE_OF"
 
-    debug = True                       # Flag indicating whether a debug mode is to be used by all methods of this class
+    debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
 
 
 
@@ -2424,10 +2424,14 @@ class NeoSchema:
 
 class SchemaCache:
     """
-    EXPERIMENTAL!
+    To improve the efficiency of methods that heavily interact with the Schema,
+    such as JSON imports.
 
     Maintain a Python dictionary, whose keys are Class names - generally,
-    a subset of interest from all the Classes in the database
+    a subset of interest from all the Classes in the database.
+
+    TODO:   add a "schema" argument to some NeoSchema methods that interact with the Schema,
+            to provide an alternate manner of querying the Schema
     """
     def __init__(self):
         self._schema = {}
