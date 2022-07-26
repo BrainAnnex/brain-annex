@@ -11,7 +11,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 3.9.1
+    VERSION 3.9.2
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -1440,6 +1440,7 @@ class NeoAccess:
         Optionally, only delete nodes with the specified labels, or only keep nodes with the given labels.
         Note: the keep_labels list has higher priority; if a label occurs in both lists, it will be kept.
         IMPORTANT: it does NOT clear indexes; "ghost" labels may remain!
+        TODO: return the number of nodes deleted
 
         :param delete_labels:   An optional string, or list of strings, indicating specific labels to DELETE
         :param keep_labels:     An optional string or list of strings, indicating specific labels to KEEP
@@ -1450,7 +1451,7 @@ class NeoAccess:
             # Delete ALL nodes AND ALL relationship from the database; for efficiency, do it all at once
 
             q = "MATCH (n) DETACH DELETE(n)"
-            self.query(q)
+            self.query(q)       # TODO: switch to update_query() and return the number of nodes deleted
             return
 
         if not delete_labels:
@@ -1472,7 +1473,35 @@ class NeoAccess:
             if not (label in keep_labels):
                 q = f"MATCH (x:`{label}`) DETACH DELETE x"
                 self.debug_query_print(q, method="delete_nodes_by_label")
-                self.query(q)
+                self.query(q)       # TODO: switch to update_query() and return the number of nodes deleted
+
+
+
+    def bulk_delete_by_label(self, label: str):    # TODO: test.  CAUTION: only tested interactively
+        """
+        IMPORTANT: APOC required (starting from v 4.4 of Neo4j, will be able to do this without APOC)
+
+        Meant for large databases, where the straightforward deletion operations may result
+        in very large number of nodes, and take a long time (or possibly fail)
+
+        "If you need to delete some large number of objects from the graph,
+        one needs to be mindful of the not building up such a large single transaction
+        such that a Java OUT OF HEAP Error will be encountered."
+        See:  https://neo4j.com/developer/kb/large-delete-transaction-best-practices-in-neo4j/
+
+        :param label:   A string with the label of the nodes to delete (blank spaces in name are ok)
+        :return:        A dict with the keys "batches" and "total"
+        """
+        batch_size = 10000
+        q = f'''
+            CALL apoc.periodic.iterate("MATCH (n :`{label}`) RETURN id(n) as id", 
+                                       "MATCH (n) WHERE id(n) = id DETACH DELETE n", {{batchSize:{batch_size}}})
+            YIELD batches, total 
+            RETURN batches, total
+        '''
+        result = self.query(q)
+        return result[0]
+
 
 
 
