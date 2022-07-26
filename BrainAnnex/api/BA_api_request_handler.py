@@ -884,12 +884,17 @@ class APIRequestHandler:
 
         # As long as files are present in the intake folder
         while file_list:
-            print(file_list)
+            #print(file_list)
+            msg = f"{len(file_list)} file(s) found in the intake folder"
+            print(msg)
+            cls.append_to_log(msg)
 
             # Process all the files that were in the folder
             for f in file_list:
-                if not cls.ongoing_data_intake:     # Before each import, check a switch aborting the continuous-intake mode
-                    return f"Detected request to stop ongoing import. Running total count of imported files is {cls.import_file_count}"
+                if not cls.ongoing_data_intake:     # Before each import, check a switch that aborts the continuous-intake mode
+                    msg = f"Detected request to stop ongoing import. Running total count of imported files is {cls.import_file_count}"
+                    cls.append_to_log(msg)
+                    return msg
 
                 cls.process_file_to_import(f, intake_folder, outtake_folder, schema_class)
 
@@ -897,7 +902,9 @@ class APIRequestHandler:
 
         # TODO: instead of returning, sleep for progressively longer times, checking for new file arrivals
 
-        return f"Processed all files. Running total count of imported files is {cls.import_file_count}"
+        msg = f"Processed all files. Running total count of imported files is {cls.import_file_count}"
+        cls.append_to_log(msg)
+        return msg
 
 
 
@@ -920,7 +927,7 @@ class APIRequestHandler:
         src_fullname = f"{intake_folder}{f}"
         dest_fullname = f"{outtake_folder}{f}"
 
-        sleep(2)    # TODO: temp, for testing
+        #sleep(2)    # TODO: temp, for testing
 
         try:
             # Read in the contents of the data file to import
@@ -947,13 +954,17 @@ class APIRequestHandler:
             print(f"About to import using: "
                   f"file_contents: `{abridged_file_contents}`, schema_class: `{schema_class}`, provenance: `{f}`")
 
+            # Make a log of the PRE-import state
+            log_msg = f'({cls.import_file_count}) Starting import of data file "{f}"'
+            cls.append_to_log(log_msg)
+
             # ** THE ACTUAL IMPORT
             new_ids = NeoSchema.import_json_data(file_contents, schema_class, provenance=f)
 
             cls.import_file_count += 1
 
-            # Make a log of the operation
-            log_msg = f'({cls.import_file_count}) Imported data file "{f}", {file_size} bytes, new Neo4j IDs: {new_ids}'
+            # Make a log of the post-import operation
+            log_msg = f'({cls.import_file_count}) Imported data file "{f}", {file_size} bytes, new Neo4j IDs: {new_ids}\n'
             cls.append_to_log(log_msg)
 
             cls.archive_data_file(src_fullname, dest_fullname, outtake_folder)
@@ -988,26 +999,44 @@ class APIRequestHandler:
             raise Exception(error_msg)      # The Exception is re-raised, because failure to move a file must stop the continuous import
 
 
+    @classmethod
+    def init_logfile(cls) -> None:
+        """
+        Prepare a handle for the log file
+
+        :return:
+        """
+        # Open (creating it if necessary) the log file
+        try:
+            cls.log_file_handle = open(cls.LOG_FOLDER + cls.log_filename, "a")  # If not present, create it
+        except Exception as ex:
+            error_msg = f"Unable to open or create a log file named {cls.LOG_FOLDER + cls.log_filename} : {ex}"
+            print(error_msg)
+            #raise Exception(error_msg)     # TODO: This should happen at program startup, in main
+
+
 
     @classmethod
     def append_to_log(cls, msg) -> None:
+        """
+
+        :param msg:
+        :return:
+        """
         # Prepare timestamp
         now = datetime.now()
         dt_string = now.strftime("%m/%d/%Y %H:%M")   # mm/dd/YY H:M    (for seconds, add  :%S)
 
-        # Make a log of the operation
-
         if cls.log_file_handle is None:
-            # Open (creating it if necessary) the log file
-            try:
-                cls.log_file_handle = open(cls.LOG_FOLDER + cls.log_filename, "a")  # If not present, create it
-            except Exception as ex:
-                error_msg = f"Unable to open or create a log file named {cls.LOG_FOLDER + cls.log_filename} : {ex}"
-                print(error_msg)
-                #raise Exception(error_msg)     # TODO: This should happen at program startup, in main
+            cls.init_logfile()
 
-        cls.log_file_handle.write(f"{dt_string} - {msg}\n\n")
-        cls.log_file_handle.flush()             # To avoid buffering issues
+        # Make a log of the operation
+        try:
+            cls.log_file_handle.write(f"{dt_string} - {msg}\n")
+            cls.log_file_handle.flush()             # To avoid buffering issues
+        except Exception as ex:
+            # To deal with situation where the log file got deleted/moved by user, but we're still attempting to use the old handle
+            cls.init_logfile()
 
 
 
