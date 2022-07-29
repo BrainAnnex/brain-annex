@@ -1489,6 +1489,8 @@ class NeoAccess:
         such that a Java OUT OF HEAP Error will be encountered."
         See:  https://neo4j.com/developer/kb/large-delete-transaction-best-practices-in-neo4j/
 
+        TODO: generalize to bulk-deletion not just by label
+
         :param label:   A string with the label of the nodes to delete (blank spaces in name are ok)
         :return:        A dict with the keys "batches" and "total"
         """

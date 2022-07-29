@@ -904,6 +904,7 @@ class APIRequestHandler:
 
         msg = f"Processed all files. Running total count of imported files is {cls.import_file_count}"
         cls.append_to_log(msg)
+        cls.ongoing_data_intake = False          # De-activate the continuous intake
         return msg
 
 
