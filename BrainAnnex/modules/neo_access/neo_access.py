@@ -11,7 +11,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 3.9.2
+    VERSION 3.9.3
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -919,14 +919,15 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def create_node(self, labels, properties=None) -> int:
+    def create_node(self, labels, properties=None, merge=False) -> int:
         """
-        Create a new node with the given label and with the attributes/values specified in the items dictionary
+        Create a new node with the given label(s) and with the attributes/values specified in the properties dictionary.
         Return the Neo4j internal ID of the node just created.
 
         :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces)
         :param properties:  An optional (possibly empty or None) dictionary of properties to set for the new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
+        :param merge:       If True, the node gets created only if no other node with same labels and properties exists.  TODO: test
 
         :return:            An integer with the Neo4j internal ID of the node just created
         """
@@ -945,11 +946,20 @@ class NeoAccess:
         cypher_labels = CypherUtils.prepare_labels(labels)
 
         # Assemble the complete Cypher query
-        cypher = f"CREATE (n {cypher_labels} {attributes_str}) RETURN n"
+        if merge:
+            q = f"MERGE (n {cypher_labels} {attributes_str}) RETURN n"
+        else:
+            q = f"CREATE (n {cypher_labels} {attributes_str}) RETURN n"
 
-        self.debug_query_print(cypher, data_dictionary, "create_node")
+        self.debug_query_print(q, data_dictionary, "create_node")  # TODO: switch to update_query(), and verify the creation
 
-        result_list = self.query_extended(cypher, data_dictionary, flatten=True)
+        result_list = self.query_extended(q, data_dictionary, flatten=True)
+        if len(result_list) != 1:
+            if merge:
+                raise Exception("NeoAccess.create_node(): failed to locate or create the requested new node")
+            else:
+                raise Exception("NeoAccess.create_node(): failed to create the requested new node")
+
         return result_list[0]['neo4j_id']           # Return the Neo4j internal ID of the node just created
 
 

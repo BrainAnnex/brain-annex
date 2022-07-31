@@ -157,7 +157,7 @@ class NeoSchema:
 
         Return a pair with the Neo4j ID of the new ID,
         and the auto-incremented unique ID assigned to the new Class.
-        Raise an Exception if a class by that name already exists
+        Raise an Exception if a class by that name already exists.
 
         NOTE: if you want to add Properties at the same time that you create a new Class,
               use the function new_class_with_properties() instead.
@@ -169,14 +169,16 @@ class NeoSchema:
         :param code:        Optional string indicative of the software handler for this Class and its subclasses
         :param schema_type: Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
-                                typically used by Classes having an intermediate role in the context of other Classes.
-        :return:            An integer with the unique schema_id assigned to the node just created, if it was created;
+                                typically used by Classes having an intermediate role in the context of other Classes
+
+        :return:            A pair of integers with the Neo4j ID and the unique schema_id assigned to the node just created,
+                                if it was created;
                                 an Exception is raised if a class by that name already exists
         """
         assert schema_type=="L" or schema_type=="S", "schema_type argument must be either 'L' or 'S'"
 
         name = name.strip()     # Strip any whitespace at the ends
-        assert name != "", "Unacceptable Class name, either empty or blank"
+        assert name != "", "NeoSchema.create_class(): Unacceptable Class name, either empty or blank"
 
         if cls.class_name_exists(name):
             raise Exception(f"A class named `{name}` ALREADY exists")
@@ -206,9 +208,6 @@ class NeoSchema:
         :return:            The Neo4j ID of the specified Class
         """
         cls.assert_valid_class_name(class_name)
-        #assert class_name is not None, "NeoSchema.get_class_neo_id(): argument `class_name` cannot be None"
-        #assert type(class_name) == str, f"NeoSchema.get_class_neo_id(): argument `class_name` must be a string (value passed was `{class_name}`)"
-        #assert class_name != "", "NeoSchema.get_class_neo_id(): argument `class_name` cannot be an empty string"
 
         match = cls.db.find(labels="CLASS", key_name="name", key_value=class_name)
         result = cls.db.get_nodes(match, return_neo_id=True)
