@@ -298,6 +298,49 @@ class NeoSchema:
 
 
     @classmethod
+    def get_class_name_by_neo_id(cls, class_neo_id: int) -> str:
+        """
+        Returns the name of the class with the given Neo4j ID, or raise an Exception if not found
+
+        :param class_neo_id:    An integer with the Neo4j ID of the desired class
+        :return:                The name of the class with the given Schema ID;
+                                    raise an Exception if not found
+        """
+        cls.db.assert_valid_neo_id(class_neo_id)
+
+        match = cls.db.find(neo_id=class_neo_id)
+        result = cls.db.get_nodes(match, single_cell="name")
+
+        if not result :
+            raise Exception(f"NeoSchema.get_class_name_by_neo_id(): no Class with a Neo4j ID of {class_neo_id} found")
+
+        return result
+
+
+    @classmethod
+    def get_class_attributes(cls, class_neo_id: int) -> dict:
+        """
+        Returns all the attributes (incl. the name) of the class with the given Neo4j ID,
+        or raise an Exception if the Class is not found
+
+        :param class_neo_id:    An integer with the Neo4j ID of the desired class
+        :return:                A dictionary of attribute of the class with the given Schema ID;
+                                    raise an Exception if not found
+                                    EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
+        """
+        cls.db.assert_valid_neo_id(class_neo_id)
+
+        match = cls.db.find(neo_id=class_neo_id)
+        result = cls.db.get_nodes(match, single_row=True)
+
+        if not result :
+            raise Exception(f"NeoSchema.get_class_attributes(): no Class with a Neo4j ID of {class_neo_id} found")
+
+        return result
+
+
+
+    @classmethod
     def get_all_classes(cls, only_names=True) -> [str]:
         """
         Fetch and return a list of all the existing Schema classes - either just their names (sorted alphabetically)
@@ -354,21 +397,33 @@ class NeoSchema:
                 raise Exception(f"Nothing was deleted; potential cause: the specified Class (`{name}`) doesn't exist")
 
 
+    @classmethod
+    def is_strict_class(cls, class_attrs: dict):
+        """
+
+        :param class_attrs:
+        :return:
+        """
+        return class_attrs['type'] == 'S'
+
+
 
     @classmethod
-    def allows_data_nodes(cls, class_name = None, class_neo_id = None) -> bool:
+    def allows_data_nodes(cls, class_name = None, class_neo_id = None, class_node_dict=None) -> bool:
         """
         Determine if the given Class allows data nodes directly linked to it
 
         :param class_name:      Name of the Class
         :param class_neo_id :   OPTIONAL alternate way to specify the class; if both specified, this one prevails
+        :param class_node_dict: OPTIONAL - if provided, skip the database lookup
         :return:                True if allowed, or False if not
                                     If the Class doesn't exist, raise an Exception
         """
-        if class_neo_id is not None:    # Note: class_neo_id might legitimately be zero
-            class_node_dict = cls.db.get_nodes(match=class_neo_id, single_row=True)
-        else:
-            class_node_dict = cls.db.get_record_by_primary_key(labels="CLASS", primary_key_name="name", primary_key_value=class_name)
+        if class_node_dict is None:
+            if class_neo_id is not None:    # Note: class_neo_id might legitimately be zero
+                class_node_dict = cls.db.get_nodes(match=class_neo_id, single_row=True)
+            else:
+                class_node_dict = cls.db.get_record_by_primary_key(labels="CLASS", primary_key_name="name", primary_key_value=class_name)
 
         if class_node_dict is None:
             raise Exception(f"NeoSchema.allows_data_nodes(): Class named `{class_name}` not found in the Schema")
@@ -734,7 +789,7 @@ class NeoSchema:
     @classmethod
     def get_class_properties_fast(cls, class_neo_id: int, include_ancestors=False, sort_by_path_len=False) -> list:
         """
-        Faster version of get_class_properties()
+        Faster version of get_class_properties()  [Using class_neo_id]
 
         Return the list of all the names of the Properties associated with the given Class
         (including those inherited thru ancestor nodes by means of "INSTANCE_OF" relationships,
@@ -1113,6 +1168,147 @@ class NeoSchema:
 
 
     @classmethod
+    def add_data_point_merge(cls, class_neo_id = None, properties = None, labels = None, silently_drop=False) -> int:
+        """
+        Similar to add_data_point_new(), but a new data point gets created only if
+                                    there's no other data point with the same allowed properties
+
+        :param class_neo_id:
+        :param properties:
+        :param labels:
+        :param silently_drop:
+        :return:                The Neo4j internal ID of either an existing data node or of a new one just created
+        """
+        class_attrs = cls.get_class_attributes(class_neo_id)
+        class_name = class_attrs["name"]
+
+        if labels is None:
+            # If not specified, use the Class name
+            labels = class_name
+
+        if properties is None:
+            properties = {}
+
+        assert type(properties) == dict, "NeoSchema.add_data_point_merge(): The `properties` argument, if provided, MUST be a dictionary"
+
+
+        if not cls.allows_data_nodes(class_node_dict=properties):
+            raise Exception(f"NeoSchema.add_data_point_merge(): "
+                            f"addition of data nodes to Class `{cls.get_class_name_by_neo_id(class_neo_id)}` is not allowed by the Schema")
+
+        if cls.is_strict_class(class_attrs):    # TODO: turn into separate method
+            class_properties = cls.get_class_properties_fast(class_neo_id)
+            properties_to_set = {}
+            for requested_prop in properties.keys():
+                if requested_prop in class_properties:
+                    properties_to_set[requested_prop] = properties[requested_prop]
+                else:
+                    if not silently_drop:
+                        raise Exception(f"NeoSchema.add_data_point_merge(): the requested attribute `{requested_prop}` is not among the Class' registered Properties")
+        else:
+            properties_to_set = properties
+
+
+        result = cls.db.merge_node(labels=labels, properties=properties_to_set)
+        neo_id = result["neo_id"]
+
+        return neo_id
+
+
+
+
+    @classmethod    # TODO: ditch the "merge" argument (now that add_data_point_merge is available)
+    def add_data_point_new(cls, class_neo_id = None, properties = None, labels = None,
+                           assign_item_id=False, new_item_id=None, silently_drop=False, merge=False) -> int:
+        """
+        A more "modern" version of add_data_point()
+
+        If the data point needs to be created with links to other existing data points, use add_data_point_with_links() instead
+
+        :param class_neo_id:
+        :param properties:
+        :param labels:
+        :param assign_item_id:  If True, the new node is given an extra attribute named "item_id",
+                                    with a unique auto-increment value, as well an extra attribute named "schema_code"
+        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                    If new_item_id is provided, then assign_item_id is automatically made True
+        :param silently_drop:
+        :param merge:           If True, a new data point gets created only if
+                                    there's no other data point with the same allowed properties;
+                                    assign_item_id and new_item_id will be ignored
+
+        :return:                The Neo4j internal ID of the new data node just created
+                                    (or, if merge is True, possibly the Neo4j ID of an existing node)
+
+        """
+        class_attrs = cls.get_class_attributes(class_neo_id)
+        class_name = class_attrs["name"]
+
+        if labels is None:
+            # If not specified, use the Class name
+            labels = class_name
+
+        if properties is None:
+            properties = {}
+
+        assert type(properties) == dict, "NeoSchema.add_data_point_with_links(): The `properties` argument, if provided, MUST be a dictionary"
+
+
+        if not cls.allows_data_nodes(class_node_dict=properties):
+            raise Exception(f"NeoSchema.add_data_point_new(): "
+                            f"addition of data nodes to Class `{cls.get_class_name_by_neo_id(class_neo_id)}` is not allowed by the Schema")
+
+        if cls.is_strict_class(class_attrs):
+            class_properties = cls.get_class_properties_fast(class_neo_id)
+            properties_to_set = {}
+            for requested_prop in properties.keys():
+                if requested_prop in class_properties:
+                    properties_to_set[requested_prop] = properties[requested_prop]
+                else:
+                    if not silently_drop:
+                        raise Exception(f"NeoSchema.add_data_point_new(): ")
+        else:
+            properties_to_set = properties
+
+
+        if not merge:
+            # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
+            # if requested, expand cypher_prop_dict accordingly
+            if assign_item_id or new_item_id:
+                if not new_item_id:
+                    new_id = cls.next_available_datapoint_id()      # Obtain (and reserve) the next auto-increment value
+                else:
+                    new_id = new_item_id
+                #print("New ID assigned to new data node: ", new_id)
+                properties_to_set["item_id"] = new_id               # Expand the dictionary
+
+                schema_code = cls.get_schema_code(class_name)
+                if schema_code != "":
+                    properties_to_set["schema_code"] = schema_code  # Expand the dictionary
+
+                # EXAMPLE of cypher_prop_dict at this stage:
+                #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
+                #       where 123 is the next auto-assigned item_id
+
+
+            # Create a new data node, with a "SCHEMA" relationship to its Class node and, possible, also relationships to another data nodes
+            link_to_schema_class = {"neo_id": class_neo_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
+
+            links = [link_to_schema_class]
+
+            neo_id = cls.db.create_node_with_links(labels=labels,
+                                               properties=properties_to_set,
+                                               links=links)
+        else:
+            result = cls.db.merge_node(labels=labels, properties=properties_to_set)
+            neo_id = result["neo_id"]
+
+
+        return neo_id
+
+
+
+    @classmethod
     def add_data_point_with_links(cls, class_name = None, class_neo_id = None, properties = None, labels = None, links = None,
                                   assign_item_id=False, new_item_id=None) -> int:
         """
@@ -1223,7 +1419,7 @@ class NeoSchema:
                                      connected_to_neo_id=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
                                      assign_item_id=False, new_item_id=None) -> int:
         """
-        TODO: OBSOLETED BY add_data_point_with_links() - TO DITCH!
+        TODO: OBSOLETED BY add_data_point_with_links() - TO DITCH *AFTER* add_data_point_with_links() gets link validation!
         A faster version of add_data_point()
         Add a new data node, of the Class specified by name or ID,
         with the given (possibly none) attributes and label(s),
@@ -1347,6 +1543,7 @@ class NeoSchema:
                        data_dict=None, labels=None,
                        connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
                        new_item_id=None, return_item_ID=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_point_with_links()
+                                                                        # TO DITCH *AFTER* add_data_point_with_links() gets link validation!
         """
         Add a new data node, of the Class specified by name or ID,
         with the given (possibly none) attributes and label(s),
@@ -1469,7 +1666,7 @@ class NeoSchema:
     def add_and_link_data_point_OBSOLETE(cls, class_name: str, connected_to_list: [tuple], properties=None, labels=None,
                                          assign_item_id=False) -> int:
         """
-        TODO: OBSOLETED BY add_data_point_with_links() - TO DITCH!
+        TODO: OBSOLETED BY add_data_point_with_links() - TO DITCH *AFTER* add_data_point_with_links() gets link validation!
         Create a new data node, of the Class with the given name,
         with the specified optional labels and properties,
         and link it to each of all the EXISTING nodes

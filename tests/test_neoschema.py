@@ -142,6 +142,37 @@ def test_get_class_name(db):
     assert NeoSchema.get_class_name(-1) == ""
 
 
+def test_get_class_name_by_neo_id(db):
+    db.empty_dbase()
+    class_A_neoid , _ = NeoSchema.create_class("A")
+    assert NeoSchema.get_class_name_by_neo_id(class_A_neoid) == "A"
+
+    class_B_neoid , _ = NeoSchema.create_class("B")
+    assert NeoSchema.get_class_name_by_neo_id(class_A_neoid) == "A"
+    assert NeoSchema.get_class_name_by_neo_id(class_B_neoid) == "B"
+
+    with pytest.raises(Exception):
+        NeoSchema.get_class_name_by_neo_id(2345)                    # No such Class exists
+        NeoSchema.get_class_name_by_neo_id(-1)                      # Invalid id
+        NeoSchema.get_class_name_by_neo_id("I'm not an integer!")   # Invalid id
+
+
+
+def test_get_class_attributes(db):
+    db.empty_dbase()
+    class_A_neoid , class_A_id = NeoSchema.create_class("A")
+    assert NeoSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'schema_id': class_A_id, 'type': 'L'}
+
+    class_B_neoid , class_B_id = NeoSchema.create_class("B", no_datanodes=True)
+    assert NeoSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'schema_id': class_A_id, 'type': 'L'}
+    assert NeoSchema.get_class_attributes(class_B_neoid) == {'name': 'B', 'schema_id': class_B_id, 'type': 'L', 'no_datanodes': True}
+
+    with pytest.raises(Exception):
+        NeoSchema.get_class_attributes(2345)                    # No such Class exists
+        NeoSchema.get_class_attributes(-1)                      # Invalid id
+        NeoSchema.get_class_attributes("I'm not an integer!")   # Invalid id
+
+
 
 def test_get_all_classes(db):
     db.empty_dbase()

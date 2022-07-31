@@ -194,6 +194,21 @@ class NeoAccess:
 
 
 
+    def assert_valid_neo_id(self, neo_id: int) -> None:
+        """
+        Raise an Exception if the argument is not a valid Neo4j ID
+        :param neo_id:
+        :return:        None
+        """
+        assert type(neo_id) == int, \
+            f"NeoAccess.assert_valid_neo_id(): Neo4j ID's MUST be integers; the value passed was {type(neo_id)}"
+
+        # Note that 0 is a valid Neo4j ID (apparently inconsistently assigned, on occasion, by the database)
+        assert neo_id >= 0, \
+            f"NeoAccess.assert_valid_neo_id(): Neo4j ID's cannot be negative; the value passed was {neo_id}"
+
+
+
 
     #---------------------------------------------------------------------------------------------------#
     #                                                                                                   #
@@ -919,7 +934,7 @@ class NeoAccess:
     #                                                                                                   #
     #___________________________________________________________________________________________________#
 
-    def create_node(self, labels, properties=None, merge=False) -> int:
+    def create_node(self, labels, properties=None) -> int:
         """
         Create a new node with the given label(s) and with the attributes/values specified in the properties dictionary.
         Return the Neo4j internal ID of the node just created.
@@ -927,7 +942,6 @@ class NeoAccess:
         :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces)
         :param properties:  An optional (possibly empty or None) dictionary of properties to set for the new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
-        :param merge:       If True, the node gets created only if no other node with same labels and properties exists.  TODO: test
 
         :return:            An integer with the Neo4j internal ID of the node just created
         """
@@ -946,21 +960,58 @@ class NeoAccess:
         cypher_labels = CypherUtils.prepare_labels(labels)
 
         # Assemble the complete Cypher query
-        if merge:
-            q = f"MERGE (n {cypher_labels} {attributes_str}) RETURN n"
-        else:
-            q = f"CREATE (n {cypher_labels} {attributes_str}) RETURN n"
+        q = f"CREATE (n {cypher_labels} {attributes_str}) RETURN n"
 
-        self.debug_query_print(q, data_dictionary, "create_node")  # TODO: switch to update_query(), and verify the creation
+        self.debug_query_print(q, data_dictionary, "create_node")
 
-        result_list = self.query_extended(q, data_dictionary, flatten=True)
+        result_list = self.query_extended(q, data_dictionary, flatten=True)  # TODO: switch to update_query(), and verify the creation
         if len(result_list) != 1:
-            if merge:
-                raise Exception("NeoAccess.create_node(): failed to locate or create the requested new node")
-            else:
-                raise Exception("NeoAccess.create_node(): failed to create the requested new node")
+            raise Exception("NeoAccess.create_node(): failed to create the requested new node")
 
         return result_list[0]['neo4j_id']           # Return the Neo4j internal ID of the node just created
+
+
+
+    def merge_node(self, labels, properties=None) -> dict:
+        """
+        The node gets created only if no other node with same labels and properties exists.  TODO: test
+
+        Create a new node with the given label(s) and with the attributes/values specified in the properties dictionary.
+        Return the Neo4j internal ID of the node just created.
+
+        :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces)
+        :param properties:  An optional (possibly empty or None) dictionary of properties to set for the new node.
+                                EXAMPLE: {'age': 22, 'gender': 'F'}
+
+        :return:            A dict with 2 keys
+        """
+
+        if properties is None:
+            properties = {}
+
+        # From the dictionary of attribute names/values,
+        #       create a part of a Cypher query, with its accompanying data dictionary
+        (attributes_str, data_dictionary) = CypherUtils.dict_to_cypher(properties)
+        # EXAMPLE:
+        #       attributes_str = '{`cost`: $par_1, `item description`: $par_2}'
+        #       data_dictionary = {'par_1': 65.99, 'par_2': 'the "red" button'}
+
+        # Turn labels (string or list/tuple of labels) into a string suitable for inclusion into Cypher
+        cypher_labels = CypherUtils.prepare_labels(labels)
+
+        # Assemble the complete Cypher query
+        q = f"MERGE (n {cypher_labels} {attributes_str}) RETURN id(n) AS neo_id"
+
+        self.debug_query_print(q, data_dictionary, "merge_node")
+
+        result = self.update_query(q, data_dictionary)
+
+        neo_id = result["returned_data"][0]["neo4j_id"]     # The Neo4j internal ID of the node found or just created
+
+        if result["nodes_created"] == 1:
+            return {"created": True, "neo_id": neo_id}
+        else:
+            return {"created": False, "neo_id": neo_id}
 
 
 
