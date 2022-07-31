@@ -2313,12 +2313,12 @@ class NeoSchema:
         :return:
         """
         future_value = cls.next_autoincrement("schema_node")    # The better way to do it
-        currently_used_value = cls.next_available_id_general([cls.class_label, cls.property_label], "schema_id")    # Old way
+        #currently_used_value = cls.next_available_id_general([cls.class_label, cls.property_label], "schema_id")    # Old way
 
-        assert future_value == currently_used_value, \
-            f"NeoSchema.next_available_id() : mismatch in the 2 auto-incr. values ({future_value} vs. {currently_used_value})"
+        #assert future_value == currently_used_value, \
+            #f"NeoSchema.next_available_id() : mismatch in the 2 auto-incr. values ({future_value} vs. {currently_used_value})"
 
-        return currently_used_value
+        return future_value
 
 
 
