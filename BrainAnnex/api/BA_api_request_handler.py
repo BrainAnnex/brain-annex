@@ -3,7 +3,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
-import re               # For REGEX
+import re                   # For REGEX
 import pandas as pd
 import os
 from flask import request, current_app  # TODO: phase out (?)
