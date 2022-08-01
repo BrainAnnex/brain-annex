@@ -159,11 +159,11 @@ def test_get_class_instances(db):
 
 def test_new_class_with_properties(db):
     """
-    new_id = NeoSchema.new_class_with_properties("Images",
+    _, new_id = NeoSchema.new_class_with_properties("Images",
                                                  ["width", "caption"], code="i"
                                                  )
     """
-    new_id = NeoSchema.new_class_with_properties(class_name="Documents",
+    _, new_id = NeoSchema.new_class_with_properties(class_name="Documents",
                                                  property_list=["caption"],
                                                  code="d",
                                                  class_to_link_to="Media"

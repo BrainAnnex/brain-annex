@@ -146,7 +146,7 @@ class APIRequestHandler:
 
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
-        new_id = NeoSchema.new_class_with_properties(new_class_name, property_list_clean,
+        _, new_id = NeoSchema.new_class_with_properties(new_class_name, property_list_clean,
                                                      class_to_link_to=instance_of_class, link_to_name="INSTANCE_OF")
 
 

@@ -398,12 +398,18 @@ class NeoSchema:
 
 
     @classmethod
-    def is_strict_class(cls, class_attrs: dict):
+    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:
         """
 
-        :param class_attrs:
-        :return:
+        :param class_internal_id:   The internal ID of a Schema Class node
+        :param schema_cache:        OPTIONAL "NeoSchemaExperimental" object
+        :return:                    True if the Class is "strict" or False if not (i.e., if it's "lax")
         """
+        if schema_cache:
+            class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
+        else:
+            class_attrs = NeoSchema.get_class_attributes(class_internal_id)
+
         return class_attrs['type'] == 'S'
 
 
@@ -975,7 +981,7 @@ class NeoSchema:
 
     @classmethod
     def new_class_with_properties(cls, class_name: str, property_list: [str], code=None, schema_type="L",
-                                  class_to_link_to=None, link_to_name="INSTANCE_OF") -> int:
+                                  class_to_link_to=None, link_to_name="INSTANCE_OF") -> (int, int):
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
         and link them together with "HAS_PROPERTY" relationships.
@@ -1002,13 +1008,13 @@ class NeoSchema:
                                     to this existing Class
         :param link_to_name     Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
 
-        :return:                If successful, the integer "schema_id" assigned to the new Class;
+        :return:                If successful, the pair (internal ID, integer "schema_id" assigned to the new Class);
                                 otherwise, raise an Exception
         """
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
         #       adding a new Class and then leaving it w/o properties or links, in case of mid-operation error
 
-        _ , new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
+        new_class_int_id , new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
         cls.debug_print(f"Created new schema CLASS node (name: `{class_name}`, Schema ID: {new_class_id})")
 
         number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
@@ -1026,7 +1032,7 @@ class NeoSchema:
             except Exception as ex:
                 raise Exception(f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
-        return new_class_id
+        return new_class_int_id, new_class_id
 
 
 
@@ -1171,7 +1177,7 @@ class NeoSchema:
     def add_data_point_merge(cls, class_neo_id = None, properties = None, labels = None, silently_drop=False) -> int:
         """
         Similar to add_data_point_new(), but a new data point gets created only if
-                                    there's no other data point with the same allowed properties
+        there's no other data point with the same allowed properties
 
         :param class_neo_id:
         :param properties:
@@ -1196,24 +1202,47 @@ class NeoSchema:
             raise Exception(f"NeoSchema.add_data_point_merge(): "
                             f"addition of data nodes to Class `{cls.get_class_name_by_neo_id(class_neo_id)}` is not allowed by the Schema")
 
-        if cls.is_strict_class(class_attrs):    # TODO: turn into separate method
-            class_properties = cls.get_class_properties_fast(class_neo_id)
-            properties_to_set = {}
-            for requested_prop in properties.keys():
-                if requested_prop in class_properties:
-                    properties_to_set[requested_prop] = properties[requested_prop]
-                else:
-                    if not silently_drop:
-                        raise Exception(f"NeoSchema.add_data_point_merge(): the requested attribute `{requested_prop}` is not among the Class' registered Properties")
-        else:
-            properties_to_set = properties
-
+        properties_to_set = cls.allowable_props(class_neo_id, class_attrs, properties, silently_drop)
 
         result = cls.db.merge_node(labels=labels, properties=properties_to_set)
         neo_id = result["neo_id"]
 
         return neo_id
 
+
+
+    @classmethod
+    def allowable_props(cls, class_neo_id: int, requested_props: dict, silently_drop: bool, schema_cache=None) -> dict:
+        """
+        Return a pared-down version, or possibly raise an Exception, of the requested list of properties
+        that are meant to be assigned to a new data point
+        TODO: possibly expand to handle REQUIRED properties
+
+        :param class_neo_id:    The internal ID of a Schema Class node
+        :param requested_props: A dictionary of properties one wishes to assign to a new data point, if the Schema allows
+        :param silently_drop:   If True, requested properties not allowed by the Schema are simply dropped;
+                                    otherwise, an Exception is raised if any property isn't allowed
+        :param schema_cache:    OPTIONAL "NeoSchemaExperimental" object
+
+        :return:                A possibly pared-down version of the requested_props dictionary
+        """
+        if not cls.is_strict_class(class_neo_id, schema_cache=schema_cache):
+            return requested_props      # Any properties are allowed if the Class isn't strict
+
+
+        allowed_props = {}
+        class_properties = cls.get_class_properties_fast(class_neo_id)  # List of Properties registered with the Class
+
+        for requested_prop in requested_props.keys():
+            # Check each of the requested properties
+            if requested_prop in class_properties:
+                allowed_props[requested_prop] = requested_props[requested_prop]     # Allowed
+            else:
+                # Not allowed
+                if not silently_drop:
+                    raise Exception(f"NeoSchema.allowable_props(): the requested attribute `{requested_prop}` is not among the Class' registered Properties")
+
+        return allowed_props
 
 
 
@@ -1258,20 +1287,9 @@ class NeoSchema:
             raise Exception(f"NeoSchema.add_data_point_new(): "
                             f"addition of data nodes to Class `{cls.get_class_name_by_neo_id(class_neo_id)}` is not allowed by the Schema")
 
-        if cls.is_strict_class(class_attrs):
-            class_properties = cls.get_class_properties_fast(class_neo_id)
-            properties_to_set = {}
-            for requested_prop in properties.keys():
-                if requested_prop in class_properties:
-                    properties_to_set[requested_prop] = properties[requested_prop]
-                else:
-                    if not silently_drop:
-                        raise Exception(f"NeoSchema.add_data_point_new(): ")
-        else:
-            properties_to_set = properties
+        properties_to_set = cls.allowable_props(class_neo_id, class_attrs, properties, silently_drop)
 
-
-        if not merge:
+        if not merge:   # TODO: take out the handling of "merge"
             # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
             # if requested, expand cypher_prop_dict accordingly
             if assign_item_id or new_item_id:
@@ -2626,15 +2644,20 @@ class SchemaCache:
     Maintain a Python dictionary, whose keys are Class names - generally,
     a subset of interest from all the Classes in the database.
 
-    TODO:   add a "schema" argument to some NeoSchema methods that interact with the Schema,
-            to provide an alternate manner of querying the Schema
+    Note: this class gets instantiated, so that it's local variable and doesn't cause
+          trouble with multi-threading
+
+    TODO:   possibly absorb into SchemaCacheExperimental
     """
     def __init__(self):
-        self._schema = {}
+        self._schema = {}   # The keys are the Class names
 
 
     def cache_class_data(self, class_name: str) -> None:
         """
+
+        TODO: instead of getting "all possible Class data", maybe provide a series of methods
+              for a piecemeal approach -> see SchemaCacheExperimental
 
         :param class_name:
         :return:            None
@@ -2673,6 +2696,7 @@ class SchemaCache:
 
     def get_class_cached_data(self, class_name: str) -> dict:
         """
+        Get all the cached data for the specified Class
 
         :param class_name:
         :return:
@@ -2681,3 +2705,42 @@ class SchemaCache:
             self.cache_class_data(class_name)
 
         return self._schema[class_name]
+
+
+
+
+############################################################################################
+class SchemaCacheExperimental:
+    """
+    Similar to SchemaCache, but cached by internal ID
+
+    TODO:   add a "schema" argument to some NeoSchema methods that interact with the Schema,
+            to provide an alternate manner of querying the Schema
+            - as currently done by allowable_props() and is_strict_class()
+    """
+    def __init__(self):
+        self._schema = {}   # The keys are the internal IDs of the Schema nodes
+
+
+    def get_cached_class_attrs(self, class_internal_id: int) -> dict:
+        """
+        Return the attributes of the requested Class, i.e.
+        a dictionary of all the Class node's attributes, as returned by get_class_attributes()
+        EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
+
+        :param class_internal_id:
+        :return:
+        """
+        if class_internal_id not in self._schema:
+            # No cache info already exists for this Class... so, create it,
+            # and populate with minimal data that is sufficient to provide what was requested
+            class_attrs = NeoSchema.get_class_attributes(class_internal_id)
+            self._schema[class_internal_id] = {"class_attrs": class_attrs}
+            return class_attrs
+        else:
+            cached_data = self._schema[class_internal_id]
+            if "class_attrs" not in cached_data:
+                class_attrs = NeoSchema.get_class_attributes(class_internal_id)
+                cached_data["class_attrs"] = class_attrs
+
+            return cached_data["class_attrs"]

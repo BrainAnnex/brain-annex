@@ -972,15 +972,15 @@ class NeoAccess:
 
 
 
-    def merge_node(self, labels, properties=None) -> dict:
+    def merge_node(self, labels, properties=None) -> dict:  # TODO: test
         """
-        The node gets created only if no other node with same labels and properties exists.  TODO: test
+        The node gets created only if no other node with same labels and properties exists.
 
         Create a new node with the given label(s) and with the attributes/values specified in the properties dictionary.
-        Return the Neo4j internal ID of the node just created.
 
         :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces)
-        :param properties:  An optional (possibly empty or None) dictionary of properties to set for the new node.
+        :param properties:  An optional (possibly empty or None) dictionary of properties
+                                to try to match in an existing node, or - if not found - to set in a new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
 
         :return:            A dict with 2 keys

@@ -5,7 +5,7 @@ import pytest
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists
 from BrainAnnex.modules.neo_access import neo_access
 from BrainAnnex.modules.utilities.comparisons import compare_recordsets
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, SchemaCacheExperimental
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -23,13 +23,13 @@ def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY
 
-    sch_1 = NeoSchema.new_class_with_properties(class_name="patient",
+    _, sch_1 = NeoSchema.new_class_with_properties(class_name="patient",
                                                 property_list=["name", "age", "balance"])
 
-    sch_2 = NeoSchema.new_class_with_properties(class_name="result",
+    _, sch_2 = NeoSchema.new_class_with_properties(class_name="result",
                                                 property_list=["biomarker", "value"])
 
-    sch_3 = NeoSchema.new_class_with_properties(class_name="doctor",
+    _, sch_3 = NeoSchema.new_class_with_properties(class_name="doctor",
                                                 property_list=["name", "specialty"])
 
     NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="HAS_RESULT")
@@ -42,10 +42,10 @@ def create_sample_schema_1():
 def create_sample_schema_2():
     # Class "quotes" with relationship named "in_category" to Class "categories";
     # each Class has some properties
-    sch_1 = NeoSchema.new_class_with_properties(class_name="quotes",
+    _, sch_1 = NeoSchema.new_class_with_properties(class_name="quotes",
                                                 property_list=["quote", "attribution", "verified"])
 
-    sch_2 = NeoSchema.new_class_with_properties(class_name="categories",
+    _, sch_2 = NeoSchema.new_class_with_properties(class_name="categories",
                                                 property_list=["name", "remarks"])
 
     NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="in_category")
@@ -447,6 +447,104 @@ def test_all_properties(db):
 
 def test_fetch_data_point(db):
     pass    # TODO
+
+
+
+def test_allowable_props(db):
+    db.empty_dbase()
+
+    lax_int_id, lax_schema_id = NeoSchema.new_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
+    strict_int_id, strict_schema_id = NeoSchema.new_class_with_properties("My Strict class", ["A", "B"], schema_type="S")
+
+
+    d = NeoSchema.allowable_props(class_neo_id=lax_int_id,
+                                  requested_props={"A": 123}, silently_drop=True)
+    assert d == {"A": 123}  # Nothing got dropped
+
+    d = NeoSchema.allowable_props(class_neo_id=strict_int_id,
+                                  requested_props={"A": 123}, silently_drop=True)
+    assert d == {"A": 123}  # Nothing got dropped
+
+
+    d = NeoSchema.allowable_props(class_neo_id=lax_int_id,
+                                  requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=True)
+    assert d == {"A": 123, "C": "trying to intrude"}  # Nothing got dropped, because "anything goes" with a "Lax" Class
+
+    d = NeoSchema.allowable_props(class_neo_id=strict_int_id,
+                                  requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=True)
+    assert d == {"A": 123}  # "C" got silently dropped
+
+    with pytest.raises(Exception):
+        NeoSchema.allowable_props(class_neo_id=strict_int_id,
+                                  requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=False)
+
+
+    d = NeoSchema.allowable_props(class_neo_id=lax_int_id,
+                                  requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=True)
+    assert d == {"X": 666, "C": "trying to intrude"}  # Nothing got dropped, because "anything goes" with a "Lax" Class
+
+    d = NeoSchema.allowable_props(class_neo_id=strict_int_id,
+                                  requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=True)
+    assert d == {}      # Everything got silently dropped
+
+    with pytest.raises(Exception):
+        NeoSchema.allowable_props(class_neo_id=strict_int_id,
+                                  requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=False)
+
+
+    # Repeating, using the SchemaCache
+    schema_cache = SchemaCacheExperimental()
+
+    d = NeoSchema.allowable_props(class_neo_id=lax_int_id, schema_cache=schema_cache,
+                                  requested_props={"A": 123}, silently_drop=True)
+    assert d == {"A": 123}  # Nothing got dropped
+
+    d = NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+                                  requested_props={"A": 123}, silently_drop=True)
+    assert d == {"A": 123}  # Nothing got dropped
+
+
+    d = NeoSchema.allowable_props(class_neo_id=lax_int_id, schema_cache=schema_cache,
+                                  requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=True)
+    assert d == {"A": 123, "C": "trying to intrude"}  # Nothing got dropped, because "anything goes" with a "Lax" Class
+
+    d = NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+                                  requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=True)
+    assert d == {"A": 123}  # "C" got silently dropped
+
+    with pytest.raises(Exception):
+        NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+                                  requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=False)
+
+
+    d = NeoSchema.allowable_props(class_neo_id=lax_int_id, schema_cache=schema_cache,
+                                  requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=True)
+    assert d == {"X": 666, "C": "trying to intrude"}  # Nothing got dropped, because "anything goes" with a "Lax" Class
+
+    d = NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+                                  requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=True)
+    assert d == {}      # Everything got silently dropped
+
+    with pytest.raises(Exception):
+        NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+                                  requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=False)
+
+    # Check the cache itself
+    assert schema_cache.get_cached_class_attrs(lax_int_id) == {"name": "My Lax class", "schema_id": lax_schema_id, "type": "L"}
+    assert schema_cache.get_cached_class_attrs(strict_int_id) == {"name": "My Strict class", "schema_id": strict_schema_id, "type": "S"}
+
+
+
+
+def test_schema_cache(db):      # TODO: move to its own section
+    db.empty_dbase()
+
+    internal_id, _ = NeoSchema.new_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
+    schema_cache = SchemaCacheExperimental()
+
+    class_attrs = NeoSchema.get_class_attributes(internal_id)
+    assert schema_cache.get_cached_class_attrs(internal_id) == class_attrs
+    assert schema_cache.get_cached_class_attrs(internal_id) == class_attrs  # The 2nd run will use the previously-cached data
 
 
 
