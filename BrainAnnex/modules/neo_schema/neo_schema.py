@@ -265,6 +265,7 @@ class NeoSchema:
         return result
 
 
+
     @classmethod
     def class_neo_id_exists(cls, neo_id: int) -> bool:
         """
@@ -947,7 +948,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_properties_to_class(cls, class_internal_id: int,  class_id = None, property_list = None) -> int:
+    def add_properties_to_class(cls, class_internal_id = None,  class_id = None, property_list = None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
         The properties are assigned an inherent order (an attribute named "index", starting at 1),
@@ -966,21 +967,26 @@ class NeoSchema:
                                     If any name is a blank string, an Exception is raised
         :return:                The number of Properties added (might be zero if the Class doesn't exist)
         """
+        assert (class_internal_id is not None) or (class_id is not None), \
+            "add_properties_to_class(): class_internal_id and class_id cannot both be None"
 
         if class_internal_id is not None and class_id is None:
             class_id = cls.get_class_id_by_neo_id(class_internal_id)
 
-        assert type(class_id) == int, "Argument `class_id` in add_properties_to_class() must be an integer"
-        assert type(property_list) == list, "Argument `property_list` in add_properties_to_class() must be a list"
-        assert cls.class_id_exists(class_id), f"No Class with ID {class_id} found in the Schema"
+        assert type(class_id) == int,\
+            f"add_properties_to_class(): Argument `class_id` in add_properties_to_class() must be an integer; value passed was {class_id}"
+        assert type(property_list) == list, \
+            "add_properties_to_class(): Argument `property_list` in add_properties_to_class() must be a list"
+        assert cls.class_id_exists(class_id), \
+            f"add_properties_to_class(): No Class with ID {class_id} found in the Schema"
 
 
         clean_property_list = [prop.strip() for prop in property_list]
         for prop_name in clean_property_list:
-            assert prop_name != "", "Unacceptable Property name, either empty or blank"
-            assert type(prop_name) == str, "Unacceptable non-string Property name"
+            assert prop_name != "", "add_properties_to_class(): Unacceptable Property name, either empty or blank"
+            assert type(prop_name) == str, "add_properties_to_class(): Unacceptable non-string Property name"
 
-        # Locate the largest index of the Properties currently present
+        # Locate the largest index of the Properties currently present (stored on the "HAS_PROPERTY" links)
         q = '''
             MATCH (:CLASS {schema_id: $schema_id})-[r:HAS_PROPERTY]-(:PROPERTY)
             RETURN MAX(r.index) AS MAX_INDEX
@@ -1055,7 +1061,7 @@ class NeoSchema:
         new_class_int_id , new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
         cls.debug_print(f"Created new schema CLASS node (name: `{class_name}`, Schema ID: {new_class_id})")
 
-        number_properties_added = cls.add_properties_to_class(new_class_id, property_list)
+        number_properties_added = cls.add_properties_to_class(class_internal_id=new_class_int_id, property_list = property_list)
         if number_properties_added != len(property_list):
             raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {property_list}")
 
@@ -1295,44 +1301,6 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_merge(cls, class_neo_id = None, properties = None, labels = None, silently_drop=False) -> int:
-        """
-        Similar to add_data_point_new(), but a new data point gets created only if
-        there's no other data point with the same allowed properties
-
-        :param class_neo_id:
-        :param properties:
-        :param labels:
-        :param silently_drop:
-        :return:                The Neo4j internal ID of either an existing data node or of a new one just created
-        """
-        class_attrs = cls.get_class_attributes(class_neo_id)
-        class_name = class_attrs["name"]
-
-        if labels is None:
-            # If not specified, use the Class name
-            labels = class_name
-
-        if properties is None:
-            properties = {}
-
-        assert type(properties) == dict, "NeoSchema.add_data_point_merge(): The `properties` argument, if provided, MUST be a dictionary"
-
-
-        if not cls.allows_data_nodes(class_node_dict=properties):
-            raise Exception(f"NeoSchema.add_data_point_merge(): "
-                            f"addition of data nodes to Class `{cls.get_class_name_by_neo_id(class_neo_id)}` is not allowed by the Schema")
-
-        properties_to_set = cls.allowable_props(class_neo_id, class_attrs, properties, silently_drop)
-
-        result = cls.db.merge_node(labels=labels, properties=properties_to_set)
-        neo_id = result["neo_id"]
-
-        return neo_id
-
-
-
-    @classmethod
     def add_data_point_new(cls, class_internal_id: int, properties = None, labels = None,
                            assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
         """
@@ -1414,6 +1382,61 @@ class NeoSchema:
                                            links=links)
 
         return neo_id
+
+
+
+    @classmethod
+    def add_data_point_merge(cls, class_internal_id = None, properties = None, labels = None, silently_drop=False) -> int:
+        """
+        Similar to add_data_point_new(), but a new data point gets created only if
+        there's no other data point with the same allowed properties and labels
+
+        :param class_internal_id:   The internal database ID of the Class node for the new data point
+        :param properties:      An optional dictionary with the properties of the new data point.
+                                    EXAMPLE: {"make": "Toyota", "color": "white"}
+        :param labels:          OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
+                                    if not specified, the Class name is used
+        :param silently_drop:   If True, any requested properties not allowed by the Schema are simply dropped;
+                                    otherwise, an Exception is raised if any property isn't allowed
+        :return:                The internal database ID of either an existing data node or of a new one just created
+        """
+        schema_cache = SchemaCacheExperimental()
+        class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
+        class_name = class_attrs["name"]
+
+        if labels is None:
+            # If not specified, use the Class name
+            labels = class_name
+
+        if properties is None:
+            properties = {}
+
+        assert type(properties) == dict, \
+            "NeoSchema.add_data_point_merge(): the `properties` argument, if provided, MUST be a dictionary"
+
+
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id, schema_cache=schema_cache):
+            raise Exception(f"NeoSchema.add_data_point_merge(): "
+                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+        properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
+                                                silently_drop=silently_drop, schema_cache=schema_cache)
+
+        result = cls.db.merge_node(labels=labels, properties=properties_to_set)
+        datanode_neo_id = result["neo_id"]
+
+        if result["created"]:
+            # If a new data node was created, it must be linked to its Class node
+            cls.db.add_edges(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA")
+        else:
+            # Verify that is already has a SCHEMA link to its Class node
+            if not cls.db.edges_exist(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA"):
+                # This is an irregular situation where there's a match, but not to a legit data node
+                raise Exception(f"NeoSchema.add_data_point_merge(): "
+                                f"a node matching in attributes and labels already exists (internal ID {datanode_neo_id}), "
+                                f"but it's NOT linked to its Schema Class (internal ID {class_internal_id})")
+
+        return datanode_neo_id
 
 
 

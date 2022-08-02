@@ -1004,7 +1004,7 @@ class NeoAccess:
                                 to try to match in an existing node, or - if not found - to set in a new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
 
-        :return:            A dict with 2 keys
+        :return:            A dict with 2 keys: "created" (True if a new node was created) and "neo_id"
         """
 
         if properties is None:
@@ -1027,9 +1027,9 @@ class NeoAccess:
 
         result = self.update_query(q, data_dictionary)
 
-        neo_id = result["returned_data"][0]["neo4j_id"]     # The Neo4j internal ID of the node found or just created
+        neo_id = result["returned_data"][0]["neo_id"]     # The Neo4j internal ID of the node found or just created
 
-        if result["nodes_created"] == 1:
+        if result.get("nodes_created", 0) == 1:
             return {"created": True, "neo_id": neo_id}
         else:
             return {"created": False, "neo_id": neo_id}
@@ -1213,7 +1213,7 @@ class NeoAccess:
 
 
 
-    def create_node_with_links(self, labels, properties = None, links = None) -> int:
+    def create_node_with_links(self, labels, properties = None, links = None, merge=False) -> int:
         """
         Create a new node, with the given labels and optional properties,
         and make it a parent of all the EXISTING nodes that are specified
@@ -1251,8 +1251,10 @@ class NeoAccess:
                                     "rel_name"      REQUIRED - the name to give to the link
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
+        :param merge:       If True, a node gets created only if there's no other node
+                                with the same properties and labels     TODO: test
 
-        :return:                An integer with the Neo4j ID of the newly-created node
+        :return:            An integer with the Neo4j ID of the newly-created node
         """
         assert properties is None or type(properties) == dict, \
             f"NeoAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
@@ -1273,8 +1275,11 @@ class NeoAccess:
         #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
 
         # Define the portion of the Cypher query to create the new node
-        q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
-        # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
+        if merge:
+            q_CREATE = f"MERGE (n {labels_str} {cypher_props_str})"
+        else:
+            q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
+            # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
 
 
         if links:
