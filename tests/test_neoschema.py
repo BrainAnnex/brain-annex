@@ -106,6 +106,21 @@ def test_get_class_id(db):
 
 
 
+def test_get_class_id_by_neo_id(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.get_class_id_by_neo_id(999)   # Non-existent class
+
+    class_A_neo_id , class_A_id = NeoSchema.create_class("A")
+    assert NeoSchema.get_class_id_by_neo_id(class_A_neo_id) == class_A_id
+
+    class_B_neo_id , class_B_id = NeoSchema.create_class("B")
+    assert NeoSchema.get_class_id_by_neo_id(class_A_neo_id) == class_A_id
+    assert NeoSchema.get_class_id_by_neo_id(class_B_neo_id) == class_B_id
+
+
+
 def test_class_id_exists(db):
     db.empty_dbase()
     assert not NeoSchema.class_id_exists(123)
@@ -344,13 +359,22 @@ def test_delete_class(db):
 
 def test_allows_data_nodes(db):
     db.empty_dbase()
-    neo_id , _ = NeoSchema.create_class("French Vocabulary")
-    assert NeoSchema.allows_data_nodes(class_name="French Vocabulary") == True
-    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id) == True
 
-    neo_id , _ = NeoSchema.create_class("Vocabulary", no_datanodes = True)
+    neo_id_yes , _ = NeoSchema.create_class("French Vocabulary")
+    assert NeoSchema.allows_data_nodes(class_name="French Vocabulary") == True
+    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_yes) == True
+
+    neo_id_no , _ = NeoSchema.create_class("Vocabulary", no_datanodes = True)
     assert NeoSchema.allows_data_nodes(class_name="Vocabulary") == False
-    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id) == False
+    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_no) == False
+
+    # Tests using Schema Caching
+    schema_cache = SchemaCacheExperimental()
+    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_yes, schema_cache=schema_cache) == True
+    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_no, schema_cache=schema_cache) == False
+    # Repeat
+    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_yes, schema_cache=schema_cache) == True
+    assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_no, schema_cache=schema_cache) == False
 
 
 
@@ -448,6 +472,49 @@ def test_all_properties(db):
 def test_fetch_data_point(db):
     pass    # TODO
 
+
+
+def test_data_points_of_class(db):
+    pass    # TODO
+
+
+
+def test_count_data_points_of_class(db):
+
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.count_data_points_of_class(666)   # Non-existent Class
+
+    class_internal_id_1 , _ = NeoSchema.create_class("Some class")
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 0
+
+    NeoSchema.add_data_point_new(class_internal_id=class_internal_id_1)
+    assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 1
+
+    NeoSchema.add_data_point_new(class_internal_id=class_internal_id_1)
+    assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 2
+
+
+    class_internal_id_2 , _ = NeoSchema.create_class("Another class")
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id_2) == 0
+
+    NeoSchema.add_data_point_new(class_internal_id=class_internal_id_2)
+    assert NeoSchema.count_data_points_of_class(class_internal_id_2) == 1
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 2   # Where we left it off
+
+
+
+def test_data_points_lacking_schema(db):
+    pass    # TODO
+
+
+
+def test_get_data_point_id(db):
+    pass    # TODO
 
 
 def test_allowable_props(db):
@@ -643,6 +710,132 @@ def test_add_data_point_with_links(db):
     record = result[0]
     assert record['r2']['item_id'] == 9999      # The specific "item_id" that was passed
 
+
+
+def test_add_data_point_new(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_point_new(class_internal_id=123)     # No such class exists
+
+    class_internal_id , _ = NeoSchema.create_class("No data nodes allowed", no_datanodes = True)
+    with pytest.raises(Exception):
+        NeoSchema.add_data_point_new(class_internal_id=class_internal_id)   # The Class doesn't allow data nodes
+
+    class_internal_id , class_schema_id = NeoSchema.create_class("Car", schema_type="S")
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 0
+
+    # Successfully adding the first data point
+    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id)
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 1
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
+                                     properties={"color": "No properties allowed"},
+                                     silently_drop=False)   # Trying to set a non-allowed property
+
+
+    # Successfully adding a 2nd data point
+    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
+                                                   properties={"color": "No properties allowed"},
+                                                   silently_drop=True)
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 2
+
+    # Locate the data point just added
+    q = f'''
+    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
+    WHERE id(n) = {new_datanode_id}
+    RETURN n
+    '''
+    result = db.query_extended(q)
+    assert len(result) == 1
+    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
+
+
+    # Successfully adding a 3rd data point
+    NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["color"]) # Expand the allow class properties
+
+    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
+                                                   properties={"color": "white"})
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 3
+
+    # Locate the data point just added
+    q = f'''
+    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
+    WHERE id(n) = {new_datanode_id}
+    RETURN n
+    '''
+    result = db.query_extended(q)
+    assert len(result) == 1
+    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'white'}]]   # This time the properties got set
+
+
+    # Again expand the allow class properties
+    NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["year"])
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
+                                     properties={"color": "white", "make": "Toyota"},
+                                     silently_drop=False)   # Trying to set a non-allowed property
+
+
+    # Successfully adding a 4th data point
+    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
+                                                   properties={"color": "red", "make": "VW"},
+                                                   silently_drop=True)
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 4
+
+    # Locate the data point just added
+    q = f'''
+    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
+    WHERE id(n) = {new_datanode_id}
+    RETURN n
+    '''
+    result = db.query_extended(q)
+    assert len(result) == 1
+    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red'}]]   # The "color" got set, while the "make" got dropped
+
+
+    # Successfully adding a 5th data point
+    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
+                                                   properties={"color": "blue", "make": "Fiat", "year": 2000},
+                                                   silently_drop=True)
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 5
+
+    # Locate the data point just added
+    q = f'''
+    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
+    WHERE id(n) = {new_datanode_id}
+    RETURN n
+    '''
+    result = db.query_extended(q)
+    assert len(result) == 1
+    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'blue', 'year': 2000}]]
+    # The "color" and "year" got set, while the "make" got dropped
+
+
+    # Successfully adding a 6th data point
+    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
+                                                   properties={"color": "green", "year": 2022},
+                                                   silently_drop=False)
+
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 6
+
+    # Locate the data point just added
+    q = f'''
+    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
+    WHERE id(n) = {new_datanode_id}
+    RETURN n
+    '''
+    result = db.query_extended(q)
+    assert len(result) == 1
+    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'green', 'year': 2022}]]
+    # All properties got set
 
 
 
@@ -979,21 +1172,6 @@ def test_class_of_data_point(db):
     db.update_query(q)
     with pytest.raises(Exception):
         assert NeoSchema.class_of_data_point(node_id=neo_id) == "Person"    # Data node is associated to multiple classes
-
-
-
-def test_data_points_of_class(db):
-    pass    # TODO
-
-
-
-def test_data_points_lacking_schema(db):
-    pass    # TODO
-
-
-
-def test_get_data_point_id(db):
-    pass    # TODO
 
 
 

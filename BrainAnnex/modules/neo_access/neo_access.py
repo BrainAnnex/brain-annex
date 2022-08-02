@@ -582,6 +582,27 @@ class NeoAccess:
 
 
 
+    def exists_by_neo_id(self, neo_id) -> bool:         # TODO: test
+        """
+        Return True if a node with the given internal Neo4j exists, or False otherwise
+
+        :param neo_id:
+        :return:
+        """
+        q = f'''
+        MATCH (n) 
+        WHERE id(n) = {neo_id} 
+        RETURN count(n) AS number_of_nodes
+        '''
+
+        result = self.query(q)
+
+        number_of_nodes = result[0]["number_of_nodes"]
+
+        return number_of_nodes > 0
+
+
+
     def get_nodes(self, match: Union[int, dict],
                   return_neo_id=False, return_labels=False, order_by=None, limit=None,
                   single_row=False, single_cell=""):
