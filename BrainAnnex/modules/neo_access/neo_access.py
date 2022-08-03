@@ -1006,7 +1006,6 @@ class NeoAccess:
 
         :return:            A dict with 2 keys: "created" (True if a new node was created) and "neo_id"
         """
-
         if properties is None:
             properties = {}
 

@@ -159,20 +159,20 @@ def test_get_class_instances(db):
 
 def test_new_class_with_properties(db):
     """
-    _, new_id = NeoSchema.new_class_with_properties("Images",
+    _, new_id = NeoSchema.create_class_with_properties("Images",
                                                  ["width", "caption"], code="i"
                                                  )
     """
-    _, new_id = NeoSchema.new_class_with_properties(class_name="Documents",
-                                                 property_list=["caption"],
-                                                 code="d",
-                                                 class_to_link_to="Media"
-                                                 )
+    _, new_id = NeoSchema.create_class_with_properties(class_name="Documents",
+                                                       property_list=["caption"],
+                                                       code="d",
+                                                       class_to_link_to="Media"
+                                                       )
     assert NeoSchema.valid_schema_id(new_id)
     print("test_new_class_with_properties() - New class was assigned schema id: ", new_id)
 
-    #NeoSchema.new_class_with_properties("Category", ["name", "remarks"])
-    #NeoSchema.new_class_with_properties("Foreign Vocabulary", ["English", "notes"])
+    #NeoSchema.create_class_with_properties("Category", ["name", "remarks"])
+    #NeoSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"])
 
 
 

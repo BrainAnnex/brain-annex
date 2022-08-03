@@ -23,14 +23,14 @@ def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY
 
-    _, sch_1 = NeoSchema.new_class_with_properties(class_name="patient",
-                                                property_list=["name", "age", "balance"])
+    _, sch_1 = NeoSchema.create_class_with_properties(class_name="patient",
+                                                      property_list=["name", "age", "balance"])
 
-    _, sch_2 = NeoSchema.new_class_with_properties(class_name="result",
-                                                property_list=["biomarker", "value"])
+    _, sch_2 = NeoSchema.create_class_with_properties(class_name="result",
+                                                      property_list=["biomarker", "value"])
 
-    _, sch_3 = NeoSchema.new_class_with_properties(class_name="doctor",
-                                                property_list=["name", "specialty"])
+    _, sch_3 = NeoSchema.create_class_with_properties(class_name="doctor",
+                                                      property_list=["name", "specialty"])
 
     NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="HAS_RESULT")
     NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_3, rel_name="IS_ATTENDED_BY")
@@ -42,11 +42,11 @@ def create_sample_schema_1():
 def create_sample_schema_2():
     # Class "quotes" with relationship named "in_category" to Class "categories";
     # each Class has some properties
-    _, sch_1 = NeoSchema.new_class_with_properties(class_name="quotes",
-                                                property_list=["quote", "attribution", "verified"])
+    _, sch_1 = NeoSchema.create_class_with_properties(class_name="quotes",
+                                                      property_list=["quote", "attribution", "verified"])
 
-    _, sch_2 = NeoSchema.new_class_with_properties(class_name="categories",
-                                                property_list=["name", "remarks"])
+    _, sch_2 = NeoSchema.create_class_with_properties(class_name="categories",
+                                                      property_list=["name", "remarks"])
 
     NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="in_category")
 
@@ -401,9 +401,9 @@ def test_get_class_properties_fast(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        NeoSchema.new_class_with_properties(111)    # Invalid class name
+        NeoSchema.create_class_with_properties(111)    # Invalid class name
 
-    NeoSchema.new_class_with_properties("My first class", property_list=["A", "B", "C"])
+    NeoSchema.create_class_with_properties("My first class", property_list=["A", "B", "C"])
     neo_id = NeoSchema.get_class_neo_id("My first class")
     props = NeoSchema.get_class_properties_fast(neo_id)
     assert props == ["A", "B", "C"]
@@ -520,8 +520,8 @@ def test_get_data_point_id(db):
 def test_allowable_props(db):
     db.empty_dbase()
 
-    lax_int_id, lax_schema_id = NeoSchema.new_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
-    strict_int_id, strict_schema_id = NeoSchema.new_class_with_properties("My Strict class", ["A", "B"], schema_type="S")
+    lax_int_id, lax_schema_id = NeoSchema.create_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
+    strict_int_id, strict_schema_id = NeoSchema.create_class_with_properties("My Strict class", ["A", "B"], schema_type="S")
 
 
     d = NeoSchema.allowable_props(class_neo_id=lax_int_id,
@@ -606,7 +606,7 @@ def test_allowable_props(db):
 def test_schema_cache(db):      # TODO: move to its own section
     db.empty_dbase()
 
-    internal_id, _ = NeoSchema.new_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
+    internal_id, _ = NeoSchema.create_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
     schema_cache = SchemaCacheExperimental()
 
     class_attrs = NeoSchema.get_class_attributes(internal_id)
@@ -723,12 +723,11 @@ def test_add_data_point_merge(db):
         NeoSchema.add_data_point_merge(class_internal_id=class_internal_id)   # The Class doesn't allow data nodes
 
     class_internal_id , class_schema_id = NeoSchema.create_class("Car", schema_type="S")
-
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 0
 
 
     # Successfully adding the first data point
-    new_datanode_id = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id)
+    new_datanode_id, _ = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id)
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 1
 
     # Locate the data point just added
@@ -749,7 +748,7 @@ def test_add_data_point_merge(db):
 
 
     # The merging will use the already-existing data point, since we're only getting data nodes with no properties
-    new_datanode_id = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
+    new_datanode_id, _ = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
                                                    properties={"color": "No properties allowed"},
                                                    silently_drop=True)
 
@@ -769,7 +768,7 @@ def test_add_data_point_merge(db):
     # Successfully adding a new (2nd) data point
     NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["color"]) # Expand the allow class properties
 
-    new_datanode_id = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
+    new_datanode_id, _ = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
                                                    properties={"color": "white"})
 
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 2
@@ -795,7 +794,7 @@ def test_add_data_point_merge(db):
 
 
     # Successfully adding a 3rd data point
-    new_datanode_id = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
+    new_datanode_id, _ = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
                                                    properties={"color": "red", "make": "VW"},
                                                    silently_drop=True)
 
@@ -813,7 +812,7 @@ def test_add_data_point_merge(db):
 
 
     # Successfully adding a 4th data point
-    new_datanode_id = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
+    new_datanode_id, _ = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
                                                    properties={"color": "red", "make": "Fiat", "year": 2000},
                                                    silently_drop=True)
 
@@ -849,7 +848,7 @@ def test_add_data_point_merge(db):
 
     # By contrast, a new data node gets added now, because the "mileage" field will now be kept, and there's no "red car with 12,000 miles"
     NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["mileage"])
-    new_datanode_id = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
+    new_datanode_id, _ = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
                                                      properties={"color": "red", "mileage": 12000},
                                                      silently_drop=True)
 
@@ -883,6 +882,56 @@ def test_add_data_point_merge(db):
                                    silently_drop=True)
 
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 6     # Increased
+
+
+
+def test_add_col_data_merge(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.add_col_data_merge(class_internal_id=123, property_name="color", value_list=["white"])     # No such class exists
+
+    class_internal_id , class_schema_id = NeoSchema.create_class_with_properties("Car",
+                                                                                 property_list=["color", "year"],
+                                                                                 schema_type="S")
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 0
+
+    with pytest.raises(Exception):
+        NeoSchema.add_col_data_merge(class_internal_id=class_internal_id, property_name=123, value_list=["white"])  # property_name isn't a string
+        NeoSchema.add_col_data_merge(class_internal_id=class_internal_id, property_name="color", value_list="white")  # value_list isn't a list
+
+
+    # Successfully add 3 data points
+    result = NeoSchema.add_col_data_merge(class_internal_id=class_internal_id,
+                                          property_name="color", value_list=["red", "white", "blue"])
+    assert len(result["new_nodes"]) == 3
+    assert len(result["old_nodes"]) == 0
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 3
+
+
+    # Only 1 of the following 3 data points isn't already in the database
+    result = NeoSchema.add_col_data_merge(class_internal_id=class_internal_id,
+                                          property_name="color", value_list=["red", "green", "blue"])
+    assert len(result["new_nodes"]) == 1
+    assert len(result["old_nodes"]) == 2
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 4
+
+    id_green_car = result["new_nodes"][0]
+    data_point = NeoSchema.fetch_data_point(internal_id=id_green_car, labels="Car")
+    assert data_point["color"] == "green"
+
+
+    # Successfully add the 2 distinct data points, from the 3 below, using a different field
+    result = NeoSchema.add_col_data_merge(class_internal_id=class_internal_id,
+                                          property_name="year", value_list=[2003, 2022, 2022])
+    assert len(result["new_nodes"]) == 2
+    assert len(result["old_nodes"]) == 1
+    assert NeoSchema.count_data_points_of_class(class_internal_id) == 6
+
+
+    with pytest.raises(Exception):
+        NeoSchema.add_col_data_merge(class_internal_id=class_internal_id,
+                                property_name="UNKNOWN", value_list=[1, 2])     # Property not in Schema Class
 
 
 
