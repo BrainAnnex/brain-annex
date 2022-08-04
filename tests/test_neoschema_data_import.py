@@ -404,7 +404,7 @@ def test_create_data_nodes_from_python_data_6(db):
                                                            property_list=["source", "date"])
     NeoSchema.create_class_relationship(from_id=sch_import, to_id=sch_info["patient"], rel_name="imported_data")
 
-
+    # Some of the data below is not registered in the Schema
     data = {    "name": "Stephanie",
                 "age": 23,
                 "referred by": None,

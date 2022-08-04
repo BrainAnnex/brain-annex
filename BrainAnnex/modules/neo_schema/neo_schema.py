@@ -144,7 +144,8 @@ class NeoSchema:
         :param class_name:
         :return:
         """
-        assert type(class_name) == str, f"NeoSchema.valid_class_name(): The class name must be a string (instead, it's {type(class_name)})"
+        assert type(class_name) == str, \
+            f"NeoSchema.valid_class_name(): The class name must be a string (instead, it's of type {type(class_name)})"
         assert class_name != "", "NeoSchema.valid_class_name(): Class name cannot be an empty string"
 
 
@@ -1547,7 +1548,7 @@ class NeoSchema:
         :return:                If successful, an integer with the Neo4j ID of the node just created;
                                     otherwise, an Exception is raised
         """
-        if not class_neo_id:
+        if class_neo_id is None:                                # Note: zero could be a valid value
             class_neo_id = cls.get_class_neo_id(class_name)     # This call will also validate the class name
 
         if labels is None:

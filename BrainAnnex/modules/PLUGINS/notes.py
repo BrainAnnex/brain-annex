@@ -75,10 +75,11 @@ class Notes:
     @classmethod
     def new_content_item_in_category_SUCCESSFUL(cls, item_id: int, pars: dict) -> None:
         """
+        Invoked after a new Content Item of this type gets successfully added
 
         :param item_id:
         :param pars:
-        :return:
+        :return:        None
         """
         body = pars.get("body")
         FullTextIndexing.extract_unique_good_words(body)
@@ -87,10 +88,11 @@ class Notes:
     @classmethod
     def update_content_item_SUCCESSFUL(cls, item_id: int, pars: dict) -> None:
         """
+        Invoked after a Content Item of this type gets successfully updated
 
         :param item_id:
         :param pars:
-        :return:
+        :return:        None
         """
         body = pars.get("body")
         FullTextIndexing.extract_unique_good_words(body)
