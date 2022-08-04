@@ -1,4 +1,4 @@
-# Brain Annex, version 5.0-beta19 IN-PROGRESS
+# Brain Annex, version 5.0-beta19
 
 **Version 5** of is a *complete overhaul* of Brain Annex's  internal structure:
 
