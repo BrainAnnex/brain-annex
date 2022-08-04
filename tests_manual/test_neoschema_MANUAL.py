@@ -67,18 +67,18 @@ def test_get_class_properties(db):
 
 
 def test_add_properties_to_class(db):
-    result = NeoSchema.add_properties_to_class(1, ["Gender", "German"])
+    result = NeoSchema.add_properties_to_class(class_id=1, property_list=["Gender", "German"])
     assert result == 2
 
     """
     German_class_id = 1
     Profl_class_id = 2
     French_class_id = 4
-    result = NeoSchema.add_properties_to_class(German_class_id, ["German", "English", "Notes"])
+    result = NeoSchema.add_properties_to_class(class_id = German_class_id, property_list=["German", "English", "Notes"])
     assert result == 3
-    result = NeoSchema.add_properties_to_class(Profl_class_id, ["name", "role", "location", "notes"])
+    result = NeoSchema.add_properties_to_class(class_id = Profl_class_id, property_list=["name", "role", "location", "notes"])
     assert result == 4
-    result = NeoSchema.add_properties_to_class(French_class_id, ["French", "English", "Notes"])
+    result = NeoSchema.add_properties_to_class(class_id = French_class_id, property_list=["French", "English", "Notes"])
     assert result == 3
     """
 
@@ -134,9 +134,9 @@ def test_initialize_schema(db):
     _ , Profl_class_id = NeoSchema.create_class("Profl Connections")
     print(Profl_class_id)
 
-    NeoSchema.add_properties_to_class(German_class_id, ["German", "English", "Notes"])
+    NeoSchema.add_properties_to_class(class_id = German_class_id, property_list=["German", "English", "Notes"])
 
-    NeoSchema.add_properties_to_class(Profl_class_id, ["name", "role", "location", "notes"])
+    NeoSchema.add_properties_to_class(class_id = Profl_class_id, property_list=["name", "role", "location", "notes"])
 
     q = '''
         MATCH (c:CLASS {schema_id:1})
@@ -159,20 +159,20 @@ def test_get_class_instances(db):
 
 def test_new_class_with_properties(db):
     """
-    new_id = NeoSchema.new_class_with_properties("Images",
+    _, new_id = NeoSchema.create_class_with_properties("Images",
                                                  ["width", "caption"], code="i"
                                                  )
     """
-    new_id = NeoSchema.new_class_with_properties(class_name="Documents",
-                                                 property_list=["caption"],
-                                                 code="d",
-                                                 class_to_link_to="Media"
-                                                 )
+    _, new_id = NeoSchema.create_class_with_properties(class_name="Documents",
+                                                       property_list=["caption"],
+                                                       code="d",
+                                                       class_to_link_to="Media"
+                                                       )
     assert NeoSchema.valid_schema_id(new_id)
     print("test_new_class_with_properties() - New class was assigned schema id: ", new_id)
 
-    #NeoSchema.new_class_with_properties("Category", ["name", "remarks"])
-    #NeoSchema.new_class_with_properties("Foreign Vocabulary", ["English", "notes"])
+    #NeoSchema.create_class_with_properties("Category", ["name", "remarks"])
+    #NeoSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"])
 
 
 

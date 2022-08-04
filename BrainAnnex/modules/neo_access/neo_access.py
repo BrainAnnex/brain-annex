@@ -11,7 +11,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 3.9.1
+    VERSION 3.9.2
 
     High-level class to interface with the Neo4j graph database from Python.
     Mostly tested on version 4.3 of Neo4j Community version, but should work with other 4.x versions, too.
@@ -191,6 +191,21 @@ class NeoAccess:
         """
         if self.driver is not None:
             self.driver.close()
+
+
+
+    def assert_valid_neo_id(self, neo_id: int) -> None:
+        """
+        Raise an Exception if the argument is not a valid Neo4j ID
+        :param neo_id:
+        :return:        None
+        """
+        assert type(neo_id) == int, \
+            f"NeoAccess.assert_valid_neo_id(): Neo4j ID's MUST be integers; the value passed was {type(neo_id)}"
+
+        # Note that 0 is a valid Neo4j ID (apparently inconsistently assigned, on occasion, by the database)
+        assert neo_id >= 0, \
+            f"NeoAccess.assert_valid_neo_id(): Neo4j ID's cannot be negative; the value passed was {neo_id}"
 
 
 
@@ -567,6 +582,27 @@ class NeoAccess:
 
 
 
+    def exists_by_neo_id(self, neo_id) -> bool:         # TODO: test
+        """
+        Return True if a node with the given internal Neo4j exists, or False otherwise
+
+        :param neo_id:
+        :return:
+        """
+        q = f'''
+        MATCH (n) 
+        WHERE id(n) = {neo_id} 
+        RETURN count(n) AS number_of_nodes
+        '''
+
+        result = self.query(q)
+
+        number_of_nodes = result[0]["number_of_nodes"]
+
+        return number_of_nodes > 0
+
+
+
     def get_nodes(self, match: Union[int, dict],
                   return_neo_id=False, return_labels=False, order_by=None, limit=None,
                   single_row=False, single_cell=""):
@@ -921,7 +957,7 @@ class NeoAccess:
 
     def create_node(self, labels, properties=None) -> int:
         """
-        Create a new node with the given label and with the attributes/values specified in the items dictionary
+        Create a new node with the given label(s) and with the attributes/values specified in the properties dictionary.
         Return the Neo4j internal ID of the node just created.
 
         :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces)
@@ -945,12 +981,57 @@ class NeoAccess:
         cypher_labels = CypherUtils.prepare_labels(labels)
 
         # Assemble the complete Cypher query
-        cypher = f"CREATE (n {cypher_labels} {attributes_str}) RETURN n"
+        q = f"CREATE (n {cypher_labels} {attributes_str}) RETURN n"
 
-        self.debug_query_print(cypher, data_dictionary, "create_node")
+        self.debug_query_print(q, data_dictionary, "create_node")
 
-        result_list = self.query_extended(cypher, data_dictionary, flatten=True)
+        result_list = self.query_extended(q, data_dictionary, flatten=True)  # TODO: switch to update_query(), and verify the creation
+        if len(result_list) != 1:
+            raise Exception("NeoAccess.create_node(): failed to create the requested new node")
+
         return result_list[0]['neo4j_id']           # Return the Neo4j internal ID of the node just created
+
+
+
+    def merge_node(self, labels, properties=None) -> dict:  # TODO: test
+        """
+        The node gets created only if no other node with same labels and properties exists.
+
+        Create a new node with the given label(s) and with the attributes/values specified in the properties dictionary.
+
+        :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces)
+        :param properties:  An optional (possibly empty or None) dictionary of properties
+                                to try to match in an existing node, or - if not found - to set in a new node.
+                                EXAMPLE: {'age': 22, 'gender': 'F'}
+
+        :return:            A dict with 2 keys: "created" (True if a new node was created) and "neo_id"
+        """
+        if properties is None:
+            properties = {}
+
+        # From the dictionary of attribute names/values,
+        #       create a part of a Cypher query, with its accompanying data dictionary
+        (attributes_str, data_dictionary) = CypherUtils.dict_to_cypher(properties)
+        # EXAMPLE:
+        #       attributes_str = '{`cost`: $par_1, `item description`: $par_2}'
+        #       data_dictionary = {'par_1': 65.99, 'par_2': 'the "red" button'}
+
+        # Turn labels (string or list/tuple of labels) into a string suitable for inclusion into Cypher
+        cypher_labels = CypherUtils.prepare_labels(labels)
+
+        # Assemble the complete Cypher query
+        q = f"MERGE (n {cypher_labels} {attributes_str}) RETURN id(n) AS neo_id"
+
+        self.debug_query_print(q, data_dictionary, "merge_node")
+
+        result = self.update_query(q, data_dictionary)
+
+        neo_id = result["returned_data"][0]["neo_id"]     # The Neo4j internal ID of the node found or just created
+
+        if result.get("nodes_created", 0) == 1:
+            return {"created": True, "neo_id": neo_id}
+        else:
+            return {"created": False, "neo_id": neo_id}
 
 
 
@@ -1131,7 +1212,7 @@ class NeoAccess:
 
 
 
-    def create_node_with_links(self, labels, properties = None, links = None) -> int:
+    def create_node_with_links(self, labels, properties = None, links = None, merge=False) -> int:
         """
         Create a new node, with the given labels and optional properties,
         and make it a parent of all the EXISTING nodes that are specified
@@ -1169,8 +1250,10 @@ class NeoAccess:
                                     "rel_name"      REQUIRED - the name to give to the link
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
+        :param merge:       If True, a node gets created only if there's no other node
+                                with the same properties and labels     TODO: test
 
-        :return:                An integer with the Neo4j ID of the newly-created node
+        :return:            An integer with the Neo4j ID of the newly-created node
         """
         assert properties is None or type(properties) == dict, \
             f"NeoAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
@@ -1191,8 +1274,11 @@ class NeoAccess:
         #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
 
         # Define the portion of the Cypher query to create the new node
-        q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
-        # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
+        if merge:
+            q_CREATE = f"MERGE (n {labels_str} {cypher_props_str})"
+        else:
+            q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
+            # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
 
 
         if links:
@@ -1440,6 +1526,7 @@ class NeoAccess:
         Optionally, only delete nodes with the specified labels, or only keep nodes with the given labels.
         Note: the keep_labels list has higher priority; if a label occurs in both lists, it will be kept.
         IMPORTANT: it does NOT clear indexes; "ghost" labels may remain!
+        TODO: return the number of nodes deleted
 
         :param delete_labels:   An optional string, or list of strings, indicating specific labels to DELETE
         :param keep_labels:     An optional string or list of strings, indicating specific labels to KEEP
@@ -1450,7 +1537,7 @@ class NeoAccess:
             # Delete ALL nodes AND ALL relationship from the database; for efficiency, do it all at once
 
             q = "MATCH (n) DETACH DELETE(n)"
-            self.query(q)
+            self.query(q)       # TODO: switch to update_query() and return the number of nodes deleted
             return
 
         if not delete_labels:
@@ -1472,7 +1559,37 @@ class NeoAccess:
             if not (label in keep_labels):
                 q = f"MATCH (x:`{label}`) DETACH DELETE x"
                 self.debug_query_print(q, method="delete_nodes_by_label")
-                self.query(q)
+                self.query(q)       # TODO: switch to update_query() and return the number of nodes deleted
+
+
+
+    def bulk_delete_by_label(self, label: str):    # TODO: test.  CAUTION: only tested interactively
+        """
+        IMPORTANT: APOC required (starting from v 4.4 of Neo4j, will be able to do this without APOC)
+
+        Meant for large databases, where the straightforward deletion operations may result
+        in very large number of nodes, and take a long time (or possibly fail)
+
+        "If you need to delete some large number of objects from the graph,
+        one needs to be mindful of the not building up such a large single transaction
+        such that a Java OUT OF HEAP Error will be encountered."
+        See:  https://neo4j.com/developer/kb/large-delete-transaction-best-practices-in-neo4j/
+
+        TODO: generalize to bulk-deletion not just by label
+
+        :param label:   A string with the label of the nodes to delete (blank spaces in name are ok)
+        :return:        A dict with the keys "batches" and "total"
+        """
+        batch_size = 10000
+        q = f'''
+            CALL apoc.periodic.iterate("MATCH (n :`{label}`) RETURN id(n) as id", 
+                                       "MATCH (n) WHERE id(n) = id DETACH DELETE n", {{batchSize:{batch_size}}})
+            YIELD batches, total 
+            RETURN batches, total
+        '''
+        result = self.query(q)
+        return result[0]
+
 
 
 

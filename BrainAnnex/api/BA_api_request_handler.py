@@ -3,7 +3,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
-import re               # For REGEX
+import re                   # For REGEX
 import pandas as pd
 import os
 from flask import request, current_app  # TODO: phase out (?)
@@ -146,8 +146,8 @@ class APIRequestHandler:
 
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
-        new_id = NeoSchema.new_class_with_properties(new_class_name, property_list_clean,
-                                                     class_to_link_to=instance_of_class, link_to_name="INSTANCE_OF")
+        _, new_id = NeoSchema.create_class_with_properties(new_class_name, property_list_clean,
+                                                           class_to_link_to=instance_of_class, link_to_name="INSTANCE_OF")
 
 
         # If requested, link to another existing class
@@ -661,7 +661,7 @@ class APIRequestHandler:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if schema_code == "n":
-            Notes.new_content_item_in_category_SUCCESSFUL(new_item_id, original_post_data)
+            Notes.new_content_item_SUCCESSFUL(new_item_id, original_post_data)
 
 
         return new_item_id     # Success
@@ -904,6 +904,7 @@ class APIRequestHandler:
 
         msg = f"Processed all files. Running total count of imported files is {cls.import_file_count}"
         cls.append_to_log(msg)
+        cls.ongoing_data_intake = False          # De-activate the continuous intake
         return msg
 
 
