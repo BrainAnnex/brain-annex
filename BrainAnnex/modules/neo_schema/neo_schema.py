@@ -1465,9 +1465,11 @@ class NeoSchema:
         Add a data column (i.e. a set of single-property data nodes).
         Individual nodes are created only if there's no other data point with the same property/value
 
+        TODO: this is a simple approach; introduce a more efficient one, possibly using APOC
+
         :param class_internal_id:   The internal database ID of the Class node for the data points
-        :param property_name:
-        :param value_list:
+        :param property_name:       The name of the data column
+        :param value_list:          The data column as a list
         :return:                    A dictionary with 2 keys - "new_nodes" and "old_nodes"
         """
         assert type(property_name) == str, \

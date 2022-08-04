@@ -19,6 +19,7 @@ def test_split_into_words():
     assert result == ["hello", "world"]
 
     text = '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
+
     result = FullTextIndexing.split_into_words(text, to_lower_case=False)
     assert result == ['Mr', 'Joe', 'sons', 'A', 'Long', 'Term', 'business', 'Find', 'it', 'at', 'http', 'example', 'com', 'home', 'Visit', 'Joe', 's', 'NOW']
 

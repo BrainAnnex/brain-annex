@@ -661,7 +661,7 @@ class APIRequestHandler:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if schema_code == "n":
-            Notes.new_content_item_in_category_SUCCESSFUL(new_item_id, original_post_data)
+            Notes.new_content_item_SUCCESSFUL(new_item_id, original_post_data)
 
 
         return new_item_id     # Success

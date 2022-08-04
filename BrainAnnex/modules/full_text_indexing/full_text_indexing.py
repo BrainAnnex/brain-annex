@@ -14,42 +14,59 @@ class FullTextIndexing:
     # TODO: allow over-ride in config file
     COMMON_WORDS = ['and', 'or', 'either', 'nor', 'neither',
                     'the', 'an', 'with', 'without', 'within',
-                    'in', 'on', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by',
+                    'in', 'out', 'on', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by',
                     'if', 'whether', 'then', 'else',
                     'me', 'my', 'mine', 'he', 'she', 'it', 'him', 'his', 'her', 'its',
                     'we', 'our', 'you', 'your', 'yours', 'they', 'them', 'their',
                     'why', 'because', 'since', 'how', 'for', 'both', 'indeed',
                     'help', 'helps', 'let', 'lets',
                     'go', 'goes', 'going', 'gone', 'became', 'become',
-                    'be', 'is', 'isn', 'am', 'are', 'aren', 'been', 'was', 'wasn',
-                    'can', 'could', 'might', 'may', 'do', 'does', 'did', 'didn', 'done', 'make', 'made', 'making',
+                    'be', 'is', 'isn', 'am', 'are', 'aren', 'been', 'was', 'wasn', 'being',
+                    'can', 'could', 'might', 'may', 'do', 'does', 'did', 'didn', 'done', 'doing',
+                    'make', 'made', 'making',
                     'have', 'haven', 'has', 'had', 'hadn', 'having',
                     'must', 'need', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
                     'will', 'would',
-                    'get', 'gets', 'got',
+                    'get', 'gets', 'got', 'take', 'takes',
                     'ask', 'asks', 'answer', 'answers',
                     'when', 'where', 'which', 'who', 'why', 'what',
                     'no', 'yes', 'maybe', 'ok', 'oh',
-                    'll', 've', 'hr', 'ie', 'so', 'min',
+                    'ie', 'i.e', 'eg', 'e.g',
+                    'll', 've', 'so',
                     'good', 'better', 'best', 'great', 'well', 'bad',  'worse', 'worst',
                     'just', 'about', 'above', 'again', 'ago',
-                    'times', 'date', 'dates', 'today', 'day', 'month', 'year', 'days', 'months', 'years',
-                    'now', 'late', 'early', 'soon', 'later', 'earlier',
-                    'after', 'before', 'yet', 'whenever', 'while', 'ever', 'never', 'often', 'sometimes', 'occasionally',
-                    'old', 'older', 'new', 'newer', 'begin', 'began',
-                    'up', 'down', 'over', 'above', 'under', 'below', 'between', 'wherever',
-                    'next', 'previous', 'other', 'thing', 'things',
-                    'like', 'as', 'fairly',
-                    'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than',
-                    'full', 'empty', 'lot', 'very',
+                    'times', 'date', 'dates', 'today', 'day', 'month', 'year', 'yr', 'days', 'months', 'years',
+                    'hour', 'hr', 'minute', 'min', 'second', 'sec',
+                    'now', 'currently', 'late', 'early', 'soon', 'later', 'earlier', 'already',
+                    'after', 'before', 'yet', 'whenever', 'while', 'during', 'ever',
+                    'never', 'occasionally', 'sometimes', 'often', 'always', 'eventually',
+                    'old', 'older', 'new', 'newer',
+                    'begin', 'began', 'start', 'starting', 'started',
+                    'in', 'out', 'here', 'there',
+                    'up', 'down', 'over', 'above', 'under', 'below', 'between', 'among', 'wherever',
+                    'next', 'previous', 'other', 'another', 'thing', 'things',
+                    'like', 'as', 'such', 'fairly', 'actual', 'actually',
+                    'simple', 'simpler', 'simplest',
+                    'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than', 'extra', 'enough',
+                    'everything', 'nothing',
+                    'few', 'fewer', 'many', 'multiple', 'much', 'same', 'different',
+                    'full', 'empty', 'lot', 'very', 'around', 'vary', 'varying',
+                    'approximately', 'approx', 'certain', 'uncertain',
                     'part', 'parts', 'wide', 'narrow', 'side',
-                    'hence', 'therefore', 'whereas',
+                    'hence', 'therefore', 'thus', 'whereas',
                     'whom', 'whoever', 'whose',
-                    'this', 'that',
+                    'this', 'that', 'these', 'those',
                     'too', 'also',
                     'related', 'issues', 'issue',
+                    'use', 'used',
                     'com', 'www', 'http', 'https',
-                    'one', 'two']
+                    'one', 'two',
+                    'include', 'including', 'incl', 'except', 'test', 'testing', 'sure', 'according', 'accordingly',
+                    'basically', 'essentially', 'called', 'named', 'consider', 'considering', 'however', 'especially', 'etc',
+                    'happen', 'happens',
+                    'small', 'smaller', 'smallest', 'big', 'bigger', 'biggest', 'large', 'larger', 'largest',
+
+                    'data', 'value', 'values']
 
 
 
@@ -83,7 +100,7 @@ class FullTextIndexing:
                     and word not in word_list:
                 word_list.append(word)
 
-        print("The word list for the index is: ", word_list)
+        #print("The word list for the index is: ", word_list)
 
         return word_list
 

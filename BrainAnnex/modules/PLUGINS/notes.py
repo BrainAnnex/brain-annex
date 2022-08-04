@@ -1,5 +1,6 @@
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
 class Notes:
@@ -71,9 +72,8 @@ class Notes:
 
 
 
-
     @classmethod
-    def new_content_item_in_category_SUCCESSFUL(cls, item_id: int, pars: dict) -> None:
+    def new_content_item_SUCCESSFUL(cls, item_id: int, pars: dict) -> None:
         """
         Invoked after a new Content Item of this type gets successfully added
 
@@ -81,8 +81,12 @@ class Notes:
         :param pars:
         :return:        None
         """
+        return  # For now, index isn't being done
         body = pars.get("body")
-        FullTextIndexing.extract_unique_good_words(body)
+        unique_words = FullTextIndexing.extract_unique_good_words(body)
+
+        cls.update_index(unique_words)
+
 
 
     @classmethod
@@ -94,5 +98,25 @@ class Notes:
         :param pars:
         :return:        None
         """
+        return  # For now, index isn't being done
         body = pars.get("body")
-        FullTextIndexing.extract_unique_good_words(body)
+        unique_words = FullTextIndexing.extract_unique_good_words(body)
+
+        cls.update_index(unique_words)
+
+
+
+    @classmethod
+    def update_index(cls, unique_words: [str]) -> None:
+        """
+        TODO: run this in a separate thread, in a separate class
+
+        :param unique_words:    A list of strings containing "acceptable", unique words to index
+        :return:                None
+        """
+        class_db_id = NeoSchema.get_class_neo_id(class_name="Word")
+
+        #print("unique_words: \n", unique_words)
+
+        # Add each of words to the index, unless already present there
+        NeoSchema.add_col_data_merge(class_internal_id=class_db_id, property_name="name", value_list=unique_words)
