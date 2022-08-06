@@ -1,6 +1,8 @@
-# Brain Annex, version 5.0-beta19
+# Brain Annex
 
-**Version 5** of is a *complete overhaul* of Brain Annex's  internal structure:
+**Version 5** of is a *complete overhaul* of Brain Annex's internal structure.  
+This major new release is in a *late Beta* stage, approaching "release candidate".  
+The version number can be found in `VERSION_NUMBER.txt`
 
 * **Neo4j graph database** (v. 4.3) replaces MySQL and the built-in triplestore database
 
@@ -10,7 +12,6 @@
 
 * **Vue2.js** has expanded to take on a full role, replacing the old vanilla-JavaScript parts
 
-This major new release is currently in a *late Beta* stage, appproaching "release candidate".
 
 **[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
 

@@ -27,12 +27,16 @@ class APIRequestHandler:
     Used by the UI for Page Generation,
     as well as by the API to produce data for the endpoints.
 
-    "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
-    """
-    # The "db" and "FOLDER" properties get set by InitializeBrainAnnex
+    This class does NOT get instantiated.
 
-    db = None           # MUST be set before using this class!
-                        # Database-interface object is a CLASS variable, accessible as cls.db
+    TODO: possibly absorb (the non-Categories part of) PagesRequestHandler, and
+          get renamed DataManager
+
+    Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
+    """
+    # The "db" and several other properties get set by InitializeBrainAnnex
+
+    db = None           # MUST be set before using this class!  NeoAccess" object
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored
                         # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
@@ -46,11 +50,21 @@ class APIRequestHandler:
 
 
 
+
     @classmethod
-    def export_full_dbase(cls):
-        return cls.db.export_dbase_json()
+    def add_new_label(cls, label: str) -> bool:
+        """
+        Add a new blank node with the specified label
+
+        :return:    True if successful, or False otherwise
+        """
+
+        cls.db.create_node(label, {})
+
+        return True     # TODO: check the actual success of the operation
 
 
+    #######################     GENERAL UTILITIES       #######################
 
     @classmethod
     def exception_helper(cls, ex, safe_html=False) -> str:
@@ -80,21 +94,23 @@ class APIRequestHandler:
 
 
     @classmethod
-    def add_new_label(cls, label: str) -> bool:
+    def to_int_if_possible(cls, s: str) -> Union[int, str, None]:
         """
-        Add a new blank node with the specified label
-
-        :return:    True if successful, or False otherwise
+        Convert the argument to an integer, if at all possible; otherwise, leave it as a string
+        (or leave it as None, if applicable)
+        :param s:
+        :return:    Either an int or a string
         """
-
-        cls.db.create_node(label, {})
-
-        return True     # TODO: check the actual success of the operation
+        try:
+            return int(s)
+        except Exception:
+            return s
 
 
 
 
     #######################     SCHEMA-RELATED       #######################
+    # TODO: possibly move to separate class
 
     @classmethod
     def new_schema_class(cls, class_specs: dict) -> None:
@@ -557,6 +573,7 @@ class APIRequestHandler:
     def new_content_item_in_category(cls, post_data: dict) -> int:
         """
         Create a new Content Item attached to a particular Category
+        # TODO: possibly generalize from "Category" to "Collection"
 
         :param post_data:   A dict containing the following keys
             - "category_id"  (for the linking to a Category)
@@ -733,25 +750,16 @@ class APIRequestHandler:
         return result
 
 
-    @classmethod
-    def to_int_if_possible(cls, s: str) -> Union[int, str, None]:
-        """
-        Convert the argument to an integer, if at all possible; otherwise, leave it as a string
-        (or leave it as None, if applicable)
-        :param s:
-        :return:    Either an int or a string
-        """
-        try:
-            return int(s)
-        except Exception:
-            return s
-
-
-
 
     ############################################################
     #                       IMPORT-EXPORT                      #
     ############################################################
+
+    @classmethod
+    def export_full_dbase(cls):
+        return cls.db.export_dbase_json()
+
+
 
     @classmethod
     def upload_import_json(cls, verbose=False, return_url=None) -> str:
@@ -856,6 +864,11 @@ class APIRequestHandler:
 
     @classmethod
     def do_stop_data_intake(cls) -> None:
+        """
+        Request that the continuous data import cease upon the completion of the current import
+
+        :return:    None
+        """
         cls.ongoing_data_intake = False
 
 
@@ -1000,47 +1013,6 @@ class APIRequestHandler:
             raise Exception(error_msg)      # The Exception is re-raised, because failure to move a file must stop the continuous import
 
 
-    @classmethod
-    def init_logfile(cls) -> None:
-        """
-        Prepare a handle for the log file
-
-        :return:
-        """
-        # Open (creating it if necessary) the log file
-        try:
-            cls.log_file_handle = open(cls.LOG_FOLDER + cls.log_filename, "a")  # If not present, create it
-        except Exception as ex:
-            error_msg = f"Unable to open or create a log file named {cls.LOG_FOLDER + cls.log_filename} : {ex}"
-            print(error_msg)
-            #raise Exception(error_msg)     # TODO: This should happen at program startup, in main
-
-
-
-    @classmethod
-    def append_to_log(cls, msg) -> None:
-        """
-
-        :param msg:
-        :return:
-        """
-        # Prepare timestamp
-        now = datetime.now()
-        dt_string = now.strftime("%m/%d/%Y %H:%M")   # mm/dd/YY H:M    (for seconds, add  :%S)
-
-        if cls.log_file_handle is None:
-            cls.init_logfile()
-
-        # Make a log of the operation
-        try:
-            cls.log_file_handle.write(f"{dt_string} - {msg}\n")
-            cls.log_file_handle.flush()             # To avoid buffering issues
-        except Exception as ex:
-            # To deal with situation where the log file got deleted/moved by user, but we're still attempting to use the old handle
-            cls.init_logfile()
-
-
-
 
     @classmethod
     def define_pattern(cls) -> str:
@@ -1120,6 +1092,49 @@ class APIRequestHandler:
         """
 
         return f"File `{basename}` uploaded and imported successfully"
+
+
+
+    #######################     LOGGING-RELATED       #######################
+
+    @classmethod
+    def init_logfile(cls) -> None:
+        """
+        Prepare a handle for the log file
+
+        :return:
+        """
+        # Open (creating it if necessary) the log file
+        try:
+            cls.log_file_handle = open(cls.LOG_FOLDER + cls.log_filename, "a")  # If not present, create it
+        except Exception as ex:
+            error_msg = f"Unable to open or create a log file named {cls.LOG_FOLDER + cls.log_filename} : {ex}"
+            print(error_msg)
+            #raise Exception(error_msg)     # TODO: This should happen at program startup, in main
+
+
+
+    @classmethod
+    def append_to_log(cls, msg) -> None:
+        """
+
+        :param msg:
+        :return:
+        """
+        # Prepare timestamp
+        now = datetime.now()
+        dt_string = now.strftime("%m/%d/%Y %H:%M")   # mm/dd/YY H:M    (for seconds, add  :%S)
+
+        if cls.log_file_handle is None:
+            cls.init_logfile()
+
+        # Make a log of the operation
+        try:
+            cls.log_file_handle.write(f"{dt_string} - {msg}\n")
+            cls.log_file_handle.flush()             # To avoid buffering issues
+        except Exception as ex:
+            # To deal with situation where the log file got deleted/moved by user, but we're still attempting to use the old handle
+            cls.init_logfile()
 
 
 
