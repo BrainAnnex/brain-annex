@@ -2,10 +2,13 @@ import os
 
 
 class MediaManager:
+    """
+    Helper library for the management of media files
+    """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored
                         # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
-                        # This is set by initalize.py
+                        # This is set by initialize.py
 
 
     @classmethod

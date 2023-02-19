@@ -137,7 +137,7 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def assert_valid_class_name(cls, class_name: str):
+    def assert_valid_class_name(cls, class_name: str) -> None:
         """
         Raise an Exception if the passed argument is not a valid Class name
 

@@ -149,6 +149,7 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #   and specify the URL prefixes to use for the various modules
 #   TODO: maybe all the various setup() methods could take an optional 2nd arg, a dict,
 #         to pass module-specific data
+#   TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
 
 # The site's home/top-level pages, incl. login
 Home.setup(app)
@@ -178,7 +179,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 #APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 #UPLOAD_FOLDER = os.path.join(APP_ROOT, 'api/static/')
 
-# STORE OTHER PARAMETERS IN FLASK
+# STORE OTHER PARAMETERS IN FLASK (used for Continuous Data Ingestion)
 app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
 app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
 

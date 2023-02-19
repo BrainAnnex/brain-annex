@@ -61,7 +61,7 @@ class NeoAccess:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2022 Julian A. West
+        Copyright (c) 2021-2023 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org).
         See "AUTHORS", above, for full credits.
@@ -177,7 +177,11 @@ class NeoAccess:
 
 
     def version(self) -> str:
-        # Return the version of the Neo4j driver being used.  EXAMPLE: "4.3.9"
+        """
+        Return the version of the Neo4j driver being used.  EXAMPLE: "4.3.9"
+
+        :return:    A string with the version number
+        """
         return neo4j_driver_version
 
 
@@ -587,7 +591,7 @@ class NeoAccess:
         Return True if a node with the given internal Neo4j exists, or False otherwise
 
         :param neo_id:
-        :return:
+        :return:        True if a node with the given internal Neo4j exists, or False otherwise
         """
         q = f'''
         MATCH (n) 

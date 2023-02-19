@@ -1,4 +1,3 @@
-from BrainAnnex.modules.neo_access import neo_access
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from typing import Union
 
@@ -8,6 +7,11 @@ from typing import Union
 class Categories:
     """
     Library for Category-related operations.
+
+    An entity to which a variety of nodes (e.g. representing records or media)
+    is attached, with a positional attribute.
+
+    Categories also have "subcategory" relationships with other categories.
 
     Contains the following groups of methods:
         1. LOOKUP
@@ -856,6 +860,9 @@ class Categories:
 class Collections:
     """
     A generalization of Categories.
+
+    An entity to which a variety of nodes (e.g. representing records or media)
+    is attached, with a positional attribute.
 
     TODO: maybe turn into an instantiatable class, so as not to have to repeatedly pass "membership_rel_name"
     """

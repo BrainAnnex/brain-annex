@@ -7,7 +7,6 @@ from flask import Blueprint, jsonify, request, current_app, make_response  # The
 from flask_login import login_required
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer     # TODO: to phase out
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import sys                  # Used to give better feedback on Exceptions
@@ -1400,6 +1399,12 @@ class ApiRouting:
             Typically, the uploads are initiated by forms containing:
                 <input type="file" name="imported_datafile">
                 <input type="hidden" name="return_url" value="my_return_url">
+                <input type="submit" value="Import data file">
+
+            Note:       name="imported_datafile"
+                    and
+                        name="return_url"
+                    must be exactly as stated
         
             EXAMPLE invocation: http://localhost:5000/BA/api/parse_datafile
         
@@ -1410,19 +1415,23 @@ class ApiRouting:
                 return "This endpoint requires POST data (you invoked it with a GET method.) No action taken..."   # Handy for testing
         
             try:
-                upload_dir = current_app.config['UPLOAD_FOLDER']
-                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+                # Manage the upload
+                upload_dir = current_app.config['UPLOAD_FOLDER']    # Defined in main file
+                (tmp_filename_for_upload, full_filename, original_name) = \
+                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         
-            print("In import_datafile(): ", (tmp_filename_for_upload, full_filename))
+            print("In import_datafile(): ", (tmp_filename_for_upload, full_filename, original_name))
         
-            return_url = request.form["return_url"] # This originates from the HTML form :
-            #    <input type="hidden" name="return_url" value="my_return_url">
+            return_url = request.form["return_url"] # This originates from the HTML form - namely the line:
+                                                    #    <input type="hidden" name="return_url" value="my_return_url">
             print("return_url: ", return_url)
-        
+
+            #status_msg = "Testing"
             status_msg = APIRequestHandler.import_datafile(tmp_filename_for_upload, full_filename, test_only=True)
-        
+
+            # Provide a return link
             status_msg += f" <a href='{return_url}' style='margin-left:50px'>Go back</a>"
         
             return status_msg

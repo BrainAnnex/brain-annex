@@ -38,6 +38,7 @@ class InitializeBrainAnnex:
         (another approach, currently partially used, would be to pass them thru Flask's app.config)
 
         :param media_folder:
+        :param log_folder:
         :return:
         """
         APIRequestHandler.MEDIA_FOLDER = media_folder
