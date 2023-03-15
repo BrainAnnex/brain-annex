@@ -17,3 +17,5 @@ pandas==1.4.3
 pytest==6.2.5
 
 pillow==9.0.1
+
+jupyterlab==3.4.8
