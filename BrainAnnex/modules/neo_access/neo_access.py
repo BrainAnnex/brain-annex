@@ -1673,7 +1673,6 @@ class NeoAccess:
 
 
 
-
     def empty_dbase(self, keep_labels=None, drop_indexes=False, drop_constraints=False) -> None:
         """
         Use this to get rid of everything in the database,
@@ -1877,49 +1876,6 @@ class NeoAccess:
 
 
 
-    # TODO: temporary function, to delete
-    def add_links_OLD(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name:str) -> int:
-        # Validate, and possibly create, the match dictionaries
-        match_from = CypherUtils.validate_and_standardize(match_from, dummy_node_name="from")
-        match_to   = CypherUtils.validate_and_standardize(match_to, dummy_node_name="to")
-
-        # Make sure there's no conflict in node dummy names
-        CypherUtils.check_match_compatibility(match_from, match_to)
-
-        # Unpack needed values from the match_from and match_to structures
-        nodes_from = CypherUtils.extract_node(match_from)
-        nodes_to   = CypherUtils.extract_node(match_to)
-
-        where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
-                                                                            # and also prefix (if appropriate) the WHERE keyword
-
-        from_dummy_name = CypherUtils.extract_dummy_name(match_from)
-        to_dummy_name = CypherUtils.extract_dummy_name(match_to)
-
-        # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
-        q = f'''
-            MATCH {nodes_from}, {nodes_to}
-            {where_clause}
-            MERGE ({from_dummy_name}) -[:`{rel_name}`]-> ({to_dummy_name})           
-            '''
-
-        # Merge the data-binding dict's
-        combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
-
-        self.debug_query_print(q, combined_data_binding, "add_links")
-
-        result = self.update_query(q, combined_data_binding)
-        if self.debug:
-            print("    result of update_query in add_links(): ", result)
-
-        number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
-        if number_relationships_added == 0:       # This could be more than 1: see notes above
-            raise Exception(f"add_links(): the requested relationship ({rel_name}) was NOT added")
-
-        return number_relationships_added
-
-
-
     # TODO: deprecated by add_links()
     def add_edges(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name:str, rel_props = None) -> int:
         """
@@ -1959,11 +1915,14 @@ class NeoAccess:
         where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
                                                                             # and also prefix (if appropriate) the WHERE keyword
 
-        # Prepare the query to add the requested edge between the given nodes
+        from_dummy_name = CypherUtils.extract_dummy_name(match_from)
+        to_dummy_name = CypherUtils.extract_dummy_name(match_to)
+
+        # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
         q = f'''
             MATCH {nodes_from}, {nodes_to}
             {where_clause}
-            MERGE (from) -[:`{rel_name}`]-> (to)           
+            MERGE ({from_dummy_name}) -[:`{rel_name}`]-> ({to_dummy_name})           
             '''
 
         # Merge the data-binding dict's
@@ -1977,7 +1936,7 @@ class NeoAccess:
 
         number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
         if number_relationships_added == 0:       # This could be more than 1: see notes above
-            raise Exception(f"The requested relationship {rel_name} was NOT added")
+            raise Exception(f"add_edges(): the requested relationship ({rel_name}) was NOT added")
 
         return number_relationships_added
 

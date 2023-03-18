@@ -1139,10 +1139,17 @@ def test_add_edges(db):
     neo_to = db.create_node("owner", {'name': 'Julian'})
 
     match_from = db.find(neo_id=neo_from, dummy_node_name="from")
-    match_to = db.find(neo_id=neo_to, dummy_node_name="to")
+    match_to = db.find(neo_id=neo_to)   # , dummy_node_name="to"
 
     number_added = db.add_edges(match_from, match_to, rel_name="OWNED_BY")
     assert number_added == 1
+
+    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    result = db.query(q, single_row=True)
+    print(result)
+    assert result == {'number_cars': 1, 'number_owners': 1}
+
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
@@ -1494,7 +1501,7 @@ def test_get_indexes(db):
 
 
 def test_create_index(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     status = db.create_index(label="car", key="color")
     assert status == True
@@ -1524,7 +1531,7 @@ def test_create_index(db):
 
 
 def test_drop_index(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_index("car", "color")
     db.create_index("car", "make")
@@ -1546,7 +1553,7 @@ def test_drop_index(db):
 
 
 def test_drop_all_indexes(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_index("car", "color")
     db.create_index("car", "make")
@@ -1566,7 +1573,7 @@ def test_drop_all_indexes(db):
 ###  ~ CONSTRAINTS ~
 
 def test_get_constraints(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     result = db.get_constraints()
     assert result.empty
@@ -1588,7 +1595,7 @@ def test_get_constraints(db):
 
 
 def test_create_constraint(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     status = db.create_constraint("patient", "patient_id", name="my_first_constraint")
     assert status == True
@@ -1625,7 +1632,7 @@ def test_create_constraint(db):
 
 
 def test_drop_constraint(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_constraint("patient", "patient_id", name="constraint1")
     db.create_constraint("client", "client_id")
@@ -1651,7 +1658,7 @@ def test_drop_constraint(db):
 
 
 def test_drop_all_constraints(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_constraint("patient", "patient_id", name="constraint1")
     db.create_constraint("client", "client_id")
