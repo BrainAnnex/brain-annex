@@ -1446,7 +1446,6 @@ class NeoSchema:
 
         if result["created"]:
             # If a new data node was created, it must be linked to its Class node
-            #cls.db.add_edges(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA")
             cls.db.add_links_fast(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA")
         else:
             # Verify that is already has a SCHEMA link to its Class node

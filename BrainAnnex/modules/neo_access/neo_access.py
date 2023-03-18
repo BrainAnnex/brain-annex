@@ -835,7 +835,7 @@ class NeoAccess:
             match_to =   db.find(labels="manufacturer", key_name="company", key_value="Toyota",
                                  dummy_node_name="to")
 
-            db.add_edges(match_from, match_to, rel_name="MADE_BY")
+            db.add_edges(match_from, match_to, rel_name="MADE_BY")   # THIS FUNCTION WAS OBSOLETED
 
         TODO? - possible alt. names  for this function include "define_match()", match(), "locate(), choose() or identify()
 
@@ -1115,180 +1115,73 @@ class NeoAccess:
 
 
 
-    def create_node_with_relationships(self, labels, properties=None, connections=None) -> int:
+    def create_attached_node(self, labels, properties = None,
+                             attached_to = None, rel_name = None, rel_dir = "OUT",
+                             merge=True) -> int:
         """
-        TODO: this method may no longer be needed, given the new method create_node_with_links()
-              Maybe ditch, or extract the Neo4j ID's from the connections,
-              and call create_node_with_links()
+        Create a new node (or possibly re-use an existing one),
+        with the given labels and optional specified properties,
+        and attached all the EXISTING nodes specified in the (possibly empty) list of nodes attached_to,
+        using the given relationship name.
+        All the relationships are OUTbound or INbound from the newly-created node,
+        depending on the value of rel_dir.
 
-        Create a new node with relationships to zero or more PRE-EXISTING nodes
-        (identified by their labels and key/value pairs).
+        If merge=True, if an existing node is already present with the same labels and properties,
+        it will be re-used rather than created (in that case, only the relationships will be created)
 
-        If the specified pre-existing nodes aren't found, then no new node is created,
-        and an Exception is raised.
+        Note: this is a simpler version of create_node_with_links()
 
-        On success, return the Neo4j internal ID of the new node just created.
+        If any of the requested link nodes isn't found,
+        then no new node is created, and an Exception is raised.
 
-        Note: if all connections are outbound, and to nodes with known Neo4j internal IDs, then
-              the simpler method create_node_with_children() may be used instead
+        Note: under unusual circumstances, the new node may be created even in situations where Exceptions are raised;
+              for example, if attempting to create two identical relationships to the same existing node.
 
         EXAMPLE:
-            create_node_with_relationships(
-                                            labels="PERSON",
-                                            properties={"name": "Julian", "city": "Berkeley"},
-                                            connections=[
-                                                        {"labels": "DEPARTMENT",
-                                                         "key": "dept_name", "value": "IT",
-                                                         "rel_name": "EMPLOYS", "rel_dir": "IN"},
-
-                                                        {"labels": ["CAR", "INVENTORY"],
-                                                         "key": "vehicle_id", "value": 12345,
-                                                         "rel_name": "OWNS", "rel_attrs": {"since": 2021} }
-                                            ]
+            create_attached_node(
+                                    labels="COMPANY",
+                                    properties={"name": "Acme Gadgets", "city": "Berkeley"},
+                                    attached_to=[123, 456],
+                                    rel_name="EMPLOYS"
             )
 
-        :param labels:      A string, or list of strings, with label(s) to assign to the new node
-        :param properties:  A dictionary of properties to assign to the new node
-        :param connections: A (possibly empty) list of dictionaries with the following keys
-                            (all optional unless otherwise specified):
-                                --- Keys to locate an existing node ---
-                                    "labels"        RECOMMENDED
-                                    "key"           REQUIRED
-                                    "value"         REQUIRED
-                                --- Keys to define a relationship to it ---
-                                    "rel_name"      REQUIRED.  The name to give to the new relationship
-                                    "rel_dir"       Either "OUT" or "IN", relative to the new node (by default, "OUT")
-                                    "rel_attrs"     A dictionary of relationship attributes
+        :param labels:      Labels to assign to the newly-created node (a string, possibly empty, or list of strings)
+        :param properties:  (OPTIONAL) A dictionary of optional properties to assign to the newly-created node
+        :param attached_to: (OPTIONAL) An integer, or list/tuple of integers,
+                                with internal database ID's to identify the existing nodes;
+                                use None, or an empty list, to indicate if there aren't any
+        :param rel_name:    (OPTIONAL) Name of the newly created relationships.
+                                This is required, if an attached_to list was provided
+        :param rel_dir:     (OPTIONAL) Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationships to create
+        :param merge:       (OPTIONAL) If True (default), a new node gets created only if there's no existing node
+                                with the same properties and labels
 
-        :return:            If successful, an integer with the Neo4j internal ID of the node just created;
-                                otherwise, an Exception is raised
+        :return:            An integer with the internal database ID of the newly-created node
         """
-        #print(f"In create_node_with_relationships().  connections: {connections}")
-
-        # Prepare strings suitable for inclusion in a Cypher query, to define the new node to be created
-        labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
-        (cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(properties)
-        # EXAMPLE:
-        #   cypher_props_str = "{`name`: $par_1, `city`: $par_2}"
-        #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
-
-        # Define the portion of the Cypher query to create the new node
-        q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
-        # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
-        #print("\n", q_CREATE)
-
-        # Define the portion of the Cypher query to look up the requested existing nodes
-        if connections is None or connections == []:
-            q_MATCH = ""        # There will no need for a match, if there are no connections to be made
+        if type(attached_to) == int:
+            attached_to = [attached_to]
         else:
-            q_MATCH = "MATCH"
+            assert (attached_to is None) or (type(attached_to) == list) or (type(attached_to) == tuple), \
+                f"create_attached_node(): the argument `attached_to` must be a list or tuple or None; instead, it's {type(attached_to)}"
 
-        # Define the portion of the Cypher query to link up the new node to any of the existing ones
-        q_MERGE = ""
+        assert (rel_dir is None) or (rel_dir == "IN") or (rel_dir == "OUT"), \
+            f"create_attached_node(): the argument `rel_dir` must be either 'IN' or 'OUT' or None; instead, it's `{rel_dir}`"
 
-        if properties is None:
-            properties = []
+        if attached_to is not None:
+            assert (rel_name is not None) and (rel_name != ""), \
+                f"create_attached_node(): when the the argument `attached_to` is present, a non-empty `rel_name` must be passed"
 
-        number_props_to_set = len(properties)   # Start building the total number of properties to set on the new node and on the relationships
-                                                # (used to verify that the query ran as expected)
+        if self.debug:
+            print(f"In create_attached_node().  labels: {labels}, properties: {properties}, "
+                  f"attached_to: {attached_to}, rel_name: {rel_name}, rel_dir: {rel_dir}")
 
-        for i, conn in enumerate(connections):
-            #print(f"    i: {i}, conn: {conn}")
-            match_labels = conn.get("labels")
-            match_labels_str = CypherUtils.prepare_labels(match_labels)
-            match_key = conn.get("key")
-            if not match_key:
-                raise Exception("Missing key name for the node to link to")
-            match_value = conn.get("value")
-            if not match_value:
-                raise Exception("Missing key value for the node to link to")
+        if attached_to is None:
+            links = None
+        else:
+            links = [{"neo_id": existing_node_id, "rel_name": rel_name, "rel_dir": rel_dir}
+                     for existing_node_id in attached_to]
 
-            node_dummy_name = f"ex{i}"  # EXAMPLE: "ex3".   The "ex" stands for "existing node"
-            data_binding_dummy = f"NODE{i}_VAL"
-            q_MATCH += f" (ex{i} {match_labels_str} {{ {match_key}: ${data_binding_dummy} }})"
-            # EXAMPLE of the incremental strings contributing to q_MATCH:
-            #       "(ex0 :`DEPARTMENT` { dept_name: $NODE_0_VAL })"
-
-            if i+1 < len(connections):
-                q_MATCH += ","          # Comma separator, except at the end
-
-            data_binding[data_binding_dummy] = match_value
-
-            rel_name = conn.get("rel_name")
-            if not rel_name:
-                raise Exception("Missing name for the new relationship")
-
-            rel_dir = conn.get("rel_dir", "OUT")        # "OUT" is the default value
-            rel_attrs = conn.get("rel_attrs", None)     # By default, no relationship attributes
-
-            #print("        rel_attrs: ", rel_attrs)
-            (rel_attrs_str, cypher_dict_for_node) = CypherUtils.dict_to_cypher(rel_attrs, prefix=f"NODE{i}_")  # Process the optional relationship properties
-            #print(f"rel_attrs_str: `{rel_attrs_str}` | cypher_dict_for_node: {cypher_dict_for_node}")
-            # EXAMPLE of rel_attrs_str:        '{since: $NODE1_par_1}'  (possibly a blank string)
-            # EXAMPLE of cypher_dict_for_node: {'NODE1_par_1': 2021}    (possibly an empty dict)
-
-            data_binding.update(cypher_dict_for_node)           # Merge cypher_dict_for_node into the data_binding dictionary
-            number_props_to_set += len(cypher_dict_for_node)    # This will be part of the summary count returned by Neo4j
-
-            if rel_dir == "OUT":
-                q_MERGE += f"MERGE (n)-[:{rel_name} {rel_attrs_str}]->({node_dummy_name})\n"  # Form an OUT-bound connection
-                # EXAMPLE of term:  "MERGE (n)-[:OWNS {since: $NODE1_par_1}]->(ex1)"
-            else:
-                q_MERGE += f"MERGE (n)<-[:{rel_name} {rel_attrs_str}]-({node_dummy_name})\n"  # Form an IN-bound connection
-                # EXAMPLE of term:  "MERGE (n)<-[:EMPLOYS ]-(ex0)"
-
-
-        #print("q_MATCH:\n", q_MATCH)
-        # EXAMPLE of q_MATCH:
-        #   "MATCH (ex0 :`DEPARTMENT` { dept_name: $NODE_0_VAL }), (ex1 :`CAR`:`INVENTORY` { vehicle_id: $NODE_1_VAL })"
-
-        #print("q_MERGE:\n", q_MERGE)
-        # EXAMPLE of q_MERGE:
-        '''(n)<-[:EMPLOYS ]-(ex0)
-        (n)-[:OWNS {since: $NODE1_par_1}]->(ex1)'''
-
-        # Put all the parts of the Cypher query together
-        q = q_MATCH + "\n" + q_CREATE + "\n" + q_MERGE + "RETURN id(n) AS neo4j_id"
-        #print("\n", q)
-        #print("\n", data_binding)
-        # EXAMPLE of q:
-        '''MATCH (ex0 :`DEPARTMENT` { dept_name: $NODE0_VAL }), (ex1 :`CAR`:`INVENTORY` { vehicle_id: $NODE1_VAL })
-        CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})
-        MERGE (n)<-[:EMPLOYS ]-(ex0)
-        MERGE (n)-[:OWNS {`since`: $NODE1_par_1}]->(ex1)
-        RETURN id(n) AS neo4j_id
-        '''
-        # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'NODE0_VAL': 'IT', 'NODE1_VAL': 12345, 'NODE1_par_1': 2021}
-
-        result = self.update_query(q, data_binding)
-        #print("Result of update_query in create_node_with_relationships(): ", result)
-        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'neo4j_id': 604}]}
-
-
-        # Assert that the query produced the expected actions
-        if result.get("nodes_created") != 1:
-            raise Exception("Failed to create 1 new node")
-
-        if result.get("relationships_created") != len(connections):
-            raise Exception(f"New node created as expected, but failed to create all the {len(connections)} expected relationships")
-
-        expected_number_labels = (1 if type(labels) == str else len(labels))
-        if result.get("labels_added") != expected_number_labels:
-            raise Exception(f"Failed to set the {expected_number_labels} label(s) expected on the new node")
-
-        if result.get("properties_set") != number_props_to_set:
-            raise Exception(f"Failed to set all the {number_props_to_set} properties on the new node and its relationships")
-
-        returned_data = result.get("returned_data")
-        #print("returned_data", returned_data)
-        if len(returned_data) == 0:
-            raise Exception("Unable to extract internal ID of the newly-created node")
-
-        neo4j_id = returned_data[0].get("neo4j_id", None)
-        if neo4j_id is None:    # Note: neo4j_id might be zero
-            raise Exception("Unable to extract internal ID of the newly-created node")
-
-        return neo4j_id    # Return the Neo4j ID of the new node
+        return self.create_node_with_links(labels=labels, properties=properties, links=links, merge=merge)
 
 
 
@@ -1296,9 +1189,9 @@ class NeoAccess:
         """
         Create a new node, with the given labels and optional properties,
         and make it a parent of all the EXISTING nodes that are specified
-        in the (possibly empty) list of children nodes, identified by their Neo4j ID.
+        in the (possibly empty) list of link nodes, identified by their Neo4j internal ID's.
 
-        The list of children nodes also contains the names to gives to each link,
+        The list of link nodes also contains the names to give to each link,
         as well as their directions (by default OUTbound from the newly-created node)
         and, optionally, properties on the links.
 
@@ -1330,8 +1223,8 @@ class NeoAccess:
                                     "rel_name"      REQUIRED - the name to give to the link
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
-        :param merge:       If True, a node gets created only if there's no other node
-                                with the same properties and labels     TODO: test
+        :param merge:       (OPTIONAL; default False) If True, a new node gets created only if there's no existing node
+                                with the same properties and labels     TODO: test more
 
         :return:            An integer with the Neo4j ID of the newly-created node
         """
@@ -1394,24 +1287,28 @@ class NeoAccess:
 
 
         # Assert that the query produced the expected actions
-        if result.get("nodes_created") != 1:
-            raise Exception("NeoAccess.create_node_with_links(): Failed to create 1 new node")
+        if not merge:
+            if result.get("nodes_created" != 1):
+                raise Exception("NeoAccess.create_node_with_links(): failed to create the new node "
+                                "(check whether the requested link-to nodes exist)")
 
-        if not labels:
-            expected_number_labels = 0
-        elif type(labels) == str:
-            expected_number_labels = 1
-        else:
-            expected_number_labels = len(labels)
+            if not labels:
+                expected_number_labels = 0
+            elif type(labels) == str:
+                expected_number_labels = 1
+            else:
+                expected_number_labels = len(labels)
 
-        if result.get("labels_added", 0) != expected_number_labels:
-            raise Exception(f"NeoAccess.create_node_with_links(): Failed to set the {expected_number_labels} label(s) expected on the new node")
+            if result.get("labels_added", 0) != expected_number_labels:
+                raise Exception(f"NeoAccess.create_node_with_links(): failed to set the {expected_number_labels} label(s) expected on the new node")
+
 
         if result.get("relationships_created", 0) != len(links):
-            raise Exception(f"NeoAccess.create_node_with_links(): New node created as expected, but failed to create all the {len(links)} requested relationships")
+            raise Exception(f"NeoAccess.create_node_with_links(): failed to create all the {len(links)} requested relationships")
 
         if result.get("properties_set", 0) != len(data_binding):
-            raise Exception(f"NeoAccess.create_node_with_links(): Was expecting to set {len(data_binding)} properties on the new node and its relationships; instead, {result.get('properties_set')} got set")
+            raise Exception(f"NeoAccess.create_node_with_links(): Was expecting to set {len(data_binding)} properties on the new node and its relationships; "
+                            f"instead, {result.get('properties_set')} got set")
 
         returned_data = result.get("returned_data")
         #print("returned_data", returned_data)
@@ -1511,63 +1408,180 @@ class NeoAccess:
 
 
 
-    def create_node_with_children(self, labels, properties = None, children_list = None) -> int:
+    def create_node_with_relationships(self, labels, properties=None, connections=None) -> int:
         """
-        Create a new node, with the given labels and optional specified properties,
-        and make it a parent of all the EXISTING nodes
-        specified in the list of children nodes (possibly empty),
-        using the relationship names specified inside that list.
-        All the relationships are understood to be OUTbound from the newly-created node.
+        TODO: this method may no longer be needed, given the new method create_node_with_links()
+              Maybe ditch, or extract the Neo4j ID's from the connections,
+              and call create_node_with_links()
 
-        Note: this is a simpler version of create_node_with_links()
+        Create a new node with relationships to zero or more PRE-EXISTING nodes
+        (identified by their labels and key/value pairs).
 
-        TODO: re-implement, making use of create_node_with_links()
+        If the specified pre-existing nodes aren't found, then no new node is created,
+        and an Exception is raised.
+
+        On success, return the Neo4j internal ID of the new node just created.
+
+        Note: if all connections are outbound, and to nodes with known Neo4j internal IDs, then
+              the simpler method create_node_with_children() may be used instead
 
         EXAMPLE:
-            create_node_with_children(
-                                        labels="PERSON",
-                                        properties={"name": "Julian", "city": "Berkeley"},
-                                        children_list=[ (123, "EMPLOYS") , (456, "OWNS") ]
+            create_node_with_relationships(
+                                            labels="PERSON",
+                                            properties={"name": "Julian", "city": "Berkeley"},
+                                            connections=[
+                                                        {"labels": "DEPARTMENT",
+                                                         "key": "dept_name", "value": "IT",
+                                                         "rel_name": "EMPLOYS", "rel_dir": "IN"},
+
+                                                        {"labels": ["CAR", "INVENTORY"],
+                                                         "key": "vehicle_id", "value": 12345,
+                                                         "rel_name": "OWNS", "rel_attrs": {"since": 2021} }
+                                            ]
             )
 
-        :param labels:          Labels to assign to the newly-created node (a string, possibly empty, or list of strings)
-        :param children_list:   Optional list of pairs of the form (Neo4j ID, relationship name);
-                                    use None, or an empty list, to indicate if there aren't any
-        :param properties: A dictionary of optional properties to assign to the newly-created node
+        :param labels:      A string, or list of strings, with label(s) to assign to the new node
+        :param properties:  A dictionary of properties to assign to the new node
+        :param connections: A (possibly empty) list of dictionaries with the following keys
+                            (all optional unless otherwise specified):
+                                --- Keys to locate an existing node ---
+                                    "labels"        RECOMMENDED
+                                    "key"           REQUIRED
+                                    "value"         REQUIRED
+                                --- Keys to define a relationship to it ---
+                                    "rel_name"      REQUIRED.  The name to give to the new relationship
+                                    "rel_dir"       Either "OUT" or "IN", relative to the new node (by default, "OUT")
+                                    "rel_attrs"     A dictionary of relationship attributes
 
-        :return:                An integer with the Neo4j ID of the newly-created node
+        :return:            If successful, an integer with the Neo4j internal ID of the node just created;
+                                otherwise, an Exception is raised
         """
-        assert children_list is None or type(children_list) == list, \
-            f"The argument `children_list` in create_node_with_children() must be a list or None; instead, it's {type(children_list)}"
+        #print(f"In create_node_with_relationships().  connections: {connections}")
 
-        if self.debug:
-            print(f"In create_node_with_children().  labels: {labels}, children_list: {children_list}, node_properties: {properties}")
+        # Prepare strings suitable for inclusion in a Cypher query, to define the new node to be created
+        labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
+        (cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(properties)
+        # EXAMPLE:
+        #   cypher_props_str = "{`name`: $par_1, `city`: $par_2}"
+        #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
 
-        # Create the new node
-        new_node_id = self.create_node(labels, properties)
+        # Define the portion of the Cypher query to create the new node
+        q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
+        # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
+        #print("\n", q_CREATE)
 
-        number_properties = "NO" if properties is None  else len(properties)     # Only used for debugging
+        # Define the portion of the Cypher query to look up the requested existing nodes
+        if connections is None or connections == []:
+            q_MATCH = ""        # There will no need for a match, if there are no connections to be made
+        else:
+            q_MATCH = "MATCH"
 
-        if children_list is None or children_list == []:
-            self.debug_print(f"\nCreated a new node with ID: {new_node_id}, with {number_properties} attribute(s), and NO children")
-            return new_node_id
+        # Define the portion of the Cypher query to link up the new node to any of the existing ones
+        q_MERGE = ""
 
-        # Add relationships to all children, if any
-        self.debug_print(f"\nCreated a new node with ID: {new_node_id}, "
-                         f"with {number_properties} attributes and {len(children_list)} children: {children_list}")
+        if properties is None:
+            properties = []
 
-        node_match = self.find(neo_id=new_node_id, dummy_node_name="from")
-        # Add each relationship in turn     TODO: maybe do this with a single Cypher query, as done by create_node_with_relationships()
-        for item in children_list:
-            assert type(item) == tuple and len(item) == 2, \
-                f"The list items in `children_list` in create_node_with_children() must be pairs; instead, the following item was seen: {item}"
+        number_props_to_set = len(properties)   # Start building the total number of properties to set on the new node and on the relationships
+        # (used to verify that the query ran as expected)
 
-            child_id, rel_name = item
-            child_match = self.find(neo_id=child_id, dummy_node_name="to")
-            self.add_edges(match_from=node_match, match_to=child_match, rel_name=rel_name)
+        for i, conn in enumerate(connections):
+            #print(f"    i: {i}, conn: {conn}")
+            match_labels = conn.get("labels")
+            match_labels_str = CypherUtils.prepare_labels(match_labels)
+            match_key = conn.get("key")
+            if not match_key:
+                raise Exception("Missing key name for the node to link to")
+            match_value = conn.get("value")
+            if not match_value:
+                raise Exception("Missing key value for the node to link to")
 
-        return new_node_id
+            node_dummy_name = f"ex{i}"  # EXAMPLE: "ex3".   The "ex" stands for "existing node"
+            data_binding_dummy = f"NODE{i}_VAL"
+            q_MATCH += f" (ex{i} {match_labels_str} {{ {match_key}: ${data_binding_dummy} }})"
+            # EXAMPLE of the incremental strings contributing to q_MATCH:
+            #       "(ex0 :`DEPARTMENT` { dept_name: $NODE_0_VAL })"
 
+            if i+1 < len(connections):
+                q_MATCH += ","          # Comma separator, except at the end
+
+            data_binding[data_binding_dummy] = match_value
+
+            rel_name = conn.get("rel_name")
+            if not rel_name:
+                raise Exception("Missing name for the new relationship")
+
+            rel_dir = conn.get("rel_dir", "OUT")        # "OUT" is the default value
+            rel_attrs = conn.get("rel_attrs", None)     # By default, no relationship attributes
+
+            #print("        rel_attrs: ", rel_attrs)
+            (rel_attrs_str, cypher_dict_for_node) = CypherUtils.dict_to_cypher(rel_attrs, prefix=f"NODE{i}_")  # Process the optional relationship properties
+            #print(f"rel_attrs_str: `{rel_attrs_str}` | cypher_dict_for_node: {cypher_dict_for_node}")
+            # EXAMPLE of rel_attrs_str:        '{since: $NODE1_par_1}'  (possibly a blank string)
+            # EXAMPLE of cypher_dict_for_node: {'NODE1_par_1': 2021}    (possibly an empty dict)
+
+            data_binding.update(cypher_dict_for_node)           # Merge cypher_dict_for_node into the data_binding dictionary
+            number_props_to_set += len(cypher_dict_for_node)    # This will be part of the summary count returned by Neo4j
+
+            if rel_dir == "OUT":
+                q_MERGE += f"MERGE (n)-[:{rel_name} {rel_attrs_str}]->({node_dummy_name})\n"  # Form an OUT-bound connection
+                # EXAMPLE of term:  "MERGE (n)-[:OWNS {since: $NODE1_par_1}]->(ex1)"
+            else:
+                q_MERGE += f"MERGE (n)<-[:{rel_name} {rel_attrs_str}]-({node_dummy_name})\n"  # Form an IN-bound connection
+                # EXAMPLE of term:  "MERGE (n)<-[:EMPLOYS ]-(ex0)"
+
+
+        #print("q_MATCH:\n", q_MATCH)
+        # EXAMPLE of q_MATCH:
+        #   "MATCH (ex0 :`DEPARTMENT` { dept_name: $NODE_0_VAL }), (ex1 :`CAR`:`INVENTORY` { vehicle_id: $NODE_1_VAL })"
+
+        #print("q_MERGE:\n", q_MERGE)
+        # EXAMPLE of q_MERGE:
+        '''(n)<-[:EMPLOYS ]-(ex0)
+        (n)-[:OWNS {since: $NODE1_par_1}]->(ex1)'''
+
+        # Put all the parts of the Cypher query together
+        q = q_MATCH + "\n" + q_CREATE + "\n" + q_MERGE + "RETURN id(n) AS neo4j_id"
+        #print("\n", q)
+        #print("\n", data_binding)
+        # EXAMPLE of q:
+        '''MATCH (ex0 :`DEPARTMENT` { dept_name: $NODE0_VAL }), (ex1 :`CAR`:`INVENTORY` { vehicle_id: $NODE1_VAL })
+        CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})
+        MERGE (n)<-[:EMPLOYS ]-(ex0)
+        MERGE (n)-[:OWNS {`since`: $NODE1_par_1}]->(ex1)
+        RETURN id(n) AS neo4j_id
+        '''
+        # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'NODE0_VAL': 'IT', 'NODE1_VAL': 12345, 'NODE1_par_1': 2021}
+
+        result = self.update_query(q, data_binding)
+        #print("Result of update_query in create_node_with_relationships(): ", result)
+        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'neo4j_id': 604}]}
+
+
+        # Assert that the query produced the expected actions
+        if result.get("nodes_created") != 1:
+            raise Exception("Failed to create 1 new node")
+
+        if result.get("relationships_created") != len(connections):
+            raise Exception(f"New node created as expected, but failed to create all the {len(connections)} expected relationships")
+
+        expected_number_labels = (1 if type(labels) == str else len(labels))
+        if result.get("labels_added") != expected_number_labels:
+            raise Exception(f"Failed to set the {expected_number_labels} label(s) expected on the new node")
+
+        if result.get("properties_set") != number_props_to_set:
+            raise Exception(f"Failed to set all the {number_props_to_set} properties on the new node and its relationships")
+
+        returned_data = result.get("returned_data")
+        #print("returned_data", returned_data)
+        if len(returned_data) == 0:
+            raise Exception("Unable to extract internal ID of the newly-created node")
+
+        neo4j_id = returned_data[0].get("neo4j_id", None)
+        if neo4j_id is None:    # Note: neo4j_id might be zero
+            raise Exception("Unable to extract internal ID of the newly-created node")
+
+        return neo4j_id    # Return the Neo4j ID of the new node
 
 
 
@@ -1886,72 +1900,6 @@ class NeoAccess:
         number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
         if number_relationships_added == 0:       # This could be more than 1: see notes above
             raise Exception(f"add_links_fast(): the requested relationship ({rel_name}) was NOT added")
-
-        return number_relationships_added
-
-
-
-    # TODO: deprecated by add_links()
-    def add_edges(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name:str, rel_props = None) -> int:
-        """
-        Add one or more edges (relationships, with the specified rel_name),
-        originating in any of the nodes specified by the match_from specifications,
-        and terminating in any of the nodes specified by the match_to specifications
-
-        Return the number of edges added; if none were added, or in case of error, raise an Exception.
-
-        Notes:  - if a relationship with the same name already exists, nothing gets created (and an Exception is raised)
-                - more than 1 node could be present in either of the matches
-
-        :param match_from:  EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
-        :param match_to:    EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
-                            IMPORTANT: match_from and match_to, if created by calls to find(), MUST use different node dummy names;
-                                       e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
-                                                        and for match_to,   find() used the option: dummy_node_name="to"
-
-        :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed
-        :param rel_props:   TODO: not currently used.  To implement!
-                                  Unclear what multiple calls would do in this case: update the props or create a new relationship???
-
-        :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
-        """
-        match_from = CypherUtils.validate_and_standardize(match_from, dummy_node_name="from")   # Validate, and possibly create, the match dictionary
-        match_to   = CypherUtils.validate_and_standardize(match_to, dummy_node_name="to")       # Validate, and possibly create, the match dictionary
-
-        # Make sure there's no conflict in node dummy names
-        CypherUtils.check_match_compatibility(match_from, match_to)
-
-        # Unpack needed values from the match_from and match_to structures
-        nodes_from = CypherUtils.extract_node(match_from)
-        nodes_to   = CypherUtils.extract_node(match_to)
-
-        where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
-                                                                            # and also prefix (if appropriate) the WHERE keyword
-
-        from_dummy_name = CypherUtils.extract_dummy_name(match_from)
-        to_dummy_name = CypherUtils.extract_dummy_name(match_to)
-
-        # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
-        q = f'''
-            MATCH {nodes_from}, {nodes_to}
-            {where_clause}
-            MERGE ({from_dummy_name}) -[:`{rel_name}`]-> ({to_dummy_name})           
-            '''
-
-        # Merge the data-binding dict's
-        combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
-
-        self.debug_query_print(q, combined_data_binding, "add_edges")
-
-        result = self.update_query(q, combined_data_binding)
-        if self.debug:
-            print("    result of update_query in add_edges(): ", result)
-
-        number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
-        if number_relationships_added == 0:       # This could be more than 1: see notes above
-            raise Exception(f"add_edges(): the requested relationship ({rel_name}) was NOT added")
 
         return number_relationships_added
 

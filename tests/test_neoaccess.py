@@ -798,6 +798,78 @@ def test_create_node_with_relationships(db):
 
 
 
+def test_create_attached_node(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        # Attempting to link to non-existing nodes
+        db.create_attached_node(labels="COMPANY", attached_to=[123, 456], rel_name="EMPLOYS")
+
+    node_jack = db.create_node("PERSON", {"name": "Jack"})
+    node_jill = db.create_node("PERSON", {"name": "Jill"})
+    node_mary = db.create_node("PERSON", {"name": "Mary"})
+
+    with pytest.raises(Exception):
+        # Missing rel_name
+        db.create_attached_node(labels="COMPANY", attached_to=[node_jack, node_jill, node_mary])
+
+
+    # Create a new Company node and attach it to "Jack"
+    new_node = db.create_attached_node(labels="COMPANY", attached_to=node_jack, rel_name="EMPLOYS")
+
+    q = f'''
+        MATCH (c:COMPANY)-[:EMPLOYS]->(p:PERSON {{name: "Jack"}})
+        WHERE id(c) = {new_node}
+        RETURN count(c) AS company_count, count(p) AS person_count
+        '''
+    result = db.query(q, single_row=True)
+    assert result == {'company_count': 1, 'person_count': 1}
+
+
+    # Attach the already-created Company node to the 2 other people it employs ("Jill" and "Mary")
+    new_node_2 = db.create_attached_node(labels="COMPANY", attached_to=[node_jill, node_mary], rel_name="EMPLOYS", merge=True)
+    assert new_node_2 == new_node   # No new nodes created, because of the merge=True (and the already existing company node)
+
+    q = f'''
+        MATCH path=(c:COMPANY)-[:EMPLOYS]->(p:PERSON)
+        WHERE id(c) = {new_node_2} AND p.name IN ["Jack", "Jill", "Mary"]
+        RETURN count(path) AS number_paths       
+        '''
+    result = db.query(q, single_cell="number_paths")
+    assert result == 3
+
+
+    # Attach a NEW company node to "Jill" and "Mary" (merge=False option forces a new node creation, even though a match already exists)
+    new_node_3 = db.create_attached_node(labels="COMPANY", attached_to=[node_jill, node_mary], rel_name="EMPLOYS", merge=False)
+    assert new_node_3 != new_node   # New node created, because of the merge=False (and the already existing company node)
+
+    q = f'''
+        MATCH path=(c:COMPANY)-[:EMPLOYS]->(p:PERSON)
+        WHERE id(c) = {new_node_3} AND p.name IN ["Jack", "Jill", "Mary"]
+        RETURN count(path) AS number_paths       
+        '''
+    result = db.query(q, single_cell="number_paths")
+    assert result == 2      # Only "Jill" and "Mary", because it's a new Company node, not the original one
+
+
+    # Attach a NEW company node to all 3 people; it will be a new node because it has different attributes
+    new_node_4 = db.create_attached_node(labels="COMPANY", properties={"name": "Acme Gadgets", "city": "Berkeley"},
+                                         attached_to=[node_jill, node_mary], rel_name="EMPLOYS", merge=True)
+    assert new_node_4 != new_node_3     # It's a new node, in spite of merge=True, because it has different attributes
+                                        # than the original Company node
+
+    q = f'''
+        MATCH path=(c:COMPANY {{name: "Acme Gadgets", city: "Berkeley"}})-[:EMPLOYS]->(p:PERSON)
+        WHERE id(c) = {new_node_4} AND p.name IN ["Jack", "Jill", "Mary"]
+        RETURN count(path) AS number_paths       
+        '''
+    result = db.query(q, single_cell="number_paths")
+    assert result == 2      # Only "Jill" and "Mary", because it's a new Company node, not the original one
+
+
+    # TODO: test pathological scenarios where existing link-to nodes are mentioned multiple times
+
+
 
 def test_create_node_with_links(db):
 
@@ -805,7 +877,11 @@ def test_create_node_with_links(db):
 
     with pytest.raises(Exception):
         db.create_node_with_links(labels="A", properties="Not a dictionary")
+
+    with pytest.raises(Exception):
         db.create_node_with_links(labels="A", links=666)    # links isn't a list/None
+
+    with pytest.raises(Exception):
         db.create_node_with_links(labels="A", links=[{"neo_id": 9999, "rel_name": "GHOST"}])   # Linking to non-existing node
 
     # Create a first node, with no links
@@ -918,12 +994,6 @@ def test_assemble_query_for_linking(db):
                         'MERGE (n)-[:`LIVES IN` ]->(ex0)\nMERGE (n)<-[:`EMPLOYS` ]-(ex1)\nMERGE (n)<-[:`IS OWNED BY` {`since`: $EDGE2_1, `tax rate`: $EDGE2_2}]-(ex2)',
                         {'EDGE2_1': 2022, 'EDGE2_2': "X 23"}
                       )
-
-
-
-def test_create_node_with_children(db):
-    #TODO
-    pass
 
 
 
@@ -1141,8 +1211,10 @@ def test_add_links(db):
     number_added = db.add_links(match_from=neo_from, match_to=neo_to, rel_name="OWNED_BY")
     assert number_added == 1
 
-    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
-        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    q = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners
+        '''
     result = db.query(q, single_row=True)
     assert result == {'number_cars': 1, 'number_owners': 1}
 
@@ -1221,47 +1293,19 @@ def test_add_links_fast(db):
 
 
 
-def test_add_edges(db):     # TODO: OBSOLETE
-    db.empty_dbase()
-
-    neo_from = db.create_node("car", {'color': 'white'})
-    neo_to = db.create_node("owner", {'name': 'Julian'})
-
-    match_from = db.find(neo_id=neo_from, dummy_node_name="from")
-    match_to = db.find(neo_id=neo_to)   # , dummy_node_name="to"
-
-    number_added = db.add_edges(match_from, match_to, rel_name="OWNED_BY")
-    assert number_added == 1
-
-    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
-        RETURN count(c) AS number_cars, count(o) AS number_owners'''
-    result = db.query(q, single_row=True)
-    print(result)
-    assert result == {'number_cars': 1, 'number_owners': 1}
-
-
-    with pytest.raises(Exception):
-        # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.add_edges(match_from, match_from, rel_name="THIS_WILL_CRASH")
-
-    # The correct way to add an edge from a node to itself
-    match_to_itself = db.find(neo_id=neo_from, dummy_node_name="to")    # Same as the node of origin, but different dummy_node_name`
-    number_added = db.add_edges(match_from, match_to_itself, rel_name="FROM_CAR_TO_ITSELF")
-    assert number_added == 1
-
-
-
 def test_remove_edges(db):
     db.empty_dbase()
 
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
 
-    number_added = db.add_edges(neo_car, neo_julian, rel_name="OWNED_BY")
+    number_added = db.add_links(neo_car, neo_julian, rel_name="OWNED_BY")
     assert number_added == 1
 
-    match_car = db.find(labels="car", dummy_node_name="from")
-    match_julian = db.find(properties={"name": "Julian"}, dummy_node_name="to")
+    find_car = db.find(labels="car", dummy_node_name="from")    # TODO: being phase out
+    find_julian = db.find(properties={"name": "Julian"}, dummy_node_name="to")  # TODO: being phase out
+    match_car = db.match(labels="car", dummy_node_name="from")
+    match_julian = db.match(properties={"name": "Julian"}, dummy_node_name="to")
 
     find_query = '''
         MATCH (c:car)-[:OWNED_BY]->(o:owner) 
@@ -1271,13 +1315,13 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 1     # Find the relationship
 
     with pytest.raises(Exception):
-        assert db.remove_edges(match_car, match_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
+        assert db.remove_edges(find_car, find_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
 
     with pytest.raises(Exception):
-        assert db.remove_edges({"NON-sensical match object"}, match_julian, rel_name="OWNED_BY")
+        assert db.remove_edges({"NON-sensical match object"}, find_julian, rel_name="OWNED_BY")
 
     # Finally, actually remove the edge
-    number_removed = db.remove_edges(match_car, match_julian, rel_name="OWNED_BY")
+    number_removed = db.remove_edges(find_car, find_julian, rel_name="OWNED_BY")
     assert number_removed == 1
 
     result = db.query(find_query)
@@ -1285,19 +1329,19 @@ def test_remove_edges(db):
 
     with pytest.raises(Exception):
         # This will crash because the relationship is no longer there
-        assert db.remove_edges(match_car, match_car, rel_name="OWNED_BY")
+        assert db.remove_edges(find_car, find_car, rel_name="OWNED_BY")
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.remove_edges(match_car, match_car, rel_name="THIS_WILL_CRASH")
+        assert db.remove_edges(find_car, find_car, rel_name="THIS_WILL_CRASH")
 
 
     # Restore the relationship...
-    number_added = db.add_edges(match_car, match_julian, rel_name="OWNED_BY")
+    number_added = db.add_links(match_car, match_julian, rel_name="OWNED_BY")
     assert number_added == 1
 
     # ...and add a 2nd one, with a different name, between the same nodes
-    number_added = db.add_edges(match_car, match_julian, rel_name="REMEMBERED_BY")
+    number_added = db.add_links(match_car, match_julian, rel_name="REMEMBERED_BY")
     assert number_added == 1
 
     # ...and re-add the last one, but with a property (which is allowed by Neo4j, and will result in
@@ -1328,7 +1372,7 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 2     # The 2 relationships we just added
 
     # Remove 2 same-named relationships at once between the same 2 nodes
-    number_removed = db.remove_edges(match_car, match_julian, rel_name="REMEMBERED_BY")
+    number_removed = db.remove_edges(find_car, find_julian, rel_name="REMEMBERED_BY")
     assert number_removed == 2
 
     result = db.query(find_query)
@@ -1349,7 +1393,7 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 1     # Still there
 
 
-    number_removed = db.remove_edges(match_car, match_julian, rel_name="OWNED_BY")
+    number_removed = db.remove_edges(find_car, find_julian, rel_name="OWNED_BY")
     assert number_removed == 1
 
     find_query = '''
@@ -1384,7 +1428,7 @@ def test_remove_edges(db):
     # Delete both relationships at once
     match_val = db.find(key_name="name", key_value="Val", dummy_node_name="v")
 
-    number_removed = db.remove_edges(match_car, match_val, rel_name=None)
+    number_removed = db.remove_edges(find_car, match_val, rel_name=None)
     assert number_removed == 2
 
     result = db.query(find_query)
@@ -1436,26 +1480,26 @@ def test_edges_exists(db):
 
     assert not db.edges_exist(neo_car, neo_julian, rel_name="OWNED_BY")    # No relationship exists yet
 
-    db.add_edges(neo_car, neo_julian, rel_name="OWNED_BY")
+    db.add_links(neo_car, neo_julian, rel_name="OWNED_BY")
     assert db.edges_exist(neo_car, neo_julian, rel_name="OWNED_BY")        # By now, it exists
     assert not db.edges_exist(neo_julian, neo_car, rel_name="OWNED_BY")    # But not in the reverse direction
     assert not db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Nor by a different name
 
-    db.add_edges(neo_car, neo_julian, rel_name="DRIVEN BY")
+    db.add_links(neo_car, neo_julian, rel_name="DRIVEN BY")
     assert db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")       # Now it exists
 
     db.remove_edges(neo_car, neo_julian, rel_name="DRIVEN BY")
     assert not db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Now it's gone
 
     neo_sailboat = db.create_node("sailboat", {'type': 'sloop', 'color': 'white'})
-    db.add_edges(neo_julian, neo_sailboat, rel_name="SAILS")
+    db.add_links(neo_julian, neo_sailboat, rel_name="SAILS")
     assert db.edges_exist(neo_julian, neo_sailboat, rel_name="SAILS")
 
     match_vehicle = db.find(properties={'color': 'white'})                  # To select both car and boat
     assert db.edges_exist(neo_julian, match_vehicle, rel_name="SAILS")
 
     assert not db.edges_exist(neo_car, neo_car, rel_name="SELF_DRIVES")    # A relationship from a node to itself
-    db.add_edges(neo_car, neo_car, rel_name="SELF_DRIVES")
+    db.add_links(neo_car, neo_car, rel_name="SELF_DRIVES")
     assert db.edges_exist(neo_car, neo_car, rel_name="SELF_DRIVES")
 
 
