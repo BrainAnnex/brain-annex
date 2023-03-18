@@ -9,9 +9,9 @@ class CypherUtils:
 
     Meant as a PRIVATE class for NeoAccess; not indicated for the end user.
 
-    A "match" structure is used to facilitate for a user to specify a node in a wide variety of way - and
+    A "processed match" structure is used to facilitate for a user to specify a node in a wide variety of way - and
     save those specifications, in a "pre-digested" way, to use as needed in Cypher queries.
-    It is a Python dictionary with the following 4 keys:
+    It is a Python dictionary with UP TO the following 4 keys (not all are necessarily present):
 
             1) "node": a string, defining a node in a Cypher query, *excluding* the "MATCH" keyword
             2) "where": a string, defining the "WHERE" part of the subquery (*excluding* the "WHERE"), if applicable;
@@ -110,7 +110,8 @@ class CypherUtils:
             properties = {}
 
         if key_name in properties:
-            raise Exception(f"Name conflict between the specified key_name ({key_name}) and one of the keys in properties ({properties})")
+            raise Exception(f"Name conflict between the specified key_name ({key_name}) "
+                            f"and one of the keys in properties ({properties})")
 
         if key_name and key_value:
             properties[key_name] = key_value
@@ -196,6 +197,36 @@ class CypherUtils:
 
 
     @classmethod
+    def validate_internal_id(cls, internal_id: int) -> bool:
+        """
+        Return True if internal_id is a valid ID as used internally by the database
+        (aka "Neo4j ID")
+
+        :param internal_id:
+        :return:
+        """
+        return (type(internal_id) == int) and (internal_id >= 0)
+
+
+
+    @classmethod
+    def process_match_structure(cls, handle: Union[int, dict], dummy_node_name="n") -> dict:
+        if cls.validate_internal_id(handle):
+            return cls.define_match(neo_id=handle, dummy_node_name=dummy_node_name)
+
+        if handle.get("dummy_node_name") is not None:
+            dummy_node_name = handle.get("dummy_node_name") # If a value is already present in the raw match structure,
+                                                            # it takes priority
+
+        return cls.define_match(neo_id=handle.get("internal_id"),
+                                labels=handle.get("labels"),
+                                key_name=handle.get("key_name"), key_value=handle.get("key_value"),
+                                properties=handle.get("properties"),
+                                subquery=handle.get("clause"),
+                                dummy_node_name=dummy_node_name)
+
+
+    @classmethod
     def validate_and_standardize(cls, match, dummy_node_name="n") -> dict:
         """
         If match is a non-negative integer, it's assumed to be a Neo4j ID, and a match dictionary is created and returned.
@@ -210,7 +241,8 @@ class CypherUtils:
         TODO: also, accept as argument a list/tuple - and, in addition to the above ops, carry out checks for compatibilities
 
         :param match:           Either a valid Neo4j internal ID, or a "match" dictionary (TODO: or a list/tuple of those)
-        :param dummy_node_name: A string with a name by which to refer to the node (by default, "n")
+        :param dummy_node_name: A string with a name by which to refer to the node (by default, "n");
+                                    note: this is only used if the `match` argument is a valid Neo4j internal ID
 
         :return:                A valid "match" structure, i.e. a dictionary of data to identify a node, or set of nodes
         """
@@ -228,9 +260,24 @@ class CypherUtils:
         Return the node information from the given "match" data structure
 
         :param match:   A dictionary, as created by define_match()
-        :return:
+        :return:        A string with the node information.  EXAMPLES:
+                            "(n  )"
+                            "(p :`person` )"
+                            "(n :`car`:`surplus inventory` )"
+                            "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
         """
         return match.get("node")
+
+
+    @classmethod
+    def extract_dummy_name(cls, match: dict) -> str:
+        """
+        Return the dummy_node_name from the given "match" data structure
+
+        :param match:   A dictionary, as created by define_match()
+        :return:        A string with the dummy node name (often "n", or "to, or "from")
+        """
+        return match.get("dummy_node_name")
 
 
 
@@ -243,7 +290,8 @@ class CypherUtils:
         [node, where, data_binding]
         depending on the include_dummy flag
 
-        TODO:   gradually phase out, as more advanced util methods make the unpacking of all the "match" internal structure unnecessary
+        TODO:   gradually phase out, as more advanced util methods
+                make the unpacking of all the "match" internal structure unnecessary
                 Maybe switch default value for include_dummy to False...
 
         :param match:           A dictionary, as created by define_match()
@@ -262,14 +310,17 @@ class CypherUtils:
     @classmethod
     def check_match_compatibility(cls, match1, match2) -> None:
         """
-        If the two given match structures are incompatible (in terms of bringing them to, raise an Exception.
+        If the two given match structures are incompatible (in terms of collision in their dummy node name),
+        raise an Exception.
 
         :param match1:
         :param match2:
-        :return:
+        :return:        None
         """
-        if match1.get("dummy_node_name") == match2.get("dummy_node_name"):
-            raise Exception("Conflict between 2 matches using the same `dummy_node_name`. Make sure to pass different names to find()")
+        assert match1.get("dummy_node_name") != match2.get("dummy_node_name"), \
+            f"check_match_compatibility(): conflict between 2 matches " \
+            f"using the same dummy node name ({match1.get('dummy_node_name')}). " \
+            f"Make sure to pass different dummy names to find()"
 
 
 

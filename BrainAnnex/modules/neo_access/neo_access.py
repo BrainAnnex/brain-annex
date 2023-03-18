@@ -226,6 +226,7 @@ class NeoAccess:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+
     def query(self, q: str, data_binding=None, single_row=False, single_cell="", single_column=""):
         """
         Run a Cypher query.  Best suited for Cypher queries that return individual values,
@@ -479,9 +480,12 @@ class NeoAccess:
                                     # See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.ResultSummary
 
             if self.debug:
-                print("In update_query(). Attributes of ResultSummary object:", info.__dict__)  # Show as dictionary
+                print("In update_query(). Attributes of ResultSummary object:")
+                # Show as dictionary, which is available in info.__dict__
+                for k, v in info.__dict__.items():
+                    print(f"    {k} -> {v}")
                 '''
-                EXAMPLE: 
+                EXAMPLE of info.__dict__: 
                 {   'metadata': { 
                                     'query': 'MATCH (n :`A` {`name`: $par_1}) DETACH DELETE n', 
                                     'parameters': {'par_1': 'Jill'}, 
@@ -520,28 +524,6 @@ class NeoAccess:
     def ________RETRIEVE_DATA________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
-
-    def get_single_field(self, match: Union[int, dict], field_name: str, order_by=None, limit=None) -> list:
-        """
-        For situations where one is fetching just 1 field,
-        and one desires a list of the values of that field, rather than a dictionary of records.
-        In other respects, similar to the more general get_nodes()
-
-        :param match:       EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
-        :param field_name:  A string with the name of the desired field (attribute)
-        :param order_by:    see get_nodes()
-        :param limit:       see get_nodes()
-
-        :return:  A list of the values of the field_name attribute in the nodes that match the specified conditions
-        """
-
-        record_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
-
-        single_field_list = [record.get(field_name) for record in record_list]
-
-        return single_field_list
-
 
 
     def get_record_by_primary_key(self, labels: str, primary_key_name: str, primary_key_value, return_nodeid=False) -> Union[dict, None]:
@@ -613,6 +595,29 @@ class NeoAccess:
         number_of_nodes = result[0]["number_of_nodes"]
 
         return number_of_nodes > 0
+
+
+
+    def get_single_field(self, match: Union[int, dict], field_name: str, order_by=None, limit=None) -> list:
+        """
+        For situations where one is fetching just 1 field,
+        and one desires a list of the values of that field, rather than a dictionary of records.
+        In other respects, similar to the more general get_nodes()
+
+        :param match:       EITHER an integer with a Neo4j node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param field_name:  A string with the name of the desired field (attribute)
+        :param order_by:    see get_nodes()
+        :param limit:       see get_nodes()
+
+        :return:  A list of the values of the field_name attribute in the nodes that match the specified conditions
+        """
+
+        record_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
+
+        single_field_list = [record.get(field_name) for record in record_list]
+
+        return single_field_list
 
 
 
@@ -725,6 +730,62 @@ class NeoAccess:
         result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
         return pd.DataFrame(result_list)
 
+
+
+    def match(self, internal_id=None,
+              labels=None, key_name=None, key_value=None, properties=None, clause=None, dummy_node_name="n") -> dict:
+        """
+        Return a dictionary storing all the passed specifications (the "RAW match structure"),
+        as expected as argument in various other functions in this library, in order to identify a node or group of nodes.
+
+        IMPORTANT:  if neo_id is provided, all other conditions are DISREGARDED;
+                    otherwise, an implicit AND applies to all the specified conditions.
+
+        Note:   NO database operation is actually performed by this function.
+
+        [Other names explored: identify(), preserve(), define_match(), locate(), choose() or identify()]
+
+        ALL THE ARGUMENTS ARE OPTIONAL (no arguments at all means "match everything in the database")
+        :param internal_id: An integer with the node's internal database ID.
+                                If specified, it OVER-RIDES all the remaining arguments [except for the labels (TODO: revisit this)]
+
+        :param labels:      A string (or list/tuple of strings) specifying one or more Neo4j labels.
+                                (Note: blank spaces ARE allowed in the strings)
+                                EXAMPLES:  "cars"
+                                            ("cars", "powered vehicles")
+                            Note that if multiple labels are given, then only nodes with ALL of them will be matched;
+                            at present, there's no way to request an "OR" operation
+
+        :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
+        :param key_value:   The required value for the above key; if provided, key_name must be present, too
+                                Note: no requirement for the key to be primary
+
+        :param properties:  A (possibly-empty) dictionary of property key/values pairs, indicating a condition to match.
+                                EXAMPLE: {"gender": "F", "age": 22}
+
+        :param clause:      Either None, or a (possibly empty) string containing a Cypher subquery,
+                            or a pair/list (string, dict) containing a Cypher subquery and the data-binding dictionary for it.
+                            The Cypher subquery should refer to the node using the assigned dummy_node_name (by default, "n")
+                                IMPORTANT:  in the dictionary, don't use keys of the form "n_par_i",
+                                            where n is the dummy node name and i is an integer,
+                                            or an Exception will be raised - those names are for internal use only
+                                EXAMPLES:   "n.age < 25 AND n.income > 100000"
+                                            ("n.weight < $max_weight", {"max_weight": 100})
+
+        :param dummy_node_name: A string with a name by which to refer to the node (by default, "n");
+                                only used if a `clause` argument is passed
+
+        :return:            A python data dictionary, to preserve together all the passed arguments
+        """
+        if clause is None:
+            dummy_node_name = None      # In this scenario, the dummy name isn't yet used, and any name could be used
+
+        raw_match_structure = {"internal_id": internal_id, "labels": labels,
+                           "key_name": key_name, "key_value": key_value,
+                           "properties": properties, "clause": clause,
+                           "dummy_node_name": dummy_node_name}
+
+        return raw_match_structure
 
 
 
@@ -849,6 +910,7 @@ class NeoAccess:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+
     def follow_links(self, match: Union[int, dict], rel_name: str, rel_dir ="OUT", neighbor_labels = None) -> [dict]:
         """
         From the given starting node(s), follow all the relationships of the given name to and/or from it,
@@ -864,7 +926,6 @@ class NeoAccess:
         :return:                A list of dictionaries with all the properties of the neighbor nodes
                                 TODO: maybe add the option to just return a subset of fields
         """
-        #CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
         match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
 
         # Unpack needed values from the match dictionary
@@ -971,6 +1032,7 @@ class NeoAccess:
     def ________CREATE_NODES________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
 
     def create_node(self, labels, properties=None) -> int:
         """
@@ -1516,6 +1578,7 @@ class NeoAccess:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+
     def delete_nodes(self, match: Union[int, dict]) -> int:
         """
         Delete the node or nodes specified by the match argument.  Return the number of nodes deleted.
@@ -1611,7 +1674,7 @@ class NeoAccess:
 
 
 
-    def empty_dbase(self, keep_labels=None, drop_indexes=True, drop_constraints=True) -> None:
+    def empty_dbase(self, keep_labels=None, drop_indexes=False, drop_constraints=False) -> None:
         """
         Use this to get rid of everything in the database,
         including all the indexes and constraints (unless otherwise specified.)
@@ -1638,6 +1701,7 @@ class NeoAccess:
     def ________MODIFY_FIELDS________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
 
     def set_fields(self, match: Union[int, dict], set_dict: dict ) -> int:
         """
@@ -1708,6 +1772,7 @@ class NeoAccess:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+
     def get_relationship_types(self) -> [str]:
         """
         Extract and return a list of all the Neo4j relationship names (i.e. types of relationships)
@@ -1720,6 +1785,142 @@ class NeoAccess:
 
 
 
+    def add_links(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name:str) -> int:
+        """
+        Add one or more links (aka graph edges/relationships), with the specified rel_name,
+        originating in any of the nodes specified by the match_from specifications,
+        and terminating in any of the nodes specified by the match_to specifications
+
+        Return the number of links added; if none were added, or in case of error, raise an Exception.
+
+        Notes:  - if a relationship with the same name already exists, nothing gets created (and an Exception is raised)
+                - more than 1 node could be present in either of the matches
+
+        TODO: add a `rel_props` argument
+              (Unclear what multiple calls would do in this case: update the props or create a new relationship??)
+
+        :param match_from:  EITHER an integer with an internal database node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
+        :param match_to:    EITHER an integer with an internal database node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
+                            Note: match_from and match_to, if created by calls to match(), in scenarios where a dummy name is used,
+                                  MUST use different node dummy names;
+                                       e.g., make sure that for match_from, match() used the option: dummy_node_name="from"
+                                                        and for match_to,   match() used the option: dummy_node_name="to"
+
+        :param rel_name:    The name to give to all the new relationships between the 2 specified nodes, or sets or nodes.
+                                Blanks allowed.
+
+        :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
+        """
+        # Create processed "match dictionaries"
+        match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from")
+        match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to")
+
+        if self.debug:
+            print("In add_links()")
+            print("    match_from:", match_from)
+            print("    match_to:", match_to)
+
+        # Make sure there's no conflict in node dummy names
+        CypherUtils.check_match_compatibility(match_from, match_to)
+
+        # Unpack needed values from the match_from and match_to structures
+        nodes_from = CypherUtils.extract_node(match_from)
+        nodes_to   = CypherUtils.extract_node(match_to)
+
+        where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
+                                                                            # and also prefix (if appropriate) the WHERE keyword
+
+        from_dummy_name = CypherUtils.extract_dummy_name(match_from)
+        to_dummy_name = CypherUtils.extract_dummy_name(match_to)
+
+        # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
+        q = f'''
+            MATCH {nodes_from}, {nodes_to}
+            {where_clause}
+            MERGE ({from_dummy_name}) -[:`{rel_name}`]-> ({to_dummy_name})           
+            '''
+
+        # Merge the data-binding dict's
+        combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
+
+        self.debug_query_print(q, combined_data_binding, "add_links")
+
+        result = self.update_query(q, combined_data_binding)
+        if self.debug:
+            print("    RESULT of update_query in add_links(): ", result)
+
+        number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
+        if number_relationships_added == 0:       # This could be more than 1: see notes above
+            raise Exception(f"add_links(): the requested relationship ({rel_name}) was NOT added")
+
+        return number_relationships_added
+
+
+
+    def add_links_fast(self, match_from: int, match_to: int, rel_name:str) -> int:  # TODO: experimental, to test
+        # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
+        q = f'''
+            MATCH (from), (to)
+            WHERE id(from) = {match_from} AND id(to) = {match_to}
+            MERGE (from) -[:`{rel_name}`]-> (to)           
+            '''
+
+        result = self.update_query(q)
+
+        number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
+        if number_relationships_added == 0:       # This could be more than 1: see notes above
+            raise Exception(f"add_links_express(): the requested relationship ({rel_name}) was NOT added")
+
+        return number_relationships_added
+
+
+
+    # TODO: temporary function, to delete
+    def add_links_OLD(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name:str) -> int:
+        # Validate, and possibly create, the match dictionaries
+        match_from = CypherUtils.validate_and_standardize(match_from, dummy_node_name="from")
+        match_to   = CypherUtils.validate_and_standardize(match_to, dummy_node_name="to")
+
+        # Make sure there's no conflict in node dummy names
+        CypherUtils.check_match_compatibility(match_from, match_to)
+
+        # Unpack needed values from the match_from and match_to structures
+        nodes_from = CypherUtils.extract_node(match_from)
+        nodes_to   = CypherUtils.extract_node(match_to)
+
+        where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
+                                                                            # and also prefix (if appropriate) the WHERE keyword
+
+        from_dummy_name = CypherUtils.extract_dummy_name(match_from)
+        to_dummy_name = CypherUtils.extract_dummy_name(match_to)
+
+        # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
+        q = f'''
+            MATCH {nodes_from}, {nodes_to}
+            {where_clause}
+            MERGE ({from_dummy_name}) -[:`{rel_name}`]-> ({to_dummy_name})           
+            '''
+
+        # Merge the data-binding dict's
+        combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
+
+        self.debug_query_print(q, combined_data_binding, "add_links")
+
+        result = self.update_query(q, combined_data_binding)
+        if self.debug:
+            print("    result of update_query in add_links(): ", result)
+
+        number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
+        if number_relationships_added == 0:       # This could be more than 1: see notes above
+            raise Exception(f"add_links(): the requested relationship ({rel_name}) was NOT added")
+
+        return number_relationships_added
+
+
+
+    # TODO: deprecated by add_links()
     def add_edges(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name:str, rel_props = None) -> int:
         """
         Add one or more edges (relationships, with the specified rel_name),
@@ -2048,6 +2249,7 @@ class NeoAccess:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+
     def get_labels(self) -> [str]:
         """
         Extract and return a list of all the Neo4j labels present in the database.
@@ -2089,6 +2291,7 @@ class NeoAccess:
     def ________INDEXES________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
 
     def get_indexes(self) -> pd.DataFrame:
         """
@@ -2165,6 +2368,7 @@ class NeoAccess:
     def drop_index(self, name: str) -> bool:
         """
         Get rid of the index with the given name
+
         :param name:    Name of the index to jettison
         :return:        True if successful or False otherwise (for example, if the index doesn't exist)
         """
@@ -2178,6 +2382,7 @@ class NeoAccess:
     def drop_all_indexes(self, including_constraints=True) -> None:
         """
         Eliminate all the indexes in the database and, optionally, also get rid of all constraints
+
         :param including_constraints:   Flag indicating whether to also ditch all the constraints
         :return:                        None
         """
@@ -2185,7 +2390,7 @@ class NeoAccess:
             if self.apoc:
                 self.query("call apoc.schema.assert({},{})")
             else:
-                self.drop_all_constraints()
+                self.drop_all_constraints()    # TODO: it doesn't work in version 5.5 of the database
 
         indexes = self.get_indexes()
         for name in indexes['name']:
@@ -2202,7 +2407,8 @@ class NeoAccess:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
-    def get_constraints(self) -> pd.DataFrame:
+
+    def get_constraints(self) -> pd.DataFrame:    # TODO: it doesn't work in version 5.5 of the database
         """
         Return all the database constraints, and some of their attributes,
         as a Pandas dataframe with 3 columns:
@@ -2294,6 +2500,7 @@ class NeoAccess:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+
     def load_pandas(self, df:pd.DataFrame, label:str, rename=None, max_chunk_size = 10000) -> [int]:
         """
         Load a Pandas data frame (or Series) into Neo4j.
@@ -2341,6 +2548,7 @@ class NeoAccess:
     def ________JSON_IMPORT_EXPORT________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
 
     def export_dbase_json(self) -> {}:
         """
@@ -2770,6 +2978,7 @@ class NeoAccess:
     def ________DEBUGGING_SUPPORT________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
 
     def debug_query_print(self, q: str, data_binding=None, method=None, force_output=False) -> None:
         """
