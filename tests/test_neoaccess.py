@@ -1132,7 +1132,96 @@ def test_get_relationship_types(db):
 
 
 
-def test_add_edges(db):
+def test_add_links(db):
+    db.empty_dbase()
+
+    neo_from = db.create_node("car", {'color': 'white'})
+    neo_to = db.create_node("owner", {'name': 'Julian'})
+
+    number_added = db.add_links(match_from=neo_from, match_to=neo_to, rel_name="OWNED_BY")
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1, 'number_owners': 1}
+
+
+    # Start over again
+    db.empty_dbase()
+
+    neo_from = db.create_node("car", {'color': 'white'})
+    neo_to = db.create_node("owner", {'name': 'Julian'})
+
+    match_from = db.match(internal_id=neo_from) # , dummy_node_name="from"
+    match_to = db.match(internal_id=neo_to)     # , dummy_node_name="to"
+
+    number_added = db.add_links(match_from, match_to, rel_name="OWNED_BY")
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1, 'number_owners': 1}
+
+
+    # Start over again
+    db.empty_dbase()
+
+    neo_from = db.create_node("car", {'color': 'white'})
+    neo_to = db.create_node("owner", {'name': 'Julian'})
+
+    match_from = db.match(internal_id=neo_from)
+
+    # Mix-and-match a match structure and an internal Neo ID
+    number_added = db.add_links(match_from=match_from, match_to=neo_to, rel_name="OWNED_BY")
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1, 'number_owners': 1}
+
+
+    # Make a link from the "car" node to itself
+    assert db.add_links(match_from, match_from, rel_name="FROM CAR TO ITSELF") # Note the blanks in the name
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:`FROM CAR TO ITSELF`]->(c) 
+        RETURN count(c) AS number_cars'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1}
+
+
+
+def test_add_links_fast(db):
+    db.empty_dbase()
+
+    neo_from = db.create_node("car", {'color': 'white'})
+    neo_to = db.create_node("owner", {'name': 'Julian'})
+
+    number_added = db.add_links_fast(match_from=neo_from, match_to=neo_to, rel_name="OWNED_BY")
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    result = db.query(q, single_row=True)
+
+    assert result == {'number_cars': 1, 'number_owners': 1}
+
+
+    # Make a link from the "car" node to itself
+    assert db.add_links_fast(neo_from, neo_from, rel_name="FROM CAR TO ITSELF") # Note the blanks in the name
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:`FROM CAR TO ITSELF`]->(c) 
+        RETURN count(c) AS number_cars'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1}
+
+
+
+def test_add_edges(db):     # TODO: OBSOLETE
     db.empty_dbase()
 
     neo_from = db.create_node("car", {'color': 'white'})

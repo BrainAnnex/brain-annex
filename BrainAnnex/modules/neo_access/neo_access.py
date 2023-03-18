@@ -1802,10 +1802,11 @@ class NeoAccess:
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by match()
         :param match_to:    EITHER an integer with an internal database node id,
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by match()
-                            Note: match_from and match_to, if created by calls to match(), in scenarios where a dummy name is used,
+                            Note: match_from and match_to, if created by calls to match(),
+                                  in scenarios where a dummy name is used,
                                   MUST use different node dummy names;
-                                       e.g., make sure that for match_from, match() used the option: dummy_node_name="from"
-                                                        and for match_to,   match() used the option: dummy_node_name="to"
+                                  e.g., make sure that for match_from, match() used the option: dummy_node_name="from"
+                                                     and for match_to, match() used the option: dummy_node_name="to"
 
         :param rel_name:    The name to give to all the new relationships between the 2 specified nodes, or sets or nodes.
                                 Blanks allowed.
@@ -1858,7 +1859,19 @@ class NeoAccess:
 
 
 
-    def add_links_fast(self, match_from: int, match_to: int, rel_name:str) -> int:  # TODO: experimental, to test
+    def add_links_fast(self, match_from: int, match_to: int, rel_name:str) -> int:
+        """
+        Experiment first method optimized for speed.  Only internal database ID are used
+
+        Add a links (aka graph edges/relationships), with the specified rel_name,
+        originating in the node identified by match_from,
+        and terminating in the node identified by match_to
+
+        :param match_from:  An integer with a Neo4j node id
+        :param match_to:    An integer with a Neo4j node id
+        :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed
+        :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
+        """
         # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
         q = f'''
             MATCH (from), (to)
@@ -1870,7 +1883,7 @@ class NeoAccess:
 
         number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
         if number_relationships_added == 0:       # This could be more than 1: see notes above
-            raise Exception(f"add_links_express(): the requested relationship ({rel_name}) was NOT added")
+            raise Exception(f"add_links_fast(): the requested relationship ({rel_name}) was NOT added")
 
         return number_relationships_added
 
@@ -1896,7 +1909,7 @@ class NeoAccess:
                                        e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
                                                         and for match_to,   find() used the option: dummy_node_name="to"
 
-        :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed.
+        :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed
         :param rel_props:   TODO: not currently used.  To implement!
                                   Unclear what multiple calls would do in this case: update the props or create a new relationship???
 
