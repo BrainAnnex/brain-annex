@@ -1405,17 +1405,17 @@ class NeoSchema:
         there's no other data point with the same labels and allowed properties
 
         :param class_internal_id:   The internal database ID of the Class node for the data point
-        :param properties:      An optional dictionary with the properties of the new data point.
-                                    EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param labels:          OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
-                                    if not specified, the Class name is used
-        :param silently_drop:   If True, any requested properties not allowed by the Schema are simply dropped;
-                                    otherwise, an Exception is raised if any property isn't allowed
+        :param properties:          An optional dictionary with the properties of the new data point.
+                                        EXAMPLE: {"make": "Toyota", "color": "white"}
+        :param labels:              OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
+                                        if not specified, the Class name is used
+        :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped;
+                                        otherwise, an Exception is raised if any property isn't allowed
         :param schema_cache:
 
-        :return:                A pair with:
-                                    1) The internal database ID of either an existing data node or of a new one just created
-                                    2) True if a new data point was created, or False if not (i.e. an existing one was found)
+        :return:                    A pair with:
+                                        1) The internal database ID of either an existing data node or of a new one just created
+                                        2) True if a new data point was created, or False if not (i.e. an existing one was found)
         """
         if schema_cache is None:
             schema_cache = SchemaCacheExperimental()
@@ -1446,7 +1446,8 @@ class NeoSchema:
 
         if result["created"]:
             # If a new data node was created, it must be linked to its Class node
-            cls.db.add_edges(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA")
+            #cls.db.add_edges(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA")
+            cls.db.add_links_fast(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA")
         else:
             # Verify that is already has a SCHEMA link to its Class node
             if not cls.db.edges_exist(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA"):

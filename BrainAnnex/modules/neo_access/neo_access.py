@@ -789,6 +789,7 @@ class NeoAccess:
 
 
 
+    # TODO: deprecated by match()
     def find(self, labels=None, neo_id=None, key_name=None, key_value=None, properties=None, subquery=None,
              dummy_node_name="n") -> dict:
         """
@@ -1861,7 +1862,7 @@ class NeoAccess:
 
     def add_links_fast(self, match_from: int, match_to: int, rel_name:str) -> int:
         """
-        Experiment first method optimized for speed.  Only internal database ID are used
+        Experimental first method optimized for speed.  Only internal database ID are used
 
         Add a links (aka graph edges/relationships), with the specified rel_name,
         originating in the node identified by match_from,
@@ -1870,7 +1871,8 @@ class NeoAccess:
         :param match_from:  An integer with a Neo4j node id
         :param match_to:    An integer with a Neo4j node id
         :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed
-        :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
+
+        :return:            The number of links added.  If none got added, or in case of error, an Exception is raised
         """
         # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
         q = f'''
@@ -2132,7 +2134,7 @@ class NeoAccess:
         # Merge all the 3data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([node, old_attachment, new_attachment])
 
-        self.debug_query_print(q, combined_data_binding, "add_edges")
+        self.debug_query_print(q, combined_data_binding, "reattach_node")
 
         result = self.update_query(q, combined_data_binding)
         #print("result of update_query in reattach_node(): ", result)
