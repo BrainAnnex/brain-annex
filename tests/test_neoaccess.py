@@ -1503,8 +1503,38 @@ def test_edges_exists(db):
 
 
 
-def test_number_of_edges(db):
-    pass    # TODO
+def test_number_of_links(db):
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
+    neo_car = db.create_node("car", {'color': 'white'})
+    neo_julian = db.create_node("owner", {'name': 'Julian'})
+
+    assert db.number_of_links(neo_car, neo_julian, rel_name="OWNED_BY") == 0    # No relationship exists yet
+
+    db.add_links(neo_car, neo_julian, rel_name="OWNED_BY")
+    assert db.number_of_links(neo_car, neo_julian, rel_name="OWNED_BY") == 1    # By now, it exists
+    assert db.number_of_links(neo_julian, neo_car, rel_name="OWNED_BY") == 0    # But not in the reverse direction
+    assert db.number_of_links(neo_car, neo_julian, rel_name="DRIVEN BY") == 0   # Nor by a different name
+
+    db.add_links(neo_car, neo_julian, rel_name="DRIVEN BY")
+    assert db.number_of_links(neo_car, neo_julian, rel_name="DRIVEN BY") == 1   # Now it exists with this other name
+
+    db.remove_links(neo_car, neo_julian, rel_name="DRIVEN BY")
+    assert db.number_of_links(neo_car, neo_julian, rel_name="DRIVEN BY") == 0   # Now it's gone
+
+    neo_sailboat = db.create_node("sailboat", {'type': 'sloop', 'color': 'white'})
+    db.add_links(neo_julian, neo_sailboat, rel_name="SAILS")
+    assert db.number_of_links(neo_julian, neo_sailboat, rel_name="SAILS") == 1  # It finds the just-added link
+
+    match_vehicle = db.find(properties={'color': 'white'})                      # To select both car and boat
+    assert db.number_of_links(neo_julian, match_vehicle, rel_name="SAILS") == 1
+
+    assert db.number_of_links(neo_car, neo_car, rel_name="SELF_DRIVES") == 0    # A relationship from a node to itself
+    db.add_links(neo_car, neo_car, rel_name="SELF_DRIVES")
+    assert db.number_of_links(neo_car, neo_car, rel_name="SELF_DRIVES") == 1    # Find the link to itself
+
+    db.add_links(neo_sailboat, neo_julian, rel_name="OWNED_BY")
+    assert db.number_of_links(match_vehicle, neo_julian, rel_name="OWNED_BY") == 2  # 2 vehicles owned by Julian
 
 
 

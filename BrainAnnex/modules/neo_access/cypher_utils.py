@@ -5,11 +5,11 @@ class CypherUtils:
     """
     Helper class for the class "NeoAccess".
 
-    Most of it, is used for node-matching utilizing the "match structure", defined below.
+    Most of it, is used for node-matching utilizing the "processed match structure", defined below.
 
     Meant as a PRIVATE class for NeoAccess; not indicated for the end user.
 
-    A "processed match" structure is used to facilitate for a user to specify a node in a wide variety of way - and
+    A "processed match structure" (a dict) is used to facilitate for a user to specify a node in a wide variety of way - and
     save those specifications, in a "pre-digested" way, to use as needed in Cypher queries.
     It is a Python dictionary with UP TO the following 4 keys (not all are necessarily present):
 
@@ -20,9 +20,6 @@ class CypherUtils:
             4) "dummy_node_name": a string used for the node name inside the Cypher query (by default, "n");
                                   potentially relevant to the "node" and "where" values
 
-        TODO: explore the possibility of storing in the structure all the args passed to define_match -
-                so that, in case of later conflicts in "dummy_node_name", the "dummy_node_name" can be
-                automatically changed, and the structure re-constructed
 
         EXAMPLES:
             *   {"node": "(n  )" , "where": "" , "data_binding": {}, "dummy_node_name": "n"}

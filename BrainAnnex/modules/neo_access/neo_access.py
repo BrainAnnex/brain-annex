@@ -1603,9 +1603,10 @@ class NeoAccess:
         """
         Delete the node or nodes specified by the match argument.  Return the number of nodes deleted.
 
-        :param match_structure:   EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
-        :return:        The number of nodes deleted (possibly zero)
+        :param match_structure: EITHER an integer with a Neo4j node id,
+                                    OR a dictionary of data to identify a node, or set of nodes,
+                                       as returned by match()
+        :return:                The number of nodes deleted (possibly zero)
         """
         match_structure = CypherUtils.process_match_structure(match_structure)     # Validate, and possibly create, the match dictionary
 
@@ -1954,16 +1955,15 @@ class NeoAccess:
             print("    match_from:", match_from)
             print("    match_to:", match_to)
 
+        # Make sure there's no conflict in node dummy names
+        CypherUtils.check_match_compatibility(match_from, match_to)
+
         # Unpack needed values from the match_from and match_to structures
         nodes_from = CypherUtils.extract_node(match_from)
         nodes_to   = CypherUtils.extract_node(match_to)
 
-        # Make sure there's no conflict in node dummy names
-        CypherUtils.check_match_compatibility(match_from, match_to)
-
         where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
-        # and also prefix (if appropriate) the WHERE keyword
-
+                                                                            # and also prefix (if appropriate) the WHERE keyword
         # Prepare the query
         if rel_name is None or rel_name == "":  # Delete ALL relationships
             q = f'''
@@ -2014,11 +2014,70 @@ class NeoAccess:
 
         :return:            True if one or more relationships were found, or False if not
         """
-        return self.number_of_edges(match_from=match_from, match_to=match_to, rel_name=rel_name) >= 1   # True if at least 1
+        return self.number_of_edges_OLD(match_from=match_from, match_to=match_to, rel_name=rel_name) >= 1   # True if at least 1
 
 
 
-    def number_of_edges(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name: str) -> int:
+    def number_of_links(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name: str) -> int:
+        """
+        Return the number of links (aka edges, relationships) with the specified name exist in the direction
+        from and to the nodes (individual nodes or set of nodes) specified in the first two arguments.
+
+        :param match_from:  EITHER an integer with a Neo4j node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
+        :param match_to:    EITHER an integer with a Neo4j node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
+                            Note: match_from and match_to, if created by calls to match(),
+                                  in scenarios where a dummy name is used,
+                                  MUST use different node dummy names;
+                                  e.g., make sure that for match_from, match() used the option: dummy_node_name="from"
+                                                     and for match_to, match() used the option: dummy_node_name="to"
+
+        :param rel_name:    The name of the relationship to look for between the 2 specified nodes.
+                                Blanks are allowed
+
+        :return:            The number of links (relationships) that were found
+        """
+        match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from")
+        match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to")
+
+        if self.debug:
+            print("In number_of_links()")
+            print("    match_from:", match_from)
+            print("    match_to:", match_to)
+
+        # Make sure there's no conflict in the dummy node names
+        CypherUtils.check_match_compatibility(match_from, match_to)
+
+        # Unpack needed values from the match_from and match_to structures
+        nodes_from = CypherUtils.extract_node(match_from)
+        nodes_to   = CypherUtils.extract_node(match_to)
+
+        where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
+                                                                            # and also prefix (if appropriate) the WHERE keyword
+        # Prepare the query
+        q = f'''
+            MATCH {nodes_from} -[r :`{rel_name}`]-> {nodes_to}
+            {where_clause} 
+            RETURN r          
+            '''
+
+        # Merge the data-binding dict's
+        combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
+
+        self.debug_query_print(q, combined_data_binding, "number_of_links")
+
+        result = self.query(q, combined_data_binding)
+        if self.debug:
+            print("    result of query in number_of_links(): ", result)
+
+        return len(result)
+
+
+
+
+    # TODO: obsoleted by number_of_links()
+    def number_of_edges_OLD(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name: str) -> int:
         """     #TODO: add pytest
         Return the number of edges (relationships) with the specified name exist in the direction
         from and to the nodes (individual nodes or set of nodes) specified in the first two arguments.
