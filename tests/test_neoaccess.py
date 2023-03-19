@@ -70,7 +70,7 @@ def test_version(db):
 ###  ~ RUNNING GENERIC QUERIES ~
 
 def test_query(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     q = "CREATE (:car {make:'Toyota', color:'white'})"   # Create a node without returning it
     result = db.query(q)
     assert result == []
@@ -118,7 +118,7 @@ def test_query(db):
 
 
 def test_query_extended(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create and return 1st node
     q = "CREATE (n:car {make:'Toyota', color:'white'}) RETURN n"
@@ -243,7 +243,7 @@ def test_update_query(db):
 ###  ~ RETRIEVE DATA ~
 
 def test_get_single_field(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Create 2 nodes
     db.query('''CREATE (:`my label`:`color` {`field A`: 123, `field B`: 'test'}), 
                        (:`my label`:`make`  {                `field B`: 'more test', `field C`: 3.14})
@@ -269,7 +269,7 @@ def test_get_single_field(db):
 
 
 def test_get_record_by_primary_key(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     node_id_Valerie = db.create_node("person", {'SSN': 123, 'name': 'Valerie', 'gender': 'F'})
     db.create_node("person", {'SSN': 456, 'name': 'Therese', 'gender': 'F'})
@@ -298,7 +298,7 @@ def test_get_record_by_primary_key(db):
 
 
 def test_exists_by_key(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     db.create_node("person", {'SSN': 123, 'name': 'Valerie', 'gender': 'F'})
     db.create_node("person", {'SSN': 456, 'name': 'Therese', 'gender': 'F'})
 
@@ -313,7 +313,7 @@ def test_exists_by_key(db):
 
 
 def test_get_nodes(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create a 1st new node
     db.create_node("test_label", {'patient_id': 123, 'gender': 'M'})
@@ -424,7 +424,7 @@ def test_get_nodes(db):
 
     # Now, do a clean start, and investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create a first node, with attributes 'age' and 'gender'
     db.create_node("patient", {'age': 16, 'gender': 'F'})
@@ -462,7 +462,7 @@ def test_get_nodes(db):
 
 
 def test_get_df(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create and load a test Pandas dataframe with 2 columns and 2 rows
     df_original = pd.DataFrame({"patient_id": [1, 2], "name": ["Jack", "Jill"]})
@@ -570,7 +570,7 @@ def test_get_node_labels(db):
 ###  ~ FOLLOW LINKS ~
 
 def test_follow_links(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_node("book", {'title': 'The Double Helix'})
     db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
@@ -596,7 +596,7 @@ def test_follow_links(db):
 
 
 def test_count_links(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_node("book", {'title': 'The Double Helix'})
     db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
@@ -622,7 +622,7 @@ def test_count_links(db):
 
 
 def test_get_parents_and_children(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     node_id = db.create_node("mid generation", {'age': 42, 'gender': 'F'})    # This will be the "central node"
     result = db.get_parents_and_children(node_id)
@@ -697,7 +697,7 @@ def test_create_node(db):
                     3) retrieve the newly created nodes, using retrieve_nodes_by_label_and_clause()
     """
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create a new node.  Notice the blank in the key
     db.create_node("test_label", {'patient id': 123, 'gender': 'M'})
@@ -765,7 +765,7 @@ def test_create_node(db):
 
 
 def test_create_node_with_relationships(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create the prior nodes to which to link the newly-created node
     db.create_node("DEPARTMENT", {'dept_name': 'IT'})
@@ -799,7 +799,7 @@ def test_create_node_with_relationships(db):
 
 
 def test_create_attached_node(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     with pytest.raises(Exception):
         # Attempting to link to non-existing nodes
@@ -873,7 +873,7 @@ def test_create_attached_node(db):
 
 def test_create_node_with_links(db):
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     with pytest.raises(Exception):
         db.create_node_with_links(labels="A", properties="Not a dictionary")
@@ -1001,7 +1001,7 @@ def test_assemble_query_for_linking(db):
 ###  ~ DELETE NODES ~
 
 def test_delete_nodes(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create 5 nodes, representing cars of various colors and prices
     df = pd.DataFrame({"color": ["white", "blue", "gray", "gray", "red"], "price": [100, 200, 300, 400, 500]})
@@ -1115,7 +1115,7 @@ def test_delete_nodes_by_label(db):
 def test_empty_dbase(db):
     # Tests of completely clearing the database
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Verify nothing is left
     labels = db.get_labels()
     assert labels == []
@@ -1123,14 +1123,14 @@ def test_empty_dbase(db):
     db.create_node("label_A", {})
     db.create_node("label_B", {'client_id': 123, 'gender': 'M'})
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Verify nothing is left
     labels = db.get_labels()
     assert labels == []
 
     # Test of removing only specific labels
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Add a few labels
     db.create_node("label_1", {'client_id': 123, 'gender': 'M'})
     db.create_node("label_2", {})
@@ -1144,7 +1144,7 @@ def test_empty_dbase(db):
 
     # Test of keeping only specific labels
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Add a few labels
     db.create_node("label_1", {'client_id': 123, 'gender': 'M'})
     db.create_node("label_2", {})
@@ -1166,7 +1166,7 @@ def test_empty_dbase(db):
 ###  ~ MODIFY FIELDS ~
 
 def test_set_fields(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create a new node.  Notice the blank in the key
     db.create_node("car", {'vehicle id': 123, 'price': 7500})
@@ -1187,7 +1187,7 @@ def test_set_fields(db):
 ###  ~ RELATIONSHIPS ~
 
 def test_get_relationship_types(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     rels = db.get_relationship_types()
     assert rels == []
 
@@ -1203,7 +1203,7 @@ def test_get_relationship_types(db):
 
 
 def test_add_links(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_from = db.create_node("car", {'color': 'white'})
     neo_to = db.create_node("owner", {'name': 'Julian'})
@@ -1220,7 +1220,7 @@ def test_add_links(db):
 
 
     # Start over again
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_from = db.create_node("car", {'color': 'white'})
     neo_to = db.create_node("owner", {'name': 'Julian'})
@@ -1238,7 +1238,7 @@ def test_add_links(db):
 
 
     # Start over again
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_from = db.create_node("car", {'color': 'white'})
     neo_to = db.create_node("owner", {'name': 'Julian'})
@@ -1267,7 +1267,7 @@ def test_add_links(db):
 
 
 def test_add_links_fast(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_from = db.create_node("car", {'color': 'white'})
     neo_to = db.create_node("owner", {'name': 'Julian'})
@@ -1294,7 +1294,7 @@ def test_add_links_fast(db):
 
 
 def test_remove_edges(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
@@ -1302,8 +1302,6 @@ def test_remove_edges(db):
     number_added = db.add_links(neo_car, neo_julian, rel_name="OWNED_BY")
     assert number_added == 1
 
-    find_car = db.find(labels="car", dummy_node_name="from")    # TODO: being phase out
-    find_julian = db.find(properties={"name": "Julian"}, dummy_node_name="to")  # TODO: being phase out
     match_car = db.match(labels="car", dummy_node_name="from")
     match_julian = db.match(properties={"name": "Julian"}, dummy_node_name="to")
 
@@ -1315,13 +1313,13 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 1     # Find the relationship
 
     with pytest.raises(Exception):
-        assert db.remove_edges(find_car, find_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
+        assert db.remove_links(match_car, match_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
 
     with pytest.raises(Exception):
-        assert db.remove_edges({"NON-sensical match object"}, find_julian, rel_name="OWNED_BY")
+        assert db.remove_links({"NON-sensical match object"}, match_julian, rel_name="OWNED_BY")
 
     # Finally, actually remove the edge
-    number_removed = db.remove_edges(find_car, find_julian, rel_name="OWNED_BY")
+    number_removed = db.remove_links(match_car, match_julian, rel_name="OWNED_BY")
     assert number_removed == 1
 
     result = db.query(find_query)
@@ -1329,11 +1327,11 @@ def test_remove_edges(db):
 
     with pytest.raises(Exception):
         # This will crash because the relationship is no longer there
-        assert db.remove_edges(find_car, find_car, rel_name="OWNED_BY")
+        assert db.remove_links(match_car, match_car, rel_name="OWNED_BY")
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.remove_edges(find_car, find_car, rel_name="THIS_WILL_CRASH")
+        assert db.remove_links(match_car, match_car, rel_name="THIS_WILL_CRASH")
 
 
     # Restore the relationship...
@@ -1372,7 +1370,7 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 2     # The 2 relationships we just added
 
     # Remove 2 same-named relationships at once between the same 2 nodes
-    number_removed = db.remove_edges(find_car, find_julian, rel_name="REMEMBERED_BY")
+    number_removed = db.remove_links(match_car, match_julian, rel_name="REMEMBERED_BY")
     assert number_removed == 2
 
     result = db.query(find_query)
@@ -1393,7 +1391,7 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 1     # Still there
 
 
-    number_removed = db.remove_edges(find_car, find_julian, rel_name="OWNED_BY")
+    number_removed = db.remove_links(match_car, match_julian, rel_name="OWNED_BY")
     assert number_removed == 1
 
     find_query = '''
@@ -1426,18 +1424,19 @@ def test_remove_edges(db):
     assert result[0]["n_relationships"] == 2
 
     # Delete both relationships at once
-    match_val = db.find(key_name="name", key_value="Val", dummy_node_name="v")
+    match_val = db.match(key_name="name", key_value="Val", dummy_node_name="v")
 
-    number_removed = db.remove_edges(find_car, match_val, rel_name=None)
+    number_removed = db.remove_links(match_car, match_val, rel_name=None)
     assert number_removed == 2
 
     result = db.query(find_query)
     assert result[0]["n_relationships"] == 0    # All gone
 
 
+
 def test_remove_edges_2(db):
     # This set of test focuses on removing edges between GROUPS of nodes
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # 2 cars, co-owned by 2 people
     q = '''
@@ -1452,8 +1451,8 @@ def test_remove_edges_2(db):
     assert result == {'labels_added': 4, 'relationships_created': 4,
                       'nodes_created': 4, 'properties_set': 4, 'returned_data': []}
 
-    match_white_car = db.find(labels="car", properties={"color": "white"}, dummy_node_name="from")  # 1-node match
-    match_all_people = db.find(labels="person", dummy_node_name="to")                               # 2-node match
+    match_white_car = db.match(labels="car", properties={"color": "white"}, dummy_node_name="from")  # 1-node match
+    match_all_people = db.match(labels="person", dummy_node_name="to")                               # 2-node match
 
 
     find_query = '''
@@ -1464,7 +1463,7 @@ def test_remove_edges_2(db):
     assert result[0]["n_relationships"] == 2        # The white car has 2 links
 
     # Delete all the "OWNED_BY" relationships from the white car to any of the "person" nodes
-    number_removed = db.remove_edges(match_white_car, match_all_people, rel_name="OWNED_BY")
+    number_removed = db.remove_links(match_white_car, match_all_people, rel_name="OWNED_BY")
     assert number_removed == 2
 
     result = db.query(find_query)
@@ -1473,7 +1472,7 @@ def test_remove_edges_2(db):
 
 
 def test_edges_exists(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
@@ -1488,7 +1487,7 @@ def test_edges_exists(db):
     db.add_links(neo_car, neo_julian, rel_name="DRIVEN BY")
     assert db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")       # Now it exists
 
-    db.remove_edges(neo_car, neo_julian, rel_name="DRIVEN BY")
+    db.remove_links(neo_car, neo_julian, rel_name="DRIVEN BY")
     assert not db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Now it's gone
 
     neo_sailboat = db.create_node("sailboat", {'type': 'sloop', 'color': 'white'})
@@ -1515,7 +1514,7 @@ def test_test_reattach_node(db):
 
 
 def test_link_nodes_by_ids(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Create dummy data and return node_ids
     nodeids = db.query("""
         UNWIND range(1,3) as x
@@ -1538,7 +1537,7 @@ def test_link_nodes_by_ids(db):
 
 
 def test_link_nodes_on_matching_property(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     db.create_node('A', {'client': 'GSK', 'expenses': 34000, 'duration': 3})
     db.create_node('B', {'client': 'Roche'})
     db.create_node('C', {'client': 'GSK'})
@@ -1569,7 +1568,7 @@ def test_get_labels(db):
     Create multiple new nodes, and then retrieve all the labels present in the database
     """
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     labels = db.get_labels()
     assert labels == []
@@ -1597,7 +1596,7 @@ def test_get_labels(db):
 
 
 def test_get_label_properties(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     db.query("CREATE (a1 :A {y:123}), (a2 :A {x:'hello'}), (a3 :A {`some name with blanks`:'x'}), (b :B {e:1})")
     result = db.get_label_properties(label = 'A')
     expected_result = ['some name with blanks', 'x', 'y']
@@ -1609,7 +1608,7 @@ def test_get_label_properties(db):
 ###  ~ INDEXES ~
 
 def test_get_indexes(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     result = db.get_indexes()
     assert result.empty
@@ -1810,7 +1809,7 @@ def test_drop_all_constraints(db):
 ###  ~ READ IN DATA from PANDAS ~
 
 def test_load_pandas(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     df = pd.DataFrame([[123]], columns = ["col1"])  # One row, one column
     db.load_pandas(df, "A")

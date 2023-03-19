@@ -1185,7 +1185,7 @@ class NeoAccess:
 
 
 
-    def create_node_with_links(self, labels, properties = None, links = None, merge=False) -> int:
+    def create_node_with_links(self, labels, properties=None, links=None, merge=False) -> int:
         """
         Create a new node, with the given labels and optional properties,
         and make it a parent of all the EXISTING nodes that are specified
@@ -1422,8 +1422,9 @@ class NeoAccess:
 
         On success, return the Neo4j internal ID of the new node just created.
 
-        Note: if all connections are outbound, and to nodes with known Neo4j internal IDs, then
-              the simpler method create_node_with_children() may be used instead
+        Note: if all connections are in one direction, and with same (property-less) relationship name,
+              and to nodes with known Neo4j internal IDs, then
+              the simpler method create_attached_node() may be used instead
 
         EXAMPLE:
             create_node_with_relationships(
@@ -1828,7 +1829,7 @@ class NeoAccess:
 
         :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
         """
-        # Create processed "match dictionaries"
+        # Create the "processed match dictionaries"
         match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from")
         match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to")
 
@@ -1905,9 +1906,9 @@ class NeoAccess:
 
 
 
-    def remove_edges(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name) -> int:
+    def remove_links(self, match_from: Union[int, dict], match_to: Union[int, dict], rel_name) -> int:
         """
-        Remove one or more edges (relationships)
+        Remove one or more links (relationships, aka edges)
         originating in any of the nodes specified by the match_from specifications,
         and terminating in any of the nodes specified by the match_to specifications,
         optionally matching the given relationship name (will remove all edges if the name is blank or None)
@@ -1921,12 +1922,14 @@ class NeoAccess:
                         as long as the relationships differ in their properties
 
         :param match_from:  EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
         :param match_to:    EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
-                            IMPORTANT: match_from and match_to, if created by calls to find(), MUST use different node dummy names;
-                                       e.g., make sure that for match_from, find() used the option: dummy_node_name="from"
-                                                        and for match_to,   find() used the option: dummy_node_name="to"
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
+                            Note: match_from and match_to, if created by calls to match(),
+                                  in scenarios where a dummy name is used,
+                                  MUST use different node dummy names;
+                                  e.g., make sure that for match_from, match() used the option: dummy_node_name="from"
+                                                     and for match_to, match() used the option: dummy_node_name="to"
 
         :param rel_name:    (OPTIONAL) The name of the relationship to delete between the 2 specified nodes;
                                 if None or a blank string, all relationships between those 2 nodes will get deleted.
@@ -1934,18 +1937,24 @@ class NeoAccess:
 
         :return:            The number of edges removed.  If none got deleted, or in case of error, an Exception is raised
         """
-        match_from = CypherUtils.validate_and_standardize(match_from, dummy_node_name="from")   # Validate, and possibly create, the match dictionary
-        match_to   = CypherUtils.validate_and_standardize(match_to, dummy_node_name="to")       # Validate, and possibly create, the match dictionary
+        # Create the "processed match dictionaries"
+        match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from")
+        match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to")
 
-        # Make sure there's no conflict in the dummy node names
-        CypherUtils.check_match_compatibility(match_from, match_to)
+        if self.debug:
+            print("In remove_links()")
+            print("    match_from:", match_from)
+            print("    match_to:", match_to)
 
         # Unpack needed values from the match_from and match_to structures
         nodes_from = CypherUtils.extract_node(match_from)
         nodes_to   = CypherUtils.extract_node(match_to)
 
+        # Make sure there's no conflict in node dummy names
+        CypherUtils.check_match_compatibility(match_from, match_to)
+
         where_clause = CypherUtils.combined_where([match_from, match_to])   # Combine the two WHERE clauses from each of the matches,
-                                                                            # and also prefix (if appropriate) the WHERE keyword
+        # and also prefix (if appropriate) the WHERE keyword
 
         # Prepare the query
         if rel_name is None or rel_name == "":  # Delete ALL relationships
@@ -1964,15 +1973,15 @@ class NeoAccess:
         # Merge the data-binding dict's
         combined_data_binding = CypherUtils.combined_data_binding([match_from, match_to])
 
-        self.debug_query_print(q, combined_data_binding, "remove_edges")
+        self.debug_query_print(q, combined_data_binding, "remove_links")
 
         result = self.update_query(q, combined_data_binding)
         if self.debug:
-            print("    result of update_query in remove_edges(): ", result)
+            print("    result of update_query in remove_links: ", result)
 
         number_relationships_deleted = result.get("relationships_deleted", 0)   # If field isn't present, return a 0
         if number_relationships_deleted == 0:       # This could be more than 1: see notes above
-            raise Exception("No relationship was deleted")
+            raise Exception("remove_links(): no relationship was deleted")
 
         return number_relationships_deleted
 
@@ -2720,9 +2729,10 @@ class NeoAccess:
                 # that are all attached to a special parent node that has no attributes
                 children_list = []
                 for child_id in children_info:
-                    children_list.append( (child_id, root_labels) )
+                    #children_list.append( (child_id, root_labels) )
+                    children_list.append( {"neo_id": child_id, "rel_name":root_labels} )
                 self.debug_print(f"{indent_str}Attaching the root nodes of the list elements to a common parent")
-                return [self.create_node_with_children(labels=root_labels, children_list=children_list, properties=None)]
+                return [self.create_node_with_links(labels=root_labels, properties=None, links=children_list)]
 
         else:
             raise Exception(f"Unexpected data type: {type(python_data)}")
@@ -2762,20 +2772,22 @@ class NeoAccess:
                     raise Exception("Internal error: processing a dictionary is returning more than 1 root node")
                 elif len(new_node_id_list) == 1:
                     new_node_id = new_node_id_list[0]
-                    children_info.append( (new_node_id, k) )
+                    #children_info.append( (new_node_id, k) )
+                    children_info.append( {"neo_id": new_node_id, "rel_name": k} )
                 # Note: if the list is empty, do nothing
 
             elif type(v) == list:
                 self.debug_print(f"{indent_str}Processing a list (with {len(v)} elements):")
                 new_children = self.list_importer(l=v, labels=k, level=level)
                 for child_id in new_children:
-                    children_info.append( (child_id, k) )   # Append a pair to the running list
+                    #children_info.append( (child_id, k) )   # Append a pair to the running list
+                    children_info.append( {"neo_id": child_id, "rel_name": k} )
 
             # Note: if v is None, no action is taken.  Dictionary entries with values of None are disregarded
 
 
         self.debug_print(f"{indent_str}dict_importer assembled node_properties: {node_properties} | children_info: {children_info}")
-        return self.create_node_with_children(labels=labels, children_list=children_info, properties=node_properties)
+        return self.create_node_with_links(labels=labels, properties=node_properties, links=children_info)
 
 
 

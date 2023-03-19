@@ -580,12 +580,12 @@ class NeoSchema:
 
         try:
             # Define the criteria to identify the given Class nodes
-            match_from = cls.db.find(labels="CLASS", key_name="name", key_value=from_class, dummy_node_name="from")
-            match_to = cls.db.find(labels="CLASS", key_name="name", key_value=to_class, dummy_node_name="to")
+            match_from = cls.db.match(labels="CLASS", key_name="name", key_value=from_class, dummy_node_name="from")
+            match_to = cls.db.match(labels="CLASS", key_name="name", key_value=to_class, dummy_node_name="to")
             # Remove the specified relationship between them
-            number_removed = cls.db.remove_edges(match_from=match_from, match_to=match_to, rel_name=rel_name)
+            number_removed = cls.db.remove_links(match_from=match_from, match_to=match_to, rel_name=rel_name)
         except Exception as ex:
-            raise Exception(f"Failed to delete the `{rel_name}` relationship from Schema Class `{from_class}` to Schema Class `{to_class}`. {ex}")
+            raise Exception(f"delete_class_relationship(): failed to delete the `{rel_name}` relationship from Schema Class `{from_class}` to Schema Class `{to_class}`. {ex}")
 
         return number_removed
 
@@ -2140,13 +2140,13 @@ class NeoSchema:
         """
         assert rel_name != "", f"remove_data_relationship(): no name was provided for the relationship"
 
-        match_from = cls.db.find(labels=labels, key_name="item_id", key_value=from_id,
+        match_from = cls.db.match(labels=labels, key_name="item_id", key_value=from_id,
                                  dummy_node_name="from")
 
-        match_to =   cls.db.find(labels=labels, key_name="item_id", key_value=to_id,
+        match_to =   cls.db.match(labels=labels, key_name="item_id", key_value=to_id,
                                  dummy_node_name="to")
 
-        cls.db.remove_edges(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
+        cls.db.remove_links(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
 
 
 
