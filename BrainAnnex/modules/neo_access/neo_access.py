@@ -922,129 +922,6 @@ class NeoAccess:
 
     #####################################################################################################
 
-    '''                                    ~   FOLLOW LINKS   ~                                        '''
-
-    def ________FOLLOW_LINKS________(DIVIDER):
-        pass        # Used to get a better structure view in IDEs
-    #####################################################################################################
-
-
-    def follow_links(self, match: Union[int, dict], rel_name: str, rel_dir ="OUT", neighbor_labels = None) -> [dict]:
-        """
-        From the given starting node(s), follow all the relationships of the given name to and/or from it,
-        into/from neighbor nodes (optionally having the given labels),
-        and return all the properties of those neighbor nodes.
-
-        :param match:           EITHER an integer with a Neo4j node id,
-                                    OR a dictionary of data to identify a node, or set of nodes, as returned by find()
-        :param rel_name:        A string with the name of relationship to follow.  (Note: any other relationships are ignored)
-        :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
-        :param neighbor_labels: Optional label(s) required on the neighbors.  If present, either a string or list of strings
-
-        :return:                A list of dictionaries with all the properties of the neighbor nodes
-                                TODO: maybe add the option to just return a subset of fields
-        """
-        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
-
-        # Unpack needed values from the match dictionary
-        (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
-
-        neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
-
-        if rel_dir == "OUT":    # Follow outbound links
-            q =  f"MATCH {node} - [:{rel_name}] -> (neighbor {neighbor_labels_str})"
-        elif rel_dir == "IN":   # Follow inbound links
-            q =  f"MATCH {node} <- [:{rel_name}] - (neighbor {neighbor_labels_str})"
-        else:                   # Follow links in BOTH directions
-            q =  f"MATCH {node}  - [:{rel_name}] - (neighbor {neighbor_labels_str})"
-
-
-        q += CypherUtils.prepare_where(where) + " RETURN neighbor"
-
-        self.debug_query_print(q, data_binding, "follow_links")
-
-        result = self.query(q, data_binding, single_column='neighbor')
-
-        return result
-
-
-
-    def count_links(self, match: Union[int, dict], rel_name: str, rel_dir: str, neighbor_labels = None) -> int:
-        """
-        From the given starting node(s), count all the relationships OF THE GIVEN NAME to and/or from it,
-        into/from neighbor nodes (optionally having the given labels)
-
-        :param match:           EITHER an integer with a Neo4j node id,
-                                    OR a dictionary of data to identify a node, or set of nodes, as returned by find()
-        :param rel_name:        A string with the name of relationship to follow.  (Note: any other relationships are ignored)
-        :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
-        :param neighbor_labels: Optional label(s) required on the neighbors.  If present, either a string or list of strings
-
-        :return:                The total number of inbound and/or outbound relationships to the given node(s)
-        """
-        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
-
-        # Unpack needed values from the match dictionary
-        (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
-
-        neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
-
-        if rel_dir == "OUT":            # Follow outbound links
-            q =  f"MATCH {node} - [:{rel_name}] -> (neighbor {neighbor_labels_str})"
-        elif rel_dir == "IN":           # Follow inbound links
-            q =  f"MATCH {node} <- [:{rel_name}] - (neighbor {neighbor_labels_str})"
-        elif rel_dir == "BOTH":         # Follow links in BOTH directions
-            q =  f"MATCH {node}  - [:{rel_name}] - (neighbor {neighbor_labels_str})"
-        else:
-            raise Exception(f"count_links(): argument `rel_dir` must be one of: 'IN', 'OUT', 'BOTH'; value passed was `{rel_dir}`")
-
-        q += CypherUtils.prepare_where(where) + " RETURN count(neighbor) AS link_count"
-
-        self.debug_query_print(q, data_binding, "count_links")
-
-        return self.query(q, data_binding, single_cell="link_count")
-
-
-
-    def get_parents_and_children(self, node_id: int) -> ():
-        """
-        Fetch all the nodes connected to the given one by INbound relationships to it (its "parents"),
-        as well as by OUTbound relationships to it (its "children")
-
-        :param node_id: An integer with a Neo4j internal node ID
-        :return:        A dictionary with 2 keys: 'parent_list' and 'child_list'
-                        The values are lists of dictionaries with 3 keys: "id", "label", "rel"
-                            EXAMPLE of individual items in either parent_list or child_list:
-                            {'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
-        """
-
-        # Fetch the parents
-        cypher = f"MATCH (parent)-[inbound]->(n) WHERE id(n) = {node_id} " \
-                  "RETURN id(parent) AS id, labels(parent) AS labels, type(inbound) AS rel"
-
-        parent_list = self.query(cypher)
-        # EXAMPLE of parent_list:
-        #       [{'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'},
-        #        {'id': 150, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}]
-
-
-        # Fetch the children
-        cypher = f"MATCH (n)-[outbound]->(child) WHERE id(n) = {node_id} " \
-                  "RETURN id(child) AS id, labels(child) AS labels, type(outbound) AS rel"
-
-        child_list = self.query(cypher)
-        # EXAMPLE of child_list:
-        #       [{'id': 107, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'},
-        #        {'id': 103, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'}]
-
-
-        return (parent_list, child_list)
-
-
-
-
-    #####################################################################################################
-
     '''                                 ~   CREATE NODES   ~                                          '''
 
     def ________CREATE_NODES________(DIVIDER):
@@ -2203,6 +2080,130 @@ class NeoAccess:
                 MERGE (x)-[:{rel}]->(y)'''
 
         self.query(q)
+
+
+
+
+
+    #####################################################################################################
+
+    '''                                    ~   FOLLOW LINKS   ~                                        '''
+
+    def ________FOLLOW_LINKS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    def follow_links(self, match: Union[int, dict], rel_name: str, rel_dir ="OUT", neighbor_labels = None) -> [dict]:
+        """
+        From the given starting node(s), follow all the relationships of the given name to and/or from it,
+        into/from neighbor nodes (optionally having the given labels),
+        and return all the properties of those neighbor nodes.
+
+        :param match:           EITHER an integer with a Neo4j node id,
+                                    OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param rel_name:        A string with the name of relationship to follow.  (Note: any other relationships are ignored)
+        :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
+        :param neighbor_labels: Optional label(s) required on the neighbors.  If present, either a string or list of strings
+
+        :return:                A list of dictionaries with all the properties of the neighbor nodes
+                                TODO: maybe add the option to just return a subset of fields
+        """
+        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
+
+        # Unpack needed values from the match dictionary
+        (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
+
+        neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
+
+        if rel_dir == "OUT":    # Follow outbound links
+            q =  f"MATCH {node} - [:{rel_name}] -> (neighbor {neighbor_labels_str})"
+        elif rel_dir == "IN":   # Follow inbound links
+            q =  f"MATCH {node} <- [:{rel_name}] - (neighbor {neighbor_labels_str})"
+        else:                   # Follow links in BOTH directions
+            q =  f"MATCH {node}  - [:{rel_name}] - (neighbor {neighbor_labels_str})"
+
+
+        q += CypherUtils.prepare_where(where) + " RETURN neighbor"
+
+        self.debug_query_print(q, data_binding, "follow_links")
+
+        result = self.query(q, data_binding, single_column='neighbor')
+
+        return result
+
+
+
+    def count_links(self, match: Union[int, dict], rel_name: str, rel_dir: str, neighbor_labels = None) -> int:
+        """
+        From the given starting node(s), count all the relationships OF THE GIVEN NAME to and/or from it,
+        into/from neighbor nodes (optionally having the given labels)
+
+        :param match:           EITHER an integer with a Neo4j node id,
+                                    OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param rel_name:        A string with the name of relationship to follow.  (Note: any other relationships are ignored)
+        :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
+        :param neighbor_labels: Optional label(s) required on the neighbors.  If present, either a string or list of strings
+
+        :return:                The total number of inbound and/or outbound relationships to the given node(s)
+        """
+        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
+
+        # Unpack needed values from the match dictionary
+        (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
+
+        neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
+
+        if rel_dir == "OUT":            # Follow outbound links
+            q =  f"MATCH {node} - [:{rel_name}] -> (neighbor {neighbor_labels_str})"
+        elif rel_dir == "IN":           # Follow inbound links
+            q =  f"MATCH {node} <- [:{rel_name}] - (neighbor {neighbor_labels_str})"
+        elif rel_dir == "BOTH":         # Follow links in BOTH directions
+            q =  f"MATCH {node}  - [:{rel_name}] - (neighbor {neighbor_labels_str})"
+        else:
+            raise Exception(f"count_links(): argument `rel_dir` must be one of: 'IN', 'OUT', 'BOTH'; value passed was `{rel_dir}`")
+
+        q += CypherUtils.prepare_where(where) + " RETURN count(neighbor) AS link_count"
+
+        self.debug_query_print(q, data_binding, "count_links")
+
+        return self.query(q, data_binding, single_cell="link_count")
+
+
+
+    def get_parents_and_children(self, node_id: int) -> ():
+        """
+        Fetch all the nodes connected to the given one by INbound relationships to it (its "parents"),
+        as well as by OUTbound relationships to it (its "children")
+
+        :param node_id: An integer with a Neo4j internal node ID
+        :return:        A dictionary with 2 keys: 'parent_list' and 'child_list'
+                        The values are lists of dictionaries with 3 keys: "id", "label", "rel"
+                            EXAMPLE of individual items in either parent_list or child_list:
+                            {'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
+        """
+
+        # Fetch the parents
+        cypher = f"MATCH (parent)-[inbound]->(n) WHERE id(n) = {node_id} " \
+                 "RETURN id(parent) AS id, labels(parent) AS labels, type(inbound) AS rel"
+
+        parent_list = self.query(cypher)
+        # EXAMPLE of parent_list:
+        #       [{'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'},
+        #        {'id': 150, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}]
+
+
+        # Fetch the children
+        cypher = f"MATCH (n)-[outbound]->(child) WHERE id(n) = {node_id} " \
+                 "RETURN id(child) AS id, labels(child) AS labels, type(outbound) AS rel"
+
+        child_list = self.query(cypher)
+        # EXAMPLE of child_list:
+        #       [{'id': 107, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'},
+        #        {'id': 103, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'}]
+
+
+        return (parent_list, child_list)
 
 
 
