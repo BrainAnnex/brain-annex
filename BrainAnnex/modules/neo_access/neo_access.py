@@ -205,15 +205,10 @@ class NeoAccess:
     def assert_valid_neo_id(self, neo_id: int) -> None:
         """
         Raise an Exception if the argument is not a valid Neo4j ID
-        :param neo_id:
+        :param neo_id:  Alleged Neo4j internal database ID
         :return:        None
         """
-        assert type(neo_id) == int, \
-            f"NeoAccess.assert_valid_neo_id(): Neo4j ID's MUST be integers; the value passed was {type(neo_id)}"
-
-        # Note that 0 is a valid Neo4j ID (apparently inconsistently assigned, on occasion, by the database)
-        assert neo_id >= 0, \
-            f"NeoAccess.assert_valid_neo_id(): Neo4j ID's cannot be negative; the value passed was {neo_id}"
+        CypherUtils.assert_valid_internal_id(neo_id)
 
 
 
@@ -732,8 +727,8 @@ class NeoAccess:
 
 
 
-    def match(self, internal_id=None,
-              labels=None, key_name=None, key_value=None, properties=None, clause=None, dummy_node_name="n") -> dict:
+    def match(self, labels=None, internal_id=None,
+              key_name=None, key_value=None, properties=None, clause=None, dummy_node_name="n") -> dict:
         """
         Return a dictionary storing all the passed specifications (the "RAW match structure"),
         as expected as argument in various other functions in this library, in order to identify a node or group of nodes.
@@ -746,15 +741,15 @@ class NeoAccess:
         [Other names explored: identify(), preserve(), define_match(), locate(), choose() or identify()]
 
         ALL THE ARGUMENTS ARE OPTIONAL (no arguments at all means "match everything in the database")
-        :param internal_id: An integer with the node's internal database ID.
-                                If specified, it OVER-RIDES all the remaining arguments [except for the labels (TODO: revisit this)]
-
         :param labels:      A string (or list/tuple of strings) specifying one or more Neo4j labels.
                                 (Note: blank spaces ARE allowed in the strings)
                                 EXAMPLES:  "cars"
                                             ("cars", "powered vehicles")
                             Note that if multiple labels are given, then only nodes with ALL of them will be matched;
                             at present, there's no way to request an "OR" operation
+
+        :param internal_id: An integer with the node's internal database ID.
+                                If specified, it OVER-RIDES all the remaining arguments [except for the labels (TODO: revisit this)]
 
         :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
         :param key_value:   The required value for the above key; if provided, key_name must be present, too
@@ -777,9 +772,28 @@ class NeoAccess:
 
         :return:            A python data dictionary, to preserve together all the passed arguments
         """
+        if labels is not None:
+            assert (type(labels) == str) or (type(labels) == list) or (type(labels) == tuple), \
+                f"match(): the argument `labels`, if provided, must be a string, or a list/tuple of strings"
+
         if internal_id is not None:
             assert CypherUtils.validate_internal_id(internal_id), \
                 f"match(): the argument `internal_id` ({internal_id}) is not a valid internal database ID value"
+
+        if key_name is not None:
+            assert type(key_name) == str, \
+                f"match(): the argument `key_name`, if provided, must be a string"
+            assert key_value is not None, \
+                f"match(): if the argument `key_name` is provided, there must also be a `key_value` argument"
+
+        if properties is not None:
+            assert type(properties) == dict, \
+                f"match(): the argument `properties`, if provided, must be a python dictionary"
+
+        if clause is not None:
+            assert type(clause) == str, \
+                f"match(): the argument `clause`, if provided, must be a string.  EXAMPLE: 'n.age > 21'"
+
 
         if clause is None:
             dummy_node_name = None      # In this scenario, the dummy name isn't yet used, and any name could be used
@@ -897,8 +911,7 @@ class NeoAccess:
         :param neo4j_id:    An integer with a Neo4j node id
         :return:
         """
-        assert type(neo4j_id) == int and neo4j_id >= 0, \
-               "The argument of get_node_labels() must be a non-negative integer"
+        CypherUtils.assert_valid_internal_id(neo4j_id)
 
         q = "MATCH (n) WHERE id(n)=$neo4j_id RETURN labels(n) AS all_labels"
 
@@ -2035,7 +2048,7 @@ class NeoAccess:
                                   e.g., make sure that for match_from, match() used the option: dummy_node_name="from"
                                                      and for match_to, match() used the option: dummy_node_name="to"
 
-        :param rel_name:    The name of the relationship to look for between the 2 specified nodes.
+        :param rel_name:    The name of the relationship to look for between the 2 specified nodes or groups of nodes.
                                 Blanks are allowed
 
         :return:            The number of links (relationships) that were found
@@ -2077,42 +2090,50 @@ class NeoAccess:
 
 
 
-    def reattach_node(self, node, old_attachment, new_attachment, rel_name:str):    # TODO: test
+    def reattach_node(self, node, old_attachment, new_attachment, rel_name:str, rel_name_new=None) -> None:
         """
-        Sever the relationship with the given name from the given node to the old_attachment node,
-        and re-create it from the given node to the new_attachment node
+        Sever the relationship with the given name from the given node to the node old_attachment,
+        and re-create it to the node new_attachment (optionally under a different relationship name).
 
-        :param node:            A "match" structure, as returned by find().  Use dummy_node_name "node"
-        :param old_attachment:  A "match" structure, as returned by find().  Use dummy_node_name "old"
-        :param new_attachment:  A "match" structure, as returned by find().  Use dummy_node_name "new"
-        :param rel_name:
-        :return:                True if the process was successful, or False otherwise
+        Note: relationship properties, if present, will NOT be transferred
+
+        :param node:            An integer with the internal database ID of the node to detach and reattach
+        :param old_attachment:  An integer with the internal database ID of the other node currently connected to
+        :param new_attachment:  An integer with the internal database ID of the new node to connect to
+        :param rel_name:        Name of the old relationship name
+        :param rel_name_new:    (OPTIONAL) Name of the new relationship name (by default the same as the old one)
+
+        :return:                None.  If unsuccessful, an Exception is raised
         """
-        # Unpack the data to locate the 3 affected nodes
-        node_start = CypherUtils.extract_node(node)
-        node_old = CypherUtils.extract_node(old_attachment)
-        node_new = CypherUtils.extract_node(new_attachment)
+        assert CypherUtils.validate_internal_id(node), \
+            f"reattach_node(): not a valid internal database ID ({node})"
+        assert CypherUtils.validate_internal_id(old_attachment), \
+            f"reattach_node(): not a valid internal database ID ({old_attachment})"
+        assert CypherUtils.validate_internal_id(new_attachment), \
+            f"reattach_node(): not a valid internal database ID ({new_attachment})"
 
-        # Combine the 3 WHERE clauses, and also prefix (if appropriate) the WHERE keyword
-        where_clause = CypherUtils.combined_where([node, old_attachment, new_attachment])
+        if rel_name_new is None:
+            rel_name_new = rel_name     # Use the default value, if not provided
 
         q = f'''
-            MATCH {node_start} -[r :{rel_name}]-> {node_old}, {node_new}
-            {where_clause}
-            MERGE (node) -[:{rel_name}]-> (new)           
+            MATCH (node_start) -[rel :{rel_name}]-> (node_old), (node_new)
+            WHERE id(node_start) = {node} and id(node_old) = {old_attachment} and id(node_new) = {new_attachment}
+            MERGE (node_start) -[:{rel_name_new}]-> (node_new)
+            DELETE rel         
             '''
 
-        # Merge all the 3data-binding dict's
-        combined_data_binding = CypherUtils.combined_data_binding([node, old_attachment, new_attachment])
+        self.debug_query_print(q, None, "reattach_node")
 
-        self.debug_query_print(q, combined_data_binding, "reattach_node")
-
-        result = self.update_query(q, combined_data_binding)
+        result = self.update_query(q)
         #print("result of update_query in reattach_node(): ", result)
-        if (result.get("relationships_created") == 1) and (result.get("relationships_deleted") == 1):
-            return True
-        else:
-            return False
+
+        assert (result.get("relationships_deleted") == 1), \
+            "reattach_node(): failed to delete the old relationship (perhaps not found; check if it exists)"
+
+        assert (result.get("relationships_created") == 1), \
+            "reattach_node(): failed to create a new relationship"
+
+
 
 
 

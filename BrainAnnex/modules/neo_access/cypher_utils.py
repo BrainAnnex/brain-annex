@@ -192,9 +192,25 @@ class CypherUtils:
         assert type(match["dummy_node_name"]) == str, "the `dummy_node_name` entry in the `match` dictionary is not a string, as expected"
 
 
+    @classmethod
+    def assert_valid_internal_id(cls, internal_id: int) -> None:
+        """
+        Raise an Exception if the argument is not a valid Neo4j internal database ID
+
+        :param internal_id: Alleged Neo4j internal database ID
+        :return:            None
+        """
+        assert type(internal_id) == int, \
+            f"assert_valid_internal_id(): Neo4j internal ID's MUST be integers; the value passed was {type(internal_id)}"
+
+        # Note that 0 is a valid Neo4j ID (apparently inconsistently assigned, on occasion, by the database)
+        assert internal_id >= 0, \
+            f"assert_valid_internal_id(): Neo4j internal ID's cannot be negative; the value passed was {internal_id}"
+
+
 
     @classmethod
-    def validate_internal_id(cls, internal_id: int) -> bool:
+    def validate_internal_id(cls, internal_id: int) -> bool:    # TODO: maybe phase out in favor of assert_valid_internal_id()
         """
         Return True if internal_id is a valid ID as used internally by the database
         (aka "Neo4j ID")
