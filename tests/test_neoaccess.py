@@ -1477,29 +1477,29 @@ def test_edges_exists(db):
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
 
-    assert not db.edges_exist(neo_car, neo_julian, rel_name="OWNED_BY")    # No relationship exists yet
+    assert not db.links_exist(neo_car, neo_julian, rel_name="OWNED_BY")    # No relationship exists yet
 
     db.add_links(neo_car, neo_julian, rel_name="OWNED_BY")
-    assert db.edges_exist(neo_car, neo_julian, rel_name="OWNED_BY")        # By now, it exists
-    assert not db.edges_exist(neo_julian, neo_car, rel_name="OWNED_BY")    # But not in the reverse direction
-    assert not db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Nor by a different name
+    assert db.links_exist(neo_car, neo_julian, rel_name="OWNED_BY")        # By now, it exists
+    assert not db.links_exist(neo_julian, neo_car, rel_name="OWNED_BY")    # But not in the reverse direction
+    assert not db.links_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Nor by a different name
 
     db.add_links(neo_car, neo_julian, rel_name="DRIVEN BY")
-    assert db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")       # Now it exists
+    assert db.links_exist(neo_car, neo_julian, rel_name="DRIVEN BY")       # Now it exists
 
     db.remove_links(neo_car, neo_julian, rel_name="DRIVEN BY")
-    assert not db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Now it's gone
+    assert not db.links_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Now it's gone
 
     neo_sailboat = db.create_node("sailboat", {'type': 'sloop', 'color': 'white'})
     db.add_links(neo_julian, neo_sailboat, rel_name="SAILS")
-    assert db.edges_exist(neo_julian, neo_sailboat, rel_name="SAILS")
+    assert db.links_exist(neo_julian, neo_sailboat, rel_name="SAILS")
 
     match_vehicle = db.find(properties={'color': 'white'})                  # To select both car and boat
-    assert db.edges_exist(neo_julian, match_vehicle, rel_name="SAILS")
+    assert db.links_exist(neo_julian, match_vehicle, rel_name="SAILS")
 
-    assert not db.edges_exist(neo_car, neo_car, rel_name="SELF_DRIVES")    # A relationship from a node to itself
+    assert not db.links_exist(neo_car, neo_car, rel_name="SELF_DRIVES")    # A relationship from a node to itself
     db.add_links(neo_car, neo_car, rel_name="SELF_DRIVES")
-    assert db.edges_exist(neo_car, neo_car, rel_name="SELF_DRIVES")
+    assert db.links_exist(neo_car, neo_car, rel_name="SELF_DRIVES")
 
 
 

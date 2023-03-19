@@ -638,9 +638,9 @@ class NeoSchema:
         :return:
         """
         # Define the criteria to identify the given Class nodes
-        match_from = cls.db.find(labels="CLASS", key_name="name", key_value=from_class, dummy_node_name="from")
-        match_to = cls.db.find(labels="CLASS", key_name="name", key_value=to_class, dummy_node_name="to")
-        return cls.db.edges_exist(match_from=match_from, match_to=match_to, rel_name=rel_name)
+        match_from = cls.db.match(labels="CLASS", key_name="name", key_value=from_class, dummy_node_name="from")
+        match_to = cls.db.match(labels="CLASS", key_name="name", key_value=to_class, dummy_node_name="to")
+        return cls.db.links_exist(match_from=match_from, match_to=match_to, rel_name=rel_name)
 
 
 
@@ -1449,7 +1449,7 @@ class NeoSchema:
             cls.db.add_links_fast(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA")
         else:
             # Verify that is already has a SCHEMA link to its Class node
-            if not cls.db.edges_exist(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA"):
+            if not cls.db.links_exist(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA"):
                 # This is an irregular situation where there's a match, but not to a legit data node
                 raise Exception(f"NeoSchema.add_data_point_merge(): "
                                 f"a node matching in attributes and labels already exists (internal ID {datanode_neo_id}), "
