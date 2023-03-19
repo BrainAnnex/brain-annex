@@ -558,7 +558,7 @@ class APIRequestHandler:
             if status:
                 MediaManager.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
 
-        match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
+        match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_deleted = cls.db.delete_nodes(match)
 
         if number_deleted == 1:

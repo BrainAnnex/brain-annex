@@ -777,6 +777,10 @@ class NeoAccess:
 
         :return:            A python data dictionary, to preserve together all the passed arguments
         """
+        if internal_id is not None:
+            assert CypherUtils.validate_internal_id(internal_id), \
+                f"match(): the argument `internal_id` ({internal_id}) is not a valid internal database ID value"
+
         if clause is None:
             dummy_node_name = None      # In this scenario, the dummy name isn't yet used, and any name could be used
 
@@ -1595,18 +1599,22 @@ class NeoAccess:
     #####################################################################################################
 
 
-    def delete_nodes(self, match: Union[int, dict]) -> int:
+    def delete_nodes(self, match_structure: Union[int, dict]) -> int:
         """
         Delete the node or nodes specified by the match argument.  Return the number of nodes deleted.
 
-        :param match:   EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param match_structure:   EITHER an integer with a Neo4j node id,
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
         :return:        The number of nodes deleted (possibly zero)
         """
-        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
+        match_structure = CypherUtils.process_match_structure(match_structure)     # Validate, and possibly create, the match dictionary
+
+        if self.debug:
+            print("In delete_nodes()")
+            print("    match_structure:", match_structure)
 
         # Unpack needed values from the match dictionary
-        (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
+        (node, where, data_binding) = CypherUtils.unpack_match(match_structure, include_dummy=False)
 
         q = f"MATCH {node} {CypherUtils.prepare_where(where)} DETACH DELETE n"
         self.debug_query_print(q, data_binding, "delete_nodes")
@@ -2772,16 +2780,14 @@ class NeoAccess:
                     raise Exception("Internal error: processing a dictionary is returning more than 1 root node")
                 elif len(new_node_id_list) == 1:
                     new_node_id = new_node_id_list[0]
-                    #children_info.append( (new_node_id, k) )
-                    children_info.append( {"neo_id": new_node_id, "rel_name": k} )
+                    children_info.append( {"neo_id": new_node_id, "rel_name": k} )  # Append dict entry to the running list
                 # Note: if the list is empty, do nothing
 
             elif type(v) == list:
                 self.debug_print(f"{indent_str}Processing a list (with {len(v)} elements):")
                 new_children = self.list_importer(l=v, labels=k, level=level)
                 for child_id in new_children:
-                    #children_info.append( (child_id, k) )   # Append a pair to the running list
-                    children_info.append( {"neo_id": child_id, "rel_name": k} )
+                    children_info.append( {"neo_id": child_id, "rel_name": k} )     # Append dict entry to the running list
 
             # Note: if v is None, no action is taken.  Dictionary entries with values of None are disregarded
 

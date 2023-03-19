@@ -1012,7 +1012,7 @@ def test_delete_nodes(db):
     db.create_node("boat", {"brand": "Juneau"})
 
     # Delete the 2 gray cars
-    match = db.find("car", properties={"color": "gray"})
+    match = db.match(labels="car", properties={"color": "gray"})
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 2
     q = "MATCH (c:car) RETURN count(c)"
@@ -1023,7 +1023,7 @@ def test_delete_nodes(db):
     assert result == [{"count(c)": 0}]      # 0 gray cars found
 
     # Attempting to re-delete them will produce a zero count
-    match = db.find("car", properties={"color": "gray"})
+    match = db.match(labels="car", properties={"color": "gray"})
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 0
     q = "MATCH (c:car) RETURN count(c)"
@@ -1031,7 +1031,7 @@ def test_delete_nodes(db):
     assert result == [{"count(c)": 3}]      # Still 3 cars left
 
     # Delete the red car
-    match = db.find("car", subquery="n.color = 'red'")
+    match = db.match(labels="car", clause="n.color = 'red'")
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 1
     q = "MATCH (c:car) RETURN c.color AS col"
@@ -1039,12 +1039,12 @@ def test_delete_nodes(db):
     assert compare_recordsets(result, [{'col': 'white'}, {'col': 'blue'}])  # white and blue cars are left
 
     # Attempting to delete a non-existing color will produce a zero count
-    match = db.find("car", properties={"color": "pink"})
+    match = db.match(labels="car", properties={"color": "pink"})
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 0
 
     # Delete all the remaining 2 cars
-    match = db.find("car")
+    match = db.match(labels="car")
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 2
 
@@ -1061,7 +1061,7 @@ def test_delete_nodes(db):
     assert result == [{"count(b)": 1}]
 
     # Delete everything left
-    match = db.find()
+    match = db.match()
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 2      # The airplane and the boat
     q = "MATCH (x) RETURN count(x)"

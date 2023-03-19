@@ -1998,7 +1998,7 @@ class NeoSchema:
         :param labels:      OPTIONAL (generally, redundant)
         :return:            The number of nodes deleted (possibly zero)
         """
-        match = cls.db.find(key_name="item_id", key_value=item_id, properties={"schema_code": "cat"},
+        match = cls.db.match(key_name="item_id", key_value=item_id, properties={"schema_code": "cat"},
                             labels=labels)
         return cls.db.delete_nodes(match)
 
