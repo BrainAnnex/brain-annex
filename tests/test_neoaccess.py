@@ -1001,7 +1001,7 @@ def test_assemble_query_for_linking(db):
 ###  ~ DELETE NODES ~
 
 def test_delete_nodes(db):
-    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+    db.empty_dbase()
 
     # Create 5 nodes, representing cars of various colors and prices
     df = pd.DataFrame({"color": ["white", "blue", "gray", "gray", "red"], "price": [100, 200, 300, 400, 500]})
@@ -1541,14 +1541,33 @@ def test_number_of_links(db):
 def test_get_node_internal_id(db):
     db.empty_dbase()
 
-    match = db.match()              # Meaning "match everything"
+    match_all = db.match()              # Meaning "match everything"
 
     with pytest.raises(Exception):
-        db.get_node_internal_id(match)  # No nodes yet exist
+        db.get_node_internal_id(match_all)  # No nodes yet exist
 
-    db.create_node(labels="Person", properties={"name": "Adam"})
-    neo_id = db.get_node_internal_id(match)     # Finds all nodes (there's only 1 in the database)
-    print(neo_id)
+    # Add a 1st node
+    adam_id = db.create_node(labels="Person", properties={"name": "Adam"})
+    neo_id = db.get_node_internal_id(match_all)     # Finds all nodes (there's only 1 in the database)
+    assert neo_id == adam_id
+
+    # Add a 2nd node
+    eve_id = db.create_node(labels="Person", properties={"name": "Eve"})
+
+    with pytest.raises(Exception):
+        db.get_node_internal_id(match_all)          # It finds 2 nodes - a non-unique result
+
+    match_adam = db.match(properties={"name": "Adam"})
+    neo_id = db.get_node_internal_id(match_adam)     # Finds the "Adam" node
+    assert neo_id == adam_id
+
+    match_eve = db.match(internal_id=eve_id)
+    neo_id = db.get_node_internal_id(match_eve)     # Finds the "Eve" node
+    assert neo_id == eve_id
+
+    assert db.delete_nodes(match_adam) == 1         # Now only "Eve" will be left
+    neo_id = db.get_node_internal_id(match_all)     # Finds the "Eve" node, because it's now the only one
+    assert neo_id == eve_id
 
 
 
@@ -1559,8 +1578,49 @@ def test_reattach_node(db):
     jill = db.create_attached_node("Person", properties={"name": "Jill"},
                             attached_to=jack, rel_name="MARRIED_TO", rel_dir="IN")
     mary = db.create_node("Person", {"name": "Mary"})
-    
-    db.reattach_node(jack, old_attachment=jill, new_attachment=mary, rel_name="MARRIED_TO")
+
+    with pytest.raises(Exception):
+        db.reattach_node(node=jack, old_attachment=jill, new_attachment=mary, rel_name="UNKNOWN_RELATIONSHIP")   # No such relationship present
+
+    with pytest.raises(Exception):
+        db.reattach_node(node=jack, old_attachment=mary, new_attachment=jill, rel_name="MARRIED_TO")    # There's no link from jack to mary
+
+    with pytest.raises(Exception):
+        db.reattach_node(node=jill, old_attachment=jack, new_attachment=mary, rel_name="MARRIED_TO")    # here's no link FROM jill TO jack (wrong direction)
+
+    bogus_neo_id = mary + 1     # (Since we first emptied the database, there will be no nod with such an ID
+    with pytest.raises(Exception):
+        db.reattach_node(node=jack, old_attachment=jill, new_attachment=bogus_neo_id, rel_name="MARRIED_TO")
+
+    # jack finally shakes off jill and marries mary
+    db.reattach_node(node=jack, old_attachment=jill, new_attachment=mary, rel_name="MARRIED_TO")
+
+    q = '''
+    MATCH (n1:Person)-[:MARRIED_TO]->(n2:Person) RETURN id(n1) AS ID_FROM, id(n2) AS ID_TO
+    '''
+    result = db.query(q)
+    assert len(result) == 1
+    assert result[0] == {"ID_FROM": jack, "ID_TO": mary}
+
+    # Let's eliminate the "jill" node
+    db.delete_nodes(jill)
+
+    # jack cannot go back to jill, because she's gone!
+    with pytest.raises(Exception):
+        db.reattach_node(node=jack, old_attachment=mary, new_attachment=jill, rel_name="MARRIED_TO")
+
+    # Let's re-introduce a "jill" node
+    jill_2 = db.create_node("Person", {"name": "Jill"})
+
+    # Now the indecisive jack can go back to jill (the new node with internal ID stored in jill_2)
+    db.reattach_node(node=jack, old_attachment=mary, new_attachment=jill_2, rel_name="MARRIED_TO")
+
+    q = '''
+    MATCH (n1:Person)-[:MARRIED_TO]->(n2:Person) RETURN id(n1) AS ID_FROM, id(n2) AS ID_TO
+    '''
+    result = db.query(q)
+    assert len(result) == 1
+    assert result[0] == {"ID_FROM": jack, "ID_TO": jill_2}
 
 
 

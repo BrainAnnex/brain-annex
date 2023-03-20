@@ -712,40 +712,6 @@ class NeoAccess:
 
 
 
-    def get_node_internal_id(self, match: dict) -> int:     # TODO: test
-        """
-        Return the internal database ID of a SINGLE node identified by the "match" data
-        created by a call to match().
-
-        If not found, or if more than 1 found, an Exception is raised
-
-        :param match:
-        :return:
-        """
-        match_structure = CypherUtils.process_match_structure(match)
-
-        if self.debug:
-            print("In get_node_internal_id()")
-            print("    match_structure:", match_structure)
-
-        # Unpack needed values from the match dictionary
-        (node, where, data_binding) = CypherUtils.unpack_match(match_structure, include_dummy=False)
-
-        q = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN id(n) AS INTERNAL_ID"
-        print(q)
-        print(data_binding)
-        self.debug_query_print(q, data_binding, "get_node_internal_id")
-
-        result = self.query(q, data_binding, single_column="INTERNAL_ID")
-
-        assert len(result) != 0, "get_node_internal_id(): node NOT found"
-
-        assert len(result) <= 1, f"get_node_internal_id(): node not uniquely identified ({len(result)} matches found)"
-
-        return result[0]
-
-
-
     def get_df(self, match: Union[int, dict], order_by=None, limit=None) -> pd.DataFrame:
         """
         Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
@@ -935,6 +901,41 @@ class NeoAccess:
             print("\n*** match_structure : ", match_structure)
 
         return match_structure
+
+
+
+    def get_node_internal_id(self, match: dict) -> int:
+        """
+        Return the internal database ID of a SINGLE node identified by the "match" data
+        created by a call to match().
+
+        If not found, or if more than 1 found, an Exception is raised
+
+        :param match:   A dictionary of data to identify a single node, as returned by match()
+        :return:        An integer with the internal database ID of the located node,
+                        if exactly 1 node is found; otherwise, raise an Exception
+        """
+        match_structure = CypherUtils.process_match_structure(match)
+
+        if self.debug:
+            print("In get_node_internal_id()")
+            print("    match_structure:", match_structure)
+
+        # Unpack needed values from the match dictionary
+        (node, where, data_binding) = CypherUtils.unpack_match(match_structure, include_dummy=False)
+
+        q = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN id(n) AS INTERNAL_ID"
+        print(q)
+        print(data_binding)
+        self.debug_query_print(q, data_binding, "get_node_internal_id")
+
+        result = self.query(q, data_binding, single_column="INTERNAL_ID")
+
+        assert len(result) != 0, "get_node_internal_id(): node NOT found"
+
+        assert len(result) <= 1, f"get_node_internal_id(): node not uniquely identified ({len(result)} matches found)"
+
+        return result[0]
 
 
 
@@ -1527,13 +1528,14 @@ class NeoAccess:
 
     def delete_nodes(self, match: Union[int, dict]) -> int:
         """
-        Delete the node or nodes specified by the match argument.  Return the number of nodes deleted.
+        Delete the node or nodes specified by the match argument.
+        Return the number of nodes deleted.
 
-        :param match: EITHER an integer with a Neo4j node id,
-                                    OR a dictionary of data to identify a node, or set of nodes,
-                                       as returned by match()
-        :return:                The number of nodes deleted (possibly zero)
+        :param match:   EITHER an integer with an internal database node id,
+                            OR a dictionary of data to identify a node, or set of nodes, as returned by match()
+        :return:        The number of nodes deleted (possibly zero)
         """
+        # Create the "processed-match dictionaries"
         match_structure = CypherUtils.process_match_structure(match)
 
         if self.debug:
@@ -1764,7 +1766,7 @@ class NeoAccess:
 
         :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
         """
-        # Create the "processed match dictionaries"
+        # Create the "processed-match dictionaries"
         match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from")
         match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to")
 
@@ -2041,12 +2043,11 @@ class NeoAccess:
         #print("result of update_query in reattach_node(): ", result)
 
         assert (result.get("relationships_deleted") == 1), \
-            "reattach_node(): failed to delete the old relationship (perhaps not found; check if it exists)"
+            "reattach_node(): failed to delete the old relationship (" \
+            "probably means it doesn't exist, or the other node doesn't exist; check if they all exist)"
 
         assert (result.get("relationships_created") == 1), \
-            "reattach_node(): failed to create a new relationship"
-
-
+            "reattach_node(): it deleted the old relationship but failed to create a new one"   # This should not occur
 
 
 
