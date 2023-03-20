@@ -1538,20 +1538,28 @@ def test_number_of_links(db):
 
 
 
+def test_get_node_internal_id(db):
+    db.empty_dbase()
+
+    match = db.match()              # Meaning "match everything"
+
+    with pytest.raises(Exception):
+        db.get_node_internal_id(match)  # No nodes yet exist
+
+    db.create_node(labels="Person", properties={"name": "Adam"})
+    neo_id = db.get_node_internal_id(match)     # Finds all nodes (there's only 1 in the database)
+    print(neo_id)
+
+
+
 def test_reattach_node(db):
     db.empty_dbase()
 
     jack = db.create_node("Person", {"name": "Jack"})
-    db.create_attached_node("Person", properties={"name": "Jill"},
+    jill = db.create_attached_node("Person", properties={"name": "Jill"},
                             attached_to=jack, rel_name="MARRIED_TO", rel_dir="IN")
-
-    #match = db.find(labels="Person", key_value="name", key_name="Jill")
-    jill_record = db.get_record_by_primary_key(labels="Person", primary_key_name="name", primary_key_value="Jill", return_nodeid=True)
-
-    print(jill_record)
-
-    jill = jill_record["neo4j_id"]
     mary = db.create_node("Person", {"name": "Mary"})
+    
     db.reattach_node(jack, old_attachment=jill, new_attachment=mary, rel_name="MARRIED_TO")
 
 

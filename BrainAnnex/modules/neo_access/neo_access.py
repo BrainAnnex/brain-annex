@@ -250,7 +250,8 @@ class NeoAccess:
                                 Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
                                 TODO: test and give examples.  single_cell="name" will return result[0].get("name")
 
-        :param single_column:   Name of the column of interest.  Form a list from all the values of that particular column all records.
+        :param single_column:   Name of the column of interest.
+                                Form a list (possibly empty) from all the values of that particular column all records.
 
         :return:        If any of single_row, single_cell or single_column are True, see info under their entries.
                         If those arguments are all False, it returns a (possibly empty) list of dictionaries.
@@ -521,7 +522,8 @@ class NeoAccess:
     #####################################################################################################
 
 
-    def get_record_by_primary_key(self, labels: str, primary_key_name: str, primary_key_value, return_nodeid=False) -> Union[dict, None]:
+    def get_record_by_primary_key(self, labels: str, primary_key_name: str, primary_key_value,
+                                  return_nodeid=False) -> Union[dict, None]:
         """
         Return the first (and it ought to be only one) record with the given primary key, and the optional label(s),
         as a dictionary of all its attributes.
@@ -707,6 +709,40 @@ class NeoAccess:
             return result_list[0].get(single_cell)
 
         return result_list
+
+
+
+    def get_node_internal_id(self, match: dict) -> int:     # TODO: test
+        """
+        Return the internal database ID of a SINGLE node identified by the "match" data
+        created by a call to match().
+
+        If not found, or if more than 1 found, an Exception is raised
+
+        :param match:
+        :return:
+        """
+        match_structure = CypherUtils.process_match_structure(match)
+
+        if self.debug:
+            print("In get_node_internal_id()")
+            print("    match_structure:", match_structure)
+
+        # Unpack needed values from the match dictionary
+        (node, where, data_binding) = CypherUtils.unpack_match(match_structure, include_dummy=False)
+
+        q = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN id(n) AS INTERNAL_ID"
+        print(q)
+        print(data_binding)
+        self.debug_query_print(q, data_binding, "get_node_internal_id")
+
+        result = self.query(q, data_binding, single_column="INTERNAL_ID")
+
+        assert len(result) != 0, "get_node_internal_id(): node NOT found"
+
+        assert len(result) <= 1, f"get_node_internal_id(): node not uniquely identified ({len(result)} matches found)"
+
+        return result[0]
 
 
 
@@ -1489,16 +1525,16 @@ class NeoAccess:
     #####################################################################################################
 
 
-    def delete_nodes(self, match_structure: Union[int, dict]) -> int:
+    def delete_nodes(self, match: Union[int, dict]) -> int:
         """
         Delete the node or nodes specified by the match argument.  Return the number of nodes deleted.
 
-        :param match_structure: EITHER an integer with a Neo4j node id,
+        :param match: EITHER an integer with a Neo4j node id,
                                     OR a dictionary of data to identify a node, or set of nodes,
                                        as returned by match()
         :return:                The number of nodes deleted (possibly zero)
         """
-        match_structure = CypherUtils.process_match_structure(match_structure)     # Validate, and possibly create, the match dictionary
+        match_structure = CypherUtils.process_match_structure(match)
 
         if self.debug:
             print("In delete_nodes()")
@@ -1999,7 +2035,7 @@ class NeoAccess:
             DELETE rel         
             '''
 
-        self.debug_query_print(q, None, "reattach_node")
+        self.debug_query_print(q, method="reattach_node")
 
         result = self.update_query(q)
         #print("result of update_query in reattach_node(): ", result)
@@ -2219,9 +2255,11 @@ class NeoAccess:
 
     def get_labels(self) -> [str]:
         """
-        Extract and return a list of all the Neo4j labels present in the database.
+        Extract and return a list of ALL the Neo4j labels present in the database.
         No particular order should be expected.
+        Note: to get the labels of a particular node, use get_node_labels()
         TODO: test when there are nodes that have multiple labels
+
         :return:    A list of strings
         """
         results = self.query("call db.labels() yield label return label")
