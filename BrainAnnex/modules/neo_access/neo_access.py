@@ -544,8 +544,8 @@ class NeoAccess:
         assert primary_key_value is not None, \
             "NeoAccess.get_record_by_primary_key(): the primary key value cannot be None" # Note: 0 or "" could be legit
 
-        match = self.find(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
-        result = self.get_nodes_OLD(match=match, return_neo_id=return_nodeid)
+        match = self.match(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
+        result = self.get_nodes(match=match, return_neo_id=return_nodeid)
 
         if len(result) == 0:
             return None
@@ -602,7 +602,7 @@ class NeoAccess:
         In other respects, similar to the more general get_nodes()
 
         :param match:       EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
         :param field_name:  A string with the name of the desired field (attribute)
         :param order_by:    see get_nodes()
         :param limit:       see get_nodes()
@@ -610,7 +610,7 @@ class NeoAccess:
         :return:  A list of the values of the field_name attribute in the nodes that match the specified conditions
         """
 
-        record_list = self.get_nodes_OLD(match=match, order_by=order_by, limit=limit)
+        record_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
 
         single_field_list = [record.get(field_name) for record in record_list]
 
@@ -714,114 +714,21 @@ class NeoAccess:
 
 
 
-    #TODO: obsolete
-    def get_nodes_OLD(self, match: Union[int, dict],
-                      return_neo_id=False, return_labels=False, order_by=None, limit=None,
-                      single_row=False, single_cell=""):
-        """
-        RETURN a list of the records (as dictionaries of ALL the key/value node properties)
-        corresponding to all the Neo4j nodes specified by the given match data.
-
-        :param match:           EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
-
-        :param return_neo_id:   Flag indicating whether to also include the Neo4j internal node ID in the returned data
-                                    (using "neo4j_id" as its key in the returned dictionary)    TODO: change to "neo_id"
-        :param return_labels:   Flag indicating whether to also include the Neo4j label names in the returned data
-                                    (using "neo4j_labels" as its key in the returned dictionary)
-
-        :param order_by:        Optional string with the key (field) name to order by, in ascending order
-                                    Note: lower and uppercase names are treated differently in the sort order
-        :param limit:           Optional integer to specify the maximum number of nodes returned
-
-        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one;
-                                    if not found, None will be returned [to distinguish it from a found record with no fields!]
-
-        :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
-                                If single_cell is specified, return the value of the field by that name in the first node
-                                Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
-                                TODO: test and give examples.  single_cell="name" will return result[0].get("name")
-
-        :return:                If single_cell is specified, return the value of the field by that name in the first node.
-                                If single_row is True, return a dictionary with the information of the first record (or None if no record exists)
-                                Otherwise, return a list whose entries are dictionaries with each record's information
-                                    (the node's attribute names are the keys)
-                                    EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
-                                                {"gender": "M", "age": 76, "location": "Berkeley"}
-                                             ]
-                                    Note that ALL the attributes of each node are returned - and that they may vary across records.
-                                    If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
-                                            of the form     "neo4j_id": some integer with the Neo4j internal node ID
-                                    If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
-                                            of the form     "neo4j_labels": [list of Neo4j label(s) attached to that node]
-                                    EXAMPLE using both of the above flags:
-                                        [  {"neo4j_id": 145, "neo4j_labels": ["person", "client"], "gender": "M", "condition_id": 3},
-                                           {"neo4j_id": 222, "neo4j_labels": ["person"], "gender": "M", "location": "Berkeley"}
-                                        ]
-        # TODO: provide an option to specify the desired fields
-
-        """
-        #CypherUtils.assert_valid_match_structure(match)    # Validate the match dictionary
-        # TODO: do this change in all the methods that accept a "match" argument (and change the description of their "match" arg)
-        match = CypherUtils.validate_and_standardize(match) # Validate, and possibly transform, the match dictionary
-
-        # Unpack needed values from the match dictionary
-        (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match)
-
-        cypher = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN {dummy_node_name}"
-
-        if order_by:
-            cypher += f" ORDER BY n.{order_by}"
-
-        if limit:
-            cypher += f" LIMIT {limit}"
-
-        self.debug_query_print(cypher, data_binding, "get_nodes")
-
-
-        # Note: the flatten=True takes care of returning just the fields of the matched node "n", rather than dictionaries indexes by "n"
-        if return_neo_id and return_labels:
-            result_list = self.query_extended(cypher, data_binding, flatten=True)
-            # Note: query_extended() provides both 'neo4j_id' and 'neo4j_labels'
-        elif return_neo_id:     # but not return_labels
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['neo4j_labels'])
-        elif return_labels:     # but not return_neo_id
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['neo4j_id'])
-        else:
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['neo4j_id', 'neo4j_labels'])
-
-        # Deal with empty result lists
-        if len(result_list) == 0:   # If no results were produced
-            if single_row:
-                return None             # representing a record not found (different from a record with no fields, which will be {})
-            if single_cell:
-                return None             # representing a field not found
-            return []
-
-        # Note: we already checked that result_list isn't empty
-        if single_row:
-            return result_list[0]
-
-        if single_cell:
-            return result_list[0].get(single_cell)
-
-        return result_list
-
-
-
     def get_df(self, match: Union[int, dict], order_by=None, limit=None) -> pd.DataFrame:
         """
         Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
 
         [See get_nodes() for more information about the arguments]
         :param match:       EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
-        :param order_by:
-        :param limit:
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
+        :param order_by:    Optional string with the key (field) name to order by, in ascending order
+                                Note: lower and uppercase names are treated differently in the sort order
+        :param limit:       Optional integer to specify the maximum number of nodes returned
+
         :return:            A Pandas dataframe
         """
 
-        result_list = self.get_nodes_OLD(match=match, order_by=order_by, limit=limit)
+        result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
         return pd.DataFrame(result_list)
 
 

@@ -249,7 +249,7 @@ def test_get_single_field(db):
                        (:`my label`:`make`  {                `field B`: 'more test', `field C`: 3.14})
              ''')
 
-    match = db.find(labels="my label")
+    match = db.match(labels="my label")
 
     result = db.get_single_field(match=match, field_name="field A")
     assert compare_unordered_lists(result, [123, None])
@@ -257,12 +257,12 @@ def test_get_single_field(db):
     result = db.get_single_field(match=match, field_name="field B")
     assert compare_unordered_lists(result, ['test', 'more test'])
 
-    match = db.find(labels="make")
+    match = db.match(labels="make")
 
     result = db.get_single_field(match=match, field_name="field C")
     assert compare_unordered_lists(result, [3.14])
 
-    match = db.find(labels="")      # No labels specified
+    match = db.match(labels="")      # No labels specified
     result = db.get_single_field(match=match, field_name="field C")
     assert compare_unordered_lists(result, [None, 3.14])
 
@@ -469,7 +469,7 @@ def test_get_df(db):
     df_original = pd.DataFrame({"patient_id": [1, 2], "name": ["Jack", "Jill"]})
     db.load_pandas(df_original, label="A")
 
-    match = db.find(labels="A")
+    match = db.match(labels="A")
     df_new = db.get_df(match=match)
 
     # Sort the columns and then sort the rows, in order to disregard both row and column order (TODO: turn into utility)

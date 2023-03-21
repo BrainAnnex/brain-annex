@@ -383,7 +383,7 @@ class NeoSchema:
 
         :return:    A list of all the existing Class names
         """
-        match = cls.db.find(labels=cls.class_label)
+        match = cls.db.match(labels=cls.class_label)
         return cls.db.get_single_field(match=match, field_name="name", order_by="name")
 
 
