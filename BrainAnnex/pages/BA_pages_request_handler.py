@@ -134,11 +134,11 @@ class PagesRequestHandler:
         :param category_id:
         :return:    A list of dictionaries
         """
-        match = cls.db.find(labels="BA",
+        match = cls.db.match(labels="BA",
                             properties={"item_id": category_id, "schema_code": "cat"})
 
         result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
-                                     neighbor_labels="BA")
+                                         neighbor_labels="BA")
 
         return result
 

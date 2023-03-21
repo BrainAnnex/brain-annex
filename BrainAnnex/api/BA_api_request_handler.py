@@ -398,9 +398,9 @@ class APIRequestHandler:
         assert dir in ["IN", "OUT"], f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
         assert type(item_id) == int, "get_records_by_link(): The value of the parameter `item_id` must be an integer"
 
-        match = cls.db.find(labels="BA", key_name="item_id", key_value=item_id)
+        match = cls.db.match(labels="BA", key_name="item_id", key_value=item_id)
 
-        return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, neighbor_labels = "BA")
+        return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, neighbor_labels ="BA")
 
 
 

@@ -578,16 +578,16 @@ def test_follow_links(db):
     # Create new node, linked to the previous two
     db.create_node_with_relationships(labels="person", properties={"name": "Julian", "city": "Berkeley"},
                                       connections=[
-                                            {"labels": "book",
-                                             "key": "title", "value": "The Double Helix",
-                                             "rel_name": "OWNS", "rel_dir": "OUT"},
-                                            {"labels": "book",
-                                             "key": "title", "value": "Intro to Hilbert Spaces",
-                                             "rel_name": "OWNS", "rel_dir": "OUT"}
+                                          {"labels": "book",
+                                           "key": "title", "value": "The Double Helix",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"},
+                                          {"labels": "book",
+                                           "key": "title", "value": "Intro to Hilbert Spaces",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"}
                                       ]
-                                     )
+                                      )
 
-    match = db.find(labels="person", properties={"name": "Julian", "city": "Berkeley"})
+    match = db.match(labels="person", properties={"name": "Julian", "city": "Berkeley"})
 
     links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book")
     expected = [{'title': 'The Double Helix'} , {'title': 'Intro to Hilbert Spaces'} ]

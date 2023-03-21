@@ -2138,7 +2138,7 @@ class NeoAccess:
         and return all the properties of those neighbor nodes.
 
         :param match:           EITHER an integer with a Neo4j node id,
-                                    OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+                                    OR a dictionary of data to identify a node, or set of nodes, as returned by match()
         :param rel_name:        A string with the name of relationship to follow.  (Note: any other relationships are ignored)
         :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
         :param neighbor_labels: Optional label(s) required on the neighbors.  If present, either a string or list of strings
@@ -2146,10 +2146,14 @@ class NeoAccess:
         :return:                A list of dictionaries with all the properties of the neighbor nodes
                                 TODO: maybe add the option to just return a subset of fields
         """
-        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
+        match_structure = CypherUtils.process_match_structure(match)
+
+        if self.debug:
+            print("In follow_links()")
+            print("    match_structure:", match_structure)
 
         # Unpack needed values from the match dictionary
-        (node, where, data_binding) = CypherUtils.unpack_match(match, include_dummy=False)
+        (node, where, data_binding) = CypherUtils.unpack_match(match_structure, include_dummy=False)
 
         neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
 

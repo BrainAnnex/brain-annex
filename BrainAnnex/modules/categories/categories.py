@@ -104,11 +104,11 @@ class Categories:
                                     that identifies a data node containing the desired Category
         :return:            A list of dictionaries
         """
-        match = cls.db.find(labels="BA",
+        match = cls.db.match(labels="BA",
                             properties={"item_id": category_id, "schema_code": "cat"})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
-                                     neighbor_labels="BA")
+                                       neighbor_labels="BA")
 
 
 
@@ -123,11 +123,11 @@ class Categories:
         :param category_id:
         :return:            A list of dictionaries
         """
-        match = cls.db.find(labels="BA",
-                            properties={"item_id": category_id, "schema_code": "cat"})
+        match = cls.db.match(labels="BA",
+                             properties={"item_id": category_id, "schema_code": "cat"})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
-                                     neighbor_labels="BA")
+                                   neighbor_labels="BA")
 
 
 
