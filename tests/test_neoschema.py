@@ -622,7 +622,7 @@ def test_add_data_point_with_links(db):
 
     # Create a new data point, and get its Neo4j ID
     doctor_neo_id = NeoSchema.add_data_point_with_links(class_name="doctor",
-                                                  properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+                                                        properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
 
     q = '''
         MATCH (d:doctor {name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]->(c:CLASS {name: "doctor"})
@@ -654,7 +654,7 @@ def test_add_data_point_with_links(db):
     # Create a new data point for a "patient", linked to the existing "doctor" data point
     patient_neo_id = NeoSchema.add_data_point_with_links(class_name="patient",
                                                    properties={"name": "Jill", "age": 22, "balance": 145.50},
-                                                   links=[{"neo_id": doctor_neo_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
+                                                   links=[{"internal_id": doctor_neo_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
                                                     )
 
     q = '''
@@ -673,7 +673,7 @@ def test_add_data_point_with_links(db):
     #   this time, request the assignment of an autoincrement "item_id" to the new data node
     result_neo_id = NeoSchema.add_data_point_with_links(class_name="result",
                                                   properties={"biomarker": "glucose", "value": 99.0},
-                                                  links=[{"neo_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                  links=[{"internal_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
                                                   assign_item_id= True)
 
     q = '''
@@ -694,7 +694,7 @@ def test_add_data_point_with_links(db):
     #   this time, request the assignment of specific "item_id" to the new data node
     result2_neo_id = NeoSchema.add_data_point_with_links(class_name="result",
                                                         properties={"biomarker": "cholesterol", "value": 180.0},
-                                                        links=[{"neo_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                        links=[{"internal_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
                                                         new_item_id=9999)
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})

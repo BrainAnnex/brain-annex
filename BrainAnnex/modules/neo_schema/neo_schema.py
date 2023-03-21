@@ -211,7 +211,7 @@ class NeoSchema:
         cls.assert_valid_class_name(class_name)
 
         match = cls.db.match(labels="CLASS", key_name="name", key_value=class_name)
-        result = cls.db.get_nodes(match, return_neo_id=True)
+        result = cls.db.get_nodes(match, return_internal_id=True)
 
         if not result:
             raise Exception(f"NeoSchema.get_class_neo_id(): no Class node named {class_name} was found")
@@ -275,9 +275,9 @@ class NeoSchema:
         :param neo_id:
         :return:
         """
-        cls.db.assert_valid_neo_id(neo_id)
+        cls.db.assert_valid_internal_id(neo_id)
 
-        return cls.db.exists_by_neo_id(neo_id)
+        return cls.db.exists_by_internal_id(neo_id)
 
 
 
@@ -339,7 +339,7 @@ class NeoSchema:
         :return:                The name of the class with the given Schema ID;
                                     raise an Exception if not found
         """
-        cls.db.assert_valid_neo_id(class_neo_id)
+        cls.db.assert_valid_internal_id(class_neo_id)
 
         result = cls.db.get_nodes(class_neo_id, single_cell="name")
 
@@ -360,7 +360,7 @@ class NeoSchema:
                                     raise an Exception if not found
                                     EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
         """
-        cls.db.assert_valid_neo_id(class_neo_id)
+        cls.db.assert_valid_internal_id(class_neo_id)
 
         result = cls.db.get_nodes(class_neo_id, single_row=True)
 
@@ -1383,7 +1383,7 @@ class NeoSchema:
 
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node
-        link_to_schema_class = {"neo_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
+        link_to_schema_class = {"internal_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
 
         links = [link_to_schema_class]
 
@@ -1440,7 +1440,7 @@ class NeoSchema:
                                                 silently_drop=silently_drop, schema_cache=schema_cache)
 
         result = cls.db.merge_node(labels=labels, properties=properties_to_set)
-        datanode_neo_id = result["neo_id"]
+        datanode_neo_id = result["internal_id"]
 
         if result["created"]:
             # If a new data node was created, it must be linked to its Class node
@@ -1515,7 +1515,7 @@ class NeoSchema:
 
         EXAMPLES:   add_data_point_with_links(class_name="Cars",
                                               properties={"make": "Toyota", "color": "white"},
-                                              links=[{"neo_id": 123, "rel_name": "OWNED_BY", "rel_dir": "IN"}])
+                                              links=[{"internal_id": 123, "rel_name": "OWNED_BY", "rel_dir": "IN"}])
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
@@ -1535,7 +1535,7 @@ class NeoSchema:
                                 to give to the links connecting to them;
                                 use None, or an empty list, to indicate if there aren't any
                                 Each dict contains the following keys:
-                                    "neo_id"        REQUIRED - to identify an existing node
+                                    "internal_id"        REQUIRED - to identify an existing node
                                     "rel_name"      REQUIRED - the name to give to the link
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
@@ -1588,7 +1588,7 @@ class NeoSchema:
 
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node and, possible, also relationships to another data nodes
-        link_to_schema_class = {"neo_id": class_neo_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
+        link_to_schema_class = {"internal_id": class_neo_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
         if links:
             links.append(link_to_schema_class)
         else:
@@ -1707,17 +1707,17 @@ class NeoSchema:
 
             neo_id = cls.db.create_node_with_links(labels,
                                                    properties=cypher_prop_dict,
-                                                   links=[  {"neo_id": class_neo_id,
+                                                   links=[  {"internal_id": class_neo_id,
                                                              "rel_name": "SCHEMA", "rel_dir": "OUT"},
 
-                                                            {"neo_id": connected_to_neo_id,
+                                                            {"internal_id": connected_to_neo_id,
                                                              "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
                                                             ]
                                                    )
         else:                   # Simpler case : only a link to the Class node
             neo_id = cls.db.create_node_with_links(labels,
                                                    properties=cypher_prop_dict,
-                                                   links=[{"neo_id": class_neo_id,
+                                                   links=[{"internal_id": class_neo_id,
                                                             "rel_name": "SCHEMA", "rel_dir": "OUT"}
                                                           ]
                                                    )
@@ -2241,7 +2241,7 @@ class NeoSchema:
         """
 
         match = cls.db.match(key_name=key_name, key_value=key_value)
-        result = cls.db.get_nodes(match, return_neo_id=True, single_cell="neo4j_id")
+        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="neo4j_id")
 
         if result is None:
             raise Exception(f"Unable to find a data node with the attribute `{key_name}={key_value}`")
@@ -2537,7 +2537,7 @@ class NeoSchema:
             cls.debug_print(f"{indent_str}Skipping creating node of class `{class_name}` that has no properties and no children")
             return None   # Using None to indicate "skipped node/subtree"
         else:
-            links = [{"neo_id": child[0], "rel_name": child[1], "rel_dir": "OUT"}
+            links = [{"internal_id": child[0], "rel_name": child[1], "rel_dir": "OUT"}
                             for child in children_info]
             # Note: a Neo4j ID is returned by the next call
             #return cls.add_data_point_with_links(class_name=class_name,

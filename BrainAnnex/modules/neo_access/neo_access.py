@@ -12,7 +12,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 4.0.0
+    VERSION 4.0.0   (for Neo 4.x database versions)
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -202,13 +202,13 @@ class NeoAccess:
 
 
 
-    def assert_valid_neo_id(self, neo_id: int) -> None:
+    def assert_valid_internal_id(self, internal_id: int) -> None:
         """
         Raise an Exception if the argument is not a valid Neo4j ID
-        :param neo_id:  Alleged Neo4j internal database ID
-        :return:        None
+        :param internal_id: Alleged Neo4j internal database ID
+        :return:            None
         """
-        CypherUtils.assert_valid_internal_id(neo_id)
+        CypherUtils.assert_valid_internal_id(internal_id)
 
 
 
@@ -523,7 +523,7 @@ class NeoAccess:
 
 
     def get_record_by_primary_key(self, labels: str, primary_key_name: str, primary_key_value,
-                                  return_nodeid=False) -> Union[dict, None]:
+                                  return_internal_id=False) -> Union[dict, None]:
         """
         Return the first (and it ought to be only one) record with the given primary key, and the optional label(s),
         as a dictionary of all its attributes.
@@ -534,7 +534,7 @@ class NeoAccess:
         :param labels:              A string or list/tuple of strings.  Use None if not to be included in search
         :param primary_key_name:    The name of the primary key by which to look the record up
         :param primary_key_value:   The desired value of the primary key
-        :param return_nodeid:       If True, an extra entry is present in the dictionary, with the key "neo4j_id"
+        :param return_internal_id:       If True, an extra entry is present in the dictionary, with the key "neo4j_id"
 
         :return:                    A dictionary, if a unique record was found; or None if not found
         """
@@ -545,7 +545,7 @@ class NeoAccess:
             "NeoAccess.get_record_by_primary_key(): the primary key value cannot be None" # Note: 0 or "" could be legit
 
         match = self.match(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
-        result = self.get_nodes(match=match, return_neo_id=return_nodeid)
+        result = self.get_nodes(match=match, return_internal_id=return_internal_id)
 
         if len(result) == 0:
             return None
@@ -574,16 +574,16 @@ class NeoAccess:
 
 
 
-    def exists_by_neo_id(self, neo_id) -> bool:         # TODO: test
+    def exists_by_internal_id(self, internal_id) -> bool:         # TODO: test
         """
         Return True if a node with the given internal Neo4j exists, or False otherwise
 
-        :param neo_id:
+        :param internal_id:
         :return:        True if a node with the given internal Neo4j exists, or False otherwise
         """
         q = f'''
         MATCH (n) 
-        WHERE id(n) = {neo_id} 
+        WHERE id(n) = {internal_id} 
         RETURN count(n) AS number_of_nodes
         '''
 
@@ -619,7 +619,7 @@ class NeoAccess:
 
 
     def get_nodes(self, match: Union[int, dict],
-                  return_neo_id=False, return_labels=False, order_by=None, limit=None,
+                  return_internal_id=False, return_labels=False, order_by=None, limit=None,
                   single_row=False, single_cell=""):
         """
         RETURN a list of the records (as dictionaries of ALL the key/value node properties)
@@ -628,8 +628,8 @@ class NeoAccess:
         :param match:           EITHER an integer with a Neo4j node id,
                                 OR a dictionary of data to identify a node, or set of nodes, as returned by match()
 
-        :param return_neo_id:   Flag indicating whether to also include the Neo4j internal node ID in the returned data
-                                    (using "neo4j_id" as its key in the returned dictionary)    TODO: change to "neo_id"
+        :param return_internal_id:   Flag indicating whether to also include the Neo4j internal node ID in the returned data
+                                    (using "neo4j_id" as its key in the returned dictionary)
         :param return_labels:   Flag indicating whether to also include the Neo4j label names in the returned data
                                     (using "neo4j_labels" as its key in the returned dictionary)
 
@@ -685,12 +685,12 @@ class NeoAccess:
 
 
         # Note: the flatten=True takes care of returning just the fields of the matched node "n", rather than dictionaries indexes by "n"
-        if return_neo_id and return_labels:
+        if return_internal_id and return_labels:
             result_list = self.query_extended(cypher, data_binding, flatten=True)
             # Note: query_extended() provides both 'neo4j_id' and 'neo4j_labels'
-        elif return_neo_id:     # but not return_labels
+        elif return_internal_id:     # but not return_labels
             result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['neo4j_labels'])
-        elif return_labels:     # but not return_neo_id
+        elif return_labels:     # but not return_internal_id
             result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['neo4j_id'])
         else:
             result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['neo4j_id', 'neo4j_labels'])
@@ -739,7 +739,7 @@ class NeoAccess:
         Return a dictionary storing all the passed specifications (the "RAW match structure"),
         as expected as argument in various other functions in this library, in order to identify a node or group of nodes.
 
-        IMPORTANT:  if neo_id is provided, all other conditions are DISREGARDED;
+        IMPORTANT:  if internal_id is provided, all other conditions are DISREGARDED;
                     otherwise, an implicit AND applies to all the specified conditions.
 
         Note:   NO database operation is actually performed by this function.
@@ -924,7 +924,7 @@ class NeoAccess:
                                 to try to match in an existing node, or - if not found - to set in a new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
 
-        :return:            A dict with 2 keys: "created" (True if a new node was created) and "neo_id"
+        :return:            A dict with 2 keys: "created" (True if a new node was created) and "internal_id"
         """
         if properties is None:
             properties = {}
@@ -940,18 +940,18 @@ class NeoAccess:
         cypher_labels = CypherUtils.prepare_labels(labels)
 
         # Assemble the complete Cypher query
-        q = f"MERGE (n {cypher_labels} {attributes_str}) RETURN id(n) AS neo_id"
+        q = f"MERGE (n {cypher_labels} {attributes_str}) RETURN id(n) AS internal_id"
 
         self.debug_query_print(q, data_dictionary, "merge_node")
 
         result = self.update_query(q, data_dictionary)
 
-        neo_id = result["returned_data"][0]["neo_id"]     # The Neo4j internal ID of the node found or just created
+        internal_id = result["returned_data"][0]["internal_id"]     # The Neo4j internal ID of the node found or just created
 
         if result.get("nodes_created", 0) == 1:
-            return {"created": True, "neo_id": neo_id}
+            return {"created": True, "internal_id": internal_id}
         else:
-            return {"created": False, "neo_id": neo_id}
+            return {"created": False, "internal_id": internal_id}
 
 
 
@@ -1018,7 +1018,7 @@ class NeoAccess:
         if attached_to is None:
             links = None
         else:
-            links = [{"neo_id": existing_node_id, "rel_name": rel_name, "rel_dir": rel_dir}
+            links = [{"internal_id": existing_node_id, "rel_name": rel_name, "rel_dir": rel_dir}
                      for existing_node_id in attached_to]
 
         return self.create_node_with_links(labels=labels, properties=properties, links=links, merge=merge)
@@ -1045,9 +1045,9 @@ class NeoAccess:
             create_node_with_links(
                                 labels="PERSON",
                                 properties={"name": "Julian", "city": "Berkeley"},
-                                links=[ {"neo_id": 123, "rel_name": "LIVES IN"},
-                                        {"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
-                                        {"neo_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
+                                links=[ {"internal_id": 123, "rel_name": "LIVES IN"},
+                                        {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
+                                        {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
                                       ]
             )
 
@@ -1059,7 +1059,7 @@ class NeoAccess:
                                 to give to the links connecting to them;
                                 use None, or an empty list, to indicate if there aren't any
                                 Each dict contains the following keys:
-                                    "neo_id"        REQUIRED - to identify an existing node
+                                    "internal_id"        REQUIRED - to identify an existing node
                                     "rel_name"      REQUIRED - the name to give to the link
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
@@ -1107,7 +1107,7 @@ class NeoAccess:
 
 
         # Put all the parts of the Cypher query together (*except* for a RETURN statement)
-        q += "\nRETURN id(n) AS neo_id"
+        q += "\nRETURN id(n) AS internal_id"
         self.debug_print(f"\n{q}\n")
         self.debug_print(data_binding)
         # EXAMPLE of q:
@@ -1117,13 +1117,13 @@ class NeoAccess:
         CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})
         MERGE (n)<-[:`EMPLOYS` ]-(ex0)
         MERGE (n)-[:`OWNS` {`since`: $EDGE1_1}]->(ex1)
-        RETURN id(n) AS neo_id       
+        RETURN id(n) AS internal_id       
         '''
         # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'EDGE1_1': 2021}
 
         result = self.update_query(q, data_binding)
         self.debug_print(f"Result of update_query in create_node_with_links():\n{result}")
-        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'neo_id': 604}]}
+        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'internal_id': 604}]}
 
 
         # Assert that the query produced the expected actions
@@ -1155,11 +1155,11 @@ class NeoAccess:
         if len(returned_data) == 0:
             raise Exception("NeoAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
-        neo_id = returned_data[0].get("neo_id", None)
-        if neo_id is None:    # Note: neo_id might be zero
+        internal_id = returned_data[0].get("internal_id", None)
+        if internal_id is None:    # Note: internal_id might be zero
             raise Exception("NeoAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
-        return neo_id    # Return the Neo4j ID of the new node
+        return internal_id    # Return the Neo4j ID of the new node
 
 
 
@@ -1192,12 +1192,12 @@ class NeoAccess:
 
         data_binding = {}
         for i, edge in enumerate(links):
-            match_neo_id = edge.get("neo_id")
-            if match_neo_id is None:    # Caution: it might be zero
-                raise Exception(f"NeoAccess._assemble_query_for_linking(): Missing 'neo_id' key for the node to link to (in list element {edge})")
+            match_internal_id = edge.get("internal_id")
+            if match_internal_id is None:    # Caution: it might be zero
+                raise Exception(f"NeoAccess._assemble_query_for_linking(): Missing 'internal_id' key for the node to link to (in list element {edge})")
 
-            assert type(match_neo_id) == int, \
-                f"NeoAccess._assemble_query_for_linking(): The value of the 'neo_id' key must be an integer. The type was {type(match_neo_id)}"
+            assert type(match_internal_id) == int, \
+                f"NeoAccess._assemble_query_for_linking(): The value of the 'internal_id' key must be an integer. The type was {type(match_internal_id)}"
 
             rel_name = edge.get("rel_name")
             if not rel_name:
@@ -1206,7 +1206,7 @@ class NeoAccess:
             node_dummy_name = f"ex{i}"  # EXAMPLE: "ex3".   The "ex" stands for "existing node"
             q_MATCH += f" (ex{i})"      # EXAMPLE: " (ex3)"
 
-            q_WHERE += f" id({node_dummy_name}) = {match_neo_id}"   # EXAMPLE: " id(ex3) = 123"
+            q_WHERE += f" id({node_dummy_name}) = {match_internal_id}"   # EXAMPLE: " id(ex3) = 123"
 
 
             rel_dir = edge.get("rel_dir", "OUT")        # "OUT" is the default value
@@ -2726,7 +2726,7 @@ class NeoAccess:
                 children_list = []
                 for child_id in children_info:
                     #children_list.append( (child_id, root_labels) )
-                    children_list.append( {"neo_id": child_id, "rel_name":root_labels} )
+                    children_list.append( {"internal_id": child_id, "rel_name":root_labels} )
                 self.debug_print(f"{indent_str}Attaching the root nodes of the list elements to a common parent")
                 return [self.create_node_with_links(labels=root_labels, properties=None, links=children_list)]
 
@@ -2768,14 +2768,14 @@ class NeoAccess:
                     raise Exception("Internal error: processing a dictionary is returning more than 1 root node")
                 elif len(new_node_id_list) == 1:
                     new_node_id = new_node_id_list[0]
-                    children_info.append( {"neo_id": new_node_id, "rel_name": k} )  # Append dict entry to the running list
+                    children_info.append( {"internal_id": new_node_id, "rel_name": k} )  # Append dict entry to the running list
                 # Note: if the list is empty, do nothing
 
             elif type(v) == list:
                 self.debug_print(f"{indent_str}Processing a list (with {len(v)} elements):")
                 new_children = self.list_importer(l=v, labels=k, level=level)
                 for child_id in new_children:
-                    children_info.append( {"neo_id": child_id, "rel_name": k} )     # Append dict entry to the running list
+                    children_info.append( {"internal_id": child_id, "rel_name": k} )     # Append dict entry to the running list
 
             # Note: if v is None, no action is taken.  Dictionary entries with values of None are disregarded
 

@@ -45,7 +45,7 @@ class CypherUtils:
 
 
     @classmethod
-    def define_match(cls, labels=None, neo_id=None, key_name=None, key_value=None, properties=None, subquery=None,
+    def define_match(cls, labels=None, internal_id=None, key_name=None, key_value=None, properties=None, subquery=None,
                      dummy_node_name="n") -> dict:
         """
         Turn the set of specification into the MATCH part, and (if applicable) the WHERE part,
@@ -61,7 +61,7 @@ class CypherUtils:
                                 EXAMPLES:  "cars"
                                             ("cars", "vehicles")
 
-        :param neo_id:      An integer with the node's internal ID.
+        :param internal_id:      An integer with the node's internal ID.
                                 If specified, it OVER-RIDES all the remaining arguments, except for the labels
 
         :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
@@ -89,10 +89,10 @@ class CypherUtils:
         cypher_labels = cls.prepare_labels(labels)     # EXAMPLES:     ":`patient`"
         #               ":`CAR`:`INVENTORY`"
 
-        if neo_id is not None:      # If an internal node ID is specified, it over-rides all the other conditions
-            # CAUTION: neo_id might be 0 ; that's a valid Neo4j node ID
+        if internal_id is not None:      # If an internal node ID is specified, it over-rides all the other conditions
+            # CAUTION: internal_id might be 0 ; that's a valid Neo4j node ID
             cypher_match = f"({dummy_node_name})"
-            cypher_where = f"id({dummy_node_name}) = {neo_id}"
+            cypher_where = f"id({dummy_node_name}) = {internal_id}"
             return {"node": cypher_match, "where": cypher_where, "data_binding": {}, "dummy_node_name": dummy_node_name}
 
 
@@ -225,13 +225,13 @@ class CypherUtils:
     @classmethod
     def process_match_structure(cls, handle: Union[int, dict], dummy_node_name="n") -> dict:
         if cls.validate_internal_id(handle):
-            return cls.define_match(neo_id=handle, dummy_node_name=dummy_node_name)
+            return cls.define_match(internal_id=handle, dummy_node_name=dummy_node_name)
 
         if handle.get("dummy_node_name") is not None:
             dummy_node_name = handle.get("dummy_node_name") # If a value is already present in the raw match structure,
                                                             # it takes priority
 
-        return cls.define_match(neo_id=handle.get("internal_id"),
+        return cls.define_match(internal_id=handle.get("internal_id"),
                                 labels=handle.get("labels"),
                                 key_name=handle.get("key_name"), key_value=handle.get("key_value"),
                                 properties=handle.get("properties"),
@@ -260,7 +260,7 @@ class CypherUtils:
         :return:                A valid "match" structure, i.e. a dictionary of data to identify a node, or set of nodes
         """
         if type(match) == int and match >= 0:       # If the argument "match" is a valid Neo4j ID
-            return cls.define_match(neo_id=match, dummy_node_name=dummy_node_name)
+            return cls.define_match(internal_id=match, dummy_node_name=dummy_node_name)
 
         cls.assert_valid_match_structure(match)
         return match

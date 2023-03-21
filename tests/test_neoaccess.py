@@ -277,7 +277,7 @@ def test_get_record_by_primary_key(db):
 
     assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123) \
            == {'SSN': 123, 'name': 'Valerie', 'gender': 'F'}
-    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123, return_nodeid=True) \
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123, return_internal_id=True) \
            == {'SSN': 123, 'name': 'Valerie', 'gender': 'F', 'neo4j_id': node_id_Valerie}
 
     assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=456) \
@@ -816,7 +816,7 @@ def test_create_node_with_links(db):
         db.create_node_with_links(labels="A", links=666)    # links isn't a list/None
 
     with pytest.raises(Exception):
-        db.create_node_with_links(labels="A", links=[{"neo_id": 9999, "rel_name": "GHOST"}])   # Linking to non-existing node
+        db.create_node_with_links(labels="A", links=[{"internal_id": 9999, "rel_name": "GHOST"}])   # Linking to non-existing node
 
     # Create a first node, with no links
     car_id = db.create_node_with_links(labels = ["CAR", "INVENTORY"],
@@ -842,11 +842,11 @@ def test_create_node_with_links(db):
             labels="PERSON",
             properties={"name": "Julian", "city": "Berkeley"},
             links=[
-                {"neo_id": dept_id,
+                {"internal_id": dept_id,
                  "rel_name": "EMPLOYS",
                  "rel_dir": "IN"},
 
-                {"neo_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "OWNS",
                  "rel_attrs": {"since": 2021} }
             ]
@@ -857,10 +857,10 @@ def test_create_node_with_links(db):
     MATCH (:DEPARTMENT {`dept name`:'IT'})-[:EMPLOYS]
           ->(p:PERSON {name: 'Julian', city: 'Berkeley'})
           -[:OWNS {since:2021}]->(:CAR:INVENTORY {vehicle_id: 12345}) 
-          RETURN id(p) AS neo_id
+          RETURN id(p) AS internal_id
     '''
     result = db.query(q)
-    assert result[0]['neo_id'] == new_id
+    assert result[0]['internal_id'] == new_id
 
 
     # Attempt to create another new node with 2 identical links to the SAME existing node
@@ -869,10 +869,10 @@ def test_create_node_with_links(db):
             labels="PERSON",
             properties={"name": "Val", "city": "San Francisco"},
             links=[
-                {"neo_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "DRIVES"},
 
-                {"neo_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "DRIVES"}
             ]
         )
@@ -893,22 +893,22 @@ def test_assemble_query_for_linking(db):
         db._assemble_query_for_linking([{}])
         db._assemble_query_for_linking([{'rel_name': 'OWNS'}])
 
-        db._assemble_query_for_linking([{'neo_id': 'do I look like a number??'}])
-        db._assemble_query_for_linking([{'neo_id': 123}])
+        db._assemble_query_for_linking([{'internal_id': 'do I look like a number??'}])
+        db._assemble_query_for_linking([{'internal_id': 123}])
 
 
-    result = db._assemble_query_for_linking([{"neo_id": 123, "rel_name": "LIVES IN"}])
+    result = db._assemble_query_for_linking([{"internal_id": 123, "rel_name": "LIVES IN"}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 123', 'MERGE (n)-[:`LIVES IN` ]->(ex0)', {})
 
-    result = db._assemble_query_for_linking([{"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
+    result = db._assemble_query_for_linking([{"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 456', 'MERGE (n)<-[:`EMPLOYS` ]-(ex0)', {})
 
-    result = db._assemble_query_for_linking([{"neo_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}])
+    result = db._assemble_query_for_linking([{"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 789', 'MERGE (n)-[:`OWNS` {`since`: $EDGE0_1}]->(ex0)', {'EDGE0_1': 2022})
 
 
-    result = db._assemble_query_for_linking([{"neo_id": 123, "rel_name": "LIVES IN"} ,
-                                             {"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
+    result = db._assemble_query_for_linking([{"internal_id": 123, "rel_name": "LIVES IN"} ,
+                                             {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
     assert result == ('MATCH (ex0), (ex1)',
                       'WHERE id(ex0) = 123 AND id(ex1) = 456',
                       'MERGE (n)-[:`LIVES IN` ]->(ex0)\nMERGE (n)<-[:`EMPLOYS` ]-(ex1)',
@@ -918,9 +918,9 @@ def test_assemble_query_for_linking(db):
 
     result = db._assemble_query_for_linking(
                         [
-                            {"neo_id": 123, "rel_name": "LIVES IN"},
-                            {"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
-                            {"neo_id": 789, "rel_name": "IS OWNED BY", "rel_dir": "IN", "rel_attrs": {"since": 2022, "tax rate": "X 23"}}
+                            {"internal_id": 123, "rel_name": "LIVES IN"},
+                            {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
+                            {"internal_id": 789, "rel_name": "IS OWNED BY", "rel_dir": "IN", "rel_attrs": {"since": 2022, "tax rate": "X 23"}}
                         ])
     assert result == (
                         'MATCH (ex0), (ex1), (ex2)',
@@ -1482,8 +1482,8 @@ def test_get_node_internal_id(db):
 
     # Add a 1st node
     adam_id = db.create_node(labels="Person", properties={"name": "Adam"})
-    neo_id = db.get_node_internal_id(match_all)     # Finds all nodes (there's only 1 in the database)
-    assert neo_id == adam_id
+    internal_id = db.get_node_internal_id(match_all)     # Finds all nodes (there's only 1 in the database)
+    assert internal_id == adam_id
 
     # Add a 2nd node
     eve_id = db.create_node(labels="Person", properties={"name": "Eve"})
@@ -1492,16 +1492,16 @@ def test_get_node_internal_id(db):
         db.get_node_internal_id(match_all)          # It finds 2 nodes - a non-unique result
 
     match_adam = db.match(properties={"name": "Adam"})
-    neo_id = db.get_node_internal_id(match_adam)     # Finds the "Adam" node
-    assert neo_id == adam_id
+    internal_id = db.get_node_internal_id(match_adam)     # Finds the "Adam" node
+    assert internal_id == adam_id
 
     match_eve = db.match(internal_id=eve_id)
-    neo_id = db.get_node_internal_id(match_eve)     # Finds the "Eve" node
-    assert neo_id == eve_id
+    internal_id = db.get_node_internal_id(match_eve)     # Finds the "Eve" node
+    assert internal_id == eve_id
 
     assert db.delete_nodes(match_adam) == 1         # Now only "Eve" will be left
-    neo_id = db.get_node_internal_id(match_all)     # Finds the "Eve" node, because it's now the only one
-    assert neo_id == eve_id
+    internal_id = db.get_node_internal_id(match_all)     # Finds the "Eve" node, because it's now the only one
+    assert internal_id == eve_id
 
 
 
@@ -1522,9 +1522,9 @@ def test_reattach_node(db):
     with pytest.raises(Exception):
         db.reattach_node(node=jill, old_attachment=jack, new_attachment=mary, rel_name="MARRIED_TO")    # here's no link FROM jill TO jack (wrong direction)
 
-    bogus_neo_id = mary + 1     # (Since we first emptied the database, there will be no nod with such an ID
+    bogus_internal_id = mary + 1     # (Since we first emptied the database, there will be no nod with such an ID
     with pytest.raises(Exception):
-        db.reattach_node(node=jack, old_attachment=jill, new_attachment=bogus_neo_id, rel_name="MARRIED_TO")
+        db.reattach_node(node=jack, old_attachment=jill, new_attachment=bogus_internal_id, rel_name="MARRIED_TO")
 
     # jack finally shakes off jill and marries mary
     db.reattach_node(node=jack, old_attachment=jill, new_attachment=mary, rel_name="MARRIED_TO")
