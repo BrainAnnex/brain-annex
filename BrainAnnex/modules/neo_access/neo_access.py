@@ -1669,7 +1669,7 @@ class NeoAccess:
               with a "REMOVE n.field" statement in Cypher; doing SET n.field = "" doesn't drop it
 
         :param match:       EITHER an integer with a Neo4j node id,
-                                OR a dictionary of data to identify a node, or set of nodes, as returned by find()
+                                OR a dictionary of data to identify a node, or set of nodes, as returned by match()
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
                             (note: blanks ARE allowed in the keys)
 
@@ -1679,10 +1679,14 @@ class NeoAccess:
         if set_dict == {}:
             return 0             # There's nothing to do
 
-        match = CypherUtils.validate_and_standardize(match)     # Validate, and possibly create, the match dictionary
+        match_structure = CypherUtils.process_match_structure(match)
+
+        if self.debug:
+            print("In set_fields()")
+            print("    match_structure:", match_structure)
 
         # Unpack needed values from the match dictionary
-        (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match)
+        (node, where, data_binding, dummy_node_name) = CypherUtils.unpack_match(match_structure)
 
         cypher_match = f"MATCH {node} {CypherUtils.prepare_where(where)} "
 

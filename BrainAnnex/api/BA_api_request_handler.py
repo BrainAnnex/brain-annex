@@ -510,7 +510,7 @@ class APIRequestHandler:
             set_dict = Notes.plugin_n_update_content(data_binding, set_dict)
 
         # TODO: utilize the schema layer, rather than directly access the database
-        match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
+        match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
 
         if schema_code == "n":

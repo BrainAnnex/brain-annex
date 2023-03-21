@@ -1172,7 +1172,7 @@ def test_set_fields(db):
     db.create_node("car", {'vehicle id': 123, 'price': 7500})
 
     # Locate the node just created, and create/update its attributes (reduce the price)
-    match = db.find(labels="car", properties={'vehicle id': 123, 'price': 7500})
+    match = db.match(labels="car", properties={'vehicle id': 123, 'price': 7500})
     db.set_fields(match=match, set_dict = {"color": "white", "price": 7000})
 
     # Look up the updated record
