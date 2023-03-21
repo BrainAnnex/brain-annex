@@ -61,7 +61,7 @@ def test_create_class(db):
     db.empty_dbase()
 
     _ , french_class_id = NeoSchema.create_class("French Vocabulary")
-    match = db.find(labels="CLASS")   # All Class nodes
+    match = db.match(labels="CLASS")   # All Class nodes
     result = db.get_nodes(match)
     assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
 
@@ -886,7 +886,7 @@ def test_add_data_point_merge(db):
 
 
 def test_add_col_data_merge(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     with pytest.raises(Exception):
         NeoSchema.add_col_data_merge(class_internal_id=123, property_name="color", value_list=["white"])     # No such class exists

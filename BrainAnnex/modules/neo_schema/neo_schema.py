@@ -210,7 +210,7 @@ class NeoSchema:
         """
         cls.assert_valid_class_name(class_name)
 
-        match = cls.db.find(labels="CLASS", key_name="name", key_value=class_name)
+        match = cls.db.match(labels="CLASS", key_name="name", key_value=class_name)
         result = cls.db.get_nodes(match, return_neo_id=True)
 
         if not result:
@@ -239,7 +239,7 @@ class NeoSchema:
         assert type(class_name) == str, f"NeoSchema.get_class_id(): argument `class_name` must be a string (value passed was `{class_name}`)"
         assert class_name != "", "NeoSchema.get_class_id(): argument `class_name` cannot be an empty string"
 
-        match = cls.db.find(labels="CLASS", key_name="name", key_value=class_name)
+        match = cls.db.match(labels="CLASS", key_name="name", key_value=class_name)
         result = cls.db.get_nodes(match, single_cell="schema_id")
 
         if result is None:
@@ -320,7 +320,7 @@ class NeoSchema:
         """
         assert type(schema_id) == int, "The schema id MUST be an integer"
 
-        match = cls.db.find(labels="CLASS", key_name="schema_id", key_value=schema_id)
+        match = cls.db.match(labels="CLASS", key_name="schema_id", key_value=schema_id)
         result = cls.db.get_nodes(match, single_cell="name")
 
         if not result :
@@ -341,8 +341,8 @@ class NeoSchema:
         """
         cls.db.assert_valid_neo_id(class_neo_id)
 
-        match = cls.db.find(neo_id=class_neo_id)
-        result = cls.db.get_nodes(match, single_cell="name")
+        #match = cls.db.match(neo_id=class_neo_id)
+        result = cls.db.get_nodes(class_neo_id, single_cell="name")
 
         if not result :
             raise Exception(f"NeoSchema.get_class_name_by_neo_id(): no Class with a Neo4j ID of {class_neo_id} found")
@@ -363,8 +363,8 @@ class NeoSchema:
         """
         cls.db.assert_valid_neo_id(class_neo_id)
 
-        match = cls.db.find(neo_id=class_neo_id)
-        result = cls.db.get_nodes(match, single_row=True)
+        #match = cls.db.find(neo_id=class_neo_id)
+        result = cls.db.get_nodes(class_neo_id, single_row=True)
 
         if not result :
             raise Exception(f"NeoSchema.get_class_attributes(): no Class with a Neo4j ID of {class_neo_id} found")
@@ -1146,7 +1146,7 @@ class NeoSchema:
         :return:    An integer with the Schema ID (or -1 if not present)
         """
 
-        match = cls.db.find(labels="CLASS", key_name="code", key_value=schema_code)
+        match = cls.db.match(labels="CLASS", key_name="code", key_value=schema_code)
         result = cls.db.get_nodes(match, single_cell="schema_id")
 
         if result is None:
@@ -1218,10 +1218,10 @@ class NeoSchema:
             assert item_id is not None, \
                 "NeoSchema.fetch_data_point(): arguments `item_id` and `internal_id` cannot both be None"
 
-            match = cls.db.find(key_name="item_id", key_value=item_id,
+            match = cls.db.match(key_name="item_id", key_value=item_id,
                                 labels=labels, properties=properties)
         else:
-            match = cls.db.find(neo_id=internal_id, labels=labels, properties=properties)
+            match = cls.db.match(internal_id=internal_id, labels=labels, properties=properties)
 
         return cls.db.get_nodes(match, single_row=True)
 
@@ -2241,7 +2241,7 @@ class NeoSchema:
         :return:   An integer with the Neo4j ID of the data point
         """
 
-        match = cls.db.find(key_name=key_name, key_value=key_value)
+        match = cls.db.match(key_name=key_name, key_value=key_value)
         result = cls.db.get_nodes(match, return_neo_id=True, single_cell="neo4j_id")
 
         if result is None:

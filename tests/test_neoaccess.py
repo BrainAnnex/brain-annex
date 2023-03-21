@@ -319,26 +319,26 @@ def test_get_nodes(db):
     db.create_node("test_label", {'patient_id': 123, 'gender': 'M'})
 
     # Retrieve the record just created (using values embedded in the Cypher query)
-    match = db.find(labels="test_label", subquery="n.patient_id = 123 AND n.gender = 'M'")
+    match = db.match(labels="test_label", clause="n.patient_id = 123 AND n.gender = 'M'")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
     # Again, retrieve the record (this time using data-binding in the Cypher query, and values passed as a separate dictionary)
-    match = db.find(labels="test_label",
-                    subquery=( "n.patient_id = $patient_id AND n.gender = $gender",
-                                       {"patient_id": 123, "gender": "M"}
-                                     )
+    match = db.match(labels="test_label",
+                     clause=( "n.patient_id = $patient_id AND n.gender = $gender",
+                               {"patient_id": 123, "gender": "M"}
+                            )
                     )
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
 
     # Retrieve ALL records with the label "test_label", by using no clause or an empty clause
-    match = db.find(labels="test_label")
+    match = db.match(labels="test_label")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
-    match = db.find(labels="test_label", subquery="           ")
+    match = db.match(labels="test_label", clause="           ")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
@@ -347,29 +347,29 @@ def test_get_nodes(db):
     db.create_node("my 2nd label", {'age': 21, 'gender': 'F', 'client id': 123})
 
     # Retrieve the record just created (using values embedded in the Cypher query)
-    match = db.find(labels="my 2nd label", subquery="n.`client id` = 123")
+    match = db.match(labels="my 2nd label", clause="n.`client id` = 123")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Retrieve the record just created (in a different way, using a Cypher subquery with its own data binding)
-    match = db.find(labels="my 2nd label", subquery=("n.age = $age AND n.gender = $gender",
+    match = db.match(labels="my 2nd label", clause=("n.age = $age AND n.gender = $gender",
                                                      {"age": 21, "gender": "F"}
-                                                    ))
+                                                     ))
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
-     # Retrieve ALL records with the label "my 2nd label"
-    match = db.find(labels="my 2nd label")
+    # Retrieve ALL records with the label "my 2nd label"
+    match = db.match(labels="my 2nd label")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Same as above, but using a blank subquery
-    match = db.find(labels="my 2nd label", subquery="           ")
+    match = db.match(labels="my 2nd label", clause="           ")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Retrieve the record just created (using a dictionary of properties)
-    match = db.find(labels="my 2nd label", properties={"age": 21, "gender": "F"})
+    match = db.match(labels="my 2nd label", properties={"age": 21, "gender": "F"})
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'client id': 123, 'gender': 'F', 'age': 21}]
 
@@ -378,19 +378,19 @@ def test_get_nodes(db):
     db.create_node("my 2nd label", {'age': 30, 'gender': 'M', 'client id': 999})
 
     # Retrieve records using a clause
-    match = db.find(labels="my 2nd label", subquery="n.age > 22")
+    match = db.match(labels="my 2nd label", clause="n.age > 22")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'gender': 'M', 'client id': 999, 'age': 30}]
 
     # Retrieve nodes REGARDLESS of label (and also retrieve the labels)
-    match = db.find(properties={"gender": "M"})       # Locate all males, across all node labels
+    match = db.match(properties={"gender": "M"})       # Locate all males, across all node labels
     retrieved_records = db.get_nodes(match, return_labels=True)
     expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
                         {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
     assert compare_recordsets(retrieved_records, expected_records)
 
     # Retrieve ALL nodes in the database (and also retrieve the labels)
-    match = db.find()
+    match = db.match()
     retrieved_records = db.get_nodes(match, return_labels=True)
     expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
                         {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
@@ -399,7 +399,7 @@ def test_get_nodes(db):
 
     # Re-use of same key names in subquery data-binding and in properties dictionaries is ok, because the keys in
     #   properties dictionaries get internally changed
-    match = db.find(labels="my 2nd label", subquery=("n.age > $age" , {"age": 22}), properties={"age": 30})
+    match = db.match(labels="my 2nd label", clause=("n.age > $age" , {"age": 22}), properties={"age": 30})
     retrieved_records = db.get_nodes(match)
     # Note: internally, the final Cypher query is: "MATCH (n :`my 2nd label` {`age`: $n_par_1}) WHERE (n.age > $age) RETURN n"
     #                           with data binding: {'age': 22, 'n_par_1': 30}
@@ -410,12 +410,13 @@ def test_get_nodes(db):
     # A conflict arises only if we happen to use a key name that clashes with an internal name, such as "n_par_1";
     # an Exception is expected is such a case
     with pytest.raises(Exception):
-        match = db.find(labels="my 2nd label", subquery=("n.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
+        match = db.match(labels="my 2nd label", clause=("n.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
         assert db.get_nodes(match)
 
     # If we really wanted to use a key called "n_par_1" in our subquery dictionary, we
     #       can simply alter the dummy name internally used, from the default "n" to something else
-    match = db.find(dummy_node_name="person", labels="my 2nd label", subquery=("person.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
+    match = db.match(dummy_node_name="person", labels="my 2nd label",
+                     clause=("person.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
     # All good now, because internally the Cypher query is "MATCH (person :`my 2nd label` {`age`: $person_par_1}) WHERE (person.age > $n_par_1) RETURN person"
     #                                    with data binding {'n_par_1': 22, 'person_par_1': 30}
     retrieved_records = db.get_nodes(match)
@@ -433,7 +434,7 @@ def test_get_nodes(db):
     db.create_node("patient", {'weight': 155, 'gender': 'M'})
 
     # Retrieve combined records created: note how different records have different keys
-    match = db.find(labels="patient")
+    match = db.match(labels="patient")
     retrieved_records = db.get_nodes(match)
     expected = [{'gender': 'F', 'age': 16},
                 {'gender': 'M', 'weight': 155}]
@@ -447,15 +448,15 @@ def test_get_nodes(db):
                 {}]
     assert compare_recordsets(retrieved_records, expected)
 
-    match = db.find(labels="patient", properties={"age": 16})
+    match = db.match(labels="patient", properties={"age": 16})
     retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record == {'gender': 'F', 'age': 16}
 
-    match = db.find(labels="patient", properties={"age": 11})
+    match = db.match(labels="patient", properties={"age": 11})
     retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record is None      # No record found
 
-    match = db.find(labels="patient", neo_id=empty_record_id)
+    match = db.match(labels="patient", internal_id=empty_record_id)
     retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record == {}        # Record with no attributes found
 
@@ -703,7 +704,7 @@ def test_create_node(db):
     db.create_node("test_label", {'patient id': 123, 'gender': 'M'})
 
     # Retrieve the record just created (one method, with values embedded in the Cypher query)
-    match = db.find(labels="test_label", subquery="n.`patient id` = 123 AND n.gender = 'M'")
+    match = db.match(labels="test_label", clause="n.`patient id` = 123 AND n.gender = 'M'")
 
     retrieved_records_A = db.get_nodes(match)
     assert retrieved_records_A == [{'patient id': 123, 'gender': 'M'}]
@@ -738,7 +739,7 @@ def test_create_node(db):
     db.create_node("new_label", {})
 
     # Retrieve just this last node
-    match = db.find(labels="new_label")
+    match = db.match(labels="new_label")
     retrieved_records_D = db.get_nodes(match)
     expected_record_list = [{}]
     assert compare_recordsets(retrieved_records_D, expected_record_list)
@@ -747,17 +748,17 @@ def test_create_node(db):
     # Create a 5th node with labels
     db.create_node(["label 1", "label 2"], {'name': "double label"})
     # Look it up by one label
-    match = db.find(labels="label 1")
+    match = db.match(labels="label 1")
     retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
     # Look it up by the other label
-    match = db.find(labels="label 2")
+    match = db.match(labels="label 2")
     retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
     # Look it up by both labels
-    match = db.find(labels=["label 1", "label 2"])
+    match = db.match(labels=["label 1", "label 2"])
     retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
@@ -888,7 +889,7 @@ def test_create_node_with_links(db):
     car_id = db.create_node_with_links(labels = ["CAR", "INVENTORY"],
                                        properties = {'vehicle_id': 12345})
     # Verify it
-    match = db.find(neo_id=car_id, labels=["CAR", "INVENTORY"])
+    match = db.match(internal_id=car_id, labels=["CAR", "INVENTORY"])
     lookup = db.get_nodes(match)
     assert lookup == [{'vehicle_id': 12345}]
 
@@ -897,7 +898,7 @@ def test_create_node_with_links(db):
                                         properties = {'dept name': 'IT'},
                                         links = [])
     # Verify it
-    match = db.find(neo_id=dept_id, labels = "DEPARTMENT")
+    match = db.match(internal_id=dept_id, labels = "DEPARTMENT")
     lookup = db.get_nodes(match)
     assert lookup == [{'dept name': 'IT'}]
 
@@ -944,7 +945,7 @@ def test_create_node_with_links(db):
         )
 
     # In spite of the Exception, above, a new node was indeed created
-    match = db.find(labels = "PERSON", properties={"name": "Val"})
+    match = db.match(labels = "PERSON", properties={"name": "Val"})
     lookup = db.get_nodes(match)
     assert lookup == [{"name": "Val", "city": "San Francisco"}]
 
@@ -1072,7 +1073,7 @@ def test_delete_nodes(db):
 
 def test_delete_nodes_by_label(db):
     db.delete_nodes_by_label()
-    match = db.find()   # Everything in the dbase
+    match = db.match()   # Everything in the dbase
     number_nodes = len(db.get_nodes(match))
     assert number_nodes == 0
 
@@ -1156,7 +1157,7 @@ def test_empty_dbase(db):
     labels = db.get_labels()
     assert compare_unordered_lists(labels , ["label_4", "label_3"])
     # Doubly-verify that one of the saved nodes can be read in
-    match = db.find(labels="label_3")
+    match = db.match(labels="label_3")
     recordset = db.get_nodes(match)
     assert compare_recordsets(recordset, [{'client_id': 456, 'name': 'Julian'}])
 
@@ -1176,7 +1177,7 @@ def test_set_fields(db):
     db.set_fields(match=match, set_dict = {"color": "white", "price": 7000})
 
     # Look up the updated record
-    match = db.find(labels="car")
+    match = db.match(labels="car")
     retrieved_records = db.get_nodes(match)
     expected_record_list = [{'vehicle id': 123, 'color': 'white', 'price': 7000}]
     assert compare_recordsets(retrieved_records, expected_record_list)
@@ -1494,10 +1495,10 @@ def test_edges_exists(db):
     db.add_links(neo_julian, neo_sailboat, rel_name="SAILS")
     assert db.links_exist(neo_julian, neo_sailboat, rel_name="SAILS")
 
-    match_vehicle = db.find(properties={'color': 'white'})                  # To select both car and boat
+    match_vehicle = db.match(properties={'color': 'white'})                 # To select both car and boat
     assert db.links_exist(neo_julian, match_vehicle, rel_name="SAILS")
 
-    assert not db.links_exist(neo_car, neo_car, rel_name="SELF_DRIVES")    # A relationship from a node to itself
+    assert not db.links_exist(neo_car, neo_car, rel_name="SELF_DRIVES")     # A relationship from a node to itself
     db.add_links(neo_car, neo_car, rel_name="SELF_DRIVES")
     assert db.links_exist(neo_car, neo_car, rel_name="SELF_DRIVES")
 
@@ -1924,7 +1925,7 @@ def test_load_pandas(db):
 
     df = pd.DataFrame([[123]], columns = ["col1"])  # One row, one column
     db.load_pandas(df, "A")
-    match_A = db.find(labels="A")
+    match_A = db.match(labels="A")
     result = db.get_nodes(match_A)
     assert result == [{'col1': 123}]
 
@@ -1945,7 +1946,7 @@ def test_load_pandas(db):
     A_nodes = db.get_nodes(match_A)
     expected_A = [{'col1': 123}, {'col1': 999}, {'col2': 2222}]
     assert compare_recordsets(A_nodes, expected_A)
-    match_B = db.find(labels="B")
+    match_B = db.match(labels="B")
     B_nodes = db.get_nodes(match_B)
     assert B_nodes == [{'col3': 3333}]
 
@@ -1970,7 +1971,7 @@ def test_load_pandas(db):
     # Test primary_key with merge
     df = pd.DataFrame({"patient_id": [100, 200], "name": ["Jack", "Jill"]})
     db.load_pandas(df, "X")
-    match_X = db.find(labels="X")
+    match_X = db.match(labels="X")
     X_nodes = db.get_nodes(match_X)
     expected_X = [{'patient_id': 100, 'name': 'Jack', }, {'patient_id': 200, 'name': 'Jill'}]
     assert compare_recordsets(X_nodes, expected_X)

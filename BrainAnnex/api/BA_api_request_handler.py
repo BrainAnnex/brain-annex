@@ -331,7 +331,7 @@ class APIRequestHandler:
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
-        match = cls.db.find(labels="BA", properties=properties)
+        match = cls.db.match(labels="BA", properties=properties)
         content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
         if not content_node:    # Metadata not found
@@ -360,7 +360,7 @@ class APIRequestHandler:
         :return:    The binary data
 
         """
-        match = cls.db.find(labels="BA", properties={"item_id": item_id})
+        match = cls.db.match(labels="BA", properties={"item_id": item_id})
         content_node = cls.db.get_nodes(match)
         #print("content_node:", content_node)
         if (content_node is None) or (content_node == []):
@@ -741,7 +741,7 @@ class APIRequestHandler:
 
         print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | limit: {limit}")
 
-        match = cls.db.find(labels=labels, key_name=key_name, key_value=key_value)
+        match = cls.db.match(labels=labels, key_name=key_name, key_value=key_value)
 
         if limit > 500:
             limit = 500     # Set an upper bound
