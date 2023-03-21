@@ -174,7 +174,7 @@ class CypherUtils:
         Verify that an alleged "match" dictionary is a valid one; if not, raise an Exception
         TODO: tighten up the checks
 
-        :param match:   A dictionary of data to identify a node, or set of nodes, as returned by find()
+        :param match:   A dictionary of data to identify a node, or set of nodes, as returned by match()
         :return:        None
         """
         assert type(match) == dict, f"`match` argument is not a dictionary as expected; instead, it is a {type(match)}"
@@ -333,7 +333,7 @@ class CypherUtils:
         assert match1.get("dummy_node_name") != match2.get("dummy_node_name"), \
             f"check_match_compatibility(): conflict between 2 matches " \
             f"using the same dummy node name ({match1.get('dummy_node_name')}). " \
-            f"Make sure to pass different dummy names to find()"
+            f"Make sure to pass different dummy names to match()"
 
 
 

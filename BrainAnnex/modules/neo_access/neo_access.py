@@ -813,101 +813,6 @@ class NeoAccess:
 
 
 
-    # TODO: deprecated by match()
-    def find(self, labels=None, neo_id=None, key_name=None, key_value=None, properties=None, subquery=None,
-             dummy_node_name="n") -> dict:
-        """
-        Register a set of conditions that must be matched to identify a node or nodes of interest,
-        and return a dictionary suitable to be passed as argument to various other functions in this library.
-        No arguments at all means "match everything in the database".
-        TODO:   maybe rename to "identify()"
-                maybe save all arguments, in case the dummy_node_name later needs changing
-
-        IMPORTANT:  if neo_id is provided, all other conditions are DISREGARDED;
-                    otherwise, an implicit AND applies to all the specified conditions.
-
-        Note:   NO database operation is actually performed by this function.
-                It merely turns the set of specification into the MATCH part, and (if applicable) the WHERE part,
-                of a Cypher query (using the specified dummy variable name),
-                together with its data-binding dictionary - all "packaged" into a dict that can be passed around.
-
-                The calling functions typically will make use the returned dictionary to assemble a Cypher query,
-                to MATCH all the Neo4j nodes satisfying the specified conditions,
-                and then do whatever else it needs to do (such as deleting, or setting properties on, the located nodes.)
-
-
-        EXAMPLE 1 - first identify a group of nodes, and then delete them:
-
-            match = find(labels="person", properties={"gender": "F"},
-                                subquery=("n.income > $min_income" , {"min_income": 50000})}
-                         )
-            delete_nodes(match)
-
-            In the above example, the value of match is:
-
-                {"node": "(n :`person` {`gender`: $n_par_1})",
-                "where": "n.income > $min_income",
-                "data_binding": {"n_par_1": "F", "min_income": 50000},
-                "dummy_node_name": "n"
-                }
-
-        EXAMPLE 2 - by specifying the name of the dummy node, it's also possible to do operations such as:
-
-            # Add the new relationship
-            match_from = db.find(labels="car",          key_name="vehicle_id", key_value=45678,
-                                 dummy_node_name="from")
-            match_to =   db.find(labels="manufacturer", key_name="company", key_value="Toyota",
-                                 dummy_node_name="to")
-
-            db.add_edges(match_from, match_to, rel_name="MADE_BY")   # THIS FUNCTION WAS OBSOLETED
-
-        TODO? - possible alt. names  for this function include "define_match()", match(), "locate(), choose() or identify()
-
-        ALL THE ARGUMENTS ARE OPTIONAL (no arguments at all means "match everything in the database")
-        :param labels:      A string (or list/tuple of strings) specifying one or more Neo4j labels.
-                                (Note: blank spaces ARE allowed in the strings)
-                                EXAMPLES:  "cars"
-                                            ("cars", "powered vehicles")
-                            Note that if multiple labels are given, then only nodes with ALL of them will be matched;
-                            at present, there's no way to request an "OR" operation
-
-        :param neo_id:      An integer with the node's internal ID.
-                                If specified, it OVER-RIDES all the remaining arguments, except for the labels
-
-        :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
-        :param key_value:   The required value for the above key; if provided, key_name must be present, too
-                                Note: no requirement for the key to be primary
-
-        :param properties:  A (possibly-empty) dictionary of property key/values pairs, indicating a condition to match.
-                                EXAMPLE: {"gender": "F", "age": 22}
-
-        :param subquery:    Either None, or a (possibly empty) string containing a Cypher subquery,
-                            or a pair/list (string, dict) containing a Cypher subquery and the data-binding dictionary for it.
-                            The Cypher subquery should refer to the node using the assigned dummy_node_name (by default, "n")
-                                IMPORTANT:  in the dictionary, don't use keys of the form "n_par_i",
-                                            where n is the dummy node name and i is an integer,
-                                            or an Exception will be raised - those names are for internal use only
-                                EXAMPLES:   "n.age < 25 AND n.income > 100000"
-                                            ("n.weight < $max_weight", {"max_weight": 100})
-
-        :param dummy_node_name: A string with a name by which to refer to the node (by default, "n")
-
-        :return:            A dictionary of data storing the parameters of the match.
-                            For details, see the "class Matches"
-        """
-        if self.debug:
-            print(f"In find().  labels={labels}, neo_id={neo_id}, key_name={key_name}, key_value={key_value}, "
-            f"properties={properties}, subquery={subquery}, dummy_node_name={dummy_node_name}")
-
-        match_structure = CypherUtils.define_match(labels=labels, neo_id=neo_id, key_name=key_name, key_value=key_value,
-                                                   properties=properties, subquery=subquery, dummy_node_name=dummy_node_name)
-        if self.debug:
-            print("\n*** match_structure : ", match_structure)
-
-        return match_structure
-
-
-
     def get_node_internal_id(self, match: dict) -> int:
         """
         Return the internal database ID of a SINGLE node identified by the "match" data
@@ -943,20 +848,20 @@ class NeoAccess:
 
 
 
-    def get_node_labels(self, neo4j_id: int) -> [str]:
+    def get_node_labels(self, internal_id: int) -> [str]:
         """
         Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
 
         TODO: maybe also accept a "match" structure as argument
 
-        :param neo4j_id:    An integer with a Neo4j node id
-        :return:
+        :param internal_id: An integer with a Neo4j node id
+        :return:            A list of strings with the names of all the labels of the given node
         """
-        CypherUtils.assert_valid_internal_id(neo4j_id)
+        CypherUtils.assert_valid_internal_id(internal_id)
 
         q = "MATCH (n) WHERE id(n)=$neo4j_id RETURN labels(n) AS all_labels"
 
-        return self.query(q, data_binding={"neo4j_id": neo4j_id}, single_cell="all_labels")
+        return self.query(q, data_binding={"neo4j_id": internal_id}, single_cell="all_labels")
 
 
 
@@ -1662,8 +1567,8 @@ class NeoAccess:
     def set_fields(self, match: Union[int, dict], set_dict: dict ) -> int:
         """
         EXAMPLE - locate the "car" with vehicle id 123 and set its color to white and price to 7000
-            match = find(labels = "car", properties = {"vehicle id": 123})
-            set_fields(match=match, set_dict = {"color": "white", "price": 7000})
+            match_structure = match(labels = "car", properties = {"vehicle id": 123})
+            set_fields(match=match_structure, set_dict = {"color": "white", "price": 7000})
 
         NOTE: other fields are left un-disturbed
 

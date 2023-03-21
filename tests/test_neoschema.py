@@ -1293,8 +1293,19 @@ def test_add_data_relationship(db):
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=car_id, to_id=person_id, rel_name="DRIVES", id_type="item_id")  # Wrong direction
 
-    # Now it works
+    # Now, finally, it'll work
     NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+
+    # Verify the cycle of "DRIVES" relationships
+    q = '''
+    MATCH (c:Car {item_id:$car_id})<-[:DRIVES]-(p:Person {item_id:$person_id})
+    -[:SCHEMA]->(cl1:CLASS {name:"Person"})-[:DRIVES]->(cl2:CLASS {name:"Car"})
+    <-[:SCHEMA]-(c)
+    RETURN COUNT(c) AS number_cars
+    '''
+    result = db.query(q, {"car_id": car_id, "person_id": person_id}, single_cell="number_cars")
+    assert result == 1
+
 
     with pytest.raises(Exception):
         # Attempting to add it again
@@ -1311,6 +1322,26 @@ def test_add_data_relationship(db):
     neo_person_id = NeoSchema.get_data_point_id(person_id)
     neo_car_id = NeoSchema.get_data_point_id(car_id)
     NeoSchema.add_data_relationship(from_id=neo_car_id, to_id=neo_person_id, rel_name="IS_DRIVEN_BY")
+
+    # Verify the cycle of "IS_DRIVEN_BY" relationships
+    q = '''
+    MATCH (c:Car {item_id:$car_id})-[:IS_DRIVEN_BY]->(p:Person {item_id:$person_id})
+    -[:SCHEMA]->(cl1:CLASS {name:"Person"})<-[:IS_DRIVEN_BY]-(cl2:CLASS {name:"Car"})
+    <-[:SCHEMA]-(c)
+    RETURN COUNT(c) AS number_cars
+    '''
+    result = db.query(q, {"car_id": car_id, "person_id": person_id}, single_cell="number_cars")
+    assert result == 1
+
+    # Verify that the cycle of "DRIVES" relationships is also still there
+    q = '''
+    MATCH (c:Car {item_id:$car_id})<-[:DRIVES]-(p:Person {item_id:$person_id})
+    -[:SCHEMA]->(cl1:CLASS {name:"Person"})-[:DRIVES]->(cl2:CLASS {name:"Car"})
+    <-[:SCHEMA]-(c)
+    RETURN COUNT(c) AS number_cars
+    '''
+    result = db.query(q, {"car_id": car_id, "person_id": person_id}, single_cell="number_cars")
+    assert result == 1
 
 
 

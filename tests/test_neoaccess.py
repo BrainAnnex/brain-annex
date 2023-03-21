@@ -483,87 +483,20 @@ def test_get_df(db):
 
 
 
-def test_find(db):
-    assert db.find() == {"node": "(n  )", "where": "", "data_binding": {}, "dummy_node_name": "n"}
-
-    assert db.find(dummy_node_name="client") == {"node": "(client  )",
-                                                 "where": "",
-                                                 "data_binding": {},
-                                                 "dummy_node_name": "client"}
-
-    assert db.find(labels="person") == {"node": "(n :`person` )", "where": "", "data_binding": {}, "dummy_node_name": "n"}
-
-    assert db.find(labels=["car", "surplus inventory"]) == {"node": "(n :`car`:`surplus inventory` )",
-                                                            "where": "", "data_binding": {}, "dummy_node_name": "n"}
-    assert db.find(labels=("car", "surplus inventory")) == {"node": "(n :`car`:`surplus inventory` )",
-                                                            "where": "", "data_binding": {}, "dummy_node_name": "n"}
-
-    assert db.find(neo_id=123, labels="person", properties={"gender": "F"}) == {"node": "(n)",
-                                                                                "where": "id(n) = 123",
-                                                                                "data_binding": {},
-                                                                                "dummy_node_name": "n"}
-    # Note: when neo_id is specified, all other conditions are ignored
-
-    with pytest.raises(Exception):
-        assert db.find(labels="person", key_name="item_id")
-
-    with pytest.raises(Exception):
-        assert db.find(labels="person", key_value=1000)
-
-    res = db.find(labels="person", key_name="item_id", key_value=1000)
-    expected_match = "(n :`person` {`item_id`: $n_par_1})"
-    expected_dict = {"n_par_1": 1000}
-    assert res == {"node": expected_match, "where": "", "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", key_name="item_id", key_value=1000, dummy_node_name="client")
-    expected_match = "(client :`person` {`item_id`: $client_par_1})"
-    expected_dict = {"client_par_1": 1000}
-    assert res == {"node": expected_match, "where": "", "data_binding": expected_dict, "dummy_node_name": "client"}
-
-    res = db.find(labels="person", properties={"gender": "F", "age": 22})
-    expected_match = "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
-    expected_dict = {"n_par_1": "F", "n_par_2": 22}
-    assert res == {"node": expected_match, "where": "", "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", properties={"gender": "F", "age": 22}, key_name="item_id", key_value=1000)
-    expected_match = "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2, `item_id`: $n_par_3})"
-    expected_dict = {"n_par_1": "F", "n_par_2": 22, "n_par_3": 1000}
-    assert res == {"node": expected_match, "where": "", "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", subquery="n.age < 36 OR n.income > 90000")
-    expected_match = "(n :`person` )"
-    expected_where = "n.age < 36 OR n.income > 90000"
-    expected_dict = {}
-    assert res == {"node": expected_match, "where": expected_where, "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", subquery=("n.age < $some_age", {"some_age": 36}))
-    expected_match = "(n :`person` )"
-    expected_where = "n.age < $some_age"
-    expected_dict = {"some_age": 36}
-    assert res == {"node": expected_match, "where": expected_where, "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", properties={"gender": "F", "age": 22}, subquery="n.income > 90000")
-    expected_match = "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
-    expected_where = "n.income > 90000"
-    expected_dict = {"n_par_1": "F", "n_par_2": 22}
-    assert res == {"node": expected_match, "where": expected_where, "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", properties={"gender": "F", "age": 22}, subquery=["n.income > $min_income", {"min_income": 90000}])
-    expected_match = "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
-    expected_where = "n.income > $min_income"
-    expected_dict = {"n_par_1": "F", "n_par_2": 22, "min_income": 90000}
-    assert res == {"node": expected_match, "where": expected_where, "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    with pytest.raises(Exception):
-        # Bad key name "n_par_1", which conflicts with an internally-used name
-        assert db.find(labels="person", properties={"gender": "F"}, subquery=["n.income > $n_par_1", {"n_par_1": 90000}])
-
-
-
 def test_get_node_labels(db):
-    #TODO
-    pass
+    db.empty_dbase()
 
+    my_book = db.create_node("book", {'title': 'The Double Helix'})
+    result = db.get_node_labels(my_book)
+    assert result == ["book"]
+
+    my_vehicle = db.create_node(["car", "vehicle"])
+    result = db.get_node_labels(my_vehicle)
+    assert result == ["car", "vehicle"]
+
+    label_less = db.create_node(labels=None, properties={'title': 'I lost my labels'})
+    result = db.get_node_labels(label_less)
+    assert result == []
 
 
 
@@ -1527,7 +1460,7 @@ def test_number_of_links(db):
     db.add_links(neo_julian, neo_sailboat, rel_name="SAILS")
     assert db.number_of_links(neo_julian, neo_sailboat, rel_name="SAILS") == 1  # It finds the just-added link
 
-    match_vehicle = db.find(properties={'color': 'white'})                      # To select both car and boat
+    match_vehicle = db.match(properties={'color': 'white'})                      # To select both car and boat
     assert db.number_of_links(neo_julian, match_vehicle, rel_name="SAILS") == 1
 
     assert db.number_of_links(neo_car, neo_car, rel_name="SELF_DRIVES") == 0    # A relationship from a node to itself
@@ -2036,8 +1969,9 @@ def test_assert_valid_match_structure(db):
 
     CypherUtils.assert_valid_match_structure({"node": "hi", "where": "there", "data_binding": {}, "dummy_node_name": "the end"})
 
-    match = db.find()
-    CypherUtils.assert_valid_match_structure(match)
+    match = db.match()
+    match_structure = CypherUtils.process_match_structure(match)
+    CypherUtils.assert_valid_match_structure(match_structure)
 
 
 

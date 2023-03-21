@@ -341,7 +341,6 @@ class NeoSchema:
         """
         cls.db.assert_valid_neo_id(class_neo_id)
 
-        #match = cls.db.match(neo_id=class_neo_id)
         result = cls.db.get_nodes(class_neo_id, single_cell="name")
 
         if not result :
@@ -363,7 +362,6 @@ class NeoSchema:
         """
         cls.db.assert_valid_neo_id(class_neo_id)
 
-        #match = cls.db.find(neo_id=class_neo_id)
         result = cls.db.get_nodes(class_neo_id, single_row=True)
 
         if not result :
@@ -1243,7 +1241,7 @@ class NeoSchema:
         res = cls.db.query(q, {"class_name": class_name}, single_column="item_id")
 
         # Alternate approach
-        #match = cls.db.find(labels="CLASS", properties={"name": "Categories"})
+        #match = cls.db.match(labels="CLASS", properties={"name": "Categories"})
         #cls.db.follow_links(match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="BA")
 
         return res
@@ -1919,7 +1917,7 @@ class NeoSchema:
         :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
 
         :param existing_neo_id: Internal ID to identify the node to register with the above Class.
-                                TODO: expand to use the find() structure
+                                TODO: expand to use the match() structure
         :param new_item_id:     OPTIONAL. Normally, the Item ID is auto-generated,
                                 but it can also be provided (Note: MUST be unique)
 
@@ -2011,7 +2009,7 @@ class NeoSchema:
         -> Maybe not really needed.  IF POSSIBLE, USE add_data_relationship_fast() INSTEAD
         TODO: possibly ditch
 
-        Add a new relationship with the given name, from one to the other of the 2 given data nodes.
+        Add a new relationship with the given name, from one to the other of the 2 given DATA nodes.
         The new relationship must be present in the Schema, or an Exception will be raised.
 
         The data nodes may be identified either by their Neo4j ID's, or by a primary key (with optional label.)
@@ -2065,9 +2063,10 @@ class NeoSchema:
             class_from = cls.class_of_data_point(node_id=from_id, id_type=id_type, labels=labels_from)
             class_to = cls.class_of_data_point(node_id=to_id, id_type=id_type, labels=labels_to)
 
-            #TODO: maybe double-check that the following reported problem is indeed what caused the failure
-            raise Exception(f"Cannot add the relationship `{rel_name}` between the data nodes, "
-                            f"because no such relationship exists from Class `{class_from}` to Class` {class_to}`. The Schema needs to be modified first")
+            #TODO: maybe double-check that the following reported problem is indeed what caused the failure <-- INDEED, DO THAT!
+            raise Exception(f"add_data_relationship(): cannot add the relationship `{rel_name}` between the data nodes, "
+                            f"because no such relationship exists from Class `{class_from}` to Class `{class_to}`. "
+                            f"The Schema needs to be modified first")
 
 
 
@@ -2164,14 +2163,14 @@ class NeoSchema:
         :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
         :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
 
-        :return:        A "match" structure
+        :return:        A "processed-match" structure
         """
         if id_type:
-            match = cls.db.find(key_name=id_type, key_value=node_id, labels=labels, dummy_node_name=dummy_node_name)
+            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
         else:
-            match = cls.db.find(neo_id=node_id, dummy_node_name=dummy_node_name)
+            match_structure = cls.db.match(internal_id=node_id)
 
-        return match
+        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
 
 
 
