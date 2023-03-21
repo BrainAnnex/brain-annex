@@ -596,7 +596,7 @@ def test_follow_links(db):
 
 
 def test_count_links(db):
-    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+    db.empty_dbase()
 
     db.create_node("book", {'title': 'The Double Helix'})
     db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
@@ -604,16 +604,16 @@ def test_count_links(db):
     # Create new node, linked to the previous two
     db.create_node_with_relationships(labels="person", properties={"name": "Julian", "city": "Berkeley"},
                                       connections=[
-                                            {"labels": "book",
-                                             "key": "title", "value": "The Double Helix",
-                                             "rel_name": "OWNS", "rel_dir": "OUT"},
-                                            {"labels": "book",
-                                             "key": "title", "value": "Intro to Hilbert Spaces",
-                                             "rel_name": "OWNS", "rel_dir": "OUT"}
+                                          {"labels": "book",
+                                           "key": "title", "value": "The Double Helix",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"},
+                                          {"labels": "book",
+                                           "key": "title", "value": "Intro to Hilbert Spaces",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"}
                                       ]
-                                     )
+                                      )
 
-    match = db.find(labels="person", properties={"name": "Julian", "city": "Berkeley"})
+    match = db.match(labels="person", properties={"name": "Julian", "city": "Berkeley"})
 
     number_links = db.count_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book")
 

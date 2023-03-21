@@ -68,7 +68,7 @@ class Categories:
         :return:            The number of (direct) Subcategories of the given Category; possibly, zero
         """
 
-        match = cls.db.find(labels="BA",
+        match = cls.db.match(labels="BA",
                             properties={"item_id": category_id, "schema_code": "cat"})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="IN")
@@ -85,7 +85,7 @@ class Categories:
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
         """
 
-        match = cls.db.find(labels="BA",
+        match = cls.db.match(labels="BA",
                             properties={"item_id": category_id, "schema_code": "cat"})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="OUT")

@@ -404,7 +404,8 @@ class CypherUtils:
         if type(where_list) == str:
             where_list = [where_list]
 
-        assert type(where_list) == list or type(where_list) == tuple, "The argument of prepare_where must be a string, list or tuple"
+        assert type(where_list) == list or type(where_list) == tuple, \
+            f"prepare_where(): the argument must be a string, list or tuple; instead, it was {type(where_list)}"
 
         purged_where_list = [w for w in where_list if w.strip() != ""]      # Drop all the blank terms in the list
 
