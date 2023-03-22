@@ -12,7 +12,7 @@ from typing import Union, List
 
 class NeoAccess:
     """
-    VERSION 4.0.0   (for Neo 4.x database versions)
+    VERSION 4.0.1   (for Neo 4.x database versions)
 
     High-level class to interface with the Neo4j graph database from Python.
 
@@ -2088,7 +2088,7 @@ class NeoAccess:
 
 
 
-    def count_links(self, match: Union[int, dict], rel_name: str, rel_dir: str, neighbor_labels = None) -> int:
+    def count_links(self, match: Union[int, dict], rel_name: str, rel_dir="OUT", neighbor_labels = None) -> int:
         """
         From the given starting node(s), count all the relationships OF THE GIVEN NAME to and/or from it,
         into/from neighbor nodes (optionally having the given labels)
@@ -2136,29 +2136,29 @@ class NeoAccess:
 
         :param node_id: An integer with a Neo4j internal node ID
         :return:        A dictionary with 2 keys: 'parent_list' and 'child_list'
-                        The values are lists of dictionaries with 3 keys: "id", "label", "rel"
+                        The values are lists of dictionaries with 3 keys: "internal_id", "label", "rel"
                             EXAMPLE of individual items in either parent_list or child_list:
-                            {'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
+                            {'internal_id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
         """
 
         # Fetch the parents
         cypher = f"MATCH (parent)-[inbound]->(n) WHERE id(n) = {node_id} " \
-                 "RETURN id(parent) AS id, labels(parent) AS labels, type(inbound) AS rel"
+                 "RETURN id(parent) AS internal_id, labels(parent) AS labels, type(inbound) AS rel"
 
         parent_list = self.query(cypher)
         # EXAMPLE of parent_list:
-        #       [{'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'},
-        #        {'id': 150, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}]
+        #       [{'internal_id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'},
+        #        {'internal_id': 150, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}]
 
 
         # Fetch the children
         cypher = f"MATCH (n)-[outbound]->(child) WHERE id(n) = {node_id} " \
-                 "RETURN id(child) AS id, labels(child) AS labels, type(outbound) AS rel"
+                 "RETURN id(child) AS internal_id, labels(child) AS labels, type(outbound) AS rel"
 
         child_list = self.query(cypher)
         # EXAMPLE of child_list:
-        #       [{'id': 107, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'},
-        #        {'id': 103, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'}]
+        #       [{'internal_id': 107, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'},
+        #        {'internal_id': 103, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'}]
 
 
         return (parent_list, child_list)
