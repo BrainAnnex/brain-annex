@@ -1,16 +1,19 @@
-# Brain Annex, version 5.0-beta19
+# Brain Annex
 
-**Version 5** of is a *complete overhaul* of Brain Annex's  internal structure:
+**Version 5** of is a *complete overhaul* of Brain Annex's internal structure.  
+This major new release is in a *late Beta* stage, approaching "release candidate".  
+The version number can be found in `VERSION_NUMBER.txt`
 
-* **Neo4j graph database** (v. 4.3) replaces MySQL and the built-in triplestore database
+# The New Technology Stack (Overview)
+
+* **Neo4j graph database** (v. 4.3)
 
 
-* **Python/Flask** replace the PHP/pForce framework
+* **Python/Flask**
 
 
-* **Vue2.js** has expanded to take on a full role, replacing the old vanilla-JavaScript parts
+* **Vue2.js**
 
-This major new release is currently in a *late Beta* stage, appproaching "release candidate".
 
 **[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
 
@@ -24,6 +27,10 @@ This major new release is currently in a *late Beta* stage, appproaching "releas
 If you're new, here's a 
 [gentle brief intro](https://julianspolymathexplorations.blogspot.com/2021/02/neo4j-graph-databases-intro.html). 
 
+
+# Brain Annex's Technology Stack
+
+Brain Annex may be used as a standalone web app, or used to power *other* web apps.
 
 ![Brain Annex Technology Stack](BrainAnnex/docs/BrainAnnex_Technology_Stack.png)
 

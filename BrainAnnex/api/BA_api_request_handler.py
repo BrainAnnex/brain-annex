@@ -27,12 +27,16 @@ class APIRequestHandler:
     Used by the UI for Page Generation,
     as well as by the API to produce data for the endpoints.
 
-    "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
-    """
-    # The "db" and "FOLDER" properties get set by InitializeBrainAnnex
+    This class does NOT get instantiated.
 
-    db = None           # MUST be set before using this class!
-                        # Database-interface object is a CLASS variable, accessible as cls.db
+    TODO: absorb (the non-Categories part of) PagesRequestHandler, and
+          get renamed DataManager
+
+    Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
+    """
+    # The "db" and several other properties get set by InitializeBrainAnnex
+
+    db = None           # MUST be set before using this class!  NeoAccess" object
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored
                         # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
@@ -46,11 +50,22 @@ class APIRequestHandler:
 
 
 
+
     @classmethod
-    def export_full_dbase(cls):
-        return cls.db.export_dbase_json()
+    def add_new_label(cls, label: str) -> bool:
+        """
+        Create a new blank node with the specified label
+
+        :return:    True if successful, or False otherwise
+        """
+
+        cls.db.create_node(label, {})
+
+        return True     # TODO: check the actual success of the operation
 
 
+
+    #######################     GENERAL UTILITIES       #######################
 
     @classmethod
     def exception_helper(cls, ex, safe_html=False) -> str:
@@ -80,21 +95,23 @@ class APIRequestHandler:
 
 
     @classmethod
-    def add_new_label(cls, label: str) -> bool:
+    def to_int_if_possible(cls, s: str) -> Union[int, str, None]:
         """
-        Add a new blank node with the specified label
-
-        :return:    True if successful, or False otherwise
+        Convert the argument to an integer, if at all possible; otherwise, leave it as a string
+        (or leave it as None, if applicable)
+        :param s:
+        :return:    Either an int or a string
         """
-
-        cls.db.create_node(label, {})
-
-        return True     # TODO: check the actual success of the operation
+        try:
+            return int(s)
+        except Exception:
+            return s
 
 
 
 
     #######################     SCHEMA-RELATED       #######################
+    # TODO: possibly move to separate class
 
     @classmethod
     def new_schema_class(cls, class_specs: dict) -> None:
@@ -314,7 +331,7 @@ class APIRequestHandler:
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
-        match = cls.db.find(labels="BA", properties=properties)
+        match = cls.db.match(labels="BA", properties=properties)
         content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
         if not content_node:    # Metadata not found
@@ -343,7 +360,7 @@ class APIRequestHandler:
         :return:    The binary data
 
         """
-        match = cls.db.find(labels="BA", properties={"item_id": item_id})
+        match = cls.db.match(labels="BA", properties={"item_id": item_id})
         content_node = cls.db.get_nodes(match)
         #print("content_node:", content_node)
         if (content_node is None) or (content_node == []):
@@ -381,9 +398,9 @@ class APIRequestHandler:
         assert dir in ["IN", "OUT"], f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
         assert type(item_id) == int, "get_records_by_link(): The value of the parameter `item_id` must be an integer"
 
-        match = cls.db.find(labels="BA", key_name="item_id", key_value=item_id)
+        match = cls.db.match(labels="BA", key_name="item_id", key_value=item_id)
 
-        return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, neighbor_labels = "BA")
+        return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, neighbor_labels ="BA")
 
 
 
@@ -493,7 +510,7 @@ class APIRequestHandler:
             set_dict = Notes.plugin_n_update_content(data_binding, set_dict)
 
         # TODO: utilize the schema layer, rather than directly access the database
-        match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
+        match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
 
         if schema_code == "n":
@@ -541,7 +558,7 @@ class APIRequestHandler:
             if status:
                 MediaManager.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
 
-        match = cls.db.find(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
+        match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_deleted = cls.db.delete_nodes(match)
 
         if number_deleted == 1:
@@ -557,6 +574,7 @@ class APIRequestHandler:
     def new_content_item_in_category(cls, post_data: dict) -> int:
         """
         Create a new Content Item attached to a particular Category
+        # TODO: possibly generalize from "Category" to "Collection"
 
         :param post_data:   A dict containing the following keys
             - "category_id"  (for the linking to a Category)
@@ -723,7 +741,7 @@ class APIRequestHandler:
 
         print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | limit: {limit}")
 
-        match = cls.db.find(labels=labels, key_name=key_name, key_value=key_value)
+        match = cls.db.match(labels=labels, key_name=key_name, key_value=key_value)
 
         if limit > 500:
             limit = 500     # Set an upper bound
@@ -733,25 +751,16 @@ class APIRequestHandler:
         return result
 
 
-    @classmethod
-    def to_int_if_possible(cls, s: str) -> Union[int, str, None]:
-        """
-        Convert the argument to an integer, if at all possible; otherwise, leave it as a string
-        (or leave it as None, if applicable)
-        :param s:
-        :return:    Either an int or a string
-        """
-        try:
-            return int(s)
-        except Exception:
-            return s
-
-
-
 
     ############################################################
     #                       IMPORT-EXPORT                      #
     ############################################################
+
+    @classmethod
+    def export_full_dbase(cls):
+        return cls.db.export_dbase_json()
+
+
 
     @classmethod
     def upload_import_json(cls, verbose=False, return_url=None) -> str:
@@ -856,6 +865,11 @@ class APIRequestHandler:
 
     @classmethod
     def do_stop_data_intake(cls) -> None:
+        """
+        Request that the continuous data import cease upon the completion of the current import
+
+        :return:    None
+        """
         cls.ongoing_data_intake = False
 
 
@@ -1000,6 +1014,187 @@ class APIRequestHandler:
             raise Exception(error_msg)      # The Exception is re-raised, because failure to move a file must stop the continuous import
 
 
+
+    @classmethod
+    def define_pattern(cls) -> str:
+        """
+        Define a REGEX pattern for parsing of data files, for use in import_datafile()
+
+        :return:    A string with a REGEX pattern
+        """
+        # The R before the string escapes all characters ("raw strings" aka "verbatim strings")
+        # Note: the following pattern assumes a re.DOTALL as the last argument of re.findall()
+
+
+        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)' # Match and capture the method name:
+                                                    #   "def" followed by 1 or more blanks, followed by
+                                                    #   (one letter or underscore, followed by any number of letters, numbers or underscores)
+
+        pattern_2 = R'\((.*?)\)'                    # Match and capture (non-greedy) everything inside round parentheses after method name
+
+        pattern_3 = R'\s*(?:\s*->\s*(.*?)\s*)?:'    # Match and capture (non-greedy) the method's return type - which may or may not be present.
+                                                    #   The ?: after the opening parenthesis = grouping WITHOUT capturing
+                                                    #   The ? at the end makes the previous expression optional
+
+        pattern_4 = R'(?:\s+"""(.*?)""")?'          # TODO: deal with the comments that might be at the end of the definition line
+                                                    # Match and capture (non-greedy) everything within the following pair of """
+                                                    #   The ?: after the opening parenthesis = grouping WITHOUT capturing
+                                                    #   \s+ = 1 or more blanks.  Note: that required character is the newline
+
+        pattern_A = pattern_1 + pattern_2 + pattern_3 + pattern_4
+
+
+        pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)\s*:'  # Match and capture the class name
+
+        pattern_2 = R'.+?"""(.*?)"""'               # Match and capture (non-greedy) everything within the following pair of """
+                                                    #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the newline
+        pattern_B = pattern_1 + pattern_2
+
+
+        pattern = f"(?:{pattern_A})|(?:{pattern_B})"    # Deal with alternations
+
+
+        '''
+        # Test for LinkedIn connections:
+        #pattern_1 = R"\n([a-zA-Z.'\- ,()]+)@@@\n"   # Full name
+        pattern_1 = R"\n(.+)@@@\n"                  # Full name
+        pattern_2 = ".+ profile\n"                  # Throwaway line
+        pattern_3 = "---1st1st degree connection\n" # Throwaway line
+        pattern_4 = "(.+)\n(.+)\n"                  # Role and location (across 2 lines)
+        pattern = pattern_1 + pattern_2 + pattern_3 + pattern_4
+        '''
+        return pattern
+
+
+    @classmethod
+    def import_datafile(cls, basename, full_filename, test_only=True) -> str:
+        """
+        TODO: generalize!  For now, used for an ad-hoc import, using REGEX to extract the desired fields
+
+        :param basename:        EXAMPLE: "my_file_being_uploaded.txt"
+        :param full_filename:   EXAMPLE: "D:/tmp/my_file_being_uploaded.txt"
+        :param test_only:       If True, the file is parsed, but nothing is actually added to the database
+
+        :return:                String with status message (whether successful or not)
+        """
+        n_chars_to_show = 400
+        try:
+            with open(full_filename, 'r') as fh:
+                file_contents = fh.read()
+                print(f"\n--- First {n_chars_to_show} bytes of uploaded file:\n{file_contents[:n_chars_to_show]}")
+        except Exception:
+            return f"File I/O failed (on uploaded file {full_filename})"
+
+
+        pattern = cls.define_pattern()
+        print("Pattern used for the matches: ", pattern)
+
+        all_matches = re.findall(pattern, file_contents, re.DOTALL)
+        # It returns (possibly-empty) list of tuples
+        # OR a list of strings (if there's only 1 capture group in pattern)
+
+        #print("all_matches: ", all_matches)
+
+        # Zap leading/trailing blanks from all entries, and add 2 extra fields (for item_id and schema_code)
+        '''
+        id_offset = NeoSchema.next_available_datapoint_id()
+        
+        all_matches = [list(map(lambda s: s.strip(), val)) + [i+id_offset] + ["r"]
+                       for i, val in enumerate(all_matches)]
+        '''
+        if all_matches:     # If the list is not empty, i.e. if matches were found
+            #print(f"{len(all_matches)} MATCH(ES) found")
+            scan_results = "<table border='1' style='border-collapse: collapse'>"
+            for match_instance in all_matches:   # Consider each match in turn
+                #print("Overall Single Match: " , match_instance) # This would normally be a tuple of capture groups
+                                                                 # (which we previously turned to list, with 2 field added)
+                scan_results += "<tr>"
+                for item in match_instance:
+                    scan_results += f"<td>{item}</td>"
+                scan_results += "</tr>"
+
+            scan_results += f"</table>"
+        else:
+            print("NO MATCHES found")
+            return f"File `{basename}` uploaded successfully, but <b>NO MATCHES</b> found"
+
+
+        #column_names = ["name", "role", "location", "item_id", "schema_code"]
+        column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
+        df = pd.DataFrame(all_matches, columns = column_names)
+        print(df.count())
+        print(df.head(10))
+        print("...")
+        print(df.tail(10))
+
+        cls.generate_documentation(df)
+
+
+        if test_only:
+            return f"File `{basename}` uploaded successfully.  <b>{len(all_matches)} MATCH(ES)</b> found.  Nothing added to database, because in test_only mode.  Scan results:<br><br>{scan_results}<br>"
+
+        '''
+        cls.db.load_pandas(df, label="IP")     # Using a temporary label for ease of the next steps
+        '''
+        """
+        # Done manually.  The first item_id in the new data is 69, and we want to map it a pos value of 30;
+        # 70 will map to 40, and so on:
+        MATCH (c:BA {schema_code:"cat", item_id:61}),          // <------ This is the Category "Professional Networking"
+        (n:IP)
+        MERGE (n)-[:BA_in_category {pos:(n.item_id - 69)*10+30}]->(c)
+
+        # Rename all "IP" labels to "BA"
+        MATCH (n:IP) SET n:BA
+        REMOVE n:IP
+        """
+
+        return f"File `{basename}` uploaded and scanned successfully.  Scan results:<br><br>{scan_results}"
+
+
+
+    @classmethod
+    def generate_documentation(cls, df):
+        #html = "<table class='cd-main'>\n"
+        htm = ""
+
+        for ind in df.index:    # EXAMPLE of df.index: RangeIndex(start=0, stop=11, step=1)
+            if df['class_name'][ind]:
+                htm += f"<h1 class='class-name'>Class {df['class_name'][ind]}</h1>\n"
+                htm += f"<pre>{df['class_description'][ind]}</pre>\n\n\n"
+            elif "____" in df['method_name'][ind]:
+                section_name = df['method_name'][ind]
+                clean_name = section_name.replace("_", " ")
+                htm += f"<h2 class='section-header'>{clean_name}</h2>\n\n"
+            else:
+                htm += "<table class='cd-main'>\n"
+                htm += "<tr><th>name</th><th>arguments</th><th>returns</th></tr>\n"
+
+                htm += "<tr>"
+                #print(df["method_name"][ind], df["args"][ind], df["comments"][ind])
+                htm += f"<td class='cd-fun-name'>{df['method_name'][ind]}</td>"
+                htm += f"<td>{df['args'][ind]}</td>"
+                htm += f"<td>{df['return_value'][ind]}</td>"
+
+                htm += "</tr>\n"
+
+                htm += "<tr>"
+                htm += "<td colspan=3 class='cd-description'>"
+                htm += f"<pre>{df['comments'][ind]}</pre>"
+                htm += "</td>"
+                htm += "</tr>\n\n"
+                htm += "</table>\n\n\n"
+
+
+
+        print("###################################################################################")
+        print(htm)
+        print("###################################################################################")
+        return htm
+
+
+
+    #######################     LOGGING-RELATED       #######################
+
     @classmethod
     def init_logfile(cls) -> None:
         """
@@ -1038,88 +1233,6 @@ class APIRequestHandler:
         except Exception as ex:
             # To deal with situation where the log file got deleted/moved by user, but we're still attempting to use the old handle
             cls.init_logfile()
-
-
-
-
-    @classmethod
-    def define_pattern(cls) -> str:
-        """
-        Define a REGEX pattern for parsing of data files, for use in import_datafile()
-
-        :return:    A string with a REGEX pattern
-        """
-        # The R before the string escapes all characters ("raw strings" aka "verbatim strings")
-        #pattern_1 = R"\n([a-zA-Z.'\- ,()]+)@@@\n"   # Full name
-        pattern_1 = R"\n(.+)@@@\n"                  # Full name
-        pattern_2 = ".+ profile\n"                  # Throwaway line
-        pattern_3 = "---1st1st degree connection\n" # Throwaway line
-        pattern_4 = "(.+)\n(.+)\n"                  # Role and location (across 2 lines)
-
-        pattern = pattern_1 + pattern_2 + pattern_3 + pattern_4
-        return pattern
-
-
-    @classmethod
-    def import_datafile(cls, basename, full_filename, test_only=True):
-        """
-        TODO: generalize!  For now, used for an ad-hoc import, using REGEX to extract the desired fields
-
-        :param basename:        EXAMPLE: "my_file_being_uploaded.txt"
-        :param full_filename:   EXAMPLE: "D:/tmp/my_file_being_uploaded.txt"
-        :param test_only:       If True, the file is parsed, but nothing is actually added to the database
-        :return:                Status message (whether successful or not)
-        """
-
-        try:
-            with open(full_filename, 'r') as fh:
-                file_contents = fh.read()
-                print(f"\n--- First 500 bytes of uploaded file:\n{file_contents[:500]}")
-        except Exception:
-            return f"File I/O failed (on file {full_filename})"
-
-
-        pattern = cls.define_pattern()
-        all_matches = re.findall(pattern, file_contents)
-
-        id_offset = NeoSchema.next_available_datapoint_id()
-
-        # Zap leading/trailing blanks from all entries, and add 2 extra fields (for item_id and schema_code)
-        all_matches = [list(map(lambda s: s.strip(), val)) + [i+id_offset] + ["r"]
-                       for i, val in enumerate(all_matches)]
-
-        if all_matches:     # If the list is not empty, i.e. if matches were found
-            print(f"{len(all_matches)} MATCHES found")
-            for match_instance in all_matches:   # Consider each match in turn
-                print("Overall Match: " , match_instance)     # This would normally be a tuple of capture groups
-                                                              # (which we previously turned to list, with 2 field added)
-        else:
-            print("NO MATCHES found")
-
-
-        df = pd.DataFrame(all_matches, columns = ["name", "role", "location", "item_id", "schema_code"])
-        print(df.count())
-        print(df.head(10))
-        print("...")
-        print(df.tail(10))
-
-        if test_only:
-            return f"File `{basename}` uploaded successfully.  Nothing added to database, because in test_only mode"
-
-        cls.db.load_pandas(df, label="IP")     # Using a temporary label for ease of the next steps
-        """
-        # Done manually.  The first item_id in the new data is 69, and we want to map it a pos value of 30;
-        # 70 will map to 40, and so on:
-        MATCH (c:BA {schema_code:"cat", item_id:61}),          // <------ This is the Category "Professional Networking"
-        (n:IP)
-        MERGE (n)-[:BA_in_category {pos:(n.item_id - 69)*10+30}]->(c)
-
-        # Rename all "IP" labels to "BA"
-        MATCH (n:IP) SET n:BA
-        REMOVE n:IP
-        """
-
-        return f"File `{basename}` uploaded and imported successfully"
 
 
 

@@ -387,7 +387,7 @@ def test_create_data_nodes_from_python_data_5(db):
     assert db.count_links(match=root_id, rel_name="WRONG_LINK_TO_DOCTOR", rel_dir="BOTH") == 0
 
     # Locate the "result" data node, and count the links in/out of it
-    match = db.find(labels="result")
+    match = db.match(labels="result")
     assert db.count_links(match=match, rel_name="HAS_RESULT", rel_dir="IN", neighbor_labels="patient") == 1
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
@@ -463,17 +463,17 @@ def test_create_data_nodes_from_python_data_6(db):
     assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
 
     # Locate the "result" data node, and count the links in/out of it
-    match = db.find(labels="result")
+    match = db.match(labels="result")
     assert db.count_links(match=match, rel_name="HAS_RESULT", rel_dir="IN", neighbor_labels="patient") == 1
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Locate the "doctor" data node, and count the links in/out of it
-    match = db.find(labels="doctor")
+    match = db.match(labels="doctor")
     assert db.count_links(match=match, rel_name="IS_ATTENDED_BY", rel_dir="IN", neighbor_labels="patient") == 1
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Locate the "Import Data" data node, and count the links in/out of it
-    match = db.find(labels="Import Data")
+    match = db.match(labels="Import Data")
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="patient") == 1
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
@@ -516,7 +516,7 @@ def test_create_data_nodes_from_python_data_7(db):
     assert len(result) == 1
 
     # Locate the "Import Data" data node, and count the links in/out of it
-    match = db.find(labels="Import Data")
+    match = db.match(labels="Import Data")
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="quotes") == 1
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
@@ -556,7 +556,7 @@ def test_create_data_nodes_from_python_data_8(db):
     assert len(node_id_list) == 2
 
     # Locate the "Import Data" data node
-    match = db.find(labels="Import Data")
+    match = db.match(labels="Import Data")
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="quotes") == 2
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
@@ -613,7 +613,7 @@ def test_create_data_nodes_from_python_data_9(db):
     assert len(node_id_list) == 2
 
     # Locate the "Import Data" data node
-    match = db.find(labels="Import Data")
+    match = db.match(labels="Import Data")
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="quotes") == 2
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
@@ -708,7 +708,7 @@ def test_create_data_nodes_from_python_data_9(db):
     assert record["q"]["verified"] == False
 
     # Locate the data node for the Class "Import Data", and count the links in/out of it
-    match = db.find(labels="CLASS", key_name="name", key_value="Import Data")
+    match = db.match(labels="CLASS", key_name="name", key_value="Import Data")
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="Import Data") == 2
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="CLASS") == 1
 

@@ -12,49 +12,13 @@ class PagesRequestHandler:
     Used by the UI for Page Generation.
 
     This class does NOT get instantiated.
+
+    Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
+    # The "db" and several other properties get set by InitializeBrainAnnex
 
-    db = None       # "NeoAccess" object.  MUST be set before using this class!
+    db = None       # MUST be set before using this class!  NeoAccess" object
 
-
-
-    @classmethod
-    def get_content_items_by_category(cls, category_id = 1) -> [{}]:
-        """
-        Return the records for all nodes linked to the Category node identified by its item_id value
-
-        :param category_id:
-        :return:    A list of dictionaries
-                    EXAMPLE:
-                    [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
-                     {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                     {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
-                    ]
-        """
-
-        # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
-        cypher = """
-            MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", item_id:$category_id})
-            RETURN n, r.pos AS pos, cl.name AS class_name
-            ORDER BY r.pos
-            """
-
-        result = cls.db.query(cypher, {"category_id": category_id})
-        #print(result)
-
-        #content_item_list = [elem["n"] for elem in result]
-        content_item_list = []
-        for elem in result:
-            item_record = elem["n"]             # A dictionary with the various fields
-
-                                                            # TODO: eliminate possible conflict if the node happens to have
-                                                            #       attributes named "pos" or "class_name"!
-            item_record["pos"] = elem["pos"]                # Inject into the record a positional value
-            item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
-            content_item_list.append(item_record)
-
-        #print(content_item_list)
-        return content_item_list
 
 
 
@@ -85,6 +49,47 @@ class PagesRequestHandler:
 
 
     #############################   CATEGORY-RELATED (TODO: being moved to categories.py)  #############################
+
+    @classmethod
+    def get_content_items_by_category(cls, category_id = 1) -> [{}]:        # TODO: move to Categories
+        """
+        Return the records for all nodes linked to the Category node identified by its item_id value
+
+        :param category_id:
+        :return:    A list of dictionaries
+                    EXAMPLE:
+                    [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                     {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                     {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                    ]
+        """
+
+        # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
+        # TODO: switch to using one of the Collections methods
+        cypher = """
+            MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", item_id:$category_id})
+            RETURN n, r.pos AS pos, cl.name AS class_name
+            ORDER BY r.pos
+            """
+
+        result = cls.db.query(cypher, {"category_id": category_id})
+        #print(result)
+
+
+        content_item_list = []
+        for elem in result:
+            item_record = elem["n"]             # A dictionary with the various fields
+
+            # TODO: eliminate possible conflict if the node happens to have
+            #       attributes named "pos" or "class_name"!
+            item_record["pos"] = elem["pos"]                # Inject into the record a positional value
+            item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
+            content_item_list.append(item_record)
+
+        #print(content_item_list)
+        return content_item_list
+
+
 
     @classmethod
     def get_subcategories(cls, category_id) -> [dict]:
@@ -129,11 +134,11 @@ class PagesRequestHandler:
         :param category_id:
         :return:    A list of dictionaries
         """
-        match = cls.db.find(labels="BA",
+        match = cls.db.match(labels="BA",
                             properties={"item_id": category_id, "schema_code": "cat"})
 
         result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
-                                     neighbor_labels="BA")
+                                         neighbor_labels="BA")
 
         return result
 

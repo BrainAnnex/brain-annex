@@ -158,7 +158,7 @@ class UserManagerNeo4j:
 
         # Query the database to get back a list of values for User ID's (ideally, exactly 1)
         credentials = {"username": username, "password": password}
-        match = cls.db.find(labels="User Login", properties=credentials)
+        match = cls.db.match(labels="User Login", properties=credentials)
         result_list = cls.db.get_single_field(match=match, field_name="user_id")
 
         print("In check_login_credentials(). List of matching User ID's:", result_list)

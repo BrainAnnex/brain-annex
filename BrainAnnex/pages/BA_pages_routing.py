@@ -1,6 +1,6 @@
 """
     Router/generator for Brain Annex pages
-    MIT License.  Copyright (c) 2021-2022 Julian A. West
+    MIT License.  Copyright (c) 2021-2023 Julian A. West
 """
 
 from flask import Blueprint, render_template, current_app, request   # The request package makes available a GLOBAL request object
@@ -15,7 +15,7 @@ import json
 
 class PagesRouting:
     """
-    Setup, routing and endpoints for all the web pages served by this module
+    Setup and routing for all the Flask-based web pages served by this module
     """
     
     # Module-specific parameters (as class variables)
@@ -215,14 +215,14 @@ class PagesRouting:
         @login_required
         def data_import() -> str:
             """
-            Generate an administrative page for data imports
+            Generate an administrative page for a variety of data imports
             EXAMPLE invocation: http://localhost:5000/BA/pages/data-import
             """
             template = "data_import.htm"
             class_list = PagesRequestHandler.all_schema_classes()
             intake_status = APIRequestHandler.data_intake_status()
 
-            # Extract some config parameters
+            # Extract some config parameters (used for Continuous Data Ingestion)
             intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
             outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
 

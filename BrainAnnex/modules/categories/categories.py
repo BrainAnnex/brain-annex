@@ -1,4 +1,3 @@
-from BrainAnnex.modules.neo_access import neo_access
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from typing import Union
 
@@ -8,6 +7,11 @@ from typing import Union
 class Categories:
     """
     Library for Category-related operations.
+
+    An entity to which a variety of nodes (e.g. representing records or media)
+    is attached, with a positional attribute.
+
+    Categories also have "subcategory" relationships with other categories.
 
     Contains the following groups of methods:
         1. LOOKUP
@@ -64,7 +68,7 @@ class Categories:
         :return:            The number of (direct) Subcategories of the given Category; possibly, zero
         """
 
-        match = cls.db.find(labels="BA",
+        match = cls.db.match(labels="BA",
                             properties={"item_id": category_id, "schema_code": "cat"})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="IN")
@@ -81,7 +85,7 @@ class Categories:
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
         """
 
-        match = cls.db.find(labels="BA",
+        match = cls.db.match(labels="BA",
                             properties={"item_id": category_id, "schema_code": "cat"})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="OUT")
@@ -100,11 +104,11 @@ class Categories:
                                     that identifies a data node containing the desired Category
         :return:            A list of dictionaries
         """
-        match = cls.db.find(labels="BA",
+        match = cls.db.match(labels="BA",
                             properties={"item_id": category_id, "schema_code": "cat"})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
-                                     neighbor_labels="BA")
+                                       neighbor_labels="BA")
 
 
 
@@ -119,11 +123,11 @@ class Categories:
         :param category_id:
         :return:            A list of dictionaries
         """
-        match = cls.db.find(labels="BA",
-                            properties={"item_id": category_id, "schema_code": "cat"})
+        match = cls.db.match(labels="BA",
+                             properties={"item_id": category_id, "schema_code": "cat"})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
-                                     neighbor_labels="BA")
+                                   neighbor_labels="BA")
 
 
 
@@ -856,6 +860,9 @@ class Categories:
 class Collections:
     """
     A generalization of Categories.
+
+    An entity to which a variety of nodes (e.g. representing records or media)
+    is attached, with a positional attribute.
 
     TODO: maybe turn into an instantiatable class, so as not to have to repeatedly pass "membership_rel_name"
     """

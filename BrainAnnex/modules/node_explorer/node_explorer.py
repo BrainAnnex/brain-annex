@@ -47,8 +47,8 @@ class NodeExplorer:
         """
         db = self.neo
         # Retrieve ALL nodes with the specified label
-        match = db.find(labels=label)
-        recordset = db.get_nodes(match=match, return_neo_id=True, return_labels=True)
+        match = db.match(labels=label)
+        recordset = db.get_nodes(match=match, return_internal_id=True, return_labels=True)
                                     # EXAMPLE: [ {"neo4j_id": 145, "neo4j_labels": ["person", "client"], 'gender': 'M', 'age': 42},
                                     #            {"neo4j_id": 222, "neo4j_labels": ["person"], 'gender': 'F', 'age': 21, location: "Berkeley"} ]
 

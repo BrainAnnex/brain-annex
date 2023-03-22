@@ -4,7 +4,7 @@ import html
 
 class FullTextIndexing:
     """
-    Indexing-related methods
+    Indexing-related methods.  In early development stage
     """
 
     TAG_RE = re.compile(r'<[^>]+>')         # Used to strip off all HTML

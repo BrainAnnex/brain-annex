@@ -4,7 +4,9 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
 class Notes:
-
+    """
+    Plugin-provided handlers for "notes"
+    """
 
     @classmethod
     def plugin_n_add_content(cls, item_id: int, data_binding: dict) -> dict:

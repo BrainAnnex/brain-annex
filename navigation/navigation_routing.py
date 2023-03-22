@@ -1,15 +1,13 @@
-"""
-Router/generator for navigation pages:
-    CSS static pages, and HTML pages that get included into other Flask files
-"""
-
 from flask import Blueprint
 
 
 
 class Navigation:
     """
-    Setup, and routing, for all the web pages served by this module
+    Router/generator for navigation pages:
+        CSS static pages, and HTML pages that get included into other Flask files
+
+    Setup, and routing, for all the web pages
     """
 
     # Module-specific parameters (as class variables)

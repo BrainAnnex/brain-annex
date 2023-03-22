@@ -70,7 +70,7 @@ def test_version(db):
 ###  ~ RUNNING GENERIC QUERIES ~
 
 def test_query(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     q = "CREATE (:car {make:'Toyota', color:'white'})"   # Create a node without returning it
     result = db.query(q)
     assert result == []
@@ -118,7 +118,7 @@ def test_query(db):
 
 
 def test_query_extended(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create and return 1st node
     q = "CREATE (n:car {make:'Toyota', color:'white'}) RETURN n"
@@ -243,13 +243,13 @@ def test_update_query(db):
 ###  ~ RETRIEVE DATA ~
 
 def test_get_single_field(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Create 2 nodes
     db.query('''CREATE (:`my label`:`color` {`field A`: 123, `field B`: 'test'}), 
                        (:`my label`:`make`  {                `field B`: 'more test', `field C`: 3.14})
              ''')
 
-    match = db.find(labels="my label")
+    match = db.match(labels="my label")
 
     result = db.get_single_field(match=match, field_name="field A")
     assert compare_unordered_lists(result, [123, None])
@@ -257,19 +257,19 @@ def test_get_single_field(db):
     result = db.get_single_field(match=match, field_name="field B")
     assert compare_unordered_lists(result, ['test', 'more test'])
 
-    match = db.find(labels="make")
+    match = db.match(labels="make")
 
     result = db.get_single_field(match=match, field_name="field C")
     assert compare_unordered_lists(result, [3.14])
 
-    match = db.find(labels="")      # No labels specified
+    match = db.match(labels="")      # No labels specified
     result = db.get_single_field(match=match, field_name="field C")
     assert compare_unordered_lists(result, [None, 3.14])
 
 
 
 def test_get_record_by_primary_key(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     node_id_Valerie = db.create_node("person", {'SSN': 123, 'name': 'Valerie', 'gender': 'F'})
     db.create_node("person", {'SSN': 456, 'name': 'Therese', 'gender': 'F'})
@@ -277,7 +277,7 @@ def test_get_record_by_primary_key(db):
 
     assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123) \
            == {'SSN': 123, 'name': 'Valerie', 'gender': 'F'}
-    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123, return_nodeid=True) \
+    assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=123, return_internal_id=True) \
            == {'SSN': 123, 'name': 'Valerie', 'gender': 'F', 'neo4j_id': node_id_Valerie}
 
     assert db.get_record_by_primary_key("person", primary_key_name="SSN", primary_key_value=456) \
@@ -298,7 +298,7 @@ def test_get_record_by_primary_key(db):
 
 
 def test_exists_by_key(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     db.create_node("person", {'SSN': 123, 'name': 'Valerie', 'gender': 'F'})
     db.create_node("person", {'SSN': 456, 'name': 'Therese', 'gender': 'F'})
 
@@ -313,32 +313,32 @@ def test_exists_by_key(db):
 
 
 def test_get_nodes(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create a 1st new node
     db.create_node("test_label", {'patient_id': 123, 'gender': 'M'})
 
     # Retrieve the record just created (using values embedded in the Cypher query)
-    match = db.find(labels="test_label", subquery="n.patient_id = 123 AND n.gender = 'M'")
+    match = db.match(labels="test_label", clause="n.patient_id = 123 AND n.gender = 'M'")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
     # Again, retrieve the record (this time using data-binding in the Cypher query, and values passed as a separate dictionary)
-    match = db.find(labels="test_label",
-                    subquery=( "n.patient_id = $patient_id AND n.gender = $gender",
-                                       {"patient_id": 123, "gender": "M"}
-                                     )
+    match = db.match(labels="test_label",
+                     clause=( "n.patient_id = $patient_id AND n.gender = $gender",
+                               {"patient_id": 123, "gender": "M"}
+                            )
                     )
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
 
     # Retrieve ALL records with the label "test_label", by using no clause or an empty clause
-    match = db.find(labels="test_label")
+    match = db.match(labels="test_label")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
-    match = db.find(labels="test_label", subquery="           ")
+    match = db.match(labels="test_label", clause="           ")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
@@ -347,29 +347,29 @@ def test_get_nodes(db):
     db.create_node("my 2nd label", {'age': 21, 'gender': 'F', 'client id': 123})
 
     # Retrieve the record just created (using values embedded in the Cypher query)
-    match = db.find(labels="my 2nd label", subquery="n.`client id` = 123")
+    match = db.match(labels="my 2nd label", clause="n.`client id` = 123")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Retrieve the record just created (in a different way, using a Cypher subquery with its own data binding)
-    match = db.find(labels="my 2nd label", subquery=("n.age = $age AND n.gender = $gender",
+    match = db.match(labels="my 2nd label", clause=("n.age = $age AND n.gender = $gender",
                                                      {"age": 21, "gender": "F"}
-                                                    ))
+                                                     ))
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
-     # Retrieve ALL records with the label "my 2nd label"
-    match = db.find(labels="my 2nd label")
+    # Retrieve ALL records with the label "my 2nd label"
+    match = db.match(labels="my 2nd label")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Same as above, but using a blank subquery
-    match = db.find(labels="my 2nd label", subquery="           ")
+    match = db.match(labels="my 2nd label", clause="           ")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Retrieve the record just created (using a dictionary of properties)
-    match = db.find(labels="my 2nd label", properties={"age": 21, "gender": "F"})
+    match = db.match(labels="my 2nd label", properties={"age": 21, "gender": "F"})
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'client id': 123, 'gender': 'F', 'age': 21}]
 
@@ -378,19 +378,19 @@ def test_get_nodes(db):
     db.create_node("my 2nd label", {'age': 30, 'gender': 'M', 'client id': 999})
 
     # Retrieve records using a clause
-    match = db.find(labels="my 2nd label", subquery="n.age > 22")
+    match = db.match(labels="my 2nd label", clause="n.age > 22")
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'gender': 'M', 'client id': 999, 'age': 30}]
 
     # Retrieve nodes REGARDLESS of label (and also retrieve the labels)
-    match = db.find(properties={"gender": "M"})       # Locate all males, across all node labels
+    match = db.match(properties={"gender": "M"})       # Locate all males, across all node labels
     retrieved_records = db.get_nodes(match, return_labels=True)
     expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
                         {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
     assert compare_recordsets(retrieved_records, expected_records)
 
     # Retrieve ALL nodes in the database (and also retrieve the labels)
-    match = db.find()
+    match = db.match()
     retrieved_records = db.get_nodes(match, return_labels=True)
     expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
                         {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
@@ -399,7 +399,7 @@ def test_get_nodes(db):
 
     # Re-use of same key names in subquery data-binding and in properties dictionaries is ok, because the keys in
     #   properties dictionaries get internally changed
-    match = db.find(labels="my 2nd label", subquery=("n.age > $age" , {"age": 22}), properties={"age": 30})
+    match = db.match(labels="my 2nd label", clause=("n.age > $age" , {"age": 22}), properties={"age": 30})
     retrieved_records = db.get_nodes(match)
     # Note: internally, the final Cypher query is: "MATCH (n :`my 2nd label` {`age`: $n_par_1}) WHERE (n.age > $age) RETURN n"
     #                           with data binding: {'age': 22, 'n_par_1': 30}
@@ -410,12 +410,13 @@ def test_get_nodes(db):
     # A conflict arises only if we happen to use a key name that clashes with an internal name, such as "n_par_1";
     # an Exception is expected is such a case
     with pytest.raises(Exception):
-        match = db.find(labels="my 2nd label", subquery=("n.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
+        match = db.match(labels="my 2nd label", clause=("n.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
         assert db.get_nodes(match)
 
     # If we really wanted to use a key called "n_par_1" in our subquery dictionary, we
     #       can simply alter the dummy name internally used, from the default "n" to something else
-    match = db.find(dummy_node_name="person", labels="my 2nd label", subquery=("person.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
+    match = db.match(dummy_node_name="person", labels="my 2nd label",
+                     clause=("person.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
     # All good now, because internally the Cypher query is "MATCH (person :`my 2nd label` {`age`: $person_par_1}) WHERE (person.age > $n_par_1) RETURN person"
     #                                    with data binding {'n_par_1': 22, 'person_par_1': 30}
     retrieved_records = db.get_nodes(match)
@@ -424,7 +425,7 @@ def test_get_nodes(db):
 
     # Now, do a clean start, and investigate a list of nodes that differ in attributes (i.e. nodes that have different lists of keys)
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create a first node, with attributes 'age' and 'gender'
     db.create_node("patient", {'age': 16, 'gender': 'F'})
@@ -433,7 +434,7 @@ def test_get_nodes(db):
     db.create_node("patient", {'weight': 155, 'gender': 'M'})
 
     # Retrieve combined records created: note how different records have different keys
-    match = db.find(labels="patient")
+    match = db.match(labels="patient")
     retrieved_records = db.get_nodes(match)
     expected = [{'gender': 'F', 'age': 16},
                 {'gender': 'M', 'weight': 155}]
@@ -447,28 +448,28 @@ def test_get_nodes(db):
                 {}]
     assert compare_recordsets(retrieved_records, expected)
 
-    match = db.find(labels="patient", properties={"age": 16})
+    match = db.match(labels="patient", properties={"age": 16})
     retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record == {'gender': 'F', 'age': 16}
 
-    match = db.find(labels="patient", properties={"age": 11})
+    match = db.match(labels="patient", properties={"age": 11})
     retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record is None      # No record found
 
-    match = db.find(labels="patient", neo_id=empty_record_id)
+    match = db.match(labels="patient", internal_id=empty_record_id)
     retrieved_single_record = db.get_nodes(match, single_row=True)
     assert retrieved_single_record == {}        # Record with no attributes found
 
 
 
 def test_get_df(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create and load a test Pandas dataframe with 2 columns and 2 rows
     df_original = pd.DataFrame({"patient_id": [1, 2], "name": ["Jack", "Jill"]})
     db.load_pandas(df_original, label="A")
 
-    match = db.find(labels="A")
+    match = db.match(labels="A")
     df_new = db.get_df(match=match)
 
     # Sort the columns and then sort the rows, in order to disregard both row and column order (TODO: turn into utility)
@@ -482,87 +483,20 @@ def test_get_df(db):
 
 
 
-def test_find(db):
-    assert db.find() == {"node": "(n  )", "where": "", "data_binding": {}, "dummy_node_name": "n"}
-
-    assert db.find(dummy_node_name="client") == {"node": "(client  )",
-                                                 "where": "",
-                                                 "data_binding": {},
-                                                 "dummy_node_name": "client"}
-
-    assert db.find(labels="person") == {"node": "(n :`person` )", "where": "", "data_binding": {}, "dummy_node_name": "n"}
-
-    assert db.find(labels=["car", "surplus inventory"]) == {"node": "(n :`car`:`surplus inventory` )",
-                                                            "where": "", "data_binding": {}, "dummy_node_name": "n"}
-    assert db.find(labels=("car", "surplus inventory")) == {"node": "(n :`car`:`surplus inventory` )",
-                                                            "where": "", "data_binding": {}, "dummy_node_name": "n"}
-
-    assert db.find(neo_id=123, labels="person", properties={"gender": "F"}) == {"node": "(n)",
-                                                                                "where": "id(n) = 123",
-                                                                                "data_binding": {},
-                                                                                "dummy_node_name": "n"}
-    # Note: when neo_id is specified, all other conditions are ignored
-
-    with pytest.raises(Exception):
-        assert db.find(labels="person", key_name="item_id")
-
-    with pytest.raises(Exception):
-        assert db.find(labels="person", key_value=1000)
-
-    res = db.find(labels="person", key_name="item_id", key_value=1000)
-    expected_match = "(n :`person` {`item_id`: $n_par_1})"
-    expected_dict = {"n_par_1": 1000}
-    assert res == {"node": expected_match, "where": "", "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", key_name="item_id", key_value=1000, dummy_node_name="client")
-    expected_match = "(client :`person` {`item_id`: $client_par_1})"
-    expected_dict = {"client_par_1": 1000}
-    assert res == {"node": expected_match, "where": "", "data_binding": expected_dict, "dummy_node_name": "client"}
-
-    res = db.find(labels="person", properties={"gender": "F", "age": 22})
-    expected_match = "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
-    expected_dict = {"n_par_1": "F", "n_par_2": 22}
-    assert res == {"node": expected_match, "where": "", "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", properties={"gender": "F", "age": 22}, key_name="item_id", key_value=1000)
-    expected_match = "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2, `item_id`: $n_par_3})"
-    expected_dict = {"n_par_1": "F", "n_par_2": 22, "n_par_3": 1000}
-    assert res == {"node": expected_match, "where": "", "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", subquery="n.age < 36 OR n.income > 90000")
-    expected_match = "(n :`person` )"
-    expected_where = "n.age < 36 OR n.income > 90000"
-    expected_dict = {}
-    assert res == {"node": expected_match, "where": expected_where, "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", subquery=("n.age < $some_age", {"some_age": 36}))
-    expected_match = "(n :`person` )"
-    expected_where = "n.age < $some_age"
-    expected_dict = {"some_age": 36}
-    assert res == {"node": expected_match, "where": expected_where, "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", properties={"gender": "F", "age": 22}, subquery="n.income > 90000")
-    expected_match = "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
-    expected_where = "n.income > 90000"
-    expected_dict = {"n_par_1": "F", "n_par_2": 22}
-    assert res == {"node": expected_match, "where": expected_where, "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    res = db.find(labels="person", properties={"gender": "F", "age": 22}, subquery=["n.income > $min_income", {"min_income": 90000}])
-    expected_match = "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
-    expected_where = "n.income > $min_income"
-    expected_dict = {"n_par_1": "F", "n_par_2": 22, "min_income": 90000}
-    assert res == {"node": expected_match, "where": expected_where, "data_binding": expected_dict, "dummy_node_name": "n"}
-
-    with pytest.raises(Exception):
-        # Bad key name "n_par_1", which conflicts with an internally-used name
-        assert db.find(labels="person", properties={"gender": "F"}, subquery=["n.income > $n_par_1", {"n_par_1": 90000}])
-
-
-
 def test_get_node_labels(db):
-    #TODO
-    pass
+    db.empty_dbase()
 
+    my_book = db.create_node("book", {'title': 'The Double Helix'})
+    result = db.get_node_labels(my_book)
+    assert result == ["book"]
+
+    my_vehicle = db.create_node(["car", "vehicle"])
+    result = db.get_node_labels(my_vehicle)
+    assert result == ["car", "vehicle"]
+
+    label_less = db.create_node(labels=None, properties={'title': 'I lost my labels'})
+    result = db.get_node_labels(label_less)
+    assert result == []
 
 
 
@@ -570,7 +504,7 @@ def test_get_node_labels(db):
 ###  ~ FOLLOW LINKS ~
 
 def test_follow_links(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_node("book", {'title': 'The Double Helix'})
     db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
@@ -578,16 +512,16 @@ def test_follow_links(db):
     # Create new node, linked to the previous two
     db.create_node_with_relationships(labels="person", properties={"name": "Julian", "city": "Berkeley"},
                                       connections=[
-                                            {"labels": "book",
-                                             "key": "title", "value": "The Double Helix",
-                                             "rel_name": "OWNS", "rel_dir": "OUT"},
-                                            {"labels": "book",
-                                             "key": "title", "value": "Intro to Hilbert Spaces",
-                                             "rel_name": "OWNS", "rel_dir": "OUT"}
+                                          {"labels": "book",
+                                           "key": "title", "value": "The Double Helix",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"},
+                                          {"labels": "book",
+                                           "key": "title", "value": "Intro to Hilbert Spaces",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"}
                                       ]
-                                     )
+                                      )
 
-    match = db.find(labels="person", properties={"name": "Julian", "city": "Berkeley"})
+    match = db.match(labels="person", properties={"name": "Julian", "city": "Berkeley"})
 
     links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book")
     expected = [{'title': 'The Double Helix'} , {'title': 'Intro to Hilbert Spaces'} ]
@@ -604,16 +538,16 @@ def test_count_links(db):
     # Create new node, linked to the previous two
     db.create_node_with_relationships(labels="person", properties={"name": "Julian", "city": "Berkeley"},
                                       connections=[
-                                            {"labels": "book",
-                                             "key": "title", "value": "The Double Helix",
-                                             "rel_name": "OWNS", "rel_dir": "OUT"},
-                                            {"labels": "book",
-                                             "key": "title", "value": "Intro to Hilbert Spaces",
-                                             "rel_name": "OWNS", "rel_dir": "OUT"}
+                                          {"labels": "book",
+                                           "key": "title", "value": "The Double Helix",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"},
+                                          {"labels": "book",
+                                           "key": "title", "value": "Intro to Hilbert Spaces",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"}
                                       ]
-                                     )
+                                      )
 
-    match = db.find(labels="person", properties={"name": "Julian", "city": "Berkeley"})
+    match = db.match(labels="person", properties={"name": "Julian", "city": "Berkeley"})
 
     number_links = db.count_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book")
 
@@ -622,7 +556,7 @@ def test_count_links(db):
 
 
 def test_get_parents_and_children(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     node_id = db.create_node("mid generation", {'age': 42, 'gender': 'F'})    # This will be the "central node"
     result = db.get_parents_and_children(node_id)
@@ -697,13 +631,13 @@ def test_create_node(db):
                     3) retrieve the newly created nodes, using retrieve_nodes_by_label_and_clause()
     """
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create a new node.  Notice the blank in the key
     db.create_node("test_label", {'patient id': 123, 'gender': 'M'})
 
     # Retrieve the record just created (one method, with values embedded in the Cypher query)
-    match = db.find(labels="test_label", subquery="n.`patient id` = 123 AND n.gender = 'M'")
+    match = db.match(labels="test_label", clause="n.`patient id` = 123 AND n.gender = 'M'")
 
     retrieved_records_A = db.get_nodes(match)
     assert retrieved_records_A == [{'patient id': 123, 'gender': 'M'}]
@@ -738,7 +672,7 @@ def test_create_node(db):
     db.create_node("new_label", {})
 
     # Retrieve just this last node
-    match = db.find(labels="new_label")
+    match = db.match(labels="new_label")
     retrieved_records_D = db.get_nodes(match)
     expected_record_list = [{}]
     assert compare_recordsets(retrieved_records_D, expected_record_list)
@@ -747,17 +681,17 @@ def test_create_node(db):
     # Create a 5th node with labels
     db.create_node(["label 1", "label 2"], {'name': "double label"})
     # Look it up by one label
-    match = db.find(labels="label 1")
+    match = db.match(labels="label 1")
     retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
     # Look it up by the other label
-    match = db.find(labels="label 2")
+    match = db.match(labels="label 2")
     retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
     # Look it up by both labels
-    match = db.find(labels=["label 1", "label 2"])
+    match = db.match(labels=["label 1", "label 2"])
     retrieved_records = db.get_nodes(match)
     expected_record_list = [{'name': "double label"}]
     assert compare_recordsets(retrieved_records, expected_record_list)
@@ -765,7 +699,7 @@ def test_create_node(db):
 
 
 def test_create_node_with_relationships(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create the prior nodes to which to link the newly-created node
     db.create_node("DEPARTMENT", {'dept_name': 'IT'})
@@ -798,21 +732,97 @@ def test_create_node_with_relationships(db):
 
 
 
+def test_create_attached_node(db):
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
+    with pytest.raises(Exception):
+        # Attempting to link to non-existing nodes
+        db.create_attached_node(labels="COMPANY", attached_to=[123, 456], rel_name="EMPLOYS")
+
+    node_jack = db.create_node("PERSON", {"name": "Jack"})
+    node_jill = db.create_node("PERSON", {"name": "Jill"})
+    node_mary = db.create_node("PERSON", {"name": "Mary"})
+
+    with pytest.raises(Exception):
+        # Missing rel_name
+        db.create_attached_node(labels="COMPANY", attached_to=[node_jack, node_jill, node_mary])
+
+
+    # Create a new Company node and attach it to "Jack"
+    new_node = db.create_attached_node(labels="COMPANY", attached_to=node_jack, rel_name="EMPLOYS")
+
+    q = f'''
+        MATCH (c:COMPANY)-[:EMPLOYS]->(p:PERSON {{name: "Jack"}})
+        WHERE id(c) = {new_node}
+        RETURN count(c) AS company_count, count(p) AS person_count
+        '''
+    result = db.query(q, single_row=True)
+    assert result == {'company_count': 1, 'person_count': 1}
+
+
+    # Attach the already-created Company node to the 2 other people it employs ("Jill" and "Mary")
+    new_node_2 = db.create_attached_node(labels="COMPANY", attached_to=[node_jill, node_mary], rel_name="EMPLOYS", merge=True)
+    assert new_node_2 == new_node   # No new nodes created, because of the merge=True (and the already existing company node)
+
+    q = f'''
+        MATCH path=(c:COMPANY)-[:EMPLOYS]->(p:PERSON)
+        WHERE id(c) = {new_node_2} AND p.name IN ["Jack", "Jill", "Mary"]
+        RETURN count(path) AS number_paths       
+        '''
+    result = db.query(q, single_cell="number_paths")
+    assert result == 3
+
+
+    # Attach a NEW company node to "Jill" and "Mary" (merge=False option forces a new node creation, even though a match already exists)
+    new_node_3 = db.create_attached_node(labels="COMPANY", attached_to=[node_jill, node_mary], rel_name="EMPLOYS", merge=False)
+    assert new_node_3 != new_node   # New node created, because of the merge=False (and the already existing company node)
+
+    q = f'''
+        MATCH path=(c:COMPANY)-[:EMPLOYS]->(p:PERSON)
+        WHERE id(c) = {new_node_3} AND p.name IN ["Jack", "Jill", "Mary"]
+        RETURN count(path) AS number_paths       
+        '''
+    result = db.query(q, single_cell="number_paths")
+    assert result == 2      # Only "Jill" and "Mary", because it's a new Company node, not the original one
+
+
+    # Attach a NEW company node to all 3 people; it will be a new node because it has different attributes
+    new_node_4 = db.create_attached_node(labels="COMPANY", properties={"name": "Acme Gadgets", "city": "Berkeley"},
+                                         attached_to=[node_jill, node_mary], rel_name="EMPLOYS", merge=True)
+    assert new_node_4 != new_node_3     # It's a new node, in spite of merge=True, because it has different attributes
+                                        # than the original Company node
+
+    q = f'''
+        MATCH path=(c:COMPANY {{name: "Acme Gadgets", city: "Berkeley"}})-[:EMPLOYS]->(p:PERSON)
+        WHERE id(c) = {new_node_4} AND p.name IN ["Jack", "Jill", "Mary"]
+        RETURN count(path) AS number_paths       
+        '''
+    result = db.query(q, single_cell="number_paths")
+    assert result == 2      # Only "Jill" and "Mary", because it's a new Company node, not the original one
+
+
+    # TODO: test pathological scenarios where existing link-to nodes are mentioned multiple times
+
+
 
 def test_create_node_with_links(db):
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     with pytest.raises(Exception):
         db.create_node_with_links(labels="A", properties="Not a dictionary")
+
+    with pytest.raises(Exception):
         db.create_node_with_links(labels="A", links=666)    # links isn't a list/None
-        db.create_node_with_links(labels="A", links=[{"neo_id": 9999, "rel_name": "GHOST"}])   # Linking to non-existing node
+
+    with pytest.raises(Exception):
+        db.create_node_with_links(labels="A", links=[{"internal_id": 9999, "rel_name": "GHOST"}])   # Linking to non-existing node
 
     # Create a first node, with no links
     car_id = db.create_node_with_links(labels = ["CAR", "INVENTORY"],
                                        properties = {'vehicle_id': 12345})
     # Verify it
-    match = db.find(neo_id=car_id, labels=["CAR", "INVENTORY"])
+    match = db.match(internal_id=car_id, labels=["CAR", "INVENTORY"])
     lookup = db.get_nodes(match)
     assert lookup == [{'vehicle_id': 12345}]
 
@@ -821,7 +831,7 @@ def test_create_node_with_links(db):
                                         properties = {'dept name': 'IT'},
                                         links = [])
     # Verify it
-    match = db.find(neo_id=dept_id, labels = "DEPARTMENT")
+    match = db.match(internal_id=dept_id, labels = "DEPARTMENT")
     lookup = db.get_nodes(match)
     assert lookup == [{'dept name': 'IT'}]
 
@@ -832,11 +842,11 @@ def test_create_node_with_links(db):
             labels="PERSON",
             properties={"name": "Julian", "city": "Berkeley"},
             links=[
-                {"neo_id": dept_id,
+                {"internal_id": dept_id,
                  "rel_name": "EMPLOYS",
                  "rel_dir": "IN"},
 
-                {"neo_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "OWNS",
                  "rel_attrs": {"since": 2021} }
             ]
@@ -847,10 +857,10 @@ def test_create_node_with_links(db):
     MATCH (:DEPARTMENT {`dept name`:'IT'})-[:EMPLOYS]
           ->(p:PERSON {name: 'Julian', city: 'Berkeley'})
           -[:OWNS {since:2021}]->(:CAR:INVENTORY {vehicle_id: 12345}) 
-          RETURN id(p) AS neo_id
+          RETURN id(p) AS internal_id
     '''
     result = db.query(q)
-    assert result[0]['neo_id'] == new_id
+    assert result[0]['internal_id'] == new_id
 
 
     # Attempt to create another new node with 2 identical links to the SAME existing node
@@ -859,16 +869,16 @@ def test_create_node_with_links(db):
             labels="PERSON",
             properties={"name": "Val", "city": "San Francisco"},
             links=[
-                {"neo_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "DRIVES"},
 
-                {"neo_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "DRIVES"}
             ]
         )
 
     # In spite of the Exception, above, a new node was indeed created
-    match = db.find(labels = "PERSON", properties={"name": "Val"})
+    match = db.match(labels = "PERSON", properties={"name": "Val"})
     lookup = db.get_nodes(match)
     assert lookup == [{"name": "Val", "city": "San Francisco"}]
 
@@ -883,22 +893,22 @@ def test_assemble_query_for_linking(db):
         db._assemble_query_for_linking([{}])
         db._assemble_query_for_linking([{'rel_name': 'OWNS'}])
 
-        db._assemble_query_for_linking([{'neo_id': 'do I look like a number??'}])
-        db._assemble_query_for_linking([{'neo_id': 123}])
+        db._assemble_query_for_linking([{'internal_id': 'do I look like a number??'}])
+        db._assemble_query_for_linking([{'internal_id': 123}])
 
 
-    result = db._assemble_query_for_linking([{"neo_id": 123, "rel_name": "LIVES IN"}])
+    result = db._assemble_query_for_linking([{"internal_id": 123, "rel_name": "LIVES IN"}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 123', 'MERGE (n)-[:`LIVES IN` ]->(ex0)', {})
 
-    result = db._assemble_query_for_linking([{"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
+    result = db._assemble_query_for_linking([{"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 456', 'MERGE (n)<-[:`EMPLOYS` ]-(ex0)', {})
 
-    result = db._assemble_query_for_linking([{"neo_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}])
+    result = db._assemble_query_for_linking([{"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 789', 'MERGE (n)-[:`OWNS` {`since`: $EDGE0_1}]->(ex0)', {'EDGE0_1': 2022})
 
 
-    result = db._assemble_query_for_linking([{"neo_id": 123, "rel_name": "LIVES IN"} ,
-                                             {"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
+    result = db._assemble_query_for_linking([{"internal_id": 123, "rel_name": "LIVES IN"} ,
+                                             {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
     assert result == ('MATCH (ex0), (ex1)',
                       'WHERE id(ex0) = 123 AND id(ex1) = 456',
                       'MERGE (n)-[:`LIVES IN` ]->(ex0)\nMERGE (n)<-[:`EMPLOYS` ]-(ex1)',
@@ -908,9 +918,9 @@ def test_assemble_query_for_linking(db):
 
     result = db._assemble_query_for_linking(
                         [
-                            {"neo_id": 123, "rel_name": "LIVES IN"},
-                            {"neo_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
-                            {"neo_id": 789, "rel_name": "IS OWNED BY", "rel_dir": "IN", "rel_attrs": {"since": 2022, "tax rate": "X 23"}}
+                            {"internal_id": 123, "rel_name": "LIVES IN"},
+                            {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
+                            {"internal_id": 789, "rel_name": "IS OWNED BY", "rel_dir": "IN", "rel_attrs": {"since": 2022, "tax rate": "X 23"}}
                         ])
     assert result == (
                         'MATCH (ex0), (ex1), (ex2)',
@@ -918,12 +928,6 @@ def test_assemble_query_for_linking(db):
                         'MERGE (n)-[:`LIVES IN` ]->(ex0)\nMERGE (n)<-[:`EMPLOYS` ]-(ex1)\nMERGE (n)<-[:`IS OWNED BY` {`since`: $EDGE2_1, `tax rate`: $EDGE2_2}]-(ex2)',
                         {'EDGE2_1': 2022, 'EDGE2_2': "X 23"}
                       )
-
-
-
-def test_create_node_with_children(db):
-    #TODO
-    pass
 
 
 
@@ -942,7 +946,7 @@ def test_delete_nodes(db):
     db.create_node("boat", {"brand": "Juneau"})
 
     # Delete the 2 gray cars
-    match = db.find("car", properties={"color": "gray"})
+    match = db.match(labels="car", properties={"color": "gray"})
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 2
     q = "MATCH (c:car) RETURN count(c)"
@@ -953,7 +957,7 @@ def test_delete_nodes(db):
     assert result == [{"count(c)": 0}]      # 0 gray cars found
 
     # Attempting to re-delete them will produce a zero count
-    match = db.find("car", properties={"color": "gray"})
+    match = db.match(labels="car", properties={"color": "gray"})
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 0
     q = "MATCH (c:car) RETURN count(c)"
@@ -961,7 +965,7 @@ def test_delete_nodes(db):
     assert result == [{"count(c)": 3}]      # Still 3 cars left
 
     # Delete the red car
-    match = db.find("car", subquery="n.color = 'red'")
+    match = db.match(labels="car", clause="n.color = 'red'")
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 1
     q = "MATCH (c:car) RETURN c.color AS col"
@@ -969,12 +973,12 @@ def test_delete_nodes(db):
     assert compare_recordsets(result, [{'col': 'white'}, {'col': 'blue'}])  # white and blue cars are left
 
     # Attempting to delete a non-existing color will produce a zero count
-    match = db.find("car", properties={"color": "pink"})
+    match = db.match(labels="car", properties={"color": "pink"})
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 0
 
     # Delete all the remaining 2 cars
-    match = db.find("car")
+    match = db.match(labels="car")
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 2
 
@@ -991,7 +995,7 @@ def test_delete_nodes(db):
     assert result == [{"count(b)": 1}]
 
     # Delete everything left
-    match = db.find()
+    match = db.match()
     number_deleted = db.delete_nodes(match)
     assert number_deleted == 2      # The airplane and the boat
     q = "MATCH (x) RETURN count(x)"
@@ -1002,7 +1006,7 @@ def test_delete_nodes(db):
 
 def test_delete_nodes_by_label(db):
     db.delete_nodes_by_label()
-    match = db.find()   # Everything in the dbase
+    match = db.match()   # Everything in the dbase
     number_nodes = len(db.get_nodes(match))
     assert number_nodes == 0
 
@@ -1045,7 +1049,7 @@ def test_delete_nodes_by_label(db):
 def test_empty_dbase(db):
     # Tests of completely clearing the database
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Verify nothing is left
     labels = db.get_labels()
     assert labels == []
@@ -1053,14 +1057,14 @@ def test_empty_dbase(db):
     db.create_node("label_A", {})
     db.create_node("label_B", {'client_id': 123, 'gender': 'M'})
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Verify nothing is left
     labels = db.get_labels()
     assert labels == []
 
     # Test of removing only specific labels
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Add a few labels
     db.create_node("label_1", {'client_id': 123, 'gender': 'M'})
     db.create_node("label_2", {})
@@ -1074,7 +1078,7 @@ def test_empty_dbase(db):
 
     # Test of keeping only specific labels
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Add a few labels
     db.create_node("label_1", {'client_id': 123, 'gender': 'M'})
     db.create_node("label_2", {})
@@ -1086,7 +1090,7 @@ def test_empty_dbase(db):
     labels = db.get_labels()
     assert compare_unordered_lists(labels , ["label_4", "label_3"])
     # Doubly-verify that one of the saved nodes can be read in
-    match = db.find(labels="label_3")
+    match = db.match(labels="label_3")
     recordset = db.get_nodes(match)
     assert compare_recordsets(recordset, [{'client_id': 456, 'name': 'Julian'}])
 
@@ -1096,17 +1100,17 @@ def test_empty_dbase(db):
 ###  ~ MODIFY FIELDS ~
 
 def test_set_fields(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # Create a new node.  Notice the blank in the key
     db.create_node("car", {'vehicle id': 123, 'price': 7500})
 
     # Locate the node just created, and create/update its attributes (reduce the price)
-    match = db.find(labels="car", properties={'vehicle id': 123, 'price': 7500})
+    match = db.match(labels="car", properties={'vehicle id': 123, 'price': 7500})
     db.set_fields(match=match, set_dict = {"color": "white", "price": 7000})
 
     # Look up the updated record
-    match = db.find(labels="car")
+    match = db.match(labels="car")
     retrieved_records = db.get_nodes(match)
     expected_record_list = [{'vehicle id': 123, 'color': 'white', 'price': 7000}]
     assert compare_recordsets(retrieved_records, expected_record_list)
@@ -1117,7 +1121,7 @@ def test_set_fields(db):
 ###  ~ RELATIONSHIPS ~
 
 def test_get_relationship_types(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     rels = db.get_relationship_types()
     assert rels == []
 
@@ -1132,40 +1136,108 @@ def test_get_relationship_types(db):
 
 
 
-def test_add_edges(db):
-    db.empty_dbase()
+def test_add_links(db):
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_from = db.create_node("car", {'color': 'white'})
     neo_to = db.create_node("owner", {'name': 'Julian'})
 
-    match_from = db.find(neo_id=neo_from, dummy_node_name="from")
-    match_to = db.find(neo_id=neo_to, dummy_node_name="to")
-
-    number_added = db.add_edges(match_from, match_to, rel_name="OWNED_BY")
+    number_added = db.add_links(match_from=neo_from, match_to=neo_to, rel_name="OWNED_BY")
     assert number_added == 1
 
-    with pytest.raises(Exception):
-        # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.add_edges(match_from, match_from, rel_name="THIS_WILL_CRASH")
+    q = '''
+        MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners
+        '''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1, 'number_owners': 1}
 
-    # The correct way to add an edge from a node to itself
-    match_to_itself = db.find(neo_id=neo_from, dummy_node_name="to")    # Same as the node of origin, but different dummy_node_name`
-    number_added = db.add_edges(match_from, match_to_itself, rel_name="FROM_CAR_TO_ITSELF")
+
+    # Start over again
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
+    neo_from = db.create_node("car", {'color': 'white'})
+    neo_to = db.create_node("owner", {'name': 'Julian'})
+
+    match_from = db.match(internal_id=neo_from) # , dummy_node_name="from"
+    match_to = db.match(internal_id=neo_to)     # , dummy_node_name="to"
+
+    number_added = db.add_links(match_from, match_to, rel_name="OWNED_BY")
     assert number_added == 1
+
+    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1, 'number_owners': 1}
+
+
+    # Start over again
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
+    neo_from = db.create_node("car", {'color': 'white'})
+    neo_to = db.create_node("owner", {'name': 'Julian'})
+
+    match_from = db.match(internal_id=neo_from)
+
+    # Mix-and-match a match structure and an internal Neo ID
+    number_added = db.add_links(match_from=match_from, match_to=neo_to, rel_name="OWNED_BY")
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1, 'number_owners': 1}
+
+
+    # Make a link from the "car" node to itself
+    assert db.add_links(match_from, match_from, rel_name="FROM CAR TO ITSELF") # Note the blanks in the name
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:`FROM CAR TO ITSELF`]->(c) 
+        RETURN count(c) AS number_cars'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1}
+
+
+
+def test_add_links_fast(db):
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
+    neo_from = db.create_node("car", {'color': 'white'})
+    neo_to = db.create_node("owner", {'name': 'Julian'})
+
+    number_added = db.add_links_fast(match_from=neo_from, match_to=neo_to, rel_name="OWNED_BY")
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:OWNED_BY]->(o:owner) 
+        RETURN count(c) AS number_cars, count(o) AS number_owners'''
+    result = db.query(q, single_row=True)
+
+    assert result == {'number_cars': 1, 'number_owners': 1}
+
+
+    # Make a link from the "car" node to itself
+    assert db.add_links_fast(neo_from, neo_from, rel_name="FROM CAR TO ITSELF") # Note the blanks in the name
+    assert number_added == 1
+
+    q = '''MATCH (c:car)-[:`FROM CAR TO ITSELF`]->(c) 
+        RETURN count(c) AS number_cars'''
+    result = db.query(q, single_row=True)
+    assert result == {'number_cars': 1}
 
 
 
 def test_remove_edges(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
 
-    number_added = db.add_edges(neo_car, neo_julian, rel_name="OWNED_BY")
+    number_added = db.add_links(neo_car, neo_julian, rel_name="OWNED_BY")
     assert number_added == 1
 
-    match_car = db.find(labels="car", dummy_node_name="from")
-    match_julian = db.find(properties={"name": "Julian"}, dummy_node_name="to")
+    match_car = db.match(labels="car", dummy_node_name="from")
+    match_julian = db.match(properties={"name": "Julian"}, dummy_node_name="to")
 
     find_query = '''
         MATCH (c:car)-[:OWNED_BY]->(o:owner) 
@@ -1175,13 +1247,13 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 1     # Find the relationship
 
     with pytest.raises(Exception):
-        assert db.remove_edges(match_car, match_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
+        assert db.remove_links(match_car, match_julian, rel_name="NON_EXISTENT_RELATIONSHIP")
 
     with pytest.raises(Exception):
-        assert db.remove_edges({"NON-sensical match object"}, match_julian, rel_name="OWNED_BY")
+        assert db.remove_links({"NON-sensical match object"}, match_julian, rel_name="OWNED_BY")
 
     # Finally, actually remove the edge
-    number_removed = db.remove_edges(match_car, match_julian, rel_name="OWNED_BY")
+    number_removed = db.remove_links(match_car, match_julian, rel_name="OWNED_BY")
     assert number_removed == 1
 
     result = db.query(find_query)
@@ -1189,19 +1261,19 @@ def test_remove_edges(db):
 
     with pytest.raises(Exception):
         # This will crash because the relationship is no longer there
-        assert db.remove_edges(match_car, match_car, rel_name="OWNED_BY")
+        assert db.remove_links(match_car, match_car, rel_name="OWNED_BY")
 
     with pytest.raises(Exception):
         # This will crash because the first 2 arguments are both using the same `dummy_node_name`
-        assert db.remove_edges(match_car, match_car, rel_name="THIS_WILL_CRASH")
+        assert db.remove_links(match_car, match_car, rel_name="THIS_WILL_CRASH")
 
 
     # Restore the relationship...
-    number_added = db.add_edges(match_car, match_julian, rel_name="OWNED_BY")
+    number_added = db.add_links(match_car, match_julian, rel_name="OWNED_BY")
     assert number_added == 1
 
     # ...and add a 2nd one, with a different name, between the same nodes
-    number_added = db.add_edges(match_car, match_julian, rel_name="REMEMBERED_BY")
+    number_added = db.add_links(match_car, match_julian, rel_name="REMEMBERED_BY")
     assert number_added == 1
 
     # ...and re-add the last one, but with a property (which is allowed by Neo4j, and will result in
@@ -1232,7 +1304,7 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 2     # The 2 relationships we just added
 
     # Remove 2 same-named relationships at once between the same 2 nodes
-    number_removed = db.remove_edges(match_car, match_julian, rel_name="REMEMBERED_BY")
+    number_removed = db.remove_links(match_car, match_julian, rel_name="REMEMBERED_BY")
     assert number_removed == 2
 
     result = db.query(find_query)
@@ -1253,7 +1325,7 @@ def test_remove_edges(db):
     assert result[0]["n_cars"] == 1     # Still there
 
 
-    number_removed = db.remove_edges(match_car, match_julian, rel_name="OWNED_BY")
+    number_removed = db.remove_links(match_car, match_julian, rel_name="OWNED_BY")
     assert number_removed == 1
 
     find_query = '''
@@ -1286,18 +1358,19 @@ def test_remove_edges(db):
     assert result[0]["n_relationships"] == 2
 
     # Delete both relationships at once
-    match_val = db.find(key_name="name", key_value="Val", dummy_node_name="v")
+    match_val = db.match(key_name="name", key_value="Val", dummy_node_name="v")
 
-    number_removed = db.remove_edges(match_car, match_val, rel_name=None)
+    number_removed = db.remove_links(match_car, match_val, rel_name=None)
     assert number_removed == 2
 
     result = db.query(find_query)
     assert result[0]["n_relationships"] == 0    # All gone
 
 
+
 def test_remove_edges_2(db):
     # This set of test focuses on removing edges between GROUPS of nodes
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     # 2 cars, co-owned by 2 people
     q = '''
@@ -1312,8 +1385,8 @@ def test_remove_edges_2(db):
     assert result == {'labels_added': 4, 'relationships_created': 4,
                       'nodes_created': 4, 'properties_set': 4, 'returned_data': []}
 
-    match_white_car = db.find(labels="car", properties={"color": "white"}, dummy_node_name="from")  # 1-node match
-    match_all_people = db.find(labels="person", dummy_node_name="to")                               # 2-node match
+    match_white_car = db.match(labels="car", properties={"color": "white"}, dummy_node_name="from")  # 1-node match
+    match_all_people = db.match(labels="person", dummy_node_name="to")                               # 2-node match
 
 
     find_query = '''
@@ -1324,7 +1397,7 @@ def test_remove_edges_2(db):
     assert result[0]["n_relationships"] == 2        # The white car has 2 links
 
     # Delete all the "OWNED_BY" relationships from the white car to any of the "person" nodes
-    number_removed = db.remove_edges(match_white_car, match_all_people, rel_name="OWNED_BY")
+    number_removed = db.remove_links(match_white_car, match_all_people, rel_name="OWNED_BY")
     assert number_removed == 2
 
     result = db.query(find_query)
@@ -1333,49 +1406,160 @@ def test_remove_edges_2(db):
 
 
 def test_edges_exists(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_car = db.create_node("car", {'color': 'white'})
     neo_julian = db.create_node("owner", {'name': 'Julian'})
 
-    assert not db.edges_exist(neo_car, neo_julian, rel_name="OWNED_BY")    # No relationship exists yet
+    assert not db.links_exist(neo_car, neo_julian, rel_name="OWNED_BY")    # No relationship exists yet
 
-    db.add_edges(neo_car, neo_julian, rel_name="OWNED_BY")
-    assert db.edges_exist(neo_car, neo_julian, rel_name="OWNED_BY")        # By now, it exists
-    assert not db.edges_exist(neo_julian, neo_car, rel_name="OWNED_BY")    # But not in the reverse direction
-    assert not db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Nor by a different name
+    db.add_links(neo_car, neo_julian, rel_name="OWNED_BY")
+    assert db.links_exist(neo_car, neo_julian, rel_name="OWNED_BY")        # By now, it exists
+    assert not db.links_exist(neo_julian, neo_car, rel_name="OWNED_BY")    # But not in the reverse direction
+    assert not db.links_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Nor by a different name
 
-    db.add_edges(neo_car, neo_julian, rel_name="DRIVEN BY")
-    assert db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")       # Now it exists
+    db.add_links(neo_car, neo_julian, rel_name="DRIVEN BY")
+    assert db.links_exist(neo_car, neo_julian, rel_name="DRIVEN BY")       # Now it exists
 
-    db.remove_edges(neo_car, neo_julian, rel_name="DRIVEN BY")
-    assert not db.edges_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Now it's gone
+    db.remove_links(neo_car, neo_julian, rel_name="DRIVEN BY")
+    assert not db.links_exist(neo_car, neo_julian, rel_name="DRIVEN BY")   # Now it's gone
 
     neo_sailboat = db.create_node("sailboat", {'type': 'sloop', 'color': 'white'})
-    db.add_edges(neo_julian, neo_sailboat, rel_name="SAILS")
-    assert db.edges_exist(neo_julian, neo_sailboat, rel_name="SAILS")
+    db.add_links(neo_julian, neo_sailboat, rel_name="SAILS")
+    assert db.links_exist(neo_julian, neo_sailboat, rel_name="SAILS")
 
-    match_vehicle = db.find(properties={'color': 'white'})                  # To select both car and boat
-    assert db.edges_exist(neo_julian, match_vehicle, rel_name="SAILS")
+    match_vehicle = db.match(properties={'color': 'white'})                 # To select both car and boat
+    assert db.links_exist(neo_julian, match_vehicle, rel_name="SAILS")
 
-    assert not db.edges_exist(neo_car, neo_car, rel_name="SELF_DRIVES")    # A relationship from a node to itself
-    db.add_edges(neo_car, neo_car, rel_name="SELF_DRIVES")
-    assert db.edges_exist(neo_car, neo_car, rel_name="SELF_DRIVES")
-
-
-
-def test_number_of_edges(db):
-    pass    # TODO
+    assert not db.links_exist(neo_car, neo_car, rel_name="SELF_DRIVES")     # A relationship from a node to itself
+    db.add_links(neo_car, neo_car, rel_name="SELF_DRIVES")
+    assert db.links_exist(neo_car, neo_car, rel_name="SELF_DRIVES")
 
 
 
-def test_test_reattach_node(db):
-    pass    # TODO
+def test_number_of_links(db):
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
+    neo_car = db.create_node("car", {'color': 'white'})
+    neo_julian = db.create_node("owner", {'name': 'Julian'})
+
+    assert db.number_of_links(neo_car, neo_julian, rel_name="OWNED_BY") == 0    # No relationship exists yet
+
+    db.add_links(neo_car, neo_julian, rel_name="OWNED_BY")
+    assert db.number_of_links(neo_car, neo_julian, rel_name="OWNED_BY") == 1    # By now, it exists
+    assert db.number_of_links(neo_julian, neo_car, rel_name="OWNED_BY") == 0    # But not in the reverse direction
+    assert db.number_of_links(neo_car, neo_julian, rel_name="DRIVEN BY") == 0   # Nor by a different name
+
+    db.add_links(neo_car, neo_julian, rel_name="DRIVEN BY")
+    assert db.number_of_links(neo_car, neo_julian, rel_name="DRIVEN BY") == 1   # Now it exists with this other name
+
+    db.remove_links(neo_car, neo_julian, rel_name="DRIVEN BY")
+    assert db.number_of_links(neo_car, neo_julian, rel_name="DRIVEN BY") == 0   # Now it's gone
+
+    neo_sailboat = db.create_node("sailboat", {'type': 'sloop', 'color': 'white'})
+    db.add_links(neo_julian, neo_sailboat, rel_name="SAILS")
+    assert db.number_of_links(neo_julian, neo_sailboat, rel_name="SAILS") == 1  # It finds the just-added link
+
+    match_vehicle = db.match(properties={'color': 'white'})                      # To select both car and boat
+    assert db.number_of_links(neo_julian, match_vehicle, rel_name="SAILS") == 1
+
+    assert db.number_of_links(neo_car, neo_car, rel_name="SELF_DRIVES") == 0    # A relationship from a node to itself
+    db.add_links(neo_car, neo_car, rel_name="SELF_DRIVES")
+    assert db.number_of_links(neo_car, neo_car, rel_name="SELF_DRIVES") == 1    # Find the link to itself
+
+    db.add_links(neo_sailboat, neo_julian, rel_name="OWNED_BY")
+    assert db.number_of_links(match_vehicle, neo_julian, rel_name="OWNED_BY") == 2  # 2 vehicles owned by Julian
+
+
+
+def test_get_node_internal_id(db):
+    db.empty_dbase()
+
+    match_all = db.match()              # Meaning "match everything"
+
+    with pytest.raises(Exception):
+        db.get_node_internal_id(match_all)  # No nodes yet exist
+
+    # Add a 1st node
+    adam_id = db.create_node(labels="Person", properties={"name": "Adam"})
+    internal_id = db.get_node_internal_id(match_all)     # Finds all nodes (there's only 1 in the database)
+    assert internal_id == adam_id
+
+    # Add a 2nd node
+    eve_id = db.create_node(labels="Person", properties={"name": "Eve"})
+
+    with pytest.raises(Exception):
+        db.get_node_internal_id(match_all)          # It finds 2 nodes - a non-unique result
+
+    match_adam = db.match(properties={"name": "Adam"})
+    internal_id = db.get_node_internal_id(match_adam)     # Finds the "Adam" node
+    assert internal_id == adam_id
+
+    match_eve = db.match(internal_id=eve_id)
+    internal_id = db.get_node_internal_id(match_eve)     # Finds the "Eve" node
+    assert internal_id == eve_id
+
+    assert db.delete_nodes(match_adam) == 1         # Now only "Eve" will be left
+    internal_id = db.get_node_internal_id(match_all)     # Finds the "Eve" node, because it's now the only one
+    assert internal_id == eve_id
+
+
+
+def test_reattach_node(db):
+    db.empty_dbase()
+
+    jack = db.create_node("Person", {"name": "Jack"})
+    jill = db.create_attached_node("Person", properties={"name": "Jill"},
+                            attached_to=jack, rel_name="MARRIED_TO", rel_dir="IN")
+    mary = db.create_node("Person", {"name": "Mary"})
+
+    with pytest.raises(Exception):
+        db.reattach_node(node=jack, old_attachment=jill, new_attachment=mary, rel_name="UNKNOWN_RELATIONSHIP")   # No such relationship present
+
+    with pytest.raises(Exception):
+        db.reattach_node(node=jack, old_attachment=mary, new_attachment=jill, rel_name="MARRIED_TO")    # There's no link from jack to mary
+
+    with pytest.raises(Exception):
+        db.reattach_node(node=jill, old_attachment=jack, new_attachment=mary, rel_name="MARRIED_TO")    # here's no link FROM jill TO jack (wrong direction)
+
+    bogus_internal_id = mary + 1     # (Since we first emptied the database, there will be no nod with such an ID
+    with pytest.raises(Exception):
+        db.reattach_node(node=jack, old_attachment=jill, new_attachment=bogus_internal_id, rel_name="MARRIED_TO")
+
+    # jack finally shakes off jill and marries mary
+    db.reattach_node(node=jack, old_attachment=jill, new_attachment=mary, rel_name="MARRIED_TO")
+
+    q = '''
+    MATCH (n1:Person)-[:MARRIED_TO]->(n2:Person) RETURN id(n1) AS ID_FROM, id(n2) AS ID_TO
+    '''
+    result = db.query(q)
+    assert len(result) == 1
+    assert result[0] == {"ID_FROM": jack, "ID_TO": mary}
+
+    # Let's eliminate the "jill" node
+    db.delete_nodes(jill)
+
+    # jack cannot go back to jill, because she's gone!
+    with pytest.raises(Exception):
+        db.reattach_node(node=jack, old_attachment=mary, new_attachment=jill, rel_name="MARRIED_TO")
+
+    # Let's re-introduce a "jill" node
+    jill_2 = db.create_node("Person", {"name": "Jill"})
+
+    # Now the indecisive jack can go back to jill (the new node with internal ID stored in jill_2)
+    db.reattach_node(node=jack, old_attachment=mary, new_attachment=jill_2, rel_name="MARRIED_TO")
+
+    q = '''
+    MATCH (n1:Person)-[:MARRIED_TO]->(n2:Person) RETURN id(n1) AS ID_FROM, id(n2) AS ID_TO
+    '''
+    result = db.query(q)
+    assert len(result) == 1
+    assert result[0] == {"ID_FROM": jack, "ID_TO": jill_2}
 
 
 
 def test_link_nodes_by_ids(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     # Create dummy data and return node_ids
     nodeids = db.query("""
         UNWIND range(1,3) as x
@@ -1398,7 +1582,7 @@ def test_link_nodes_by_ids(db):
 
 
 def test_link_nodes_on_matching_property(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     db.create_node('A', {'client': 'GSK', 'expenses': 34000, 'duration': 3})
     db.create_node('B', {'client': 'Roche'})
     db.create_node('C', {'client': 'GSK'})
@@ -1429,7 +1613,7 @@ def test_get_labels(db):
     Create multiple new nodes, and then retrieve all the labels present in the database
     """
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     labels = db.get_labels()
     assert labels == []
@@ -1457,7 +1641,7 @@ def test_get_labels(db):
 
 
 def test_get_label_properties(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
     db.query("CREATE (a1 :A {y:123}), (a2 :A {x:'hello'}), (a3 :A {`some name with blanks`:'x'}), (b :B {e:1})")
     result = db.get_label_properties(label = 'A')
     expected_result = ['some name with blanks', 'x', 'y']
@@ -1469,7 +1653,7 @@ def test_get_label_properties(db):
 ###  ~ INDEXES ~
 
 def test_get_indexes(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     result = db.get_indexes()
     assert result.empty
@@ -1494,7 +1678,7 @@ def test_get_indexes(db):
 
 
 def test_create_index(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     status = db.create_index(label="car", key="color")
     assert status == True
@@ -1524,7 +1708,7 @@ def test_create_index(db):
 
 
 def test_drop_index(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_index("car", "color")
     db.create_index("car", "make")
@@ -1546,7 +1730,7 @@ def test_drop_index(db):
 
 
 def test_drop_all_indexes(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_index("car", "color")
     db.create_index("car", "make")
@@ -1566,7 +1750,7 @@ def test_drop_all_indexes(db):
 ###  ~ CONSTRAINTS ~
 
 def test_get_constraints(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     result = db.get_constraints()
     assert result.empty
@@ -1588,7 +1772,7 @@ def test_get_constraints(db):
 
 
 def test_create_constraint(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     status = db.create_constraint("patient", "patient_id", name="my_first_constraint")
     assert status == True
@@ -1625,7 +1809,7 @@ def test_create_constraint(db):
 
 
 def test_drop_constraint(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_constraint("patient", "patient_id", name="constraint1")
     db.create_constraint("client", "client_id")
@@ -1651,7 +1835,7 @@ def test_drop_constraint(db):
 
 
 def test_drop_all_constraints(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     db.create_constraint("patient", "patient_id", name="constraint1")
     db.create_constraint("client", "client_id")
@@ -1670,11 +1854,11 @@ def test_drop_all_constraints(db):
 ###  ~ READ IN DATA from PANDAS ~
 
 def test_load_pandas(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     df = pd.DataFrame([[123]], columns = ["col1"])  # One row, one column
     db.load_pandas(df, "A")
-    match_A = db.find(labels="A")
+    match_A = db.match(labels="A")
     result = db.get_nodes(match_A)
     assert result == [{'col1': 123}]
 
@@ -1695,7 +1879,7 @@ def test_load_pandas(db):
     A_nodes = db.get_nodes(match_A)
     expected_A = [{'col1': 123}, {'col1': 999}, {'col2': 2222}]
     assert compare_recordsets(A_nodes, expected_A)
-    match_B = db.find(labels="B")
+    match_B = db.match(labels="B")
     B_nodes = db.get_nodes(match_B)
     assert B_nodes == [{'col3': 3333}]
 
@@ -1720,7 +1904,7 @@ def test_load_pandas(db):
     # Test primary_key with merge
     df = pd.DataFrame({"patient_id": [100, 200], "name": ["Jack", "Jill"]})
     db.load_pandas(df, "X")
-    match_X = db.find(labels="X")
+    match_X = db.match(labels="X")
     X_nodes = db.get_nodes(match_X)
     expected_X = [{'patient_id': 100, 'name': 'Jack', }, {'patient_id': 200, 'name': 'Jill'}]
     assert compare_recordsets(X_nodes, expected_X)
@@ -1785,8 +1969,9 @@ def test_assert_valid_match_structure(db):
 
     CypherUtils.assert_valid_match_structure({"node": "hi", "where": "there", "data_binding": {}, "dummy_node_name": "the end"})
 
-    match = db.find()
-    CypherUtils.assert_valid_match_structure(match)
+    match = db.match()
+    match_structure = CypherUtils.process_match_structure(match)
+    CypherUtils.assert_valid_match_structure(match_structure)
 
 
 

@@ -61,7 +61,7 @@ def test_create_class(db):
     db.empty_dbase()
 
     _ , french_class_id = NeoSchema.create_class("French Vocabulary")
-    match = db.find(labels="CLASS")   # All Class nodes
+    match = db.match(labels="CLASS")   # All Class nodes
     result = db.get_nodes(match)
     assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
 
@@ -622,7 +622,7 @@ def test_add_data_point_with_links(db):
 
     # Create a new data point, and get its Neo4j ID
     doctor_neo_id = NeoSchema.add_data_point_with_links(class_name="doctor",
-                                                  properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+                                                        properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
 
     q = '''
         MATCH (d:doctor {name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]->(c:CLASS {name: "doctor"})
@@ -654,7 +654,7 @@ def test_add_data_point_with_links(db):
     # Create a new data point for a "patient", linked to the existing "doctor" data point
     patient_neo_id = NeoSchema.add_data_point_with_links(class_name="patient",
                                                    properties={"name": "Jill", "age": 22, "balance": 145.50},
-                                                   links=[{"neo_id": doctor_neo_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
+                                                   links=[{"internal_id": doctor_neo_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
                                                     )
 
     q = '''
@@ -673,7 +673,7 @@ def test_add_data_point_with_links(db):
     #   this time, request the assignment of an autoincrement "item_id" to the new data node
     result_neo_id = NeoSchema.add_data_point_with_links(class_name="result",
                                                   properties={"biomarker": "glucose", "value": 99.0},
-                                                  links=[{"neo_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                  links=[{"internal_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
                                                   assign_item_id= True)
 
     q = '''
@@ -694,7 +694,7 @@ def test_add_data_point_with_links(db):
     #   this time, request the assignment of specific "item_id" to the new data node
     result2_neo_id = NeoSchema.add_data_point_with_links(class_name="result",
                                                         properties={"biomarker": "cholesterol", "value": 180.0},
-                                                        links=[{"neo_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                        links=[{"internal_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
                                                         new_item_id=9999)
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
@@ -886,7 +886,7 @@ def test_add_data_point_merge(db):
 
 
 def test_add_col_data_merge(db):
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     with pytest.raises(Exception):
         NeoSchema.add_col_data_merge(class_internal_id=123, property_name="color", value_list=["white"])     # No such class exists
@@ -1293,8 +1293,19 @@ def test_add_data_relationship(db):
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=car_id, to_id=person_id, rel_name="DRIVES", id_type="item_id")  # Wrong direction
 
-    # Now it works
+    # Now, finally, it'll work
     NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+
+    # Verify the cycle of "DRIVES" relationships
+    q = '''
+    MATCH (c:Car {item_id:$car_id})<-[:DRIVES]-(p:Person {item_id:$person_id})
+    -[:SCHEMA]->(cl1:CLASS {name:"Person"})-[:DRIVES]->(cl2:CLASS {name:"Car"})
+    <-[:SCHEMA]-(c)
+    RETURN COUNT(c) AS number_cars
+    '''
+    result = db.query(q, {"car_id": car_id, "person_id": person_id}, single_cell="number_cars")
+    assert result == 1
+
 
     with pytest.raises(Exception):
         # Attempting to add it again
@@ -1311,6 +1322,26 @@ def test_add_data_relationship(db):
     neo_person_id = NeoSchema.get_data_point_id(person_id)
     neo_car_id = NeoSchema.get_data_point_id(car_id)
     NeoSchema.add_data_relationship(from_id=neo_car_id, to_id=neo_person_id, rel_name="IS_DRIVEN_BY")
+
+    # Verify the cycle of "IS_DRIVEN_BY" relationships
+    q = '''
+    MATCH (c:Car {item_id:$car_id})-[:IS_DRIVEN_BY]->(p:Person {item_id:$person_id})
+    -[:SCHEMA]->(cl1:CLASS {name:"Person"})<-[:IS_DRIVEN_BY]-(cl2:CLASS {name:"Car"})
+    <-[:SCHEMA]-(c)
+    RETURN COUNT(c) AS number_cars
+    '''
+    result = db.query(q, {"car_id": car_id, "person_id": person_id}, single_cell="number_cars")
+    assert result == 1
+
+    # Verify that the cycle of "DRIVES" relationships is also still there
+    q = '''
+    MATCH (c:Car {item_id:$car_id})<-[:DRIVES]-(p:Person {item_id:$person_id})
+    -[:SCHEMA]->(cl1:CLASS {name:"Person"})-[:DRIVES]->(cl2:CLASS {name:"Car"})
+    <-[:SCHEMA]-(c)
+    RETURN COUNT(c) AS number_cars
+    '''
+    result = db.query(q, {"car_id": car_id, "person_id": person_id}, single_cell="number_cars")
+    assert result == 1
 
 
 
