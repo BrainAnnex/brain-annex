@@ -1,6 +1,12 @@
+name: brain-annex-environment
+channels:
+  - conda-forge
 dependencies:
   - python=3.8
   - numpy=1.22.4
   - pandas=1.4.3
   - pytest=6.2.5
   - jupyterlab=3.4.8
+  - pip
+  - pip:
+      - neo4j=4.3.9
