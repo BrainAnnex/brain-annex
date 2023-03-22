@@ -144,7 +144,7 @@ class NodeExplorer:
         :param source_list:     For Inbound relationships, this needs to be the list of the node's parents;
                                 for Outbound, the list of the node's children.
                                 EXAMPLE of individual items in the list:
-                                    {'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
+                                    {'internal_id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
 
         :return:                A dictionary, for a single node
                                 EXAMPLE:  {'HAS_AGE': [['Subject', 233], ['Subject', 225]]}
@@ -154,7 +154,7 @@ class NodeExplorer:
         for item in source_list:
             rel_name = item["rel"]                      # EXAMPLE: "R1"
             label_of_rel_source = item["labels"][0]     # For now, just consider the first label.  EXAMPLE: "Label_A"
-            id_of_rel_source = item["id"]               # EXAMPLE: 123
+            id_of_rel_source = item["internal_id"]      # EXAMPLE: 123
             #print("rel_name:", rel_name)
             #print("label_of_rel_source:", label_of_rel_source)
             #print("id_of_rel_source:", id_of_rel_source)
@@ -250,7 +250,7 @@ class NodeExplorer:
 
         (parent_list, child_list) = self.neo.get_parents_and_children(node_id)
         # EXAMPLE of individual items in either parent_list or child_list:
-        #       {'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
+        #       {'internal_id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
 
 
 

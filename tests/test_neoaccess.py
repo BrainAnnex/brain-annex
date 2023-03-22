@@ -566,7 +566,7 @@ def test_get_parents_and_children(db):
     db.link_nodes_by_ids(parent1_id, node_id, "PARENT_OF")
 
     result = db.get_parents_and_children(node_id)
-    assert result == ([{'id': parent1_id, 'labels': ['parent'], 'rel': 'PARENT_OF'}],
+    assert result == ([{'internal_id': parent1_id, 'labels': ['parent'], 'rel': 'PARENT_OF'}],
                       [])
 
     parent2_id = db.create_node("parent", {'age': 52, 'gender': 'F'})  # Add 2nd parent
@@ -575,8 +575,8 @@ def test_get_parents_and_children(db):
     (parent_list, child_list) = db.get_parents_and_children(node_id)
     assert child_list == []
     compare_recordsets(parent_list,
-                            [{'id': parent1_id, 'labels': ['parent'], 'rel': 'PARENT_OF'},
-                             {'id': parent2_id, 'labels': ['parent'], 'rel': 'PARENT_OF'}
+                            [{'internal_id': parent1_id, 'labels': ['parent'], 'rel': 'PARENT_OF'},
+                             {'internal_id': parent2_id, 'labels': ['parent'], 'rel': 'PARENT_OF'}
                             ]
                       )
 
@@ -584,10 +584,10 @@ def test_get_parents_and_children(db):
     db.link_nodes_by_ids(node_id, child1_id, "PARENT_OF")
 
     (parent_list, child_list) = db.get_parents_and_children(node_id)
-    assert child_list == [{'id': child1_id, 'labels': ['child'], 'rel': 'PARENT_OF'}]
+    assert child_list == [{'internal_id': child1_id, 'labels': ['child'], 'rel': 'PARENT_OF'}]
     compare_recordsets(parent_list,
-                            [{'id': parent1_id, 'labels': ['parent'], 'rel': 'PARENT_OF'},
-                             {'id': parent2_id, 'labels': ['parent'], 'rel': 'PARENT_OF'}
+                            [{'internal_id': parent1_id, 'labels': ['parent'], 'rel': 'PARENT_OF'},
+                             {'internal_id': parent2_id, 'labels': ['parent'], 'rel': 'PARENT_OF'}
                             ]
                       )
 
@@ -596,25 +596,25 @@ def test_get_parents_and_children(db):
 
     (parent_list, child_list) = db.get_parents_and_children(node_id)
     compare_recordsets(child_list,
-                            [{'id': child1_id, 'labels': ['child'], 'rel': 'PARENT_OF'},
-                             {'id': child2_id, 'labels': ['child'], 'rel': 'PARENT_OF'}
+                            [{'internal_id': child1_id, 'labels': ['child'], 'rel': 'PARENT_OF'},
+                             {'internal_id': child2_id, 'labels': ['child'], 'rel': 'PARENT_OF'}
                             ]
                       )
     compare_recordsets(parent_list,
-                            [{'id': parent1_id, 'labels': ['parent'], 'rel': 'PARENT_OF'},
-                             {'id': parent2_id, 'labels': ['parent'], 'rel': 'PARENT_OF'}
+                            [{'internal_id': parent1_id, 'labels': ['parent'], 'rel': 'PARENT_OF'},
+                             {'internal_id': parent2_id, 'labels': ['parent'], 'rel': 'PARENT_OF'}
                             ]
                       )
 
     # Look at the children/parents of a "grandparent"
     result = db.get_parents_and_children(parent1_id)
     assert result == ([],
-                      [{'id': node_id, 'labels': ['mid generation'], 'rel': 'PARENT_OF'}]
+                      [{'internal_id': node_id, 'labels': ['mid generation'], 'rel': 'PARENT_OF'}]
                      )
 
     # Look at the children/parents of a "grandchild"
     result = db.get_parents_and_children(child2_id)
-    assert result == ([{'id': node_id, 'labels': ['mid generation'], 'rel': 'PARENT_OF'}],
+    assert result == ([{'internal_id': node_id, 'labels': ['mid generation'], 'rel': 'PARENT_OF'}],
                       []
                      )
 
