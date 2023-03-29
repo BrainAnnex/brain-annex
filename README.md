@@ -40,40 +40,13 @@ Brain Annex supports both local and remote setup of the web app and the Neo4j da
 
 The database and web app may reside on the same or different machines.
 
-## PART 1 - Set up the Database
+## PART 1 - Neo4j
 
-**Install Neo4j**
+**Set up the Database (and Install Java, as needed)**
 
-All testing is done with *Neo4j version 4.3*, community version.  (Use of
-the enterprise version is NOT required for Brain Annex!)
-
-You may install Neo4j on your computer, or on a virtual machine on the Cloud 
-(we use the excellent pre-made Bitnami images on the Google cloud,
-as well as the inexpensive Oracle cloud);  
-or use a Neo4j hosting service such as [Neo4j Aura](https://neo4j.com/aura/).
-
-If you're just testing, we highly recommend 
-the free and super-easy [Neo4j Sandbox](https://neo4j.com/sandbox/).
-
-To download and install Neo4j on your local machine or server: [link](https://neo4j.com/download-center/#community).
-
-Note: for installations on a local machine, the [Neo4j Desktop](https://neo4j.com/download-center/#desktop) is a very convenient alternative  
-(but be aware that it ties you to a trial copy of the *Enterprise* version of Neo4j!)
+[INSTRUCTIONS](https://brainannex.org/setup)
 
 
-**Install Java, if needed**
-
-If doing your own installation, *Java SE Development Kit 11* is needed.
-(NOT needed if you use the Neo4j Desktop; the pre-made Bitnami images on the Google cloud already includes Java.)
-
-You can check if Java is already installed by issuing `java -version`  
-on your Linux shell or Windows PowerShell or Command Prompt window.
-
-On Ubuntu and other Linux versions, Java may be installed, if needed, with:
-
-    sudo apt install openjdk-11-jre-headless
-
-On Windows, use [this link from Oracle](https://www.oracle.com/java/technologies/downloads/#java11)  (look for the Windows x64 Installer.)
 
 **Start the Neo4j database**
 
