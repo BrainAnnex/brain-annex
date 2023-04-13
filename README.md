@@ -40,77 +40,14 @@ Brain Annex supports both local and remote setup of the web app and the Neo4j da
 
 The database and web app may reside on the same or different machines.
 
-## PART 1 - Set up the Database
+## PART 1 - Neo4j
 
-**Install Neo4j**
+**Set up and start the Database (and Install Java, as needed)**
 
-All testing is done with *Neo4j version 4.3*, community version.  (Use of
-the enterprise version is NOT required for Brain Annex!)
-
-You may install Neo4j on your computer, or on a virtual machine on the Cloud 
-(we use the excellent pre-made Bitnami images on the Google cloud,
-as well as the inexpensive Oracle cloud);  
-or use a Neo4j hosting service such as [Neo4j Aura](https://neo4j.com/aura/).
-
-If you're just testing, we highly recommend 
-the free and super-easy [Neo4j Sandbox](https://neo4j.com/sandbox/).
-
-To download and install Neo4j on your local machine or server: [link](https://neo4j.com/download-center/#community).
-
-Note: for installations on a local machine, the [Neo4j Desktop](https://neo4j.com/download-center/#desktop) is a very convenient alternative  
-(but be aware that it ties you to a trial copy of the *Enterprise* version of Neo4j!)
+[INSTRUCTIONS](https://brainannex.org/setup)
 
 
-**Install Java, if needed**
 
-If doing your own installation, *Java SE Development Kit 11* is needed.
-(NOT needed if you use the Neo4j Desktop; the pre-made Bitnami images on the Google cloud already includes Java.)
-
-You can check if Java is already installed by issuing `java -version`  
-on your Linux shell or Windows PowerShell or Command Prompt window.
-
-On Ubuntu and other Linux versions, Java may be installed, if needed, with:
-
-    sudo apt install openjdk-11-jre-headless
-
-On Windows, use [this link from Oracle](https://www.oracle.com/java/technologies/downloads/#java11)  (look for the Windows x64 Installer.)
-
-**Start the Neo4j database**
-
-If you went the local database route, it's very convenient to use the Neo4j Desktop to stop/start the database.
-
-If you installed Neo4j on a Linux machine, it can typically
-be started with `sudo neo4j start`
-
-If you're using the Bitnami image, it should start automatically;
-but you can also issue `sudo gonit start neo4j`
-
-**Allow remote access to Neo4j (if applicable)**
-
-If remote access is needed (i.e. if the database and the app are on different machines),
-one must open ports 7474, 7473, 7687,  
-and uncomment the line
-
-`#dbms.default_listen_address=0.0.0.0`
-
-in the Neo4j configuration file,  
-typically found in locations such as `/etc/neo4j/neo4j.conf`  
-or (for the Bitnami image) `/opt/bitnami/neo4j/conf/neo4j.conf`
-
-**Test Neo4j access thru its Browser Interface**
-![Neo4j access thru its Browser Interface](BrainAnnex/docs/Login_Neo4j_browser_interface.png)
-
-**Install the Neo4j APOC libraries (optional but highly recommended)**
-
-The Neo4j APOC libraries are currently needed for making a JSON dump of all the Neo4j data,
-or just the schema, using Brain Annex's admin control panel.
-
-If you're using Neo4j locally, with the Neo4j Desktop app, then installing APOC is a just
-a click away, as detailed in the following screenshot:
-
-![Brain Annex Admin page](BrainAnnex/docs/APOC_installation_with_Neo4j_Desktop.png)
-
-If you installed Neo4j on a server, follow these [instructions on installing APOC](https://github.com/neo4j-contrib/neo4j-apoc-procedures#manual-installation-download-latest-release).
 
 ## PART 2 - Set up the Brain Annex web app
 

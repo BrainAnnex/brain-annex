@@ -1,10 +1,12 @@
 """
+By importing this module, the project's root folder gets added to sys.path
+
 A copy of this file should be present in every notebook folder
-that isn't the BrainAnnex project's root folder.
+other than the BrainAnnex project's root folder.
 
 Only needed when JupyterLab isn't started with an option
 that adds the project's root folder to sys.path
-(as done, for example, in the "quick.bat" script in BrainAnnex root folder.)
+(as done, for example, in the "quick.bat" script in BrainAnnex's root folder.)
 
 However, there's no harm in using this module under all circumstances,
 even if the project's root folder is already present in sys.path.
