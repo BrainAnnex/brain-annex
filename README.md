@@ -42,48 +42,12 @@ The database and web app may reside on the same or different machines.
 
 ## PART 1 - Neo4j
 
-**Set up the Database (and Install Java, as needed)**
+**Set up and start the Database (and Install Java, as needed)**
 
 [INSTRUCTIONS](https://brainannex.org/setup)
 
 
 
-**Start the Neo4j database**
-
-If you went the local database route, it's very convenient to use the Neo4j Desktop to stop/start the database.
-
-If you installed Neo4j on a Linux machine, it can typically
-be started with `sudo neo4j start`
-
-If you're using the Bitnami image, it should start automatically;
-but you can also issue `sudo gonit start neo4j`
-
-**Allow remote access to Neo4j (if applicable)**
-
-If remote access is needed (i.e. if the database and the app are on different machines),
-one must open ports 7474, 7473, 7687,  
-and uncomment the line
-
-`#dbms.default_listen_address=0.0.0.0`
-
-in the Neo4j configuration file,  
-typically found in locations such as `/etc/neo4j/neo4j.conf`  
-or (for the Bitnami image) `/opt/bitnami/neo4j/conf/neo4j.conf`
-
-**Test Neo4j access thru its Browser Interface**
-![Neo4j access thru its Browser Interface](BrainAnnex/docs/Login_Neo4j_browser_interface.png)
-
-**Install the Neo4j APOC libraries (optional but highly recommended)**
-
-The Neo4j APOC libraries are currently needed for making a JSON dump of all the Neo4j data,
-or just the schema, using Brain Annex's admin control panel.
-
-If you're using Neo4j locally, with the Neo4j Desktop app, then installing APOC is a just
-a click away, as detailed in the following screenshot:
-
-![Brain Annex Admin page](BrainAnnex/docs/APOC_installation_with_Neo4j_Desktop.png)
-
-If you installed Neo4j on a server, follow these [instructions on installing APOC](https://github.com/neo4j-contrib/neo4j-apoc-procedures#manual-installation-download-latest-release).
 
 ## PART 2 - Set up the Brain Annex web app
 

@@ -10,9 +10,9 @@ import json
 from typing import Union, List
 
 
-class NeoAccess:
+class NeoAccess:    # TODO:  this is now available directly from the Python Package Index (PyPI) repository
     """
-    VERSION 4.0.1   (for Neo 4.x database versions)
+    VERSION 4.0.3   (for Neo 4.x database versions)
 
     High-level class to interface with the Neo4j graph database from Python.
 

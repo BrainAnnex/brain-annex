@@ -1,1 +1,1 @@
-version 5.0.0-beta21_IN_PROGRESS
+version 5.0.0-beta20.2
