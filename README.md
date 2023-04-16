@@ -57,36 +57,18 @@ The database and web app may reside on the same or different machines.
 
 
 
-![Log into Brain Annex](BrainAnnex/docs/BrainAnnex_login.png)
-
 
 
 **Import the Schema**
 
-Go to the "Admin" page of the Brain Annex UI (the layout of this page may be different):
 
-![Brain Annex Admin page](BrainAnnex/docs/JSON_import.png)
 
-Brain Annex is schema-based, and **it's critical that you import the standard schema.**
-Use the **"IMPORT from JSON"** box on that "Admin" page.
 
-For testing, we recommend importing the file `/BrainAnnex/init/Schema_EXAMPLE_plus_root_category.json`, which
-includes various examples of user-added schema.
 
-If you don't want the examples, there's the file `/BrainAnnex/Schema_MINIMAL_plus_root_category.json`, which
-contains everything that is regarded as *fundamental* in a typical Brain Annex installation.
 
-In addition to the Schema, both files contain the ROOT node for the Categories (which is regarded as a data point,
-not part of the Schema.)
 
-At the end of the import operation,
-you should see a message about having imported a certain number of nodes and relationships.
 
-Note - the imported schema may be seen by going to the Neo4j browser interface,
-and issuing the Cypher command:
 
-    MATCH (c1:CLASS)--(c2:CLASS)-[:HAS_PROPERTY]-(p:PROPERTY), (n:BA)
-    RETURN c1, c2, p, n
 
 The following diagram shows about 1/2 of the Schema.  "chem" is an example of a custom Class; the remaining
 Classes are for a typical Brain Annex installation:
