@@ -11,7 +11,9 @@ from home.user_manager import UserManagerNeo4j, User
 
 class Home:
     """
-    Setup, and routing, for all the web pages served by this module
+    Setup, and routing, for all the web pages served by this module.
+
+    This is a STATIC class that doesn't get initialized
     """
 
     # Module-specific parameters (as class variables)
@@ -36,7 +38,7 @@ class Home:
     @classmethod
     def setup(cls, flask_app_obj) -> None:
         """
-        Based on the module-specific class variables, and given a Flask app object,
+        Based on this module-specific class variables, and given a Flask app object,
         instantiate a "Blueprint" object,
         and register:
             the names of folders used for templates and static content
@@ -83,7 +85,7 @@ class Home:
         ##################  START OF ROUTING DEFINITIONS  ##################
 
         # "@" signifies a decorator - a way to wrap a function and modify its behavior
-        @bp.route("/")    # Root  : SET BROWSER TO http://localhost:5000
+        @bp.route("/")    # Root  : SET BROWSER TO http://localhost:5000  or http://IP_ADDRESS:5000
         def index():
             # Serve a top-level page
             template = "index.htm"

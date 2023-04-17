@@ -8,7 +8,6 @@ IMPORTANT: first change the config.ini file as needed
 Note: this main program may also be started from the CLI with the "flask run" command
 """
 
-import os
 from flask import Flask
 from configparser import ConfigParser
 
@@ -90,6 +89,9 @@ else:
 if "SETTINGS" not in config:
     raise Exception("Incorrectly set up configuration file - the following line should be present at the top: [SETTINGS]")
 
+
+# Extract all the values that were set in the configuration file
+
 SETTINGS = config['SETTINGS']
 #print(SETTINGS)                 # EXAMPLE:  <Section: SETTINGS>
 
@@ -147,11 +149,12 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 ### DEFINE THE HIGH-LEVEL ROUTING
 #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
 #   and specify the URL prefixes to use for the various modules
+#   Note that all the classes used here are STATIC classes, that don't get initialized.
 #   TODO: maybe all the various setup() methods could take an optional 2nd arg, a dict,
 #         to pass module-specific data
 #   TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
 
-# The site's home/top-level pages, incl. login
+# The site's home (i.e. top-level) pages, incl. login
 Home.setup(app)
 
 # The navbar
@@ -206,5 +209,5 @@ else:
     # Local deployment.  The web app is started by running this main.py
     debug_mode = True
     print(f" * LOCAL deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
-    app.run(debug=debug_mode, port=PORT_NUMBER)     # CORE of UI : transfer control to the "Flask object"
-    # This  will start a local WSGI server.  Threaded mode is enabled by default
+    app.run(debug=debug_mode, port=PORT_NUMBER) # CORE of UI : transfer control to the "Flask object"
+                                                # This  will start a local WSGI server.  Threaded mode is enabled by default
