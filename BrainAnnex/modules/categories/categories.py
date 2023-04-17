@@ -360,7 +360,7 @@ class Categories:
         :param post_data:   Dictionary with the following keys:
                                 category_id                     To identify the Category to which to add a Subcategory
                                 subcategory_name                The name to give to the new Subcategory
-                                subcategory_remarks (optional)
+                                subcategory_remarks (optional)  A comment field for the new Subcategory
 
         :return:                If successful, an integer with auto-increment "item_id" value of the node just created;
                                 otherwise, an Exception is raised
@@ -385,7 +385,7 @@ class Categories:
             data_dict["remarks"] = subcategory_remarks
 
         return NeoSchema.add_data_point(class_name="Categories",
-                                        data_dict=data_dict, labels="BA",
+                                        data_dict=data_dict, labels=["BA", "Categories"],
                                         connected_to_id=category_id, connected_to_labels="BA",
                                         rel_name="BA_subcategory_of", rel_dir="OUT"
                                         )

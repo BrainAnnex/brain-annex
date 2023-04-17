@@ -131,6 +131,8 @@ class ApiRouting:
     @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
         """
+        TODO: maybe par validation doesn't belong to this API module, which ought to remain thin
+
         Convert into a Python dictionary the given POST data
         (expressed as an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
         while enforcing the optional given list of parameters that must be present.
@@ -138,7 +140,7 @@ class ApiRouting:
 
         EXAMPLE:
                 post_data = request.form
-                post_pars = cls.extract_post_pars(post_data, "name_of_calling_functions")
+                post_pars = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
 
         TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
               Example - int_pars = ['item_id']
@@ -890,15 +892,16 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_subcategory
         
             POST FIELDS:
-                category_id                     To identify the Category to which to add a Subcategory
+                category_id                     To identify the Category to which to add the new Subcategory
                 subcategory_name                The name to give to the new Subcategory
-                subcategory_remarks (optional)
+                subcategory_remarks (optional)  A comment field for the new Subcategory
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('category_id', '12'), ('subcategory_name', 'Astronomy')])
-        
+
             # Create a new Subcategory to a given Category, using the POST data
             try:
+                #post_pars = cls.extract_post_pars(post_data, ["category_id", "subcategory_name"])
                 new_id = Categories.add_subcategory(dict(post_data))
                 return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
