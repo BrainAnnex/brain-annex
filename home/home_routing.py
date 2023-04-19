@@ -29,6 +29,8 @@ class Home:
     #             such as how to load a user from an ID, where to send users when they need to log in, etc."
     login_manager = None                # This get a value assigned by calls to setup()
 
+    config_pars = {}                    # Dict with all the app configuration parameters
+
 
 
     #############################################################
@@ -36,7 +38,7 @@ class Home:
     #############################################################
 
     @classmethod
-    def setup(cls, flask_app_obj) -> None:
+    def setup(cls, flask_app_obj, config_dict) -> None:
         """
         Based on this module-specific class variables, and given a Flask app object,
         instantiate a "Blueprint" object,
@@ -45,8 +47,9 @@ class Home:
             the URL prefix to use
             the functions that will be assigned to the various URL endpoints [NOT USED IN THIS MODULE]
 
-        :param flask_app_obj:	    The Flask app object
-        :return:				    None
+        :param flask_app_obj:	The Flask app object
+        :param config_dict:     Dict with all the app configuration parameters
+        :return:				None
         """
         flask_blueprint = Blueprint(cls.blueprint_name, __name__,
                                     template_folder=cls.template_folder,
@@ -62,6 +65,9 @@ class Home:
 
         # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
         flask_app_obj.register_blueprint(flask_blueprint)       # NOT USED:  url_prefix = cls.url_prefix
+
+        # Save the app configuration parameters in a class variable
+        cls.config_pars = config_dict
 
 
 
@@ -111,7 +117,9 @@ class Home:
             not_yet_used2 = current_app.config['APP_NEO4J_DBASE']
             print(not_yet_used2.credentials)
             """
-            return render_template(template)
+            branding = cls.config_pars.get("BRANDING")
+            #print("BRANDING: " , branding)
+            return render_template(template, branding=branding)
 
 
 

@@ -1,7 +1,13 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters:
+{#  Schema Manager.
+    This pages hosts several Vue components and links,
+    to perform various groups of operations on the Schema.
+    For background info, see:
+        https://julianspolymathexplorations.blogspot.com/2022/11/schema-graph-databases-neo4j.html
+
+    Flask-passed parameters:
         current_page, site_pages,
-        class_list
+        class_list                  List of all classes in the Schema
  #}
 
 <html lang="en">
@@ -43,6 +49,7 @@
 
 <br>
 
+<!-- Vue component to manage the addition of a new Schema -->
 <div class="content-block">
     <div class="content-block-title">New Schema</div>
 
@@ -53,8 +60,10 @@
 </div>
 
 
+
 <br><br>
 
+<!-- Vue component to manage editing an existing Schema -->
 <div class="content-block">
     <div class="content-block-title">Edit Schema</div>
 
@@ -65,8 +74,10 @@
 </div>
 
 
+
 <br><br>
 
+<!-- Link to export the current Schema -->
 <div class="content-block">
     <div class="content-block-title">Schema Export</div>
     <p style="padding:25px">
@@ -75,8 +86,10 @@
 </div>
 
 
+
 <br><br>
 
+<!-- Advice on how to visualize the current Schema -->
 <div class="content-block">
     <div class="content-block-title">Schema Visualization</div>
     <p style="padding:15px">
@@ -87,6 +100,8 @@
 
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+<br><br>
 
 
 

@@ -150,26 +150,29 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
 #   and specify the URL prefixes to use for the various modules
 #   Note that all the classes used here are STATIC classes, that don't get initialized.
-#   TODO: maybe all the various setup() methods could take an optional 2nd arg, a dict,
-#         to pass module-specific data
 #   TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
 
+
+#   TODO: maybe all the various setup() methods could take an optional 2nd arg, a dict,
+#         to pass module-specific data.  Currently being tried out with the Home module...
+config_dict = {"BRANDING": extract_par("BRANDING", SETTINGS)}   # TODO: expand to include all other parameters
+
 # The site's home (i.e. top-level) pages, incl. login
-Home.setup(app)
+Home.setup(app, config_dict)
 
 # The navbar
-Navigation.setup(app)
+Navigation.setup(app)       # TODO: also pass config_dict
 
 # The BrainAnnex-provided UI
 PagesRouting.site_pages = site_pages
-PagesRouting.setup(app)
+PagesRouting.setup(app)     # TODO: also pass config_dict
 
 # The BrainAnnex-provided endpoints
 ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
 ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
-ApiRouting.setup(app)
+ApiRouting.setup(app)       # TODO: also pass config_dict
 
-# Examples of generic pages and API
+# Examples of generic pages and API     # TODO: also pass config_dict
 SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
 SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
 
@@ -207,7 +210,7 @@ if DEPLOYMENT == "REMOTE":
     print(f" * REMOTE deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:PORT_NUMBER_USED_IN_STARTING_UP")
 else:
     # Local deployment.  The web app is started by running this main.py
-    debug_mode = True
+    debug_mode = True   # At least for now, local deployment always enables Flask's debug mode
     print(f" * LOCAL deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
     app.run(debug=debug_mode, port=PORT_NUMBER) # CORE of UI : transfer control to the "Flask object"
                                                 # This  will start a local WSGI server.  Threaded mode is enabled by default

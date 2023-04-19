@@ -116,7 +116,7 @@ class Notes:
         :param unique_words:    A list of strings containing "acceptable", unique words to index
         :return:                None
         """
-        class_db_id = NeoSchema.get_class_neo_id(class_name="Word")
+        class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
 
         #print("unique_words: \n", unique_words)
 

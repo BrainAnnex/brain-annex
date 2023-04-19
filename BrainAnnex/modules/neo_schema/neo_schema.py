@@ -201,7 +201,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_neo_id(cls, class_name: str) -> int:
+    def get_class_internal_id(cls, class_name: str) -> int:
         """
         Returns the Neo4j ID of the Class node with the given name,
         or raise an Exception if not found, or if more than one is found.
@@ -216,10 +216,10 @@ class NeoSchema:
         result = cls.db.get_nodes(match, return_internal_id=True)
 
         if not result:
-            raise Exception(f"NeoSchema.get_class_neo_id(): no Class node named {class_name} was found")
+            raise Exception(f"NeoSchema.get_class_internal_id(): no Class node named `{class_name}` was found")
 
         if len(result) > 1:
-            raise Exception(f"NeoSchema.get_class_neo_id(): more than 1 Class node named {class_name} was found")
+            raise Exception(f"NeoSchema.get_class_internal_id(): more than 1 Class node named `{class_name}` was found")
 
         return result[0]["neo4j_id"]
 
@@ -459,7 +459,7 @@ class NeoSchema:
                                     If the Class doesn't exist, raise an Exception
         """
         if class_neo_id is None:    # Note: class_neo_id might legitimately be zero
-            class_neo_id = cls.get_class_neo_id(class_name)
+            class_neo_id = cls.get_class_internal_id(class_name)
 
         if schema_cache is None:
             class_node_dict = cls.db.get_nodes(match=class_neo_id, single_row=True)
@@ -952,21 +952,25 @@ class NeoSchema:
     def add_properties_to_class(cls, class_internal_id = None,  class_id = None, property_list = None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
-        The properties are assigned an inherent order (an attribute named "index", starting at 1),
+        The properties are given an inherent order (an attribute named "index", starting at 1),
         based on the order they appear in the list.
-        If other Properties already exist, extend the existing numbering.
+        If other Properties already exist, the existing numbering gets extended.
         TODO: Offer a way to change the order of the Properties,
               maybe by first deleting all Properties and then re-adding them
 
-        NOTE: if the Class doesn't already exist, use create_class_with_properties() instead
+        NOTE: if the Class doesn't already exist, use create_class_with_properties() instead;
+              attempting to add properties to an non-existing Class will result in an Exception
 
         :param class_internal_id:   The internal database ID of the Class to which attach the given Properties
                                     (this takes priority over class_id)
         :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
+                                TODO: rename to class_token
+
         :param property_list:   A list of strings with the names of the properties, in the desired order.
                                     Whitespace in any of the names gets stripped out.
                                     If any name is a blank string, an Exception is raised
-        :return:                The number of Properties added (might be zero if the Class doesn't exist)
+                                    If the list is empty, an Exception is raised
+        :return:                The number of Properties added
         """
         assert (class_internal_id is not None) or (class_id is not None), \
             "add_properties_to_class(): class_internal_id and class_id cannot both be None"
@@ -980,6 +984,7 @@ class NeoSchema:
             "add_properties_to_class(): Argument `property_list` in add_properties_to_class() must be a list"
         assert cls.class_id_exists(class_id), \
             f"add_properties_to_class(): No Class with ID {class_id} found in the Schema"
+
 
 
         clean_property_list = [prop.strip() for prop in property_list]
@@ -1556,7 +1561,7 @@ class NeoSchema:
                                     otherwise, an Exception is raised
         """
         if class_internal_id is None:                                # Note: zero could be a valid value
-            class_internal_id = cls.get_class_neo_id(class_name)     # This call will also validate the class name
+            class_internal_id = cls.get_class_internal_id(class_name)     # This call will also validate the class name
 
         if labels is None:
             # If not specified, use the Class name
@@ -1669,7 +1674,7 @@ class NeoSchema:
         if not class_name:
             class_name = cls.get_class_name(schema_id)      # Derive the Class name from its ID
 
-        class_neo_id = cls.get_class_neo_id(class_name)
+        class_neo_id = cls.get_class_internal_id(class_name)
 
         if labels is None:
             # If not specified, use the Class name
@@ -2821,7 +2826,7 @@ class SchemaCache:
 
         NeoSchema.assert_valid_class_name(class_name)
 
-        neo_id = NeoSchema.get_class_neo_id(class_name)
+        neo_id = NeoSchema.get_class_internal_id(class_name)
         #schema_id = NeoSchema.get_class_id(class_name)
 
         # Determine the properties and relationships declared in (allowed by) the Schema
