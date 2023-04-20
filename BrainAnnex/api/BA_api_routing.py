@@ -1,6 +1,6 @@
 """
     API endpoint
-    MIT License.  Copyright (c) 2021-2022 Julian A. West
+    MIT License.  Copyright (c) 2021-2023 Julian A. West
 """
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
@@ -131,6 +131,8 @@ class ApiRouting:
     @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
         """
+        TODO: maybe the parameter validation doesn't belong to this API module, which ought to remain thin
+
         Convert into a Python dictionary the given POST data
         (expressed as an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
         while enforcing the optional given list of parameters that must be present.
@@ -138,7 +140,7 @@ class ApiRouting:
 
         EXAMPLE:
                 post_data = request.form
-                post_pars = cls.extract_post_pars(post_data, "name_of_calling_functions")
+                post_pars = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
 
         TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
               Example - int_pars = ['item_id']
@@ -507,6 +509,38 @@ class ApiRouting:
             print(f"create_new_schema_class() is returning: `{return_value}`")
 
             return return_value
+
+
+        @bp.route('/simple/schema_add_property_to_class', methods=['POST'])
+        @login_required
+        def schema_add_property_to_class() -> str:
+            """
+            Add a new Property to an existing Classes
+
+            POST FIELDS:
+                prop_name
+                class_name
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/simple/schema_add_property_to_class -d
+                        "prop_name=gender&class_name=patient"
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict object
+            #cls.show_post_data(post_data, "schema_add_property_to_class")
+
+            try:
+                class_specs = cls.extract_post_pars(post_data)
+                APIRequestHandler.schema_add_property_to_class_handler(class_specs)
+                return_value = cls.SUCCESS_PREFIX               # Success
+            except Exception as ex:
+                err_status = f"Unable to add the new property. {ex}"
+                return_value = cls.ERROR_PREFIX + err_status    # Failure
+
+            #print(f"schema_add_property_to_class() is returning: `{return_value}`")
+
+            return return_value
+
 
 
 
@@ -890,15 +924,16 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_subcategory
         
             POST FIELDS:
-                category_id                     To identify the Category to which to add a Subcategory
+                category_id                     To identify the Category to which to add the new Subcategory
                 subcategory_name                The name to give to the new Subcategory
-                subcategory_remarks (optional)
+                subcategory_remarks (optional)  A comment field for the new Subcategory
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('category_id', '12'), ('subcategory_name', 'Astronomy')])
-        
+
             # Create a new Subcategory to a given Category, using the POST data
             try:
+                #post_pars = cls.extract_post_pars(post_data, ["category_id", "subcategory_name"])
                 new_id = Categories.add_subcategory(dict(post_data))
                 return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:

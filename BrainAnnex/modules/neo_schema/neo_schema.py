@@ -74,7 +74,7 @@ class NeoSchema:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2022 Julian A. West
+        Copyright (c) 2021-2023 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -169,6 +169,8 @@ class NeoSchema:
         :param name:        Name to give to the new Class
         :param code:        Optional string indicative of the software handler for this Class and its subclasses
         :param schema_type: Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
+                            #TODO: phase out
+
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes
 
@@ -199,7 +201,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_neo_id(cls, class_name: str) -> int:
+    def get_class_internal_id(cls, class_name: str) -> int:
         """
         Returns the Neo4j ID of the Class node with the given name,
         or raise an Exception if not found, or if more than one is found.
@@ -214,10 +216,10 @@ class NeoSchema:
         result = cls.db.get_nodes(match, return_internal_id=True)
 
         if not result:
-            raise Exception(f"NeoSchema.get_class_neo_id(): no Class node named {class_name} was found")
+            raise Exception(f"NeoSchema.get_class_internal_id(): no Class node named `{class_name}` was found")
 
         if len(result) > 1:
-            raise Exception(f"NeoSchema.get_class_neo_id(): more than 1 Class node named {class_name} was found")
+            raise Exception(f"NeoSchema.get_class_internal_id(): more than 1 Class node named `{class_name}` was found")
 
         return result[0]["neo4j_id"]
 
@@ -429,7 +431,7 @@ class NeoSchema:
 
 
     @classmethod
-    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:
+    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:    #TODO: phase out
         """
 
         :param class_internal_id:   The internal ID of a Schema Class node
@@ -457,7 +459,7 @@ class NeoSchema:
                                     If the Class doesn't exist, raise an Exception
         """
         if class_neo_id is None:    # Note: class_neo_id might legitimately be zero
-            class_neo_id = cls.get_class_neo_id(class_name)
+            class_neo_id = cls.get_class_internal_id(class_name)
 
         if schema_cache is None:
             class_node_dict = cls.db.get_nodes(match=class_neo_id, single_row=True)
@@ -950,21 +952,25 @@ class NeoSchema:
     def add_properties_to_class(cls, class_internal_id = None,  class_id = None, property_list = None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
-        The properties are assigned an inherent order (an attribute named "index", starting at 1),
+        The properties are given an inherent order (an attribute named "index", starting at 1),
         based on the order they appear in the list.
-        If other Properties already exist, extend the existing numbering.
+        If other Properties already exist, the existing numbering gets extended.
         TODO: Offer a way to change the order of the Properties,
               maybe by first deleting all Properties and then re-adding them
 
-        NOTE: if the Class doesn't already exist, use create_class_with_properties() instead
+        NOTE: if the Class doesn't already exist, use create_class_with_properties() instead;
+              attempting to add properties to an non-existing Class will result in an Exception
 
         :param class_internal_id:   The internal database ID of the Class to which attach the given Properties
                                     (this takes priority over class_id)
         :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
+                                TODO: rename to class_token
+
         :param property_list:   A list of strings with the names of the properties, in the desired order.
                                     Whitespace in any of the names gets stripped out.
                                     If any name is a blank string, an Exception is raised
-        :return:                The number of Properties added (might be zero if the Class doesn't exist)
+                                    If the list is empty, an Exception is raised
+        :return:                The number of Properties added
         """
         assert (class_internal_id is not None) or (class_id is not None), \
             "add_properties_to_class(): class_internal_id and class_id cannot both be None"
@@ -978,6 +984,7 @@ class NeoSchema:
             "add_properties_to_class(): Argument `property_list` in add_properties_to_class() must be a list"
         assert cls.class_id_exists(class_id), \
             f"add_properties_to_class(): No Class with ID {class_id} found in the Schema"
+
 
 
         clean_property_list = [prop.strip() for prop in property_list]
@@ -1045,7 +1052,7 @@ class NeoSchema:
         :param class_name:      String with name to assign to the new class
         :param property_list:   List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            Optional string indicative of the software handler for this Class and its subclasses
-        :param schema_type      Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
+        :param schema_type:     Either "L" (Lenient) or "S" (Strict).      #TODO: phase out
         :param class_to_link_to If this name is specified, and a link_to_name (below) is also specified,
                                     then create an OUTBOUND relationship from the newly-created Class
                                     to this existing Class
@@ -1288,7 +1295,7 @@ class NeoSchema:
 
         :return:                A possibly pared-down version of the requested_props dictionary
         """
-        if not cls.is_strict_class(class_neo_id, schema_cache=schema_cache):
+        if not cls.is_strict_class(class_neo_id, schema_cache=schema_cache):    #TODO: phase out
             return requested_props      # Any properties are allowed if the Class isn't strict
 
 
@@ -1497,7 +1504,9 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_with_links(cls, class_name = None, class_neo_id = None, properties = None, labels = None, links = None,
+    def add_data_point_with_links(cls, class_name = None, class_internal_id = None,
+                                  properties = None, labels = None,
+                                  links = None,
                                   assign_item_id=False, new_item_id=None) -> int:
         """
         This is NeoSchema's counterpart of NeoAccess.create_node_with_links()
@@ -1524,32 +1533,35 @@ class NeoSchema:
 
         :param class_name:  The name of the Class that this new data point is an instance of.
                                 Also use to set a label on the new node, if labels isn't specified
-        :param class_neo_id: OPTIONAL alternative to class_name.  If both specified,
-                                class_neo_id prevails
+        :param class_internal_id: OPTIONAL alternative to class_name.  If both specified,
+                                class_internal_id prevails
         :param properties:  An optional dictionary with the properties of the new data point.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:      OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
-                                if not specified, use the Class name
+                                if not specified, use the Class name.  TODO: ALWAYS include the Class name
         :param links:       OPTIONAL list of dicts identifying existing nodes,
                                 and specifying the name, direction and optional properties
                                 to give to the links connecting to them;
                                 use None, or an empty list, to indicate if there aren't any
                                 Each dict contains the following keys:
-                                    "internal_id"        REQUIRED - to identify an existing node
+                                    "internal_id"   REQUIRED - to identify an existing node
                                     "rel_name"      REQUIRED - the name to give to the link
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
 
         :param assign_item_id:  If True, the new node is given an extra attribute named "item_id",
-                                    with a unique auto-increment value, as well an extra attribute named "schema_code"
+                                    with a unique auto-increment value, as well an extra attribute named "schema_code".
+                                    Default is False
+                                    TODO: rename to assign_token
         :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
                                     If new_item_id is provided, then assign_item_id is automatically made True
+                                    TODO: rename to new_token
 
-        :return:                If successful, an integer with the Neo4j ID of the node just created;
+        :return:                If successful, an integer with the internal database ID of the node just created;
                                     otherwise, an Exception is raised
         """
-        if class_neo_id is None:                                # Note: zero could be a valid value
-            class_neo_id = cls.get_class_neo_id(class_name)     # This call will also validate the class name
+        if class_internal_id is None:                                # Note: zero could be a valid value
+            class_internal_id = cls.get_class_internal_id(class_name)     # This call will also validate the class name
 
         if labels is None:
             # If not specified, use the Class name
@@ -1565,7 +1577,7 @@ class NeoSchema:
         assert links is None or type(links) == list, \
             f"NeoAccess.add_data_point_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
 
-        if not cls.allows_data_nodes(class_neo_id=class_neo_id):
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
             raise Exception(f"NeoSchema.add_data_point_with_links(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
         # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
@@ -1588,7 +1600,7 @@ class NeoSchema:
 
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node and, possible, also relationships to another data nodes
-        link_to_schema_class = {"internal_id": class_neo_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
+        link_to_schema_class = {"internal_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
         if links:
             links.append(link_to_schema_class)
         else:
@@ -1662,7 +1674,7 @@ class NeoSchema:
         if not class_name:
             class_name = cls.get_class_name(schema_id)      # Derive the Class name from its ID
 
-        class_neo_id = cls.get_class_neo_id(class_name)
+        class_neo_id = cls.get_class_internal_id(class_name)
 
         if labels is None:
             # If not specified, use the Class name
@@ -1757,7 +1769,7 @@ class NeoSchema:
                                 TODO: a better name might be "properties"
                                     EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:          String or list of strings with label(s) to assign to the new data node;
-                                    if not specified, use the Class name
+                                    if not specified, use the Class name.  TODO: the Class name ought to ALWAYS be added
 
         :param connected_to_id: Int or None.  To optionally specify another (already existing) DATA node
                                         to connect the new node to, specified by its item_id.
@@ -2541,7 +2553,7 @@ class NeoSchema:
                             for child in children_info]
             # Note: a Neo4j ID is returned by the next call
             #return cls.add_data_point_with_links(class_name=class_name,
-            return cls.add_data_point_with_links(class_neo_id=cached_data['neo_id'],
+            return cls.add_data_point_with_links(class_internal_id=cached_data['neo_id'],
                                                  labels=class_name,
                                                  properties=node_properties,
                                                  links=links,
@@ -2814,7 +2826,7 @@ class SchemaCache:
 
         NeoSchema.assert_valid_class_name(class_name)
 
-        neo_id = NeoSchema.get_class_neo_id(class_name)
+        neo_id = NeoSchema.get_class_internal_id(class_name)
         #schema_id = NeoSchema.get_class_id(class_name)
 
         # Determine the properties and relationships declared in (allowed by) the Schema

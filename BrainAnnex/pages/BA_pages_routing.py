@@ -101,8 +101,13 @@ class PagesRouting:
             # EXAMPLE : [{'id': 3, 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
             if not category_info:
-                # TODO: add a special page to show that
-                return f"<b>No such Category ID ({category_id}) exists!</b> Maybe that category got deleted? <a href='/BA/pages/viewer/1'>Go to top (HOME) category</a>"
+                # TODO: add a special page to show the error messages
+                if category_id == 1:    # The home category doesn't exist yet; maybe the Schema hasn't been imported
+                    return f"<b>No Home Category found!</b> Maybe the Schema hasn't been imported yet? " \
+                           f"<a href='/BA/pages/admin'>Go to the Admin page</a>"
+                else:                   # Requesting a (non-home) Category that doesn't exist
+                    return f"<b>No such Category ID ({category_id}) exists!</b> Maybe that category got deleted? " \
+                           f"<a href='/BA/pages/viewer/1'>Go to top (HOME) category</a>"
 
             category_name = category_info.get("name", "[No name]")
             category_remarks = category_info.get("remarks", "")

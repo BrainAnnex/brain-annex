@@ -82,14 +82,14 @@ def test_create_class(db):
 def test_get_class_neo_id(db):
     db.empty_dbase()
     A_neo_id, _ = NeoSchema.create_class("A")
-    assert NeoSchema.get_class_neo_id("A") == A_neo_id
+    assert NeoSchema.get_class_internal_id("A") == A_neo_id
 
     B_neo_id, _ = NeoSchema.create_class("B")
-    assert NeoSchema.get_class_neo_id("A") == A_neo_id
-    assert NeoSchema.get_class_neo_id("B") == B_neo_id
+    assert NeoSchema.get_class_internal_id("A") == A_neo_id
+    assert NeoSchema.get_class_internal_id("B") == B_neo_id
 
     with pytest.raises(Exception):
-        assert NeoSchema.get_class_neo_id("NON-EXISTENT CLASS")
+        assert NeoSchema.get_class_internal_id("NON-EXISTENT CLASS")
 
 
 
@@ -404,7 +404,7 @@ def test_get_class_properties_fast(db):
         NeoSchema.create_class_with_properties(111)    # Invalid class name
 
     NeoSchema.create_class_with_properties("My first class", property_list=["A", "B", "C"])
-    neo_id = NeoSchema.get_class_neo_id("My first class")
+    neo_id = NeoSchema.get_class_internal_id("My first class")
     props = NeoSchema.get_class_properties_fast(neo_id)
     assert props == ["A", "B", "C"]
 
@@ -1516,7 +1516,7 @@ def test_cache_class_data(db):
 
     assert internal['My first class'] == {'neo_id': neo_id, 'properties': [], 'out_links': [], 'out_neighbors': {}}
 
-    patient_neo_id = NeoSchema.get_class_neo_id("patient")
+    patient_neo_id = NeoSchema.get_class_internal_id("patient")
     patient_schema_id = schema_info["patient"]
     assert internal['patient']['neo_id'] == patient_neo_id
     #assert internal['patient']['schema_id'] == patient_schema_id
@@ -1524,7 +1524,7 @@ def test_cache_class_data(db):
     assert compare_unordered_lists(internal['patient']['out_links'] , ['HAS_RESULT', 'IS_ATTENDED_BY'])
     assert internal['patient']['out_neighbors'] == {'HAS_RESULT': 'result', 'IS_ATTENDED_BY': 'doctor'}
 
-    doctor_neo_id = NeoSchema.get_class_neo_id("doctor")
+    doctor_neo_id = NeoSchema.get_class_internal_id("doctor")
     doctor_schema_id = schema_info["doctor"]
     assert internal['doctor']['neo_id'] == doctor_neo_id
     #assert internal['doctor']['schema_id'] == doctor_schema_id
@@ -1532,7 +1532,7 @@ def test_cache_class_data(db):
     assert internal['doctor']['out_links'] == []
     assert internal['doctor']['out_neighbors'] == {}
 
-    result_neo_id = NeoSchema.get_class_neo_id("result")
+    result_neo_id = NeoSchema.get_class_internal_id("result")
     result_schema_id = schema_info["result"]
     assert internal['result']['neo_id'] == result_neo_id
     #assert internal['result']['schema_id'] == result_schema_id
@@ -1572,7 +1572,7 @@ def test_get_class_cached_data(db):
            {'neo_id': neo_id, 'properties': [], 'out_links': [], 'out_neighbors': {}}
 
     cached_data = cache.get_class_cached_data('patient')
-    patient_neo_id = NeoSchema.get_class_neo_id("patient")
+    patient_neo_id = NeoSchema.get_class_internal_id("patient")
     patient_schema_id = schema_info["patient"]
     assert cached_data['neo_id'] == patient_neo_id
     #assert cached_data['schema_id'] == patient_schema_id
@@ -1581,7 +1581,7 @@ def test_get_class_cached_data(db):
     assert cached_data['out_neighbors'] == {'HAS_RESULT': 'result', 'IS_ATTENDED_BY': 'doctor'}
 
     cached_data = cache.get_class_cached_data('doctor')
-    doctor_neo_id = NeoSchema.get_class_neo_id("doctor")
+    doctor_neo_id = NeoSchema.get_class_internal_id("doctor")
     doctor_schema_id = schema_info["doctor"]
     assert cached_data['neo_id'] == doctor_neo_id
     #assert cached_data['schema_id'] == doctor_schema_id
@@ -1590,7 +1590,7 @@ def test_get_class_cached_data(db):
     assert cached_data['out_neighbors'] == {}
 
     cached_data = cache.get_class_cached_data('result')
-    result_neo_id = NeoSchema.get_class_neo_id("result")
+    result_neo_id = NeoSchema.get_class_internal_id("result")
     result_schema_id = schema_info["result"]
     assert cached_data['neo_id'] == result_neo_id
     #assert cached_data['schema_id'] == result_schema_id

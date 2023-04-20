@@ -16,7 +16,7 @@ from datetime import datetime
 
 
 """
-    MIT License.  Copyright (c) 2021-2022 Julian A. West
+    MIT License.  Copyright (c) 2021-2023 Julian A. West
 """
 
 
@@ -107,6 +107,39 @@ class APIRequestHandler:
         except Exception:
             return s
 
+
+
+    @classmethod
+    def experimental_par_dict_cleaner(cls, data_dict, required_par_list=None, int_list={}) -> dict:
+        """
+        NOT IN CURRENT USE YET
+        TODO: test, and start using
+        "Cleaner" for general dictionaries of parameters
+
+        :param data_dict:           A generic dictionary of parameters
+        :param required_par_list:   List of names of keys whose presence is required
+        :param int_list:            List of names of keys whose values need to be integers
+        :return:
+        """
+        if required_par_list:
+            for par in required_par_list:
+                assert par in data_dict, f"The expected parameter `{par}` is missing from the data"
+
+
+        for key, val in data_dict.items():
+
+            if val in int_list:
+                try:
+                    val = int(val)
+                except Exception:
+                    raise Exception(f"The passed parameter `{key}` is not an integer as expected; its value ({val} is of type {type(val)}")
+
+            elif type(val) == str:
+                val = val.strip()
+
+            data_dict[key] = val
+
+        return data_dict
 
 
 
@@ -217,6 +250,38 @@ class APIRequestHandler:
         from_class_id = NeoSchema.get_class_id(from_class_name)
         to_class_id = NeoSchema.get_class_id(to_class_name)
         NeoSchema.create_class_relationship(from_id=from_class_id, to_id=to_class_id, rel_name=rel_name)
+
+
+
+    @classmethod
+    def schema_add_property_to_class_handler(cls, specs_dict: dict) -> None:
+        """
+        Add a new Property to an existing Classes
+
+        In case of error, an Exception is raised.
+
+        :param specs_dict: A dictionary with the following
+                DICTIONARY KEYS:
+                    prop_name       (any leading/trailing blanks are ignored)
+                    class_name      (any leading/trailing blanks are ignored)
+
+        :return: None
+        """
+        prop_name = specs_dict.get("prop_name")
+        if not prop_name:
+            raise Exception("The expected parameter `prop_name` is missing from the data")
+
+
+        class_name = specs_dict.get("class_name")
+        if not class_name:
+            raise Exception("The expected parameter `class_name` is missing from the data")
+
+
+        # Locate the internal ID of the Class node
+        class_internal_id = NeoSchema.get_class_internal_id(class_name.strip())
+        number_prop_added = NeoSchema.add_properties_to_class(class_internal_id = class_internal_id, property_list = [prop_name])
+        if number_prop_added != 1:
+            raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}` (internal ID {class_internal_id})")
 
 
 

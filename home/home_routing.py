@@ -11,7 +11,9 @@ from home.user_manager import UserManagerNeo4j, User
 
 class Home:
     """
-    Setup, and routing, for all the web pages served by this module
+    Setup, and routing, for all the web pages served by this module.
+
+    This is a STATIC class that doesn't get initialized
     """
 
     # Module-specific parameters (as class variables)
@@ -27,6 +29,8 @@ class Home:
     #             such as how to load a user from an ID, where to send users when they need to log in, etc."
     login_manager = None                # This get a value assigned by calls to setup()
 
+    config_pars = {}                    # Dict with all the app configuration parameters
+
 
 
     #############################################################
@@ -34,17 +38,18 @@ class Home:
     #############################################################
 
     @classmethod
-    def setup(cls, flask_app_obj) -> None:
+    def setup(cls, flask_app_obj, config_dict) -> None:
         """
-        Based on the module-specific class variables, and given a Flask app object,
+        Based on this module-specific class variables, and given a Flask app object,
         instantiate a "Blueprint" object,
         and register:
             the names of folders used for templates and static content
             the URL prefix to use
             the functions that will be assigned to the various URL endpoints [NOT USED IN THIS MODULE]
 
-        :param flask_app_obj:	    The Flask app object
-        :return:				    None
+        :param flask_app_obj:	The Flask app object
+        :param config_dict:     Dict with all the app configuration parameters
+        :return:				None
         """
         flask_blueprint = Blueprint(cls.blueprint_name, __name__,
                                     template_folder=cls.template_folder,
@@ -60,6 +65,9 @@ class Home:
 
         # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
         flask_app_obj.register_blueprint(flask_blueprint)       # NOT USED:  url_prefix = cls.url_prefix
+
+        # Save the app configuration parameters in a class variable
+        cls.config_pars = config_dict
 
 
 
@@ -83,7 +91,7 @@ class Home:
         ##################  START OF ROUTING DEFINITIONS  ##################
 
         # "@" signifies a decorator - a way to wrap a function and modify its behavior
-        @bp.route("/")    # Root  : SET BROWSER TO http://localhost:5000
+        @bp.route("/")    # Root  : SET BROWSER TO http://localhost:5000  or http://IP_ADDRESS:5000
         def index():
             # Serve a top-level page
             template = "index.htm"
@@ -109,7 +117,9 @@ class Home:
             not_yet_used2 = current_app.config['APP_NEO4J_DBASE']
             print(not_yet_used2.credentials)
             """
-            return render_template(template)
+            branding = cls.config_pars.get("BRANDING")
+            #print("BRANDING: " , branding)
+            return render_template(template, branding=branding)
 
 
 
