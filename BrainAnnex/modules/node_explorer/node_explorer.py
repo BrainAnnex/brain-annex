@@ -5,11 +5,15 @@ class NodeExplorer:
     """
     A largely experimental library to deal with management and visualization of data nodes
     """
-    def __init__(self):
-        self.neo = neo_access.NeoAccess()
+
+    # The "db" property gets set by InitializeBrainAnnex.set_dbase()
+
+    db = None       # Object of class "NeoAccess".  MUST be set before using this class!  
+    
 
 
 
+    @classmethod
     def example_node_set(self) -> ([]):
         """
         Provide a hardwired example dataset
@@ -30,7 +34,8 @@ class NodeExplorer:
 
 
 
-    def all_nodes_by_label(self, label: str) -> tuple:
+    @classmethod
+    def all_nodes_by_label(cls,label: str) -> tuple:
         """
         Take the union set of all the attributes of the nodes with the given label.
 
@@ -45,7 +50,7 @@ class NodeExplorer:
         :param label:   A Neo4j label
         :return:        A 6-tuple containing (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts)
         """
-        db = self.neo
+        db = cls.db
         # Retrieve ALL nodes with the specified label
         match = db.match(labels=label)
         recordset = db.get_nodes(match=match, return_internal_id=True, return_labels=True)
@@ -102,14 +107,14 @@ class NodeExplorer:
             outbound_headers = outbound_headers | node_outbound_headers     # Set Union
 
             # Extract inbound relationship data
-            node_inbound_labels = self._extract_relationship_data(parent_list)
+            node_inbound_labels = cls._extract_relationship_data(parent_list)
             print("Inbound data for individual node:", node_inbound_labels) # EXAMPLE: {'HAS_RACE': [['Subject', 233], ['Subject', 236], ['Subject', 225]]}
             # Accumulate for all nodes
             inbound_data.append(node_inbound_labels)
 
 
             # Extract outbound relationship data
-            node_outbound_labels = self._extract_relationship_data(child_list)
+            node_outbound_labels = cls._extract_relationship_data(child_list)
             print("Outbound data for individual node:", node_outbound_labels) # EXAMPLE: {'FROM_DATA': [['Source Data Row', 93], ['Source Data Row', 106]]}
             # Accumulate for all nodes
             outbound_data.append(node_outbound_labels)
@@ -119,10 +124,10 @@ class NodeExplorer:
         #print("Overall Outbound data:\n", outbound_data)
 
         # Process Inbound data
-        inbound_counts = self._extract_relationship_counts(inbound_data, inbound_headers)
+        inbound_counts = cls._extract_relationship_counts(inbound_data, inbound_headers)
 
         # Process Outbound data
-        outbound_counts = self._extract_relationship_counts(outbound_data, outbound_headers)
+        outbound_counts = cls._extract_relationship_counts(outbound_data, outbound_headers)
 
         """
         # Example, for a dataset with 4 nodes:
@@ -137,7 +142,8 @@ class NodeExplorer:
 
 
 
-    def _extract_relationship_data(self, source_list) -> {}:
+    @classmethod
+    def _extract_relationship_data(cls,source_list) -> {}:
         """
         Extract relationship data (either Inbound or Outbound) for a single node
 
@@ -170,7 +176,8 @@ class NodeExplorer:
 
 
 
-    def _extract_relationship_counts(self, relationship_data, relationship_headers) -> []:
+    @classmethod
+    def _extract_relationship_counts(cls,relationship_data, relationship_headers) -> []:
         """
         Process the relationship data (inbound or outbound) for a node, to create a list of counts - in the
         same order as the relationship headers
@@ -208,7 +215,8 @@ class NodeExplorer:
 
 
 
-    def export_experimental(self):
+    @classmethod
+    def export_experimental(cls):
         """
         TENTATIVE JSON FORMAT for export/import:
 
@@ -248,7 +256,7 @@ class NodeExplorer:
 
         node_id = 1 # TODO: hardwired for testing
 
-        (parent_list, child_list) = self.neo.get_parents_and_children(node_id)
+        (parent_list, child_list) = cls.db.get_parents_and_children(node_id)
         # EXAMPLE of individual items in either parent_list or child_list:
         #       {'internal_id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
 
@@ -257,7 +265,8 @@ class NodeExplorer:
     ############################   NEW EXPERIMENTAL STUFF   ############################
 
 
-    def column_based_results(self, recordset: [{}], use_for_missing=None, row_defining_keys=None):
+    @classmethod
+    def column_based_results(cls,recordset: [{}], use_for_missing=None, row_defining_keys=None):
         """
         Take a row-based Neo4j recordset (for example, as returned by get_nodes),
         and turn it into a column-based one.
@@ -320,19 +329,21 @@ class NodeExplorer:
 
 
 
-    def all_nodes_by_label_NEW(self, label: str) -> {}:
+    @classmethod
+    def all_nodes_by_label_NEW(cls,label: str) -> {}:
         """
         Retrieve all nodes with the specified label, and prepare the data for tabular presentation by the front end.
 
         :param label:   A string with a Neo4j label
         :return:
         """
-        db = self.neo
-        # TODO: Retrieve ALL nodes with the specified label, and pass the results to self.serialize_nodes()
+        db = cls.db
+        # TODO: Retrieve ALL nodes with the specified label, and pass the results to cls.serialize_nodes()
 
 
 
-    def serialize_nodes(self, node_list) -> {}:
+    @classmethod
+    def serialize_nodes(cls,node_list) -> {}:
         """
         Given the specified nodes, and prepare the data for tabular presentation by the front end.
         Create and return a dictionary meant for direct use by Flask, or to be turned into a JSON string.
@@ -432,6 +443,7 @@ class NodeExplorer:
                     }
 
         return all_data
+
 
 ##################################   END OF CLASS   ###########################
 

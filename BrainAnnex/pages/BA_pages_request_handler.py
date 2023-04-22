@@ -15,9 +15,9 @@ class PagesRequestHandler:
 
     Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
-    # The "db" and several other properties get set by InitializeBrainAnnex
+    # The "db" property gets set by InitializeBrainAnnex.set_dbase()
 
-    db = None       # MUST be set before using this class!  NeoAccess" object
+    db = None       # Object of class "NeoAccess".  MUST be set before using this class!
 
 
 
