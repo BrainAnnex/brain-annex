@@ -2,15 +2,32 @@
 ####  WARNING : the database will get erased!!!
 
 import pytest
-from BrainAnnex.modules.neo_access import neo_access
+from neoaccess import neoaccess as neo_access
+
 
 
 
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
+    '''
+    NEO_ACCESS_ROOT = "D:\\Docs\\- MY CODE\\Brain Annex\\NeoAccess-4.1.0"     # No final slash needed
+    sys.path.append(NEO_ACCESS_ROOT)   # sys.path.append("D:\\Docs\\- MY CODE\\Brain Annex\\NeoAccess-4.1.0\\src")
+    print("\n***********Sys path is: ", sys.path)
+    from src.neoaccess import neoaccess as neo_access   # Don't worry about the PyCharm error!
+
+    neo_obj = neo_access.NeoAccess(debug=False)
+    '''
+
     neo_obj = neo_access.NeoAccess(debug=False)
     yield neo_obj
+
+
+
+def test_experimental(db):
+    result = db.experimental(5)
+    print(result)
+    assert result == 25
 
 
 
