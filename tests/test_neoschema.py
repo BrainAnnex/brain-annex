@@ -3,7 +3,8 @@
 
 import pytest
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists
-from BrainAnnex.modules.neo_access import neo_access
+from neoaccess import NeoAccess
+#import neoaccess
 from BrainAnnex.modules.utilities.comparisons import compare_recordsets
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, SchemaCacheExperimental
 
@@ -11,7 +12,7 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, Sch
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(debug=False)
+    neo_obj = NeoAccess(debug=False)
     NeoSchema.set_database(neo_obj)
     yield neo_obj
 

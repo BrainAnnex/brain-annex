@@ -2,7 +2,7 @@
 # in the environment variables NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD
 
 import os
-from BrainAnnex.modules.neo_access.neo_access import NeoAccess
+from neoaccess import NeoAccess
 
 print("About to test the database connection, using the credentials STORED in the environment variables NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD...\n")
 

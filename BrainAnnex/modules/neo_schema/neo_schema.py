@@ -1,5 +1,6 @@
 from typing import Union, List
-from BrainAnnex.modules.neo_access.neo_access import CypherUtils
+#from BrainAnnex.modules.neo_access.neo_access import CypherUtils
+from neoaccess.cypher_utils import CypherUtils
 import json
 
 

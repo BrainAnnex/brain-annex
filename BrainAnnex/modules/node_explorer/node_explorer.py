@@ -1,4 +1,3 @@
-from BrainAnnex.modules.neo_access import neo_access
 
 
 class NodeExplorer:
