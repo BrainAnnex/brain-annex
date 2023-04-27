@@ -306,8 +306,7 @@ class PagesRouting:
 
             template = "nodes_viewer.htm"
 
-            ne_obj = NodeExplorer()
-            node_list = ne_obj.serialize_nodes(None)
+            node_list = NodeExplorer.serialize_nodes(None)
             node_list_json = json.dumps(node_list)
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
@@ -340,8 +339,9 @@ class PagesRouting:
 
             label_list = PagesRequestHandler.get_node_labels()
             return "TEMPORARILY DISABLED"
-            ne_obj = NodeExplorer()     # TODO: fix infinite loop in print statements
-            (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = ne_obj.all_nodes_by_label(label)
+            # TODO: fix infinite loop in print statements
+            (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = \
+                NodeExplorer.all_nodes_by_label(label)
 
             return render_template(template, current_page="node", site_pages=cls.site_pages,   # Maybe it should be current_page=request.path
                                    label_list = label_list,

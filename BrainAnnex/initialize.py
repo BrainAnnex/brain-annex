@@ -4,6 +4,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.categories.categories import Collections
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
+from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from home.user_manager import UserManagerNeo4j
 
 
@@ -14,12 +15,13 @@ class InitializeBrainAnnex:
     """
 
     @classmethod
-    def set_dbase(cls, db_handle):
+    def set_dbase(cls, db_handle) -> None:
         """
-        Initialize various static classes that need the database object
+        Initialize various static classes that need the "NeoAccess" database object
         (to avoid multiple dbase connections)
+
         :param db_handle:
-        :return:
+        :return:            None
         """
         PagesRequestHandler.db = db_handle
         APIRequestHandler.db = db_handle
@@ -27,6 +29,7 @@ class InitializeBrainAnnex:
         Collections.db = db_handle
         NeoSchema.db = db_handle
         UserManagerNeo4j.db = db_handle
+        NodeExplorer.db = db_handle
 
 
 

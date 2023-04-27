@@ -3,7 +3,8 @@
 
 import pytest
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists
-from BrainAnnex.modules.neo_access import neo_access
+from neoaccess import NeoAccess
+#import neoaccess
 from BrainAnnex.modules.utilities.comparisons import compare_recordsets
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, SchemaCacheExperimental
 
@@ -11,7 +12,7 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, Sch
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(debug=False)
+    neo_obj = NeoAccess(debug=False)
     NeoSchema.set_database(neo_obj)
     yield neo_obj
 
@@ -738,7 +739,7 @@ def test_add_data_point_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
 
 
     with pytest.raises(Exception):
@@ -762,7 +763,7 @@ def test_add_data_point_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
 
 
     # Successfully adding a new (2nd) data point
@@ -781,7 +782,7 @@ def test_add_data_point_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'white'}]]   # This time the properties got set
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'white'}]]   # This time the properties got set
 
 
     # Again expand the allowed class properties
@@ -808,7 +809,7 @@ def test_add_data_point_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red'}]]   # The "color" got set, while the "make" got dropped
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red'}]]   # The "color" got set, while the "make" got dropped
 
 
     # Successfully adding a 4th data point
@@ -826,7 +827,7 @@ def test_add_data_point_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red', 'year': 2000}]]
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red', 'year': 2000}]]
     # The "color" and "year" got set, while the "make" got dropped.  We can have 2 red cars because they differ in the other attributes
 
 
@@ -862,7 +863,7 @@ def test_add_data_point_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red', 'mileage': 12000}]]
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red', 'mileage': 12000}]]
     # All properties got set
 
 
@@ -961,7 +962,7 @@ def test_add_data_point_new(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
 
 
     with pytest.raises(Exception):
@@ -985,7 +986,7 @@ def test_add_data_point_new(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
 
 
     # Successfully adding a 3rd data point
@@ -1004,7 +1005,7 @@ def test_add_data_point_new(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'white'}]]   # This time the properties got set
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'white'}]]   # This time the properties got set
 
 
     # Again expand the allowed class properties
@@ -1031,7 +1032,7 @@ def test_add_data_point_new(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red'}]]   # The "color" got set, while the "make" got dropped
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red'}]]   # The "color" got set, while the "make" got dropped
 
 
     # Successfully adding a 5th data point
@@ -1049,7 +1050,7 @@ def test_add_data_point_new(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'blue', 'year': 2000}]]
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'blue', 'year': 2000}]]
     # The "color" and "year" got set, while the "make" got dropped
 
 
@@ -1068,7 +1069,7 @@ def test_add_data_point_new(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'neo4j_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'green', 'year': 2022}]]
+    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'green', 'year': 2022}]]
     # All properties got set
 
 

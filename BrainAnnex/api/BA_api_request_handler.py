@@ -34,9 +34,9 @@ class APIRequestHandler:
 
     Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
-    # The "db" and several other properties get set by InitializeBrainAnnex
+    # The "db" and several other properties get set by InitializeBrainAnnex.set_dbase()
 
-    db = None           # MUST be set before using this class!  NeoAccess" object
+    db = None           # Object of class "NeoAccess".  MUST be set before using this class!
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored
                         # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
@@ -104,7 +104,7 @@ class APIRequestHandler:
         """
         try:
             return int(s)
-        except Exception:
+        except ValueError:
             return s
 
 
@@ -856,7 +856,7 @@ class APIRequestHandler:
             return f"File I/O failed. {return_link}"
 
         try:
-            details = cls.db.import_json_dump(file_contents)
+            details = cls.db.import_json_dump(file_contents)    # THE ACTUAL IMPORT TAKES PLACE HERE
         except Exception as ex:
             return f"Import of JSON data failed: {ex}. {return_link}"
 

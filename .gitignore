@@ -128,7 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-/.idea
+# PyCharm files
+.idea/
 
 # Brain Annex - specific
 /BrainAnnex/modules/utilities/unused.py

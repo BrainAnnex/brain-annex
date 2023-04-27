@@ -1,5 +1,5 @@
 import pytest
-from BrainAnnex.modules.neo_access import neo_access
+from neoaccess import NeoAccess
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.categories.categories import Categories
@@ -13,7 +13,7 @@ MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/me
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(debug=True)
+    neo_obj = NeoAccess(debug=True)
     APIRequestHandler.db = neo_obj
     NeoSchema.set_database(neo_obj)
     yield neo_obj
