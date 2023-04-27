@@ -1,1 +1,1 @@
-venv\Scripts\python.exe -m pip install -e ..\NeoAccess-4.1.0
+venv\Scripts\python.exe -m pip install -e ..\NeoAccess

@@ -1,5 +1,4 @@
 from typing import Union, List
-#from BrainAnnex.modules.neo_access.neo_access import CypherUtils
 from neoaccess.cypher_utils import CypherUtils
 import json
 
@@ -222,7 +221,7 @@ class NeoSchema:
         if len(result) > 1:
             raise Exception(f"NeoSchema.get_class_internal_id(): more than 1 Class node named `{class_name}` was found")
 
-        return result[0]["neo4j_id"]
+        return result[0]["internal_id"]
 
 
 
@@ -2254,7 +2253,7 @@ class NeoSchema:
         """
 
         match = cls.db.match(key_name=key_name, key_value=key_value)
-        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="neo4j_id")
+        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
 
         if result is None:
             raise Exception(f"Unable to find a data node with the attribute `{key_name}={key_value}`")

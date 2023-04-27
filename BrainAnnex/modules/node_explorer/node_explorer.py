@@ -53,8 +53,8 @@ class NodeExplorer:
         # Retrieve ALL nodes with the specified label
         match = db.match(labels=label)
         recordset = db.get_nodes(match=match, return_internal_id=True, return_labels=True)
-                                    # EXAMPLE: [ {"neo4j_id": 145, "neo4j_labels": ["person", "client"], 'gender': 'M', 'age': 42},
-                                    #            {"neo4j_id": 222, "neo4j_labels": ["person"], 'gender': 'F', 'age': 21, location: "Berkeley"} ]
+                                    # EXAMPLE: [ {"internal_id": 145, "neo4j_labels": ["person", "client"], 'gender': 'M', 'age': 42},
+                                    #            {"internal_id": 222, "neo4j_labels": ["person"], 'gender': 'F', 'age': 21, location: "Berkeley"} ]
 
         if len(recordset) == 0:
             return ([], [], [], [], 0, 0)     # If no records were found.  Return a 6-tuple with empty lists and zero counts
@@ -68,10 +68,10 @@ class NodeExplorer:
 
         header_list = list(set_of_headers)   # Convert set to list
 
-        # Move the field "neo4j_id" to the front of header_list, if present
-        if "neo4j_id" in header_list:
-            header_list.remove("neo4j_id")
-            header_list = ["neo4j_id"] + header_list
+        # Move the field "internal_id" to the front of header_list, if present
+        if "internal_id" in header_list:
+            header_list.remove("internal_id")
+            header_list = ["internal_id"] + header_list
 
         # Move the field "neo4j_labels" to the front of header_list, if present
         if "neo4j_labels" in header_list:
@@ -94,7 +94,7 @@ class NodeExplorer:
 
 
         for node in recordset:
-            node_id = node["neo4j_id"]
+            node_id = node["internal_id"]
             (parent_list, child_list) = db.get_parents_and_children(node_id)
             # EXAMPLE of individual items in either parent_list or child_list:
             #       {'id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
@@ -228,14 +228,14 @@ class NodeExplorer:
                 {
                     "_key": "d-12",
                     "_neo4j_labels": ["Label A", "Label B"],
-                    "_neo4j_id": 123,
+                    "_internal_id": 123,
                     "field_A": 482,
                     "field_B": "red"
                 },
                 {
                     "_key": "i-53",
                     "_neo4j_labels": ["Label C"],
-                    "_neo4j_id": 456,
+                    "_internal_id": 456,
                     "field_C": 3.1415
                 }
             ],
@@ -361,7 +361,7 @@ class NodeExplorer:
                 then return
                 {  "headers":  [
                                     ["neo4j_labels", "NEO4J_LABELS"],
-                                    ["neo4j_id", "NEO4J_ID"],
+                                    ["internal_id", "NEO4J_ID"],
                                     ["gender"],
                                     ["age", "FLOAT"],
                                     ["location"],
@@ -409,7 +409,7 @@ class NodeExplorer:
         all_data  = {
                     "headers":  [
                                     ["neo4j_labels", "NEO4J_LABELS"],
-                                    ["neo4j_id", "NEO4J_ID"],
+                                    ["internal_id", "NEO4J_ID"],
                                     ["gender"],
                                     ["age", "FLOAT"],
                                     ["location"],
