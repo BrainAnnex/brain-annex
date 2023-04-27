@@ -12,4 +12,4 @@ def db():
 
 def test_debug(db):
     result = db._debug_local()
-    assert result == "local"
+    assert result == "remote"

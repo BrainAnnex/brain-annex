@@ -104,7 +104,7 @@ class APIRequestHandler:
         """
         try:
             return int(s)
-        except Exception:
+        except ValueError:
             return s
 
 
