@@ -5,6 +5,7 @@ import pytest
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, SchemaCacheExperimental
+from BrainAnnex.modules.categories.categories import Categories
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -12,29 +13,24 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, Sch
 def db():
     neo_obj = NeoAccess(debug=False)
     NeoSchema.set_database(neo_obj)
+    Categories.db = neo_obj
     yield neo_obj
 
 
 
 # ************  CREATE SAMPLE CATEGORIES for the testing  **************
 
-def create_sample_category_1():
+def create_sample_categories_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY
 
-    _, sch_1 = NeoSchema.create_class_with_properties(class_name="Categories",
-                                                      property_list=["name", "remarks"])
+    node_internal_id, _ = NeoSchema.create_class_with_properties(class_name="Categories",
+                                                                 property_list=["name", "remarks"])
 
-    _, sch_2 = NeoSchema.create_class_with_properties(class_name="result",
-                                                      property_list=["biomarker", "value"])
+    NeoSchema.add_data_point(class_internal_id = node_internal_id, properties = {"name": "HOME", "remarks": "top level"},
+                             new_item_id =1 )
 
-    _, sch_3 = NeoSchema.create_class_with_properties(class_name="doctor",
-                                                      property_list=["name", "specialty"])
-
-    NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="HAS_RESULT")
-    NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_3, rel_name="IS_ATTENDED_BY")
-
-    return {"patient": sch_1, "result": sch_2, "doctor": sch_3}
+    #return {"patient": sch_1, "result": sch_2, "doctor": sch_3}
 
 
 
@@ -58,3 +54,9 @@ def create_sample_category_2():
 def test_get_all_categories(db):
     db.empty_dbase()
 
+    create_sample_categories_1()
+
+    result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
+
+    #print(result)
+    assert result == [{'item_id': 1, 'name': 'HOME', 'remarks': 'top level'}]

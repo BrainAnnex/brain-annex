@@ -151,6 +151,13 @@ class Categories:
         remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
 
         q =  f'''
+             MATCH (cat:Categories)-[:SCHEMA]->(:CLASS {{name:"Categories"}}) 
+             {clause}
+             RETURN cat.item_id AS item_id, cat.name AS name {remarks_subquery}
+             ORDER BY toLower(cat.name)
+             '''
+
+        q_NO_LONGER_USED =  f'''
              MATCH (cat:BA {{schema_code:"cat"}})
              {clause}
              RETURN cat.item_id AS item_id, cat.name AS name {remarks_subquery}
