@@ -320,6 +320,7 @@ class Categories:
         return ["START_CONTAINER", cls.recursive(category_ID, parents_map) ,"END_CONTAINER"]
 
 
+
     @classmethod
     def recursive(cls, category_ID, parents_map) -> list:
         """
@@ -361,18 +362,19 @@ class Categories:
     ##########  2. UPDATE  ##########
 
     @classmethod
-    def add_subcategory(cls, post_data: dict) -> int:
+    def add_subcategory(cls, data_dict: dict) -> int:
         """
         Add a new Subcategory to a given Category
-        :param post_data:   Dictionary with the following keys:
-                                category_id                     To identify the Category to which to add a Subcategory
+        :param data_dict:   Dictionary with the following keys:
+                                category_id                     The item_id to identify the Category
+                                                                    to which to add a Subcategory
                                 subcategory_name                The name to give to the new Subcategory
                                 subcategory_remarks (optional)  A comment field for the new Subcategory
 
         :return:                If successful, an integer with auto-increment "item_id" value of the node just created;
                                 otherwise, an Exception is raised
         """
-        category_id = post_data.get("category_id")
+        category_id = data_dict.get("category_id")
         if not category_id:
             raise Exception(f"category_id is missing")
 
@@ -381,21 +383,26 @@ class Categories:
         except Exception as ex:
             raise Exception(f"category_id is not an integer (value passed {category_id}). {ex}")
 
-        subcategory_name = post_data.get("subcategory_name")
+        subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
             raise Exception(f"subcategory_name is missing")
 
-        subcategory_remarks = post_data.get("subcategory_remarks")
+        subcategory_remarks = data_dict.get("subcategory_remarks")
 
         data_dict = {"name": subcategory_name}
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        return NeoSchema.add_data_point_OLD(class_name="Categories",
-                                            data_dict=data_dict, labels=["BA", "Categories"],
-                                            connected_to_id=category_id, connected_to_labels="BA",
-                                            rel_name="BA_subcategory_of", rel_dir="OUT"
-                                            )
+        parent_category_internal_id = NeoSchema.get_data_point_id(key_value=category_id, key_name="item_id")
+
+        new_internal_id = NeoSchema.add_data_point_with_links(
+                                class_name = "Categories",
+                                properties = data_dict, labels = ["BA", "Categories"],
+                                links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
+                                assign_item_id=True)
+
+        new_data_point = NeoSchema.fetch_data_point(internal_id = new_internal_id)
+        return new_data_point["item_id"]
 
 
 

@@ -1218,6 +1218,7 @@ class NeoSchema:
                                 if present, it takes priority
         :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
         :param properties:  OPTIONAL (generally, redundant) ways to locate the data node
+
         :return:            A dictionary with all the key/value pairs, if found; or {} if not
         """
         if internal_id is None:
@@ -1225,7 +1226,7 @@ class NeoSchema:
                 "NeoSchema.fetch_data_point(): arguments `item_id` and `internal_id` cannot both be None"
 
             match = cls.db.match(key_name="item_id", key_value=item_id,
-                                labels=labels, properties=properties)
+                                 labels=labels, properties=properties)
         else:
             match = cls.db.match(internal_id=internal_id, labels=labels, properties=properties)
 
@@ -2168,7 +2169,7 @@ class NeoSchema:
         EXPERIMENTAL
 
         Return the "match" structure to locate a node identified
-        either by its Neo4j ID (default), or by a primary key (with optional label.)
+        either by its internal database ID (default), or by a primary key (with optional label.)
 
         :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
         :param id_type: For example, "item_id";
@@ -2248,7 +2249,7 @@ class NeoSchema:
     @classmethod
     def get_data_point_id(cls, key_value, key_name="item_id") -> int:
         """
-        Get the Neo4j ID of a data point given some other primary key
+        Get the internal database ID of a data point given some other primary key
 
         :return:   An integer with the Neo4j ID of the data point
         """
@@ -2257,7 +2258,7 @@ class NeoSchema:
         result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
 
         if result is None:
-            raise Exception(f"Unable to find a data node with the attribute `{key_name}={key_value}`")
+            raise Exception(f"get_data_point_id(): unable to find a data node with the attribute `{key_name}={key_value}`")
 
         return result
 

@@ -20,17 +20,14 @@ def db():
 
 # ************  CREATE SAMPLE CATEGORIES for the testing  **************
 
-def create_sample_categories_1():
-    # Schema with patient/result/doctor Classes (each with some Properties),
-    # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY
+def create_root_category():
+    # Create the ROOT category, and its Schema
 
     node_internal_id, _ = NeoSchema.create_class_with_properties(class_name="Categories",
                                                                  property_list=["name", "remarks"])
 
     NeoSchema.add_data_point(class_internal_id = node_internal_id, properties = {"name": "HOME", "remarks": "top level"},
                              new_item_id =1 )
-
-    #return {"patient": sch_1, "result": sch_2, "doctor": sch_3}
 
 
 
@@ -54,9 +51,29 @@ def create_sample_category_2():
 def test_get_all_categories(db):
     db.empty_dbase()
 
-    create_sample_categories_1()
+    create_root_category()
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-
-    #print(result)
     assert result == [{'item_id': 1, 'name': 'HOME', 'remarks': 'top level'}]
+
+    result = Categories.get_all_categories(exclude_root=False, include_remarks=False)
+    assert result == [{'item_id': 1, 'name': 'HOME'}]
+
+    result = Categories.get_all_categories(exclude_root=True, include_remarks=True)
+    assert result == []
+
+    # Add a new Category
+    language_item_id = Categories.add_subcategory({"category_id": 1, "subcategory_name": "Languages",
+                                "subcategory_remarks": "Common node for all languages"})
+
+    result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
+    expected = [{'item_id': 1, 'name': 'HOME', 'remarks': 'top level'},
+                {'item_id': language_item_id, 'name': 'Languages', 'remarks': 'Common node for all languages'}]
+    compare_recordsets(result, expected)
+
+    # Add 2 new Categories
+    french_item_id = Categories.add_subcategory({"category_id": language_item_id, "subcategory_name": "French"})
+    italian_item_id = Categories.add_subcategory({"category_id": language_item_id, "subcategory_name": "Italian"})
+    result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
+
+    print(result)
