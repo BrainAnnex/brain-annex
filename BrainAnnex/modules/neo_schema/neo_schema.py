@@ -1318,10 +1318,10 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_new(cls, class_internal_id: int, properties = None, labels = None,
-                           assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
+    def add_data_point(cls, class_internal_id: int, properties = None, labels = None,
+                       assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
         """
-        A more "modern" version of add_data_point()
+        A more "modern" version of the deprecated add_data_point_OLD()
 
         Add a new data node, of the specified Class,
         with the given (possibly none) attributes and label(s);
@@ -1739,10 +1739,10 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point(cls, class_name="", schema_id=None,
-                       data_dict=None, labels=None,
-                       connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                       new_item_id=None, return_item_ID=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_point_with_links()
+    def add_data_point_OLD(cls, class_name="", schema_id=None,
+                           data_dict=None, labels=None,
+                           connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
+                           new_item_id=None, return_item_ID=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_point_with_links()
                                                                         # TO DITCH *AFTER* add_data_point_with_links() gets link validation!
         """
         Add a new data node, of the Class specified by name or ID,

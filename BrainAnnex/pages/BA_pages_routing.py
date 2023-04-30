@@ -88,19 +88,11 @@ class PagesRouting:
             template = "page_viewer.htm"
             category_id = int(category_id)  # TODO: return a good error message (a special page) if it's not an integer
 
-            # Fetch all the Content Items attached to the given Category.
-            content_items = PagesRequestHandler.get_content_items_by_category(category_id)
-            #   List of dictionaries.  EXAMPLE:
-            #       [
-            #           {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-            #           {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
-            #       ]
-
             # Get the Name and Remarks attached to the given Category
             category_info = Categories.get_category_info(category_id)
             # EXAMPLE : [{'id': 3, 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
-            if not category_info:
+            if not category_info:   # If page wasn't found
                 # TODO: add a special page to show the error messages
                 if category_id == 1:    # The home category doesn't exist yet; maybe the Schema hasn't been imported
                     return f"<b>No Home Category found!</b> Maybe the Schema hasn't been imported yet? " \
@@ -121,6 +113,15 @@ class PagesRouting:
             #print("records_schema_data: ", records_schema_data)
 
             bread_crumbs = Categories.create_bread_crumbs(category_id)
+
+            # Fetch all the Content Items attached to this Category
+            content_items = PagesRequestHandler.get_content_items_by_category(category_id)
+            #   List of dictionaries.  EXAMPLE:
+            #       [
+            #           {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+            #           {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+            #       ]
+
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages, header_title=category_name,
                                    content_items=content_items,

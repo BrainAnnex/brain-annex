@@ -119,9 +119,9 @@ def test_allows_datanodes(db):
 
 
 def test_add_root_category(db):
-    NeoSchema.add_data_point(class_name="Categories",
-                             data_dict={"name": "ROOT (Home)", "remarks": "EVERYTHING - top level"},
-                             labels="BA")
+    NeoSchema.add_data_point_OLD(class_name="Categories",
+                                 data_dict={"name": "ROOT (Home)", "remarks": "EVERYTHING - top level"},
+                                 labels="BA")
 
 
 
@@ -251,14 +251,14 @@ def test_get_schema_id(db):
 
 def test_add_data_point(db):
 
-    new_id = NeoSchema.add_data_point(class_name="German Vocabulary",
-                                      data_dict = {"German": "Tür",
+    new_id = NeoSchema.add_data_point_OLD(class_name="German Vocabulary",
+                                          data_dict = {"German": "Tür",
                                                    "English": "door"
                                                    },
-                                      labels="BA",
-                                      connected_to_id=60, connected_to_labels="BA",
-                                      rel_name="BA_in_category", rel_prop_key="pos", rel_prop_value=120
-                                      )
+                                          labels="BA",
+                                          connected_to_id=60, connected_to_labels="BA",
+                                          rel_name="BA_in_category", rel_prop_key="pos", rel_prop_value=120
+                                          )
     """
     new_id = NeoSchema.add_data_point(class_name="Restaurants",
                                       data_dict = {"name": "The Red Sea",

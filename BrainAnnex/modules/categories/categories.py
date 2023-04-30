@@ -384,11 +384,11 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        return NeoSchema.add_data_point(class_name="Categories",
-                                        data_dict=data_dict, labels=["BA", "Categories"],
-                                        connected_to_id=category_id, connected_to_labels="BA",
-                                        rel_name="BA_subcategory_of", rel_dir="OUT"
-                                        )
+        return NeoSchema.add_data_point_OLD(class_name="Categories",
+                                            data_dict=data_dict, labels=["BA", "Categories"],
+                                            connected_to_id=category_id, connected_to_labels="BA",
+                                            rel_name="BA_subcategory_of", rel_dir="OUT"
+                                            )
 
 
 
@@ -971,14 +971,14 @@ class Collections:
 
         data_binding = item_properties
 
-        return NeoSchema.add_data_point(class_name=item_class_name,
-                                        data_dict=data_binding,
-                                        labels=["BA", item_class_name],
-                                        connected_to_id=collection_id, connected_to_labels="BA",
-                                        rel_name=membership_rel_name,
-                                        rel_prop_key="pos", rel_prop_value=pos,
-                                        new_item_id=new_item_id
-                                        )
+        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+                                            data_dict=data_binding,
+                                            labels=["BA", item_class_name],
+                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            rel_name=membership_rel_name,
+                                            rel_prop_key="pos", rel_prop_value=pos,
+                                            new_item_id=new_item_id
+                                            )
 
 
 
@@ -1023,14 +1023,14 @@ class Collections:
 
         #cls.db.debug_print(q, data_binding, "add_to_collection_at_end", True)
 
-        return NeoSchema.add_data_point(class_name=item_class_name,
-                                        data_dict=data_binding,
-                                        labels=["BA", item_class_name],
-                                        connected_to_id=collection_id, connected_to_labels="BA",
-                                        rel_name=membership_rel_name,
-                                        rel_prop_key="pos", rel_prop_value=pos,
-                                        new_item_id=new_item_id
-                                        )
+        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+                                            data_dict=data_binding,
+                                            labels=["BA", item_class_name],
+                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            rel_name=membership_rel_name,
+                                            rel_prop_key="pos", rel_prop_value=pos,
+                                            new_item_id=new_item_id
+                                            )
 
 
 
@@ -1115,14 +1115,14 @@ class Collections:
             new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
 
 
-        return NeoSchema.add_data_point(class_name=item_class_name,
-                                        data_dict=item_properties,
-                                        labels=["BA", item_class_name],
-                                        connected_to_id=collection_id, connected_to_labels="BA",
-                                        rel_name=membership_rel_name,
-                                        rel_prop_key="pos", rel_prop_value=new_pos,
-                                        new_item_id=new_item_id
-                                        )
+        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+                                            data_dict=item_properties,
+                                            labels=["BA", item_class_name],
+                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            rel_name=membership_rel_name,
+                                            rel_prop_key="pos", rel_prop_value=new_pos,
+                                            new_item_id=new_item_id
+                                            )
 
         #link_to = [{"labels": "BA", "key": "item_id", "value": collection_id,
         #            "rel_name": membership_rel_name, "rel_attrs": {"pos": new_pos}}]
