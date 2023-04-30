@@ -170,7 +170,7 @@ class Categories:
              RETURN cat.item_id AS item_id, cat.name AS name {remarks_subquery}
              ORDER BY toLower(cat.name)
              '''
-        # Notes: 1 is the ROOT category.
+        # Notes: 1 is the ROOT category.  TODO: replace with check .root = true
         # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
 
         result =  cls.db.query(q)
@@ -182,6 +182,18 @@ class Categories:
                     del item["remarks"]     # To avoid a dictionary entry of the type 'remarks': None
 
         return result
+
+
+
+    @classmethod
+    def get_sibling_categories(cls, category_internal_id: int) -> [dict]:
+        """
+
+        :param category_internal_id:
+        :return:
+        """
+        print("****** category_internal_id: ", category_internal_id)
+        return  cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of")
 
 
 

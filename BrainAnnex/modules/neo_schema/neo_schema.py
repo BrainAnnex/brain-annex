@@ -1167,9 +1167,11 @@ class NeoSchema:
 
 
     #####################################################################################################
-    #                                                                                                   #
-    #                                       ~ DATA POINTS ~                                             #
-    #                                                                                                   #
+
+    '''                                      ~   DATA POINTS   ~                                       '''
+
+    def ________DATA_POINTS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
 
@@ -1212,9 +1214,33 @@ class NeoSchema:
 
 
     @classmethod
+    def get_data_point_internal_id(cls, item_id: int) -> int:
+        """
+        Returns the internal database ID of the given data node,
+        specified by its value of the item_id attribute
+
+        :param item_id:
+        :return:        Theinternal database ID of the specified data point
+        """
+        match = cls.db.match(key_name="item_id", key_value=item_id)
+        result = cls.db.get_nodes(match, return_internal_id=True)
+
+        if not result:
+            raise Exception(f"NeoSchema.get_data_point_internal_id(): no Data Node with the given item_id ({item_id}) was found")
+
+        if len(result) > 1:
+            raise Exception(f"NeoSchema.get_data_point_internal_id(): more than 1 Data Node with the given item_id ({item_id}) was found")
+
+        return result[0]["internal_id"]
+
+
+
+    @classmethod
     def fetch_data_point(cls, item_id = None, internal_id = None, labels=None, properties=None) -> dict:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data point
+
+        See also locate_node()
 
         :param item_id:     The "item_id" field to uniquely identify the data node
         :param internal_id: OPTIONAL alternate way to specify the data node;
@@ -1234,6 +1260,31 @@ class NeoSchema:
             match = cls.db.match(internal_id=internal_id, labels=labels, properties=properties)
 
         return cls.db.get_nodes(match, single_row=True)
+
+
+
+    @classmethod
+    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> dict:
+        """
+        EXPERIMENTAL - a generalization of fetch_data_point()
+
+        Return the "match" structure to locate a node identified
+        either by its internal database ID (default), or by a primary key (with optional label.)
+
+        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
+        :param id_type: For example, "item_id";
+                            if not specified, the node ID is assumed to be Neo4j ID's
+        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
+        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
+
+        :return:        A "processed-match" structure
+        """
+        if id_type:
+            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
+        else:
+            match_structure = cls.db.match(internal_id=node_id)
+
+        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
 
 
 
@@ -1354,7 +1405,7 @@ class NeoSchema:
 
         :return:                The internal database ID of the new data node just created
         """
-        #schema_cache = SchemaCacheExperimental()
+        #schema_cache = SchemaCacheExperimental()   # TODO: later restore the Schema, as a class-wide property
         #class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
         #class_name = class_attrs["name"]
         if class_internal_id is None:
@@ -2174,31 +2225,6 @@ class NeoSchema:
                                  dummy_node_name="to")
 
         cls.db.remove_links(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
-
-
-
-    @classmethod
-    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> dict:
-        """
-        EXPERIMENTAL
-
-        Return the "match" structure to locate a node identified
-        either by its internal database ID (default), or by a primary key (with optional label.)
-
-        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
-        :param id_type: For example, "item_id";
-                            if not specified, the node ID is assumed to be Neo4j ID's
-        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
-        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
-
-        :return:        A "processed-match" structure
-        """
-        if id_type:
-            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
-        else:
-            match_structure = cls.db.match(internal_id=node_id)
-
-        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
 
 
 
