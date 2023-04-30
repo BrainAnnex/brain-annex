@@ -20,14 +20,16 @@ def db():
 
 # ************  CREATE SAMPLE CATEGORIES for the testing  **************
 
-def create_root_category():
-    # Create the ROOT category, and its Schema
+def initialize_categories(db):
+    # Clear the dbase, create the Category Schema, and creats a ROOT category node
+
+    db.empty_dbase()
 
     node_internal_id, _ = NeoSchema.create_class_with_properties(class_name="Categories",
                                                                  property_list=["name", "remarks"])
 
     NeoSchema.add_data_point(class_internal_id = node_internal_id, properties = {"name": "HOME", "remarks": "top level"},
-                             new_item_id =1 )
+                             assign_item_id=True)
 
 
 
@@ -49,9 +51,8 @@ def create_sample_category_2():
 
 
 def test_get_all_categories(db):
-    db.empty_dbase()
 
-    create_root_category()
+    initialize_categories(db)
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
     assert result == [{'item_id': 1, 'name': 'HOME', 'remarks': 'top level'}]

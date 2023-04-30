@@ -5,6 +5,8 @@ import json
 
 class NeoSchema:
     """
+    # TODO: turn into an instantiated class, with a Schema Cache
+
     A layer above the class NeoAccess (or, in principle, another library providing a compatible interface)
     to provide an optional schema to the underlying database.
 
@@ -104,8 +106,7 @@ class NeoSchema:
 
 
     class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;
-                                        #       change it, if you have conflicts with other modules
-                                        #       Alt. name ideas: "SCHEMA"
+                                        # TODO: maybe double label it with "SCHEMA", in part to avoid potential conflicts with other modules
 
     property_label = "PROPERTY"         # Neo4j label to be used with Property nodes managed by this class
 
@@ -1320,7 +1321,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point(cls, class_internal_id: int, properties = None, labels = None,
+    def add_data_point(cls, class_name=None, class_internal_id=None, properties = None, labels = None,
                        assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
         """
         A more "modern" version of the deprecated add_data_point_OLD()
@@ -1335,7 +1336,9 @@ class NeoSchema:
 
         If the data point needs to be created with links to other existing data points, use add_data_point_with_links() instead
 
+        :param class_name:      Name of the Class for the new data point
         :param class_internal_id: The internal database ID of the Class node for the new data point
+                                NOTE: if both class_name and class_internal_id are specified, the latter prevails
         :param properties:      An optional dictionary with the properties of the new data point.
                                     EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:          OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
@@ -1349,9 +1352,16 @@ class NeoSchema:
 
         :return:                The internal database ID of the new data node just created
         """
-        schema_cache = SchemaCacheExperimental()
-        class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
-        class_name = class_attrs["name"]
+        #schema_cache = SchemaCacheExperimental()
+        #class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
+        #class_name = class_attrs["name"]
+        if class_internal_id is None:
+            if not class_name:
+                raise Exception("add_data_point(): at least one of the arguments `class_name` or `class_internal_id` must be provided")
+            else:
+                cls.assert_valid_class_name(class_name)
+        else:
+            class_name = cls.get_class_name_by_neo_id(class_internal_id)
 
         if labels is None:
             # If not specified, use the Class name
@@ -1364,12 +1374,12 @@ class NeoSchema:
             "NeoSchema.add_data_point_new(): The `properties` argument, if provided, MUST be a dictionary"
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id, schema_cache=schema_cache):
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
             raise Exception(f"NeoSchema.add_data_point_new(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
         properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
-                                                silently_drop=silently_drop, schema_cache=schema_cache)
+                                                silently_drop=silently_drop)
 
 
         # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";

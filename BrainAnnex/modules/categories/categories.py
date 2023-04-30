@@ -1,7 +1,7 @@
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from typing import Union
 
-# 2 classes: "Categories" and  "Collections"
+# 2 classes: "Categories" and  "Collections".  TODO: separate
 
 
 class Categories:
@@ -26,7 +26,14 @@ class Categories:
 
 
 
-    ##########  1. LOOKUP  ##########
+
+    #####################################################################################################
+
+    '''                                 ~   LOOKUP CATEGORY DATA   ~                                  '''
+
+    def ________LOOKUP_CATEGORIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def get_category_info(cls, category_id) -> dict:
@@ -359,7 +366,27 @@ class Categories:
 
 
 
-    ##########  2. UPDATE  ##########
+    #####################################################################################################
+
+    '''                                 ~   UPDATE CATEGORY DATA   ~                                  '''
+
+    def ________UPDATE_CATEGORIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    @classmethod
+    def create_categories_root(cls, data_dict=None) -> int:
+        """
+        """
+        if data_dict is None:
+            data_dict = {"name": "HOME", "remarks": "top level"}
+
+        return NeoSchema.add_data_point(class_name="Categories",
+                                        properties = data_dict,
+                                        assign_item_id=True)
+
+
 
     @classmethod
     def add_subcategory(cls, data_dict: dict) -> int:
@@ -555,7 +582,13 @@ class Categories:
 
 
 
-    ########  ADDING ITEMS TO THE CATEGORY  ########
+    #####################################################################################################
+
+    '''                                ~   ADD ITEMS TO CATEGORIES   ~                                '''
+
+    def ________ADD_ITEMS_TO_CATEGORIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def add_content_media(cls, category_id:int, properties: dict, pos=None) -> None:
