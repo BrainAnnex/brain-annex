@@ -378,9 +378,14 @@ class Categories:
     @classmethod
     def create_categories_root(cls, data_dict=None) -> int:
         """
+
+        :param data_dict:
+        :return:            The internal database ID of the new data node just created
         """
         if data_dict is None:
             data_dict = {"name": "HOME", "remarks": "top level"}
+
+        data_dict["root"] = True
 
         return NeoSchema.add_data_point(class_name="Categories",
                                         properties = data_dict,

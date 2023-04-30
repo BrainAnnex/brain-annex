@@ -28,27 +28,13 @@ def initialize_categories(db):
     node_internal_id, _ = NeoSchema.create_class_with_properties(class_name="Categories",
                                                                  property_list=["name", "remarks"])
 
-    NeoSchema.add_data_point(class_internal_id = node_internal_id, properties = {"name": "HOME", "remarks": "top level"},
-                             assign_item_id=True)
-
-
-
-def create_sample_category_2():
-    # Class "quotes" with relationship named "in_category" to Class "categories";
-    # each Class has some properties
-    _, sch_1 = NeoSchema.create_class_with_properties(class_name="quotes",
-                                                      property_list=["quote", "attribution", "verified"])
-
-    _, sch_2 = NeoSchema.create_class_with_properties(class_name="categories",
-                                                      property_list=["name", "remarks"])
-
-    NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="in_category")
-
-    return {"quotes": sch_1, "categories": "sch_2"}
+    Categories.create_categories_root()
 
 
 
 
+
+# ************  THE ACTUAL TESTS  ************
 
 def test_get_all_categories(db):
 

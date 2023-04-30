@@ -146,8 +146,10 @@ class NeoSchema:
         :return:
         """
         assert type(class_name) == str, \
-            f"NeoSchema.valid_class_name(): The class name must be a string (instead, it's of type {type(class_name)})"
-        assert class_name != "", "NeoSchema.valid_class_name(): Class name cannot be an empty string"
+            f"NeoSchema.assert_valid_class_name(): The class name ({class_name}) must be a string (instead, it's of type {type(class_name)})"
+
+        assert class_name != "", \
+            "NeoSchema.assert_valid_class_name(): Class name cannot be an empty string"
 
 
 
@@ -1360,6 +1362,8 @@ class NeoSchema:
                 raise Exception("add_data_point(): at least one of the arguments `class_name` or `class_internal_id` must be provided")
             else:
                 cls.assert_valid_class_name(class_name)
+
+            class_internal_id = cls.get_class_internal_id(class_name)
         else:
             class_name = cls.get_class_name_by_neo_id(class_internal_id)
 
