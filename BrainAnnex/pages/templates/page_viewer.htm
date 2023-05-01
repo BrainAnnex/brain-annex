@@ -14,6 +14,7 @@
         all_categories
         subcategories
         parent_categories
+        siblings_categories
 
         bread_crumbs
 
@@ -36,7 +37,7 @@
                         ]
 
     ----------------------------------------------------------------------------------
-    MIT License.  Copyright (c) 2021-2022 Julian A. West
+    MIT License.  Copyright (c) 2021-2023 Julian A. West
 	----------------------------------------------------------------------------------
 
  #}
@@ -128,6 +129,7 @@
     v-bind:category_name="category_name"
     v-bind:parent_categories="parent_categories"
     v-bind:subcategories="all_subcategories"
+    v-bind:siblings_categories="siblings_categories"
     v-bind:all_categories="all_categories"
     v-bind:show_right_sidebox="show_right_sidebox"
 
@@ -148,9 +150,9 @@
 
  **************************************************************** -->
 
-{#  Uncomment for debugging (to view some of the Flask-passed parameters)
-<br>{{bread_crumbs}}<br><br>
-#}
+{#  Uncomment for DEBUGGING! (to view some of the Flask-passed parameters)
+<br><b>siblings_categories</b>:<br>{{siblings_categories}}<br><br>
+ #}
 
 
 <!-- Bread crumbs for this Category -->
@@ -489,13 +491,17 @@ new Vue({
 
         category_name: {{category_name | tojson}},
 
+        parent_categories: {{parent_categories  | tojson}},
+
+        all_subcategories: {{subcategories | tojson}},
+                        // EXAMPLE: [{"id":709,"name":"English"},{"id":708,"name":"Italian"},{"id":514,"name":"French"}]
+
+        siblings_categories: {{siblings_categories | tojson}},
+                        // EXAMPLE: [{'name': 'French', 'item_id': 514, 'schema_code': 'cat', 'internal_id': 522}]
+
         all_categories: {{all_categories | tojson}},
                         // EXAMPLE: [{"id": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"id": 123, "name": "work"}]
 
-        all_subcategories: {{subcategories  | tojson}},
-                        // EXAMPLE: [{"id":709,"name":"English"},{"id":708,"name":"Italian"},{"id":514,"name":"French"}]
-
-        parent_categories: {{parent_categories  | tojson}},
 
         // For "Add Subcategory" (TODO: move to a separate component?)
         new_subcategory_name: "",

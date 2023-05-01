@@ -21,14 +21,15 @@ def db():
 # ************  CREATE SAMPLE CATEGORIES for the testing  **************
 
 def initialize_categories(db):
-    # Clear the dbase, create the Category Schema, and creats a ROOT category node
+    # Clear the dbase, create the Category Schema, and creates a ROOT Category node;
+    # return the internal database ID of the new Categories node
 
     db.empty_dbase()
 
     node_internal_id, _ = NeoSchema.create_class_with_properties(class_name="Categories",
                                                                  property_list=["name", "remarks"])
 
-    Categories.create_categories_root()
+    return Categories.create_categories_root()
 
 
 
@@ -71,18 +72,18 @@ def test_get_all_categories(db):
 
 def test_get_sibling_categories(db):
 
-    initialize_categories(db)
+    root_internal_id = initialize_categories(db)
+    result = Categories.get_sibling_categories(root_internal_id)
+    assert result == []     # The root node has no siblings
 
     # Add a new Category ("Languages")
     language_item_id = Categories.add_subcategory({"category_id": 1, "subcategory_name": "Languages",
                                                    "subcategory_remarks": "Common node for all languages"})
 
-    result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-    expected = [{'item_id': 1, 'name': 'HOME', 'remarks': 'top level'},
-                {'item_id': language_item_id, 'name': 'Languages', 'remarks': 'Common node for all languages'}]
-    compare_recordsets(result, expected)
+    result = Categories.get_sibling_categories(root_internal_id)
+    assert result == []     # The "Languages" node has no siblings
 
-    # Add 2 new Categories ("French" and "Italian")
+    # Add 2 new Categories ("French" and "Italian"), both subcategories of "Languages"
     french_item_id = Categories.add_subcategory({"category_id": language_item_id, "subcategory_name": "French"})
     italian_item_id = Categories.add_subcategory({"category_id": language_item_id, "subcategory_name": "Italian"})
 
@@ -90,10 +91,24 @@ def test_get_sibling_categories(db):
     italian_internal_id = NeoSchema.get_data_point_internal_id(item_id = italian_item_id)
 
     result = Categories.get_sibling_categories(french_internal_id)
-
     assert len(result) == 1
     entry = result[0]
-    assert entry["name"] == "Italian"
+    assert entry["name"] == "Italian"   # The sibling of "French" is "Italian"
     assert entry["item_id"] == italian_item_id
     assert entry["internal_id"] == italian_internal_id
-    assert compare_unordered_lists(entry["neo4j_labels"], ['Categories', 'BA'])
+    #assert compare_unordered_lists(entry["neo4j_labels"], ['Categories', 'BA'])
+
+    result = Categories.get_sibling_categories(italian_internal_id)
+    assert len(result) == 1
+    entry = result[0]
+    assert entry["name"] == "French"   # The sibling of "Italian" is "French"
+    expected = [{"name": "French", "item_id": french_item_id, "internal_id": french_internal_id}]
+    assert compare_recordsets(result, expected)
+
+    # Add a new Categories ("German") as a subcategories of "Languages"
+    Categories.add_subcategory({"category_id": language_item_id, "subcategory_name": "German"})
+
+    result = Categories.get_sibling_categories(french_internal_id)
+    assert len(result) == 2     # Now, "French" has 2 siblings
+    sibling_names = [d["name"] for d in result]
+    assert compare_unordered_lists(sibling_names, ["Italian", "German"])

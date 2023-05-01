@@ -188,12 +188,18 @@ class Categories:
     @classmethod
     def get_sibling_categories(cls, category_internal_id: int) -> [dict]:
         """
+        Return the data of all the "siblings" of the given Category
 
         :param category_internal_id:
         :return:
         """
-        print("****** category_internal_id: ", category_internal_id)
-        return  cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of")
+        result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of")
+
+        # Ditch unneeded attributes
+        for item in result:
+            del item["neo4j_labels"]
+
+        return result
 
 
 
@@ -390,6 +396,8 @@ class Categories:
     @classmethod
     def create_categories_root(cls, data_dict=None) -> int:
         """
+        Create a ROOT Category node;
+        return the internal database ID of the new Categories node
 
         :param data_dict:
         :return:            The internal database ID of the new data node just created
@@ -684,7 +692,13 @@ class Categories:
 
 
 
-    ######    POSITIONING WITHIN CATEGORIES    ######
+    #####################################################################################################
+
+    '''                          ~   POSITION WITHIN CATEGORIES    ~                                  '''
+
+    def ________POSITIONING________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def check_for_duplicates(cls, category_id) -> str:
@@ -914,6 +928,28 @@ class Categories:
 
 
 
+    #####################################################################################################
+
+    '''                                  ~   PAGE HANDLER   ~                                         '''
+
+    def ________PAGE_HANDLER________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    # TODO: page-handler methods are meant to plugin-provided complete functionality,
+    #       to combine what's currently in BA_pages_routing.py and in BA_pages_request_handler.py
+
+    @classmethod
+    def viewer_handler(cls, category_id: int):
+        category_internal_id = NeoSchema.get_data_point_internal_id(item_id = category_id)
+        siblings_categories = Categories.get_sibling_categories(category_internal_id)
+
+        return siblings_categories
+
+
+
+
+
 
 ##########################################################################################
 
@@ -928,7 +964,7 @@ class Collections:
     An entity to which a variety of nodes (e.g. representing records or media)
     is attached, with a positional attribute.
 
-    TODO: maybe turn into an instantiatable class, so as not to have to repeatedly pass "membership_rel_name"
+    TODO: move to separate file
     """
 
     # Class variables

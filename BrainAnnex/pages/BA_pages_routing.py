@@ -106,7 +106,11 @@ class PagesRouting:
 
             parent_categories = PagesRequestHandler.get_parent_categories(category_id)
             subcategories = PagesRequestHandler.get_subcategories(category_id)
-            all_categories = PagesRequestHandler.get_all_categories(exclude_root=False) # TODO: switch to Categories.get_all_categories()
+            all_categories = PagesRequestHandler.get_all_categories(exclude_root=False) # TODO: switch to Categories.get_all_categories(), below
+            #all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)   # TODO: when switching to this,
+                                                                                                        #  change pages to use "item_id" instead of "id"
+
+            siblings_categories = Categories.viewer_handler(category_id)
 
             records_types = APIRequestHandler.get_leaf_records()
             records_schema_data = APIRequestHandler.get_records_schema_data(category_id)  # TODO: *** TEST
@@ -128,6 +132,7 @@ class PagesRouting:
                                    category_id=category_id, category_name=category_name, category_remarks=category_remarks,
                                    all_categories=all_categories,
                                    subcategories=subcategories, parent_categories=parent_categories,
+                                   siblings_categories=siblings_categories,
                                    bread_crumbs=bread_crumbs,
                                    records_types=records_types, records_schema_data=records_schema_data
                                    )
