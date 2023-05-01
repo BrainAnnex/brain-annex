@@ -5,6 +5,8 @@ import json
 
 class NeoSchema:
     """
+    # TODO: turn into an instantiated class, with a Schema Cache
+
     A layer above the class NeoAccess (or, in principle, another library providing a compatible interface)
     to provide an optional schema to the underlying database.
 
@@ -104,8 +106,7 @@ class NeoSchema:
 
 
     class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;
-                                        #       change it, if you have conflicts with other modules
-                                        #       Alt. name ideas: "SCHEMA"
+                                        # TODO: maybe double label it with "SCHEMA", in part to avoid potential conflicts with other modules
 
     property_label = "PROPERTY"         # Neo4j label to be used with Property nodes managed by this class
 
@@ -145,8 +146,10 @@ class NeoSchema:
         :return:
         """
         assert type(class_name) == str, \
-            f"NeoSchema.valid_class_name(): The class name must be a string (instead, it's of type {type(class_name)})"
-        assert class_name != "", "NeoSchema.valid_class_name(): Class name cannot be an empty string"
+            f"NeoSchema.assert_valid_class_name(): The class name ({class_name}) must be a string (instead, it's of type {type(class_name)})"
+
+        assert class_name != "", \
+            "NeoSchema.assert_valid_class_name(): Class name cannot be an empty string"
 
 
 
@@ -352,22 +355,23 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_attributes(cls, class_neo_id: int) -> dict:
+    def get_class_attributes(cls, class_internal_id: int) -> dict:
         """
-        Returns all the attributes (incl. the name) of the class with the given Neo4j ID,
+        Returns all the attributes (incl. the name) of the Class node with the given internal database ID,
         or raise an Exception if the Class is not found
 
-        :param class_neo_id:    An integer with the Neo4j ID of the desired class
-        :return:                A dictionary of attribute of the class with the given Schema ID;
-                                    raise an Exception if not found
-                                    EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
+        :param class_internal_id:   An integer with the Neo4j ID of the desired class
+        :return:                    A dictionary of attributed of the class with the given Schema ID;
+                                        an Exception is raised if not found
+                                        EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
         """
-        cls.db.assert_valid_internal_id(class_neo_id)
+        #cls.db.assert_valid_internal_id(class_internal_id)
 
-        result = cls.db.get_nodes(class_neo_id, single_row=True)
+        match = cls.db.match(labels="CLASS", internal_id=class_internal_id)
+        result = cls.db.get_nodes(match, single_row=True)
 
         if not result :
-            raise Exception(f"NeoSchema.get_class_attributes(): no Class with a Neo4j ID of {class_neo_id} found")
+            raise Exception(f"NeoSchema.get_class_attributes(): no Class with an internal database ID of {class_internal_id} found")
 
         return result
 
@@ -1163,9 +1167,11 @@ class NeoSchema:
 
 
     #####################################################################################################
-    #                                                                                                   #
-    #                                       ~ DATA POINTS ~                                             #
-    #                                                                                                   #
+
+    '''                                      ~   DATA POINTS   ~                                       '''
+
+    def ________DATA_POINTS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
 
@@ -1208,15 +1214,40 @@ class NeoSchema:
 
 
     @classmethod
+    def get_data_point_internal_id(cls, item_id: int) -> int:
+        """
+        Returns the internal database ID of the given data node,
+        specified by its value of the item_id attribute
+
+        :param item_id:
+        :return:        Theinternal database ID of the specified data point
+        """
+        match = cls.db.match(key_name="item_id", key_value=item_id)
+        result = cls.db.get_nodes(match, return_internal_id=True)
+
+        if not result:
+            raise Exception(f"NeoSchema.get_data_point_internal_id(): no Data Node with the given item_id ({item_id}) was found")
+
+        if len(result) > 1:
+            raise Exception(f"NeoSchema.get_data_point_internal_id(): more than 1 Data Node with the given item_id ({item_id}) was found")
+
+        return result[0]["internal_id"]
+
+
+
+    @classmethod
     def fetch_data_point(cls, item_id = None, internal_id = None, labels=None, properties=None) -> dict:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data point
+
+        See also locate_node()
 
         :param item_id:     The "item_id" field to uniquely identify the data node
         :param internal_id: OPTIONAL alternate way to specify the data node;
                                 if present, it takes priority
         :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
         :param properties:  OPTIONAL (generally, redundant) ways to locate the data node
+
         :return:            A dictionary with all the key/value pairs, if found; or {} if not
         """
         if internal_id is None:
@@ -1224,11 +1255,36 @@ class NeoSchema:
                 "NeoSchema.fetch_data_point(): arguments `item_id` and `internal_id` cannot both be None"
 
             match = cls.db.match(key_name="item_id", key_value=item_id,
-                                labels=labels, properties=properties)
+                                 labels=labels, properties=properties)
         else:
             match = cls.db.match(internal_id=internal_id, labels=labels, properties=properties)
 
         return cls.db.get_nodes(match, single_row=True)
+
+
+
+    @classmethod
+    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> dict:
+        """
+        EXPERIMENTAL - a generalization of fetch_data_point()
+
+        Return the "match" structure to locate a node identified
+        either by its internal database ID (default), or by a primary key (with optional label.)
+
+        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
+        :param id_type: For example, "item_id";
+                            if not specified, the node ID is assumed to be Neo4j ID's
+        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
+        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
+
+        :return:        A "processed-match" structure
+        """
+        if id_type:
+            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
+        else:
+            match_structure = cls.db.match(internal_id=node_id)
+
+        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
 
 
 
@@ -1318,10 +1374,10 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_new(cls, class_internal_id: int, properties = None, labels = None,
-                           assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
+    def add_data_point(cls, class_name=None, class_internal_id=None, properties = None, labels = None,
+                       assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
         """
-        A more "modern" version of add_data_point()
+        A more "modern" version of the deprecated add_data_point_OLD()
 
         Add a new data node, of the specified Class,
         with the given (possibly none) attributes and label(s);
@@ -1333,7 +1389,9 @@ class NeoSchema:
 
         If the data point needs to be created with links to other existing data points, use add_data_point_with_links() instead
 
-        :param class_internal_id:   The internal database ID of the Class node for the new data point
+        :param class_name:      Name of the Class for the new data point
+        :param class_internal_id: The internal database ID of the Class node for the new data point
+                                NOTE: if both class_name and class_internal_id are specified, the latter prevails
         :param properties:      An optional dictionary with the properties of the new data point.
                                     EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:          OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
@@ -1347,9 +1405,18 @@ class NeoSchema:
 
         :return:                The internal database ID of the new data node just created
         """
-        schema_cache = SchemaCacheExperimental()
-        class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
-        class_name = class_attrs["name"]
+        #schema_cache = SchemaCacheExperimental()   # TODO: later restore the Schema, as a class-wide property
+        #class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
+        #class_name = class_attrs["name"]
+        if class_internal_id is None:
+            if not class_name:
+                raise Exception("add_data_point(): at least one of the arguments `class_name` or `class_internal_id` must be provided")
+            else:
+                cls.assert_valid_class_name(class_name)
+
+            class_internal_id = cls.get_class_internal_id(class_name)
+        else:
+            class_name = cls.get_class_name_by_neo_id(class_internal_id)
 
         if labels is None:
             # If not specified, use the Class name
@@ -1362,12 +1429,12 @@ class NeoSchema:
             "NeoSchema.add_data_point_new(): The `properties` argument, if provided, MUST be a dictionary"
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id, schema_cache=schema_cache):
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
             raise Exception(f"NeoSchema.add_data_point_new(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
         properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
-                                                silently_drop=silently_drop, schema_cache=schema_cache)
+                                                silently_drop=silently_drop)
 
 
         # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
@@ -1739,10 +1806,10 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point(cls, class_name="", schema_id=None,
-                       data_dict=None, labels=None,
-                       connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                       new_item_id=None, return_item_ID=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_point_with_links()
+    def add_data_point_OLD(cls, class_name="", schema_id=None,
+                           data_dict=None, labels=None,
+                           connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
+                           new_item_id=None, return_item_ID=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_point_with_links()
                                                                         # TO DITCH *AFTER* add_data_point_with_links() gets link validation!
         """
         Add a new data node, of the Class specified by name or ID,
@@ -2162,31 +2229,6 @@ class NeoSchema:
 
 
     @classmethod
-    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> dict:
-        """
-        EXPERIMENTAL
-
-        Return the "match" structure to locate a node identified
-        either by its Neo4j ID (default), or by a primary key (with optional label.)
-
-        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
-        :param id_type: For example, "item_id";
-                            if not specified, the node ID is assumed to be Neo4j ID's
-        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
-        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
-
-        :return:        A "processed-match" structure
-        """
-        if id_type:
-            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
-        else:
-            match_structure = cls.db.match(internal_id=node_id)
-
-        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
-
-
-
-    @classmethod
     def class_of_data_point(cls, node_id: int, id_type=None, labels=None) -> str:
         """
         Return the name of the Class of the given data point: identified
@@ -2247,7 +2289,7 @@ class NeoSchema:
     @classmethod
     def get_data_point_id(cls, key_value, key_name="item_id") -> int:
         """
-        Get the Neo4j ID of a data point given some other primary key
+        Get the internal database ID of a data point given some other primary key
 
         :return:   An integer with the Neo4j ID of the data point
         """
@@ -2256,7 +2298,7 @@ class NeoSchema:
         result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
 
         if result is None:
-            raise Exception(f"Unable to find a data node with the attribute `{key_name}={key_value}`")
+            raise Exception(f"get_data_point_id(): unable to find a data node with the attribute `{key_name}={key_value}`")
 
         return result
 
@@ -2803,7 +2845,7 @@ class SchemaCache:
     Maintain a Python dictionary, whose keys are Class names - generally,
     a subset of interest from all the Classes in the database.
 
-    Note: this class gets instantiated, so that it's local variable and doesn't cause
+    Note: this class gets instantiated, so that it's a local variable and doesn't cause
           trouble with multi-threading
 
     TODO:   possibly absorb into SchemaCacheExperimental
@@ -2871,14 +2913,26 @@ class SchemaCache:
 ############################################################################################
 class SchemaCacheExperimental:
     """
-    Similar to SchemaCache, but cached by internal ID
+    Similar to SchemaCache, but cached by the Classes' internal database ID, rather than by their name
+
+    To improve the efficiency of methods that heavily interact with the Schema,
+    such as JSON imports.
+
+    Maintain a Python dictionary, whose keys are Class names - generally,
+    a subset of interest from all the Classes in the database.
+
+    Note: this class gets instantiated, so that it's a local variable and doesn't cause
+          trouble with multi-threading
 
     TODO:   add a "schema" argument to some NeoSchema methods that interact with the Schema,
             to provide an alternate manner of querying the Schema
             - as currently done by allowable_props() and is_strict_class()
     """
     def __init__(self):
-        self._schema = {}   # The keys are the internal IDs of the Schema nodes
+        self._schema = {}   # The keys are the internal database IDs of the Schema Class nodes;
+                            # the values are dicts that contain the following keys:
+                            #       "class_attrs"
+                            #       "out_links", "out_neighbors"  [NOT IN CURRENT USE]
 
 
     def get_cached_class_attrs(self, class_internal_id: int) -> dict:
@@ -2887,19 +2941,23 @@ class SchemaCacheExperimental:
         a dictionary of all the Class node's attributes, as returned by get_class_attributes()
         EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
 
-        :param class_internal_id:
-        :return:
+        :param class_internal_id:   An integer with the database internal ID of the desired Class node
+        :return:                    A dictionary of all the Class node's attributes
         """
         if class_internal_id not in self._schema:
             # No cache info already exists for this Class... so, create it,
-            # and populate with minimal data that is sufficient to provide what was requested
+            # and populate it with minimal data that is sufficient to provide what was requested
             class_attrs = NeoSchema.get_class_attributes(class_internal_id)
             self._schema[class_internal_id] = {"class_attrs": class_attrs}
             return class_attrs
         else:
+            # Cache found for this Class
             cached_data = self._schema[class_internal_id]
             if "class_attrs" not in cached_data:
                 class_attrs = NeoSchema.get_class_attributes(class_internal_id)
+                if "name" not in class_attrs:
+                    raise Exception(f"get_cached_class_attrs(): the expected attribute `name` wasn't found"
+                                    f" among the attributes of the Class node {class_internal_id}")
                 cached_data["class_attrs"] = class_attrs
 
             return cached_data["class_attrs"]

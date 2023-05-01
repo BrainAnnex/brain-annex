@@ -3,12 +3,15 @@ Vue.component('vue-category-navbox',
     Option to FILTER the listing of categories to names starting with a particular letter
 */
     {
-        props: ['category_name', 'parent_categories', 'subcategories', 'all_categories', 'show_right_sidebox'],
-        /*  category_name:      Name of the Category currently being viewed
-            parent_categories:  List of the parent categories of the Current Category
-                                    each item is an object, whose keys include
-                                    "item_id" and "name" (among others)
+        props: ['category_name', 'parent_categories', 'subcategories', 'siblings_categories', 'all_categories', 'show_right_sidebox'],
+        /*  category_name:          Name of the Category currently being viewed
+            parent_categories:      List of the parent categories of the Current Category;
+                                        each item is an object, whose keys include
+                                        "item_id" and "name" (among others)
             subcategories:
+            siblings_categories:    List of the parent categories of the Current Category;
+                                    each item is an object, whose keys include
+                                    "item_id" and "name", "remarks" and "internal_id" (among others)
             all_categories:
             show_right_sidebox: Flag indicating whether the sidebar is expanded or contracted
          */
@@ -33,7 +36,8 @@ Vue.component('vue-category-navbox',
                     <span class="sidebox-section">RELATED</span>
                     <br>
                     <!-- All parent categories -->
-                    <span style='color:#BBBBBB; font-size:8px; font-style:italic'>Parent Categories:</span>
+                    <span class='category-relatives'>Parent Categories:</span>
+                    <span class='category-relatives' v-if="parent_categories.length === 0">None</span>
                     <template v-for="category in parent_categories">
                         <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['item_id']">{{category.name}}</a>
                     </template>
@@ -48,14 +52,18 @@ Vue.component('vue-category-navbox',
 
                     <!-- All sibling categories -->
                     <div style='border:1px solid #AAA; padding:2px'>
-                        <span style='color:#BBBBBB; font-size:8px; font-style:italic'>Sibling Categories:</span>
-                        <br>TBA
+                        <span class='category-relatives'>Sibling Categories:</span>
+                        <span class='category-relatives' v-if="siblings_categories.length === 0">None</span>
+                        <template v-for="category in siblings_categories">
+                            <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['item_id']">{{category.name}}</a>
+                        </template>
                     </div>
 
                     <br>
 
                     <!-- All subcategories -->
-                    <span style='color:#BBBBBB; font-size:8px; font-style:italic'>Sub-categories:</span>
+                    <span class='category-relatives'>Sub-categories:</span>
+                    <span class='category-relatives' v-if="subcategories.length === 0">None</span>
                     <template v-for="category in subcategories">
                         <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['id']">{{category.name}}</a>
                     </template>

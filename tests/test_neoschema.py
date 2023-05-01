@@ -2,10 +2,8 @@
 
 
 import pytest
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists
+from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-#import neoaccess
-from BrainAnnex.modules.utilities.comparisons import compare_recordsets
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, SchemaCacheExperimental
 
 
@@ -337,8 +335,8 @@ def test_delete_class(db):
     # Interlinked Classes with properties; one of the Classes has an attached data node
     db.empty_dbase()
     create_sample_schema_2()    # Schema with quotes and categories
-    NeoSchema.add_data_point(class_name="quotes",
-                             data_dict={"quote": "Comparison is the thief of joy"})
+    NeoSchema.add_data_point_OLD(class_name="quotes",
+                                 data_dict={"quote": "Comparison is the thief of joy"})
 
     NeoSchema.delete_class("categories")    # No problem in deleting this Class with no attached data nodes
     assert NeoSchema.class_name_exists("quotes")
@@ -491,10 +489,10 @@ def test_count_data_points_of_class(db):
 
     assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 0
 
-    NeoSchema.add_data_point_new(class_internal_id=class_internal_id_1)
+    NeoSchema.add_data_point(class_internal_id=class_internal_id_1)
     assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 1
 
-    NeoSchema.add_data_point_new(class_internal_id=class_internal_id_1)
+    NeoSchema.add_data_point(class_internal_id=class_internal_id_1)
     assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 2
 
 
@@ -502,7 +500,7 @@ def test_count_data_points_of_class(db):
 
     assert NeoSchema.count_data_points_of_class(class_internal_id_2) == 0
 
-    NeoSchema.add_data_point_new(class_internal_id=class_internal_id_2)
+    NeoSchema.add_data_point(class_internal_id=class_internal_id_2)
     assert NeoSchema.count_data_points_of_class(class_internal_id_2) == 1
 
     assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 2   # Where we left it off
@@ -940,18 +938,18 @@ def test_add_data_point_new(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_point_new(class_internal_id=123)     # No such class exists
+        NeoSchema.add_data_point(class_internal_id=123)     # No such class exists
 
     class_internal_id , _ = NeoSchema.create_class("No data nodes allowed", no_datanodes = True)
     with pytest.raises(Exception):
-        NeoSchema.add_data_point_new(class_internal_id=class_internal_id)   # The Class doesn't allow data nodes
+        NeoSchema.add_data_point(class_internal_id=class_internal_id)   # The Class doesn't allow data nodes
 
     class_internal_id , class_schema_id = NeoSchema.create_class("Car", schema_type="S")
 
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 0
 
     # Successfully adding the first data point
-    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id)
+    new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id)
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 1
 
     # Locate the data point just added
@@ -966,15 +964,15 @@ def test_add_data_point_new(db):
 
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
-                                     properties={"color": "No properties allowed"},
-                                     silently_drop=False)   # Trying to set a non-allowed property
+        NeoSchema.add_data_point(class_internal_id=class_internal_id,
+                                 properties={"color": "No properties allowed"},
+                                 silently_drop=False)   # Trying to set a non-allowed property
 
 
     # Successfully adding a 2nd data point
-    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
-                                                   properties={"color": "No properties allowed"},
-                                                   silently_drop=True)
+    new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id,
+                                               properties={"color": "No properties allowed"},
+                                               silently_drop=True)
 
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 2
 
@@ -992,8 +990,8 @@ def test_add_data_point_new(db):
     # Successfully adding a 3rd data point
     NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["color"]) # Expand the allow class properties
 
-    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
-                                                   properties={"color": "white"})
+    new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id,
+                                               properties={"color": "white"})
 
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 3
 
@@ -1012,15 +1010,15 @@ def test_add_data_point_new(db):
     NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["year"])
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
-                                     properties={"color": "white", "make": "Toyota"},
-                                     silently_drop=False)   # Trying to set a non-allowed property
+        NeoSchema.add_data_point(class_internal_id=class_internal_id,
+                                 properties={"color": "white", "make": "Toyota"},
+                                 silently_drop=False)   # Trying to set a non-allowed property
 
 
     # Successfully adding a 4th data point
-    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
-                                                   properties={"color": "red", "make": "VW"},
-                                                   silently_drop=True)
+    new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id,
+                                               properties={"color": "red", "make": "VW"},
+                                               silently_drop=True)
 
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 4
 
@@ -1036,9 +1034,9 @@ def test_add_data_point_new(db):
 
 
     # Successfully adding a 5th data point
-    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
-                                                   properties={"color": "blue", "make": "Fiat", "year": 2000},
-                                                   silently_drop=True)
+    new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id,
+                                               properties={"color": "blue", "make": "Fiat", "year": 2000},
+                                               silently_drop=True)
 
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 5
 
@@ -1055,9 +1053,9 @@ def test_add_data_point_new(db):
 
 
     # Successfully adding a 6th data point
-    new_datanode_id = NeoSchema.add_data_point_new(class_internal_id=class_internal_id,
-                                                   properties={"color": "green", "year": 2022},
-                                                   silently_drop=False)
+    new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id,
+                                               properties={"color": "green", "year": 2022},
+                                               silently_drop=False)
 
     assert NeoSchema.count_data_points_of_class(class_internal_id) == 6
 
@@ -1168,14 +1166,14 @@ def test_add_data_point(db):
     create_sample_schema_1()    # Schema with patient/result/doctor
 
     # Create a new data point, and get its item_id
-    doctor_data_id = NeoSchema.add_data_point(class_name="doctor",
-                                              data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
-                                              return_item_ID=True)
+    doctor_data_id = NeoSchema.add_data_point_OLD(class_name="doctor",
+                                                  data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
+                                                  return_item_ID=True)
 
     # Create a new data point, and this time get its Neo4j ID
-    result_neo_id = NeoSchema.add_data_point(class_name="result",
-                                             data_dict={"biomarker": "glucose", "value": 99.0},
-                                             return_item_ID=False)
+    result_neo_id = NeoSchema.add_data_point_OLD(class_name="result",
+                                                 data_dict={"biomarker": "glucose", "value": 99.0},
+                                                 return_item_ID=False)
 
     q = '''
         MATCH (d:doctor {item_id: $doctor, name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]-(c1:CLASS)
@@ -1202,13 +1200,13 @@ def test_add_and_link_data_point(db):
 
     create_sample_schema_1()    # Schema with patient/result/doctor
 
-    doctor_neo_id = NeoSchema.add_data_point(class_name="doctor",
-                                             data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
-                                             return_item_ID=False)
+    doctor_neo_id = NeoSchema.add_data_point_OLD(class_name="doctor",
+                                                 data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
+                                                 return_item_ID=False)
 
-    result_neo_id = NeoSchema.add_data_point(class_name="result",
-                                            data_dict={"biomarker": "glucose", "value": 99.0},
-                                            return_item_ID=False)
+    result_neo_id = NeoSchema.add_data_point_OLD(class_name="result",
+                                                 data_dict={"biomarker": "glucose", "value": 99.0},
+                                                 return_item_ID=False)
 
     patient_neo_id = NeoSchema.add_and_link_data_point_OBSOLETE(class_name="patient",
                                                                 properties={"name": "Jill", "age": 19, "balance": 312.15},
@@ -1273,10 +1271,10 @@ def test_add_data_relationship(db):
         NeoSchema.add_data_relationship(from_id=neo_id_1, to_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
 
     _ , person_class_id = NeoSchema.create_class("Person")
-    person_id = NeoSchema.add_data_point("Person")
+    person_id = NeoSchema.add_data_point_OLD("Person")
 
     _ , car_class_id = NeoSchema.create_class("Car")
-    car_id = NeoSchema.add_data_point("Car")
+    car_id = NeoSchema.add_data_point_OLD("Car")
 
     with pytest.raises(Exception):
         # No such relationship exists between their Classes
@@ -1418,7 +1416,7 @@ def test_class_of_data_point(db):
         NeoSchema.class_of_data_point(node_id=neo_id)     # It's not a data node
 
     NeoSchema.create_class("Person")
-    item_id = NeoSchema.add_data_point("Person")
+    item_id = NeoSchema.add_data_point_OLD("Person")
 
     assert NeoSchema.class_of_data_point(node_id=item_id, id_type="item_id") == "Person"
     assert NeoSchema.class_of_data_point(node_id=item_id, id_type="item_id", labels="Person") == "Person"

@@ -2,7 +2,7 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
 """
-    MIT License.  Copyright (c) 2021-2022 Julian A. West
+    MIT License.  Copyright (c) 2021-2023 Julian A. West
 """
 
 

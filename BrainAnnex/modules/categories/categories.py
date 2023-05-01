@@ -1,7 +1,7 @@
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from typing import Union
 
-# 2 classes: "Categories" and  "Collections"
+# 2 classes: "Categories" and  "Collections".  TODO: separate
 
 
 class Categories:
@@ -26,7 +26,14 @@ class Categories:
 
 
 
-    ##########  1. LOOKUP  ##########
+
+    #####################################################################################################
+
+    '''                                 ~   LOOKUP CATEGORY DATA   ~                                  '''
+
+    def ________LOOKUP_CATEGORIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def get_category_info(cls, category_id) -> dict:
@@ -151,12 +158,19 @@ class Categories:
         remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
 
         q =  f'''
+             MATCH (cat:Categories)-[:SCHEMA]->(:CLASS {{name:"Categories"}}) 
+             {clause}
+             RETURN cat.item_id AS item_id, cat.name AS name {remarks_subquery}
+             ORDER BY toLower(cat.name)
+             '''
+
+        q_NO_LONGER_USED =  f'''
              MATCH (cat:BA {{schema_code:"cat"}})
              {clause}
              RETURN cat.item_id AS item_id, cat.name AS name {remarks_subquery}
              ORDER BY toLower(cat.name)
              '''
-        # Notes: 1 is the ROOT category.
+        # Notes: 1 is the ROOT category.  TODO: replace with check .root = true
         # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
 
         result =  cls.db.query(q)
@@ -166,6 +180,24 @@ class Categories:
             for item in result:
                 if item["remarks"] is None:
                     del item["remarks"]     # To avoid a dictionary entry of the type 'remarks': None
+
+        return result
+
+
+
+    @classmethod
+    def get_sibling_categories(cls, category_internal_id: int) -> [dict]:
+        """
+        Return the data of all the "siblings" of the given Category
+
+        :param category_internal_id:
+        :return:
+        """
+        result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of")
+
+        # Ditch unneeded attributes
+        for item in result:
+            del item["neo4j_labels"]
 
         return result
 
@@ -313,6 +345,7 @@ class Categories:
         return ["START_CONTAINER", cls.recursive(category_ID, parents_map) ,"END_CONTAINER"]
 
 
+
     @classmethod
     def recursive(cls, category_ID, parents_map) -> list:
         """
@@ -351,21 +384,49 @@ class Categories:
 
 
 
-    ##########  2. UPDATE  ##########
+    #####################################################################################################
+
+    '''                                 ~   UPDATE CATEGORY DATA   ~                                  '''
+
+    def ________UPDATE_CATEGORIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
 
     @classmethod
-    def add_subcategory(cls, post_data: dict) -> int:
+    def create_categories_root(cls, data_dict=None) -> int:
+        """
+        Create a ROOT Category node;
+        return the internal database ID of the new Categories node
+
+        :param data_dict:
+        :return:            The internal database ID of the new data node just created
+        """
+        if data_dict is None:
+            data_dict = {"name": "HOME", "remarks": "top level"}
+
+        data_dict["root"] = True
+
+        return NeoSchema.add_data_point(class_name="Categories",
+                                        properties = data_dict,
+                                        assign_item_id=True)
+
+
+
+    @classmethod
+    def add_subcategory(cls, data_dict: dict) -> int:
         """
         Add a new Subcategory to a given Category
-        :param post_data:   Dictionary with the following keys:
-                                category_id                     To identify the Category to which to add a Subcategory
+        :param data_dict:   Dictionary with the following keys:
+                                category_id                     The item_id to identify the Category
+                                                                    to which to add a Subcategory
                                 subcategory_name                The name to give to the new Subcategory
                                 subcategory_remarks (optional)  A comment field for the new Subcategory
 
         :return:                If successful, an integer with auto-increment "item_id" value of the node just created;
                                 otherwise, an Exception is raised
         """
-        category_id = post_data.get("category_id")
+        category_id = data_dict.get("category_id")
         if not category_id:
             raise Exception(f"category_id is missing")
 
@@ -374,21 +435,26 @@ class Categories:
         except Exception as ex:
             raise Exception(f"category_id is not an integer (value passed {category_id}). {ex}")
 
-        subcategory_name = post_data.get("subcategory_name")
+        subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
             raise Exception(f"subcategory_name is missing")
 
-        subcategory_remarks = post_data.get("subcategory_remarks")
+        subcategory_remarks = data_dict.get("subcategory_remarks")
 
         data_dict = {"name": subcategory_name}
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        return NeoSchema.add_data_point(class_name="Categories",
-                                        data_dict=data_dict, labels=["BA", "Categories"],
-                                        connected_to_id=category_id, connected_to_labels="BA",
-                                        rel_name="BA_subcategory_of", rel_dir="OUT"
-                                        )
+        parent_category_internal_id = NeoSchema.get_data_point_id(key_value=category_id, key_name="item_id")
+
+        new_internal_id = NeoSchema.add_data_point_with_links(
+                                class_name = "Categories",
+                                properties = data_dict, labels = ["BA", "Categories"],
+                                links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
+                                assign_item_id=True)
+
+        new_data_point = NeoSchema.fetch_data_point(internal_id = new_internal_id)
+        return new_data_point["item_id"]
 
 
 
@@ -541,7 +607,13 @@ class Categories:
 
 
 
-    ########  ADDING ITEMS TO THE CATEGORY  ########
+    #####################################################################################################
+
+    '''                                ~   ADD ITEMS TO CATEGORIES   ~                                '''
+
+    def ________ADD_ITEMS_TO_CATEGORIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def add_content_media(cls, category_id:int, properties: dict, pos=None) -> None:
@@ -620,7 +692,13 @@ class Categories:
 
 
 
-    ######    POSITIONING WITHIN CATEGORIES    ######
+    #####################################################################################################
+
+    '''                          ~   POSITION WITHIN CATEGORIES    ~                                  '''
+
+    def ________POSITIONING________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def check_for_duplicates(cls, category_id) -> str:
@@ -850,6 +928,28 @@ class Categories:
 
 
 
+    #####################################################################################################
+
+    '''                                  ~   PAGE HANDLER   ~                                         '''
+
+    def ________PAGE_HANDLER________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    # TODO: page-handler methods are meant to plugin-provided complete functionality,
+    #       to combine what's currently in BA_pages_routing.py and in BA_pages_request_handler.py
+
+    @classmethod
+    def viewer_handler(cls, category_id: int):
+        category_internal_id = NeoSchema.get_data_point_internal_id(item_id = category_id)
+        siblings_categories = Categories.get_sibling_categories(category_internal_id)
+
+        return siblings_categories
+
+
+
+
+
 
 ##########################################################################################
 
@@ -864,7 +964,7 @@ class Collections:
     An entity to which a variety of nodes (e.g. representing records or media)
     is attached, with a positional attribute.
 
-    TODO: maybe turn into an instantiatable class, so as not to have to repeatedly pass "membership_rel_name"
+    TODO: move to separate file
     """
 
     # Class variables
@@ -971,14 +1071,14 @@ class Collections:
 
         data_binding = item_properties
 
-        return NeoSchema.add_data_point(class_name=item_class_name,
-                                        data_dict=data_binding,
-                                        labels=["BA", item_class_name],
-                                        connected_to_id=collection_id, connected_to_labels="BA",
-                                        rel_name=membership_rel_name,
-                                        rel_prop_key="pos", rel_prop_value=pos,
-                                        new_item_id=new_item_id
-                                        )
+        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+                                            data_dict=data_binding,
+                                            labels=["BA", item_class_name],
+                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            rel_name=membership_rel_name,
+                                            rel_prop_key="pos", rel_prop_value=pos,
+                                            new_item_id=new_item_id
+                                            )
 
 
 
@@ -1023,14 +1123,14 @@ class Collections:
 
         #cls.db.debug_print(q, data_binding, "add_to_collection_at_end", True)
 
-        return NeoSchema.add_data_point(class_name=item_class_name,
-                                        data_dict=data_binding,
-                                        labels=["BA", item_class_name],
-                                        connected_to_id=collection_id, connected_to_labels="BA",
-                                        rel_name=membership_rel_name,
-                                        rel_prop_key="pos", rel_prop_value=pos,
-                                        new_item_id=new_item_id
-                                        )
+        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+                                            data_dict=data_binding,
+                                            labels=["BA", item_class_name],
+                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            rel_name=membership_rel_name,
+                                            rel_prop_key="pos", rel_prop_value=pos,
+                                            new_item_id=new_item_id
+                                            )
 
 
 
@@ -1115,14 +1215,14 @@ class Collections:
             new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
 
 
-        return NeoSchema.add_data_point(class_name=item_class_name,
-                                        data_dict=item_properties,
-                                        labels=["BA", item_class_name],
-                                        connected_to_id=collection_id, connected_to_labels="BA",
-                                        rel_name=membership_rel_name,
-                                        rel_prop_key="pos", rel_prop_value=new_pos,
-                                        new_item_id=new_item_id
-                                        )
+        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+                                            data_dict=item_properties,
+                                            labels=["BA", item_class_name],
+                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            rel_name=membership_rel_name,
+                                            rel_prop_key="pos", rel_prop_value=new_pos,
+                                            new_item_id=new_item_id
+                                            )
 
         #link_to = [{"labels": "BA", "key": "item_id", "value": collection_id,
         #            "rel_name": membership_rel_name, "rel_attrs": {"pos": new_pos}}]

@@ -1,5 +1,6 @@
-/*  Side box.  Container for Category selector shown to the right
-    of the "scroll-canvas" -- which is used as its parent,
+/*  Side box.  Container for Category info box and selector,
+    shown to the right of the "scroll-canvas"
+    -- which is used as its parent,
     and as a coordinate frame of reference
  */
 
@@ -37,6 +38,13 @@ div.sidebox  span.sidebox-section {
     font-weight:bold;
 }
 
+div.sidebox  span.category-relatives {
+    color:#80A0A0;
+    font-size:8px;
+    font-style:italic;
+}
+
+
 
 /* For the Current Category in the listing of categories */
 div.sidebox  span.current-category {
@@ -44,7 +52,7 @@ div.sidebox  span.current-category {
     font-weight:bold;
 }
 
-/* For the letters of the alphabets used to set the filter\1F44D */
+/* For the letters of the alphabets used to set the filter */
 div.sidebox  a.alphabet-letters  {
     margin-right: 3px;
 }
