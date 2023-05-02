@@ -428,16 +428,16 @@ class Categories:
         """
         category_id = data_dict.get("category_id")
         if not category_id:
-            raise Exception(f"category_id is missing")
+            raise Exception(f"add_subcategory(): category_id is missing")
 
         try:
             category_id = int(category_id)
         except Exception as ex:
-            raise Exception(f"category_id is not an integer (value passed {category_id}). {ex}")
+            raise Exception(f"add_subcategory(): category_id is not an integer (value passed {category_id}). {ex}")
 
         subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
-            raise Exception(f"subcategory_name is missing")
+            raise Exception(f"add_subcategory(): subcategory_name is missing")
 
         subcategory_remarks = data_dict.get("subcategory_remarks")
 
