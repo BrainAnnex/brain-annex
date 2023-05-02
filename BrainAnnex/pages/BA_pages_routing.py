@@ -101,6 +101,8 @@ class PagesRouting:
                     return f"<b>No such Category ID ({category_id}) exists!</b> Maybe that category got deleted? " \
                            f"<a href='/BA/pages/viewer/1'>Go to top (HOME) category</a>"
 
+            # TODO: catch errors, and provide a graceful error page
+
             category_name = category_info.get("name", "[No name]")
             category_remarks = category_info.get("remarks", "")
 

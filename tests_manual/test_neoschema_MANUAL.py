@@ -193,27 +193,27 @@ def test_next_available_id(db):
     db.empty_dbase()    # Completely clear the database
 
     # Try on empty database
-    assert NeoSchema.next_available_id() == 1
+    assert NeoSchema.next_available_schema_id() == 1
 
     db.create_node("CLASS", {"schema_id": 1})
-    assert NeoSchema.next_available_id() == 2
+    assert NeoSchema.next_available_schema_id() == 2
 
     db.create_node("CLASS", {"schema_id": 2})
-    assert NeoSchema.next_available_id() == 3
+    assert NeoSchema.next_available_schema_id() == 3
 
     db.create_node("PROPERTY", {"schema_id": 3})
-    assert NeoSchema.next_available_id() == 4
+    assert NeoSchema.next_available_schema_id() == 4
 
     db.create_node("some_other_label", {"schema_id": 12345})
-    assert NeoSchema.next_available_id() == 4      # Unaffected by other labels
+    assert NeoSchema.next_available_schema_id() == 4      # Unaffected by other labels
 
     db.create_node("CLASS", {"schema_id": 100})
-    assert NeoSchema.next_available_id() == 101
+    assert NeoSchema.next_available_schema_id() == 101
 
     db.create_node("PROPERTY", {"schema_id": 665})
-    assert NeoSchema.next_available_id() == 666
+    assert NeoSchema.next_available_schema_id() == 666
 
-    #print(NeoSchema.next_available_id())
+    #print(NeoSchema.next_available_schema_id())
 
 
 

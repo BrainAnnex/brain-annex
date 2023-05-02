@@ -189,7 +189,7 @@ class NeoSchema:
         if cls.class_name_exists(name):
             raise Exception(f"A class named `{name}` ALREADY exists")
 
-        schema_id = cls.next_available_id()    # A schema-wide ID, also used for Property nodes
+        schema_id = cls.next_available_schema_id()    # A schema-wide ID, also used for Property nodes
 
         attributes = {"name": name, "schema_id": schema_id, "type": schema_type}
         if code:
@@ -1012,7 +1012,7 @@ class NeoSchema:
         number_properties_nodes_created = 0
 
         for property_name in clean_property_list:
-            new_schema_id = cls.next_available_id()
+            new_schema_id = cls.next_available_schema_id()
             q = f'''
                 MATCH (c: `{cls.class_label}` {{ schema_id: {class_id} }})
                 MERGE (c)-[:{cls.class_prop_rel} {{ index: {new_index} }}]
@@ -1219,8 +1219,8 @@ class NeoSchema:
         Returns the internal database ID of the given data node,
         specified by its value of the item_id attribute
 
-        :param item_id:
-        :return:        Theinternal database ID of the specified data point
+        :param item_id: Integer to identify a data point by the value of its item_id attribute
+        :return:        The internal database ID of the specified data point
         """
         match = cls.db.match(key_name="item_id", key_value=item_id)
         result = cls.db.get_nodes(match, return_internal_id=True)
@@ -1229,7 +1229,8 @@ class NeoSchema:
             raise Exception(f"NeoSchema.get_data_point_internal_id(): no Data Node with the given item_id ({item_id}) was found")
 
         if len(result) > 1:
-            raise Exception(f"NeoSchema.get_data_point_internal_id(): more than 1 Data Node with the given item_id ({item_id}) was found")
+            raise Exception(f"NeoSchema.get_data_point_internal_id(): more than 1 Data Node "
+                            f"with the given item_id ({item_id}) was found ({len(result)} were found)")
 
         return result[0]["internal_id"]
 
@@ -2719,21 +2720,14 @@ class NeoSchema:
 
 
     @classmethod
-    def next_available_id(cls) -> int:
+    def next_available_schema_id(cls) -> int:
         """
         Return the next available ID for nodes managed by this class
-        For the ID to use on data points, use next_available_datapoint_id() instead
-        # TODO: *** THIS MAY FAIL IF MULTIPLE CALLS ARRIVE ALMOST SIMULTANEOUSLY -> finish switch to using next_autoincrement()
+        For unique ID's to use on data nodes, use next_available_datapoint_id() instead
 
-        :return:
+        :return:     A unique auto-increment integer used for Schema nodes
         """
-        future_value = cls.next_autoincrement("schema_node")    # The better way to do it
-        #currently_used_value = cls.next_available_id_general([cls.class_label, cls.property_label], "schema_id")    # Old way
-
-        #assert future_value == currently_used_value, \
-            #f"NeoSchema.next_available_id() : mismatch in the 2 auto-incr. values ({future_value} vs. {currently_used_value})"
-
-        return future_value
+        return cls.next_autoincrement("schema_node")
 
 
 
@@ -2746,6 +2740,8 @@ class NeoSchema:
         if no such node exists (for example, after a new installation), it gets created, and 1 is returned
 
         :param kind:    A string used to maintain completely separate groups of auto-increment values
+                            Currently used values: "data_node" and "schema_node"
+
         :return:        An integer that is a unique auto-increment for the specified group
         """
         q = '''
@@ -2771,7 +2767,9 @@ class NeoSchema:
         with the internal ID assigned by Neo4j to each node),
         is meant as a permanent primary key, on which a URI could be based.
 
-        :return:    A unique auto-increment integer used for data nodes
+        For unique ID's to use on schema nodes, use next_available_schema_id() instead
+
+        :return:    A unique auto-increment integer used for Data nodes
         """
         return cls.next_autoincrement("data_node")
 
