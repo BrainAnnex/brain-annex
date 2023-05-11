@@ -3,12 +3,15 @@
     MIT License.  Copyright (c) 2021-2023 Julian A. West
 """
 
-from flask import Blueprint, render_template, current_app, request   # The request package makes available a GLOBAL request object
+from flask import Blueprint, render_template, current_app, make_response, request   # The "request" package
+                                                                                    # makes available a GLOBAL request object
 from flask_login import login_required, current_user
 from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
-from BrainAnnex.api.BA_api_request_handler import APIRequestHandler     # TODO: reorganize, to avoid this
+from BrainAnnex.api.BA_api_request_handler import APIRequestHandler         # TODO: reorganize, to avoid this
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from BrainAnnex.modules.categories.categories import Categories
+from datetime import datetime
+import time
 import json
 
 
@@ -404,6 +407,42 @@ class PagesRouting:
             """
             template = "tests/upload.htm"
             return render_template(template)
+
+
+        @bp.route('/test/set-cookie')
+        def test_set_cookie() -> str:
+            # EXAMPLE invocation: http://localhost:5000/BA/pages/test/set-cookie
+            # Set a cookie, and display a test page
+            print("In test_set_cookie()")
+            template = "tests/hello_world.htm"
+            response  = make_response(render_template(template))
+            now_python = datetime.now()
+            now_unix = time.mktime(now_python.timetuple())
+            n_days = 1
+            n_days_later_unix = now_unix + (3600 * 24 * n_days)     # Add an appropriate number of seconds to the UNIX time
+
+            response.set_cookie(key='julianTest2', value='This cookie should expire a day later', expires=n_days_later_unix)
+            return response
+
+
+        @bp.route('/test/read-cookie')
+        def test_read_cookie() -> str:
+            # EXAMPLE invocation: http://localhost:5000/BA/pages/test/read-cookie
+            cookie_name = 'julianTest2'
+            cookie_value = request.cookies.get(cookie_name)
+            return f"In test_read_cookie(); the cookie value was `{cookie_value}`"
+
+
+        @bp.route('/test/delete-cookie')
+        def test_delete_cookie() -> str:
+            # EXAMPLE invocation: http://localhost:5000/BA/pages/test/delete-cookie
+            # Delete a cookie, and display a test page
+            print("In test_delete_cookie()")
+            template = "tests/hello_world.htm"
+            response  = make_response(render_template(template))
+            response.set_cookie(key='julianTest2',  max_age=0)
+            return response
+
 
 
         ##################  END OF ROUTING DEFINITIONS  ##################

@@ -1,4 +1,4 @@
-# Classes "User" and "user_manager_neo4j"
+# 2 Classes : "User" and "user_manager_neo4j"
 from typing import Union
 
 
@@ -148,8 +148,11 @@ class UserManagerNeo4j:
     @classmethod
     def check_login_credentials(cls, username: str, password: str) -> int:
         """
-        Verify the validity of the specified password for the given username.
+        Verify the validity of the specified password for the given username,
+        by consulting the database.
         If successful, return the User ID; otherwise, return -1
+
+        TODO: introduce encryption in the passwords stored in the database
 
         :param username:    A string with the username
         :param password:    A string with the password
@@ -166,7 +169,7 @@ class UserManagerNeo4j:
         if len(result_list) == 1:
             user_id = result_list[0]
             print("In check_login_credentials(): successful validation of user credentials. User ID: ", user_id)
-            return user_id
+            return user_id      # Successful login
         else:
             print("In check_login_credentials(): failed validation of user credentials. No matches or more than one")
             print(f"Credentials used in database query: {credentials}")

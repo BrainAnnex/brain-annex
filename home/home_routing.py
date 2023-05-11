@@ -27,7 +27,7 @@ class Home:
     # Set up the user-authentication mechanism
     # From docs: "The login manager contains the code that lets this application and Flask-Login work together,
     #             such as how to load a user from an ID, where to send users when they need to log in, etc."
-    login_manager = None                # This get a value assigned by calls to setup()
+    login_manager = None                # This gets a value assigned by calls to setup()
 
     config_pars = {}                    # Dict with all the app configuration parameters
 
@@ -134,7 +134,8 @@ class Home:
             passwd = request.form["passwd"]
             print(f"In do_login().  POST parameters -> username: `{username}` | passwd: `{passwd}`")
 
-            # Verify the login credential and, if successful, obtain the User ID (-1 in case of failure)
+            # Verify the login credential against the database;
+            # if successful, obtain the User ID (-1 in case of failure)
             user_id = cls.user_handle.check_login_credentials(username, passwd)
 
             if user_id == -1:
@@ -178,7 +179,7 @@ class Home:
 
             # TODO: return None if the flask_user_id is invalid
             user_id_as_int = ord(flask_user_id)     # Take a one-character Unicode string and return the code point value (an integer)
-            # Unclear whether flask_login would ever use more than 1 character
+                                                    # Note: Unclear whether flask_login would ever use more than 1 character
 
             #user_id_as_int = flask_user_id         # In my test, this also worked if User.get_id is changed to return an integer
 
@@ -211,7 +212,7 @@ class Home:
 
             :return:    A string with the HTML for a bare-bones logout landing page
             """
-            name = current_user.username        # TODO: maybe turn (current_user.username) into a method...
-            logout_user()
+            name = current_user.username    # TODO: maybe turn (current_user.username) into a method...
+            logout_user()                   # This function is provided by flask_login
             return "<b>" + name + "</b>, you're now logged out. &nbsp; <a href='/login'>Login</a>"
             # return redirect(somewhere)

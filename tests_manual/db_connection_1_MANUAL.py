@@ -1,7 +1,7 @@
 # Test of ability to connect to the Neo4j database upon having the user type in the credentials
 
 import os
-from BrainAnnex.modules.neo_access.neo_access import NeoAccess
+from neoaccess import NeoAccess
 
 print("About to test the database connection...  Enter the host IP, but leave out the port number: (EXAMPLES:  bolt://1.2.3.4  OR  neo4j://localhost )\n")
 host = input()
