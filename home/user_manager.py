@@ -5,11 +5,12 @@ from typing import Union
 class User():
     """
     The "flask_login" package used for authentication
-    expects user objects that have the following properties and methods:
+    expects user objects that have the following 3 properties and 1 method:
 
         is_authenticated
         is_active
         is_anonymous
+
         get_id()
     """
 
@@ -18,7 +19,8 @@ class User():
         self.username = username
 
         # Properties required by Flask-Login
-        # By default, we're instantiating authenticate, active, non-anonymous users
+        # By default, we're instantiating authenticated, active, non-anonymous users
+        # (that's the ONLY type of user login we're using)
         self.is_authenticated = True
         self.is_active = True
         self.is_anonymous = False
@@ -61,7 +63,8 @@ class UserManagerNeo4j:
     """
     Class for User Management (Neo4j version)
 
-    This class does NOT get instantiated.
+    This is a STATIC class that doesn't get initialized.
+    IMPORTANT: prior to use, its class variable "db" must be set
     """
 
     db = None           # "NeoAccess" object.  MUST be set before using this class!
@@ -73,11 +76,12 @@ class UserManagerNeo4j:
     @classmethod
     def show_users(cls) -> None:
         """
-        Show a list of users added to the class' user_dict property.  Meant for debugging
+        Show a list of users stored in the local lookup table
+        (implemented with the dict kept in the class property user_dict).  Meant for debugging
 
         :return:    None
         """
-        print("List of users in UserManagerNeo4j:")
+        print("show_users(): list of users in UserManagerNeo4j:")
         for k, v in cls.user_dict.items():
             print(f"    ({k}): {str(v)}")
 
@@ -88,10 +92,62 @@ class UserManagerNeo4j:
         """
         Look up and return the "User" object corresponding to the specified user ID; if not found, return None
 
-        :param user_id:     An integer identifying a particular user
-        :return:            A "User" object, if the specified user was found; otherwise, None
+        :param user_id:     An integer that is meant to identify a particular user
+        :return:            Object of type "User", if the specified user was found in the local lookup table;
+                                otherwise, None
         """
+        # Attempt to locate the requested user in the local lookup table, which
+        # is implemented in the form of the dictionary:  cls.user_dict
         return cls.user_dict.get(user_id, None)    # None is returned if the dictionary lookup fails
+
+
+
+    @classmethod
+    def obtain_user_obj(cls, user_id: int) -> Union[User, None]:
+        """
+        Attempt to locate the user in local lookup table;
+        if not found, consult the database to create (if present there) an object of type "User"
+        based on the given user ID.
+        If unable to locate the given user ID, either locally or in the database, return None
+
+        NOTE:   this is a form of user-login caching.  While fast and convenient, it also means that
+                there's no way to kick a user out from changes in the database (the app would also require a restart)
+                (Maybe an "inactivate_user" API could be implemented, to knock off the user from the local table;
+                 however, such an approach wouldn't work if there are multiple instances of the web app - for example,
+                 multiple workers or multiple VM's for load-balancing)
+
+        :param user_id:     An integer that is meant to identify a particular user
+        :return:            Object of type "User", if the specified user was found in the local lookup table or in the database;
+                                otherwise, None
+        """
+
+        # First, attempt to locate the user in the local lookup table
+        # (see the NOTE, above, about possible consequence of this login caching)
+        user_obj  = cls.fetch_user_obj(user_id)
+
+        if user_obj is not None:    # The requested "User" object was found
+            print("obtain_user_obj(): Re-using an existing 'User' object, for User ID: ", user_id)
+            return  user_obj
+
+
+        # The requested "User" object was NOT found in the local lookup table; now attempt to retrieve it from the database
+
+        # Query the database
+        print(f"obtain_user_obj(): querying the dbase for node labeled `User Login`, "
+              f"with attribute `user_id` having a value of `{user_id}`")
+        result_dict = cls.db.get_record_by_primary_key(labels="User Login",
+                                                        primary_key_name="user_id", primary_key_value=user_id)
+        if (result_dict is None) or ("username" not in result_dict):
+            print("obtain_user_obj(): node not found in the database, or missing an attribute `username`")
+            return None     # Not found
+
+        username = result_dict["username"]
+
+        user_obj = cls.create_user_obj(user_id, username)    # Create a "User" object, as needed by flask_login
+        print(f"obtain_user_obj(): Creating a new 'User' object from database data, "
+              f"for User ID: {user_id} , username {username}")
+
+        return  user_obj
 
 
 
@@ -121,27 +177,21 @@ class UserManagerNeo4j:
     @classmethod
     def create_user_obj(cls, user_id: int, username = "") -> User:
         """
+        Create a new "User" object,
+        and add it to a running listing of them, indexed by the user ID.
+        Return the newly-created object
 
         :param user_id:     An integer identifying a particular user
         :param username:    A string containing the username
         :return:            Object of type "User"
         """
         user_obj = User(user_id, username)      # Instantiate a new "User" object
-        cls.set_user_obj(user_id, user_obj)     # Add the newly-created "User" object to their complete listing
-        return user_obj
 
-
-
-    @classmethod
-    def set_user_obj(cls, user_id: int, user_obj) -> None:
-        """
-        Add a "User" object to a listing of them, indexed by the user ID
-
-        :param user_id:     An integer identifying a particular user
-        :param user_obj:    Object of type "User"
-        :return:            None
-        """
+        # Save the newly-created "User" object,
+        # by adding it to a dict of other such objects, indexed by the user ID
         cls.user_dict[user_id] = user_obj
+
+        return user_obj
 
 
 
@@ -168,9 +218,9 @@ class UserManagerNeo4j:
 
         if len(result_list) == 1:
             user_id = result_list[0]
-            print("In check_login_credentials(): successful validation of user credentials. User ID: ", user_id)
+            print("check_login_credentials(): successful validation of user credentials. User ID: ", user_id)
             return user_id      # Successful login
         else:
-            print("In check_login_credentials(): failed validation of user credentials. No matches or more than one")
+            print("check_login_credentials(): failed validation of user credentials. No matches or more than one")
             print(f"Credentials used in database query: {credentials}")
             return -1           # Unsuccessful login

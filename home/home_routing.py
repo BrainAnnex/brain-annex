@@ -3,7 +3,7 @@ Router/generator for navigation pages:
     CSS static pages, and HTML pages that get included into other Flask files
 """
 
-from flask import Blueprint, render_template, request, redirect
+from flask import Blueprint, render_template, request, session      # Not used: redirect
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user  # Not used: UserMixin
 from home.user_manager import UserManagerNeo4j, User
 
@@ -22,7 +22,7 @@ class Home:
     template_folder = "templates"   # Relative to this module's location
     static_folder = "static"        # Relative to this module's location
 
-    user_handle = UserManagerNeo4j()    # Object for User Management
+    user_handle = UserManagerNeo4j()    # Object for User Management.  TODO: this does NOT get instantiated!
 
     # Set up the user-authentication mechanism
     # From docs: "The login manager contains the code that lets this application and Flask-Login work together,
@@ -132,7 +132,7 @@ class Home:
             # Extract the POST values passed by the calling form
             username = request.form["username"]
             passwd = request.form["passwd"]
-            print(f"In do_login().  POST parameters -> username: `{username}` | passwd: `{passwd}`")
+            print(f"do_login().  POST parameters -> username: `{username}` | passwd: `{passwd}`")
 
             # Verify the login credential against the database;
             # if successful, obtain the User ID (-1 in case of failure)
@@ -150,9 +150,13 @@ class Home:
             print("user_obj:", user_obj)
             cls.user_handle.show_users()
 
+            #print("~~~ Flask session ID PRIOR to login: ", session.get("_id"))
+
             status = login_user(user_obj)   # Call to the Flask-provided method "login_user"
 
-            print("status: ", status)
+            print("status of login operation handled by Flask: ", status)
+            print(f"~~~ Flask session ID upon login of user id {user_id}: ", session.get("_id"))
+
             #return("TESTING 3...")
             if status:
                 # flask.flash('Logged in successfully.')
@@ -183,9 +187,11 @@ class Home:
 
             #user_id_as_int = flask_user_id         # In my test, this also worked if User.get_id is changed to return an integer
 
-            print(f"Inside callback function load_user().  flask_user_id = `{flask_user_id}` , with integer representation : {user_id_as_int}")
+            print(f"Inside callback function load_user().  flask_user_id = {repr(flask_user_id)} , with integer representation : {user_id_as_int}")
+            print("~~~ Flask session ID: ", session.get("_id"))
 
-            return cls.user_handle.fetch_user_obj(user_id_as_int)
+            return cls.user_handle.obtain_user_obj(user_id_as_int)
+            #return cls.user_handle.fetch_user_obj(user_id_as_int)
 
 
 
