@@ -4,8 +4,8 @@ Router/generator for navigation pages:
 """
 
 from flask import Blueprint, render_template, request, session      # Not used: redirect
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user  # Not used: UserMixin
 from home.user_manager import UserManagerNeo4j, User
+import flask_login
 
 
 
@@ -22,7 +22,6 @@ class Home:
     template_folder = "templates"   # Relative to this module's location
     static_folder = "static"        # Relative to this module's location
 
-    user_handle = UserManagerNeo4j()    # Object for User Management.  TODO: this does NOT get instantiated!
 
     # Set up the user-authentication mechanism
     # From docs: "The login manager contains the code that lets this application and Flask-Login work together,
@@ -55,7 +54,7 @@ class Home:
                                     template_folder=cls.template_folder,
                                     static_folder=cls.static_folder, static_url_path='/assets')
 
-        login_manager_obj = LoginManager(app=flask_app_obj) # Object of type "LoginManager" (from the "flask_login" package)
+        login_manager_obj = flask_login.LoginManager(app=flask_app_obj) # Object of type "LoginManager"
         login_manager_obj.login_view = "/login"     # Specify a page to redirect to whenever an attempt is made
                                                     # to access a page requiring login, without being logged in
                                                     # If not specified, a "401 Unauthorized" error is returned
@@ -118,7 +117,6 @@ class Home:
             print(not_yet_used2.credentials)
             """
             branding = cls.config_pars.get("BRANDING")
-            #print("BRANDING: " , branding)
             return render_template(template, branding=branding)
 
 
@@ -136,7 +134,7 @@ class Home:
 
             # Verify the login credential against the database;
             # if successful, obtain the User ID (-1 in case of failure)
-            user_id = cls.user_handle.check_login_credentials(username, passwd)
+            user_id = UserManagerNeo4j.check_login_credentials(username, passwd)
 
             if user_id == -1:
                 return "<b>Login failed</b>.  <a href='/login'>Try again</a>"
@@ -146,18 +144,17 @@ class Home:
 
 
             # Look up or, if not found, create an object of type "User"
-            user_obj = cls.user_handle.prepare_user_obj(user_id, username)
+            user_obj = UserManagerNeo4j.prepare_user_obj(user_id, username)
             print("user_obj:", user_obj)
-            cls.user_handle.show_users()
+            UserManagerNeo4j.show_users()
 
             #print("~~~ Flask session ID PRIOR to login: ", session.get("_id"))
 
-            status = login_user(user_obj)   # Call to the Flask-provided method "login_user"
+            status = flask_login.login_user(user_obj)
 
             print("status of login operation handled by Flask: ", status)
             print(f"~~~ Flask session ID upon login of user id {user_id}: ", session.get("_id"))
 
-            #return("TESTING 3...")
             if status:
                 # flask.flash('Logged in successfully.')
                 return F"<b>{user_obj.username}</b>, you are now logged in! <a href='/BA/pages/viewer'>Continue</a>"
@@ -190,13 +187,12 @@ class Home:
             print(f"Inside callback function load_user().  flask_user_id = {repr(flask_user_id)} , with integer representation : {user_id_as_int}")
             print("~~~ Flask session ID: ", session.get("_id"))
 
-            return cls.user_handle.obtain_user_obj(user_id_as_int)
-            #return cls.user_handle.fetch_user_obj(user_id_as_int)
+            return UserManagerNeo4j.obtain_user_obj(user_id_as_int)
 
 
 
         @bp.route("/protected")
-        @login_required
+        @flask_login.login_required
         def protected() -> str:
             """
             Sample protected page, only shown if logged in
@@ -204,12 +200,12 @@ class Home:
 
             :return:    A string with the HTML for a simple web page
             """
-            return "Hello `<b>" + current_user.username + "</b>`. You are able to access this test protected page"
+            return "Hello `<b>" + flask_login.current_user.username + "</b>`. You are able to access this test protected page"
 
 
 
         @bp.route("/logout")
-        @login_required
+        @flask_login.login_required
         def logout() -> str:
             """
             User will be logged out, and any cookies for their session will be cleaned up.
@@ -218,7 +214,7 @@ class Home:
 
             :return:    A string with the HTML for a bare-bones logout landing page
             """
-            name = current_user.username    # TODO: maybe turn (current_user.username) into a method...
-            logout_user()                   # This function is provided by flask_login
+            name = flask_login.current_user.username    # TODO: maybe turn (current_user.username) into a method...
+            flask_login.logout_user()
             return "<b>" + name + "</b>, you're now logged out. &nbsp; <a href='/login'>Login</a>"
             # return redirect(somewhere)

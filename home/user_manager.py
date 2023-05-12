@@ -70,6 +70,7 @@ class UserManagerNeo4j:
     db = None           # "NeoAccess" object.  MUST be set before using this class!
 
     user_dict = {}      # Dictionary of "User" objects, indexed by the user ID (an integer value)
+                        # This is used as a "local lookup table" for user info
 
 
 
@@ -90,7 +91,8 @@ class UserManagerNeo4j:
     @classmethod
     def fetch_user_obj(cls, user_id: int) -> Union[User, None]:
         """
-        Look up and return the "User" object corresponding to the specified user ID; if not found, return None
+        Attempt to locate the user, specified by the given ID, in local lookup table.
+        If found return its "User" object; otherwise, return None
 
         :param user_id:     An integer that is meant to identify a particular user
         :return:            Object of type "User", if the specified user was found in the local lookup table;
@@ -103,31 +105,61 @@ class UserManagerNeo4j:
 
 
     @classmethod
-    def obtain_user_obj(cls, user_id: int) -> Union[User, None]:
+    def prepare_user_obj(cls, user_id: int, username = "") -> User:
+        """
+        Attempt to locate the user, specified by the given ID, in local lookup table;
+        if not found, create an object of type "User", with the passed user ID and name
+
+        :param user_id:     An integer identifying a particular user
+        :param username:    A string containing the username - needed if the specified user ID wasn't found
+        :return:            Object of type "User"
+        """
+
+        # Look up, in local lookup table, the User object corresponding to the specified user ID
+        user_obj  = cls.fetch_user_obj(user_id)     # If not found, None will be returned
+
+        if user_obj is not None:    # The requested "User" object was found
+            print("Re-using an existing 'User' object, for User ID: ", user_id)
+        else:                       # The requested "User" object was NOT found
+            user_obj = cls.create_user_obj(user_id, username)    # Create a "User" object, as needed by flask_login
+            print(f"Creating a new 'User' object, for User ID: {user_id} (username {username})")
+
+        return  user_obj
+
+
+
+    @classmethod
+    def obtain_user_obj(cls, user_id: int, cache_users=True) -> Union[User, None]:
         """
         Attempt to locate the user in local lookup table;
         if not found, consult the database to create (if present there) an object of type "User"
         based on the given user ID.
         If unable to locate the given user ID, either locally or in the database, return None
 
-        NOTE:   this is a form of user-login caching.  While fast and convenient, it also means that
-                there's no way to kick a user out from changes in the database (the app would also require a restart)
+        This method is needed by a callback function - implemented in Home.load_user() - required
+        by the "flask_login" package.
+
+        NOTE on user-login caching:
+                While fast and convenient, it also means that there's no way to administratively
+                force a user out of login by making changes in the database - the app would also require a restart.
                 (Maybe an "inactivate_user" API could be implemented, to knock off the user from the local table;
                  however, such an approach wouldn't work if there are multiple instances of the web app - for example,
-                 multiple workers or multiple VM's for load-balancing)
+                 multiple worker threads or multiple VM's for load-balancing)
 
         :param user_id:     An integer that is meant to identify a particular user
+        :param cache_users: If True (default), user-login caching is used.  See not above
         :return:            Object of type "User", if the specified user was found in the local lookup table or in the database;
                                 otherwise, None
         """
 
-        # First, attempt to locate the user in the local lookup table
-        # (see the NOTE, above, about possible consequence of this login caching)
-        user_obj  = cls.fetch_user_obj(user_id)
+        if cache_users:
+            # Attempt to locate the user in the local lookup table
+            # (see the NOTE, above, about possible consequence of this login caching)
+            user_obj  = cls.fetch_user_obj(user_id)
 
-        if user_obj is not None:    # The requested "User" object was found
-            print("obtain_user_obj(): Re-using an existing 'User' object, for User ID: ", user_id)
-            return  user_obj
+            if user_obj is not None:    # The requested "User" object was found
+                print("obtain_user_obj(): Re-using an existing 'User' object, for User ID: ", user_id)
+                return  user_obj
 
 
         # The requested "User" object was NOT found in the local lookup table; now attempt to retrieve it from the database
@@ -146,29 +178,6 @@ class UserManagerNeo4j:
         user_obj = cls.create_user_obj(user_id, username)    # Create a "User" object, as needed by flask_login
         print(f"obtain_user_obj(): Creating a new 'User' object from database data, "
               f"for User ID: {user_id} , username {username}")
-
-        return  user_obj
-
-
-
-    @classmethod
-    def prepare_user_obj(cls, user_id: int, username = "") -> User:
-        """
-        Look up or, if not found, create an object of type "User"
-
-        :param user_id:     An integer identifying a particular user
-        :param username:    A string containing the username - needed if the specified user ID wasn't found
-        :return:            Object of type "User"
-        """
-
-        # Look up and return the User object corresponding to the specified user ID; if not found, return None
-        user_obj  = cls.fetch_user_obj(user_id)
-
-        if user_obj is not None:    # The requested "User" object was found
-            print("Re-using an existing 'User' object, for User ID: ", user_id)
-        else:                       # The requested "User" object was NOT found
-            user_obj = cls.create_user_obj(user_id, username)    # Create a "User" object, as needed by flask_login
-            print(f"Creating a new 'User' object, for User ID: {user_id} (username {username})")
 
         return  user_obj
 
