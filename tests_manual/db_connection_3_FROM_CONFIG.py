@@ -3,7 +3,7 @@
 
 import os
 from configparser import ConfigParser
-from BrainAnnex.modules.neo_access.neo_access import NeoAccess
+from neoaccess import NeoAccess
 
 print("About to test the database connection, using the credentials STORED in the configuration file(s)\n")
 
@@ -79,7 +79,7 @@ if not NEO4J_HOST \
           "Test skipped")
 
 else:
-    # Attempt to connect to the Neo4j database from credentials in environment variables
+    # Attempt to connect to the Neo4j database from credentials in the config file(s)
     obj = NeoAccess(host=NEO4J_HOST,
                     credentials=(NEO4J_USER, NEO4J_PASSWORD),
                     debug=True, autoconnect=True)

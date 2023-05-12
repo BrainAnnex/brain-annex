@@ -150,7 +150,7 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
 #   and specify the URL prefixes to use for the various modules
 #   Note that all the classes used here are STATIC classes, that don't get initialized.
-#   TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
+#   ==> TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
 
 
 #   TODO: maybe all the various setup() methods could take an optional 2nd arg, a dict,
@@ -207,7 +207,7 @@ app.secret_key = b"pqE3_t(4!x"
 if DEPLOYMENT == "REMOTE":
     # Remote deployment.  The web app is started from the CLI,
     # with the command "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
-    print(f" * REMOTE deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN:PORT_NUMBER_USED_IN_STARTING_UP")
+    print(f" * REMOTE deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN")
 else:
     # Local deployment.  The web app is started by running this main.py
     debug_mode = True   # At least for now, local deployment always enables Flask's debug mode
