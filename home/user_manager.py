@@ -1,4 +1,5 @@
-# 2 Classes : "User" and "user_manager_neo4j"
+# 2 Classes : "User" and "UserManagerNeo4j" (to support flask_login)
+
 from typing import Union
 
 

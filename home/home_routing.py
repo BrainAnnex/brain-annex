@@ -9,7 +9,7 @@ import flask_login
 
 
 
-class Home:
+class HomeRouting:
     """
     Setup, and routing, for all the web pages served by this module.
 
@@ -56,7 +56,7 @@ class Home:
 
         login_manager_obj = flask_login.LoginManager(app=flask_app_obj) # Object of type "LoginManager"
         login_manager_obj.login_view = "/login"     # Specify a page to redirect to whenever an attempt is made
-                                                    # to access a page requiring login, without being logged in
+                                                    # to access a page requiring login, without being logged in.
                                                     # If not specified, a "401 Unauthorized" error is returned
 
         # Define the Flask routing (mapping URLs to Python functions) for all the web pages served by this module
