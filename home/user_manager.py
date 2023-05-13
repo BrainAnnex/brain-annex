@@ -93,7 +93,7 @@ class UserManagerNeo4j:
     def fetch_user_obj(cls, user_id: int) -> Union[User, None]:
         """
         Attempt to locate the user, specified by the given ID, in local lookup table.
-        If found return its "User" object; otherwise, return None
+        If found, return its "User" object; otherwise, return None
 
         :param user_id:     An integer that is meant to identify a particular user
         :return:            Object of type "User", if the specified user was found in the local lookup table;
@@ -108,7 +108,7 @@ class UserManagerNeo4j:
     @classmethod
     def prepare_user_obj(cls, user_id: int, username = "") -> User:
         """
-        Attempt to locate the user, specified by the given ID, in local lookup table;
+        Attempt to locate the user, specified by the given ID, in the local lookup table;
         if not found, create an object of type "User", with the passed user ID and name
 
         :param user_id:     An integer identifying a particular user
@@ -132,7 +132,7 @@ class UserManagerNeo4j:
     @classmethod
     def obtain_user_obj(cls, user_id: int, cache_users=True) -> Union[User, None]:
         """
-        Attempt to locate the user in local lookup table;
+        Attempt to locate the user in the local lookup table;
         if not found, consult the database to create (if present there) an object of type "User"
         based on the given user ID.
         If unable to locate the given user ID, either locally or in the database, return None
@@ -145,7 +145,9 @@ class UserManagerNeo4j:
                 force a user out of login by making changes in the database - the app would also require a restart.
                 (Maybe an "inactivate_user" API could be implemented, to knock off the user from the local table;
                  however, such an approach wouldn't work if there are multiple instances of the web app - for example,
-                 multiple worker threads or multiple VM's for load-balancing)
+                 multiple worker threads or multiple VM's for load-balancing.
+                 A better remediation might be by means of a Time-To-Live, sketched below, commented out; if a certain
+                 amount of time has elapsed from the last database check, consult the database again)
 
         :param user_id:     An integer that is meant to identify a particular user
         :param cache_users: If True (default), user-login caching is used.  See not above
@@ -155,8 +157,16 @@ class UserManagerNeo4j:
 
         if cache_users:
             # Attempt to locate the user in the local lookup table
-            # (see the NOTE, above, about possible consequence of this login caching)
-            user_obj  = cls.fetch_user_obj(user_id)
+            # (see the NOTE, above, about possible consequence of this login caching;
+            #  below, commented out, is a draft of a possible remedy based on a Time-To-Live)
+            '''
+            # Assume two class variables, cls.last_checked and cls.time_to_live    
+            if cls.last_checked is None:
+                cls.last_checked = datetime.now()   # Checking for the 1st time
+            elif time_difference(datetime.now(), cls.last_checked) < cls.time_to_live:  # If this hold, we'll use the cached copy
+                # Here place the next few lines, to locate the user in the local lookup table
+            '''
+            user_obj  = cls.fetch_user_obj(user_id) # Attempt to locate the user in the local lookup table
 
             if user_obj is not None:    # The requested "User" object was found
                 print("obtain_user_obj(): Re-using an existing 'User' object, for User ID: ", user_id)
