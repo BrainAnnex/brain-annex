@@ -6,6 +6,7 @@
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from flask_login import login_required
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
+from BrainAnnex.api.BA_api_request_handler import DocumentationGenerator
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
@@ -1430,16 +1431,17 @@ class ApiRouting:
         def parse_datafile() -> str:
             """
             EXPERIMENTAL!  Upload and parse a datafile.
-            The regular expression for the parsing is currently hardwired in import_datafile()
+            The regular expression for the parsing is currently hardwired in APIRequestHandler.import_datafile()
             Typically, the uploads are initiated by forms containing:
                 <input type="file" name="imported_datafile">
                 <input type="hidden" name="return_url" value="my_return_url">
                 <input type="submit" value="Import data file">
 
             Note:       name="imported_datafile"
-                    and
+                            and
                         name="return_url"
-                    must be exactly as stated
+
+                        must be exactly as stated
         
             EXAMPLE invocation: http://localhost:5000/BA/api/parse_datafile
         
@@ -1470,9 +1472,59 @@ class ApiRouting:
             status_msg += f" <a href='{return_url}' style='margin-left:50px'>Go back</a>"
         
             return status_msg
-        
-        
-        
+
+
+
+        @bp.route('/document_python', methods=['GET', 'POST'])
+        @login_required
+        def document_python() -> str:
+            """
+            EXPERIMENTAL!  Upload and parse a python file, and then print out HTML to create a documentation page.
+            The regular expression for the parsing is currently hardwired in DocumentationGenerator.import_python_file()
+            Typically, the uploads are initiated by forms containing:
+                <input type="file" name="imported_datafile">
+                <input type="hidden" name="return_url" value="my_return_url">
+                <input type="submit" value="Import data file">
+
+            Note:       name="imported_datafile"
+                            and
+                        name="return_url"
+
+                        must be exactly as stated
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/parse_datafile
+
+            :return:    String with status message
+            """
+
+            if request.method != 'POST':
+                return "This endpoint requires POST data (you invoked it with a GET method.) No action taken..."   # Handy for testing
+
+            try:
+                # Manage the upload
+                upload_dir = current_app.config['UPLOAD_FOLDER']    # Defined in main file
+                (tmp_filename_for_upload, full_filename, original_name) = \
+                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+            except Exception as ex:
+                return f"<b>ERROR in upload</b>: {ex}"
+
+            print("In import_datafile(): ", (tmp_filename_for_upload, full_filename, original_name))
+
+            return_url = request.form["return_url"] # This originates from the HTML form - namely the line:
+            #    <input type="hidden" name="return_url" value="my_return_url">
+            print("return_url: ", return_url)
+
+            #status_msg = "Testing"
+            status_msg = DocumentationGenerator.import_python_file(tmp_filename_for_upload, full_filename)
+
+            # Provide a return link
+            status_msg += f" <a href='{return_url}' style='margin-left:50px'>Go back</a>"
+
+            return status_msg
+
+
+
+
         @bp.route('/download_dbase_json/<download_type>')
         @login_required
         def download_dbase_json(download_type="full"):
