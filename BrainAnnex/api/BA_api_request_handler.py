@@ -1329,7 +1329,8 @@ class DocumentationGenerator:
         safe_htm = htm.replace("<", "&lt;").replace(">", "&gt;")
 
         return f"File `{basename}` uploaded successfully.  <b>{len(all_matches)} MATCH(ES)</b> found.  Nothing added to database.  " \
-               f"Scan results:<br><br>{scan_results}<br><br><b>HTML:</b><br><br><pre>{safe_htm}</pre>"
+               f"Scan results:<br><br>{scan_results}<br><br>" \
+               f"<b>HTML:</b><br><br><pre>{safe_htm}</pre>"
 
 
 
