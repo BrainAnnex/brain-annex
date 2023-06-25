@@ -1,5 +1,5 @@
 from typing import Union, List
-from neoaccess.cypher_utils import CypherUtils
+from neoaccess.cypher_utils import CypherUtils, CypherMatch
 import json
 
 
@@ -1265,7 +1265,7 @@ class NeoSchema:
 
 
     @classmethod
-    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> dict:
+    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> CypherMatch:
         """
         EXPERIMENTAL - a generalization of fetch_data_point()
 
@@ -1278,7 +1278,7 @@ class NeoSchema:
         :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
         :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
 
-        :return:        A "processed-match" structure
+        :return:        A "CypherMatch" object
         """
         if id_type:
             match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
@@ -2113,15 +2113,15 @@ class NeoSchema:
         """
         assert rel_name, f"add_data_relationship(): no name was provided for the new relationship"
 
-        # Create structures later used to locate the two data node
+        # Create "CypherMatch" objects later used to locate the two data node
         from_match = NeoSchema.locate_node(node_id=from_id, id_type=id_type, labels=labels_from, dummy_node_name="from")
         to_match   = NeoSchema.locate_node(node_id=to_id,   id_type=id_type, labels=labels_to,   dummy_node_name="to")
 
         # Get Cypher fragments related to matching the data nodes
-        from_node = CypherUtils.extract_node(from_match)
-        to_node = CypherUtils.extract_node(to_match)
-        where_clause = CypherUtils.combined_where([from_match, to_match])
-        data_binding = CypherUtils.combined_data_binding([from_match, to_match])
+        from_node = from_match.node
+        to_node = to_match.node
+        where_clause = CypherUtils.combined_where(from_match, to_match, check_compatibility=True)
+        data_binding = CypherUtils.combined_data_binding(from_match, to_match)
 
         # Using the Cypher fragments from above, create a query that looks for a path
         # from the first to the second data nodes, passing thru their classes
@@ -2233,7 +2233,7 @@ class NeoSchema:
     def class_of_data_point(cls, node_id: int, id_type=None, labels=None) -> str:
         """
         Return the name of the Class of the given data point: identified
-        either by its Neo4j ID's (default), or by a primary key (with optional label)
+        either by its Neo4j ID (default), or by a primary key (with optional label)
 
         :param node_id:     Either a Neo4j ID or a primary key value
         :param id_type:     OPTIONAL - name of a primary key used to identify the data node
@@ -2241,10 +2241,11 @@ class NeoSchema:
         :return:            A string with the name of the Class of the given data point
         """
         match = NeoSchema.locate_node(node_id=node_id, id_type=id_type, labels=labels)
+        # This is an object of type "CypherMatch"
 
-        node = CypherUtils.extract_node(match)
-        where_clause = CypherUtils.combined_where([match])
-        data_binding = CypherUtils.combined_data_binding([match])
+        node = match.node
+        where_clause = CypherUtils.prepare_where([match.where])
+        data_binding = match.data_binding
 
         q = f'''
             MATCH  {node} -[:SCHEMA]-> (class_node :CLASS)

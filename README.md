@@ -19,6 +19,7 @@ The version number can be found in `VERSION_NUMBER.txt`
 
 ## Background - Multimedia Knowledge Representation and Management
 [What is Brain Annex?](https://julianspolymathexplorations.blogspot.com/2019/03/multimedia-knowledge-representation-and-management-brain-annex.html)
+
 ### Project website: https://BrainAnnex.org
 
 
@@ -98,8 +99,7 @@ From the Neo4j browser interface, issue the following Cypher commands:
 
 # Major components
 * **NeoAccess** : a library to connect to Neo4j.
-  The APOC library must be installed on Neo4j to use the function export_dbase_json().  
-  [Link](https://github.com/BrainAnnex/brain-annex/blob/main/BrainAnnex/modules/neo_access/neo_access.py)
+  [Link](https://github.com/BrainAnnex/neoaccess)
 
 
 * **NeoSchema** : a higher-level schema-based library on top of NeoAccess.
