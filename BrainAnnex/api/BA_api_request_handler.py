@@ -1081,57 +1081,6 @@ class APIRequestHandler:
 
 
     @classmethod
-    def define_pattern(cls) -> str:
-        """
-        Define a REGEX pattern for parsing of data files, for use in import_datafile()
-
-        :return:    A string with a REGEX pattern
-        """
-        # The R before the string escapes all characters ("raw strings" aka "verbatim strings")
-        # Note: the following pattern assumes a re.DOTALL as the last argument of re.findall()
-
-
-        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)' # Match and capture the method name:
-                                                    #   "def" followed by 1 or more blanks, followed by
-                                                    #   (one letter or underscore, followed by any number of letters, numbers or underscores)
-
-        pattern_2 = R'\((.*?)\)'                    # Match and capture (non-greedy) everything inside round parentheses after method name
-
-        pattern_3 = R'\s*(?:\s*->\s*(.*?)\s*)?:'    # Match and capture (non-greedy) the method's return type - which may or may not be present.
-                                                    #   The ?: after the opening parenthesis = grouping WITHOUT capturing
-                                                    #   The ? at the end makes the previous expression optional
-
-        pattern_4 = R'(?:\s+"""(.*?)""")?'          # TODO: deal with the comments that might be at the end of the definition line
-                                                    # Match and capture (non-greedy) everything within the following pair of """
-                                                    #   The ?: after the opening parenthesis = grouping WITHOUT capturing
-                                                    #   \s+ = 1 or more blanks.  Note: that required character is the newline
-
-        pattern_A = pattern_1 + pattern_2 + pattern_3 + pattern_4
-
-
-        pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)\s*:'  # Match and capture the class name
-
-        pattern_2 = R'.+?"""(.*?)"""'               # Match and capture (non-greedy) everything within the following pair of """
-                                                    #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the newline
-        pattern_B = pattern_1 + pattern_2
-
-
-        pattern = f"(?:{pattern_A})|(?:{pattern_B})"    # Deal with alternations
-
-
-        '''
-        # Test for LinkedIn connections:
-        #pattern_1 = R"\n([a-zA-Z.'\- ,()]+)@@@\n"   # Full name
-        pattern_1 = R"\n(.+)@@@\n"                  # Full name
-        pattern_2 = ".+ profile\n"                  # Throwaway line
-        pattern_3 = "---1st1st degree connection\n" # Throwaway line
-        pattern_4 = "(.+)\n(.+)\n"                  # Role and location (across 2 lines)
-        pattern = pattern_1 + pattern_2 + pattern_3 + pattern_4
-        '''
-        return pattern
-
-
-    @classmethod
     def import_datafile(cls, basename, full_filename, test_only=True) -> str:
         """
         TODO: generalize!  For now, used for an ad-hoc import, using REGEX to extract the desired fields
@@ -1148,7 +1097,7 @@ class APIRequestHandler:
                 file_contents = fh.read()
                 print(f"\n--- First {n_chars_to_show} bytes of uploaded file:\n{file_contents[:n_chars_to_show]}")
         except Exception:
-            return f"File I/O failed (on uploaded file {full_filename})"
+            return f"import_datafile(): File I/O failed (on uploaded file {full_filename})"
 
 
         pattern = cls.define_pattern()
@@ -1218,43 +1167,56 @@ class APIRequestHandler:
 
 
     @classmethod
-    def generate_documentation(cls, df):
-        #html = "<table class='cd-main'>\n"
-        htm = ""
+    def define_pattern(cls) -> str:
+        """
+        Define a REGEX pattern for parsing of data files, for use in import_datafile()
 
-        for ind in df.index:    # EXAMPLE of df.index: RangeIndex(start=0, stop=11, step=1)
-            if df['class_name'][ind]:
-                htm += f"<h1 class='class-name'>Class {df['class_name'][ind]}</h1>\n"
-                htm += f"<pre>{df['class_description'][ind]}</pre>\n\n\n"
-            elif "____" in df['method_name'][ind]:
-                section_name = df['method_name'][ind]
-                clean_name = section_name.replace("_", " ")
-                htm += f"<h2 class='section-header'>{clean_name}</h2>\n\n"
-            else:
-                htm += "<table class='cd-main'>\n"
-                htm += "<tr><th>name</th><th>arguments</th><th>returns</th></tr>\n"
+        The pattern is expected to be used in a re.findall() that uses re.DOTALL as the last argument
 
-                htm += "<tr>"
-                #print(df["method_name"][ind], df["args"][ind], df["comments"][ind])
-                htm += f"<td class='cd-fun-name'>{df['method_name'][ind]}</td>"
-                htm += f"<td>{df['args'][ind]}</td>"
-                htm += f"<td>{df['return_value'][ind]}</td>"
+        :return:    A string with a REGEX pattern
+        """
+        # The R before the string escapes all characters ("raw strings" aka "verbatim strings")
 
-                htm += "</tr>\n"
+        # THIS PARTICULAR PATTERN IS FOR THE CREATION OF DOCUMENTATION FROM PYTHON FILES
 
-                htm += "<tr>"
-                htm += "<td colspan=3 class='cd-description'>"
-                htm += f"<pre>{df['comments'][ind]}</pre>"
-                htm += "</td>"
-                htm += "</tr>\n\n"
-                htm += "</table>\n\n\n"
+        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)' # Match and capture the method name:
+        #   "def" followed by 1 or more blanks, followed by
+        #   (one letter or underscore, followed by any number of letters, numbers or underscores)
+
+        pattern_2 = R'\((.*?)\)'                    # Match and capture (non-greedy) everything inside round parentheses after method name
+
+        pattern_3 = R'\s*(?:\s*->\s*(.*?)\s*)?:'    # Match and capture (non-greedy) the method's return type - which may or may not be present.
+        #   The ?: after the opening parenthesis = grouping WITHOUT capturing
+        #   The ? at the end makes the previous expression optional
+
+        pattern_4 = R'(?:\s+"""(.*?)""")?'          # TODO: deal with the comments that might be at the end of the definition line
+        # Match and capture (non-greedy) everything within the following pair of """
+        #   The ?: after the opening parenthesis = grouping WITHOUT capturing
+        #   \s+ = 1 or more blanks.  Note: that required character is the newline
+
+        pattern_A = pattern_1 + pattern_2 + pattern_3 + pattern_4
 
 
+        pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)\s*:'  # Match and capture the class name
 
-        print("###################################################################################")
-        print(htm)
-        print("###################################################################################")
-        return htm
+        pattern_2 = R'.+?"""(.*?)"""'               # Match and capture (non-greedy) everything within the following pair of """
+        #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the newline
+        pattern_B = pattern_1 + pattern_2
+
+
+        pattern = f"(?:{pattern_A})|(?:{pattern_B})"    # Deal with alternations
+
+
+        '''
+        # Test for LinkedIn connections:
+        #pattern_1 = R"\n([a-zA-Z.'\- ,()]+)@@@\n"   # Full name
+        pattern_1 = R"\n(.+)@@@\n"                  # Full name
+        pattern_2 = ".+ profile\n"                  # Throwaway line
+        pattern_3 = "---1st1st degree connection\n" # Throwaway line
+        pattern_4 = "(.+)\n(.+)\n"                  # Role and location (across 2 lines)
+        pattern = pattern_1 + pattern_2 + pattern_3 + pattern_4
+        '''
+        return pattern
 
 
 
@@ -1304,25 +1266,163 @@ class APIRequestHandler:
 
 #############################################################################################################################
 
-def test():
+class DocumentationGenerator:
     """
-    Tester function for regex.   TODO: move to test folders
-
-    :return:
+    To generate an HTML for a documentation page, from a python file written in the style of BrainAnnex
     """
-    file_contents = "HERE DEFINE STRING TO PARSE"
 
-    pattern_1 = R"\n([a-zA-Z ]+)@@@\n"          # Full name
-    pattern_2 = ".+ profile\n"                  # Throwaway line
-    pattern_3 = "---1st1st degree connection\n" # Throwaway line
-    pattern_4 = "(.+)\n(.+)\n"                  # Role and location (across 2 lines)
+    @classmethod
+    def import_python_file(cls, basename, full_filename) -> str:
+        """
 
-    pattern = pattern_1 + pattern_2 + pattern_3 + pattern_4
-    #pattern = R"\n([a-zA-Z ]+)@@@\n.+ profile\n---1st1st degree connection\n(.+)\n(.+)"  # R"---1st1st degree connection\n(.+)"
-    all_matches = re.findall(pattern, file_contents)
-    if all_matches:     # If the list is not empty, i.e. if matches were found
-        print(f"{len(all_matches)} MATCHES found")
-        for matchInstance in all_matches:   # Consider each match in turn
-            print("Overall Match: " , matchInstance)     # This will be a tuple of capture groups
-    else:
-        print("NO MATCHES found")
+        :param basename:        EXAMPLE: "my_file_being_uploaded.txt"
+        :param full_filename:   EXAMPLE: "D:/tmp/my_file_being_uploaded.txt"
+        :param test_only:       If True, the file is parsed, but nothing is actually added to the database
+
+        :return:                String with status message (whether successful or not)
+        """
+        n_chars_to_show = 400
+        try:
+            with open(full_filename, 'r') as fh:
+                file_contents = fh.read()
+                print(f"\n--- First {n_chars_to_show} bytes of uploaded file:\n{file_contents[:n_chars_to_show]}")
+        except Exception:
+            return f"import_python_file(): File I/O failed (on uploaded file {full_filename})"
+
+
+        pattern = cls.define_pattern()
+        print("Pattern used for the matches: ", pattern)
+
+        all_matches = re.findall(pattern, file_contents, re.DOTALL)
+        # It returns (possibly-empty) list of tuples
+        # OR a list of strings (if there's only 1 capture group in pattern)
+
+        #print("all_matches: ", all_matches)
+
+
+        if all_matches:     # If the list is not empty, i.e. if matches were found
+            #print(f"{len(all_matches)} MATCH(ES) found")
+            scan_results = "<table border='1' style='border-collapse: collapse'>"
+            for match_instance in all_matches:   # Consider each match in turn
+                #print("Overall Single Match: " , match_instance) # This would normally be a tuple of capture groups
+                # (which we previously turned to list, with 2 field added)
+                scan_results += "<tr>"
+                for item in match_instance:
+                    scan_results += f"<td>{item}</td>"
+                scan_results += "</tr>"
+
+            scan_results += f"</table>"
+        else:
+            print("NO MATCHES found")
+            return f"File `{basename}` uploaded successfully, but <b>NO MATCHES</b> found"
+
+
+        column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
+        df = pd.DataFrame(all_matches, columns = column_names)
+        print(df.count())
+        print(df.head(10))
+        print("...")
+        print(df.tail(10))
+
+        htm = cls.generate_documentation(df)
+
+        safe_htm = htm.replace("<", "&lt;").replace(">", "&gt;")
+
+        return f"File `{basename}` uploaded successfully.  <b>{len(all_matches)} MATCH(ES)</b> found.  Nothing added to database.  " \
+               f"Scan results:<br><br>{scan_results}<br><br>" \
+               f"<b>HTML:</b><br><br><pre>{safe_htm}</pre>"
+
+
+
+    @classmethod
+    def define_pattern(cls) -> str:
+        """
+        THIS PARTICULAR PATTERN IS FOR THE CREATION OF DOCUMENTATION FROM PYTHON FILES
+
+        Define a REGEX pattern for parsing of data files, for use in import_datafile()
+
+        The pattern is expected to be used in a re.findall() that uses re.DOTALL as the last argument
+
+        :return:    A string with a REGEX pattern
+        """
+        # The R before the string escapes all characters ("raw strings" aka "verbatim strings")
+
+        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)' # Match and capture the method name:
+        #   "def" followed by 1 or more blanks, followed by
+        #   (one letter or underscore, followed by any number of letters, numbers or underscores)
+
+        pattern_2 = R'\((.*?)\)'                    # Match and capture (non-greedy) everything inside round parentheses after method name
+
+        pattern_3 = R'\s*(?:\s*->\s*(.*?)\s*)?:'    # Match and capture (non-greedy) the method's return type - which may or may not be present.
+        #   The ?: after the opening parenthesis = grouping WITHOUT capturing
+        #   The ? at the end makes the previous expression optional
+
+        pattern_4 = R'(?:\s+"""(.*?)""")?'          # TODO: deal with the comments that might be at the end of the definition line
+        # Match and capture (non-greedy) everything within the following pair of """
+        #   The ?: after the opening parenthesis = grouping WITHOUT capturing
+        #   \s+ = 1 or more blanks.  Note: that required character is the newline
+
+        pattern_A = pattern_1 + pattern_2 + pattern_3 + pattern_4
+
+
+        pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)\s*:'  # Match and capture the class name
+
+        pattern_2 = R'.+?"""(.*?)"""'               # Match and capture (non-greedy) everything within the following pair of """
+        #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the newline
+        pattern_B = pattern_1 + pattern_2
+
+
+        pattern = f"(?:{pattern_A})|(?:{pattern_B})"    # Deal with alternations
+
+        return pattern
+
+
+
+    @classmethod
+    def generate_documentation(cls, df) -> str:
+        """
+        Print out, and return, HTML code to create a documentation page, from a Pandas data frame with the data
+
+        :param df:  A Pandas data frame
+        :return:    A string with HTML code
+        """
+
+        htm = ""
+
+        for ind in df.index:    # EXAMPLE of df.index: RangeIndex(start=0, stop=11, step=1)
+            if df['class_name'][ind]:
+                htm += f"<h1 class='class-name'>Class {df['class_name'][ind]}</h1>\n"
+                htm += f"<pre>{df['class_description'][ind]}</pre>\n\n\n"
+
+            elif "____" in df['method_name'][ind]:      # A BrainAnnex styling convention to indicate a new section
+                section_name = df['method_name'][ind]
+                clean_name = section_name.replace("_", " ")
+                htm += f"<br><h2 class='section-header'>{clean_name}</h2>\n\n"
+
+            else:
+                htm += "<table class='cd-main'>\n"
+                htm += "<tr><th>name</th><th>arguments</th><th>returns</th></tr>\n"
+
+                htm += "<tr>"
+                #print(df["method_name"][ind], df["args"][ind], df["comments"][ind])
+                htm += f"<td class='cd-fun-name'>{df['method_name'][ind]}</td>"
+                htm += f"<td>{df['args'][ind]}</td>"
+                htm += f"<td>{df['return_value'][ind]}</td>"
+
+                htm += "</tr>\n"
+
+                htm += "<tr>"
+                htm += "<td colspan=3 class='cd-description'>\n"
+                htm += f"<pre>{df['comments'][ind]}</pre>\n"
+                htm += "</td>\n"
+                htm += "</tr>\n"
+                htm += "</table>\n\n\n"
+
+
+
+        print("###################################################################################")
+        print(htm)
+        print("###################################################################################")
+        return htm
+
+

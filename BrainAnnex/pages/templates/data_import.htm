@@ -155,8 +155,24 @@
 </div>
 
 
+
+<br><br><br>
+<!-- UNTESTED:  @change="handleFileUpload( $event )"   -->
+<!-- -------------   NEW BLOCK   ------------- -->
+<div class="content-block">
+    <div class="content-block-title">Generate Documentation Page (Experimental!)</div>
+
+    <form enctype="multipart/form-data" action="/BA/api/document_python" method="POST">
+        <p>IMPORT python file to document : <input type="file" name="imported_datafile"></p>
+        <p><input type="submit" value="Generate Documentation"></p>
+        <input type="hidden" name="return_url" value="/BA/pages/data-import">
+    </form>
+</div>
+
+
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
 
+<br>
 
 
 <!--

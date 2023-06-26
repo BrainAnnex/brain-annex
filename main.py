@@ -16,7 +16,7 @@ from configparser import ConfigParser
 
 # The site's home/login/top-level pages
 # (possibly under the control of a co-hosted independent site)
-from home.home_routing import Home
+from home.home_routing import HomeRouting
 
 # The navigation is shared by Brain Annex and possibly other independent sites
 # embedded (co-hosted) with it
@@ -158,7 +158,7 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 config_dict = {"BRANDING": extract_par("BRANDING", SETTINGS)}   # TODO: expand to include all other parameters
 
 # The site's home (i.e. top-level) pages, incl. login
-Home.setup(app, config_dict)
+HomeRouting.setup(app, config_dict)
 
 # The navbar
 Navigation.setup(app)       # TODO: also pass config_dict
