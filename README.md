@@ -1,26 +1,41 @@
 # Brain Annex
 
 **Version 5** of is a *complete overhaul* of Brain Annex's internal structure.  
-This major new release is in a *late Beta* stage, approaching "release candidate".  
+This major new release is in a *late Beta* stage, approaching "release candidate".
+
+However, the bottom layer (the `NeoAccess` library) is NOT in Beta: it's stable,
+and is released independently.
+
 The version number can be found in `VERSION_NUMBER.txt`
 
-# The New Technology Stack (Overview)
+### Website: https://BrainAnnex.org
 
-* **Neo4j graph database** (v. 4.3)
+**[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
 
 
-* **Python/Flask**
 
+# Brain Annex's Technology Stack (Overview)
+
+NOTE: the bottom layer, or layers, of the stack may be used independently of the
+layers above them, if desired
+
+_From lower to higher levels:_
+
+* **Neo4j graph database** (v. 4.4)
+
+* **NeoAccess library** (python interface offering many services)
+
+* **NeoSchema library** (optional Schema layer)
+
+* **Python/Flask** (for API and webapp pages)
 
 * **Vue2.js**
 
 
-**[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
 
-## Background - Multimedia Knowledge Representation and Management
-[What is Brain Annex?](https://julianspolymathexplorations.blogspot.com/2019/03/multimedia-knowledge-representation-and-management-brain-annex.html)
 
-### Project website: https://BrainAnnex.org
+### EXAMPLE of use case : Multimedia Knowledge Representation and Management
+[Motivation and overview](https://julianspolymathexplorations.blogspot.com/2019/03/multimedia-knowledge-representation-and-management-brain-annex.html)
 
 
 
@@ -29,61 +44,52 @@ If you're new, here's a
 [gentle brief intro](https://julianspolymathexplorations.blogspot.com/2021/02/neo4j-graph-databases-intro.html). 
 
 
-# Brain Annex's Technology Stack
+# Brain Annex's Technology Stack (Details)
 
-Brain Annex may be used as a standalone web app, or used to power *other* web apps.
+Brain Annex may be used as a standalone web app, or used to power *other* web apps.  
+The libraries that are the bottom layers may also be used independently.
 
 ![Brain Annex Technology Stack](BrainAnnex/docs/BrainAnnex_Technology_Stack.png)
 
+
 # How to set up and use Brain Annex
 
-Brain Annex supports both local and remote setup of the web app and the Neo4j database.
+Brain Annex, if used in its entirety supports both local and remote setup of the web app and the Neo4j database.
 
 The database and web app may reside on the same or different machines.
 
-## PART 1 - Neo4j
-
-**Set up and start the Database (and Install Java, as needed)**
+## SETUP
 
 [INSTRUCTIONS](https://brainannex.org/setup)
 
 
 
 
-## After completing the above instructions:
+## EXAMPLES of Schemas available for import
+
+(For instructions on how to import the Schemas, see the setup page, above)
+
+#### EXAMPLE 1 - the available default Multimedia Content Management System
+
+The ROOT node for the Categories is shown in blue at the top.
+
+![Minimal_Schema_plus_ROOT_category.png](BrainAnnex/docs/Minimal_Schema_plus_ROOT_category.png)
 
 
+#### EXAMPLE 2 - same as example 1, but with sample extra Classes (representative of user-added schema)
 
+The diagram is split in 2, for readability.
 
+"chem" is an example of a custom Class.
 
-
-
-
-
-**Import the Schema**
-
-
-
-
-
-
-
-
-
-
-The following diagram shows about 1/2 of the Schema.  "chem" is an example of a custom Class; the remaining
-Classes are for a typical Brain Annex installation:
 ![Classes and Properties in Brain Annex - Non-record types](BrainAnnex/docs/Classes_and_Properties_Non_record_types.png)
 
 The following diagram shows the remainder of the Schema, detailing Classes that are instances of the "Records" Class.
-Most of the items in this diagrams are examples of typical user-added schema, only present if you imported
-the larger schema file with the examples:
+Most of the items in this diagram are examples of typical user-added schema:
+
 ![Classes and Properties in Brain Annex - Record types](BrainAnnex/docs/Classes_and_Properties_Record_types.png)
 
-Below is the **minimal** version of the JSON file imports - it's the combination of the previous 2 diagrams, minus 
-any sample user customization.  Also shown here is the ROOT node for the Categories, in blue at the top.
 
-![Minimal_Schema_plus_ROOT_category.png](BrainAnnex/docs/Minimal_Schema_plus_ROOT_category.png)
 
 **Optional: add Neo4j Indexes and Constraints**
 
@@ -98,11 +104,11 @@ From the Neo4j browser interface, issue the following Cypher commands:
 
 
 # Major components
-* **NeoAccess** : a library to connect to Neo4j.
+* **NeoAccess** : a library to connect to Neo4j with python. It provides many services.
   [Link](https://github.com/BrainAnnex/neoaccess)
 
 
-* **NeoSchema** : a higher-level schema-based library on top of NeoAccess.
+* **NeoSchema** : a higher-level schema-based library on top of NeoAccess. 
   [Link](https://github.com/BrainAnnex/brain-annex/blob/main/BrainAnnex/modules/neo_schema/neo_schema.py)
   
 
