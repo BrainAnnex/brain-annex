@@ -17,7 +17,7 @@ The version number can be found in `VERSION_NUMBER.txt`
 # Brain Annex's Technology Stack (Overview)
 
 NOTE: the bottom layer, or layers, of the stack may be used independently of the
-layers above them, if desired
+layers above them, if desired.
 
 _From lower to higher levels:_
 
@@ -54,7 +54,7 @@ The libraries that are the bottom layers may also be used independently.
 
 # How to set up and use Brain Annex
 
-Brain Annex, if used in its entirety supports both local and remote setup of the web app and the Neo4j database.
+Brain Annex, if used in its entirety, supports both local and remote setup of the web app and of the Neo4j database.
 
 The database and web app may reside on the same or different machines.
 
@@ -75,16 +75,17 @@ The ROOT node for the Categories is shown in blue at the top.
 
 ![Minimal_Schema_plus_ROOT_category.png](BrainAnnex/docs/Minimal_Schema_plus_ROOT_category.png)
 
+---
 
 #### EXAMPLE 2 - same as example 1, but with sample extra Classes (representative of user-added schema)
 
-The diagram is split in 2, for readability.
+The diagram below is split in 2 parts, for readability.
 
 "chem" is an example of a custom Class.
 
 ![Classes and Properties in Brain Annex - Non-record types](BrainAnnex/docs/Classes_and_Properties_Non_record_types.png)
 
-The following diagram shows the remainder of the Schema, detailing Classes that are instances of the "Records" Class.
+The following second half of the diagram shows the remainder of the Schema, detailing Classes that are instances of the "Records" Class.
 Most of the items in this diagram are examples of typical user-added schema:
 
 ![Classes and Properties in Brain Annex - Record types](BrainAnnex/docs/Classes_and_Properties_Record_types.png)
@@ -108,8 +109,9 @@ From the Neo4j browser interface, issue the following Cypher commands:
   [Link](https://github.com/BrainAnnex/neoaccess)
 
 
-* **NeoSchema** : a higher-level schema-based library on top of NeoAccess. 
-  [Link](https://github.com/BrainAnnex/brain-annex/blob/main/BrainAnnex/modules/neo_schema/neo_schema.py)
+* **NeoSchema** : a higher-level schema-based library on top of NeoAccess.
+  [Link](https://github.com/BrainAnnex/brain-annex/blob/main/BrainAnnex/modules/neo_schema/neo_schema.py)  
+  [Article explaining this layer](https://julianspolymathexplorations.blogspot.com/2022/11/schema-graph-databases-neo4j.html)
   
 
 * **CK Editor** : open-source JavaScript library to implement an online HTML Editor.  
