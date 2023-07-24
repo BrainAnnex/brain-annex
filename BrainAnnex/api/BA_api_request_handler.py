@@ -34,7 +34,7 @@ class APIRequestHandler:
 
     Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
-    # The "db" and several other properties get set by InitializeBrainAnnex.set_dbase()
+    # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
     db = None           # Object of class "NeoAccess".  MUST be set before using this class!
 
