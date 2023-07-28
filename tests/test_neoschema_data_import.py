@@ -7,7 +7,7 @@
 import pytest
 from neoaccess import NeoAccess
 from BrainAnnex.modules.utilities.comparisons import compare_recordsets
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCacheObsolete
 from tests.test_neoschema import create_sample_schema_1, create_sample_schema_2
 
 
@@ -30,7 +30,7 @@ def test_create_tree_from_dict_1(db):
 
     # Import a data dictionary
     data = {"state": "California", "city": "Berkeley"}
-    cache = SchemaCache()       # All needed Schema-related data will be automatically queried and cached here
+    cache = SchemaCacheObsolete()       # All needed Schema-related data will be automatically queried and cached here
 
     # This import will result in the creation of a new node, with 2 attributes, named "state" and "city"
     root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="address", cache=cache)
@@ -62,7 +62,7 @@ def test_create_tree_from_dict_2(db):
 
     # Import a data dictionary
     data = {"name": "Julian", "address": {"state": "California", "city": "Berkeley"}}
-    cache = SchemaCache()       # All needed Schema-related data will be automatically queried and cached here
+    cache = SchemaCacheObsolete()       # All needed Schema-related data will be automatically queried and cached here
 
     # This import will result in the creation of 2 nodes, namely the tree root (with a single attribute "name"), with
     # an outbound link named "address" to another node (the subtree) that has the "state" and "city" attributes
@@ -96,7 +96,7 @@ def test_create_tree_from_list_1(db):
 
     # Import a data dictionary
     data = [{"state": "California", "city": "Berkeley"}, {"state": "Texas", "city": "Dallas"}]
-    cache = SchemaCache()       # All needed Schema-related data will be automatically queried and cached here
+    cache = SchemaCacheObsolete()       # All needed Schema-related data will be automatically queried and cached here
 
     # This import will result in the creation of two new nodes, each with 2 attributes, named "state" and "city"
     root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address", cache=cache)
@@ -130,7 +130,7 @@ def test_create_tree_from_list_2(db):
 
     # Import a data dictionary
     data = ["California", "Texas"]
-    cache = SchemaCache()       # All needed Schema-related data will be automatically queried and cached here
+    cache = SchemaCacheObsolete()       # All needed Schema-related data will be automatically queried and cached here
 
     # This import will result in the creation of two new nodes, each with a property by default named "value"
     root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address", cache=cache)

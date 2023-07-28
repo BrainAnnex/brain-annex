@@ -4,7 +4,7 @@
 import pytest
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, SchemaCacheExperimental
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCacheObsolete, SchemaCache
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -368,7 +368,7 @@ def test_allows_data_nodes(db):
     assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_no) == False
 
     # Tests using Schema Caching
-    schema_cache = SchemaCacheExperimental()
+    schema_cache = SchemaCache()
     assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_yes, schema_cache=schema_cache) == True
     assert NeoSchema.allows_data_nodes(class_neo_id=neo_id_no, schema_cache=schema_cache) == False
     # Repeat
@@ -559,7 +559,7 @@ def test_allowable_props(db):
 
 
     # Repeating, using the SchemaCache
-    schema_cache = SchemaCacheExperimental()
+    schema_cache = SchemaCache()
 
     d = NeoSchema.allowable_props(class_neo_id=lax_int_id, schema_cache=schema_cache,
                                   requested_props={"A": 123}, silently_drop=True)
@@ -606,7 +606,7 @@ def test_schema_cache(db):      # TODO: move to its own section
     db.empty_dbase()
 
     internal_id, _ = NeoSchema.create_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
-    schema_cache = SchemaCacheExperimental()
+    schema_cache = SchemaCache()
 
     class_attrs = NeoSchema.get_class_attributes(internal_id)
     assert schema_cache.get_cached_class_attrs(internal_id) == class_attrs
@@ -1485,7 +1485,7 @@ def test_next_available_datapoint_id(db):
 
 def test_cache_class_data(db):
     db.empty_dbase()
-    cache = SchemaCache()
+    cache = SchemaCacheObsolete()
 
     with pytest.raises(Exception):
         cache.cache_class_data("My first class")        # Class doesn't yet exist in the Schema
@@ -1545,14 +1545,14 @@ def test_cache_class_data(db):
 
 def test_get_class_cached_data(db):
     db.empty_dbase()
-    cache = SchemaCache()
+    cache = SchemaCacheObsolete()
 
     with pytest.raises(Exception):
         cache.get_class_cached_data("My first class")        # Class doesn't yet exist in the Schema
 
     neo_id , schema_id = NeoSchema.create_class("My first class")
 
-    cache = SchemaCache()
+    cache = SchemaCacheObsolete()
 
     data = cache.get_class_cached_data("My first class")
 

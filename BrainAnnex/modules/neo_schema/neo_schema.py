@@ -5,7 +5,7 @@ import json
 
 class NeoSchema:
     """
-    # TODO: turn into an instantiated class, with a Schema Cache
+    # TODO: maybe turn into an instantiated class, with a Schema Cache
 
     # TODO: resolve naming of data point vs. data node (probably in favor of "node")
 
@@ -362,7 +362,8 @@ class NeoSchema:
     def get_class_attributes(cls, class_internal_id: int) -> dict:
         """
         Returns all the attributes (incl. the name) of the Class node with the given internal database ID,
-        or raise an Exception if the Class is not found
+        or raise an Exception if the Class is not found.
+        If no "name" attribute is found, an Exception is raised.
 
         :param class_internal_id:   An integer with the Neo4j ID of the desired class
         :return:                    A dictionary of attributed of the class with the given Schema ID;
@@ -376,6 +377,10 @@ class NeoSchema:
 
         if not result :
             raise Exception(f"NeoSchema.get_class_attributes(): no Class with an internal database ID of {class_internal_id} found")
+
+        if "name" not in result:
+            raise Exception(f"get_class_attributes(): the expected attribute `name` wasn't found"
+                            f" among the attributes of the Class node {class_internal_id}")
 
         return result
 
@@ -439,11 +444,11 @@ class NeoSchema:
 
 
     @classmethod
-    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:    #TODO: phase out
+    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:    #TODO: phase out?
         """
 
         :param class_internal_id:   The internal ID of a Schema Class node
-        :param schema_cache:        OPTIONAL "NeoSchemaExperimental" object
+        :param schema_cache:        (OPTIONAL) "SchemaCache" object
         :return:                    True if the Class is "strict" or False if not (i.e., if it's "lax")
         """
         if schema_cache:
@@ -451,7 +456,7 @@ class NeoSchema:
         else:
             class_attrs = NeoSchema.get_class_attributes(class_internal_id)
 
-        return class_attrs['type'] == 'S'
+        return class_attrs['type'] == 'S'   # True if "Strict"
 
 
 
@@ -461,8 +466,8 @@ class NeoSchema:
         Determine if the given Class allows data nodes directly linked to it
 
         :param class_name:      Name of the Class
-        :param class_neo_id :   OPTIONAL alternate way to specify the class; if both specified, this one prevails
-        :param schema_cache:    OPTIONAL
+        :param class_neo_id :   (OPTIONAL) Alternate way to specify the class; if both specified, this one prevails
+        :param schema_cache:    (OPTIONAL) "SchemaCache" object
         :return:                True if allowed, or False if not
                                     If the Class doesn't exist, raise an Exception
         """
@@ -885,7 +890,7 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def get_class_properties_fast(cls, class_neo_id: int, include_ancestors=False, sort_by_path_len=False) -> list:
+    def get_class_properties_fast(cls, class_neo_id: int, include_ancestors=False, sort_by_path_len=False) -> [str]:
         """
         Faster version of get_class_properties()  [Using class_neo_id]
 
@@ -1428,11 +1433,11 @@ class NeoSchema:
         :param requested_props: A dictionary of properties one wishes to assign to a new data point, if the Schema allows
         :param silently_drop:   If True, any requested properties not allowed by the Schema are simply dropped;
                                     otherwise, an Exception is raised if any property isn't allowed
-        :param schema_cache:    OPTIONAL "NeoSchemaExperimental" object
+        :param schema_cache:    (OPTIONAL) "NeoSchemaExperimental" object
 
         :return:                A possibly pared-down version of the requested_props dictionary
         """
-        if not cls.is_strict_class(class_neo_id, schema_cache=schema_cache):    #TODO: phase out
+        if not cls.is_strict_class(class_neo_id, schema_cache=schema_cache):    #TODO: phase out?
             return requested_props      # Any properties are allowed if the Class isn't strict
 
 
@@ -1489,7 +1494,7 @@ class NeoSchema:
 
         :return:                The internal database ID of the new data node just created
         """
-        #schema_cache = SchemaCacheExperimental()   # TODO: later restore the Schema, as a class-wide property
+        #schema_cache = SchemaCache()   # TODO: later restore the Schema, as a class-wide property
         #class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
         #class_name = class_attrs["name"]
         if class_internal_id is None:
@@ -1567,14 +1572,14 @@ class NeoSchema:
                                         if not specified, the Class name is used
         :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped;
                                         otherwise, an Exception is raised if any property isn't allowed
-        :param schema_cache:
+        :param schema_cache:        (OPTIONAL) "SchemaCache" object
 
         :return:                    A pair with:
                                         1) The internal database ID of either an existing data node or of a new one just created
                                         2) True if a new data point was created, or False if not (i.e. an existing one was found)
         """
         if schema_cache is None:
-            schema_cache = SchemaCacheExperimental()
+            schema_cache = SchemaCache()
 
         class_attrs = schema_cache.get_cached_class_attrs(class_internal_id)
         class_name = class_attrs["name"]
@@ -1637,7 +1642,7 @@ class NeoSchema:
             f"NeoSchema.add_col_data_merge(): argument `value_list` must be a list; " \
             f"value passed was of type {type(value_list)}"
 
-        schema_cache = SchemaCacheExperimental()
+        schema_cache = SchemaCache()
 
         new_id_list = []
         existing_id_list = []
@@ -2532,7 +2537,7 @@ class NeoSchema:
         # TODO: catch Exceptions, and store the status and error message on the `Import Data` node;
         #       in particular, add "Import Data" to the Schema if not already present
 
-        cache = SchemaCache()       # All needed Schema-related data will be automatically queried and cached here
+        cache = SchemaCacheObsolete()       # All needed Schema-related data will be automatically queried and cached here
         print("***************************** cache initialized ***************************** ")
 
         if type(data) == dict:      # If the top-level Python data structure is a dictionary
@@ -2974,7 +2979,7 @@ class NeoSchema:
 
 ############################################################################################
 
-class SchemaCache:
+class SchemaCacheObsolete:
     """
     To improve the efficiency of methods that heavily interact with the Schema,
     such as JSON imports.
@@ -2985,7 +2990,7 @@ class SchemaCache:
     Note: this class gets instantiated, so that it's a local variable and doesn't cause
           trouble with multi-threading
 
-    TODO:   possibly absorb into SchemaCacheExperimental
+    TODO:  absorb into SchemaCache
     """
     def __init__(self):
         self._schema = {}   # The keys are the Class names
@@ -2995,7 +3000,7 @@ class SchemaCache:
         """
 
         TODO: instead of getting "all possible Class data", maybe provide a series of methods
-              for a piecemeal approach -> see SchemaCacheExperimental
+              for a piecemeal approach -> see SchemaCache
 
         :param class_name:
         :return:            None
@@ -3048,42 +3053,122 @@ class SchemaCache:
 
 
 ############################################################################################
-class SchemaCacheExperimental:
+class SchemaCache:
     """
-    Similar to SchemaCache, but cached by the Classes' internal database ID, rather than by their name
+    Similar to SchemaCacheObsolete, but cached by the Classes' internal database ID,
+    rather than by their name
 
-    To improve the efficiency of methods that heavily interact with the Schema,
+    This class is used to improve the efficiency of methods that heavily interact with the Schema,
     such as JSON imports.
 
-    Maintain a Python dictionary, whose keys are Class names - generally,
-    a subset of interest from all the Classes in the database.
+    Maintain a Python dictionary, whose keys are the internal database IDs of Schema Class nodes.
+    Generally, it will be a subset of interest from all the Classes in the database.
 
-    Note: this class gets instantiated, so that it's a local variable and doesn't cause
+    Note: this class gets instantiated, so that it's a local variable and won't cause
           trouble with multi-threading
 
     TODO:   add a "schema" argument to some NeoSchema methods that interact with the Schema,
             to provide an alternate manner of querying the Schema
-            - as currently done by allowable_props() and is_strict_class()
+            - as currently done by several method
     """
     def __init__(self):
-        self._schema = {}   # The keys are the internal database IDs of the Schema Class nodes;
-                            # the values are dicts that contain the following keys:
-                            #       "class_attrs"
-                            #       "out_links", "out_neighbors"  [NOT IN CURRENT USE]
+        self._schema = {}   # The KEYS are the internal database IDs of the Schema Class nodes;
+                            # the VALUES are dicts that contain the following keys:
+                            #       1) "class_attrs"
+                            #       2) "class_properties"
+                            #       3) "out_neighbors"   [Note: "in_neighbors" not done for now]
+
+
+
+    def get_cached_class_data(self, class_internal_id: int, request: str) -> Union[dict, List[str]]:
+        """
+        Return the requested data for the specified Class.
+
+        If cached values are available, they get used;
+        otherwise, they get queried, then cached and returned.
+
+        If request == "class_attrs":
+            return the attributes of the requested Class,
+            i.e. a dictionary of all the Class node's attributes
+            EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
+
+        If request == "class_properties":
+            return the properties of the requested Class,
+            i.e. the  list of all the names of the Properties associated with the given Class
+            EXAMPLE:  ["age", "gender", "weight"]
+
+        If request == "out_neighbors":
+            return a dictionary where the keys are the names of the outbound relationships from with the given Class,
+            and the values are the names of the Classes on the other side of those relationships
+            EXAMPLE:  {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
+
+        :param class_internal_id:   An integer with the database internal ID of the desired Class node
+        :param request:             A way to specify what to look up.
+                                        Permissible values: "class_attrs", "class_properties", "out_neighbors"
+        :return:
+        """
+        assert request in ["class_attrs", "class_properties", "out_neighbors"], \
+            "get_cached_class_data(): bad value for `request` argument.  Allowed values: " \
+            "'class_attrs', 'class_properties', 'out_neighbors'"
+
+        if class_internal_id not in self._schema:
+            # No cached data info already exists for this Class... so, create it
+            self._schema[class_internal_id] = {}
+
+        cached_data = self._schema[class_internal_id]
+
+
+        if request == "class_attrs":
+            if "class_attrs" not in cached_data:
+                # The Class attributes hadn't been cached; so, retrieve them
+                class_attrs = NeoSchema.get_class_attributes(class_internal_id)
+                cached_data["class_attrs"] = class_attrs
+
+            return cached_data["class_attrs"]
+
+
+        if request == "class_properties":
+            if "class_properties" not in cached_data:
+                # The Class properties hadn't been cached; so, retrieve them
+                class_properties = NeoSchema.get_class_properties_fast(class_internal_id, include_ancestors=False)
+                cached_data["class_properties"] = class_properties
+
+            return cached_data["class_properties"]
+
+
+        if request == "out_neighbors":
+            if "out_neighbors" not in cached_data:
+                # The outbound links haven't been cached; so, retrieve them
+                cached_data["out_neighbors"] = NeoSchema.get_class_outbound_data(class_internal_id, omit_instance=True)
+                '''
+                    A (possibly empty) dictionary,where the keys are the name of outbound relationships,
+                    and the values are the names of the Class nodes on the other side of those links.
+                    EXAMPLE: {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
+                '''
+
+            return cached_data["out_neighbors"]
+
+
 
 
     def get_cached_class_attrs(self, class_internal_id: int) -> dict:
         """
-        Return the attributes of the requested Class, i.e.
-        a dictionary of all the Class node's attributes, as returned by get_class_attributes()
+        # TODO: phase out, in favor of get_cached_class_data(class_internal_id, request="class_attrs")
+        Return the attributes of the requested Class,
+        i.e. a dictionary of all the Class node's attributes,
+        just as it is returned by get_class_attributes()
+
+        If cached values are available, they get used;
+        otherwise, they get queried, then cached and returned.
+
         EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
 
         :param class_internal_id:   An integer with the database internal ID of the desired Class node
-        :return:                    A dictionary of all the Class node's attributes
+        :return:                    A dictionary of all the attributes of the Class node
         """
         if class_internal_id not in self._schema:
             # No cache info already exists for this Class... so, create it,
-            # and populate it with minimal data that is sufficient to provide what was requested
+            # and populate it with data retrieved for this Class
             class_attrs = NeoSchema.get_class_attributes(class_internal_id)
             self._schema[class_internal_id] = {"class_attrs": class_attrs}
             return class_attrs
@@ -3091,10 +3176,40 @@ class SchemaCacheExperimental:
             # Cache found for this Class
             cached_data = self._schema[class_internal_id]
             if "class_attrs" not in cached_data:
+                # The Class attributes hadn't been cached; so, retrieve them
                 class_attrs = NeoSchema.get_class_attributes(class_internal_id)
-                if "name" not in class_attrs:
-                    raise Exception(f"get_cached_class_attrs(): the expected attribute `name` wasn't found"
-                                    f" among the attributes of the Class node {class_internal_id}")
                 cached_data["class_attrs"] = class_attrs
 
             return cached_data["class_attrs"]
+
+
+    def get_cached_class_properties_OBSOLETE(self, class_internal_id: int) -> [str]:
+        """
+        Return the properties of the requested Class,
+        i.e. the  list of all the names of the Properties associated with the given Class,
+        just as it is returned by get_class_properties_fast()
+
+        If cached values are available, they get used;
+        otherwise, they get queried, then cached and returned.
+
+        EXAMPLE:  ["age", "gender", "weight"]
+
+        :param class_internal_id:   An integer with the database internal ID of the desired Class node
+        :return:                    The list of all the names of the Properties associated with the given Class
+        """
+        if class_internal_id not in self._schema:
+            # No cache info already exists for this Class... so, create it,
+            # and populate it with data retrieved for this Class
+            class_properties = NeoSchema.get_class_properties_fast(class_internal_id, include_ancestors=False)
+            self._schema[class_internal_id] = {"class_properties": class_properties}
+            return class_properties
+        else:
+            # Cache found for this Class
+            cached_data = self._schema[class_internal_id]
+            if "class_properties" not in cached_data:
+                # The Class properties hadn't been cached; so, retrieve them
+                class_properties = NeoSchema.get_class_properties_fast(class_internal_id, include_ancestors=False)
+                cached_data["class_properties"] = class_properties
+
+            return cached_data["class_properties"]
+
