@@ -197,7 +197,7 @@ class APIRequestHandler:
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
         _, new_id = NeoSchema.create_class_with_properties(new_class_name, property_list_clean,
-                                                           class_to_link_to=instance_of_class, link_to_name="INSTANCE_OF")
+                                                           class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
 
 
         # If requested, link to another existing class
@@ -213,9 +213,9 @@ class APIRequestHandler:
 
             try:
                 if rel_dir == "OUT":
-                    NeoSchema.create_class_relationship(from_id=new_id, to_id=linked_to_id, rel_name=rel_name)
+                    NeoSchema.create_class_relationship_OLD(from_id=new_id, to_id=linked_to_id, rel_name=rel_name)
                 elif rel_dir == "IN":
-                    NeoSchema.create_class_relationship(from_id=linked_to_id, to_id=new_id, rel_name=rel_name)
+                    NeoSchema.create_class_relationship_OLD(from_id=linked_to_id, to_id=new_id, rel_name=rel_name)
             except Exception as ex:
                 raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
@@ -249,7 +249,7 @@ class APIRequestHandler:
 
         from_class_id = NeoSchema.get_class_id(from_class_name)
         to_class_id = NeoSchema.get_class_id(to_class_name)
-        NeoSchema.create_class_relationship(from_id=from_class_id, to_id=to_class_id, rel_name=rel_name)
+        NeoSchema.create_class_relationship_OLD(from_id=from_class_id, to_id=to_class_id, rel_name=rel_name)
 
 
 

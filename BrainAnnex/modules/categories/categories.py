@@ -732,7 +732,7 @@ class Categories:
         :return:            In case of duplicates, return a text with an explanation;
                             if no duplicates, return an empty string
         """
-        all_category_ids = NeoSchema.data_points_of_class("Categories")
+        all_category_ids = NeoSchema.data_nodes_of_class("Categories")
 
         duplicate_info = ""
         for category_id in all_category_ids:

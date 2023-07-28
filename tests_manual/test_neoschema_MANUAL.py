@@ -26,7 +26,7 @@ def test_create_class(db):
 def test_create_class_relationship(db):
     #french_class_id = NeoSchema.create_class("French Vocabulary")
     #foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
-    NeoSchema.create_class_relationship(from_id=93, to_id=19, rel_name="INSTANCE_OF")
+    NeoSchema.create_class_relationship_OLD(from_id=93, to_id=19, rel_name="INSTANCE_OF")
 
 
 
@@ -105,7 +105,7 @@ def test_create_tree_from_dict(db):
 
 
 def test_data_points_of_class(db):
-    all_category_ids = NeoSchema.data_points_of_class("Categories")
+    all_category_ids = NeoSchema.data_nodes_of_class("Categories")
     print(all_category_ids)
     assert len(all_category_ids) == 27
 

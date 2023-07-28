@@ -31,8 +31,8 @@ def create_sample_schema_1():
     _, sch_3 = NeoSchema.create_class_with_properties(class_name="doctor",
                                                       property_list=["name", "specialty"])
 
-    NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="HAS_RESULT")
-    NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_3, rel_name="IS_ATTENDED_BY")
+    NeoSchema.create_class_relationship_OLD(from_id=sch_1, to_id=sch_2, rel_name="HAS_RESULT")
+    NeoSchema.create_class_relationship_OLD(from_id=sch_1, to_id=sch_3, rel_name="IS_ATTENDED_BY")
 
     return {"patient": sch_1, "result": sch_2, "doctor": sch_3}
 
@@ -47,7 +47,7 @@ def create_sample_schema_2():
     _, sch_2 = NeoSchema.create_class_with_properties(class_name="categories",
                                                       property_list=["name", "remarks"])
 
-    NeoSchema.create_class_relationship(from_id=sch_1, to_id=sch_2, rel_name="in_category")
+    NeoSchema.create_class_relationship_OLD(from_id=sch_1, to_id=sch_2, rel_name="in_category")
 
     return {"quotes": sch_1, "categories": "sch_2"}
 
@@ -210,7 +210,7 @@ def test_create_class_relationship(db):
     db.empty_dbase()
     _ , french_class_id = NeoSchema.create_class("French Vocabulary")
     _ , foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
-    NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
+    NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
 
     q = f'''
         MATCH (from :CLASS {{name:"French Vocabulary"}})
@@ -223,13 +223,13 @@ def test_create_class_relationship(db):
 
     # Attempting to create an identical link between the same nodes will result in an Exception
     with pytest.raises(Exception):
-        assert NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
+        assert NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
 
 
     # Blank or None name will also raise an Exception
     with pytest.raises(Exception):
-        assert NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name="")
-        assert NeoSchema.create_class_relationship(from_id=french_class_id, to_id=foreign_class_id, rel_name=None)
+        assert NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name="")
+        assert NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name=None)
 
 
 
@@ -250,7 +250,7 @@ def test_delete_class_relationship(db):
         NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
 
     # Create a relationship, and then immediately delete it
-    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
+    NeoSchema.create_class_relationship_OLD(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
     assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
     n_del = NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
     assert n_del == 1
@@ -259,8 +259,8 @@ def test_delete_class_relationship(db):
         NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
 
     # Create 2 different relationships between the same classes, then delete each relationship at a time
-    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
-    NeoSchema.create_class_relationship(from_id = class_A_id, to_id = class_B_id, rel_name="LINKED_TO")
+    NeoSchema.create_class_relationship_OLD(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
+    NeoSchema.create_class_relationship_OLD(from_id = class_A_id, to_id = class_B_id, rel_name="LINKED_TO")
     assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
     assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="LINKED_TO")
     assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="BOGUS_RELATIONSHIP")
@@ -483,27 +483,27 @@ def test_count_data_points_of_class(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        NeoSchema.count_data_points_of_class(666)   # Non-existent Class
+        NeoSchema.count_data_nodes_of_class(666)   # Non-existent Class
 
     class_internal_id_1 , _ = NeoSchema.create_class("Some class")
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 0
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 0
 
     NeoSchema.add_data_point(class_internal_id=class_internal_id_1)
-    assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 1
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 1
 
     NeoSchema.add_data_point(class_internal_id=class_internal_id_1)
-    assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 2
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 2
 
 
     class_internal_id_2 , _ = NeoSchema.create_class("Another class")
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id_2) == 0
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_2) == 0
 
     NeoSchema.add_data_point(class_internal_id=class_internal_id_2)
-    assert NeoSchema.count_data_points_of_class(class_internal_id_2) == 1
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_2) == 1
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id_1) == 2   # Where we left it off
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 2   # Where we left it off
 
 
 
@@ -722,12 +722,12 @@ def test_add_data_point_merge(db):
         NeoSchema.add_data_point_merge(class_internal_id=class_internal_id)   # The Class doesn't allow data nodes
 
     class_internal_id , class_schema_id = NeoSchema.create_class("Car", schema_type="S")
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 0
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
 
     # Successfully adding the first data point
     new_datanode_id, _ = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id)
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 1
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1
 
     # Locate the data point just added
     q = f'''
@@ -751,7 +751,7 @@ def test_add_data_point_merge(db):
                                                    properties={"color": "No properties allowed"},
                                                    silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 1     # STILL at 1 datapoint
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1     # STILL at 1 datapoint
 
     # Locate the data point just added
     q = f'''
@@ -770,7 +770,7 @@ def test_add_data_point_merge(db):
     new_datanode_id, _ = NeoSchema.add_data_point_merge(class_internal_id=class_internal_id,
                                                    properties={"color": "white"})
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 2
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 2
 
     # Locate the data point just added
     q = f'''
@@ -797,7 +797,7 @@ def test_add_data_point_merge(db):
                                                    properties={"color": "red", "make": "VW"},
                                                    silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 3
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
 
     # Locate the data point just added
     q = f'''
@@ -815,7 +815,7 @@ def test_add_data_point_merge(db):
                                                    properties={"color": "red", "make": "Fiat", "year": 2000},
                                                    silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 4
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
 
     # Locate the data point just added
     q = f'''
@@ -834,7 +834,7 @@ def test_add_data_point_merge(db):
                                                    properties={"color": "red", "year": 2000},
                                                    silently_drop=False)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 4     # UNCHANGED
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4     # UNCHANGED
 
 
     # Likewise, nothing gets added now, because a "red" car already exists (the "mileage" field isn't in the Schema and gets dropped)
@@ -842,7 +842,7 @@ def test_add_data_point_merge(db):
                                                      properties={"color": "red", "mileage": 12000},
                                                      silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 4     # UNCHANGED
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4     # UNCHANGED
 
 
     # By contrast, a new data node gets added now, because the "mileage" field will now be kept, and there's no "red car with 12,000 miles"
@@ -851,7 +851,7 @@ def test_add_data_point_merge(db):
                                                      properties={"color": "red", "mileage": 12000},
                                                      silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 5     # Increased
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 5     # Increased
 
     # Locate the data point just added
     q = f'''
@@ -880,7 +880,7 @@ def test_add_data_point_merge(db):
                                    properties={"color": "purple"},
                                    silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 6     # Increased
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6     # Increased
 
 
 
@@ -888,32 +888,32 @@ def test_add_col_data_merge(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     with pytest.raises(Exception):
-        NeoSchema.add_col_data_merge(class_internal_id=123, property_name="color", value_list=["white"])     # No such class exists
+        NeoSchema.add_data_column_merge(class_internal_id=123, property_name="color", value_list=["white"])     # No such class exists
 
     class_internal_id , class_schema_id = NeoSchema.create_class_with_properties("Car",
                                                                                  property_list=["color", "year"],
                                                                                  schema_type="S")
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 0
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
     with pytest.raises(Exception):
-        NeoSchema.add_col_data_merge(class_internal_id=class_internal_id, property_name=123, value_list=["white"])  # property_name isn't a string
-        NeoSchema.add_col_data_merge(class_internal_id=class_internal_id, property_name="color", value_list="white")  # value_list isn't a list
+        NeoSchema.add_data_column_merge(class_internal_id=class_internal_id, property_name=123, value_list=["white"])  # property_name isn't a string
+        NeoSchema.add_data_column_merge(class_internal_id=class_internal_id, property_name="color", value_list="white")  # value_list isn't a list
 
 
     # Successfully add 3 data points
-    result = NeoSchema.add_col_data_merge(class_internal_id=class_internal_id,
-                                          property_name="color", value_list=["red", "white", "blue"])
+    result = NeoSchema.add_data_column_merge(class_internal_id=class_internal_id,
+                                             property_name="color", value_list=["red", "white", "blue"])
     assert len(result["new_nodes"]) == 3
     assert len(result["old_nodes"]) == 0
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 3
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
 
 
     # Only 1 of the following 3 data points isn't already in the database
-    result = NeoSchema.add_col_data_merge(class_internal_id=class_internal_id,
-                                          property_name="color", value_list=["red", "green", "blue"])
+    result = NeoSchema.add_data_column_merge(class_internal_id=class_internal_id,
+                                             property_name="color", value_list=["red", "green", "blue"])
     assert len(result["new_nodes"]) == 1
     assert len(result["old_nodes"]) == 2
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 4
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
 
     id_green_car = result["new_nodes"][0]
     data_point = NeoSchema.fetch_data_point(internal_id=id_green_car, labels="Car")
@@ -921,16 +921,16 @@ def test_add_col_data_merge(db):
 
 
     # Successfully add the 2 distinct data points, from the 3 below, using a different field
-    result = NeoSchema.add_col_data_merge(class_internal_id=class_internal_id,
-                                          property_name="year", value_list=[2003, 2022, 2022])
+    result = NeoSchema.add_data_column_merge(class_internal_id=class_internal_id,
+                                             property_name="year", value_list=[2003, 2022, 2022])
     assert len(result["new_nodes"]) == 2
     assert len(result["old_nodes"]) == 1
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 6
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6
 
 
     with pytest.raises(Exception):
-        NeoSchema.add_col_data_merge(class_internal_id=class_internal_id,
-                                property_name="UNKNOWN", value_list=[1, 2])     # Property not in Schema Class
+        NeoSchema.add_data_column_merge(class_internal_id=class_internal_id,
+                                        property_name="UNKNOWN", value_list=[1, 2])     # Property not in Schema Class
 
 
 
@@ -946,11 +946,11 @@ def test_add_data_point_new(db):
 
     class_internal_id , class_schema_id = NeoSchema.create_class("Car", schema_type="S")
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 0
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
     # Successfully adding the first data point
     new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id)
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 1
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1
 
     # Locate the data point just added
     q = f'''
@@ -974,7 +974,7 @@ def test_add_data_point_new(db):
                                                properties={"color": "No properties allowed"},
                                                silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 2
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 2
 
     # Locate the data point just added
     q = f'''
@@ -993,7 +993,7 @@ def test_add_data_point_new(db):
     new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id,
                                                properties={"color": "white"})
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 3
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
 
     # Locate the data point just added
     q = f'''
@@ -1020,7 +1020,7 @@ def test_add_data_point_new(db):
                                                properties={"color": "red", "make": "VW"},
                                                silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 4
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
 
     # Locate the data point just added
     q = f'''
@@ -1038,7 +1038,7 @@ def test_add_data_point_new(db):
                                                properties={"color": "blue", "make": "Fiat", "year": 2000},
                                                silently_drop=True)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 5
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 5
 
     # Locate the data point just added
     q = f'''
@@ -1057,7 +1057,7 @@ def test_add_data_point_new(db):
                                                properties={"color": "green", "year": 2022},
                                                silently_drop=False)
 
-    assert NeoSchema.count_data_points_of_class(class_internal_id) == 6
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6
 
     # Locate the data point just added
     q = f'''
@@ -1281,7 +1281,7 @@ def test_add_data_relationship(db):
         NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
 
     # Add the "DRIVE" relationship between the classes
-    NeoSchema.create_class_relationship(from_id=person_class_id, to_id=car_class_id, rel_name="DRIVES")
+    NeoSchema.create_class_relationship_OLD(from_id=person_class_id, to_id=car_class_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="", id_type="item_id")  # Lacks relationship name
@@ -1316,7 +1316,7 @@ def test_add_data_relationship(db):
 
 
     # Now add reverse a relationship, and this time use the Neo4j ID's to locate the nodes
-    NeoSchema.create_class_relationship(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
+    NeoSchema.create_class_relationship_OLD(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
 
     neo_person_id = NeoSchema.get_data_point_id(person_id)
     neo_car_id = NeoSchema.get_data_point_id(car_id)
@@ -1365,7 +1365,7 @@ def test_add_data_relationship_fast(db):
         NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="DRIVES")
 
     # Add the "DRIVE" relationship between the Classes
-    NeoSchema.create_class_relationship(from_id=person_class_id, to_id=car_class_id, rel_name="DRIVES")
+    NeoSchema.create_class_relationship_OLD(from_id=person_class_id, to_id=car_class_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="")  # Lacks relationship name
@@ -1389,7 +1389,7 @@ def test_add_data_relationship_fast(db):
 
 
     # Now add reverse a relationship between the Classes
-    NeoSchema.create_class_relationship(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
+    NeoSchema.create_class_relationship_OLD(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
 
     # Add that same reverse relationship between the data points
     NeoSchema.add_data_relationship_fast(from_neo_id=car_neo_id, to_neo_id=person_neo_id, rel_name="IS_DRIVEN_BY")

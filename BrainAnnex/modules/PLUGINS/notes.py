@@ -83,11 +83,11 @@ class Notes:
         :param pars:
         :return:        None
         """
-        return  # For now, index isn't being done
+        return  # For now, index isn't being done.  TODO: test and restore
         body = pars.get("body")
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-
-        cls.update_index(unique_words)
+        content_id = NeoSchema.get_data_point_internal_id(item_id=item_id)
+        FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=unique_words)
 
 
 
@@ -100,16 +100,17 @@ class Notes:
         :param pars:
         :return:        None
         """
-        return  # For now, index isn't being done
+        return  # For now, index isn't being done.  TODO: test and restore
         body = pars.get("body")
         unique_words = FullTextIndexing.extract_unique_good_words(body)
+        content_id = NeoSchema.get_data_point_internal_id(item_id=item_id)
+        FullTextIndexing.update_indexing(content_item_id=content_id, unique_words=unique_words)
 
-        cls.update_index(unique_words)
 
 
 
     @classmethod
-    def update_index(cls, unique_words: [str]) -> None:
+    def update_index_NO_LONGER_IN_USE(cls, unique_words: [str]) -> None:
         """
         TODO: run this in a separate thread, in a separate class
 
@@ -121,4 +122,4 @@ class Notes:
         #print("unique_words: \n", unique_words)
 
         # Add each of words to the index, unless already present there
-        NeoSchema.add_col_data_merge(class_internal_id=class_db_id, property_name="name", value_list=unique_words)
+        NeoSchema.add_data_column_merge(class_internal_id=class_db_id, property_name="name", value_list=unique_words)

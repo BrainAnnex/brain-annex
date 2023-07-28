@@ -7,6 +7,8 @@ class NeoSchema:
     """
     # TODO: turn into an instantiated class, with a Schema Cache
 
+    # TODO: resolve naming of data point vs. data node (probably in favor of "node")
+
     A layer above the class NeoAccess (or, in principle, another library providing a compatible interface)
     to provide an optional schema to the underlying database.
 
@@ -166,13 +168,15 @@ class NeoSchema:
         NOTE: if you want to add Properties at the same time that you create a new Class,
               use the function create_class_with_properties() instead.
 
-        TODO: offer the option to link to an existing Class.  link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
+        TODO: offer the option to link to an existing Class, like create_class_with_properties() does
+                  link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
         TODO: maybe an option to add multiple Classes of the same type at once???
+        TODO: maybe stop returning the schema_id ?
 
         :param name:        Name to give to the new Class
         :param code:        Optional string indicative of the software handler for this Class and its subclasses
         :param schema_type: Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
-                            #TODO: phase out
+                            #TODO: phase out, or at least default to "S"
 
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes
@@ -480,11 +484,60 @@ class NeoSchema:
 
 
 
+    #####################################################################################################
 
-    ###########     RELATIONSHIPS AMONG CLASSES     ###########
+    '''                          ~   RELATIONSHIPS AMONG CLASSES   ~                                   '''
+
+    def ________RELATIONSHIPS_AMONG_CLASSES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
 
     @classmethod
     def create_class_relationship(cls, from_id: int, to_id: int, rel_name="INSTANCE_OF") -> None:
+        """
+        Create a relationship (provided that it doesn't already exist) with the specified name
+        between the 2 existing Class nodes (identified by their internal database ID's or name),
+        in the  from -> to  direction.
+
+        In case of error, an Exception is raised
+
+        Note: multiple relationships by the same name between the same nodes are allowed by Neo4j,
+              as long as the relationships differ in their attributes
+              (but this method doesn't allow setting properties on the new relationship)
+
+        TODO: add a method that reports on all existing relationships among Classes?
+        TODO: implement the specification of the classes by name
+        TODO: allow properties on the relationship
+
+        :param from_id:     Internal database ID of one existing Class node
+                                TODO: if a string, interpret is as a name
+        :param to_id:       Internal database ID of another existing Class node
+                                TODO: if a string, interpret is as a name
+        :param rel_name:    Name of the relationship to create, in the from -> to direction
+                                (blanks allowed)
+        :return:            None
+        """
+        assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
+
+        # TODO: validate the arguments
+
+        q = f'''
+            MATCH (from:CLASS), (to:CLASS)
+            WHERE id(from) = {from_id} AND id(to) = {to_id}
+            MERGE (from)-[:`{rel_name}`]->(to)
+            '''
+
+        result = cls.db.update_query(q, {"from_id": from_id, "to_id": to_id})
+        #print("result of update_query in create_class_relationship(): ", result)
+        if result.get("relationships_created") != 1:
+            raise Exception(f"create_class_relationship: failed to create new relationship named `{rel_name}` "
+                            f"from Class with internal database ID {from_id} to Class with ID {to_id}")
+
+
+
+    @classmethod    # TODO: phase out in favor of create_class_relationship()
+    def create_class_relationship_OLD(cls, from_id: int, to_id: int, rel_name="INSTANCE_OF") -> None:
         """
         Create a relationship (provided that it doesn't already exist) with the specified name
         between the 2 existing Class nodes (identified by their schema_id),
@@ -1034,7 +1087,7 @@ class NeoSchema:
 
     @classmethod
     def create_class_with_properties(cls, class_name: str, property_list: [str], code=None, schema_type="L",
-                                     class_to_link_to=None, link_to_name="INSTANCE_OF") -> (int, int):
+                                     class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int, int):
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
         and link them together with "HAS_PROPERTY" relationships.
@@ -1054,19 +1107,32 @@ class NeoSchema:
         NOTE: if the Class already exists, use add_properties_to_class() instead
 
         :param class_name:      String with name to assign to the new class
+                                TODO: change to "name" for consistency with create_class()
+
         :param property_list:   List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            Optional string indicative of the software handler for this Class and its subclasses
-        :param schema_type:     Either "L" (Lenient) or "S" (Strict).      #TODO: phase out
-        :param class_to_link_to If this name is specified, and a link_to_name (below) is also specified,
+        :param schema_type:     Either "L" (Lenient) or "S" (Strict).      #TODO: phase out.  Make it all "Strict"
+        :param class_to_link_to: If this name is specified, and a link_to_name (below) is also specified,
                                     then create an OUTBOUND relationship from the newly-created Class
                                     to this existing Class
-        :param link_to_name     Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
+        :param link_name:       Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
+        :param link_dir:        Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
         :return:                If successful, the pair (internal ID, integer "schema_id" assigned to the new Class);
                                 otherwise, raise an Exception
         """
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
-        #       adding a new Class and then leaving it w/o properties or links, in case of mid-operation error
+        #       adding a new Class and then leaving it without properties or links, in case of mid-operation error
+
+        if class_to_link_to:
+            assert link_name, \
+                "create_class_with_properties(): if the argument `class_to_link_to` is provided, " \
+                "a valid value for the argument `link_to_name` must also be provided"
+
+            assert (link_dir == "OUT") or (link_dir == "IN"), \
+                f"create_class_with_properties(): if the argument `class_to_link_to` is provided, " \
+                f"the argument `link_dir` must be either 'OUT' or 'IN' (value passed: {link_dir})"
+
 
         new_class_int_id , new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
         cls.debug_print(f"Created new schema CLASS node (name: `{class_name}`, Schema ID: {new_class_id})")
@@ -1077,12 +1143,16 @@ class NeoSchema:
 
         cls.debug_print(f"{number_properties_added} Properties added to the new Class: {property_list}")
 
-        if class_to_link_to and link_to_name:
-            # Create a relationship from the newly-created Class to an existing Class whose name is given by class_to_link_to
-            parent_id = NeoSchema.get_class_id(class_name = class_to_link_to)
-            cls.debug_print(f"parent_id (ID of `{class_to_link_to}` class): {parent_id}")
+
+        if class_to_link_to and link_name:
+            # Create a relationship between the newly-created Class and an existing Class whose name is given by class_to_link_to
+            other_class_id = NeoSchema.get_class_id(class_name = class_to_link_to)
+            cls.debug_print(f"Internal database ID of the `{class_to_link_to}` class to link to: {other_class_id}")
             try:
-                NeoSchema.create_class_relationship(from_id=new_class_id, to_id=parent_id, rel_name =link_to_name)
+                if link_dir == "OUT":
+                    NeoSchema.create_class_relationship_OLD(from_id=new_class_id, to_id=other_class_id, rel_name =link_name)
+                else:
+                    NeoSchema.create_class_relationship_OLD(from_id=other_class_id, to_id=new_class_id, rel_name =link_name)
             except Exception as ex:
                 raise Exception(f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
@@ -1290,7 +1360,7 @@ class NeoSchema:
 
 
     @classmethod
-    def data_points_of_class(cls, class_name) -> [int]:
+    def data_nodes_of_class(cls, class_name) -> [int]:
         """
         Return the Item ID's of all the Data Points of the given Class
         TODO: offer to optionally use a label
@@ -1313,23 +1383,33 @@ class NeoSchema:
 
 
     @classmethod
-    def count_data_points_of_class(cls, class_internal_id) -> [int]:
+    def count_data_nodes_of_class(cls, class_id: Union[int, str]) -> [int]:
         """
-        Return the count of all the Data Points of the given Class
+        Return the count of all the Data Nodes attached to the given Class
 
-        :param class_internal_id:
-        :return:
+        :param class_id:    Either an integer with the internal database ID of an existing Class node,
+                                or a string with its name
+        :return:            The count of all the Data Nodes attached to the given Class
         """
-        assert cls.class_neo_id_exists(class_internal_id), \
-            f"NeoSchema.count_data_points_of_class(): no Class with an internal ID of {class_internal_id} exists"
+        # TODO: introduce new method assert_valid_class_id()
 
-        q = f'''
-            MATCH (n)-[:SCHEMA]->(cl :CLASS)
-            WHERE id(cl) = {class_internal_id}
-            RETURN count(n) AS number_datapoints
-            '''
+        if type(class_id) == int:
+            assert cls.class_neo_id_exists(class_id), \
+                f"NeoSchema.count_data_points_of_class(): no Class with an internal ID of {class_id} exists"
 
-        res = cls.db.query(q, single_cell="number_datapoints")
+            q = f'''
+                MATCH (n)-[:SCHEMA]->(cl :CLASS)
+                WHERE id(cl) = {class_id}
+                RETURN count(n) AS number_datanodes
+                '''
+        else:
+            q = f'''
+                MATCH (n)-[:SCHEMA]->(cl :CLASS)
+                WHERE cl.name = "{class_id}"
+                RETURN count(n) AS number_datanodes
+                '''
+
+        res = cls.db.query(q, single_cell="number_datanodes")
 
         return res
 
@@ -1378,6 +1458,7 @@ class NeoSchema:
     def add_data_point(cls, class_name=None, class_internal_id=None, properties = None, labels = None,
                        assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
         """
+        TODO: maybe rename create_data_point(), for consistency with create_class()
         A more "modern" version of the deprecated add_data_point_OLD()
 
         Add a new data node, of the specified Class,
@@ -1403,6 +1484,8 @@ class NeoSchema:
                                     If new_item_id is provided, then assign_item_id is automatically made True
         :param silently_drop:   If True, any requested properties not allowed by the Schema are simply dropped;
                                     otherwise, an Exception is raised if any property isn't allowed
+                                    TODO: only true for "Strict" schema - with a "Lax" schema anything goes; but "Lax" schema
+                                          will probably be phased out
 
         :return:                The internal database ID of the new data node just created
         """
@@ -1427,11 +1510,11 @@ class NeoSchema:
             properties = {}
 
         assert type(properties) == dict, \
-            "NeoSchema.add_data_point_new(): The `properties` argument, if provided, MUST be a dictionary"
+            "NeoSchema.add_data_point(): The `properties` argument, if provided, MUST be a dictionary"
 
         # Make sure that the Class accepts Data Nodes
         if not cls.allows_data_nodes(class_neo_id=class_internal_id):
-            raise Exception(f"NeoSchema.add_data_point_new(): "
+            raise Exception(f"NeoSchema.add_data_point(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
         properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
@@ -1533,7 +1616,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_col_data_merge(cls, class_internal_id: int, property_name: str, value_list: list) -> dict:
+    def add_data_column_merge(cls, class_internal_id: int, property_name: str, value_list: list) -> dict:
         """
         Add a data column (i.e. a set of single-property data nodes).
         Individual nodes are created only if there's no other data point with the same property/value
@@ -1544,6 +1627,7 @@ class NeoSchema:
         :param property_name:       The name of the data column
         :param value_list:          The data column as a list
         :return:                    A dictionary with 2 keys - "new_nodes" and "old_nodes"
+                                        TODO: rename "old_nodes" to "present_nodes" (or "existing_nodes")
         """
         assert type(property_name) == str, \
             f"NeoSchema.add_col_data_merge(): argument `property_name` must be a string; " \
@@ -1598,6 +1682,7 @@ class NeoSchema:
         TODO: verify that required attributes are present
         TODO: verify that all the requested links conform to the Schema
         TODO: invoke special plugin-code, if applicable
+        TODO: maybe rename to add_data_node()
 
         :param class_name:  The name of the Class that this new data point is an instance of.
                                 Also use to set a label on the new node, if labels isn't specified
@@ -2208,7 +2293,7 @@ class NeoSchema:
         Note: the data nodes are left untouched.
         If the specified relationship didn't get deleted, raise an Exception
 
-        TODO: verify that the relationship is optional in the schema
+        TODO: first verify that the relationship is optional in the schema???
 
         :param from_id:     The "item_id" value of the data node at which the relationship originates
         :param to_id:       The "item_id" value of the data node at which the relationship ends
@@ -2226,6 +2311,59 @@ class NeoSchema:
                                  dummy_node_name="to")
 
         cls.db.remove_links(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
+
+
+
+    @classmethod
+    def remove_multiple_data_relationships(cls, node_id: Union[int, str], rel_name: str, rel_dir: str, labels=None) -> None:
+        """     TODO: test
+        Drop all the relationships with the given name, from or to the given data node.
+        Note: the data node is left untouched.
+
+        IMPORTANT: this function cannot be used to remove relationship involving any Schema node
+
+        :param node_id:     The internal database ID or name of the data node of interest
+        :param rel_name:    The name of the relationship(s) to delete
+        :param rel_dir:     Either 'IN', 'OUT', or 'BOTH'
+        :param labels:      [OPTIONAL]
+        :return:            None
+        """
+        assert rel_name, \
+                f"remove_data_relationship(): no name was provided for the relationship to be removed"
+
+        assert (rel_name != "SCHEMA") and (rel_name != "HAS_PROPERTY"), \
+                f"remove_data_relationship(): cannot use this function to remove Schema relationships"
+
+        if labels is None:
+            labels = ""
+        else:
+            labels = f":`{labels}`"
+
+        if rel_dir == "OUT":
+            match = f"MATCH (n) -[r :{rel_name}]->({labels})"
+        elif rel_dir == "IN":
+            match = f"MATCH (n) <-[r :{rel_name}]-({labels})"
+        elif rel_dir == "BOTH":
+            match = f"MATCH (n) -[r :{rel_name}]-({labels})"
+        else:
+            raise Exception("remove_data_relationship(): the argument `rel_dir` must be either 'IN', 'OUT', or 'BOTH'")
+
+        if type(node_id) == int:
+            q = f'''
+            {match} WHERE labels(n) <> ["CLASS", "PROPERTY" ]
+            AND id(n) = {node_id}
+            DELETE r
+            '''
+        else:
+            q = f'''
+            {match} WHERE labels(n) <> ["CLASS", "PROPERTY" ]
+            AND n.name = "{node_id}"
+            DELETE r
+            '''
+
+        #print(q)
+        cls.db.update_query(q)
+
 
 
 

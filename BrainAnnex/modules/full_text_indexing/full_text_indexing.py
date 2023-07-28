@@ -1,13 +1,18 @@
 import re
 import html
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
 class FullTextIndexing:
     """
-    Indexing-related methods.  In early development stage
-    """
-    # The "db" class properties gets set by InitializeBrainAnnex.set_dbase()
+    Indexing-related methods, for full-text searching.
 
+    NOTE: no stemming nor lemmatizing is done.
+          Therefore, for best results, all word searches should be done on stems;
+          for example, search for "learn" rather than "learning" or "learns" - to catch all 3
+    """
+
+    # The "db" class properties gets set by InitializeBrainAnnex.set_dbase()
     db = None           # Object of class "NeoAccess".  MUST be set before using this class!
 
 
@@ -26,7 +31,7 @@ class FullTextIndexing:
                     'help', 'helps', 'let', 'lets',
                     'go', 'goes', 'going', 'gone', 'became', 'become',
                     'be', 'is', 'isn', 'am', 'are', 'aren', 'been', 'was', 'wasn', 'being',
-                    'can', 'could', 'might', 'may', 'do', 'does', 'did', 'didn', 'done', 'doing',
+                    'can', 'cannot', 'could', 'might', 'may', 'do', 'does', 'did', 'didn', 'done', 'doing',
                     'make', 'made', 'making',
                     'have', 'haven', 'has', 'had', 'hadn', 'having',
                     'must', 'need', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
@@ -75,6 +80,8 @@ class FullTextIndexing:
 
 
 
+    ##########   STRING METHODS   ##########
+
     @classmethod
     def extract_unique_good_words(cls, text: str) -> [str]:
         """
@@ -99,11 +106,6 @@ class FullTextIndexing:
         assert type(text) == str, \
             f"extract_unique_good_words(): the argument must be a string; instead, it was of type {type(text)}"
 
-        #if text is None:
-            #raise Exception("FullTextIndexing: unable to index the contents because None was passed")
-
-        #print("The original string is : \n" +  text)
-
         # Extract words from string, and convert them to lower case
         split_text = cls.split_into_words(text, to_lower_case=True)
         #print("The split text is : ", split_text)
@@ -121,7 +123,7 @@ class FullTextIndexing:
 
         #print("The word list for the index is: ", word_list)
 
-        return word_list
+        return word_list    # TODO: turn into a SET
 
 
 
@@ -162,30 +164,165 @@ class FullTextIndexing:
 
 
 
+    ##########   GRAPH METHODS   ##########
+
     @classmethod
-    def new_indexing(cls, content_id : int, word_list: [str]):
+    def initialize_schema(cls, content_item_class_id=None) -> None:
+        """
+        Initialize the graph-database Schema used by this Indexer module.
+        It will create a new "Word" Class linked to a new "Indexer" Class,
+        by means of an outbound "occurs" relationship,
+        plus it will add a relationship named "has_index" from an EXISTING
+        "Content Item" Class to the new "Indexer" Class.
+        The newly-created "Word" Class will be given one Property: "name"
+
+        IMPORTANT: an existing Class named "Content Item" is expected;
+                   an Exception will be raised if not found
+
+        :param content_item_class_id: (OPTIONAL) The internal database ID of an existing "Content Item" Class;
+                                            if not passed, it gets looked up
+        :return:                None
         """
 
-        :param content_id:
-        :param word_list:
+        if content_item_class_id is None:     # Look it up, if not passed
+            content_item_class_id = NeoSchema.get_class_internal_id(class_name="Content Item")
+
+        indexer_class_id, _ = NeoSchema.create_class(name="Indexer", schema_type="S")
+
+        NeoSchema.create_class_with_properties(class_name="Word", schema_type="S",
+                                               property_list=["name"],
+                                               class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
+
+        NeoSchema.create_class_relationship(from_id=content_item_class_id, to_id=indexer_class_id, rel_name="has_index")
+
+
+
+    @classmethod
+    def new_indexing(cls, content_item_id: int, unique_words: [str]):
+        """
+        Used to create a new index, linking the given list of unique words
+        to the specified "Content Item" data node.
+        
+        Create a data node of type "Indexer",
+        with inbound relationships named "occurs" from "Word" data nodes (pre-existing or newly-created)
+        for all the words in the given list.
+        Also, create a relationship named "has_index" from an existing "Content Item" data node to the new "Indexer" node.
+
+        :param content_item_id: The internal database ID of an existing "Content Item" data node
+        :param unique_words:    A list of strings containing unique words
+                                    - for example as returned by extract_unique_good_words()
+        :return:                None
+        """
+        # Create a data node of type "Indexer", and link it up to the passed Content Item
+        indexer_id = NeoSchema.add_data_point_with_links(class_name = "Indexer",
+                                                          links =[{"internal_id": content_item_id, "rel_name": "has_index",
+                                                                  "rel_dir": "IN"}])
+
+        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words)
+
+
+
+    @classmethod
+    def populate_index(cls, indexer_id: int, unique_words: [str]) -> None:
+        """
+
+        :param indexer_id:
+        :param unique_words:
+        :return:            None
+        """
+        # Locate (if already present), or create, a "Word" data node for each word in the list unique_words
+        class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
+        result = NeoSchema.add_data_column_merge(class_internal_id=class_db_id,
+                                                 property_name="name", value_list=unique_words)
+        #print("result: ", result)
+
+        word_node_list = result['old_nodes'] + result['new_nodes']      # Join the 2 lists
+
+        # Link all the "Word" nodes (located or created above) to the "Indexer" node,
+        # with an "occurs" outbound relationship
+        # (in the future, to also perhaps store a count property)
+        for word_node_id in word_node_list:
+            NeoSchema.add_data_relationship_fast(from_neo_id=word_node_id, to_neo_id=indexer_id, rel_name="occurs")
+
+
+
+    @classmethod
+    def update_indexing(cls, content_item_id : int, unique_words: [str]):
+        """
+        Used to update an index, linking the given list of unique words
+        to the specified "Indexer" data node, which was created by a call to new_indexing()
+        at the time the index was first created.
+        
+        From the given data node of type "Indexer",
+        add inbound relationships named "occurs" from "Word" data nodes (pre-existing or newly-created)
+        for all the words in the given list.
+        Also, create a relationship named "has_index" from an existing "Content Item" data node to the new "Indexer" node.
+
+        :param content_item_id: The internal database ID of an existing "Content Item" data node
+        :param unique_words:    A list of strings containing unique words
+                                    - for example as returned by extract_unique_good_words()
         :return:
         """
-        # Create a node of type "Indexer" (or "indexer"?)
+        indexer_id = cls.get_indexer_node_id(content_item_id)
+        print(indexer_id)
 
 
-        # Locate or create a "Word" node for each word in word_list
-        for word in word_list:
-            word_node = FullTextIndexing.prepare_word_node(word)
+        # Sever all the existing "occurs" relationships to the "Indexer" data node
+        # i.e. give a "clean slate" to the "Indexer" data node
+        NeoSchema.remove_multiple_data_relationships(node_id=indexer_id, rel_name="occurs", rel_dir="IN", labels="Word")
 
-        # Link all the above "Word" nodes to the "Indexer" node, with an "occurs" relationship
-        # (in the future, to also perhaps store a count property)
 
-        # Link the "Indexer" node to the given Content-Item node
+        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words)
 
 
 
     @classmethod
-    def prepare_word_node(cls, word: str) -> int:
+    def get_indexer_node_id(cls, content_item_id: int) -> int:
+        """
+
+        :param content_item_id: The internal database ID of an existing "Content Item" data node
+        :return:                The internal database ID of the corresponding "Indexer" data node
+        """
+        q = '''
+            MATCH (ci:`Content Item`)-[:has_index]->(i:Indexer)-[:SCHEMA]->(:CLASS {name: "Indexer"})
+            WHERE id(ci) = $content_item_id
+            RETURN id(i) AS indexer_id
+            '''
+        return cls.db.query(q, data_binding={"content_item_id": content_item_id}, single_cell="indexer_id")
+
+
+
+    @classmethod
+    def remove_indexing(cls, content_item_id : int):
+        """
+        Drop the "Indexer" node linked to the given Content Item node
+        :param content_item_id: The internal database ID of an existing "Content Item" data node
+        :return:
+        """
+        pass        # TODO
+
+
+
+    @classmethod
+    def count_indexed_words(cls, content_item_id : int) -> int:
+        """
+        Determine and return the number of words attached to the index
+        of the given Content Item data node
+
+        :param content_item_id: The internal database ID of an existing "Content Item" data node
+        :return:                The number of indexed words associated to the above node
+        """
+        q = '''
+            MATCH (wc:CLASS {name:"Word"})<-[:SCHEMA]-(w:Word)-[:occurs]->(i:Indexer)<-[:has_index]
+            -(ci:`Content Item`) WHERE id(ci)=$content_item_id 
+            RETURN count(w) AS word_count
+            '''
+        return cls.db.query(q, data_binding={"content_item_id": content_item_id}, single_cell="word_count")
+
+
+
+    @classmethod
+    def prepare_word_node_OBSOLETE(cls, word: str) -> int:   # TODO: no longer needed
         """
         Locate or create a "Word" node for the given word
 
@@ -193,4 +330,5 @@ class FullTextIndexing:
         :return:        The internal database ID of a "Word" node (either pre-existing or just created)
                             representing the given word
         """
-        pass
+        # TODO: for now, we're always creating rather than first checking if already there
+        return NeoSchema.add_data_point(class_name="Word", properties={"name": word})
