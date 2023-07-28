@@ -616,9 +616,11 @@ def test_allowable_props(db):
         NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
                                   requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=False)
 
-    # Check the cache itself
-    assert schema_cache.get_cached_class_attrs(lax_int_id) == {"name": "My Lax class", "schema_id": lax_schema_id, "type": "L"}
-    assert schema_cache.get_cached_class_attrs(strict_int_id) == {"name": "My Strict class", "schema_id": strict_schema_id, "type": "S"}
+    # Check the internal data structure of the schema cache
+    cached_data = schema_cache.get_all_cached_class_data(lax_int_id)
+    assert cached_data["class_attributes"] == {"name": "My Lax class", "schema_id": lax_schema_id, "type": "L"}
+    cached_data = schema_cache.get_all_cached_class_data(strict_int_id)
+    assert cached_data["class_attributes"] == {"name": "My Strict class", "schema_id": strict_schema_id, "type": "S"}
 
 
 
@@ -1494,31 +1496,52 @@ def test_next_available_datapoint_id(db):
 def test_get_cached_class_data(db):
     db.empty_dbase()
 
-    class_id, _ = NeoSchema.create_class_with_properties("Cars", ["A", "B"], schema_type="L")
+    car_class_id, _ = NeoSchema.create_class_with_properties("Cars", ["A", "B"], schema_type="L")
     schema_cache = SchemaCache()
 
     # Test "class_attributes" option
-    class_attrs = NeoSchema.get_class_attributes(class_id)
+    class_attrs = NeoSchema.get_class_attributes(car_class_id)
     assert class_attrs["name"] == "Cars"
     assert class_attrs["type"] == "L"
 
-    assert schema_cache.get_cached_class_data(class_id, request="class_attributes") == class_attrs
+    assert schema_cache.get_cached_class_data(car_class_id, request="class_attributes") == class_attrs
     # A 2nd identical run will use the previously-cached data
-    assert schema_cache.get_cached_class_data(class_id, request="class_attributes") == class_attrs
+    assert schema_cache.get_cached_class_data(car_class_id, request="class_attributes") == class_attrs
 
 
     # Test "class_properties" option
-    class_properties = NeoSchema.get_class_properties_fast(class_id, include_ancestors=False)
-    assert compare_unordered_lists(class_properties, ["A", "B"])
+    car_class_properties = NeoSchema.get_class_properties_fast(car_class_id, include_ancestors=False)
+    assert compare_unordered_lists(car_class_properties, ["A", "B"])
 
-    assert schema_cache.get_cached_class_data(class_id, request="class_properties") == class_properties
+    assert schema_cache.get_cached_class_data(car_class_id, request="class_properties") == car_class_properties
     # A 2nd identical run will use the previously-cached data
-    assert schema_cache.get_cached_class_data(class_id, request="class_properties") == class_properties
+    assert schema_cache.get_cached_class_data(car_class_id, request="class_properties") == car_class_properties
 
 
-    # TODO: test "out_neighbors" option
+    # Add a related 2nd Class
+    vehicle_class_id, _ = NeoSchema.create_class_with_properties("Vehicles", ["C", "D", "E"], schema_type="S")
+
+    NeoSchema.create_class_relationship(from_class="Cars", to_class="Vehicles", rel_name="type of")
+
+    vehicle_class_properties = schema_cache.get_cached_class_data(vehicle_class_id, request="class_properties")
+    assert compare_unordered_lists(vehicle_class_properties, ["C", "D", "E"])
+
+    # This time, a cached version will be used
+    vehicle_class_properties = schema_cache.get_cached_class_data(vehicle_class_id, request="class_properties")
+    assert compare_unordered_lists(vehicle_class_properties, ["C", "D", "E"])
+
+    assert schema_cache.get_cached_class_data(car_class_id, request="class_properties") == car_class_properties # Still unchanged
 
 
+    # Test "out_neighbors" option
+    car_neighbors = schema_cache.get_cached_class_data(car_class_id, request="out_neighbors")
+    assert car_neighbors == {"type of": "Vehicles"}
+    # A 2nd identical run will use the previously-cached data
+    car_neighbors = schema_cache.get_cached_class_data(car_class_id, request="out_neighbors")
+    assert car_neighbors == {"type of": "Vehicles"}
+
+    vehicle_neighbors = schema_cache.get_cached_class_data(vehicle_class_id, request="out_neighbors")
+    assert vehicle_neighbors == {}      # No outbound links exist for "Vehicles" class
 
 
 
