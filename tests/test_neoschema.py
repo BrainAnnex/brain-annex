@@ -31,8 +31,8 @@ def create_sample_schema_1():
     _, sch_3 = NeoSchema.create_class_with_properties(class_name="doctor",
                                                       property_list=["name", "specialty"])
 
-    NeoSchema.create_class_relationship_OLD(from_id=sch_1, to_id=sch_2, rel_name="HAS_RESULT")
-    NeoSchema.create_class_relationship_OLD(from_id=sch_1, to_id=sch_3, rel_name="IS_ATTENDED_BY")
+    NeoSchema.create_class_relationship(from_class="patient", to_class="result", rel_name="HAS_RESULT")
+    NeoSchema.create_class_relationship(from_class="patient", to_class="doctor", rel_name="IS_ATTENDED_BY")
 
     return {"patient": sch_1, "result": sch_2, "doctor": sch_3}
 
@@ -47,7 +47,7 @@ def create_sample_schema_2():
     _, sch_2 = NeoSchema.create_class_with_properties(class_name="categories",
                                                       property_list=["name", "remarks"])
 
-    NeoSchema.create_class_relationship_OLD(from_id=sch_1, to_id=sch_2, rel_name="in_category")
+    NeoSchema.create_class_relationship(from_class="quotes", to_class="categories", rel_name="in_category")
 
     return {"quotes": sch_1, "categories": "sch_2"}
 
@@ -213,11 +213,11 @@ def test_create_class_relationship(db):
 
     # Blank or None name will also raise an Exception
     with pytest.raises(Exception):
-        assert NeoSchema.create_class_relationship(from_id=french_id, to_id=foreign_id, rel_name="")
+        assert NeoSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name="")
     with pytest.raises(Exception):
-        assert NeoSchema.create_class_relationship(from_id=french_id, to_id=foreign_id, rel_name=None)
+        assert NeoSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name=None)
 
-    NeoSchema.create_class_relationship(from_id=french_id, to_id=foreign_id, rel_name="INSTANCE_OF")
+    NeoSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name="INSTANCE_OF")
 
     q = f'''MATCH 
         (from :CLASS {{name:"French Vocabulary", schema_id: {french_uri}}})
@@ -231,12 +231,12 @@ def test_create_class_relationship(db):
 
     # Attempting to create an identical link between the same nodes will result in an Exception
     with pytest.raises(Exception):
-        assert NeoSchema.create_class_relationship(from_id=french_id, to_id=foreign_id, rel_name="INSTANCE_OF")
+        assert NeoSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name="INSTANCE_OF")
 
 
     NeoSchema.create_class("German Vocabulary")
     # Mixing names and internal database ID's
-    NeoSchema.create_class_relationship(from_id="German Vocabulary", to_id=foreign_id, rel_name="INSTANCE_OF")
+    NeoSchema.create_class_relationship(from_class="German Vocabulary", to_class=foreign_id, rel_name="INSTANCE_OF")
 
     q = f'''MATCH 
         (from :CLASS {{name:"French Vocabulary", schema_id: {french_uri}}})
@@ -248,33 +248,6 @@ def test_create_class_relationship(db):
         '''
 
     assert db.query(q, single_cell="number_found") == 1
-
-
-
-def test_create_class_relationship_OLD(db):
-    db.empty_dbase()
-    _ , french_class_id = NeoSchema.create_class("French Vocabulary")
-    _ , foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
-    NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
-
-    q = f'''
-        MATCH (from :CLASS {{name:"French Vocabulary"}})
-        -[:INSTANCE_OF]
-        ->(:CLASS {{schema_id: {foreign_class_id}}}) 
-        RETURN count(from) AS number_found
-        '''
-
-    assert db.query(q, single_cell="number_found") == 1
-
-    # Attempting to create an identical link between the same nodes will result in an Exception
-    with pytest.raises(Exception):
-        assert NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
-
-
-    # Blank or None name will also raise an Exception
-    with pytest.raises(Exception):
-        assert NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name="")
-        assert NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name=None)
 
 
 
@@ -290,12 +263,15 @@ def test_delete_class_relationship(db):
 
     with pytest.raises(Exception):
         NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name=None)
+    with pytest.raises(Exception):
         NeoSchema.delete_class_relationship(from_class="", to_class="B", rel_name="some name")
+    with pytest.raises(Exception):
         NeoSchema.delete_class_relationship(from_class="A", to_class=None, rel_name="some name")
+    with pytest.raises(Exception):
         NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
 
     # Create a relationship, and then immediately delete it
-    NeoSchema.create_class_relationship_OLD(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
+    NeoSchema.create_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
     assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
     n_del = NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
     assert n_del == 1
@@ -304,8 +280,8 @@ def test_delete_class_relationship(db):
         NeoSchema.delete_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
 
     # Create 2 different relationships between the same classes, then delete each relationship at a time
-    NeoSchema.create_class_relationship_OLD(from_id = class_A_id, to_id = class_B_id, rel_name="Friend with")
-    NeoSchema.create_class_relationship_OLD(from_id = class_A_id, to_id = class_B_id, rel_name="LINKED_TO")
+    NeoSchema.create_class_relationship(from_class="A", to_class="B", rel_name="Friend with")
+    NeoSchema.create_class_relationship(from_class="A", to_class="B", rel_name="LINKED_TO")
     assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="Friend with")
     assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="LINKED_TO")
     assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="BOGUS_RELATIONSHIP")
@@ -1313,7 +1289,7 @@ def test_add_data_relationship(db):
         NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
 
     # Add the "DRIVE" relationship between the classes
-    NeoSchema.create_class_relationship_OLD(from_id=person_class_id, to_id=car_class_id, rel_name="DRIVES")
+    NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="DRIVES")
 
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="", id_type="item_id")  # Lacks relationship name
@@ -1348,7 +1324,7 @@ def test_add_data_relationship(db):
 
 
     # Now add reverse a relationship, and this time use the Neo4j ID's to locate the nodes
-    NeoSchema.create_class_relationship_OLD(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
+    NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_DRIVEN_BY")
 
     neo_person_id = NeoSchema.get_data_point_id(person_id)
     neo_car_id = NeoSchema.get_data_point_id(car_id)
@@ -1397,7 +1373,7 @@ def test_add_data_relationship_fast(db):
         NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="DRIVES")
 
     # Add the "DRIVE" relationship between the Classes
-    NeoSchema.create_class_relationship_OLD(from_id=person_class_id, to_id=car_class_id, rel_name="DRIVES")
+    NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="DRIVES")
 
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="")  # Lacks relationship name
@@ -1421,7 +1397,7 @@ def test_add_data_relationship_fast(db):
 
 
     # Now add reverse a relationship between the Classes
-    NeoSchema.create_class_relationship_OLD(from_id=car_class_id, to_id=person_class_id, rel_name="IS_DRIVEN_BY")
+    NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_DRIVEN_BY")
 
     # Add that same reverse relationship between the data points
     NeoSchema.add_data_relationship_fast(from_neo_id=car_neo_id, to_neo_id=person_neo_id, rel_name="IS_DRIVEN_BY")

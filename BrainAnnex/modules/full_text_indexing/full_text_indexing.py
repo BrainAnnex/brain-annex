@@ -193,7 +193,7 @@ class FullTextIndexing:
                                                property_list=["name"],
                                                class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
 
-        NeoSchema.create_class_relationship(from_id=content_item_class_id, to_id=indexer_class_id, rel_name="has_index")
+        NeoSchema.create_class_relationship(from_class=content_item_class_id, to_class=indexer_class_id, rel_name="has_index")
 
 
 

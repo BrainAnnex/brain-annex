@@ -504,11 +504,12 @@ class NeoSchema:
         :param class_id:
         :return:
         """
-        pass
+        assert (type(class_id) == int) or (type(class_id) == str)
+
 
 
     @classmethod
-    def create_class_relationship(cls, from_id: Union[int, str], to_id: Union[int, str], rel_name="INSTANCE_OF") -> None:
+    def create_class_relationship(cls, from_class: Union[int, str], to_class: Union[int, str], rel_name="INSTANCE_OF") -> None:
         """
         Create a relationship (provided that it doesn't already exist) with the specified name
         between the 2 existing Class nodes (identified by their internal database ID's or name),
@@ -523,10 +524,10 @@ class NeoSchema:
         TODO: add a method that reports on all existing relationships among Classes?
         TODO: allow properties on the relationship
 
-        :param from_id:     Either an integer with the internal database ID of an existing Class node,
+        :param from_class:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name.
                                 Used to identify the node from which the new relationship originates.
-        :param to_id:       Either an integer with the internal database ID of an existing Class node,
+        :param to_class:    Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name.
                                 Used to identify the node to which the new relationship terminates.
         :param rel_name:    Name of the relationship to create, in the from -> to direction
@@ -535,18 +536,19 @@ class NeoSchema:
         """
         # Validate the arguments
         assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
-        cls.assert_valid_class_identifier(from_id)
-        cls.assert_valid_class_identifier(to_id)
+        cls.assert_valid_class_identifier(from_class)
+        cls.assert_valid_class_identifier(to_class)
 
-        if type(from_id) == int:
-            from_clause = f"id(from) = {from_id}"
+        # Prepare the WHERE clause for a Cypher query
+        if type(from_class) == int:
+            from_clause = f"id(from) = {from_class}"
         else:
-            from_clause = f'from.name = "{from_id}"'
+            from_clause = f'from.name = "{from_class}"'
 
-        if type(to_id) == int:
-            to_clause = f"id(to) = {to_id}"
+        if type(to_class) == int:
+            to_clause = f"id(to) = {to_class}"
         else:
-            to_clause = f'to.name = "{to_id}"'
+            to_clause = f'to.name = "{to_class}"'
 
         q = f'''
             MATCH (from:CLASS), (to:CLASS)
@@ -554,47 +556,11 @@ class NeoSchema:
             MERGE (from)-[:`{rel_name}`]->(to)
             '''
 
-        result = cls.db.update_query(q, {"from_id": from_id, "to_id": to_id})
+        result = cls.db.update_query(q, {"from_id": from_class, "to_id": to_class})
         #print("result of update_query in create_class_relationship(): ", result)
         if result.get("relationships_created") != 1:
             raise Exception(f"create_class_relationship: failed to create new relationship named `{rel_name}` "
-                            f"from Class with internal database ID {from_id} to Class with ID {to_id}")
-
-
-
-    @classmethod    # TODO: phase out in favor of create_class_relationship()
-    def create_class_relationship_OLD(cls, from_id: int, to_id: int, rel_name="INSTANCE_OF") -> None:
-        """
-        Create a relationship (provided that it doesn't already exist) with the specified name
-        between the 2 existing Class nodes (identified by their schema_id),
-        going in the from -> to direction direction.
-
-        In case of error, an Exception is raised
-
-        Note: multiple relationships by the same name between the same nodes are allowed by Neo4j,
-              as long as the relationships differ in their attributes
-
-        TODO: add a method that reports on all existing relationships among Classes?
-        TODO: allow to alternatively specify the classes by name
-        TODO: allow properties on the relationship
-
-        :param from_id:     schema_id of one existing Class node
-        :param to_id:       schema_id of another existing Class node
-        :param rel_name:    Name of the relationship to create, in the from -> to direction
-                                (blanks allowed)
-        :return:            None
-        """
-        assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
-
-        q = f'''
-            MATCH (from:CLASS {{schema_id: $from_id}}), (to:CLASS {{schema_id: $to_id}})
-            MERGE (from)-[:`{rel_name}`]->(to)
-            '''
-
-        result = cls.db.update_query(q, {"from_id": from_id, "to_id": to_id})
-        #print("result of update_query in create_subclass_relationship(): ", result)
-        if result.get("relationships_created") != 1:
-            raise Exception(f"Failed to create new relationship from node with Schema_id {from_id} to node with Schema_id {to_id}")
+                            f"from Class '{from_class}' to Class '{to_class}'")
 
 
 
@@ -1172,13 +1138,13 @@ class NeoSchema:
 
         if class_to_link_to and link_name:
             # Create a relationship between the newly-created Class and an existing Class whose name is given by class_to_link_to
-            other_class_id = NeoSchema.get_class_id(class_name = class_to_link_to)
-            cls.debug_print(f"Internal database ID of the `{class_to_link_to}` class to link to: {other_class_id}")
+            #other_class_id = NeoSchema.get_class_id(class_name = class_to_link_to)
+            #cls.debug_print(f"Internal database ID of the `{class_to_link_to}` class to link to: {other_class_id}")
             try:
                 if link_dir == "OUT":
-                    NeoSchema.create_class_relationship_OLD(from_id=new_class_id, to_id=other_class_id, rel_name =link_name)
+                    NeoSchema.create_class_relationship(from_class=new_class_int_id, to_class=class_to_link_to, rel_name =link_name)
                 else:
-                    NeoSchema.create_class_relationship_OLD(from_id=other_class_id, to_id=new_class_id, rel_name =link_name)
+                    NeoSchema.create_class_relationship(from_class=class_to_link_to, to_class=new_class_int_id, rel_name =link_name)
             except Exception as ex:
                 raise Exception(f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
