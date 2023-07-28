@@ -497,13 +497,22 @@ class NeoSchema:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+    @classmethod
+    def assert_valid_class_identifier(cls, class_id: Union[int, str]) -> None:
+        """
+
+        :param class_id:
+        :return:
+        """
+        pass
+
 
     @classmethod
-    def create_class_relationship(cls, from_id: int, to_id: int, rel_name="INSTANCE_OF") -> None:
+    def create_class_relationship(cls, from_id: Union[int, str], to_id: Union[int, str], rel_name="INSTANCE_OF") -> None:
         """
         Create a relationship (provided that it doesn't already exist) with the specified name
         between the 2 existing Class nodes (identified by their internal database ID's or name),
-        in the  from -> to  direction.
+        in the ( from -> to ) direction.
 
         In case of error, an Exception is raised
 
@@ -512,24 +521,36 @@ class NeoSchema:
               (but this method doesn't allow setting properties on the new relationship)
 
         TODO: add a method that reports on all existing relationships among Classes?
-        TODO: implement the specification of the classes by name
         TODO: allow properties on the relationship
 
-        :param from_id:     Internal database ID of one existing Class node
-                                TODO: if a string, interpret is as a name
-        :param to_id:       Internal database ID of another existing Class node
-                                TODO: if a string, interpret is as a name
+        :param from_id:     Either an integer with the internal database ID of an existing Class node,
+                                or a string with its name.
+                                Used to identify the node from which the new relationship originates.
+        :param to_id:       Either an integer with the internal database ID of an existing Class node,
+                                or a string with its name.
+                                Used to identify the node to which the new relationship terminates.
         :param rel_name:    Name of the relationship to create, in the from -> to direction
                                 (blanks allowed)
         :return:            None
         """
+        # Validate the arguments
         assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
+        cls.assert_valid_class_identifier(from_id)
+        cls.assert_valid_class_identifier(to_id)
 
-        # TODO: validate the arguments
+        if type(from_id) == int:
+            from_clause = f"id(from) = {from_id}"
+        else:
+            from_clause = f'from.name = "{from_id}"'
+
+        if type(to_id) == int:
+            to_clause = f"id(to) = {to_id}"
+        else:
+            to_clause = f'to.name = "{to_id}"'
 
         q = f'''
             MATCH (from:CLASS), (to:CLASS)
-            WHERE id(from) = {from_id} AND id(to) = {to_id}
+            WHERE {from_clause} AND {to_clause}
             MERGE (from)-[:`{rel_name}`]->(to)
             '''
 
@@ -3074,20 +3095,20 @@ class SchemaCache:
     def __init__(self):
         self._schema = {}   # The KEYS are the internal database IDs of the Schema Class nodes;
                             # the VALUES are dicts that contain the following keys:
-                            #       1) "class_attrs"
+                            #       1) "class_attributes"
                             #       2) "class_properties"
                             #       3) "out_neighbors"   [Note: "in_neighbors" not done for now]
 
 
 
-    def get_cached_class_data(self, class_internal_id: int, request: str) -> Union[dict, List[str]]:
+    def get_cached_class_data(self, class_id: int, request: str) -> Union[dict, List[str]]:
         """
         Return the requested data for the specified Class.
 
         If cached values are available, they get used;
         otherwise, they get queried, then cached and returned.
 
-        If request == "class_attrs":
+        If request == "class_attributes":
             return the attributes of the requested Class,
             i.e. a dictionary of all the Class node's attributes
             EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
@@ -3102,35 +3123,35 @@ class SchemaCache:
             and the values are the names of the Classes on the other side of those relationships
             EXAMPLE:  {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
 
-        :param class_internal_id:   An integer with the database internal ID of the desired Class node
+        :param class_id:   An integer with the database internal ID of the desired Class node
         :param request:             A way to specify what to look up.
-                                        Permissible values: "class_attrs", "class_properties", "out_neighbors"
+                                        Permissible values: "class_attributes", "class_properties", "out_neighbors"
         :return:
         """
-        assert request in ["class_attrs", "class_properties", "out_neighbors"], \
+        assert request in ["class_attributes", "class_properties", "out_neighbors"], \
             "get_cached_class_data(): bad value for `request` argument.  Allowed values: " \
-            "'class_attrs', 'class_properties', 'out_neighbors'"
+            "'class_attributes', 'class_properties', 'out_neighbors'"
 
-        if class_internal_id not in self._schema:
+        if class_id not in self._schema:
             # No cached data info already exists for this Class... so, create it
-            self._schema[class_internal_id] = {}
+            self._schema[class_id] = {}
 
-        cached_data = self._schema[class_internal_id]
+        cached_data = self._schema[class_id]
 
 
-        if request == "class_attrs":
-            if "class_attrs" not in cached_data:
+        if request == "class_attributes":
+            if "class_attributes" not in cached_data:
                 # The Class attributes hadn't been cached; so, retrieve them
-                class_attrs = NeoSchema.get_class_attributes(class_internal_id)
-                cached_data["class_attrs"] = class_attrs
+                class_attributes = NeoSchema.get_class_attributes(class_id)
+                cached_data["class_attributes"] = class_attributes
 
-            return cached_data["class_attrs"]
+            return cached_data["class_attributes"]
 
 
         if request == "class_properties":
             if "class_properties" not in cached_data:
                 # The Class properties hadn't been cached; so, retrieve them
-                class_properties = NeoSchema.get_class_properties_fast(class_internal_id, include_ancestors=False)
+                class_properties = NeoSchema.get_class_properties_fast(class_id, include_ancestors=False)
                 cached_data["class_properties"] = class_properties
 
             return cached_data["class_properties"]
@@ -3139,7 +3160,7 @@ class SchemaCache:
         if request == "out_neighbors":
             if "out_neighbors" not in cached_data:
                 # The outbound links haven't been cached; so, retrieve them
-                cached_data["out_neighbors"] = NeoSchema.get_class_outbound_data(class_internal_id, omit_instance=True)
+                cached_data["out_neighbors"] = NeoSchema.get_class_outbound_data(class_id, omit_instance=True)
                 '''
                     A (possibly empty) dictionary,where the keys are the name of outbound relationships,
                     and the values are the names of the Class nodes on the other side of those links.
@@ -3181,35 +3202,3 @@ class SchemaCache:
                 cached_data["class_attrs"] = class_attrs
 
             return cached_data["class_attrs"]
-
-
-    def get_cached_class_properties_OBSOLETE(self, class_internal_id: int) -> [str]:
-        """
-        Return the properties of the requested Class,
-        i.e. the  list of all the names of the Properties associated with the given Class,
-        just as it is returned by get_class_properties_fast()
-
-        If cached values are available, they get used;
-        otherwise, they get queried, then cached and returned.
-
-        EXAMPLE:  ["age", "gender", "weight"]
-
-        :param class_internal_id:   An integer with the database internal ID of the desired Class node
-        :return:                    The list of all the names of the Properties associated with the given Class
-        """
-        if class_internal_id not in self._schema:
-            # No cache info already exists for this Class... so, create it,
-            # and populate it with data retrieved for this Class
-            class_properties = NeoSchema.get_class_properties_fast(class_internal_id, include_ancestors=False)
-            self._schema[class_internal_id] = {"class_properties": class_properties}
-            return class_properties
-        else:
-            # Cache found for this Class
-            cached_data = self._schema[class_internal_id]
-            if "class_properties" not in cached_data:
-                # The Class properties hadn't been cached; so, retrieve them
-                class_properties = NeoSchema.get_class_properties_fast(class_internal_id, include_ancestors=False)
-                cached_data["class_properties"] = class_properties
-
-            return cached_data["class_properties"]
-

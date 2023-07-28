@@ -208,6 +208,51 @@ def test_get_all_classes(db):
 
 def test_create_class_relationship(db):
     db.empty_dbase()
+    french_id , french_uri  = NeoSchema.create_class("French Vocabulary")
+    foreign_id, foreign_uri = NeoSchema.create_class("Foreign Vocabulary")
+
+    # Blank or None name will also raise an Exception
+    with pytest.raises(Exception):
+        assert NeoSchema.create_class_relationship(from_id=french_id, to_id=foreign_id, rel_name="")
+    with pytest.raises(Exception):
+        assert NeoSchema.create_class_relationship(from_id=french_id, to_id=foreign_id, rel_name=None)
+
+    NeoSchema.create_class_relationship(from_id=french_id, to_id=foreign_id, rel_name="INSTANCE_OF")
+
+    q = f'''MATCH 
+        (from :CLASS {{name:"French Vocabulary", schema_id: {french_uri}}})
+        -[:INSTANCE_OF]
+        ->(to :CLASS {{name:"Foreign Vocabulary", schema_id: {foreign_uri}}}) 
+        WHERE id(from) = {french_id} AND id(to) = {foreign_id}
+        RETURN count(from) AS number_found
+        '''
+
+    assert db.query(q, single_cell="number_found") == 1
+
+    # Attempting to create an identical link between the same nodes will result in an Exception
+    with pytest.raises(Exception):
+        assert NeoSchema.create_class_relationship(from_id=french_id, to_id=foreign_id, rel_name="INSTANCE_OF")
+
+
+    NeoSchema.create_class("German Vocabulary")
+    # Mixing names and internal database ID's
+    NeoSchema.create_class_relationship(from_id="German Vocabulary", to_id=foreign_id, rel_name="INSTANCE_OF")
+
+    q = f'''MATCH 
+        (from :CLASS {{name:"French Vocabulary", schema_id: {french_uri}}})
+        -[:INSTANCE_OF]
+        ->(to :CLASS {{name:"Foreign Vocabulary", schema_id: {foreign_uri}}})
+        <-[:INSTANCE_OF]-(:CLASS {{name:"German Vocabulary"}})
+        WHERE id(from) = {french_id} AND id(to) = {foreign_id}
+        RETURN count(from) AS number_found
+        '''
+
+    assert db.query(q, single_cell="number_found") == 1
+
+
+
+def test_create_class_relationship_OLD(db):
+    db.empty_dbase()
     _ , french_class_id = NeoSchema.create_class("French Vocabulary")
     _ , foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
     NeoSchema.create_class_relationship_OLD(from_id=french_class_id, to_id=foreign_class_id, rel_name="INSTANCE_OF")
@@ -598,19 +643,6 @@ def test_allowable_props(db):
     # Check the cache itself
     assert schema_cache.get_cached_class_attrs(lax_int_id) == {"name": "My Lax class", "schema_id": lax_schema_id, "type": "L"}
     assert schema_cache.get_cached_class_attrs(strict_int_id) == {"name": "My Strict class", "schema_id": strict_schema_id, "type": "S"}
-
-
-
-
-def test_schema_cache(db):      # TODO: move to its own section
-    db.empty_dbase()
-
-    internal_id, _ = NeoSchema.create_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
-    schema_cache = SchemaCache()
-
-    class_attrs = NeoSchema.get_class_attributes(internal_id)
-    assert schema_cache.get_cached_class_attrs(internal_id) == class_attrs
-    assert schema_cache.get_cached_class_attrs(internal_id) == class_attrs  # The 2nd run will use the previously-cached data
 
 
 
@@ -1481,7 +1513,40 @@ def test_next_available_datapoint_id(db):
 
 
 
-###############   For class "SchemaCache"   ###############
+################   For class SchemaCache   ################
+
+def test_get_cached_class_data(db):
+    db.empty_dbase()
+
+    class_id, _ = NeoSchema.create_class_with_properties("Cars", ["A", "B"], schema_type="L")
+    schema_cache = SchemaCache()
+
+    # Test "class_attributes" option
+    class_attrs = NeoSchema.get_class_attributes(class_id)
+    assert class_attrs["name"] == "Cars"
+    assert class_attrs["type"] == "L"
+
+    assert schema_cache.get_cached_class_data(class_id, request="class_attributes") == class_attrs
+    # A 2nd identical run will use the previously-cached data
+    assert schema_cache.get_cached_class_data(class_id, request="class_attributes") == class_attrs
+
+
+    # Test "class_properties" option
+    class_properties = NeoSchema.get_class_properties_fast(class_id, include_ancestors=False)
+    assert compare_unordered_lists(class_properties, ["A", "B"])
+
+    assert schema_cache.get_cached_class_data(class_id, request="class_properties") == class_properties
+    # A 2nd identical run will use the previously-cached data
+    assert schema_cache.get_cached_class_data(class_id, request="class_properties") == class_properties
+
+
+    # TODO: test "out_neighbors" option
+
+
+
+
+
+###############   For class "SchemaCacheObsolete"   ###############
 
 def test_cache_class_data(db):
     db.empty_dbase()
