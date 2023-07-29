@@ -4,7 +4,7 @@
 import pytest
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCacheObsolete, SchemaCache
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 
 

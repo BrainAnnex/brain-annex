@@ -5,7 +5,6 @@ import json
 
 class NeoSchema:
     """
-    # TODO: maybe turn into an instantiated class, with a Schema Cache
 
     # TODO: resolve naming of data point vs. data node (probably in favor of "node")
 
@@ -2524,15 +2523,14 @@ class NeoSchema:
         # TODO: catch Exceptions, and store the status and error message on the `Import Data` node;
         #       in particular, add "Import Data" to the Schema if not already present
 
-        cache_old = SchemaCacheObsolete()       # All needed Schema-related data will be automatically queried and cached here
-        cache = SchemaCache()
+        cache = SchemaCache()        # All needed Schema-related data will be automatically queried and cached here
         print("***************************** cache initialized ***************************** ")
 
         if type(data) == dict:      # If the top-level Python data structure is a dictionary
             # Create a single tree
             cls.debug_print("Top-level structure of the data to import is a Python dictionary")
             # Perform the import
-            root_neo_id = cls.create_tree_from_dict(data, class_name, cache_old=cache_old, cache=cache) # This returns a Neo4j ID, or None
+            root_neo_id = cls.create_tree_from_dict(data, class_name, cache=cache) # This returns a Neo4j ID, or None
 
             if root_neo_id is None:
                 cls.debug_print("None returned by create_tree_from_dict()")
@@ -2547,7 +2545,7 @@ class NeoSchema:
         elif type(data) == list:         # If the top-level Python data structure is a list
             # Create multiple unconnected trees
             cls.debug_print("Top-level structure of the data to import is a list")
-            node_id_list = cls.create_trees_from_list(data, class_name, cache_old=cache_old, cache=cache)  # This returns a list of Neo4j ID's
+            node_id_list = cls.create_trees_from_list(data, class_name, cache=cache)  # This returns a list of Neo4j ID's
 
             for root_item_id in node_id_list:
                 cls.debug_print(f"***Linking import node (item_id={metadata_neo_id}) with "
@@ -2563,7 +2561,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_tree_from_dict(cls, d: dict, class_name: str, cache_old=None, level=1, cache=None) -> Union[int, None]:
+    def create_tree_from_dict(cls, d: dict, class_name: str, level=1, cache=None) -> Union[int, None]:
         """
         Add a new data node (which may turn into a tree root) of the specified Class,
         with data from the given dictionary:
@@ -2600,7 +2598,6 @@ class NeoSchema:
         """
         assert cache is not None, "NeoSchema.create_tree_from_dict(): the argument `cache` cannot be None"
         assert type(d) == dict, f"NeoSchema.create_tree_from_dict(): the argument `d` must be a dictionary (instead, it's {type(d)})"
-        assert cache_old, "NeoSchema.create_tree_from_dict(): the argument `cache_old` cannot be None"
 
         #schema_id = cls.get_class_id(class_name)
         #assert schema_id != -1, \
@@ -2616,7 +2613,7 @@ class NeoSchema:
         cls.debug_print(f"{indent_str}Importing data dictionary, using class `{class_name}` (with internal id {class_internal_id})")
 
         # Determine the properties and relationships declared in (allowed by) the Schema
-        cached_data = cache_old.get_class_cached_data(class_name)
+        #cached_data = cache_old.get_class_cached_data(class_name)
         #declared_outlinks = cached_data['out_links']
         out_neighbors_dict = cache.get_cached_class_data(class_internal_id, request="out_neighbors")
         declared_outlinks = list(out_neighbors_dict)    # Extract keys from dict
@@ -2678,7 +2675,7 @@ class NeoSchema:
 
                 # Recursive call
                 cls.debug_print(f"{indent_str}Making recursive call to process the above dictionary...")
-                new_node_neo_id = cls.create_tree_from_dict(d=v, class_name=subtree_root_class_name, cache_old=cache_old, level=level + 1, cache=cache)
+                new_node_neo_id = cls.create_tree_from_dict(d=v, class_name=subtree_root_class_name, level=level + 1, cache=cache)
 
                 if new_node_neo_id is not None:     # If a subtree actually got created
                     children_info.append( (new_node_neo_id, k) )    # Save relationship name (in k) for use when the node gets created
@@ -2712,7 +2709,7 @@ class NeoSchema:
 
                 # Recursive call
                 cls.debug_print(f"{indent_str}Making recursive call to process the above list...")
-                new_node_id_list = cls.create_trees_from_list(l=v, class_name=subtree_root_class_name, cache_old=cache_old, level=level + 1, cache=cache)
+                new_node_id_list = cls.create_trees_from_list(l=v, class_name=subtree_root_class_name, level=level + 1, cache=cache)
                 for child_id in new_node_id_list:
                     children_info.append( (child_id, k) )
 
@@ -2741,7 +2738,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_trees_from_list(cls, l: list, class_name: str, cache_old=None, level=1, cache=None) -> [int]:
+    def create_trees_from_list(cls, l: list, class_name: str, level=1, cache=None) -> [int]:
         """
         Add a set of new data nodes (the roots of the trees), all of the specified Class,
         with data from the given list.
@@ -2771,7 +2768,7 @@ class NeoSchema:
                                 might be a root of a tree)
         """
         assert type(l) == list, f"NeoSchema.create_trees_from_list(): the argument `l` must be a list (instead, it's {type(l)})"
-        assert cache_old, "NeoSchema.create_trees_from_list(): the argument `cache` cannot be None"
+        assert cache is not None, "NeoSchema.create_trees_from_list(): the argument `cache` cannot be None"
 
         #assert cls.class_name_exists(class_name), \
                 #f"The value passed for the argument `class_name` ({class_name}) is not a valid Class name"
@@ -2789,18 +2786,18 @@ class NeoSchema:
             cls.debug_print(f"{indent_str}Processing the {i}-th list element...")
             if cls.db.is_literal(item):
                 item_as_dict = {"value": item}
-                new_node_id = cls.create_tree_from_dict(d=item_as_dict, class_name=class_name, cache_old=cache_old, level=level + 1, cache=cache)
+                new_node_id = cls.create_tree_from_dict(d=item_as_dict, class_name=class_name, level=level + 1, cache=cache)
                 if new_node_id is not None:                      # If a subtree actually got created
                     list_of_root_neo_ids.append(new_node_id)
 
             elif type(item) == dict:
-                new_node_id = cls.create_tree_from_dict(d=item, class_name=class_name, cache_old=cache_old, level=level + 1, cache=cache)
+                new_node_id = cls.create_tree_from_dict(d=item, class_name=class_name, level=level + 1, cache=cache)
                 if new_node_id is not None:                     # If a subtree actually got created
                     list_of_root_neo_ids.append(new_node_id)
 
             elif type(item) == list:
                 cls.debug_print(f"{indent_str}Making recursive call")
-                new_node_id_list = cls.create_trees_from_list(l=item, class_name=class_name, cache_old=cache_old, level=level + 1, cache=cache)   # Recursive call
+                new_node_id_list = cls.create_trees_from_list(l=item, class_name=class_name, level=level + 1, cache=cache)   # Recursive call
                 list_of_root_neo_ids += new_node_id_list        # Merge of lists
 
             else:
@@ -2808,6 +2805,7 @@ class NeoSchema:
 
 
         return list_of_root_neo_ids
+
 
 
 
@@ -2970,84 +2968,16 @@ class NeoSchema:
 
 
 
-############################################################################################
-
-class SchemaCacheObsolete:
-    """
-    To improve the efficiency of methods that heavily interact with the Schema,
-    such as JSON imports.
-
-    Maintain a Python dictionary, whose keys are Class names - generally,
-    a subset of interest from all the Classes in the database.
-
-    Note: this class gets instantiated, so that it's a local variable and doesn't cause
-          trouble with multi-threading
-
-    TODO:  phase out in favor of SchemaCache
-    """
-    def __init__(self):
-        self._schema = {}   # The keys are the Class names
 
 
-    def cache_class_data(self, class_name: str) -> None:
-        """
-        :param class_name:
-        :return:            None
-        """
-        if class_name in self._schema:
-            return      # We're already caching info for this Class
+######################################################################################################
+######################################################################################################
 
-        NeoSchema.assert_valid_class_name(class_name)
-
-        neo_id = NeoSchema.get_class_internal_id(class_name)
-        #schema_id = NeoSchema.get_class_id(class_name)
-
-        # Determine the properties and relationships declared in (allowed by) the Schema
-        declared_properties = NeoSchema.get_class_properties_fast(neo_id, include_ancestors=False)
-        #declared_properties = NeoSchema.get_class_properties(schema_id, include_ancestors=False)
-        #declared_outlinks = NeoSchema.get_class_relationships(schema_id=schema_id, link_dir="OUT", omit_instance=True)
-
-        declared_outlinks_map = NeoSchema.get_class_outbound_data(neo_id, omit_instance=True)
-        '''
-        A (possibly empty) dictionary,where the keys are the name of outbound relationships,
-        and the values are the names of the Class nodes on the other side of those links.
-        EXAMPLE: {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
-        '''
-
-        declared_outlinks = list(declared_outlinks_map)     # The keys of the dictionary, as a list
-
-        class_data = {"neo_id": neo_id,
-                      "properties": declared_properties,
-                      "out_links": declared_outlinks,
-                      "out_neighbors": declared_outlinks_map
-                      }     #"schema_id": schema_id,
-
-        self._schema[class_name] = class_data
-
-
-
-    def get_class_cached_data(self, class_name: str) -> dict:
-        """
-        Get all the cached data for the specified Class
-
-        :param class_name:
-        :return:
-        """
-        if class_name not in self._schema:
-            self.cache_class_data(class_name)
-
-        return self._schema[class_name]
-
-
-
-
-############################################################################################
 class SchemaCache:
     """
-    Similar to the old SchemaCacheObsolete, but cached by the Classes' internal database ID,
-    rather than by their name
+    Cached by the Classes' internal database ID
 
-    This class is used to improve the efficiency of methods that heavily interact with the Schema,
+    Used to improve the efficiency of methods that heavily interact with the Schema,
     such as JSON imports.
 
     Maintain a Python dictionary, whose keys are the internal database IDs of Schema Class nodes.
@@ -3071,7 +3001,8 @@ class SchemaCache:
 
     def get_all_cached_class_data(self, class_id: int) -> dict:
         """
-        Return all existed cached data for the specified Class.
+        Return all existed cached data for the specified Class
+
         :param class_id:    An integer with the database internal ID of the desired Class node
         :return:            A (possibly empty) dict with keys that may include
                                 "class_attributes", "class_properties", "out_neighbors"

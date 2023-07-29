@@ -4,7 +4,7 @@
 import pytest
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCacheObsolete, SchemaCache
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -22,19 +22,19 @@ def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY
 
-    _, sch_1 = NeoSchema.create_class_with_properties(class_name="patient",
+    patient_id, _  = NeoSchema.create_class_with_properties(class_name="patient",
                                                       property_list=["name", "age", "balance"])
 
-    _, sch_2 = NeoSchema.create_class_with_properties(class_name="result",
+    result_id, _  = NeoSchema.create_class_with_properties(class_name="result",
                                                       property_list=["biomarker", "value"])
 
-    _, sch_3 = NeoSchema.create_class_with_properties(class_name="doctor",
+    doctor_id, _  = NeoSchema.create_class_with_properties(class_name="doctor",
                                                       property_list=["name", "specialty"])
 
     NeoSchema.create_class_relationship(from_class="patient", to_class="result", rel_name="HAS_RESULT")
     NeoSchema.create_class_relationship(from_class="patient", to_class="doctor", rel_name="IS_ATTENDED_BY")
 
-    return {"patient": sch_1, "result": sch_2, "doctor": sch_3}
+    return {"patient": patient_id, "result": result_id, "doctor": doctor_id}
 
 
 
@@ -1491,7 +1491,8 @@ def test_next_available_datapoint_id(db):
 
 
 
-################   For class SchemaCache   ################
+
+#####################   For class SchemaCache   #####################
 
 def test_get_cached_class_data(db):
     db.empty_dbase()
@@ -1545,118 +1546,91 @@ def test_get_cached_class_data(db):
 
 
 
-###############   For class "SchemaCacheObsolete"   ###############
-
-def test_cache_class_data(db):
+def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class_data()
     db.empty_dbase()
-    cache = SchemaCacheObsolete()
+    cache = SchemaCache()
 
-    with pytest.raises(Exception):
-        cache.cache_class_data("My first class")        # Class doesn't yet exist in the Schema
+    assert cache._schema == {}
 
-    neo_id, schema_id = NeoSchema.create_class("My first class")
+    neo_id, schema_id = NeoSchema.create_class("My first class", schema_type="L")
 
-    cache.cache_class_data("My first class")
+    cache.get_cached_class_data(class_id=neo_id, request="class_attributes")
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'type': 'L'}
+                            }
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class
 
-    internal = cache._schema
-    assert len(internal) == 1
-    assert internal == {'My first class':
-                            {'neo_id': neo_id, 'properties': [], 'out_links': [], 'out_neighbors': {}}
+
+    cache.get_cached_class_data(class_id=neo_id, request="class_properties")
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'type': 'L'},
+                            "class_properties":  []
+                            }
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class
+
+
+    cache.get_cached_class_data(class_id=neo_id, request="out_neighbors")
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'type': 'L'},
+                            "class_properties":  [],
+                            "out_neighbors": {}
+                            }
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class
+
+    assert len(cache._schema) == 1
+
+
+    # Expand the Schema
+    schema_info = create_sample_schema_1()      # Schema with patient/result/doctor
+                                                # Returns dict of the form {"patient": sch_1, "result": sch_2, "doctor": sch_3}
+    patient_id = schema_info["patient"]
+    result_id = schema_info["result"]
+    doctor_id = schema_info["doctor"]
+
+    # Nothing changed in the schema cache from simply adding new Classes
+    assert len(cache._schema) == 1
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class
+
+    schema_id_patient = NeoSchema.get_class_id('patient')
+
+    cache.get_cached_class_data(class_id=patient_id, request="class_attributes")
+    assert len(cache._schema) == 2
+    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'type': 'L'}
+                       }
+    assert cache.get_all_cached_class_data(class_id=patient_id) == expected_patient
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class     # Unchanged
+
+
+    cache.get_cached_class_data(class_id=patient_id, request="class_properties")
+    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'type': 'L'},
+                        "class_properties": ['name', 'age', 'balance']
                         }
+    assert cache.get_all_cached_class_data(class_id=patient_id) == expected_patient
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class     # Unchanged
 
-    # Expand the Schema
-    schema_info = create_sample_schema_1()      # Schema with patient/result/doctor
-                                                # Returns dict of the form {"patient": sch_1, "result": sch_2, "doctor": sch_3}
+    cache.get_cached_class_data(class_id=patient_id, request="out_neighbors")
+    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'type': 'L'},
+                        "class_properties": ['name', 'age', 'balance'],
+                        "out_neighbors": {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
+                        }
+    assert cache.get_all_cached_class_data(class_id=patient_id) == expected_patient
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class     # Unchanged
 
-    cache.cache_class_data("patient")
-    cache.cache_class_data("doctor")
-    cache.cache_class_data("result")
-    with pytest.raises(Exception):
-        cache.cache_class_data("I_DONT_EXIST")
+    schema_id_result = NeoSchema.get_class_id('result')
 
-    internal = cache._schema
-    assert len(internal) == 4       # 4 Classes cached so far
-
-    assert internal['My first class'] == {'neo_id': neo_id, 'properties': [], 'out_links': [], 'out_neighbors': {}}
-
-    patient_neo_id = NeoSchema.get_class_internal_id("patient")
-    patient_schema_id = schema_info["patient"]
-    assert internal['patient']['neo_id'] == patient_neo_id
-    #assert internal['patient']['schema_id'] == patient_schema_id
-    assert internal['patient']['properties'] == ['name', 'age', 'balance']
-    assert compare_unordered_lists(internal['patient']['out_links'] , ['HAS_RESULT', 'IS_ATTENDED_BY'])
-    assert internal['patient']['out_neighbors'] == {'HAS_RESULT': 'result', 'IS_ATTENDED_BY': 'doctor'}
-
-    doctor_neo_id = NeoSchema.get_class_internal_id("doctor")
-    doctor_schema_id = schema_info["doctor"]
-    assert internal['doctor']['neo_id'] == doctor_neo_id
-    #assert internal['doctor']['schema_id'] == doctor_schema_id
-    assert internal['doctor']['properties'] == ['name', 'specialty']
-    assert internal['doctor']['out_links'] == []
-    assert internal['doctor']['out_neighbors'] == {}
-
-    result_neo_id = NeoSchema.get_class_internal_id("result")
-    result_schema_id = schema_info["result"]
-    assert internal['result']['neo_id'] == result_neo_id
-    #assert internal['result']['schema_id'] == result_schema_id
-    assert internal['result']['properties'] == ['biomarker', 'value']
-    assert internal['result']['out_links'] == []
-    assert internal['result']['out_neighbors'] == {}
-
-    #print(internal)
+    cache.get_cached_class_data(class_id=result_id, request="class_attributes")
+    assert len(cache._schema) == 3
+    expected_result = {"class_attributes":  {'name': 'result', 'schema_id': schema_id_result, 'type': 'L'}
+                      }
+    assert cache.get_all_cached_class_data(class_id=result_id) == expected_result
+    assert cache.get_all_cached_class_data(class_id=patient_id) == expected_patient     # Unchanged
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class     # Unchanged
 
 
+    schema_id_doctor = NeoSchema.get_class_id('doctor')
 
-def test_get_class_cached_data(db):
-    db.empty_dbase()
-    cache = SchemaCacheObsolete()
-
-    with pytest.raises(Exception):
-        cache.get_class_cached_data("My first class")        # Class doesn't yet exist in the Schema
-
-    neo_id , schema_id = NeoSchema.create_class("My first class")
-
-    cache = SchemaCacheObsolete()
-
-    data = cache.get_class_cached_data("My first class")
-
-    assert len(data) == 4
-    assert data == {'neo_id': neo_id, 'properties': [], 'out_links': [], 'out_neighbors': {}}
-
-    # Expand the Schema
-    schema_info = create_sample_schema_1()      # Schema with patient/result/doctor
-                                                # Returns dict of the form {"patient": sch_1, "result": sch_2, "doctor": sch_3}
-
-    with pytest.raises(Exception):
-        cache.get_class_cached_data("I_DONT_EXIST")
-
-
-    assert cache.get_class_cached_data('My first class') == \
-           {'neo_id': neo_id, 'properties': [], 'out_links': [], 'out_neighbors': {}}
-
-    cached_data = cache.get_class_cached_data('patient')
-    patient_neo_id = NeoSchema.get_class_internal_id("patient")
-    patient_schema_id = schema_info["patient"]
-    assert cached_data['neo_id'] == patient_neo_id
-    #assert cached_data['schema_id'] == patient_schema_id
-    assert cached_data['properties'] == ['name', 'age', 'balance']
-    assert compare_unordered_lists(cached_data['out_links'] , ['HAS_RESULT', 'IS_ATTENDED_BY'])
-    assert cached_data['out_neighbors'] == {'HAS_RESULT': 'result', 'IS_ATTENDED_BY': 'doctor'}
-
-    cached_data = cache.get_class_cached_data('doctor')
-    doctor_neo_id = NeoSchema.get_class_internal_id("doctor")
-    doctor_schema_id = schema_info["doctor"]
-    assert cached_data['neo_id'] == doctor_neo_id
-    #assert cached_data['schema_id'] == doctor_schema_id
-    assert cached_data['properties'] == ['name', 'specialty']
-    assert cached_data['out_links'] == []
-    assert cached_data['out_neighbors'] == {}
-
-    cached_data = cache.get_class_cached_data('result')
-    result_neo_id = NeoSchema.get_class_internal_id("result")
-    result_schema_id = schema_info["result"]
-    assert cached_data['neo_id'] == result_neo_id
-    #assert cached_data['schema_id'] == result_schema_id
-    assert cached_data['properties'] == ['biomarker', 'value']
-    assert cached_data['out_links'] == []
-    assert cached_data['out_neighbors'] == {}
+    cache.get_cached_class_data(class_id=doctor_id, request="class_attributes")
+    assert len(cache._schema) == 4
+    expected_doctor = {"class_attributes":  {'name': 'doctor', 'schema_id': schema_id_doctor, 'type': 'L'}
+                       }
+    assert cache.get_all_cached_class_data(class_id=doctor_id) == expected_doctor
+    assert cache.get_all_cached_class_data(class_id=result_id) == expected_result       # Unchanged
+    assert cache.get_all_cached_class_data(class_id=patient_id) == expected_patient     # Unchanged
+    assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class     # Unchanged
