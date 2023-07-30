@@ -1,4 +1,5 @@
 import os
+import BrainAnnex.modules.utilities.exceptions as exceptions
 
 
 class MediaManager:
@@ -6,16 +7,31 @@ class MediaManager:
     Helper library for the management of media files
     """
 
-    MEDIA_FOLDER = None # Location where the media for Content Items is stored
+    MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
                         # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
-                        # This is set by initialize.py
+                        #                     (notice the forward slashes, even on Windows)
+                        # This class variable gets set by initialize.py
+
+
+    @classmethod
+    def set_media_folder(cls, path_name: str) -> None:
+        """
+
+        :param path_name:
+        :return:            None
+        """
+        # TODO: if path_name doesn't end with "/", add it
+
+        cls.MEDIA_FOLDER = path_name
+
 
 
     @classmethod
     def get_from_file(cls, filename: str) -> str:
         """
+        Read in and return the contents of the specified text file
 
-        :param filename:    EXCLUSIVE of MEDIA_FOLDER part (stored as class variable)
+        :param filename:    EXCLUSIVE of path (stored in the class variable MEDIA_FOLDER)
         :return:            The contents of the file
         """
         full_file_name = cls.MEDIA_FOLDER + filename
@@ -28,6 +44,7 @@ class MediaManager:
     @classmethod
     def get_from_binary_file(cls, path: str, filename: str) -> bytes:
         """
+        Read in and return the contents of the specified binary file
 
         :param path:
         :param filename:    EXCLUSIVE of path
@@ -62,7 +79,8 @@ class MediaManager:
         try:
             f.write(contents)
         except Exception as ex:
-            raise Exception(f"Unable write data to file {full_file_name}. First 20 characters: `{contents[:20]}`. {cls.exception_helper(ex)}")
+            raise Exception(f"Unable write data to file {full_file_name}. "
+                            f"First 20 characters: `{contents[:20]}`. {exceptions.exception_helper(ex)}")
 
         f.close()
 

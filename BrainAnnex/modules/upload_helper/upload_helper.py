@@ -1,5 +1,5 @@
 """
-2 classes:  UploadHelper and ImageProcessing
+2 classes:  UploadHelper and ImageProcessing    # TODO: maybe move to utilities folder
 """
 
 import os

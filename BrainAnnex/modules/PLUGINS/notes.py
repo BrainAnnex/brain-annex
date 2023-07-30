@@ -6,6 +6,8 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 class Notes:
     """
     Plugin-provided handlers for "notes"
+
+    TODO: drop the "plugin_n_" from the method names; the class name provides the namespace
     """
 
     @classmethod
