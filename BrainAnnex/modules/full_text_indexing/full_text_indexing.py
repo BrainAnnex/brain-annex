@@ -35,7 +35,7 @@ class FullTextIndexing:
                     'make', 'made', 'making',
                     'have', 'haven', 'has', 'had', 'hadn', 'having',
                     'must', 'need', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
-                    'will', 'would',
+                    'will', 'would', 'shall',
                     'get', 'gets', 'got', 'take', 'takes',
                     'ask', 'asks', 'answer', 'answers',
                     'when', 'where', 'which', 'who', 'why', 'what',
@@ -169,15 +169,17 @@ class FullTextIndexing:
     @classmethod
     def initialize_schema(cls, content_item_class_id=None) -> None:
         """
-        Initialize the graph-database Schema used by this Indexer module.
-        It will create a new "Word" Class linked to a new "Indexer" Class,
-        by means of an outbound "occurs" relationship,
-        plus it will add a relationship named "has_index" from an EXISTING
-        "Content Item" Class to the new "Indexer" Class.
-        The newly-created "Word" Class will be given one Property: "name"
+        Initialize the graph-database Schema used by this Indexer module:
 
-        IMPORTANT: an existing Class named "Content Item" is expected;
-                   an Exception will be raised if not found
+        1) It will create a new "Word" Class linked to a new "Indexer" Class,
+        by means of an outbound "occurs" relationship.
+        The newly-created "Word" Class will be given one Property: "name".
+
+        2) It will add a relationship named "has_index" from an existing (or newly created)
+        "Content Item" Class to the new "Indexer" Class.
+
+        NOTE: if an existing Class named "Content Item" is not found,
+              it will be created with some default values
 
         :param content_item_class_id: (OPTIONAL) The internal database ID of an existing "Content Item" Class;
                                             if not passed, it gets looked up
@@ -185,7 +187,10 @@ class FullTextIndexing:
         """
 
         if content_item_class_id is None:     # Look it up, if not passed
-            content_item_class_id = NeoSchema.get_class_internal_id(class_name="Content Item")
+            if NeoSchema.class_name_exists("Content Item"):
+                content_item_class_id = NeoSchema.get_class_internal_id(class_name="Content Item")
+            else:
+                content_item_class_id, _ = NeoSchema.create_class(name="Content Item", schema_type="L")
 
         indexer_class_id, _ = NeoSchema.create_class(name="Indexer", schema_type="S")
 

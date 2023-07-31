@@ -497,13 +497,19 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def assert_valid_class_identifier(cls, class_id: Union[int, str]) -> None:
+    def assert_valid_class_identifier(cls, class_node: Union[int, str]) -> None:
         """
+        Raise an Exception is the argument is not a valid "identifier" for a Class node,
+        meaning either a valid name or a valid internal database ID
 
-        :param class_id:
+        :param class_node:    Either an integer with the internal database ID of an existing Class node,
+                                or a string with its name
         :return:
         """
-        assert (type(class_id) == int) or (type(class_id) == str)
+        assert (type(class_node) == str) or CypherUtils.valid_internal_id(class_node), \
+                "assert_valid_class_identifier(): the class identifier must be an integer or a string"
+                # TODO: tighten checks
+                #       see assert_valid_class_name()
 
 
 
@@ -1229,9 +1235,9 @@ class NeoSchema:
 
     #####################################################################################################
 
-    '''                                      ~   DATA POINTS   ~                                       '''
+    '''                                      ~   DATA NODES   ~                                       '''
 
-    def ________DATA_POINTS________(DIVIDER):
+    def ________DATA_NODES________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -1445,11 +1451,109 @@ class NeoSchema:
 
 
 
-    @classmethod
+    @classmethod    # TODO: test
+    def create_data_node(cls, class_node: Union[int, str], properties = None, labels = None,
+                         assign_uri=False, new_uri=None, silently_drop=False) -> int:
+        """
+        A newer version of the deprecated add_data_point_OLD() and add_data_point()
+
+        Create a new data node, of the type indicated by specified Class,
+        with the given (possibly none) attributes and label(s);
+        if no labels are given, the name of the Class is used as a label.
+
+        The new data node, if successfully created, will optionally be assigned
+        a passed URI value, or a unique auto-gen value, for its field item_id.
+
+        If the requested Class doesn't exist, an Exception is raised
+
+        If the data node needs to be created with links to other existing data nodes,
+        use add_data_point_with_links() instead
+
+        :param class_node:  Either an integer with the internal database ID of an existing Class node,
+                                or a string with its name
+        :param properties:  (Optional) Dictionary with the properties of the new data point.
+                                EXAMPLE: {"make": "Toyota", "color": "white"}
+        :param labels:      (Optional) String, or list of strings, with label(s) to assign to the new data node;
+                                if not specified, the Class name is used
+        :param assign_uri:  If True, the new node is given an extra attribute named "item_id",
+                                with a unique auto-increment value, as well an extra attribute named "schema_code"
+        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                If new_item_id is provided, then assign_item_id is automatically made True
+        :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
+                                otherwise, an Exception is raised if any property isn't allowed
+                                TODO: only applicable for "Strict" schema - with a "Lax" schema anything goes; but "Lax" schema
+                                      might get phased out
+
+        :return:                The internal database ID of the new data node just created
+        """
+        cls.assert_valid_class_identifier(class_node)
+
+        # TODO: simplify not having to lug around both name and internal ID
+        if type(class_node) == str:
+            class_name = class_node
+            class_internal_id = cls.get_class_internal_id(class_node)
+        else:
+            class_name = cls.get_class_name_by_neo_id(class_node)
+            class_internal_id = class_node
+
+        if labels is None:
+            # If not specified, use the Class name
+            labels = class_name
+
+        if properties is None:
+            properties = {}
+
+        assert type(properties) == dict, \
+            "NeoSchema.add_data_point(): The `properties` argument, if provided, MUST be a dictionary"
+
+        # Make sure that the Class accepts Data Nodes
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+            raise Exception(f"NeoSchema.add_data_point(): "
+                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+        properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
+                                                silently_drop=silently_drop)
+
+
+        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes:
+        # "uri" and "schema_code";
+        # if requested, expand properties_to_set accordingly
+        if assign_uri or new_uri:
+            if not new_uri:
+                new_id = cls.next_available_datapoint_id()      # Obtain (and reserve) the next auto-increment value
+            else:
+                new_id = new_uri
+            #print("New ID assigned to new data node: ", new_id)
+            properties_to_set["item_id"] = new_id               # Expand the dictionary
+
+            schema_code = cls.get_schema_code(class_name)
+            if schema_code != "":
+                properties_to_set["schema_code"] = schema_code  # Expand the dictionary
+
+            # EXAMPLE of properties_to_set at this stage:
+            #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
+            #       where 123 is the next auto-assigned item_id
+
+
+        # Create a new data node, with a "SCHEMA" relationship to its Class node
+        link_to_schema_class = {"internal_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
+
+        links = [link_to_schema_class]
+
+        neo_id = cls.db.create_node_with_links(labels=labels,
+                                               properties=properties_to_set,
+                                               links=links)
+
+        return neo_id
+
+
+
+    @classmethod    # TODO: obsolete in favor of create_data_node()
     def add_data_point(cls, class_name=None, class_internal_id=None, properties = None, labels = None,
                        assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
         """
-        TODO: maybe rename create_data_point(), for consistency with create_class()
+        TODO: maybe rename create_data_node(), for consistency with create_class()
+        TODO: merge class_name and class_internal_id
         A more "modern" version of the deprecated add_data_point_OLD()
 
         Add a new data node, of the specified Class,
