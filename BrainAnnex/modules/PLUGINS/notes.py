@@ -11,6 +11,17 @@ class Notes:
     """
 
     @classmethod
+    def delete_content(cls, item_id: int):
+        """
+
+        :param item_id:
+        :return:
+        """
+        FullTextIndexing.remove_indexing(item_id)
+
+
+
+    @classmethod
     def plugin_n_add_content(cls, item_id: int, data_binding: dict) -> dict:
         """
         Special handling for Notes (ought to be specified in its Schema):

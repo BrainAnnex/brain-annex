@@ -1,5 +1,6 @@
 import re
 import html
+from typing import Union
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
@@ -212,12 +213,17 @@ class FullTextIndexing:
         with inbound relationships named "occurs" from "Word" data nodes (pre-existing or newly-created)
         for all the words in the given list.
         Also, create a relationship named "has_index" from an existing "Content Item" data node to the new "Indexer" node.
+        TODO: consider combining new_indexing() and update_indexing()
 
         :param content_item_id: The internal database ID of an existing "Content Item" data node
         :param unique_words:    A list of strings containing unique words
                                     - for example as returned by extract_unique_good_words()
         :return:                None
         """
+        indexer_id = cls.get_indexer_node_id(content_item_id)
+        assert indexer_id is None, \
+            f"new_indexing(): an index ALREADY exists for the given Content Item node (id {content_item_id})"
+
         # Create a data node of type "Indexer", and link it up to the passed Content Item
         indexer_id = NeoSchema.add_data_point_with_links(class_name = "Indexer",
                                                           links =[{"internal_id": content_item_id, "rel_name": "has_index",
@@ -252,7 +258,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def update_indexing(cls, content_item_id : int, unique_words: [str]):
+    def update_indexing(cls, content_item_id : int, unique_words: [str]) -> None:
         """
         Used to update an index, linking the given list of unique words
         to the specified "Indexer" data node, which was created by a call to new_indexing()
@@ -263,48 +269,65 @@ class FullTextIndexing:
         for all the words in the given list.
         Also, create a relationship named "has_index" from an existing "Content Item" data node to the new "Indexer" node.
 
+        Note: if no index exist, an Exception is raised
+
         :param content_item_id: The internal database ID of an existing "Content Item" data node
         :param unique_words:    A list of strings containing unique words
                                     - for example as returned by extract_unique_good_words()
-        :return:
+        :return:                None
         """
         indexer_id = cls.get_indexer_node_id(content_item_id)
-        print(indexer_id)
-
+        assert indexer_id is not None, \
+                    f"update_indexing(): unable to find an index for the given Content Item node" \
+                    f" (id {content_item_id}).  Did you first create an index for it?"
 
         # Sever all the existing "occurs" relationships to the "Indexer" data node
         # i.e. give a "clean slate" to the "Indexer" data node
         NeoSchema.remove_multiple_data_relationships(node_id=indexer_id, rel_name="occurs", rel_dir="IN", labels="Word")
-
 
         cls.populate_index(indexer_id=indexer_id, unique_words=unique_words)
 
 
 
     @classmethod
-    def get_indexer_node_id(cls, content_item_id: int) -> int:
+    def get_indexer_node_id(cls, content_item_id: int) -> Union[int, None]:
         """
+        Retrieve and return the internal database ID of the "Indexer" data node
+        associated to the given Content Item data node.
+        If not found, None is returned
 
         :param content_item_id: The internal database ID of an existing "Content Item" data node
-        :return:                The internal database ID of the corresponding "Indexer" data node
+        :return:                The internal database ID of the corresponding "Indexer" data node.
+                                    If not found, None is returned
         """
+
         q = '''
             MATCH (ci:`Content Item`)-[:has_index]->(i:Indexer)-[:SCHEMA]->(:CLASS {name: "Indexer"})
             WHERE id(ci) = $content_item_id
             RETURN id(i) AS indexer_id
             '''
-        return cls.db.query(q, data_binding={"content_item_id": content_item_id}, single_cell="indexer_id")
+
+        return cls.db.query(q, data_binding={"content_item_id": content_item_id},
+                            single_cell="indexer_id")       # Note: will be None if no record found
 
 
 
     @classmethod
-    def remove_indexing(cls, content_item_id : int):
+    def remove_indexing(cls, content_item_id : int) -> None:
         """
-        Drop the "Indexer" node linked to the given Content Item node
+        Drop the "Indexer" node linked to the given Content Item node.
+        If no index exists, an Exception is raised
+
         :param content_item_id: The internal database ID of an existing "Content Item" data node
-        :return:
+        :return:                None
         """
-        pass        # TODO
+        indexer_id = cls.get_indexer_node_id(content_item_id)
+
+        assert indexer_id is not None, \
+            f"remove_indexing(): unable to find an index for the given Content Item node" \
+            f" (id {content_item_id}).  Maybe you already removed it?"
+
+        NeoSchema.delete_data_node(node_id=indexer_id, labels="Indexer", class_node="Indexer")
 
 
 
@@ -323,17 +346,3 @@ class FullTextIndexing:
             RETURN count(w) AS word_count
             '''
         return cls.db.query(q, data_binding={"content_item_id": content_item_id}, single_cell="word_count")
-
-
-
-    @classmethod
-    def prepare_word_node_OBSOLETE(cls, word: str) -> int:   # TODO: no longer needed
-        """
-        Locate or create a "Word" node for the given word
-
-        :param word:    A string with a word suitable for indexing
-        :return:        The internal database ID of a "Word" node (either pre-existing or just created)
-                            representing the given word
-        """
-        # TODO: for now, we're always creating rather than first checking if already there
-        return NeoSchema.add_data_point(class_name="Word", properties={"name": word})

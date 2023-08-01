@@ -1265,8 +1265,74 @@ def test_register_existing_data_point(db):
 
 
 
+def delete_data_node(db):
+    pass
+
+
+
 def test_delete_data_point(db):
-    pass    # TODO
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_data_node(node_id = 1)     # Non-existing node (database just got cleared)
+
+
+    create_sample_schema_1()    # Schema with patient/result/doctor
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_data_node(node_id = -1)    # Invalid node ID
+
+
+    # Create new data nodes
+    doctor_data_id = NeoSchema.create_data_node(class_node="doctor",
+                                                properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+
+    patient_data_id = NeoSchema.create_data_node(class_node="patient",
+                                                 properties={"name": "Val", "age": 22})
+
+    doctor = NeoSchema.fetch_data_point(internal_id=doctor_data_id)
+    assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
+
+    patient = NeoSchema.fetch_data_point(internal_id=patient_data_id)
+    assert patient == {'name': 'Val', 'age': 22}
+
+    NeoSchema.delete_data_node(node_id=doctor_data_id)
+
+    doctor = NeoSchema.fetch_data_point(internal_id=doctor_data_id)
+    assert doctor is None   # The doctor got deleted
+
+    patient = NeoSchema.fetch_data_point(internal_id=patient_data_id)
+    assert patient == {'name': 'Val', 'age': 22}    # The patient is still there
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_data_node(node_id=patient_data_id, labels="not_present")   # Nothing gets deleted; hence, error
+
+    with pytest.raises(Exception):
+        NeoSchema.delete_data_node(node_id=patient_data_id, labels=["patient", "extra label"])   # Nothing gets deleted; hence, error
+
+    NeoSchema.delete_data_node(node_id=patient_data_id, labels="patient")
+
+    patient = NeoSchema.fetch_data_point(internal_id=patient_data_id)
+    assert patient is None    # The patient is now gone
+
+
+    doctor_data_id = NeoSchema.create_data_node(class_node="doctor", labels=["doctor", "employee"],
+                                                properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+    doctor = NeoSchema.fetch_data_point(internal_id=doctor_data_id)
+    assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
+
+    NeoSchema.delete_data_node(node_id=doctor_data_id, labels="employee")
+    doctor = NeoSchema.fetch_data_point(internal_id=doctor_data_id)
+    assert doctor is None   # The doctor got deleted
+
+    doctor_data_id = NeoSchema.create_data_node(class_node="doctor", labels=["doctor", "employee"],
+                                                properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+    doctor = NeoSchema.fetch_data_point(internal_id=doctor_data_id)
+    assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
+
+    NeoSchema.delete_data_node(node_id=doctor_data_id, labels=["employee", "doctor"])
+    doctor = NeoSchema.fetch_data_point(internal_id=doctor_data_id)
+    assert doctor is None   # The doctor got deleted
 
 
 
@@ -1419,22 +1485,22 @@ def test_locate_node(db):
 def test_class_of_data_point(db):
     db.empty_dbase()
     with pytest.raises(Exception):
-        NeoSchema.class_of_data_point(node_id=123)  # No such data node exists
+        NeoSchema.class_of_data_node(node_id=123)  # No such data node exists
 
     neo_id = db.create_node("random")
     with pytest.raises(Exception):
-        NeoSchema.class_of_data_point(node_id=neo_id)     # It's not a data node
+        NeoSchema.class_of_data_node(node_id=neo_id)     # It's not a data node
 
     NeoSchema.create_class("Person")
     item_id = NeoSchema.add_data_point_OLD("Person")
 
-    assert NeoSchema.class_of_data_point(node_id=item_id, id_type="item_id") == "Person"
-    assert NeoSchema.class_of_data_point(node_id=item_id, id_type="item_id", labels="Person") == "Person"
+    assert NeoSchema.class_of_data_node(node_id=item_id, id_type="item_id") == "Person"
+    assert NeoSchema.class_of_data_node(node_id=item_id, id_type="item_id", labels="Person") == "Person"
 
     # Now locate thru the Neo4j ID
     neo_id = NeoSchema.get_data_point_id(item_id)
     #print("neo_id: ", neo_id)
-    assert NeoSchema.class_of_data_point(node_id=neo_id) == "Person"
+    assert NeoSchema.class_of_data_node(node_id=neo_id) == "Person"
 
     NeoSchema.create_class("Extra")
     # Create a forbidden scenario with a data node having 2 Schema classes
@@ -1445,7 +1511,7 @@ def test_class_of_data_point(db):
     #db.debug_print(q, {}, "test")
     db.update_query(q)
     with pytest.raises(Exception):
-        assert NeoSchema.class_of_data_point(node_id=neo_id) == "Person"    # Data node is associated to multiple classes
+        assert NeoSchema.class_of_data_node(node_id=neo_id) == "Person"    # Data node is associated to multiple classes
 
 
 

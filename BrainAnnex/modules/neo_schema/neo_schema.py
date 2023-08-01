@@ -1304,7 +1304,7 @@ class NeoSchema:
 
 
     @classmethod
-    def fetch_data_point(cls, item_id = None, internal_id = None, labels=None, properties=None) -> dict:
+    def fetch_data_point(cls, item_id = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data point
 
@@ -1316,7 +1316,7 @@ class NeoSchema:
         :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
         :param properties:  OPTIONAL (generally, redundant) ways to locate the data node
 
-        :return:            A dictionary with all the key/value pairs, if found; or {} if not
+        :return:            A dictionary with all the key/value pairs, if found; or None if not
         """
         if internal_id is None:
             assert item_id is not None, \
@@ -2247,10 +2247,46 @@ class NeoSchema:
 
 
     @classmethod
+    def delete_data_node(cls, node_id=None, uri=None, class_node=None, labels=None) -> None:
+        """
+        Delete the given data node.
+        If no node gets deleted, or if more than 1 get deleted, an Exception is raised
+
+        :param node_id:     An integer with the internal database ID of an existing data node
+        :param uri:         An alternate way to refer to the node.  TODO: implement
+        :param class_node:  NOT IN CURRENT USE.  Specify the Class to which this node belongs TODO: implement
+        :param labels:      (OPTIONAL) String or list of strings.
+                                If passed, each label must be present in the node, for a match to occur
+                                (no problem if the node also includes other labels not listed here.)
+                                Generally, redundant, as a precaution against deleting wrong node
+        :return:            None
+        """
+        # Validate arguments
+        CypherUtils.assert_valid_internal_id(node_id)
+
+        cypher_labels = CypherUtils.prepare_labels(labels)
+
+        q = f'''
+            MATCH (:CLASS)<-[:SCHEMA]-(data {cypher_labels})
+            WHERE id(data) = $node_id
+            DETACH DELETE data
+            '''
+        #print(q)
+        stats = cls.db.update_query(q, data_binding={"node_id": node_id})
+
+        number_nodes_deleted = stats.get("nodes_deleted", 0)
+
+        if number_nodes_deleted == 0:
+            raise Exception("delete_data_node(): nothing was deleted")
+        elif number_nodes_deleted > 1:
+            raise Exception(f"delete_data_node(): more than 1 node was deleted.  Number deleted: {number_nodes_deleted}")
+
+
+
+    @classmethod
     def delete_data_point(cls, item_id: int, labels=None) -> int:
         """
-        Delete the given data point
-        TODO: test
+        Delete the given data point.  TODO: obsolete in favor of delete_data_node()
 
         :param item_id:
         :param labels:      OPTIONAL (generally, redundant)
@@ -2320,8 +2356,8 @@ class NeoSchema:
 
         if number_relationships_added != 1:
             # The following 2 lines will raise an Exception if either data point doesn't exist or lacks a Class
-            class_from = cls.class_of_data_point(node_id=from_id, id_type=id_type, labels=labels_from)
-            class_to = cls.class_of_data_point(node_id=to_id, id_type=id_type, labels=labels_to)
+            class_from = cls.class_of_data_node(node_id=from_id, id_type=id_type, labels=labels_from)
+            class_to = cls.class_of_data_node(node_id=to_id, id_type=id_type, labels=labels_to)
 
             #TODO: maybe double-check that the following reported problem is indeed what caused the failure <-- INDEED, DO THAT!
             raise Exception(f"add_data_relationship(): cannot add the relationship `{rel_name}` between the data nodes, "
@@ -2371,8 +2407,8 @@ class NeoSchema:
 
         if number_relationships_added != 1:
             # The following 2 lines will raise an Exception if either data point doesn't exist or lacks a Class
-            class_from = cls.class_of_data_point(node_id=from_neo_id)
-            class_to = cls.class_of_data_point(node_id=to_neo_id)
+            class_from = cls.class_of_data_node(node_id=from_neo_id)
+            class_to = cls.class_of_data_node(node_id=to_neo_id)
 
             # TODO: double-check that the following reported problem is indeed what caused the failure
             raise Exception(f"NeoSchema.add_data_relationship_fast(): Cannot add the relationship `{rel_name}` between the data nodes, "
@@ -2461,17 +2497,16 @@ class NeoSchema:
 
 
 
-
     @classmethod
-    def class_of_data_point(cls, node_id: int, id_type=None, labels=None) -> str:
+    def class_of_data_node(cls, node_id: int, id_type=None, labels=None) -> str:
         """
         Return the name of the Class of the given data point: identified
         either by its Neo4j ID (default), or by a primary key (with optional label)
 
-        :param node_id:     Either a Neo4j ID or a primary key value
+        :param node_id:     Either an internal database ID or a primary key value
         :param id_type:     OPTIONAL - name of a primary key used to identify the data node
         :param labels:      Optional string, or list/tuple of strings, with Neo4j labels
-        :return:            A string with the name of the Class of the given data point
+        :return:            A string with the name of the Class of the given data node
         """
         match = NeoSchema.locate_node(node_id=node_id, id_type=id_type, labels=labels)
         # This is an object of type "CypherMatch"

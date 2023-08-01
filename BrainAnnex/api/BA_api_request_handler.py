@@ -599,7 +599,12 @@ class APIRequestHandler:
         number_deleted = cls.db.delete_nodes(match)
 
         if number_deleted == 1:
-            return ""   # Successful termination, with 1 Content Item deleted, as expected
+            if schema_code == "n":
+                # Extra processing for the "Notes" plugin
+                Notes.delete_content(item_id)
+
+            return ""       # Successful termination, with 1 Content Item deleted, as expected
+
         elif number_deleted == 0:
             return f"Unable to delete Content Item id {item_id} of type `{schema_code}`"  # Error message (nothing deleted)
         else:
