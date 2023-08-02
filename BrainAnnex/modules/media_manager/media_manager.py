@@ -91,10 +91,10 @@ class MediaManager:
         """
         Delete the specified media file, assumed in a standard location
 
-        :param basename:
-        :param suffix:
+        :param basename:    File name, exclusive of path and of suffix
+        :param suffix:      String such as "htm" (don't include the dot!)
         :param subfolder:   It must end with "/"  .  EXAMPLE:  "resized/"
-        :return:
+        :return:            True if successful, or False otherwise
         """
         filename = basename + "." + suffix
         print(f"Attempting to delete file `{filename}`")
@@ -108,10 +108,10 @@ class MediaManager:
     @classmethod
     def delete_file(cls, fullname: str) -> bool:
         """
-        Delete the specified file, assumed in a standard location
+        Delete the specified file
 
-        :param fullname:
-        :return:            True if successful, or False otherwise
+        :param fullname:    Full name of the file to delete, including its path
+        :return:            True if successful, or False if not found
         """
 
         if os.path.exists(fullname):

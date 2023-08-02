@@ -5,24 +5,23 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 class Notes:
     """
-    Plugin-provided handlers for "notes"
-
-    TODO: drop the "plugin_n_" from the method names; the class name provides the namespace
+    Plugin-provided handlers for "notes"  (HTML-formatted text)
     """
 
     @classmethod
-    def delete_content(cls, item_id: int):
+    def delete_content(cls, item_id: int) -> None:
         """
 
-        :param item_id:
-        :return:
+        :param item_id: An integer with the URI of the Content Item
+        :return:        None
         """
-        FullTextIndexing.remove_indexing(item_id)
+        print("***** CALL TO Notes.delete_content()")
+        #FullTextIndexing.remove_indexing(item_id)
 
 
 
     @classmethod
-    def plugin_n_add_content(cls, item_id: int, data_binding: dict) -> dict:
+    def add_content(cls, item_id: int, data_binding: dict) -> dict:
         """
         Special handling for Notes (ought to be specified in its Schema):
                the "body" value is to be stored in a file named "notes-ID.htm", where ID is the item_id,
@@ -30,7 +29,8 @@ class Notes:
                        basename: "notes-ID"
                        suffix: "htm"
 
-        :return: The altered data_binding dictionary.  In case of error, an Exception is raised.
+        :param item_id: An integer with the URI of the Content Item
+        :return:        The altered data_binding dictionary.  In case of error, an Exception is raised.
         """
         # Save and ditch the "body" attribute - which is not to be stored in the database
         body = data_binding["body"]
@@ -54,15 +54,17 @@ class Notes:
 
 
     @classmethod
-    def plugin_n_update_content(cls, data_binding: dict, set_dict: dict) -> dict:
+    def update_content(cls, data_binding: dict, set_dict: dict) -> dict:
         """
         Special handling for Notes (ought to be specified in its Schema):
-               the "body" value is to be stored in a file named "notes-ID.htm", where ID is the item_id,
-               and NOT be stored in the database.  Instead, store in the database:
-                       basename: "notes-ID"
-                       suffix: "htm"
+        the "body" value is to be stored in a file named "notes-ID.htm", where ID is the item_id,
+        and NOT be stored in the database.  Instead, store in the database:
+               basename: "notes-ID"
+               suffix: "htm"
 
-        :return: The altered data_binding dictionary
+        :param data_binding:
+        :param set_dict:
+        :return:            The altered data_binding dictionary
         """
         body = data_binding["body"]
         item_id = data_binding["item_id"]
@@ -92,7 +94,7 @@ class Notes:
         """
         Invoked after a new Content Item of this type gets successfully added
 
-        :param item_id:
+        :param item_id: An integer with the URI of the Content Item
         :param pars:
         :return:        None
         """
@@ -109,7 +111,7 @@ class Notes:
         """
         Invoked after a Content Item of this type gets successfully updated
 
-        :param item_id:
+        :param item_id: An integer with the URI of the Content Item
         :param pars:
         :return:        None
         """
@@ -118,21 +120,3 @@ class Notes:
         unique_words = FullTextIndexing.extract_unique_good_words(body)
         content_id = NeoSchema.get_data_point_internal_id(item_id=item_id)
         FullTextIndexing.update_indexing(content_item_id=content_id, unique_words=unique_words)
-
-
-
-
-    @classmethod
-    def update_index_NO_LONGER_IN_USE(cls, unique_words: [str]) -> None:
-        """
-        TODO: run this in a separate thread, in a separate class
-
-        :param unique_words:    A list of strings containing "acceptable", unique words to index
-        :return:                None
-        """
-        class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
-
-        #print("unique_words: \n", unique_words)
-
-        # Add each of words to the index, unless already present there
-        NeoSchema.add_data_column_merge(class_internal_id=class_db_id, property_name="name", value_list=unique_words)

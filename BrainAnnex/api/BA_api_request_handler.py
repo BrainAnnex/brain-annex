@@ -544,7 +544,7 @@ class APIRequestHandler:
         #       TODO: try to infer them from the Schema
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
-            set_dict = Notes.plugin_n_update_content(data_binding, set_dict)
+            set_dict = Notes.update_content(data_binding, set_dict)
 
         # TODO: utilize the schema layer, rather than directly access the database
         match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
@@ -584,15 +584,14 @@ class APIRequestHandler:
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
             ###status = cls.delete_attached_media_file(item_id)
-            status, record = cls.lookup_media_record(item_id)
-            if status:
+            record = cls.lookup_media_record(item_id)
+            if record is not None:
                 MediaManager.delete_media_file(record["basename"], record["suffix"])
 
         if schema_code == "i":
-            # Extra processing for the "Images" plugin
-            ###status = cls.plugin_i_delete_content(item_id)
-            status, record = cls.lookup_media_record(item_id)
-            if status:
+            # Extra processing for the "Images" plugin (for the thumbnail images)
+            record = cls.lookup_media_record(item_id)
+            if record is not None:
                 MediaManager.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
 
         match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
@@ -689,7 +688,7 @@ class APIRequestHandler:
         #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
-            post_data = Notes.plugin_n_add_content(new_item_id, post_data)
+            post_data = Notes.add_content(new_item_id, post_data)
 
 
         print("Revised post_data: ", post_data)
@@ -732,19 +731,23 @@ class APIRequestHandler:
     #######################     MEDIA-RELATED      #######################
 
     @classmethod
-    def lookup_media_record(cls, item_id: int) -> tuple:
+    def lookup_media_record(cls, item_id: int) -> Union[dict, None]:
         """
-        Delete the media file attached to the specified Content Item:
+        Attempt to retrieve the metadata for the media file attached to the specified Content Item
+        TODO: move to MediaManager class
+
+        :param item_id: An integer with the URI of the Content Item
+        :return:        If found, return a dict with the record; otherwise, return None
         """
         record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
         if record is None:
-            return False, None
+            return None
 
         if ("basename" not in record) or ("suffix" not in record):
-            return False, None
+            return None
 
-        MediaManager.delete_media_file(record["basename"], record["suffix"])
-        return True, record
+        #MediaManager.delete_media_file(record["basename"], record["suffix"])
+        return record
 
 
 
