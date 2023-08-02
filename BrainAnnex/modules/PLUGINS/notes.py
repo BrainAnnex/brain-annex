@@ -9,15 +9,21 @@ class Notes:
     """
 
     @classmethod
-    def delete_content(cls, item_id: int) -> None:
+    def delete_content_before(cls, item_id: int) -> None:
         """
+        Invoked just prior to deleting the data node
 
-        :param item_id: An integer with the URI of the Content Item
-        :return:        None
+        :param item_id: An integer with the URI ("item ID") of the Content Item
+        :return:        None.  If index isn't found, an Exception is raised
         """
-        print("***** CALL TO Notes.delete_content()")
-        #FullTextIndexing.remove_indexing(item_id)
+        print(f"***** DELETING INDEXING for item {item_id}")
+        content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
+        FullTextIndexing.remove_indexing(content_id)
 
+
+    @classmethod
+    def delete_content_successful(cls, item_id: int) -> None:
+        pass    # No action needed
 
 
     @classmethod
@@ -29,8 +35,9 @@ class Notes:
                        basename: "notes-ID"
                        suffix: "htm"
 
-        :param item_id: An integer with the URI of the Content Item
-        :return:        The altered data_binding dictionary.  In case of error, an Exception is raised.
+        :param item_id:     An integer with the URI of the Content Item
+        :param data_binding:
+        :return:            The altered data_binding dictionary.  In case of error, an Exception is raised.
         """
         # Save and ditch the "body" attribute - which is not to be stored in the database
         body = data_binding["body"]
@@ -98,10 +105,11 @@ class Notes:
         :param pars:
         :return:        None
         """
-        return  # For now, index isn't being done.  TODO: test and restore
+        #return  # For now, index isn't being done.  TODO: test and restore
         body = pars.get("body")
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-        content_id = NeoSchema.get_data_point_internal_id(item_id=item_id)
+        content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
+        print(f"***** CREATING INDEXING for item {item_id}. Words: {unique_words}")
         FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=unique_words)
 
 
@@ -115,8 +123,9 @@ class Notes:
         :param pars:
         :return:        None
         """
-        return  # For now, index isn't being done.  TODO: test and restore
+        #return  # For now, index isn't being done.  TODO: test and restore
         body = pars.get("body")
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-        content_id = NeoSchema.get_data_point_internal_id(item_id=item_id)
+        content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
+        print(f"***** UPDATING INDEXING for item {item_id}. Words: {unique_words}")
         FullTextIndexing.update_indexing(content_item_id=content_id, unique_words=unique_words)

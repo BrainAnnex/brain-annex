@@ -941,7 +941,7 @@ class Categories:
 
     @classmethod
     def viewer_handler(cls, category_id: int):
-        category_internal_id = NeoSchema.get_data_point_internal_id(item_id = category_id)
+        category_internal_id = NeoSchema.get_data_node_internal_id(item_id = category_id)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 
         return siblings_categories

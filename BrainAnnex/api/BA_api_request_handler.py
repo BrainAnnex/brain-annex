@@ -509,7 +509,7 @@ class APIRequestHandler:
         TODO: if any (non-special?) field is blank, drop it altogether from the node;
               maybe add this capability to set_fields()
 
-        :return:    None
+        :return:    None.  In case of error, an Exception is raised
         """
         print("In update_content_item(). POST dict: ", post_data)
 
@@ -562,25 +562,26 @@ class APIRequestHandler:
 
 
     @classmethod
-    def delete_content_item(cls, item_id: str, schema_code: str) -> str:
+    def delete_content_item(cls, item_id: str, schema_code: str) -> None:
         """
         Delete the specified individual Content Item.
         Note that schema_code is redundant.
+        In case of error, an Exception is raised
 
         :param item_id:     String version of the unique ID
         :param schema_code: Redundant
-        :return:            An empty string if successful, or an error message otherwise
+        :return:            None.  In case of error, an Exception is raised
         """
-        print(f"In delete_content_item(). Attempting to delete item id {item_id} of type `{schema_code}`")
+        print(f"In delete_content_item(). Attempting to delete item_id {item_id} of type `{schema_code}`")
 
         try:
             item_id = int(item_id)
         except Exception as ex:
-            return f"item_id is missing or not an integer. {ex}"
+            raise Exception(f"item_id is missing or not an integer. {ex}")
 
 
         # PLUGIN-SPECIFIC OPERATIONS that perform filesystem operations
-        #       (TODO: try to infer them from the Schema)
+        #       (TODO: try to infer that from the Schema)
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
             ###status = cls.delete_attached_media_file(item_id)
@@ -594,21 +595,24 @@ class APIRequestHandler:
             if record is not None:
                 MediaManager.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
 
+        if schema_code == "n":
+            Notes.delete_content_before(item_id)
+
         match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_deleted = cls.db.delete_nodes(match)
 
         if number_deleted == 1:
             if schema_code == "n":
                 # Extra processing for the "Notes" plugin
-                Notes.delete_content(item_id)
+                Notes.delete_content_successful(item_id)    # Not actually needed for notes, but setting up the system
 
-            return ""       # Successful termination, with 1 Content Item deleted, as expected
+            return       # Successful termination, with 1 Content Item deleted, as expected
 
         elif number_deleted == 0:
-            return f"Unable to delete Content Item id {item_id} of type `{schema_code}`"  # Error message (nothing deleted)
+            raise Exception(f"Unable to delete Content Item id {item_id} of type `{schema_code}`")  # Error message (nothing deleted)
         else:
-            return f"{number_deleted} Content Items deleted, instead of the expected 1" # Error message (too much deleted)
-                                                                                        # Should not happen, since item_id is a primary key
+            raise Exception(f"{number_deleted} Content Items deleted, instead of the expected 1")    # Error message (too much deleted)
+                                                                                                     # Should not happen, since item_id is a primary key
 
 
     @classmethod
@@ -746,7 +750,6 @@ class APIRequestHandler:
         if ("basename" not in record) or ("suffix" not in record):
             return None
 
-        #MediaManager.delete_media_file(record["basename"], record["suffix"])
         return record
 
 

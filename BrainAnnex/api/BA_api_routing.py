@@ -863,13 +863,12 @@ class ApiRouting:
             Note that schema_code is redundant.
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete/46/n
             """
-            err_status = APIRequestHandler.delete_content_item(item_id, schema_code)
-        
-            if err_status == "":    # If no errors
-                return_value = cls.SUCCESS_PREFIX
-            else:                   # If errors
-                return_value = cls.ERROR_PREFIX + err_status
-        
+            try:
+                APIRequestHandler.delete_content_item(item_id, schema_code)
+                return_value = cls.SUCCESS_PREFIX              # If no errors
+            except Exception as ex:
+                return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
+
             print(f"delete() is returning: `{return_value}`")
         
             return return_value

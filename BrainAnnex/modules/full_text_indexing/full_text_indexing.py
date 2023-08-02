@@ -222,7 +222,7 @@ class FullTextIndexing:
         """
         indexer_id = cls.get_indexer_node_id(content_item_id)
         assert indexer_id is None, \
-            f"new_indexing(): an index ALREADY exists for the given Content Item node (id {content_item_id})"
+            f"new_indexing(): an index ALREADY exists for the given Content Item node (internal id {content_item_id})"
 
         # Create a data node of type "Indexer", and link it up to the passed Content Item
         indexer_id = NeoSchema.add_data_point_with_links(class_name = "Indexer",
@@ -278,8 +278,8 @@ class FullTextIndexing:
         """
         indexer_id = cls.get_indexer_node_id(content_item_id)
         assert indexer_id is not None, \
-                    f"update_indexing(): unable to find an index for the given Content Item node" \
-                    f" (id {content_item_id}).  Did you first create an index for it?"
+                    f"update_indexing(): unable to find an index for the given Content Item " \
+                    f" (internal id {content_item_id}).  Did you first create an index for it?"
 
         # Sever all the existing "occurs" relationships to the "Indexer" data node
         # i.e. give a "clean slate" to the "Indexer" data node
@@ -296,13 +296,15 @@ class FullTextIndexing:
         associated to the given Content Item data node.
         If not found, None is returned
 
-        :param content_item_id: The internal database ID of an existing "Content Item" data node
+        :param content_item_id: The internal database ID of an existing data node
+                                    (either of Class "Content Item", or of a Class that is ultimately
+                                    an INSTANCE_OF a "Content Item" Class)
         :return:                The internal database ID of the corresponding "Indexer" data node.
                                     If not found, None is returned
         """
-
+        # Prepare a Cypher query
         q = '''
-            MATCH (ci:`Content Item`)-[:has_index]->(i:Indexer)-[:SCHEMA]->(:CLASS {name: "Indexer"})
+            MATCH (ci)-[:has_index]->(i:Indexer)-[:SCHEMA]->(:CLASS {name: "Indexer"})
             WHERE id(ci) = $content_item_id
             RETURN id(i) AS indexer_id
             '''
@@ -325,7 +327,7 @@ class FullTextIndexing:
 
         assert indexer_id is not None, \
             f"remove_indexing(): unable to find an index for the given Content Item node" \
-            f" (id {content_item_id}).  Maybe you already removed it?"
+            f" (internal id {content_item_id}).  Maybe you already removed it?"
 
         NeoSchema.delete_data_node(node_id=indexer_id, labels="Indexer", class_node="Indexer")
 

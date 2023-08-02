@@ -1281,7 +1281,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_point_internal_id(cls, item_id: int) -> int:
+    def get_data_node_internal_id(cls, item_id: int) -> int:
         """
         Returns the internal database ID of the given data node,
         specified by its value of the item_id attribute
@@ -1293,10 +1293,10 @@ class NeoSchema:
         result = cls.db.get_nodes(match, return_internal_id=True)
 
         if not result:
-            raise Exception(f"NeoSchema.get_data_point_internal_id(): no Data Node with the given item_id ({item_id}) was found")
+            raise Exception(f"NeoSchema.get_data_node_internal_id(): no Data Node with the given item_id ({item_id}) was found")
 
         if len(result) > 1:
-            raise Exception(f"NeoSchema.get_data_point_internal_id(): more than 1 Data Node "
+            raise Exception(f"NeoSchema.get_data_node_internal_id(): more than 1 Data Node "
                             f"with the given item_id ({item_id}) was found ({len(result)} were found)")
 
         return result[0]["internal_id"]
