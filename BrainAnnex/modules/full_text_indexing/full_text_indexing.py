@@ -195,7 +195,7 @@ class FullTextIndexing:
 
         indexer_class_id, _ = NeoSchema.create_class(name="Indexer", schema_type="S")
 
-        NeoSchema.create_class_with_properties(class_name="Word", schema_type="S",
+        NeoSchema.create_class_with_properties(class_name="Word", strict=True,
                                                property_list=["name"],
                                                class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
 
@@ -253,7 +253,7 @@ class FullTextIndexing:
         # with an "occurs" outbound relationship
         # (in the future, to also perhaps store a count property)
         for word_node_id in word_node_list:
-            NeoSchema.add_data_relationship_fast(from_neo_id=word_node_id, to_neo_id=indexer_id, rel_name="occurs")
+            NeoSchema.add_data_relationship(from_id=word_node_id, to_id=indexer_id, rel_name="occurs")
 
 
 

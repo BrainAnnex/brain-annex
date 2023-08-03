@@ -64,7 +64,7 @@ def test_new_indexing(db):
     db.empty_dbase()
 
     # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", schema_type="S",
+    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
                                            property_list=["filename"])
     FullTextIndexing.initialize_schema()
 
@@ -125,7 +125,7 @@ def test_update_indexing(db):
     db.empty_dbase()
 
     # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", schema_type="S",
+    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
                                            property_list=["filename"])
     FullTextIndexing.initialize_schema()
 
@@ -186,7 +186,7 @@ def test_remove_indexing(db):
     db.empty_dbase()
 
     # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", schema_type="S",
+    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
                                            property_list=["filename"])
     FullTextIndexing.initialize_schema()
 
@@ -228,7 +228,7 @@ def test_get_indexer_node_id(db):
     assert FullTextIndexing.get_indexer_node_id(content_item_id = 1) is None  # The dbase is empty
 
     # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", schema_type="S",
+    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
                                            property_list=["filename"])
     FullTextIndexing.initialize_schema()
 

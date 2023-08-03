@@ -59,7 +59,7 @@ class NeoSchema:
 
         - Every node used by this class has a unique attribute "schema_id",
           containing a non-negative integer.
-          Similarly, data nodes have a separate unique attribute "item_id" (TODO: rename "uri")
+          Similarly, data nodes have a separate unique attribute "item_id" (TODO: rename "uri" or "token")
 
         - The names of the Classes and Properties are stored in node attributes called "name".
           We also avoid calling them "label", as done in RDFS, because in Labeled Graph Databases
@@ -126,7 +126,8 @@ class NeoSchema:
         :param db:  Database-interface object, to be used with the NeoAccess library
         :return:    None
         """
-        cls.db = db     # TODO: perform some validatio
+        cls.db = db     # TODO: perform some validation
+
 
 
 
@@ -153,7 +154,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class(cls, name: str, code=None, schema_type="L", no_datanodes = False) -> (int, int):
+    def create_class(cls, name: str, code=None, strict= False, schema_type="L", no_datanodes = False) -> (int, int):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -172,8 +173,10 @@ class NeoSchema:
 
         :param name:        Name to give to the new Class
         :param code:        Optional string indicative of the software handler for this Class and its subclasses
+        :param strict:      If True, the Class will be of the "S" (Strict) type;
+                                otherwise, it'll be of the "L" (Lenient) type
         :param schema_type: Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
-                            #TODO: phase out, or at least default to "S"
+                            #TODO: phase out
 
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes
@@ -182,7 +185,13 @@ class NeoSchema:
                                 if it was created;
                                 an Exception is raised if a class by that name already exists
         """
-        assert schema_type=="L" or schema_type=="S", "schema_type argument must be either 'L' or 'S'"
+        if schema_type is not None:     # TODO: phase out this argument
+            assert schema_type=="L" or schema_type=="S", "schema_type argument must be either 'L' or 'S'"
+
+        if strict:
+            schema_type="S"
+        else:
+            schema_type="L"
 
         name = name.strip()     # Strip any whitespace at the ends
         assert name != "", "NeoSchema.create_class(): Unacceptable Class name, either empty or blank"
@@ -874,9 +883,11 @@ class NeoSchema:
 
 
     #####################################################################################################
-    #                                                                                                   #
-    #                                   ~ PROPERTIES-RELATED ~                                          #
-    #                                                                                                   #
+
+    '''                                ~   PROPERTIES-RELATED   ~                                     '''
+
+    def ________PROPERTIES_RELATED________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
     @classmethod
@@ -1001,7 +1012,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_properties_to_class(cls, class_internal_id = None,  class_id = None, property_list = None) -> int:
+    def add_properties_to_class(cls, class_node = None, class_id = None, property_list = None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
         The properties are given an inherent order (an attribute named "index", starting at 1),
@@ -1013,10 +1024,10 @@ class NeoSchema:
         NOTE: if the Class doesn't already exist, use create_class_with_properties() instead;
               attempting to add properties to an non-existing Class will result in an Exception
 
-        :param class_internal_id:   The internal database ID of the Class to which attach the given Properties
-                                    (this takes priority over class_id)
+        :param class_node:      Either an integer with the internal database ID of an existing Class node,
+                                    (or a string with its name - TODO: add support for this option)
         :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
-                                TODO: rename to class_token
+                                TODO: remove
 
         :param property_list:   A list of strings with the names of the properties, in the desired order.
                                     Whitespace in any of the names gets stripped out.
@@ -1024,11 +1035,11 @@ class NeoSchema:
                                     If the list is empty, an Exception is raised
         :return:                The number of Properties added
         """
-        assert (class_internal_id is not None) or (class_id is not None), \
+        assert (class_node is not None) or (class_id is not None), \
             "add_properties_to_class(): class_internal_id and class_id cannot both be None"
 
-        if class_internal_id is not None and class_id is None:
-            class_id = cls.get_class_id_by_neo_id(class_internal_id)
+        if class_node is not None and class_id is None:
+            class_id = cls.get_class_id_by_neo_id(class_node)
 
         assert type(class_id) == int,\
             f"add_properties_to_class(): Argument `class_id` in add_properties_to_class() must be an integer; value passed was {class_id}"
@@ -1081,7 +1092,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class_with_properties(cls, class_name: str, property_list: [str], code=None, schema_type="L",
+    def create_class_with_properties(cls, class_name: str, property_list: [str], code=None, strict=False,
                                      class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int, int):
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
@@ -1106,7 +1117,9 @@ class NeoSchema:
 
         :param property_list:   List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            Optional string indicative of the software handler for this Class and its subclasses
-        :param schema_type:     Either "L" (Lenient) or "S" (Strict).      #TODO: phase out.  Make it all "Strict"
+        :param strict:          If True, the Class will be of the "S" (Strict) type;
+                                    otherwise, it'll be of the "L" (Lenient) type
+
         :param class_to_link_to: If this name is specified, and a link_to_name (below) is also specified,
                                     then create an OUTBOUND relationship from the newly-created Class
                                     to this existing Class
@@ -1129,10 +1142,11 @@ class NeoSchema:
                 f"the argument `link_dir` must be either 'OUT' or 'IN' (value passed: {link_dir})"
 
 
-        new_class_int_id , new_class_id = cls.create_class(class_name, code=code, schema_type=schema_type)
-        cls.debug_print(f"Created new schema CLASS node (name: `{class_name}`, Schema ID: {new_class_id})")
+        # Create the new Class
+        new_class_int_id , new_class_uri = cls.create_class(class_name, code=code, strict=strict)
+        cls.debug_print(f"Created new schema CLASS node (name: `{class_name}`, Schema ID: {new_class_uri})")
 
-        number_properties_added = cls.add_properties_to_class(class_internal_id=new_class_int_id, property_list = property_list)
+        number_properties_added = cls.add_properties_to_class(class_node=new_class_int_id, property_list = property_list)
         if number_properties_added != len(property_list):
             raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {property_list}")
 
@@ -1151,7 +1165,7 @@ class NeoSchema:
             except Exception as ex:
                 raise Exception(f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
-        return new_class_int_id, new_class_id
+        return new_class_int_id, new_class_uri
 
 
 
@@ -1449,7 +1463,7 @@ class NeoSchema:
 
 
 
-    @classmethod    # TODO: test
+    @classmethod    # TODO: unit test
     def create_data_node(cls, class_node: Union[int, str], properties = None, labels = None,
                          assign_uri=False, new_uri=None, silently_drop=False) -> int:
         """
@@ -1479,10 +1493,9 @@ class NeoSchema:
                                 If new_item_id is provided, then assign_item_id is automatically made True
         :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
-                                TODO: only applicable for "Strict" schema - with a "Lax" schema anything goes; but "Lax" schema
-                                      might get phased out
+                                TODO: only applicable for "Strict" schema - with a "Lax" schema anything goes
 
-        :return:                The internal database ID of the new data node just created
+        :return:            The internal database ID of the new data node just created
         """
         cls.assert_valid_class_identifier(class_node)
 
@@ -2150,7 +2163,7 @@ class NeoSchema:
         # TODO: maybe expand add_data_point_fast(), so that it can link to multiple other data nodes at once
         for link in connected_to_list:
             node_neo_id, rel_name = link    # Unpack
-            cls.add_data_relationship_fast(from_neo_id=new_neo_id, to_neo_id=node_neo_id, rel_name=rel_name)
+            cls.add_data_relationship(from_id=new_neo_id, to_id=node_neo_id, rel_name=rel_name)
 
         return new_neo_id
 
@@ -2297,11 +2310,11 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_relationship(cls, from_id: Union[int, str], to_id: Union[int, str], rel_name: str, rel_props = None,
-                              labels_from=None, labels_to=None, id_type=None) -> None:
+    def add_data_relationship_OLD(cls, from_id: Union[int, str], to_id: Union[int, str], rel_name: str, rel_props = None,
+                                  labels_from=None, labels_to=None, id_type=None) -> None:
         """
-        -> Maybe not really needed.  IF POSSIBLE, USE add_data_relationship_fast() INSTEAD
-        TODO: possibly ditch
+        -> Maybe not really needed.  IF POSSIBLE, USE add_data_relationship() INSTEAD
+        TODO: possibly ditch, in favor of add_data_relationship()
 
         Add a new relationship with the given name, from one to the other of the 2 given DATA nodes.
         The new relationship must be present in the Schema, or an Exception will be raised.
@@ -2365,7 +2378,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_relationship_fast(cls, from_neo_id:int, to_neo_id: int, rel_name: str, rel_props = None) -> None:
+    def add_data_relationship(cls, from_id:int, to_id: int, rel_name: str, rel_props = None) -> None:
         """
         Simpler (and possibly faster) version of add_data_relationship()
 
@@ -2376,8 +2389,10 @@ class NeoSchema:
         Note that if a relationship with the same name already exists between the data nodes exists,
         nothing gets created (and an Exception is raised)
 
-        :param from_neo_id: The Neo4j ID of the data node at which the new relationship is to originate
-        :param to_neo_id:   The Neo4j ID of the data node at which the new relationship is to end
+        :param from_id: The Neo4j ID of the data node at which the new relationship is to originate
+                                TODO: also allow primary keys, as done in class_of_data_node()
+        :param to_id:   The Neo4j ID of the data node at which the new relationship is to end
+                                TODO: also allow primary keys, as done in class_of_data_node()
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
                                 IMPORTANT: it MUST match an existing relationship in the Schema,
                                            between the respective Classes of the 2 data nodes
@@ -2386,7 +2401,7 @@ class NeoSchema:
         :return:            None.  If the specified relationship didn't get created (for example,
                                 in case the the new relationship doesn't exist in the Schema), raise an Exception
         """
-        assert rel_name, f"NeoSchema.add_data_relationship_fast(): no name was provided for the new relationship"
+        assert rel_name, f"NeoSchema.add_data_relationship(): no name was provided for the new relationship"
 
         # Create a query that looks for a path
         # from the first to the second data nodes, passing thru their classes
@@ -2400,32 +2415,33 @@ class NeoSchema:
             MERGE (from_node)-[:`{rel_name}`]->(to_node)
             '''
 
-        result = cls.db.update_query(q, {"from_neo_id": from_neo_id, "to_neo_id": to_neo_id})
+        result = cls.db.update_query(q, {"from_neo_id": from_id, "to_neo_id": to_id})
         number_relationships_added = result.get("relationships_created", 0)   # If key isn't present, use a value of 0
 
         if number_relationships_added != 1:
             # The following 2 lines will raise an Exception if either data node doesn't exist or lacks a Class
-            class_from = cls.class_of_data_node(node_id=from_neo_id)
-            class_to = cls.class_of_data_node(node_id=to_neo_id)
+            class_from = cls.class_of_data_node(node_id=from_id)
+            class_to = cls.class_of_data_node(node_id=to_id)
 
             # TODO: double-check that the following reported problem is indeed what caused the failure
-            raise Exception(f"NeoSchema.add_data_relationship_fast(): Cannot add the relationship `{rel_name}` between the data nodes, "
+            raise Exception(f"NeoSchema.add_data_relationship(): Cannot add the relationship `{rel_name}` between the data nodes, "
                             f"because no such relationship exists from Class `{class_from}` to Class` {class_to}`. "
                             f"The Schema needs to be modified first")
 
 
 
     @classmethod
-    def remove_data_relationship(cls, from_id: int, to_id: int, rel_name: str, labels=None) -> None:
+    def remove_data_relationship(cls, from_item_id: int, to_item_id: int, rel_name: str, labels=None) -> None:
         """
         Drop the relationship with the given name, from one to the other of the 2 given data nodes.
         Note: the data nodes are left untouched.
         If the specified relationship didn't get deleted, raise an Exception
 
         TODO: first verify that the relationship is optional in the schema???
+        TODO: migrate from "item_id" values to also internal database ID's, as done in class_of_data_node()
 
-        :param from_id:     The "item_id" value of the data node at which the relationship originates
-        :param to_id:       The "item_id" value of the data node at which the relationship ends
+        :param from_item_id:The "item_id" value of the data node at which the relationship originates
+        :param to_item_id:  The "item_id" value of the data node at which the relationship ends
         :param rel_name:    The name of the relationship to delete
         :param labels:      OPTIONAL (generally, redundant).  Labels required to be on both nodes
 
@@ -2433,11 +2449,11 @@ class NeoSchema:
         """
         assert rel_name != "", f"remove_data_relationship(): no name was provided for the relationship"
 
-        match_from = cls.db.match(labels=labels, key_name="item_id", key_value=from_id,
-                                 dummy_node_name="from")
+        match_from = cls.db.match(labels=labels, key_name="item_id", key_value=from_item_id,
+                                  dummy_node_name="from")
 
-        match_to =   cls.db.match(labels=labels, key_name="item_id", key_value=to_id,
-                                 dummy_node_name="to")
+        match_to =   cls.db.match(labels=labels, key_name="item_id", key_value=to_item_id,
+                                  dummy_node_name="to")
 
         cls.db.remove_links(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
 
@@ -2676,7 +2692,7 @@ class NeoSchema:
                 cls.debug_print(f"***Linking import node (Neo4j ID={metadata_neo_id}) with "
                                 f"data root node (Neo4j ID={root_neo_id}), thru relationship `imported_data`")
                 # Connect the root of the import to the metadata node
-                cls.add_data_relationship_fast(from_neo_id=metadata_neo_id, to_neo_id=root_neo_id, rel_name="imported_data")
+                cls.add_data_relationship(from_id=metadata_neo_id, to_id=root_neo_id, rel_name="imported_data")
                 return [root_neo_id]
 
         elif type(data) == list:         # If the top-level Python data structure is a list
@@ -2688,7 +2704,7 @@ class NeoSchema:
                 cls.debug_print(f"***Linking import node (item_id={metadata_neo_id}) with "
                                 f"data root node (Neo4j ID={root_item_id}), thru relationship `imported_data`")
                 # Connect the root of the import to the metadata node
-                cls.add_data_relationship_fast(from_neo_id=metadata_neo_id, to_neo_id=root_item_id, rel_name="imported_data")
+                cls.add_data_relationship(from_id=metadata_neo_id, to_id=root_item_id, rel_name="imported_data")
 
             return node_id_list
 

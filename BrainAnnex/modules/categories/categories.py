@@ -507,8 +507,8 @@ class Categories:
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
         try:
-            NeoSchema.add_data_relationship(from_id=subcategory_id, to_id=category_id,
-                                            rel_name="BA_subcategory_of", id_type="item_id")
+            NeoSchema.add_data_relationship_OLD(from_id=subcategory_id, to_id=category_id,
+                                                rel_name="BA_subcategory_of", id_type="item_id")
         except Exception as ex:
             raise Exception(f"Unable to create a subcategory relationship. {ex}")
 

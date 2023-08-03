@@ -1022,7 +1022,7 @@ class ApiRouting:
                     Categories.remove_relationship(from_id=from_id, to_id=to_id,
                                                    rel_name=rel_name)       # Category-specific action
 
-                NeoSchema.remove_data_relationship(from_id=from_id, to_id=to_id,
+                NeoSchema.remove_data_relationship(from_item_id=from_id, to_item_id=to_id,
                                                    rel_name=rel_name, labels="BA")
 
                 return_value = cls.SUCCESS_PREFIX              # If no errors
@@ -1063,8 +1063,8 @@ class ApiRouting:
                     Categories.add_relationship(from_id=from_id, to_id=to_id,
                                                 rel_name=rel_name)       # Category-specific action
 
-                NeoSchema.add_data_relationship(from_id=from_id, to_id=to_id,
-                                                rel_name=rel_name, id_type="item_id")
+                NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
+                                                    rel_name=rel_name, id_type="item_id")
 
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:

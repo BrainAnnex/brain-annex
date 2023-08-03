@@ -64,14 +64,14 @@ def test_create_class(db):
     result = db.get_nodes(match)
     assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
 
-    _ , class_A_id = NeoSchema.create_class("A", schema_type="S")
+    _ , class_A_id = NeoSchema.create_class("A", strict=True)
     result = db.get_nodes(match)
     expected = [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'},
                 {'name': 'A', 'schema_id': class_A_id, 'type': 'S'}]
     assert compare_recordsets(result, expected)
 
     with pytest.raises(Exception):
-        assert NeoSchema.create_class("A", schema_type="L")  # A class by that name already exists; so, nothing gets created
+        assert NeoSchema.create_class("A", strict=False)  # A class by that name already exists; so, nothing gets created
 
     with pytest.raises(Exception):
         assert NeoSchema.create_class("B", schema_type="X")   # Non-existent schema_type that raises exception
@@ -432,11 +432,11 @@ def test_get_class_properties_fast(db):
     props = NeoSchema.get_class_properties_fast(neo_id)
     assert props == []
 
-    NeoSchema.add_properties_to_class(class_internal_id=neo_id, property_list = ["X", "Y"])
+    NeoSchema.add_properties_to_class(class_node=neo_id, property_list = ["X", "Y"])
     props = NeoSchema.get_class_properties_fast(neo_id)
     assert props == ["X", "Y"]
 
-    NeoSchema.add_properties_to_class(class_internal_id=neo_id, property_list = ["Z"])
+    NeoSchema.add_properties_to_class(class_node=neo_id, property_list = ["Z"])
     props = NeoSchema.get_class_properties_fast(neo_id)
     assert props == ["X", "Y", "Z"]
 
@@ -540,8 +540,8 @@ def test_get_data_point_id(db):
 def test_allowable_props(db):
     db.empty_dbase()
 
-    lax_int_id, lax_schema_id = NeoSchema.create_class_with_properties("My Lax class", ["A", "B"], schema_type="L")
-    strict_int_id, strict_schema_id = NeoSchema.create_class_with_properties("My Strict class", ["A", "B"], schema_type="S")
+    lax_int_id, lax_schema_id = NeoSchema.create_class_with_properties("My Lax class", ["A", "B"], strict=False)
+    strict_int_id, strict_schema_id = NeoSchema.create_class_with_properties("My Strict class", ["A", "B"], strict=True)
 
 
     d = NeoSchema.allowable_props(class_neo_id=lax_int_id,
@@ -731,7 +731,7 @@ def test_add_data_point_merge(db):
     with pytest.raises(Exception):
         NeoSchema.add_data_node_merge(class_internal_id=class_internal_id)   # The Class doesn't allow data nodes
 
-    class_internal_id , class_schema_id = NeoSchema.create_class("Car", schema_type="S")
+    class_internal_id , class_schema_id = NeoSchema.create_class("Car", strict=True)
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
 
@@ -775,7 +775,7 @@ def test_add_data_point_merge(db):
 
 
     # Successfully adding a new (2nd) data point
-    NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["color"]) # Expand the allow class properties
+    NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["color"]) # Expand the allow class properties
 
     new_datanode_id, _ = NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
                                                        properties={"color": "white"})
@@ -794,7 +794,7 @@ def test_add_data_point_merge(db):
 
 
     # Again expand the allowed class properties
-    NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["year"])
+    NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["year"])
 
     with pytest.raises(Exception):
         NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
@@ -856,7 +856,7 @@ def test_add_data_point_merge(db):
 
 
     # By contrast, a new data node gets added now, because the "mileage" field will now be kept, and there's no "red car with 12,000 miles"
-    NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["mileage"])
+    NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["mileage"])
     new_datanode_id, _ = NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
                                                        properties={"color": "red", "mileage": 12000},
                                                        silently_drop=True)
@@ -902,7 +902,7 @@ def test_add_col_data_merge(db):
 
     class_internal_id , class_schema_id = NeoSchema.create_class_with_properties("Car",
                                                                                  property_list=["color", "year"],
-                                                                                 schema_type="S")
+                                                                                 strict=True)
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
     with pytest.raises(Exception):
@@ -954,7 +954,7 @@ def test_add_data_point_new(db):
     with pytest.raises(Exception):
         NeoSchema.add_data_point(class_internal_id=class_internal_id)   # The Class doesn't allow data nodes
 
-    class_internal_id , class_schema_id = NeoSchema.create_class("Car", schema_type="S")
+    class_internal_id , class_schema_id = NeoSchema.create_class("Car", strict=True)
 
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
@@ -998,7 +998,7 @@ def test_add_data_point_new(db):
 
 
     # Successfully adding a 3rd data point
-    NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["color"]) # Expand the allow class properties
+    NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["color"]) # Expand the allow class properties
 
     new_datanode_id = NeoSchema.add_data_point(class_internal_id=class_internal_id,
                                                properties={"color": "white"})
@@ -1017,7 +1017,7 @@ def test_add_data_point_new(db):
 
 
     # Again expand the allowed class properties
-    NeoSchema.add_properties_to_class(class_internal_id=class_internal_id, property_list=["year"])
+    NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["year"])
 
     with pytest.raises(Exception):
         NeoSchema.add_data_point(class_internal_id=class_internal_id,
@@ -1339,12 +1339,12 @@ def test_delete_data_point(db):
 def test_add_data_relationship(db):
     db.empty_dbase()
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship(from_id=123, to_id=456, rel_name="junk")  # No such nodes exist
+        NeoSchema.add_data_relationship_OLD(from_id=123, to_id=456, rel_name="junk")  # No such nodes exist
 
     neo_id_1 = db.create_node("random A")
     neo_id_2 = db.create_node("random B")
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship(from_id=neo_id_1, to_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
+        NeoSchema.add_data_relationship_OLD(from_id=neo_id_1, to_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
 
     _ , person_class_id = NeoSchema.create_class("Person")
     person_id = NeoSchema.add_data_point_OLD("Person")
@@ -1354,22 +1354,22 @@ def test_add_data_relationship(db):
 
     with pytest.raises(Exception):
         # No such relationship exists between their Classes
-        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
 
     # Add the "DRIVE" relationship between the classes
     NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="DRIVES")
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="", id_type="item_id")  # Lacks relationship name
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="", id_type="item_id")  # Lacks relationship name
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name=None, id_type="item_id")  # Lacks relationship name
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name=None, id_type="item_id")  # Lacks relationship name
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship(from_id=car_id, to_id=person_id, rel_name="DRIVES", id_type="item_id")  # Wrong direction
+        NeoSchema.add_data_relationship_OLD(from_id=car_id, to_id=person_id, rel_name="DRIVES", id_type="item_id")  # Wrong direction
 
     # Now, finally, it'll work
-    NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+    NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
 
     # Verify the cycle of "DRIVES" relationships
     q = '''
@@ -1384,11 +1384,11 @@ def test_add_data_relationship(db):
 
     with pytest.raises(Exception):
         # Attempting to add it again
-        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
 
     with pytest.raises(Exception):
         # Relationship name not declared in the Schema
-        NeoSchema.add_data_relationship(from_id=person_id, to_id=car_id, rel_name="SOME_OTHER_NAME", id_type="item_id")
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="SOME_OTHER_NAME", id_type="item_id")
 
 
     # Now add reverse a relationship, and this time use the Neo4j ID's to locate the nodes
@@ -1396,7 +1396,7 @@ def test_add_data_relationship(db):
 
     neo_person_id = NeoSchema.get_data_node_id(person_id)
     neo_car_id = NeoSchema.get_data_node_id(car_id)
-    NeoSchema.add_data_relationship(from_id=neo_car_id, to_id=neo_person_id, rel_name="IS_DRIVEN_BY")
+    NeoSchema.add_data_relationship_OLD(from_id=neo_car_id, to_id=neo_person_id, rel_name="IS_DRIVEN_BY")
 
     # Verify the cycle of "IS_DRIVEN_BY" relationships
     q = '''
@@ -1423,12 +1423,12 @@ def test_add_data_relationship(db):
 def test_add_data_relationship_fast(db):
     db.empty_dbase()
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_fast(from_neo_id=123, to_neo_id=456, rel_name="junk")  # No such nodes exist
+        NeoSchema.add_data_relationship(from_id=123, to_id=456, rel_name="junk")  # No such nodes exist
 
     neo_id_1 = db.create_node("random A")
     neo_id_2 = db.create_node("random B")
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_fast(from_neo_id=neo_id_1, to_neo_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
+        NeoSchema.add_data_relationship(from_id=neo_id_1, to_id=neo_id_2, rel_name="junk") # Not data nodes with a Schema
 
     _ , person_class_id = NeoSchema.create_class("Person")
     person_neo_id = NeoSchema.add_data_point_fast_OBSOLETE("Person")
@@ -1438,37 +1438,37 @@ def test_add_data_relationship_fast(db):
 
     with pytest.raises(Exception):
         # No such relationship exists between their Classes
-        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="DRIVES")
+        NeoSchema.add_data_relationship(from_id=person_neo_id, to_id=car_neo_id, rel_name="DRIVES")
 
     # Add the "DRIVE" relationship between the Classes
     NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="DRIVES")
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="")  # Lacks relationship name
+        NeoSchema.add_data_relationship(from_id=person_neo_id, to_id=car_neo_id, rel_name="")  # Lacks relationship name
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name=None)  # Lacks relationship name
+        NeoSchema.add_data_relationship(from_id=person_neo_id, to_id=car_neo_id, rel_name=None)  # Lacks relationship name
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_fast(from_neo_id=car_neo_id, to_neo_id=person_neo_id, rel_name="DRIVES")  # Wrong direction
+        NeoSchema.add_data_relationship(from_id=car_neo_id, to_id=person_neo_id, rel_name="DRIVES")  # Wrong direction
 
     # Now it works
-    NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="DRIVES")
+    NeoSchema.add_data_relationship(from_id=person_neo_id, to_id=car_neo_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         # Attempting to add it again
-        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="DRIVES")
+        NeoSchema.add_data_relationship(from_id=person_neo_id, to_id=car_neo_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         # Relationship name not declared in the Schema
-        NeoSchema.add_data_relationship_fast(from_neo_id=person_neo_id, to_neo_id=car_neo_id, rel_name="SOME_OTHER_NAME")
+        NeoSchema.add_data_relationship(from_id=person_neo_id, to_id=car_neo_id, rel_name="SOME_OTHER_NAME")
 
 
     # Now add reverse a relationship between the Classes
     NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_DRIVEN_BY")
 
     # Add that same reverse relationship between the data points
-    NeoSchema.add_data_relationship_fast(from_neo_id=car_neo_id, to_neo_id=person_neo_id, rel_name="IS_DRIVEN_BY")
+    NeoSchema.add_data_relationship(from_id=car_neo_id, to_id=person_neo_id, rel_name="IS_DRIVEN_BY")
 
 
 
@@ -1563,7 +1563,7 @@ def test_next_available_datapoint_id(db):
 def test_get_cached_class_data(db):
     db.empty_dbase()
 
-    car_class_id, _ = NeoSchema.create_class_with_properties("Cars", ["A", "B"], schema_type="L")
+    car_class_id, _ = NeoSchema.create_class_with_properties("Cars", ["A", "B"], strict=False)
     schema_cache = SchemaCache()
 
     # Test "class_attributes" option
@@ -1586,7 +1586,7 @@ def test_get_cached_class_data(db):
 
 
     # Add a related 2nd Class
-    vehicle_class_id, _ = NeoSchema.create_class_with_properties("Vehicles", ["C", "D", "E"], schema_type="S")
+    vehicle_class_id, _ = NeoSchema.create_class_with_properties("Vehicles", ["C", "D", "E"], strict=True)
 
     NeoSchema.create_class_relationship(from_class="Cars", to_class="Vehicles", rel_name="type of")
 
@@ -1618,7 +1618,7 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
 
     assert cache._schema == {}
 
-    neo_id, schema_id = NeoSchema.create_class("My first class", schema_type="L")
+    neo_id, schema_id = NeoSchema.create_class("My first class", strict=False)
 
     cache.get_cached_class_data(class_id=neo_id, request="class_attributes")
     expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'type': 'L'}
