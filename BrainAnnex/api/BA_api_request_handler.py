@@ -679,7 +679,7 @@ class APIRequestHandler:
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_item_id = NeoSchema.next_available_datapoint_id()
+        new_item_id = NeoSchema.next_available_datanode_id()
         print("New item will be assigned ID:", new_item_id)
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
@@ -1094,7 +1094,7 @@ class APIRequestHandler:
 
         # Zap leading/trailing blanks from all entries, and add 2 extra fields (for item_id and schema_code)
         '''
-        id_offset = NeoSchema.next_available_datapoint_id()
+        id_offset = NeoSchema.next_available_datanode_id()
         
         all_matches = [list(map(lambda s: s.strip(), val)) + [i+id_offset] + ["r"]
                        for i, val in enumerate(all_matches)]

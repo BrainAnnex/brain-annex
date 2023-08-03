@@ -225,8 +225,8 @@ class FullTextIndexing:
             f"new_indexing(): an index ALREADY exists for the given Content Item node (internal id {content_item_id})"
 
         # Create a data node of type "Indexer", and link it up to the passed Content Item
-        indexer_id = NeoSchema.add_data_point_with_links(class_name = "Indexer",
-                                                          links =[{"internal_id": content_item_id, "rel_name": "has_index",
+        indexer_id = NeoSchema.add_data_node_with_links(class_name ="Indexer",
+                                                        links =[{"internal_id": content_item_id, "rel_name": "has_index",
                                                                   "rel_dir": "IN"}])
 
         cls.populate_index(indexer_id=indexer_id, unique_words=unique_words)

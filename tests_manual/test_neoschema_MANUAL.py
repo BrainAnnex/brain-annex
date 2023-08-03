@@ -218,7 +218,7 @@ def test_next_available_id(db):
 
 
 def test_next_available_datapoint_id(db):
-    print(NeoSchema.next_available_datapoint_id())
+    print(NeoSchema.next_available_datanode_id())
 
 
 
@@ -292,11 +292,11 @@ def test_add_data_point(db):
 def test_add_existing_data_point(db):
 
     neo_id = db.create_node("BA", {"note": "TO DELETE!"})
-    new_item_ID = NeoSchema.register_existing_data_point(schema_id=19, existing_neo_id=neo_id)
+    new_item_ID = NeoSchema.register_existing_data_node(schema_id=19, existing_neo_id=neo_id)
     print("new_item_ID: ", new_item_ID)
 
     neo_id = db.create_node("BA", {"formula": "NH3"})
-    new_item_ID = NeoSchema.register_existing_data_point(class_name="Chemicals", existing_neo_id=neo_id)
+    new_item_ID = NeoSchema.register_existing_data_node(class_name="Chemicals", existing_neo_id=neo_id)
     print("new_item_ID: ", new_item_ID)
 
 

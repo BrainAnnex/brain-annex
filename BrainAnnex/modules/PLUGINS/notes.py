@@ -16,14 +16,16 @@ class Notes:
         :param item_id: An integer with the URI ("item ID") of the Content Item
         :return:        None.  If index isn't found, an Exception is raised
         """
-        print(f"***** DELETING INDEXING for item {item_id}")
+        #print(f"***** DELETING INDEXING for item {item_id}")
         content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
         FullTextIndexing.remove_indexing(content_id)
+
 
 
     @classmethod
     def delete_content_successful(cls, item_id: int) -> None:
         pass    # No action needed
+
 
 
     @classmethod

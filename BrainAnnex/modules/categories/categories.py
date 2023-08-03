@@ -45,7 +45,7 @@ class Categories:
         """
         # Note: since the category_id is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
-        return NeoSchema.fetch_data_point(item_id=category_id, labels="BA", properties={"schema_code": "cat"})
+        return NeoSchema.fetch_data_node(item_id=category_id, labels="BA", properties={"schema_code": "cat"})
 
 
 
@@ -445,15 +445,15 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        parent_category_internal_id = NeoSchema.get_data_point_id(key_value=category_id, key_name="item_id")
+        parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_id, key_name="item_id")
 
-        new_internal_id = NeoSchema.add_data_point_with_links(
+        new_internal_id = NeoSchema.add_data_node_with_links(
                                 class_name = "Categories",
                                 properties = data_dict, labels = ["BA", "Categories"],
                                 links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
                                 assign_item_id=True)
 
-        new_data_point = NeoSchema.fetch_data_point(internal_id = new_internal_id)
+        new_data_point = NeoSchema.fetch_data_node(internal_id = new_internal_id)
         return new_data_point["item_id"]
 
 
@@ -1195,7 +1195,7 @@ class Collections:
         if result == {}:
             # An empty find is indicative of either an "insert at the end" (no n_after found),
             #       or a bad insert_after value that matches no node
-            node = NeoSchema.fetch_data_point(item_id = insert_after)
+            node = NeoSchema.fetch_data_node(item_id = insert_after)
             if node == {}:
                 raise Exception(f"There is no node with the `item_id` value ({insert_after}) passed by `insert_after`")
 
@@ -1229,7 +1229,7 @@ class Collections:
 
         #new_neo_id = cls.db.create_node_with_relationships(labels="BA", properties=item_properties, connections=link_to)
 
-        #item_id = NeoSchema.register_existing_data_point(class_name=item_class_name, existing_neo_id=new_neo_id, new_item_id=new_item_id)
+        #item_id = NeoSchema.register_existing_data_node(class_name=item_class_name, existing_neo_id=new_neo_id, new_item_id=new_item_id)
 
         #return item_id
 
