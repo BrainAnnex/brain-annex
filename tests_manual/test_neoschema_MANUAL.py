@@ -26,7 +26,7 @@ def test_create_class(db):
 def test_create_class_relationship(db):
     #french_class_id = NeoSchema.create_class("French Vocabulary")
     #foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
-    NeoSchema.create_class_relationship(from_id=93, to_id=19, rel_name="INSTANCE_OF")
+    NeoSchema.create_class_relationship_OLD(from_id=93, to_id=19, rel_name="INSTANCE_OF")
 
 
 
@@ -105,7 +105,7 @@ def test_create_tree_from_dict(db):
 
 
 def test_data_points_of_class(db):
-    all_category_ids = NeoSchema.data_points_of_class("Categories")
+    all_category_ids = NeoSchema.data_nodes_of_class("Categories")
     print(all_category_ids)
     assert len(all_category_ids) == 27
 
@@ -218,7 +218,7 @@ def test_next_available_id(db):
 
 
 def test_next_available_datapoint_id(db):
-    print(NeoSchema.next_available_datapoint_id())
+    print(NeoSchema.next_available_datanode_id())
 
 
 
@@ -292,11 +292,11 @@ def test_add_data_point(db):
 def test_add_existing_data_point(db):
 
     neo_id = db.create_node("BA", {"note": "TO DELETE!"})
-    new_item_ID = NeoSchema.register_existing_data_point(schema_id=19, existing_neo_id=neo_id)
+    new_item_ID = NeoSchema.register_existing_data_node(schema_id=19, existing_neo_id=neo_id)
     print("new_item_ID: ", new_item_ID)
 
     neo_id = db.create_node("BA", {"formula": "NH3"})
-    new_item_ID = NeoSchema.register_existing_data_point(class_name="Chemicals", existing_neo_id=neo_id)
+    new_item_ID = NeoSchema.register_existing_data_node(class_name="Chemicals", existing_neo_id=neo_id)
     print("new_item_ID: ", new_item_ID)
 
 
@@ -310,10 +310,10 @@ def test_add_data_relationship(db):
     #status = NeoSchema.add_data_relationship(subcategory_id=536, category_id=540, rel_name="BA_served_at")
     #status = NeoSchema.add_data_relationship(subcategory_id=514, category_id=544, rel_name="BA_subcategory_of")
     #status = NeoSchema.add_data_relationship(subcategory_id=541, category_id=535, rel_name="BA_in_category")
-    number_added = NeoSchema.add_data_relationship(from_id=9, to_id=690, rel_name="BA_testing")
+    number_added = NeoSchema.add_data_relationship_OLD(from_id=9, to_id=690, rel_name="BA_testing")
     assert number_added == 1
 
 
 
 def test_remove_data_relationship(db):
-    NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")
+    NeoSchema.remove_data_relationship(from_item_id=3, to_item_id=1, rel_name="BA_subcategory_of")

@@ -1,1 +1,1 @@
-version 5.0.0-beta25.2
+version 5.0.0-beta26

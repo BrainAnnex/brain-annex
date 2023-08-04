@@ -5,6 +5,7 @@ from BrainAnnex.modules.categories.categories import Collections
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
+from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
 from home.user_manager import UserManagerNeo4j
 
 
@@ -20,7 +21,7 @@ class InitializeBrainAnnex:
         Initialize various static classes that need the "NeoAccess" database object
         (to avoid multiple dbase connections)
 
-        :param db_handle:
+        :param db_handle:   Object of class "NeoAccess"
         :return:            None
         """
         PagesRequestHandler.db = db_handle
@@ -30,6 +31,7 @@ class InitializeBrainAnnex:
         NeoSchema.db = db_handle
         UserManagerNeo4j.db = db_handle
         NodeExplorer.db = db_handle
+        FullTextIndexing.db = db_handle
 
 
 

@@ -4,7 +4,7 @@
 import pytest
 from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache, SchemaCacheExperimental
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 
 
@@ -87,8 +87,8 @@ def test_get_sibling_categories(db):
     french_item_id = Categories.add_subcategory({"category_id": language_item_id, "subcategory_name": "French"})
     italian_item_id = Categories.add_subcategory({"category_id": language_item_id, "subcategory_name": "Italian"})
 
-    french_internal_id = NeoSchema.get_data_point_internal_id(item_id = french_item_id)
-    italian_internal_id = NeoSchema.get_data_point_internal_id(item_id = italian_item_id)
+    french_internal_id = NeoSchema.get_data_node_internal_id(item_id = french_item_id)
+    italian_internal_id = NeoSchema.get_data_node_internal_id(item_id = italian_item_id)
 
     result = Categories.get_sibling_categories(french_internal_id)
     assert len(result) == 1

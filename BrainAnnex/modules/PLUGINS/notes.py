@@ -5,11 +5,31 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 class Notes:
     """
-    Plugin-provided handlers for "notes"
+    Plugin-provided handlers for "notes"  (HTML-formatted text)
     """
 
     @classmethod
-    def plugin_n_add_content(cls, item_id: int, data_binding: dict) -> dict:
+    def delete_content_before(cls, item_id: int) -> None:
+        """
+        Invoked just prior to deleting the data node
+
+        :param item_id: An integer with the URI ("item ID") of the Content Item
+        :return:        None.  If index isn't found, an Exception is raised
+        """
+        #print(f"***** DELETING INDEXING for item {item_id}")
+        content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
+        FullTextIndexing.remove_indexing(content_id)
+
+
+
+    @classmethod
+    def delete_content_successful(cls, item_id: int) -> None:
+        pass    # No action needed
+
+
+
+    @classmethod
+    def add_content(cls, item_id: int, data_binding: dict) -> dict:
         """
         Special handling for Notes (ought to be specified in its Schema):
                the "body" value is to be stored in a file named "notes-ID.htm", where ID is the item_id,
@@ -17,7 +37,9 @@ class Notes:
                        basename: "notes-ID"
                        suffix: "htm"
 
-        :return: The altered data_binding dictionary.  In case of error, an Exception is raised.
+        :param item_id:     An integer with the URI of the Content Item
+        :param data_binding:
+        :return:            The altered data_binding dictionary.  In case of error, an Exception is raised.
         """
         # Save and ditch the "body" attribute - which is not to be stored in the database
         body = data_binding["body"]
@@ -41,15 +63,17 @@ class Notes:
 
 
     @classmethod
-    def plugin_n_update_content(cls, data_binding: dict, set_dict: dict) -> dict:
+    def update_content(cls, data_binding: dict, set_dict: dict) -> dict:
         """
         Special handling for Notes (ought to be specified in its Schema):
-               the "body" value is to be stored in a file named "notes-ID.htm", where ID is the item_id,
-               and NOT be stored in the database.  Instead, store in the database:
-                       basename: "notes-ID"
-                       suffix: "htm"
+        the "body" value is to be stored in a file named "notes-ID.htm", where ID is the item_id,
+        and NOT be stored in the database.  Instead, store in the database:
+               basename: "notes-ID"
+               suffix: "htm"
 
-        :return: The altered data_binding dictionary
+        :param data_binding:
+        :param set_dict:
+        :return:            The altered data_binding dictionary
         """
         body = data_binding["body"]
         item_id = data_binding["item_id"]
@@ -79,15 +103,16 @@ class Notes:
         """
         Invoked after a new Content Item of this type gets successfully added
 
-        :param item_id:
+        :param item_id: An integer with the URI of the Content Item
         :param pars:
         :return:        None
         """
-        return  # For now, index isn't being done
+        #return  # For now, index isn't being done.  TODO: test and restore
         body = pars.get("body")
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-
-        cls.update_index(unique_words)
+        content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
+        print(f"***** CREATING INDEXING for item {item_id}. Words: {unique_words}")
+        FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=unique_words)
 
 
 
@@ -96,29 +121,13 @@ class Notes:
         """
         Invoked after a Content Item of this type gets successfully updated
 
-        :param item_id:
+        :param item_id: An integer with the URI of the Content Item
         :param pars:
         :return:        None
         """
-        return  # For now, index isn't being done
+        #return  # For now, index isn't being done.  TODO: test and restore
         body = pars.get("body")
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-
-        cls.update_index(unique_words)
-
-
-
-    @classmethod
-    def update_index(cls, unique_words: [str]) -> None:
-        """
-        TODO: run this in a separate thread, in a separate class
-
-        :param unique_words:    A list of strings containing "acceptable", unique words to index
-        :return:                None
-        """
-        class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
-
-        #print("unique_words: \n", unique_words)
-
-        # Add each of words to the index, unless already present there
-        NeoSchema.add_col_data_merge(class_internal_id=class_db_id, property_name="name", value_list=unique_words)
+        content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
+        print(f"***** UPDATING INDEXING for item {item_id}. Words: {unique_words}")
+        FullTextIndexing.update_indexing(content_item_id=content_id, unique_words=unique_words)

@@ -8,8 +8,6 @@ import pandas as pd
 import os
 from flask import request, current_app  # TODO: phase out (?)
 from typing import Union
-import sys                  # Used to give better feedback on Exceptions
-import html
 import shutil
 from time import sleep
 from datetime import datetime
@@ -34,7 +32,7 @@ class APIRequestHandler:
 
     Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
     """
-    # The "db" and several other properties get set by InitializeBrainAnnex.set_dbase()
+    # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
     db = None           # Object of class "NeoAccess".  MUST be set before using this class!
 
@@ -66,33 +64,6 @@ class APIRequestHandler:
 
 
     #######################     GENERAL UTILITIES       #######################
-
-    @classmethod
-    def exception_helper(cls, ex, safe_html=False) -> str:
-        """
-        To give better info on an Exception, in the form:
-            EXCEPTION_TYPE : THE_INFO_MESSAGE_IN_ex
-
-        The info returned by "ex" is skimpy;
-        for example, in case of a key error, all that it returns is the key name!
-
-        :param ex:          The Exemption object
-        :param safe_html:   Flag indicating whether to make safe for display in a browser (for example,
-                            the exception type may contain triangular brackets)
-
-        :return:    A string with a more detailed explanation of the given Exception
-                    (prefixed by the Exception type, in an HTML-safe form in case it gets sent to a web page)
-                    EXAMPLE (as seen when displayed in a browser):
-                        <class 'neo4j.exceptions.ClientError'> : THE_INFO_MESSAGE_IN_ex
-        """
-        (exc_type, _, _) = sys.exc_info()
-
-        if safe_html:
-            exc_type = html.escape(str(exc_type))
-
-        return f"{exc_type} : {ex}"
-
-
 
     @classmethod
     def to_int_if_possible(cls, s: str) -> Union[int, str, None]:
@@ -196,15 +167,16 @@ class APIRequestHandler:
 
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
-        _, new_id = NeoSchema.create_class_with_properties(new_class_name, property_list_clean,
-                                                           class_to_link_to=instance_of_class, link_to_name="INSTANCE_OF")
+        new_id, _ = NeoSchema.create_class_with_properties(new_class_name, property_list_clean,
+                                                           class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
 
 
         # If requested, link to another existing class
         if ("linked_to" in class_specs) and ("rel_name" in class_specs) and ("rel_dir" in class_specs):
             linked_to = class_specs["linked_to"]
-            linked_to_id = NeoSchema.get_class_id(class_name = linked_to)
-            print(f"Linking the new class to the existing class `{linked_to}`, which has Schema ID {linked_to_id}")
+            #linked_to_id = NeoSchema.get_class_id(class_name = linked_to)
+            #print(f"Linking the new class to the existing class `{linked_to}`, which has ID {linked_to_id}")
+            print(f"Linking the new class to the existing class `{linked_to}`")
             rel_name = class_specs["rel_name"]
             rel_dir = class_specs["rel_dir"]    # The link direction is relative to the newly-created class node
             print(f"rel_name: `{rel_name}` | rel_dir: {rel_dir}")
@@ -213,9 +185,9 @@ class APIRequestHandler:
 
             try:
                 if rel_dir == "OUT":
-                    NeoSchema.create_class_relationship(from_id=new_id, to_id=linked_to_id, rel_name=rel_name)
+                    NeoSchema.create_class_relationship(from_class=new_id, to_class=linked_to, rel_name=rel_name)
                 elif rel_dir == "IN":
-                    NeoSchema.create_class_relationship(from_id=linked_to_id, to_id=new_id, rel_name=rel_name)
+                    NeoSchema.create_class_relationship(from_class=linked_to, to_class=new_id, rel_name=rel_name)
             except Exception as ex:
                 raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
@@ -247,9 +219,9 @@ class APIRequestHandler:
         rel_name = rel_name.strip()
         print("rel_name: ", rel_name)
 
-        from_class_id = NeoSchema.get_class_id(from_class_name)
-        to_class_id = NeoSchema.get_class_id(to_class_name)
-        NeoSchema.create_class_relationship(from_id=from_class_id, to_id=to_class_id, rel_name=rel_name)
+        #from_class_id = NeoSchema.get_class_id(from_class_name)
+        #to_class_id = NeoSchema.get_class_id(to_class_name)
+        NeoSchema.create_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
 
 
 
@@ -279,7 +251,7 @@ class APIRequestHandler:
 
         # Locate the internal ID of the Class node
         class_internal_id = NeoSchema.get_class_internal_id(class_name.strip())
-        number_prop_added = NeoSchema.add_properties_to_class(class_internal_id = class_internal_id, property_list = [prop_name])
+        number_prop_added = NeoSchema.add_properties_to_class(class_node= class_internal_id, property_list = [prop_name])
         if number_prop_added != 1:
             raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}` (internal ID {class_internal_id})")
 
@@ -537,7 +509,7 @@ class APIRequestHandler:
         TODO: if any (non-special?) field is blank, drop it altogether from the node;
               maybe add this capability to set_fields()
 
-        :return:    None
+        :return:    None.  In case of error, an Exception is raised
         """
         print("In update_content_item(). POST dict: ", post_data)
 
@@ -572,7 +544,7 @@ class APIRequestHandler:
         #       TODO: try to infer them from the Schema
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
-            set_dict = Notes.plugin_n_update_content(data_binding, set_dict)
+            set_dict = Notes.update_content(data_binding, set_dict)
 
         # TODO: utilize the schema layer, rather than directly access the database
         match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
@@ -590,49 +562,57 @@ class APIRequestHandler:
 
 
     @classmethod
-    def delete_content_item(cls, item_id: str, schema_code: str) -> str:
+    def delete_content_item(cls, item_id: str, schema_code: str) -> None:
         """
         Delete the specified individual Content Item.
         Note that schema_code is redundant.
+        In case of error, an Exception is raised
 
         :param item_id:     String version of the unique ID
         :param schema_code: Redundant
-        :return:            An empty string if successful, or an error message otherwise
+        :return:            None.  In case of error, an Exception is raised
         """
-        print(f"In delete_content_item(). Attempting to delete item id {item_id} of type `{schema_code}`")
+        print(f"In delete_content_item(). Attempting to delete item_id {item_id} of type `{schema_code}`")
 
         try:
             item_id = int(item_id)
         except Exception as ex:
-            return f"item_id is missing or not an integer. {ex}"
+            raise Exception(f"item_id is missing or not an integer. {ex}")
 
 
         # PLUGIN-SPECIFIC OPERATIONS that perform filesystem operations
-        #       (TODO: try to infer them from the Schema)
+        #       (TODO: try to infer that from the Schema)
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
             ###status = cls.delete_attached_media_file(item_id)
-            status, record = cls.lookup_media_record(item_id)
-            if status:
+            record = cls.lookup_media_record(item_id)
+            if record is not None:
                 MediaManager.delete_media_file(record["basename"], record["suffix"])
 
         if schema_code == "i":
-            # Extra processing for the "Images" plugin
-            ###status = cls.plugin_i_delete_content(item_id)
-            status, record = cls.lookup_media_record(item_id)
-            if status:
+            # Extra processing for the "Images" plugin (for the thumbnail images)
+            record = cls.lookup_media_record(item_id)
+            if record is not None:
                 MediaManager.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
+
+        if schema_code == "n":
+            Notes.delete_content_before(item_id)
 
         match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
         number_deleted = cls.db.delete_nodes(match)
 
         if number_deleted == 1:
-            return ""   # Successful termination, with 1 Content Item deleted, as expected
+            if schema_code == "n":
+                # Extra processing for the "Notes" plugin
+                Notes.delete_content_successful(item_id)    # Not actually needed for notes, but setting up the system
+
+            return       # Successful termination, with 1 Content Item deleted, as expected
+
         elif number_deleted == 0:
-            return f"Unable to delete Content Item id {item_id} of type `{schema_code}`"  # Error message (nothing deleted)
+            raise Exception(f"Unable to delete Content Item id {item_id} of type `{schema_code}`")  # Error message (nothing deleted)
         else:
-            return f"{number_deleted} Content Items deleted, instead of the expected 1" # Error message (too much deleted)
-                                                                                        # Should not happen, since item_id is a primary key
+            raise Exception(f"{number_deleted} Content Items deleted, instead of the expected 1")    # Error message (too much deleted)
+                                                                                                     # Should not happen, since item_id is a primary key
 
 
     @classmethod
@@ -699,7 +679,7 @@ class APIRequestHandler:
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_item_id = NeoSchema.next_available_datapoint_id()
+        new_item_id = NeoSchema.next_available_datanode_id()
         print("New item will be assigned ID:", new_item_id)
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
@@ -712,7 +692,7 @@ class APIRequestHandler:
         #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
-            post_data = Notes.plugin_n_add_content(new_item_id, post_data)
+            post_data = Notes.add_content(new_item_id, post_data)
 
 
         print("Revised post_data: ", post_data)
@@ -755,19 +735,22 @@ class APIRequestHandler:
     #######################     MEDIA-RELATED      #######################
 
     @classmethod
-    def lookup_media_record(cls, item_id: int) -> tuple:
+    def lookup_media_record(cls, item_id: int) -> Union[dict, None]:
         """
-        Delete the media file attached to the specified Content Item:
+        Attempt to retrieve the metadata for the media file attached to the specified Content Item
+        TODO: move to MediaManager class
+
+        :param item_id: An integer with the URI of the Content Item
+        :return:        If found, return a dict with the record; otherwise, return None
         """
         record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
         if record is None:
-            return False, None
+            return None
 
         if ("basename" not in record) or ("suffix" not in record):
-            return False, None
+            return None
 
-        MediaManager.delete_media_file(record["basename"], record["suffix"])
-        return True, record
+        return record
 
 
 
@@ -1111,7 +1094,7 @@ class APIRequestHandler:
 
         # Zap leading/trailing blanks from all entries, and add 2 extra fields (for item_id and schema_code)
         '''
-        id_offset = NeoSchema.next_available_datapoint_id()
+        id_offset = NeoSchema.next_available_datanode_id()
         
         all_matches = [list(map(lambda s: s.strip(), val)) + [i+id_offset] + ["r"]
                        for i, val in enumerate(all_matches)]

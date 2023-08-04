@@ -10,6 +10,7 @@ from BrainAnnex.api.BA_api_request_handler import DocumentationGenerator
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
+import BrainAnnex.modules.utilities.exceptions as exceptions
 import sys                  # Used to give better feedback on Exceptions
 import shutil
 #from time import sleep     # Used for tests of delays in asynchronous fetching
@@ -862,13 +863,12 @@ class ApiRouting:
             Note that schema_code is redundant.
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete/46/n
             """
-            err_status = APIRequestHandler.delete_content_item(item_id, schema_code)
-        
-            if err_status == "":    # If no errors
-                return_value = cls.SUCCESS_PREFIX
-            else:                   # If errors
-                return_value = cls.ERROR_PREFIX + err_status
-        
+            try:
+                APIRequestHandler.delete_content_item(item_id, schema_code)
+                return_value = cls.SUCCESS_PREFIX              # If no errors
+            except Exception as ex:
+                return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
+
             print(f"delete() is returning: `{return_value}`")
         
             return return_value
@@ -908,7 +908,7 @@ class ApiRouting:
                 new_id = APIRequestHandler.new_content_item_in_category(pars_dict)
                 return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
+                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
         
             print(f"add_item_to_category() is returning: `{return_value}`")
         
@@ -938,7 +938,7 @@ class ApiRouting:
                 new_id = Categories.add_subcategory(dict(post_data))
                 return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
+                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
         
             print(f"add_subcategory() is returning: `{return_value}`")
         
@@ -957,7 +957,7 @@ class ApiRouting:
                 Categories.delete_category(int(category_id))
                 return_value = cls.SUCCESS_PREFIX
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
+                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
         
             print(f"delete_category() is returning: `{return_value}`")
         
@@ -985,7 +985,7 @@ class ApiRouting:
                 Categories.add_subcategory_relationship(subcategory_id=subcategory_id, category_id=category_id)
                 return_value = cls.SUCCESS_PREFIX
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)
+                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
         
             print(f"add_subcategory_relationship() is returning: `{return_value}`")
         
@@ -1022,12 +1022,12 @@ class ApiRouting:
                     Categories.remove_relationship(from_id=from_id, to_id=to_id,
                                                    rel_name=rel_name)       # Category-specific action
 
-                NeoSchema.remove_data_relationship(from_id=from_id, to_id=to_id,
+                NeoSchema.remove_data_relationship(from_item_id=from_id, to_item_id=to_id,
                                                    rel_name=rel_name, labels="BA")
 
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
+                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
 
             print(f"remove_relationship() is returning: `{return_value}`")
 
@@ -1063,12 +1063,12 @@ class ApiRouting:
                     Categories.add_relationship(from_id=from_id, to_id=to_id,
                                                 rel_name=rel_name)       # Category-specific action
 
-                NeoSchema.add_data_relationship(from_id=from_id, to_id=to_id,
-                                                rel_name=rel_name, id_type="item_id")
+                NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
+                                                    rel_name=rel_name, id_type="item_id")
 
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
+                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
 
             print(f"add_relationship() is returning: `{return_value}`")
 
@@ -1238,7 +1238,7 @@ class ApiRouting:
                 APIRequestHandler.do_stop_data_intake()
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + APIRequestHandler.exception_helper(ex)   # In case of errors
+                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
 
             print(f"stop_data_intake() is returning: `{return_value}`")
 
@@ -1275,7 +1275,7 @@ class ApiRouting:
 
                 response = {"status": "ok", "result": result}              # Successful termination
             except Exception as ex:
-                response = {"status": "error", "error_message":  APIRequestHandler.exception_helper(ex)}    # Error termination
+                response = {"status": "error", "error_message":  exceptions.exception_helper(ex)}    # Error termination
 
             print(f"bulk_import() is returning: `{response}`")
 
@@ -1548,7 +1548,7 @@ class ApiRouting:
                 else:
                     return f"Unknown requested type of download: {download_type}"
             except Exception as ex:
-                    response = APIRequestHandler.exception_helper(ex, safe_html=True)
+                    response = exceptions.exception_helper(ex, safe_html=True)
                     error_page_body = f'''<b>Unable to perform download</b>. <br>
                                           This is typically due to the 'APOC' library not being installed on Neo4j,
                                           unless the error message below indicates something else. 
