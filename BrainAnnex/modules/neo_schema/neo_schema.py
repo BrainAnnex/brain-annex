@@ -577,8 +577,9 @@ class NeoSchema:
 
 
     @classmethod
-    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:    #### NOT IN CURRENT USE
+    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:
         """
+        #### TODO: NOT IN CURRENT USE
         Rename the old relationship between the specified classes
         TODO: if more than 1 relationship exists between the given Classes,
               then they will all be replaced??  TO FIX!  (the old name ought be provided)
@@ -1373,9 +1374,10 @@ class NeoSchema:
         """
         Return the Item ID's of all the Data Nodes of the given Class
         TODO: offer to optionally use a label
+        TODO: switch to returning the internal database ID's
 
         :param class_name:
-        :return:
+        :return:            Return the Item ID's of all the Data Nodes of the given Class
         """
         q = '''
             MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.item_id AS item_id
@@ -2590,10 +2592,13 @@ class NeoSchema:
 
 
     #####################################################################################################
-    #                                                                                                   #
-    #                                      ~ DATA IMPORT ~                                              #
-    #                                                                                                   #
+
+    '''                                      ~   DATA IMPORT   ~                                       '''
+
+    def ________DATA_IMPORT________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
 
     @classmethod
     def import_json_data(cls, json_str: str, class_name: str, parse_only=False, provenance=None) -> Union[None, int, List[int]]:
@@ -2963,13 +2968,19 @@ class NeoSchema:
 
 
 
-    ########################################################
-    #                   ~  EXPORT SCHEMA  ~                #
-    ########################################################
+    #####################################################################################################
+
+    '''                                     ~   EXPORT SCHEMA   ~                                     '''
+
+    def ________EXPORT_SCHEMA________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
 
     @classmethod
-    def export_schema(cls) -> {}:      # TODO: unit testing
+    def export_schema(cls) -> {}:
         """
+        TODO: unit testing
         Export all the Schema nodes and relationships as a JSON string.
 
         IMPORTANT:  APOC must be activated in the database, to use this function.
@@ -2990,7 +3001,14 @@ class NeoSchema:
 
 
 
-    ###############   INTERNAL  METHODS   ###############
+    #####################################################################################################
+
+    '''                                  ~   PRIVATE METHODS   ~                                      '''
+
+    def ________PRIVATE_METHODS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
 
     @classmethod
     def valid_schema_id(cls, schema_id: int) -> bool:
@@ -3007,6 +3025,7 @@ class NeoSchema:
 
 
 
+    # TODO: prefix "_" to name of private methods
     @classmethod
     def next_available_schema_id(cls) -> int:
         """

@@ -169,26 +169,26 @@ class UserManagerNeo4j:
             user_obj  = cls.fetch_user_obj(user_id) # Attempt to locate the user in the local lookup table
 
             if user_obj is not None:    # The requested "User" object was found
-                print("obtain_user_obj(): Re-using an existing 'User' object, for User ID: ", user_id)
+                #print("obtain_user_obj(): Re-using an existing 'User' object, for User ID: ", user_id)
                 return  user_obj
 
 
         # The requested "User" object was NOT found in the local lookup table; now attempt to retrieve it from the database
 
         # Query the database
-        print(f"obtain_user_obj(): querying the dbase for node labeled `User Login`, "
-              f"with attribute `user_id` having a value of `{user_id}`")
+        #print(f"obtain_user_obj(): querying the dbase for node labeled `User Login`, "
+              #f"with attribute `user_id` having a value of `{user_id}`")
         result_dict = cls.db.get_record_by_primary_key(labels="User Login",
                                                         primary_key_name="user_id", primary_key_value=user_id)
         if (result_dict is None) or ("username" not in result_dict):
-            print("obtain_user_obj(): node not found in the database, or missing an attribute `username`")
+            #print("obtain_user_obj(): node not found in the database, or missing an attribute `username`")
             return None     # Not found
 
         username = result_dict["username"]
 
         user_obj = cls.create_user_obj(user_id, username)    # Create a "User" object, as needed by flask_login
-        print(f"obtain_user_obj(): Creating a new 'User' object from database data, "
-              f"for User ID: {user_id} , username {username}")
+        #print(f"obtain_user_obj(): Creating a new 'User' object from database data, "
+              #f"for User ID: {user_id} , username {username}")
 
         return  user_obj
 
