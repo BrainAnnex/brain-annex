@@ -24,20 +24,22 @@ class FullTextIndexing:
     # TODO: allow over-ride in config file
     COMMON_WORDS = ['and', 'or', 'either', 'nor', 'neither',
                     'the', 'an', 'with', 'without', 'within',
-                    'in', 'out', 'on', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by',
+                    'in', 'out', 'on', 'off', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by',
                     'if', 'whether', 'then', 'else',
                     'me', 'my', 'mine', 'he', 'she', 'it', 'him', 'his', 'her', 'its',
-                    'we', 'our', 'you', 'your', 'yours', 'they', 'them', 'their',
+                    'we', 'us', 'our', 'you', 'your', 'yours', 'they', 'them', 'their',
                     'why', 'because', 'since', 'how', 'for', 'both', 'indeed',
                     'help', 'helps', 'let', 'lets',
-                    'go', 'goes', 'going', 'gone', 'became', 'become',
-                    'be', 'is', 'isn', 'am', 'are', 'aren', 'been', 'was', 'wasn', 'being',
+                    'go', 'goes', 'going', 'gone', 'went',
+                    'became', 'become', 'becomes', 'come', 'comes', 'came',
+                    'be', 'is', 'isn', 'am', 'are', 'aren', 'were', 'been', 'was', 'wasn', 'being',
                     'can', 'cannot', 'could', 'might', 'may', 'do', 'does', 'did', 'didn', 'done', 'doing',
                     'make', 'made', 'making',
                     'have', 'haven', 'has', 'had', 'hadn', 'having',
-                    'must', 'need', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
+                    'must', 'need', 'needs', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
                     'will', 'would', 'shall',
-                    'get', 'gets', 'got', 'take', 'takes',
+                    'get', 'gets', 'got', 'take', 'takes', 'took', 'put', 'bring',
+                    'see', 'given', 'end',
                     'ask', 'asks', 'answer', 'answers',
                     'when', 'where', 'which', 'who', 'why', 'what',
                     'no', 'yes', 'maybe', 'ok', 'oh',
@@ -46,19 +48,20 @@ class FullTextIndexing:
                     'good', 'better', 'best', 'great', 'well', 'bad',  'worse', 'worst',
                     'just', 'about', 'above', 'again', 'ago',
                     'times', 'date', 'dates', 'today', 'day', 'month', 'year', 'yr', 'days', 'months', 'years',
-                    'hour', 'hr', 'minute', 'min', 'second', 'sec',
+                    'hour', 'hr', 'minute', 'min', 'second', 'sec', 'pm',
                     'now', 'currently', 'late', 'early', 'soon', 'later', 'earlier', 'already',
                     'after', 'before', 'yet', 'whenever', 'while', 'during', 'ever',
-                    'never', 'occasionally', 'sometimes', 'often', 'always', 'eventually',
+                    'never', 'occasionally', 'sometimes', 'often', 'always', 'usually', 'eventually',
                     'really', 'approximately',
                     'old', 'older', 'new', 'newer',
                     'begin', 'began', 'start', 'starting', 'started',
                     'in', 'out', 'here', 'there',
+                    'instead',
                     'up', 'down', 'over', 'above', 'under', 'below', 'between', 'among', 'wherever',
-                    'next', 'previous', 'other', 'another', 'thing', 'things',
+                    'next', 'previous', 'other', 'others', 'another', 'thing', 'things',
                     'like', 'as', 'such', 'fairly', 'actual', 'actually',
                     'simple', 'simpler', 'simplest',
-                    'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than', 'extra', 'enough',
+                    'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than', 'extra', 'enough', 'only',
                     'everything', 'nothing',
                     'few', 'fewer', 'many', 'multiple', 'much', 'same', 'different', 'equal',
                     'full', 'empty', 'lot', 'very', 'around', 'vary', 'varying',
@@ -69,16 +72,20 @@ class FullTextIndexing:
                     'this', 'that', 'these', 'those',
                     'too', 'also',
                     'related', 'issues', 'issue',
-                    'use', 'used',
-                    'com', 'www', 'http', 'https',
-                    'one', 'two',
-                    'include', 'including', 'incl', 'except', 'test', 'testing', 'sure', 'according', 'accordingly',
+                    'use', 'uses', 'used', 'using',
+                    'com', 'org', 'www', 'http', 'https',
+                    'one', 'two', 'ones',
+                    'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly',
                     'basically', 'essentially', 'called', 'named', 'consider', 'considering', 'however', 'especially', 'etc',
                     'happen', 'happens',
                     'small', 'smaller', 'smallest', 'big', 'bigger', 'biggest', 'large', 'larger', 'largest',
+                    'hello', 'hi',
+                    're', 'vs', 'ex',
 
                     'data', 'value', 'values']
 
+
+    # TODO: allow user-specific words.  For example, for German: ich, du, er, sie, wir, ihr
 
 
     ##########   STRING METHODS   ##########
@@ -204,10 +211,10 @@ class FullTextIndexing:
 
 
     @classmethod
-    def new_indexing(cls, content_item_id: int, unique_words: [str]):
+    def new_indexing(cls, content_item_id: int, unique_words: [str]) -> None:
         """
         Used to create a new index, linking the given list of unique words
-        to the specified "Content Item" data node.
+        to the specified data node that represents a "Content Item".
         
         Create a data node of type "Indexer",
         with inbound relationships named "occurs" from "Word" data nodes (pre-existing or newly-created)
@@ -215,7 +222,7 @@ class FullTextIndexing:
         Also, create a relationship named "has_index" from an existing "Content Item" data node to the new "Indexer" node.
         TODO: consider combining new_indexing() and update_indexing()
 
-        :param content_item_id: The internal database ID of an existing "Content Item" data node
+        :param content_item_id: The internal database ID of an existing data node that represents a "Content Item"
         :param unique_words:    A list of strings containing unique words
                                     - for example as returned by extract_unique_good_words()
         :return:                None
@@ -348,3 +355,103 @@ class FullTextIndexing:
             RETURN count(w) AS word_count
             '''
         return cls.db.query(q, data_binding={"content_item_id": content_item_id}, single_cell="word_count")
+
+
+
+    @classmethod
+    def most_common_words_NOT_YET_USED(cls) -> [str]:    # TODO: finish implementing
+        """
+        Return the 200 or so most common words in the current index
+        """
+        q = '''
+            MATCH (w:Word)-[:occurs]->(i:Indexer) 
+            RETURN w.name, count(i) AS c
+            ORDER by c DESC LIMIT 200
+        '''
+
+        return ["Not yet implemented"]
+
+
+
+    @classmethod
+    def word_occurrence_NOT_YET_USED(cls, word: str) -> int:    # TODO: finish implementing
+        """
+        Return the usage count of the given word in the current index
+        :param word:
+        :return:
+        """
+        q = '''
+        MATCH (w:Word {name:$word})-[:occurs]->(i:Indexer) 
+        RETURN count(i) AS word_occurrence
+        '''
+
+        return 0
+
+
+
+    @classmethod
+    def index_size_NOT_YET_USED(cls):    # TODO: finish implementing
+        """
+        Return the number of content items current being indexed
+
+        :return:
+        """
+        q = '''
+            MATCH (n:Indexer) RETURN count(n)
+            '''
+
+
+
+    @classmethod
+    def number_word_NOT_YET_USED(cls):    # TODO: finish implementing
+        """
+        Return the number of words current being used in the indexing
+
+        :return:
+        """
+        q = '''
+            MATCH (n:Word) RETURN count(n)
+            '''
+
+
+    @classmethod
+    def unused_word_NOT_YET_USED(cls):    # TODO: finish implementing
+        """
+        Return a list of words in the indexing that lack any usage
+
+        :return:
+        """
+        pass
+
+
+
+    @classmethod
+    def rebuild_index_NOT_YET_USED(cls, directory: str):    # TODO: finish implementing
+        """
+        Rebuild the index from all the (text or HTML) files in the given directory.
+
+        TODO: a version that looks up that list from the database
+
+        :param directory:     EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
+        :return:
+        """
+        import os
+        from BrainAnnex.modules.media_manager.media_manager import MediaManager
+
+        file_list = os.listdir(directory)
+        print(f"Total number of files: {len(file_list)}")
+
+        # Index the content of all the files
+        i = 1
+        for filename in file_list:
+            print(f"\n {i} -------------------------\n", filename)
+            (basename, suffix) = os.path.splitext(filename)
+            q = f"MATCH (n:Notes) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN ID(n) AS node_int_id"
+            node_int_id = cls.db.query(q, single_cell="node_int_id")
+            print("    node's integer ID: ", node_int_id)
+            file_contents = MediaManager.get_from_file(filename)
+            #print(file_contents)
+            word_list = FullTextIndexing.extract_unique_good_words(file_contents)
+            print(word_list)
+            FullTextIndexing.new_indexing(content_item_id = node_int_id, unique_words = word_list)
+            i += 1
