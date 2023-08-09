@@ -211,7 +211,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def new_indexing(cls, content_item_id: int, unique_words: [str]) -> None:
+    def new_indexing(cls, content_item_id: int, unique_words: [str], to_lower_case=True) -> None:
         """
         Used to create a new index, linking the given list of unique words
         to the specified data node that represents a "Content Item".
@@ -236,18 +236,22 @@ class FullTextIndexing:
                                                         links =[{"internal_id": content_item_id, "rel_name": "has_index",
                                                                   "rel_dir": "IN"}])
 
-        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words)
+        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
 
 
 
     @classmethod
-    def populate_index(cls, indexer_id: int, unique_words: [str]) -> None:
+    def populate_index(cls, indexer_id: int, unique_words: [str], to_lower_case: bool) -> None:
         """
 
         :param indexer_id:
         :param unique_words:
-        :return:            None
+        :param to_lower_case:
+        :return:                None
         """
+        if to_lower_case:
+            unique_words = list(map(str.lower, unique_words))
+
         # Locate (if already present), or create, a "Word" data node for each word in the list unique_words
         class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
         result = NeoSchema.add_data_column_merge(class_internal_id=class_db_id,
@@ -265,7 +269,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def update_indexing(cls, content_item_id : int, unique_words: [str]) -> None:
+    def update_indexing(cls, content_item_id : int, unique_words: [str], to_lower_case=True) -> None:
         """
         Used to update an index, linking the given list of unique words
         to the specified "Indexer" data node, which was created by a call to new_indexing()
@@ -292,7 +296,7 @@ class FullTextIndexing:
         # i.e. give a "clean slate" to the "Indexer" data node
         NeoSchema.remove_multiple_data_relationships(node_id=indexer_id, rel_name="occurs", rel_dir="IN", labels="Word")
 
-        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words)
+        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
 
 
 
@@ -455,3 +459,29 @@ class FullTextIndexing:
             print(word_list)
             FullTextIndexing.new_indexing(content_item_id = node_int_id, unique_words = word_list)
             i += 1
+
+
+
+
+    #########################   SEARCHING   #########################
+
+    @classmethod
+    def search_word(cls, word :str) -> [int]:
+        """
+        Look up any stored words that contains the requested string (ignoring case.)
+
+        Then locate the Content nodes that are indexed by any of those words.
+        Return a (possibly empty) list of the internal database ID's of all the found nodes.
+
+        :param word:
+        :return:
+        """
+        q = f'''MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
+             (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(c)
+             WHERE w.name CONTAINS toLower('{word}')
+             RETURN id(c) AS content_id
+             '''
+
+        #print(q)
+        result = cls.db.query(q, single_column="content_id")
+        return result
