@@ -473,9 +473,12 @@ class FullTextIndexing:
         Then locate the Content nodes that are indexed by any of those words.
         Return a (possibly empty) list of the internal database ID's of all the found nodes.
 
-        :param word:
+        :param word:    A string, typically containing a word or word fragment;
+                            case is ignored
         :return:
         """
+        # TODO: first zap leading/trailing blanks
+
         q = f'''MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
              (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(c)
              WHERE w.name CONTAINS toLower('{word}')

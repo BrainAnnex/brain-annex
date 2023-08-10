@@ -2590,6 +2590,27 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def follow_links_NOT_YET_IMPLEMENTED(cls, class_name, key_name, key_value, link_sequence):
+        """
+        Follow a chain of links among data nodes,
+        starting with a given data node (or maybe possibly a set of them?)
+
+        :param class_name:
+        :param key_name:        TODO: or pass a "match" object?
+        :param key_value:
+        :param link_sequence:   EXAMPLE: [("occurs", "OUT", "Indexer),
+                                          ("has_index", "IN", None)]
+                                    Each triplet is: (relationship name,
+                                                      direction,
+                                                      name of Class of data node on other side)
+                                    Any component could be None
+        :return:                A list of internal node ID's
+        """
+        pass
+
+
+
 
     #####################################################################################################
 

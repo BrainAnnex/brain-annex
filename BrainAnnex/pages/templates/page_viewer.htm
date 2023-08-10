@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 {#  General viewer page for a list of Content Items (the list is specified in Flask parameter content_items)
+    Vue.js is used for the rendering
 
     Flask-passed parameters:
 
@@ -7,8 +8,8 @@
         current_page
         header_title
 
-        category_id
-        category_name
+        category_id     An integer with the URI of a Category
+        category_name   The name of the above Category
         category_remarks
 
         all_categories

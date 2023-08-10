@@ -3,6 +3,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
+from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
 import re                   # For REGEX
 import pandas as pd
 import os
@@ -756,9 +757,49 @@ class APIRequestHandler:
 
 
 
-    #############################################################
-    #                            FILTERS                        #
-    #############################################################
+    #####################################################################################################
+
+    '''                                        ~   SEARCH   ~                                         '''
+
+    def ________SEARCH________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def search_for_word(cls, word: str) -> [int]:
+        """
+        Look up any stored words that contains the requested string (ignoring case.)
+
+        Then locate the Content nodes that are indexed by any of those words.
+        Return a (possibly empty) list of the internal database ID's of all the found nodes.
+
+        :param word:    A string, typically containing a word or word fragment;
+                            case is ignored
+        :return:
+        """
+        result = FullTextIndexing.search_word(word)
+        return result
+
+
+    @classmethod
+    def search_for_word_2(cls, word: str) -> [dict]:
+        return [
+                {'basename': 'notes-2534', 'item_id': 2534, 'schema_code': 'n', 'title': 'Vocab', 'suffix': 'htm', 'pos': 33, 'class_name': 'Notes'},
+                 {'basename': 'notes-1705', 'item_id': 1705, 'schema_code': 'n', 'title': 'US vs. British', 'suffix': 'htm', 'pos': 80, 'class_name': 'Notes'},
+                 {'basename': 'notes-1732', 'item_id': 1732, 'schema_code': 'n', 'title': 'Switch from Brit to American', 'suffix': 'htm', 'pos': 85, 'class_name': 'Notes'}
+                ]
+
+
+
+
+
+    #####################################################################################################
+
+    '''                                        ~   FILTERS   ~                                        '''
+
+    def ________FILTERS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
 
     @classmethod

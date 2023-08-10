@@ -1,12 +1,13 @@
-{#  Flask-passed parameters:
-        content_items
-        category_id
-        category_name
+<!DOCTYPE html>
+{#  NON-EDITABLE version of the viewer page for a list of Content Items (the list is specified in Flask parameter: content_items)
+    Vue.js is used for the rendering
+
+    Flask-passed parameters:
+        category_id     An integer with the URI of a Category
+        category_name   The name of the above Category
         subcategories
 
-    STATIC-webpage version of the viewer page for a list of Content Items (the list is specified in Flask parameter: content_items)
-
-    :param content_items:   A list of dictionaries
+        content_items:  A list of dictionaries
                         EXAMPLE:
                         [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0},
                          {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10},
@@ -14,7 +15,7 @@
                         ]
 
     ----------------------------------------------------------------------------------
-    MIT License.  Copyright (c) 2021-22 Julian A. West
+    MIT License.  Copyright (c) 2021-23 Julian A. West
 	----------------------------------------------------------------------------------
 
  #}
@@ -22,7 +23,7 @@
 
 <html lang="en">
 <head>
-    <title>Documentation</title>
+    <title>{{category_name}}</title>
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/page_viewer.css">
 
@@ -67,6 +68,8 @@
 
 <a href='#' style='font-size:14px; font-weight:bold'>TOP</a><br>
 
+
+<!-- A simple Table-of-Contents -->
 <div class="page-toc">
     <template v-for="item in content_array">
         <p v-if="item.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.item_id">[[item.text]]</a><br></p>
@@ -88,9 +91,9 @@
 <div class='lightbox'>
 
 
-{#  Uncomment for debugging (to view some of the Flask-passed parameters)
+{#  Uncomment for debugging (to view some of the Flask-passed parameters) #}
 <br>{{content_items}}<br><br>
- #}
+
 
 {% if category_name %}
 <p class="headline">{{category_name}}</p>
@@ -130,14 +133,6 @@
             v-bind:item_data="item"
             v-bind:allow_editing="expose_controls"
             v-bind:category_id="category_id"
-
-     Intercept various SIGNALS from descendant components:
-        Originating in grandchildren:
-            v-on:delete-content-item
-            v-on:move-up-content-item
-            v-on:move-down-content-item
-        Originating in children:
-            v-on:cancel-edit
      -->
 <component v-for="item in content_array"
             v-bind:key="item.schema_code + item.item_id + item.pos"
@@ -145,10 +140,6 @@
             v-bind:item_data="item"
             v-bind:allow_editing="expose_controls"
             v-bind:category_id="category_id"
-
-            v-on:delete-content-item="delete_content_item(item)"
-            v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
-            v-on:cancel-edit="cancel_edit(item)"
 >
 </component>
 
@@ -206,138 +197,6 @@ new Vue({
 
 
     methods:  {
-        cancel_edit(item)
-        {
-            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , id ${item.item_id} , pos ${item.pos}`);
-            if (item.item_id == -1)  {
-                // If we're aborting the edit of a new Content Item, delete it from the page
-                index = this.locate_item_pos(item.schema_code, item.item_id, item.pos);
-                console.log(`Aborting the edit of a NEW Content Item, whose index position on the page is ${index}`);
-                this.content_array.splice(index, 1);    // It modifies the array, to take out 1 element in position index
-            }
-        },
-
-
-        add_new_item(schema_code)
-        // Add a new Content Item of the specified type, placed at the bottom of the page (past the last Item)
-        {
-            if (this.content_array.length == 0)
-                new_pos = 1;    // Arbitrary position value in case this is the first item attached to the page
-            else {
-                const last_element = this.content_array.slice(-1)[0];
-                new_pos = last_element.pos + 10;  // To be comfortably past the last Item, position-wise
-            }
-
-            console.log(`Adding new Content Item of type ${schema_code} at the bottom of page, at position ${new_pos}`);
-
-            const blank_record = {"item_id": -1, "schema_code": schema_code, "pos": new_pos};   // -1 by convention indicates a NEW item
-
-            this.content_array.push(blank_record);  // Insert the new blank Item at the end of the page's Content Items
-        },
-
-
-        delete_content_item(item)
-        // Delete from the page (TODO: and from the database) the specified Content Item
-        {
-            console.log(`Root element received signal to delete content item of type '${item.schema_code}' , id ${item.item_id}`);
-            const index = this.locate_item(item.schema_code, item.item_id);
-            console.log(`Content item located in position ${index}`);
-
-            if (index == -1)  {
-                alert("Unable to locate the element to delete. Maybe a change was made on a separate tab...  Try refreshing page");
-                return;
-            }
-
-            // Pop up a confirmation dialog box
-            var confirm_val = confirm("Confirm DELETE?");
-
-            if  (confirm_val == false)  {
-                // The CANCEL option was selected by the user in the confirmation dialog box
-                //alert("Deletion aborted");
-                //if (contentElement)  {		// Restore the original background color, if one was located
-                    //contentElement.style.backgroundColor = originalBackgroundColor;
-                //}
-                return;
-            }
-
-            this.content_array.splice(index, 1);  // It modifies the array, to take out 1 element in position index
-        },
-
-
-        move_up_content_item(item)
-        //
-        {
-            const schema_code = item.schema_code;
-            const item_id = item.item_id;
-
-            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , id ${item_id}`);
-
-            const number_items = this.content_array.length;
-
-            if (number_items == 1)  {
-                alert("There is only 1 item!  No action taken");
-                return;
-            }
-
-            const i = this.locate_item(schema_code, item_id);     // Locate the specified Content Item in the array of Content Items
-
-            if (i == -1) {
-                alert(`Item type '${schema_code}' , id ${item_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
-                return;
-            }
-
-            if (i == 0)  {
-                alert("Item is already at the top: no action taken");
-                return;
-            }
-
-            // Swap the current Item with the one before it
-            const old_pos = this.content_array[i].pos;
-            this.content_array[i].pos = this.content_array[i-1].pos;
-            this.content_array[i-1].pos = old_pos;
-
-            this.sort_all_items();      // Re-sort array of Content Items
-
-        }, // move_up_content_item
-
-
-        move_down_content_item(item)
-        //
-        {
-            const schema_code = item.schema_code;
-            const item_id = item.item_id;
-
-            console.log(`Root element received signal to move DOWN the content item of type '${item.schema_code}' , id ${item.item_id}`);
-
-            const number_items = this.content_array.length;
-
-            if (number_items == 1)  {
-                alert("There is only 1 item!  No action taken");
-                return;
-            }
-
-            const i = this.locate_item(schema_code, item_id);     // Locate the specified Content Item in the array of Content Items
-
-            if (i == -1) {
-                alert(`Item type '${schema_code}' , id ${item_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
-                return;
-            }
-
-            if (i == number_items - 1)  {
-                alert("Item is already at the bottom: no action taken");
-                return;
-            }
-
-            // Swap the current Item with the one after it
-            const old_pos = this.content_array[i].pos;
-            this.content_array[i].pos = this.content_array[i+1].pos;
-            this.content_array[i+1].pos = old_pos;
-
-            this.sort_all_items();      // Re-sort array of Content Items
-
-        }, // move_down_content_item
-
-
         locate_item(schema_code, item_id)
         /*  Helper function, to locate the specified Content Item in the array of Content Items.
             If found, return its index in the array; otherwise, return -1
