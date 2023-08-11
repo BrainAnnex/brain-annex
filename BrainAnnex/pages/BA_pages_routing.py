@@ -292,8 +292,8 @@ class PagesRouting:
 
             #result = APIRequestHandler.search_for_word(search_terms)
             #return f"<h1>SEARCH RESULTS</h1>Term searched for: <b>{search_terms}</b><br><br>{result}"
-            content_items = APIRequestHandler.search_for_word_2(search_terms)
-            category_name = "SEARCH RESULTS"
+            content_items = APIRequestHandler.search_for_word(search_terms)
+            category_name = f"{len(content_items)} SEARCH RESULTS for `{search_terms}`"
             return render_template(template,
                                    content_items=content_items,
                                    category_id=0, category_name=category_name)

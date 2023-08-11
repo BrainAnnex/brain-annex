@@ -766,28 +766,27 @@ class APIRequestHandler:
     #####################################################################################################
 
     @classmethod
-    def search_for_word(cls, word: str) -> [int]:
+    def search_for_word(cls, word: str) -> [dict]:
         """
-        Look up any stored words that contains the requested string (ignoring case.)
+        Look up any stored words that contains the requested string
+        (ignoring case and leading/trailing blanks.)
 
         Then locate the Content nodes that are indexed by any of those words.
-        Return a (possibly empty) list of the internal database ID's of all the found nodes.
+        Return a (possibly empty) list of the data of all the found nodes.
 
         :param word:    A string, typically containing a word or word fragment;
-                            case is ignored
+                            case and leading/trailing blanks are ignored
         :return:
         """
-        result = FullTextIndexing.search_word(word)
+        result = FullTextIndexing.search_word(word, all_properties=True)
+        # EXAMPLE:
+        #   [{'basename': 'notes-2548', 'item_id': 25, 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
+        #    {'basename': 'notes-3486', 'item_id': 34, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
+        #   ]
+
+        # Note: attributes 'pos' and 'class_name' (used by some HTML templates) are not in the the result
+        print("------- RESULT -------------  :\n", result)
         return result
-
-
-    @classmethod
-    def search_for_word_2(cls, word: str) -> [dict]:
-        return [
-                {'basename': 'notes-2534', 'item_id': 2534, 'schema_code': 'n', 'title': 'Vocab', 'suffix': 'htm', 'pos': 33, 'class_name': 'Notes'},
-                 {'basename': 'notes-1705', 'item_id': 1705, 'schema_code': 'n', 'title': 'US vs. British', 'suffix': 'htm', 'pos': 80, 'class_name': 'Notes'},
-                 {'basename': 'notes-1732', 'item_id': 1732, 'schema_code': 'n', 'title': 'Switch from Brit to American', 'suffix': 'htm', 'pos': 85, 'class_name': 'Notes'}
-                ]
 
 
 
