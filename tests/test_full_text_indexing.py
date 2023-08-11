@@ -2,7 +2,7 @@ import pytest
 from neoaccess import NeoAccess
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists
+from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 
 
 
@@ -262,9 +262,13 @@ def test_search_word(db):
 
     assert FullTextIndexing.search_word("lab") == [content_id_1]
     assert FullTextIndexing.search_word("shipping") == [content_id_1]   # Case-insensitive
+    assert FullTextIndexing.search_word("  Shipping   ") == [content_id_1]   # Ignores leading/trailing blanks
     assert FullTextIndexing.search_word("ship") == [content_id_1]       # Substring
     assert FullTextIndexing.search_word("R/D") == [content_id_1]
     assert FullTextIndexing.search_word("r/d") == [content_id_1]        # Case-insensitive
+
+    result = FullTextIndexing.search_word("  Shipping   ", all_properties=True)
+    assert result == [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, 'neo4j_labels': ['Content Item']}]
 
 
     # Add a 2nd data node of type "Content Item"...
@@ -280,3 +284,10 @@ def test_search_word(db):
 
     assert FullTextIndexing.search_word("shipping") == [content_id_1]   # "shipping" only matches one...
     assert compare_unordered_lists(FullTextIndexing.search_word("ship"), [content_id_1, content_id_2])  # ...while "ship" matches both
+
+    result = FullTextIndexing.search_word("ship", all_properties=True)
+    expected = [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, 'neo4j_labels': ['Content Item']},
+                {'filename': 'some_other_file.txt', 'internal_id': content_id_2, 'neo4j_labels': ['Content Item']}
+               ]
+
+    assert compare_recordsets(result, expected)

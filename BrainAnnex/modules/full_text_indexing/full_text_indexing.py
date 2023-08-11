@@ -1,6 +1,6 @@
 import re
 import html
-from typing import Union
+from typing import Union, List
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
@@ -430,7 +430,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def rebuild_index_NOT_YET_USED(cls, directory: str):    # TODO: finish implementing
+    def rebuild_index_NOT_YET_USED(cls, directory :str):    # TODO: finish implementing
         """
         Rebuild the index from all the (text or HTML) files in the given directory.
 
@@ -466,25 +466,42 @@ class FullTextIndexing:
     #########################   SEARCHING   #########################
 
     @classmethod
-    def search_word(cls, word :str) -> [int]:
+    def search_word(cls, word :str, all_properties=False) -> Union[List[int], List[dict]]:
         """
-        Look up any stored words that contains the requested string (ignoring case.)
+        Look up in the index for any stored words that contains the requested string
+        (ignoring case and leading/trailing blanks.)
 
         Then locate the Content nodes that are indexed by any of those words.
-        Return a (possibly empty) list of the internal database ID's of all the found nodes.
+        Return a (possibly empty) list of either the internal database ID's of all the found nodes,
+        or a list of their full attributes.
 
         :param word:    A string, typically containing a word or word fragment;
-                            case is ignored
-        :return:
+                            case is ignored, and so are leading/trailing blanks
+        :param all_properties:
+        :return:        If all_properties is False,
+                            a (possibly empty) list of the internal database ID's
+                            of all the found nodes
+                        If all_properties is True,
+                            a (possibly empty) list of dictionaries with all the data
+                            of all the found nodes; each dict contain all of the nodes' attributes,
+                            plus keys called 'internal_id' and 'neo4j_labels'
+                            EXAMPLE: [{'filename': 'My_Document.pdf', 'internal_id': 66, 'neo4j_labels': ['Content Item']}]
         """
-        # TODO: first zap leading/trailing blanks
+        if all_properties:
+            return_statement = "RETURN c"
+        else:
+            return_statement = "RETURN id(c) AS content_id"
 
         q = f'''MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
              (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(c)
-             WHERE w.name CONTAINS toLower('{word}')
-             RETURN id(c) AS content_id
-             '''
+             WHERE w.name CONTAINS toLower('{word.strip()}')
+             {return_statement}
+             '''    # Not that strip() is used to zap leading/trailing blanks
 
         #print(q)
-        result = cls.db.query(q, single_column="content_id")
+
+        if all_properties:
+            result = cls.db.query_extended(q, flatten=True)
+        else:
+            result = cls.db.query(q, single_column="content_id")
         return result
