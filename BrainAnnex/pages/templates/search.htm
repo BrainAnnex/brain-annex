@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+{#  NON-EDITABLE version of the viewer page, used for a search-result page,
+    given a list of Content Items (the list is specified in Flask parameter: content_items)
+    Vue.js is used for the rendering
+
+    Flask-passed parameters:
+        category_id     An integer with the URI of a Category   TODO: change
+        category_name   The name of the above Category          TODO: change
+
+        content_items:  A list of dictionaries
+                        EXAMPLE:
+                        [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0},
+                         {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10},
+                         {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20}
+                        ]
+
+    ----------------------------------------------------------------------------------
+    MIT License.  Copyright (c) 2021-23 Julian A. West
+	----------------------------------------------------------------------------------
+
+ #}
+
+
+<html lang="en">
+<head>
+    <title>Search Results</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/page_viewer.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <!-- Plugin-specific styling -->
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/headers/headers.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/images/images.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
+
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+
+<body>
+
+
+<div id="vue-root">   <!-- Container for VUE COMPONENTS  : considered the ROOT of the components below-->
+
+
+
+<!--   The "scroll-canvas" is the main part of the page,
+       incl. the navbar at the top, but exclusive of the fixed left sidebar -->
+<div v-bind:class="{ 'scroll-canvas': show_left_sidebar, 'scroll-canvas--collapsed-left': !show_left_sidebar }">
+
+
+
+
+
+<!-- Collapsed version of sidebar-left -->
+<div v-show='!show_left_sidebar' class='sidebar-left-collapsed'>
+    <img v-on:click='show_left_sidebar = true' src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left'
+         title='Click to expand sidebar' alt='Click to expand sidebar'>
+</div> 	 <!-- END of Collapsed version of sidebar-left -->
+
+
+
+
+<div class='lightbox'>
+
+
+{#  Uncomment for debugging (to view some of the Flask-passed parameters)
+<br>{{content_items}}<br><br>
+#}
+
+{% if category_name %}
+<p class="headline">{{category_name}}</p>
+{% endif %}
+
+
+
+{# Give notice if no Content Items were passed #}
+{% if (content_items | count == 0) %}
+    <p style="margin-top:50px; color:#888">NO SEARCH RESULTS : you may need to re-phrase your search</p>
+{% endif %}
+
+
+<div class="content-block">
+    <div class="content-block-title">Search Again</div>
+    <form method='GET' action='search'>
+        <input type='text' name='term'  size="25" maxlength="35" placeholder="Enter a single word to search for">
+        <input type="submit" value="SEARCH">
+    </form>
+</div>
+<br>
+
+
+<!-- For each Content Item on this page, make use of the appropriate Vue component (picked dynamically)
+     Type-specific display is handled by the individual components
+
+     v-bind:key Used to provide unique identifiers for each component
+     v-bind:is  Specifies which component to use, based on the type of the Content Item
+
+     Props (arguments) passed to the components
+            v-bind:item_data="item"
+            v-bind:allow_editing="expose_controls"
+            v-bind:category_id="category_id"
+     -->
+<component v-for="item in content_array"
+            v-bind:key="item.schema_code + item.item_id + item.pos"
+            v-bind:is="plugin_component_name(item)"
+            v-bind:item_data="item"
+            v-bind:allow_editing="expose_controls"
+            v-bind:category_id="category_id"
+>
+</component>
+
+
+<br><br>
+
+
+</div>  <!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+<!-- Icon to scroll to top of page -->
+<a id="to_top" href="javascript:;" onclick="window.scrollTo(0, 0)">
+    <img src="/BA/pages/static/graphics/to_top_80.png" width="40" height="40"
+         alt="Scroll to TOP of page" title="Scroll to TOP of page">
+</a>
+
+
+
+
+</div>	<!-- END OF lightbox -->
+
+</div>	<!-- END OF scroll-canvas -->
+
+
+
+
+
+<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="/BA/pages/static/vue_components/controls/controls.js"></script>
+
+<script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
+
+
+<script>
+// Instantiation must come after the component definition
+new Vue({
+    el: '#vue-root',
+
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: here we are requesting double SQUARE brackets
+
+    data: {     // Global data for the whole page (Vue root element).  This is the handover of data from Flask to Vue
+        content_array: {{content_items | tojson(indent=4)}},  // Array containing item-data objects
+                                                    // EXAMPLE: [{"item_id":5,"schema_code":"h","pos":0,"text":"GENERAL METHODS"},
+                                                    //           {"basename":"mypix","schema_code":"i","item_id":8,"pos":50,"suffix":"png"}]
+        expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
+        category_id: {{category_id}},   // Integer
+        show_left_sidebar: true
+    },
+
+
+    methods:  {
+        locate_item(schema_code, item_id)
+        /*  Helper function, to locate the specified Content Item in the array of Content Items.
+            If found, return its index in the array; otherwise, return -1
+         */
+        {
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}`);
+
+            const number_items = this.content_array.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].item_id == item_id)
+                    return i;          //  Found it
+            }
+
+            return -1;    // Didn't find it
+        },
+
+        locate_item_pos(schema_code, item_id, pos)
+        /*  Same as locate_item(), but also requiring a match on position
+         */
+        {
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}, pos ${pos}`);
+
+            const number_items = this.content_array.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (this.content_array[i].schema_code == schema_code  &&
+                    this.content_array[i].item_id == item_id  &&
+                    this.content_array[i].pos == pos)
+                    return i;          //  Found it
+            }
+
+            return -1;    // Didn't find it
+        },
+
+
+        plugin_component_name(item)
+        // Compose the name of the plugin-provided Vue component to handle the given item (based on its type)
+        {
+            // TODO: make sure that item.schema_code is known, or return a special "generic" type
+            return "vue-plugin-" + item.schema_code;
+        },
+
+
+        sort_all_items()
+        // Re-arrange the ordering of the Content Items, based on their "pos" attributes
+        {
+            //alert("sorting!");
+            this.content_array.sort( function(a, b) {return a.pos > b.pos} );
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>

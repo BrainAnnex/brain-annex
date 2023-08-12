@@ -281,19 +281,24 @@ class PagesRouting:
 
         #############################   SEARCH-RELATED   #############################
 
-        @bp.route('/search/<search_terms>')
+        #@bp.route('/search/<search_terms>')
+        @bp.route('/search')
         #@login_required
-        def search(search_terms) -> str:
+        def search() -> str:
+        #def search(search_terms) -> str:
             """
             Generate a page of search results
-            EXAMPLE invocation: http://localhost:5000/BA/pages/search/boat
+            EXAMPLE invocation: http://localhost:5000/BA/pages/search?term=boat
             """
-            template = "viewer_static.htm"
+            template = "search.htm"
 
-            #result = APIRequestHandler.search_for_word(search_terms)
-            #return f"<h1>SEARCH RESULTS</h1>Term searched for: <b>{search_terms}</b><br><br>{result}"
+            search_terms = request.args.get("term", type = str)     # COULD ALSO ADD: , default = "someDefault"      Using Request data in Flask
+
+            if search_terms is None:
+                raise Exception("Missing value for parameter `term`")   # TODO: deal with empty searches
+
             content_items = APIRequestHandler.search_for_word(search_terms)
-            category_name = f"{len(content_items)} SEARCH RESULTS for `{search_terms}`"
+            category_name = f"{len(content_items)} SEARCH RESULT(S) for `{search_terms}`"
             return render_template(template,
                                    content_items=content_items,
                                    category_id=0, category_name=category_name)
