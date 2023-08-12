@@ -42,20 +42,20 @@ def test_extract_unique_good_words():
         FullTextIndexing.extract_unique_good_words(123)
 
     result = FullTextIndexing.extract_unique_good_words("Hello world!")
-    assert result == ["world"]
+    assert result == {"world"}
 
     result = FullTextIndexing.extract_unique_good_words("Hello to the world! And, YES - why not - let's say, hello again as well :)")
-    assert result == ["world", "say"]
+    assert result == {"world", "say"}
 
     result = FullTextIndexing.extract_unique_good_words("I shout, and shout - and REALLY, REALLY shout because I can!")
-    assert result == ["shout"]
+    assert result == {"shout"}
 
     result = FullTextIndexing.extract_unique_good_words("<span>OK, this is    just a very CRAZY related issue in two empty parts; and bad HTML format!")
-    assert result == ["crazy", "html", "format"]
+    assert result == {"crazy", "html", "format"}
 
     text = '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
     result = FullTextIndexing.extract_unique_good_words(text)
-    assert result == ['mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit']
+    assert result == {'mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit'}
 
 
 

@@ -1,6 +1,6 @@
 import re
 import html
-from typing import Union, List
+from typing import Union, List, Set
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
@@ -91,55 +91,10 @@ class FullTextIndexing:
     ##########   STRING METHODS   ##########
 
     @classmethod
-    def extract_unique_good_words(cls, text: str) -> [str]:
-        """
-        From the given text, zap HTML, HTML entities (such as &ndash;) and punctuation;
-        then, turn into lower case, and break up into individual words.
-
-        Next, eliminate "words" that are 1 character long, or that are numbers,
-        or that are in a list of common words.
-
-        Finally, eliminate duplicates, and return the list of acceptable, unique words.
-
-        Note: no stemming is done.
-
-        EXAMPLE - given '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
-                  it returns:
-                  ['mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit']
-
-        :param text:   A string with the text to analyze and index
-        :return:       A list of strings containing "acceptable", unique words in the text
-        """
-
-        assert type(text) == str, \
-            f"extract_unique_good_words(): the argument must be a string; instead, it was of type {type(text)}"
-
-        # Extract words from string, and convert them to lower case
-        split_text = cls.split_into_words(text, to_lower_case=True)
-        #print("The split text is : ", split_text)
-
-        # Eliminate "words" that are 1 character long, or that are numbers,
-        # or that are in a list of common words.  Don't include duplicates
-        word_list = []
-
-        for word in split_text:
-            if len(word) > 1 \
-                    and not word.isnumeric() \
-                    and word not in cls.COMMON_WORDS \
-                    and word not in word_list:
-                word_list.append(word)
-
-        #print("The word list for the index is: ", word_list)
-
-        return word_list    # TODO: turn into a SET
-
-
-
-    @classmethod
-    def split_into_words(cls, text: str, to_lower_case=True) ->[str]:
+    def split_into_words(cls, text: str, to_lower_case=True) -> [str]:
         """
         Zap HTML, HTML entities (such as &ndash;) and punctuation from the given text;
-        then, break it up into individual words.  If requested, turn it all to lower case.
+        then, break it up into individual words, returned as a list.  If requested, turn it all to lower case.
 
         Care is taken to make sure that the stripping of special characters does NOT fuse words together;
         e.g. avoid turning 'Long&ndash;Term' into a single word as 'LongTerm';
@@ -165,10 +120,55 @@ class FullTextIndexing:
             stripped_text = stripped_text.lower()   # If requested, turn everything to lower case
 
         result = re.findall(r'\w+', stripped_text)  # Use regex to split off the string into individual words
-                                                    # (note that the "&" in the original string is treated as blank space)
+        # (note that the "&" in the original string is treated as blank space)
         # EXAMPLE:  ['Mr', 'Joe', 'sons', 'A', 'Long', 'Term', 'business', 'Find', 'it', 'at', 'http', 'example', 'com', 'home', 'Visit', 'Joe', 's', 'NOW']
 
         return result
+
+
+
+    @classmethod
+    def extract_unique_good_words(cls, text :str) -> Set[str]:
+        """
+        From the given text, zap HTML, HTML entities (such as &ndash;) and punctuation;
+        then, turn into lower case, and break up into individual words.
+
+        Next, eliminate "words" that are 1 character long, or that are numbers,
+        or that are in a list of common words.
+
+        Finally, eliminate duplicates, and return the set of acceptable, unique words.
+
+        Note: no stemming or other grammatical analysis is done.
+
+        EXAMPLE - given '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
+                  it returns:
+                  ['mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit']
+
+        :param text:   A string with the text to analyze and index
+        :return:       A set of strings containing "acceptable", unique words in the text
+        """
+
+        assert type(text) == str, \
+            f"extract_unique_good_words(): the argument must be a string; instead, it was of type {type(text)}"
+
+        # Extract words from string, and convert them to lower case
+        split_text = cls.split_into_words(text, to_lower_case=True)
+        #print("The split text is : ", split_text)
+
+        # Eliminate "words" that are 1 character long, or that are numbers,
+        # or that are in a list of common words.  Don't include duplicates
+        word_set = set()    # Empty set
+
+        for word in split_text:
+            if len(word) > 1 \
+                    and not word.isnumeric() \
+                    and word not in cls.COMMON_WORDS:
+                word_set.add(word)      # Adding an element to the set
+
+        #print("The word set for the index is: ", word_set)
+
+        return word_set
+
 
 
 
@@ -211,7 +211,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def new_indexing(cls, content_item_id: int, unique_words: [str], to_lower_case=True) -> None:
+    def new_indexing(cls, content_item_id :int, unique_words :Set[str], to_lower_case=True) -> None:
         """
         Used to create a new index, linking the given list of unique words
         to the specified data node that represents a "Content Item".
@@ -225,6 +225,7 @@ class FullTextIndexing:
         :param content_item_id: The internal database ID of an existing data node that represents a "Content Item"
         :param unique_words:    A list of strings containing unique words
                                     - for example as returned by extract_unique_good_words()
+        :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
         """
         indexer_id = cls.get_indexer_node_id(content_item_id)
@@ -241,16 +242,18 @@ class FullTextIndexing:
 
 
     @classmethod
-    def populate_index(cls, indexer_id: int, unique_words: [str], to_lower_case: bool) -> None:
+    def populate_index(cls, indexer_id :int, unique_words :Set[str], to_lower_case :bool) -> None:
         """
 
         :param indexer_id:
-        :param unique_words:
-        :param to_lower_case:
+        :param unique_words:    Set of strings, with unique words for the index
+        :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
         """
         if to_lower_case:
             unique_words = list(map(str.lower, unique_words))
+        else:
+            unique_words = list(unique_words)
 
         # Locate (if already present), or create, a "Word" data node for each word in the list unique_words
         class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
@@ -269,7 +272,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def update_indexing(cls, content_item_id : int, unique_words: [str], to_lower_case=True) -> None:
+    def update_indexing(cls, content_item_id :int, unique_words :Set[str], to_lower_case=True) -> None:
         """
         Used to update an index, linking the given list of unique words
         to the specified "Indexer" data node, which was created by a call to new_indexing()
@@ -285,6 +288,7 @@ class FullTextIndexing:
         :param content_item_id: The internal database ID of an existing "Content Item" data node
         :param unique_words:    A list of strings containing unique words
                                     - for example as returned by extract_unique_good_words()
+        :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
         """
         indexer_id = cls.get_indexer_node_id(content_item_id)
