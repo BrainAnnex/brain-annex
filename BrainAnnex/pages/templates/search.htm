@@ -11,8 +11,15 @@
         content_items:  A list of dictionaries.  At present, only used for Content Items of type 'Notes'
                         EXAMPLE:
                         [
-                         {'basename': 'notes-3460', 'item_id': 3460, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3962, 'neo4j_labels': ['BA', 'Notes']}
+                         {'basename': 'notes-3460', 'item_id': 3460, 'schema_code': 'n',
+                            'title': 'undefined', 'suffix': 'htm', 'internal_id': 3962, 'neo4j_labels': ['BA', 'Notes']
+                         }
                         ]
+
+        links:          Experimental!
+                        EXAMPLE:
+                        [{'internal_id': 3962, 'schema_code': 'cat', 'name': 'my test category'}]
+
 
     ----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-23 Julian A. West
@@ -82,9 +89,9 @@
 <div class='lightbox'>
 
 
-{#  Uncomment for debugging (to view some of the Flask-passed parameters)
-<br>{{content_items}}<br><br>
-#}
+{#  Uncomment for debugging (to view some of the Flask-passed parameters)#}
+<br>{{content_items}}<br>{{links}}<br><br>
+
 
 {% if page_header %}
 <p class="headline">{{page_header}}</p>
@@ -128,7 +135,10 @@
                 v-bind:category_id="category_id"
     >
     </component>
-    <br>
+    <br>LINKS for item internal ID [[item.internal_id]] :<br>[[links_array]]<br>
+    [[locate_item_by_internal_id(links_array, item.internal_id)]]<br>
+    <br>[[form_html_link(links_array, item.internal_id)]]<br>
+    <span v-html="form_html_link(links_array, item.internal_id)"></span>
 </div>
 
 
@@ -178,6 +188,7 @@ new Vue({
         content_array: {{content_items | tojson(indent=4)}},  // Array containing item-data objects
                                                     // EXAMPLE: [{"item_id":5,"schema_code":"h","pos":0,"text":"GENERAL METHODS"},
                                                     //           {"basename":"mypix","schema_code":"i","item_id":8,"pos":50,"suffix":"png"}]
+        links_array: {{links | tojson(indent=4)}},
         expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
         category_id: 0,                 // TODO: not in use, but (some of?) the components might require it
         show_left_sidebar: true
@@ -185,9 +196,40 @@ new Vue({
 
 
     methods:  {
+        form_html_link(data_list, internal_id)
+        {
+            element = this.locate_item_by_internal_id(data_list, internal_id);
+            //console.log(element);
+            //return `<a href="TBA">Name TBA</a>`;
+            return `<a href="viewer/${element.item_id}">${element.name}</a>`;
+        },
+
+
+        form_html_link_test()
+        {
+            return `<a href="TBA">Name TBA</a>`;
+        },
+
+
+        locate_item_by_internal_id(data_list, internal_id)
+        {
+            //console.log(`Attempting to locate content item with internal id ${internal_id}`);
+
+            const number_items = data_list.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (data_list[i].internal_id == internal_id)
+                    return data_list[i];          //  Found it
+            }
+
+            return null;    // Didn't find it
+        },
+
+
         locate_item(schema_code, item_id)
         /*  Helper function, to locate the specified Content Item in the array of Content Items.
             If found, return its index in the array; otherwise, return -1
+            TODO: rename to locate_item_index()
          */
         {
             //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}`);
@@ -201,6 +243,7 @@ new Vue({
 
             return -1;    // Didn't find it
         },
+
 
         locate_item_pos(schema_code, item_id, pos)
         /*  Same as locate_item(), but also requiring a match on position

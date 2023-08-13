@@ -298,9 +298,11 @@ class PagesRouting:
                 raise Exception("Missing value for parameter `term`")   # TODO: deal with empty searches
 
             content_items = APIRequestHandler.search_for_word(search_terms)
+            links = [{'internal_id': 1033, 'schema_code': 'cat', 'name': 'my test category', 'item_id': 3561}]
             page_header = f"{len(content_items)} SEARCH RESULT(S) for `{search_terms}`"
+
             return render_template(template,
-                                   content_items=content_items,
+                                   content_items=content_items, links=links,
                                    page_header=page_header,
                                    current_page=request.path, site_pages=cls.site_pages)
 
