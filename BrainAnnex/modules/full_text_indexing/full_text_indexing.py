@@ -107,7 +107,7 @@ class FullTextIndexing:
 
         :param text:            A string with the text to parse
         :param to_lower_case:   If True, all text is converted to lower case
-        :return:                A list of words in the text,
+        :return:                A (possibly empty) list of words in the text,
                                     free of punctuation, HTML and HTML entities such as &ndash;
         """
         unescaped_text = html.unescape(text)    # Turn HTML entities such as "&ndash;" into text
@@ -144,8 +144,9 @@ class FullTextIndexing:
                   it returns:
                   ['mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit']
 
-        :param text:   A string with the text to analyze and index
-        :return:       A set of strings containing "acceptable", unique words in the text
+        :param text:    A string with the text to analyze and index
+        :return:        A (possibly empty) set of strings containing "acceptable",
+                            unique words in the text
         """
 
         assert type(text) == str, \
@@ -172,7 +173,7 @@ class FullTextIndexing:
 
 
 
-    ##########   GRAPH METHODS   ##########
+    #############   GRAPH METHODS   #############
 
     @classmethod
     def initialize_schema(cls, content_item_class_id=None) -> None:
@@ -305,7 +306,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def get_indexer_node_id(cls, content_item_id: int) -> Union[int, None]:
+    def get_indexer_node_id(cls, content_item_id :int) -> Union[int, None]:
         """
         Retrieve and return the internal database ID of the "Indexer" data node
         associated to the given Content Item data node.
@@ -330,7 +331,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def remove_indexing(cls, content_item_id : int) -> None:
+    def remove_indexing(cls, content_item_id :int) -> None:
         """
         Drop the "Indexer" node linked to the given Content Item node.
         If no index exists, an Exception is raised
@@ -349,7 +350,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def count_indexed_words(cls, content_item_id : int) -> int:
+    def count_indexed_words(cls, content_item_id :int) -> int:
         """
         Determine and return the number of words attached to the index
         of the given Content Item data node
@@ -491,16 +492,22 @@ class FullTextIndexing:
                             plus keys called 'internal_id' and 'neo4j_labels'
                             EXAMPLE: [{'filename': 'My_Document.pdf', 'internal_id': 66, 'neo4j_labels': ['Content Item']}]
         """
+        clean_term = word.strip()   # Zap leading/trailing blanks
+
+        if clean_term == "":
+            # This is done as special handling because a blank string would match any word!
+            return []
+
         if all_properties:
-            return_statement = "RETURN c"
+            return_statement = "RETURN DISTINCT c"
         else:
-            return_statement = "RETURN id(c) AS content_id"
+            return_statement = "RETURN DISTINCT id(c) AS content_id"
 
         q = f'''MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
              (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(c)
-             WHERE w.name CONTAINS toLower('{word.strip()}')
-             {return_statement}
-             '''    # Not that strip() is used to zap leading/trailing blanks
+             WHERE w.name CONTAINS toLower('{clean_term}')
+             {return_statement} 
+             '''
 
         #print(q)
 
