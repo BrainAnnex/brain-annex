@@ -40,7 +40,6 @@
     ----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2023 Julian A. West
 	----------------------------------------------------------------------------------
-
  #}
 
 
@@ -91,14 +90,14 @@
 
 
 
-<!--   The "scroll-canvas" is the main part of the page,
-       incl. the navbar at the top and the sidebox on the right;
-       by contrast, the left sidebar, is fixed in position -->
+<!--   The "scroll-canvas" is the MAIN part of the page,
+       incl. the navbar at the top and the sidebox on the right,
+       but exclusive of the left sidebar, which is fixed in position -->
 <div v-bind:class="{ 'scroll-canvas': show_left_sidebar, 'scroll-canvas--collapsed-left': !show_left_sidebar }">
 
 
 
-{# TOP NAVIGATION BAR #}
+{# TOP NAVIGATION BAR (scrolls with main part of page) #}
 {% include "navbar_top.htm" %}
 
 

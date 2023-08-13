@@ -301,7 +301,8 @@ class PagesRouting:
             page_header = f"{len(content_items)} SEARCH RESULT(S) for `{search_terms}`"
             return render_template(template,
                                    content_items=content_items,
-                                   page_header=page_header)
+                                   page_header=page_header,
+                                   current_page=request.path, site_pages=cls.site_pages)
 
 
 

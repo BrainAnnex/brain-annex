@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters: current_page, site_pages
+{#  Flask-passed parameters:
+
+        current_page, site_pages
  #}
 
 <html lang="en">
@@ -14,6 +16,8 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
     <link type="text/css"  rel="stylesheet" href="/BA/pages/static/multiselect/multiselect.css">
 
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
+    
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
@@ -30,7 +34,23 @@
 </div>
 
 
-<h2>Search and Filter</h2>
+<h2>Search Notes by Words</h2>
+<i>(for now, just 1 single word)</i><br><br>
+
+<div class="content-block">
+    <div class="content-block-title">Search</div>
+    <form method='GET' action='search'>
+        <input type='text' name='term'  size="25" maxlength="35" placeholder="Enter a single word to search for">
+        <input type="submit" value="SEARCH">
+    </form>
+</div>
+
+
+
+
+<br><br><br><br>
+
+<h2>Search the Database (EXPERIMENTAL!)</h2>
 
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->

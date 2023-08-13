@@ -1,12 +1,18 @@
-{#  Flask-passed parameters:  site_pages, current_page
+{#  Flask-passed parameters:
+
+        site_pages, current_page
 
     Top Navigation bar
 
     The entries from which to populate the navbar are defined in navigation.py
 
-    HOW TO USE: site pages that want to include this Top Navbar need to have the line
-                {% include "navbar_top.htm" %}
-                and also have the Flask-passed parameters:  site_pages, current_page
+    HOW TO USE: site pages (Flask templates) that want to include this Top Navbar
+                need to
+                1) include (in a suitable position) the line
+                    {% include "navbar_top.htm" %}
+                2) receive the Flask-passed parameters:  site_pages, current_page
+                    (passed as arguments to the Flask function render_template)
+                3) include in their header the CSS file:  /navigation/static/navbar_top.css
  #}
 
 
