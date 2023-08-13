@@ -780,12 +780,46 @@ class APIRequestHandler:
         """
         result = FullTextIndexing.search_word(word, all_properties=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2548', 'item_id': 25, 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
-        #    {'basename': 'notes-3486', 'item_id': 34, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
+        #   [{'basename': 'notes-2', 'item_id': 55, 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
+        #    {'basename': 'notes-3', 'item_id': 14, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
         #   ]
 
+        for node in result:
+            internal_id = node["internal_id"]
+            #print("\n\n--- internal_id: ", internal_id)
+
+
+            # TODO: generalize the following line, to other types of links
+            neighbor_props = cls.db.follow_links(match=internal_id,
+                                                rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Categories")
+            # EXAMPLE of neighbor_props:
+            #   [{'item_id': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
+            #print(neighbor_props)
+            node["internal_links"] = neighbor_props
+
+            '''
+            #TODO: consider the following generalized approach
+            
+            new_result = []     # SET OUTSIDE of this loop
+            
+            labels = node["neo4j_labels"]
+            del node["internal_id"]
+            del node["neo4j_labels"]
+            dn = NeoSchema.DataNode(internal_id=internal_id, labels=labels], properties=node)
+            # All the above lines would be un-necessary if FullTextIndexing.search_word returned a DataNode object!
+            
+            for neighbor_data in neighbor_props:
+                neighbor_node = NeoSchema.DataNode(internal_id=None, labels="Categories", properties=neighbor_data)
+                dn.add_relationship(link_name="BA_in_category", link_direction="OUT", link_properties=None, node_obj=neighbor_node)
+                
+            new_result.append(dn)
+            
+            # And then return new_result outside of the loop
+            '''
+
+
         # Note: attributes 'pos' and 'class_name' (used by some HTML templates) are not in the the result
-        print("------- RESULT -------------  :\n", result)
+        #print("------- RESULT -------------  :\n", result)
         return result
 
 

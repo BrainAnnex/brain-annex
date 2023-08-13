@@ -2596,7 +2596,7 @@ class NeoSchema:
         Follow a chain of links among data nodes,
         starting with a given data node (or maybe possibly a set of them?)
 
-        :param class_name:
+        :param class_name:      (OPTIONAL)
         :param key_name:        TODO: or pass a "match" object?
         :param key_value:
         :param link_sequence:   EXAMPLE: [("occurs", "OUT", "Indexer),
@@ -2605,8 +2605,9 @@ class NeoSchema:
                                                       direction,
                                                       name of Class of data node on other side)
                                     Any component could be None
-        :return:                A list of internal node ID's
+        :return:                A list of internal node ID's (or, optionally, all properties of the end nodes?)
         """
+        #TODO: possibly use cls.db.follow_links()
         pass
 
 
@@ -3270,3 +3271,115 @@ class SchemaCache:
                 '''
 
             return cached_data["out_neighbors"]
+
+
+
+
+######################################################################################################
+######################################################################################################
+
+class DataNode:
+    """
+    EXPERIMENTAL: not yet in use!
+
+    This new class is being experimented with, in the method APIRequestHandler.search_for_word()
+
+    It might perhaps better belong to the lower (NeoAccess) layer
+
+    TODO: explore some variation of the following data structure for network of data nodes (or maybe of any node)
+
+        - general node object -
+        {'properties': properties_dict,
+         'internal_id': some_int,
+         'labels': list_of_labels,
+         'links': list_of_link_objects
+        }
+
+        - link object -
+        {'name': relationship_name,
+         'properties': relationship_properties_dict,
+         'direction': in_or_out,
+         'node': node_object_on_other_side
+        }
+
+    Contrast it with data structure returned by Neo4j.
+
+    Also explore a SIMPLER data structure for a node and its immediate neighbors:
+
+        - simpler node object -
+        {'properties': properties_dict,
+         'internal_id': some_int,
+         'labels': list_of_labels,
+         'links': list_of_neighbor_objects
+        }
+
+        - neighbor object -
+        {'link_name': relationship_name,
+         'link_direction': in_or_out,
+         'link_properties': relationship_properties_dict,
+
+         'properties': properties_dict,
+         'internal_id': some_int,
+         'labels': list_of_labels,
+         'links': list_of_neighbor_objects  <-- MAYBE! Allow network representation, but may lose simplicity
+    }
+
+    Note:          {'link_name', 'link_direction', 'link_properties'} might be turned into a "link object"
+
+    """
+    def __init__(self, internal_id, labels, properties, links=None):
+        """
+        Initialize the data structure that represents all that is known about a Data Node
+
+        :param internal_id:
+        :param labels:
+        :param properties:
+        """
+        self.internal_id = internal_id
+        self.labels = labels
+        self.properties = properties
+        self.links = links              # List of DataRelationship objects
+                                        # IMPORTANT: None means 'unknown'; whereas [] means no links
+
+
+
+    def add_relationship(self, link_name, link_direction, link_properties, node_obj) -> None:
+        """
+        Save in memory a representation of all the data for the relationship
+        with the specified other node
+
+        :param link_name:
+        :param link_direction:
+        :param link_properties:
+        :param node_obj:        Object of type DataNode
+        :return:                None
+        """
+        new_rel = DataRelationship(link_name, link_direction, link_properties, node_obj)
+        if self.links is None:
+            self.links = [new_rel]
+        else:
+            self.links.append(new_rel)
+
+
+
+##############################
+
+class DataRelationship:
+    """
+    EXPERIMENTAL helper class: not yet in use!
+    """
+
+    def __init__(self, link_name, link_direction, link_properties, node_obj):
+        """
+        Initialize the data structure that represents all that is known
+        about the relationship with the specified node
+
+        :param link_name:
+        :param link_direction:
+        :param link_properties:
+        :param node_obj:        Object of type DataNode
+        """
+        self.link_name = link_name
+        self.link_direction = link_direction
+        self.link_properties = link_properties
+        self.node_obj = node_obj
