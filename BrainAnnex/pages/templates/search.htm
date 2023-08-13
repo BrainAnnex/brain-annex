@@ -138,7 +138,11 @@
     <br>LINKS for item internal ID [[item.internal_id]] :<br>[[links_array]]<br>
     [[locate_item_by_internal_id(links_array, item.internal_id)]]<br>
     <br>[[form_html_link(links_array, item.internal_id)]]<br>
-    <span v-html="form_html_link(links_array, item.internal_id)"></span>
+    <span v-html="form_html_link(links_array, item.internal_id)"></span><br><br>
+
+    [[locate_all_items_by_internal_id(links_array, item.internal_id)]]<br>
+    <br>[[form_all_html_links(links_array, item.internal_id)]]<br>
+    <span v-html="form_all_html_links(links_array, item.internal_id)"></span>
 </div>
 
 
@@ -196,6 +200,21 @@ new Vue({
 
 
     methods:  {
+        form_all_html_links(data_list, internal_id)
+        {
+            elements = this.locate_all_items_by_internal_id(data_list, internal_id);
+            //console.log(element);
+            //return `<a href="TBA">Name TBA</a>`;
+            link_str = "";
+            for (var i = 0; i < elements.length; i++) {
+                el = elements[i];
+                link_str += `<a href="viewer/${el.item_id}">${el.name}</a> &nbsp;&nbsp; `;
+            }
+
+            return link_str;
+        },
+
+
         form_html_link(data_list, internal_id)
         {
             element = this.locate_item_by_internal_id(data_list, internal_id);
@@ -211,9 +230,28 @@ new Vue({
         },
 
 
-        locate_item_by_internal_id(data_list, internal_id)
+        locate_all_items_by_internal_id(data_list, internal_id)
         {
-            //console.log(`Attempting to locate content item with internal id ${internal_id}`);
+            //console.log(`Attempting to locate array elements with internal id ${internal_id}`);
+
+            const number_items = data_list.length;
+
+            var data_sublist = [];
+
+            for (var i = 0; i < number_items; i++) {
+                if (data_list[i].internal_id == internal_id)
+                    data_sublist.push(data_list[i]);
+                    //return data_list[i];          //  Found it
+            }
+
+            return data_sublist;
+        },
+
+
+        locate_item_by_internal_id(data_list, internal_id)
+        // Single item (first one found); to phase out
+        {
+            //console.log(`Attempting to locate array elements with internal id ${internal_id}`);
 
             const number_items = data_list.length;
 
