@@ -4,14 +4,14 @@
     Vue.js is used for the rendering
 
     Flask-passed parameters:
-        category_id     An integer with the URI of a Category   TODO: change
-        category_name   The name of the above Category          TODO: change
 
-        content_items:  A list of dictionaries
+        page_header     A string that, if passed, gets prominently shown at the top of the page
+                        EXAMPLE:  10 SEARCH RESULT(S) for `boat`
+
+        content_items:  A list of dictionaries.  At present, only used for Content Items of type 'Notes'
                         EXAMPLE:
-                        [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0},
-                         {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10},
-                         {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20}
+                        [
+                         {'basename': 'notes-3460', 'item_id': 3460, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3962, 'neo4j_labels': ['BA', 'Notes']}
                         ]
 
     ----------------------------------------------------------------------------------
@@ -77,8 +77,8 @@
 <br>{{content_items}}<br><br>
 #}
 
-{% if category_name %}
-<p class="headline">{{category_name}}</p>
+{% if page_header %}
+<p class="headline">{{page_header}}</p>
 {% endif %}
 
 
@@ -99,7 +99,7 @@
 <br>
 
 
-<!-- For each Content Item on this page, make use of the appropriate Vue component (picked dynamically)
+<!-- For each Content Item on this page, make use of the appropriate Vue component (picked dynamically).
      Type-specific display is handled by the individual components
 
      v-bind:key Used to provide unique identifiers for each component
@@ -110,14 +110,17 @@
             v-bind:allow_editing="expose_controls"
             v-bind:category_id="category_id"
      -->
-<component v-for="item in content_array"
-            v-bind:key="item.schema_code + item.item_id + item.pos"
-            v-bind:is="plugin_component_name(item)"
-            v-bind:item_data="item"
-            v-bind:allow_editing="expose_controls"
-            v-bind:category_id="category_id"
->
-</component>
+<div v-for="item in content_array">
+    <component
+                v-bind:key="item.schema_code + item.item_id + item.pos"
+                v-bind:is="plugin_component_name(item)"
+                v-bind:item_data="item"
+                v-bind:allow_editing="expose_controls"
+                v-bind:category_id="category_id"
+    >
+    </component>
+    <br>
+</div>
 
 
 <br><br>
@@ -167,7 +170,7 @@ new Vue({
                                                     // EXAMPLE: [{"item_id":5,"schema_code":"h","pos":0,"text":"GENERAL METHODS"},
                                                     //           {"basename":"mypix","schema_code":"i","item_id":8,"pos":50,"suffix":"png"}]
         expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
-        category_id: {{category_id}},   // Integer
+        category_id: 0,                 // TODO: not in use, but (some of?) the components might require it
         show_left_sidebar: true
     },
 
