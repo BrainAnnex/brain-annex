@@ -199,11 +199,11 @@ class FullTextIndexing:
             if NeoSchema.class_name_exists("Content Item"):
                 content_item_class_id = NeoSchema.get_class_internal_id(class_name="Content Item")
             else:
-                content_item_class_id, _ = NeoSchema.create_class(name="Content Item", schema_type="L")
+                content_item_class_id, _ = NeoSchema.create_class(name="Content Item", strict=False)
 
-        indexer_class_id, _ = NeoSchema.create_class(name="Indexer", schema_type="S")
+        indexer_class_id, _ = NeoSchema.create_class(name="Indexer", strict=True)
 
-        NeoSchema.create_class_with_properties(class_name="Word", strict=True,
+        NeoSchema.create_class_with_properties(name="Word", strict=True,
                                                property_list=["name"],
                                                class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
 

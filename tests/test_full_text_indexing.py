@@ -23,7 +23,7 @@ def setup_sample_index(db) -> int:
     db.empty_dbase()
 
     # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
+    NeoSchema.create_class_with_properties(name="Content Item", strict=True,
                                            property_list=["filename"])
     FullTextIndexing.initialize_schema()
 

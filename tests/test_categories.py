@@ -26,7 +26,7 @@ def initialize_categories(db):
 
     db.empty_dbase()
 
-    node_internal_id, _ = NeoSchema.create_class_with_properties(class_name="Categories",
+    node_internal_id, _ = NeoSchema.create_class_with_properties(name="Categories",
                                                                  property_list=["name", "remarks"])
 
     return Categories.create_categories_root()

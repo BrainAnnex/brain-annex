@@ -154,7 +154,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class(cls, name: str, code=None, strict= False, schema_type="L", no_datanodes = False) -> (int, int):
+    def create_class(cls, name :str, code=None, strict= False, no_datanodes = False) -> (int, int):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -175,8 +175,7 @@ class NeoSchema:
         :param code:        Optional string indicative of the software handler for this Class and its subclasses
         :param strict:      If True, the Class will be of the "S" (Strict) type;
                                 otherwise, it'll be of the "L" (Lenient) type
-        :param schema_type: Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
-                            #TODO: phase out
+                            Explained under the comments for the NeoSchema class
 
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes
@@ -185,9 +184,6 @@ class NeoSchema:
                                 if it was created;
                                 an Exception is raised if a class by that name already exists
         """
-        if schema_type is not None:     # TODO: phase out this argument
-            assert schema_type=="L" or schema_type=="S", "schema_type argument must be either 'L' or 'S'"
-
         if strict:
             schema_type="S"
         else:
@@ -398,7 +394,7 @@ class NeoSchema:
         Fetch and return a list of all the existing Schema classes - either just their names (sorted alphabetically)
         (TODO: or a fuller listing - not yet implemented)
 
-        TODO: disregard capitalization is sorting
+        TODO: disregard capitalization in sorting
 
         :return:    A list of all the existing Class names
         """
@@ -449,8 +445,9 @@ class NeoSchema:
                 raise Exception(f"Nothing was deleted; potential cause: the specified Class (`{name}`) doesn't exist")
 
 
+
     @classmethod
-    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:    #TODO: phase out?
+    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:
         """
 
         :param class_internal_id:   The internal ID of a Schema Class node
@@ -492,6 +489,7 @@ class NeoSchema:
             return not class_node_dict["no_datanodes"]
 
         return True    # If key is not in dictionary, then it defaults to True
+
 
 
 
@@ -1093,7 +1091,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class_with_properties(cls, class_name: str, property_list: [str], code=None, strict=False,
+    def create_class_with_properties(cls, name :str, property_list: [str], code=None, strict=False,
                                      class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int, int):
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
@@ -1113,9 +1111,7 @@ class NeoSchema:
 
         NOTE: if the Class already exists, use add_properties_to_class() instead
 
-        :param class_name:      String with name to assign to the new class
-                                TODO: change to "name" for consistency with create_class()
-
+        :param name:            String with name to assign to the new class
         :param property_list:   List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            Optional string indicative of the software handler for this Class and its subclasses
         :param strict:          If True, the Class will be of the "S" (Strict) type;
@@ -1144,8 +1140,8 @@ class NeoSchema:
 
 
         # Create the new Class
-        new_class_int_id , new_class_uri = cls.create_class(class_name, code=code, strict=strict)
-        cls.debug_print(f"Created new schema CLASS node (name: `{class_name}`, Schema ID: {new_class_uri})")
+        new_class_int_id , new_class_uri = cls.create_class(name, code=code, strict=strict)
+        cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Schema ID: {new_class_uri})")
 
         number_properties_added = cls.add_properties_to_class(class_node=new_class_int_id, property_list = property_list)
         if number_properties_added != len(property_list):
@@ -1164,7 +1160,7 @@ class NeoSchema:
                 else:
                     NeoSchema.create_class_relationship(from_class=class_to_link_to, to_class=new_class_int_id, rel_name =link_name)
             except Exception as ex:
-                raise Exception(f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
+                raise Exception(f"New Class ({name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
         return new_class_int_id, new_class_uri
 
