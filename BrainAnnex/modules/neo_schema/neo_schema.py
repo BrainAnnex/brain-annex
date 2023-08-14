@@ -154,7 +154,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class(cls, name :str, code=None, strict= False, no_datanodes = False) -> (int, int):
+    def create_class(cls, name :str, code = None, strict = False, no_datanodes = False) -> (int, int):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.

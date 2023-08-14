@@ -24,7 +24,7 @@ class FullTextIndexing:
     # TODO: allow over-ride in config file
     COMMON_WORDS = ['and', 'or', 'either', 'nor', 'neither',
                     'the', 'an', 'with', 'without', 'within',
-                    'in', 'out', 'on', 'off', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by',
+                    'in', 'out', 'on', 'off', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by', 'upon',
                     'if', 'whether', 'then', 'else',
                     'me', 'my', 'mine', 'he', 'she', 'it', 'him', 'his', 'her', 'its',
                     'we', 'us', 'our', 'you', 'your', 'yours', 'they', 'them', 'their',
