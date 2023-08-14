@@ -283,7 +283,7 @@ class PagesRouting:
 
         #@bp.route('/search/<search_terms>')
         @bp.route('/search')
-        #@login_required
+        @login_required
         def search() -> str:
         #def search(search_terms) -> str:
             """
