@@ -8,6 +8,9 @@ class FullTextIndexing:
     """
     Indexing-related methods, for full-text searching.
 
+    For more info and background info, please see:
+        https://julianspolymathexplorations.blogspot.com/2023/08/full-text-search-neo4j-indexing.html
+
     NOTE: no stemming nor lemmatizing is done.
           Therefore, for best results, all word searches should be done on stems;
           for example, search for "learn" rather than "learning" or "learns" - to catch all 3
