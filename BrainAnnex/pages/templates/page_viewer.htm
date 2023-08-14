@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 {#  General viewer page for a list of Content Items (the list is specified in Flask parameter content_items)
+    Vue.js is used for the rendering
 
     Flask-passed parameters:
 
@@ -7,8 +8,8 @@
         current_page
         header_title
 
-        category_id
-        category_name
+        category_id     An integer with the URI of a Category
+        category_name   The name of the above Category
         category_remarks
 
         all_categories
@@ -39,7 +40,6 @@
     ----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2023 Julian A. West
 	----------------------------------------------------------------------------------
-
  #}
 
 
@@ -90,14 +90,14 @@
 
 
 
-<!--   The "scroll-canvas" is the main part of the page,
-       incl. the navbar at the top and the sidebox on the right;
-       by contrast, the left sidebar, is fixed in position -->
+<!--   The "scroll-canvas" is the MAIN part of the page,
+       incl. the navbar at the top and the sidebox on the right,
+       but exclusive of the left sidebar, which is fixed in position -->
 <div v-bind:class="{ 'scroll-canvas': show_left_sidebar, 'scroll-canvas--collapsed-left': !show_left_sidebar }">
 
 
 
-{# TOP NAVIGATION BAR #}
+{# TOP NAVIGATION BAR (scrolls with main part of page) #}
 {% include "navbar_top.htm" %}
 
 
@@ -206,7 +206,7 @@
 <!-- Original version, to be used when the editing controls are shown.
      This version separates all the Content Items into individual entities.
 
-     For each Content Item on this page, make use of the appropriate Vue component (picked dynamically)
+     For each Content Item on this page, make use of the appropriate Vue component (picked dynamically).
      Handle here some UI operations common to all types, such as moves around the page.
      Type-specific operations, such as editing, are handled by the individual components
 

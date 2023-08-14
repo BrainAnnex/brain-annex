@@ -24,8 +24,8 @@ class PagesRouting:
     # Module-specific parameters (as class variables)
     blueprint_name = "BA_pages"         # Name unique to this module
     url_prefix = "/BA/pages"            # Prefix for all URL's handled by this module
-    template_folder = "templates"       # Relative to this module's location
-    static_folder = "static"            # Relative to this module's location
+    template_folder = "templates"       # Location of HTML templates (Relative to this module's location)
+    static_folder = "static"            # Location of website's static content (Relative to this module's location)
     
     site_pages = None                   # Data for the site navigation
 
@@ -205,7 +205,7 @@ class PagesRouting:
 
             EXAMPLE invocation: http://localhost:5000/BA/pages/admin
             """
-            print(f"User is logged in as: `{current_user.username}`")
+            #print(f"User is logged in as: `{current_user.username}`")
             template = "admin.htm"
             return render_template(template,
                                    username=current_user.username,
@@ -275,6 +275,37 @@ class PagesRouting:
                                    category_id=category_id, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    all_categories=all_categories)
+
+
+
+
+        #############################   SEARCH-RELATED   #############################
+
+        #@bp.route('/search/<search_terms>')
+        @bp.route('/search')
+        #@login_required
+        def search() -> str:
+        #def search(search_terms) -> str:
+            """
+            Generate a page of search results
+            EXAMPLE invocation: http://localhost:5000/BA/pages/search?term=boat
+            """
+            template = "search.htm"
+
+            search_terms = request.args.get("term", type = str)     # COULD ALSO ADD: , default = "someDefault"      Using Request data in Flask
+
+            if search_terms is None:
+                raise Exception("Missing value for parameter `term`")   # TODO: deal with empty searches
+
+            content_items = APIRequestHandler.search_for_word(search_terms)
+
+            page_header = f"{len(content_items)} SEARCH RESULT(S) for `{search_terms}`"
+
+            return render_template(template,
+                                   content_items=content_items,
+                                   page_header=page_header,
+                                   current_page=request.path, site_pages=cls.site_pages)
+
 
 
 
@@ -380,7 +411,7 @@ class PagesRouting:
 
 
 
-        #############################   TESTS   #############################
+        #############################   TESTS and DIAGNOSTICS  #############################
 
         @bp.route('/test/hello-world')
         def test_hello_world() -> str:
@@ -445,4 +476,4 @@ class PagesRouting:
 
 
 
-        ##################  END OF ROUTING DEFINITIONS  ##################
+        ######################  END OF ROUTING DEFINITIONS  ######################

@@ -154,7 +154,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class(cls, name: str, code=None, strict= False, schema_type="L", no_datanodes = False) -> (int, int):
+    def create_class(cls, name :str, code = None, strict = False, no_datanodes = False) -> (int, int):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -175,8 +175,7 @@ class NeoSchema:
         :param code:        Optional string indicative of the software handler for this Class and its subclasses
         :param strict:      If True, the Class will be of the "S" (Strict) type;
                                 otherwise, it'll be of the "L" (Lenient) type
-        :param schema_type: Either "L" (Lenient) or "S" (Strict).  Explained under the class-wide comments
-                            #TODO: phase out
+                            Explained under the comments for the NeoSchema class
 
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes
@@ -185,9 +184,6 @@ class NeoSchema:
                                 if it was created;
                                 an Exception is raised if a class by that name already exists
         """
-        if schema_type is not None:     # TODO: phase out this argument
-            assert schema_type=="L" or schema_type=="S", "schema_type argument must be either 'L' or 'S'"
-
         if strict:
             schema_type="S"
         else:
@@ -398,7 +394,7 @@ class NeoSchema:
         Fetch and return a list of all the existing Schema classes - either just their names (sorted alphabetically)
         (TODO: or a fuller listing - not yet implemented)
 
-        TODO: disregard capitalization is sorting
+        TODO: disregard capitalization in sorting
 
         :return:    A list of all the existing Class names
         """
@@ -449,8 +445,9 @@ class NeoSchema:
                 raise Exception(f"Nothing was deleted; potential cause: the specified Class (`{name}`) doesn't exist")
 
 
+
     @classmethod
-    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:    #TODO: phase out?
+    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:
         """
 
         :param class_internal_id:   The internal ID of a Schema Class node
@@ -492,6 +489,7 @@ class NeoSchema:
             return not class_node_dict["no_datanodes"]
 
         return True    # If key is not in dictionary, then it defaults to True
+
 
 
 
@@ -577,8 +575,9 @@ class NeoSchema:
 
 
     @classmethod
-    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:    #### NOT IN CURRENT USE
+    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:
         """
+        #### TODO: NOT IN CURRENT USE
         Rename the old relationship between the specified classes
         TODO: if more than 1 relationship exists between the given Classes,
               then they will all be replaced??  TO FIX!  (the old name ought be provided)
@@ -1092,7 +1091,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class_with_properties(cls, class_name: str, property_list: [str], code=None, strict=False,
+    def create_class_with_properties(cls, name :str, property_list: [str], code=None, strict=False,
                                      class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int, int):
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
@@ -1112,9 +1111,7 @@ class NeoSchema:
 
         NOTE: if the Class already exists, use add_properties_to_class() instead
 
-        :param class_name:      String with name to assign to the new class
-                                TODO: change to "name" for consistency with create_class()
-
+        :param name:            String with name to assign to the new class
         :param property_list:   List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            Optional string indicative of the software handler for this Class and its subclasses
         :param strict:          If True, the Class will be of the "S" (Strict) type;
@@ -1143,8 +1140,8 @@ class NeoSchema:
 
 
         # Create the new Class
-        new_class_int_id , new_class_uri = cls.create_class(class_name, code=code, strict=strict)
-        cls.debug_print(f"Created new schema CLASS node (name: `{class_name}`, Schema ID: {new_class_uri})")
+        new_class_int_id , new_class_uri = cls.create_class(name, code=code, strict=strict)
+        cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Schema ID: {new_class_uri})")
 
         number_properties_added = cls.add_properties_to_class(class_node=new_class_int_id, property_list = property_list)
         if number_properties_added != len(property_list):
@@ -1163,7 +1160,7 @@ class NeoSchema:
                 else:
                     NeoSchema.create_class_relationship(from_class=class_to_link_to, to_class=new_class_int_id, rel_name =link_name)
             except Exception as ex:
-                raise Exception(f"New Class ({class_name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
+                raise Exception(f"New Class ({name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
         return new_class_int_id, new_class_uri
 
@@ -1373,9 +1370,10 @@ class NeoSchema:
         """
         Return the Item ID's of all the Data Nodes of the given Class
         TODO: offer to optionally use a label
+        TODO: switch to returning the internal database ID's
 
         :param class_name:
-        :return:
+        :return:            Return the Item ID's of all the Data Nodes of the given Class
         """
         q = '''
             MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.item_id AS item_id
@@ -2588,12 +2586,37 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def follow_links_NOT_YET_IMPLEMENTED(cls, class_name, key_name, key_value, link_sequence):
+        """
+        Follow a chain of links among data nodes,
+        starting with a given data node (or maybe possibly a set of them?)
+
+        :param class_name:      (OPTIONAL)
+        :param key_name:        TODO: or pass a "match" object?
+        :param key_value:
+        :param link_sequence:   EXAMPLE: [("occurs", "OUT", "Indexer),
+                                          ("has_index", "IN", None)]
+                                    Each triplet is: (relationship name,
+                                                      direction,
+                                                      name of Class of data node on other side)
+                                    Any component could be None
+        :return:                A list of internal node ID's (or, optionally, all properties of the end nodes?)
+        """
+        #TODO: possibly use cls.db.follow_links()
+        pass
+
+
+
 
     #####################################################################################################
-    #                                                                                                   #
-    #                                      ~ DATA IMPORT ~                                              #
-    #                                                                                                   #
+
+    '''                                      ~   DATA IMPORT   ~                                       '''
+
+    def ________DATA_IMPORT________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
 
     @classmethod
     def import_json_data(cls, json_str: str, class_name: str, parse_only=False, provenance=None) -> Union[None, int, List[int]]:
@@ -2963,13 +2986,19 @@ class NeoSchema:
 
 
 
-    ########################################################
-    #                   ~  EXPORT SCHEMA  ~                #
-    ########################################################
+    #####################################################################################################
+
+    '''                                     ~   EXPORT SCHEMA   ~                                     '''
+
+    def ________EXPORT_SCHEMA________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
 
     @classmethod
-    def export_schema(cls) -> {}:      # TODO: unit testing
+    def export_schema(cls) -> {}:
         """
+        TODO: unit testing
         Export all the Schema nodes and relationships as a JSON string.
 
         IMPORTANT:  APOC must be activated in the database, to use this function.
@@ -2990,7 +3019,14 @@ class NeoSchema:
 
 
 
-    ###############   INTERNAL  METHODS   ###############
+    #####################################################################################################
+
+    '''                                  ~   PRIVATE METHODS   ~                                      '''
+
+    def ________PRIVATE_METHODS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
 
     @classmethod
     def valid_schema_id(cls, schema_id: int) -> bool:
@@ -3007,6 +3043,7 @@ class NeoSchema:
 
 
 
+    # TODO: prefix "_" to name of private methods
     @classmethod
     def next_available_schema_id(cls) -> int:
         """
@@ -3230,3 +3267,115 @@ class SchemaCache:
                 '''
 
             return cached_data["out_neighbors"]
+
+
+
+
+######################################################################################################
+######################################################################################################
+
+class DataNode:
+    """
+    EXPERIMENTAL: not yet in use!
+
+    This new class is being experimented with, in the method APIRequestHandler.search_for_word()
+
+    It might perhaps better belong to the lower (NeoAccess) layer
+
+    TODO: explore some variation of the following data structure for network of data nodes (or maybe of any node)
+
+        - general node object -
+        {'properties': properties_dict,
+         'internal_id': some_int,
+         'labels': list_of_labels,
+         'links': list_of_link_objects
+        }
+
+        - link object -
+        {'name': relationship_name,
+         'properties': relationship_properties_dict,
+         'direction': in_or_out,
+         'node': node_object_on_other_side
+        }
+
+    Contrast it with data structure returned by Neo4j.
+
+    Also explore a SIMPLER data structure for a node and its immediate neighbors:
+
+        - simpler node object -
+        {'properties': properties_dict,
+         'internal_id': some_int,
+         'labels': list_of_labels,
+         'links': list_of_neighbor_objects
+        }
+
+        - neighbor object -
+        {'link_name': relationship_name,
+         'link_direction': in_or_out,
+         'link_properties': relationship_properties_dict,
+
+         'properties': properties_dict,
+         'internal_id': some_int,
+         'labels': list_of_labels,
+         'links': list_of_neighbor_objects  <-- MAYBE! Allow network representation, but may lose simplicity
+    }
+
+    Note:          {'link_name', 'link_direction', 'link_properties'} might be turned into a "link object"
+
+    """
+    def __init__(self, internal_id, labels, properties, links=None):
+        """
+        Initialize the data structure that represents all that is known about a Data Node
+
+        :param internal_id:
+        :param labels:
+        :param properties:
+        """
+        self.internal_id = internal_id
+        self.labels = labels
+        self.properties = properties
+        self.links = links              # List of DataRelationship objects
+                                        # IMPORTANT: None means 'unknown'; whereas [] means no links
+
+
+
+    def add_relationship(self, link_name, link_direction, link_properties, node_obj) -> None:
+        """
+        Save in memory a representation of all the data for the relationship
+        with the specified other node
+
+        :param link_name:
+        :param link_direction:
+        :param link_properties:
+        :param node_obj:        Object of type DataNode
+        :return:                None
+        """
+        new_rel = DataRelationship(link_name, link_direction, link_properties, node_obj)
+        if self.links is None:
+            self.links = [new_rel]
+        else:
+            self.links.append(new_rel)
+
+
+
+##############################
+
+class DataRelationship:
+    """
+    EXPERIMENTAL helper class: not yet in use!
+    """
+
+    def __init__(self, link_name, link_direction, link_properties, node_obj):
+        """
+        Initialize the data structure that represents all that is known
+        about the relationship with the specified node
+
+        :param link_name:
+        :param link_direction:
+        :param link_properties:
+        :param node_obj:        Object of type DataNode
+        """
+        self.link_name = link_name
+        self.link_direction = link_direction
+        self.link_properties = link_properties
+        self.node_obj = node_obj

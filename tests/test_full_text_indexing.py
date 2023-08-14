@@ -2,7 +2,7 @@ import pytest
 from neoaccess import NeoAccess
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists
+from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 
 
 
@@ -16,29 +16,21 @@ def db():
 
 
 
+def setup_sample_index(db) -> int:
+    """
+    Set up a new indexing system, and create a sample Content node; return its internal database ID
+    """
+    db.empty_dbase()
 
-def test_extract_unique_good_words():
-    with pytest.raises(Exception):
-        FullTextIndexing.extract_unique_good_words(None)
+    # Set up all the needed Schema
+    NeoSchema.create_class_with_properties(name="Content Item", strict=True,
+                                           property_list=["filename"])
+    FullTextIndexing.initialize_schema()
 
-    with pytest.raises(Exception):
-        FullTextIndexing.extract_unique_good_words(123)
+    # Create a data node of type "Content Item"...
+    content_id = NeoSchema.add_data_point(class_name="Content Item", properties={"filename": "My_Document.pdf"})
 
-    result = FullTextIndexing.extract_unique_good_words("Hello world!")
-    assert result == ["hello", "world"]
-
-    result = FullTextIndexing.extract_unique_good_words("Hello to the world! And, YES - why not - let's say, hello again as well :)")
-    assert result == ["hello", "world", "say"]
-
-    result = FullTextIndexing.extract_unique_good_words("I shout, and shout - and REALLY, REALLY shout because I can!")
-    assert result == ["shout"]
-
-    result = FullTextIndexing.extract_unique_good_words("<span>OK, this is    just a very CRAZY related issue in two empty parts; and bad HTML format!")
-    assert result == ["crazy", "html", "format"]
-
-    text = '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
-    result = FullTextIndexing.extract_unique_good_words(text)
-    assert result == ['mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit']
+    return content_id
 
 
 
@@ -54,28 +46,59 @@ def test_split_into_words():
     result = FullTextIndexing.split_into_words(text, to_lower_case=True)
     assert result == ['mr', 'joe', 'sons', 'a', 'long', 'term', 'business', 'find', 'it', 'at', 'http', 'example', 'com', 'home', 'visit', 'joe', 's', 'now']
 
+    # Examples with no usable text
+    assert FullTextIndexing.split_into_words("") == []
+    assert FullTextIndexing.split_into_words("           ") == []
+    assert FullTextIndexing.split_into_words(" + - / % <br> &amp; <h1>...</h1> ? ") == []
+
+
+
+def test_extract_unique_good_words():
+    with pytest.raises(Exception):
+        FullTextIndexing.extract_unique_good_words(None)
+
+    with pytest.raises(Exception):
+        FullTextIndexing.extract_unique_good_words(123)
+
+    result = FullTextIndexing.extract_unique_good_words("Hello world!")
+    assert result == {"world"}
+
+    result = FullTextIndexing.extract_unique_good_words("Hello to the world! And, YES - why not - let's say, hello again as well :)")
+    assert result == {"world", "say"}
+
+    result = FullTextIndexing.extract_unique_good_words("I shout, and shout - and REALLY, REALLY shout because I can!")
+    assert result == {"shout"}
+
+    result = FullTextIndexing.extract_unique_good_words("<span>OK, this is    just a very CRAZY related issue in two empty parts; and bad HTML format!")
+    assert result == {"crazy", "html", "format"}
+
+    text = '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
+    result = FullTextIndexing.extract_unique_good_words(text)
+    assert result == {'mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit'}
+
+
+    # Examples with no usable text, returning an empty set
+    assert FullTextIndexing.extract_unique_good_words("") == set()
+    assert FullTextIndexing.extract_unique_good_words("           ") == set()
+    assert FullTextIndexing.extract_unique_good_words(" + - / % <br> &amp; <h1>...</h1> ? ") == set()
+
 
 
 def test_initialize_schema(db):
     pass
 
 
+
 def test_new_indexing(db):
-    db.empty_dbase()
-
-    # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
-                                           property_list=["filename"])
-    FullTextIndexing.initialize_schema()
-
-    # Create a data node of type "Content Item"...
-    content_id = NeoSchema.add_data_point(class_name="Content Item", properties={"filename": "My_Document.pdf"})
+    # Set up a new indexing system, and create a sample Content node
+    content_id = setup_sample_index(db)
     # ...and then index some words to it
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=["lab", "research", "R/D"])
+    FullTextIndexing.new_indexing(content_item_id=content_id,
+                                  unique_words={"lab", "research", "R/D"}, to_lower_case=True)
 
     with pytest.raises(Exception):
         # Cannot create a new index, when one already exists
-        FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=["duplicate", "index"])
+        FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"duplicate", "index"})
 
     assert NeoSchema.count_data_nodes_of_class(class_id="Word") == 3
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
@@ -90,7 +113,7 @@ def test_new_indexing(db):
         '''
     res = db.query(q, single_column="name")
     #print(res)
-    assert compare_unordered_lists(res, ["lab", "research", "R/D"])
+    assert compare_unordered_lists(res, ["lab", "research", "r/d"])
 
 
     # Now test a scenario where some Word node already exist
@@ -98,7 +121,7 @@ def test_new_indexing(db):
     # Create a data node of type "Content Item"...
     content_id = NeoSchema.add_data_point(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...and then index some words to it
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=["research", "science"])
+    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"research", "science"}, to_lower_case=True)
 
     assert NeoSchema.count_data_nodes_of_class(class_id="Word") == 4    # One word from earlier got re-used
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 2
@@ -117,27 +140,20 @@ def test_new_indexing(db):
         '''
     res = db.query(q, single_column="name")
     #print(res)
-    assert compare_unordered_lists(res, ["lab", "research", "R/D", "science"])
+    assert compare_unordered_lists(res, ["lab", "research", "r/d", "science"])
 
 
 
 def test_update_indexing(db):
-    db.empty_dbase()
-
-    # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
-                                           property_list=["filename"])
-    FullTextIndexing.initialize_schema()
-
-    # Create a data node of type "Content Item"
-    content_id = NeoSchema.add_data_point(class_name="Content Item", properties={"filename": "My_Document.pdf"})
+    # Set up a new indexing system, and create a sample Content node
+    content_id = setup_sample_index(db)
 
     with pytest.raises(Exception):
         # Cannot update an index that hasn't yet been created
-        FullTextIndexing.update_indexing(content_item_id=content_id, unique_words=["impossible"])
+        FullTextIndexing.update_indexing(content_item_id=content_id, unique_words={"impossible"})
 
     # Index some words to or Content Item
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=["lab", "research", "R/D"])
+    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"lab", "research", "R/D"})
 
     assert FullTextIndexing.count_indexed_words(content_id) == 3
     assert NeoSchema.count_data_nodes_of_class("Word") == 3
@@ -147,7 +163,7 @@ def test_update_indexing(db):
 
 
     # Now, change the indexing (of that same Content Item) to a new set of words
-    FullTextIndexing.update_indexing(content_item_id=content_id, unique_words=["closed", "renovation"])
+    FullTextIndexing.update_indexing(content_item_id=content_id, unique_words={"closed", "renovation"})
 
     assert FullTextIndexing.count_indexed_words(content_id) == 2
     assert NeoSchema.count_data_nodes_of_class("Word") == 5
@@ -165,7 +181,7 @@ def test_update_indexing(db):
 
     # Now,again change the indexing (of that same Content Item) to a new set of words - this time,
     # partially overlapping with existing Word nodes
-    FullTextIndexing.update_indexing(content_item_id=content_id, unique_words=["research", "neuroscience"])
+    FullTextIndexing.update_indexing(content_item_id=content_id, unique_words={"research", "neuroscience"})
 
     assert FullTextIndexing.count_indexed_words(content_id) == 2
     assert NeoSchema.count_data_nodes_of_class("Word") == 6
@@ -183,22 +199,15 @@ def test_update_indexing(db):
 
 
 def test_remove_indexing(db):
-    db.empty_dbase()
-
-    # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
-                                           property_list=["filename"])
-    FullTextIndexing.initialize_schema()
-
-    # Create a data node of type "Content Item"
-    content_id = NeoSchema.add_data_point(class_name="Content Item", properties={"filename": "My_Document.pdf"})
+    # Set up a new indexing system, and create a sample Content node
+    content_id = setup_sample_index(db)
 
     with pytest.raises(Exception):
         # Cannot remove an index not yet created
         FullTextIndexing.remove_indexing(content_id)
 
     # Index some words to our "Content Item"
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=["lab", "research", "R/D"])
+    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"lab", "research", "R/D"})
 
     assert FullTextIndexing.count_indexed_words(content_id) == 3
     assert NeoSchema.count_data_nodes_of_class("Word") == 3
@@ -214,7 +223,7 @@ def test_remove_indexing(db):
     assert NeoSchema.count_data_nodes_of_class("Word") == 3             # The words are still there
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 0 # The Indexer node is gone
 
-    assert db.get_nodes(match=indexer_node_id) == []        # No such node exists anymore
+    assert db.get_nodes(match=indexer_node_id) == []                    # No such node exists anymore
 
 
 
@@ -227,15 +236,10 @@ def test_get_indexer_node_id(db):
 
     assert FullTextIndexing.get_indexer_node_id(content_item_id = 1) is None  # The dbase is empty
 
-    # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(class_name="Content Item", strict=True,
-                                           property_list=["filename"])
-    FullTextIndexing.initialize_schema()
-
-    # Create a data node of type "Content Item"...
-    content_id = NeoSchema.add_data_point(class_name="Content Item", properties={"filename": "My_Document.pdf"})
+    # Set up a new indexing system, and create a sample Content node
+    content_id = setup_sample_index(db)
     # ...and then index some words to it
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=["lab", "research", "R/D"])
+    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"lab", "research", "R/D"})
 
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
 
@@ -252,3 +256,53 @@ def test_get_indexer_node_id(db):
 
     # Verify that the "Indexer" data node is indeed associated to the schema Class called "Indexer"
     assert NeoSchema.class_of_data_node(node_id=indexer_node_id, labels="Indexer") == "Indexer"
+
+
+
+
+############################   SEARCHING   ############################
+
+def test_search_word(db):
+    # Set up a new indexing system, and create a sample Content node
+    content_id_1 = setup_sample_index(db)
+    # ...and then index some words to it
+    FullTextIndexing.new_indexing(content_item_id=content_id_1,
+                                  unique_words={"lab", "R/D", "SHIPPING","absence"},
+                                  to_lower_case=True)
+
+    assert FullTextIndexing.search_word("missing") == []                # Word not present
+
+    assert FullTextIndexing.search_word("") == []                       # Missing search term
+
+    assert FullTextIndexing.search_word("lab") == [content_id_1]
+    assert FullTextIndexing.search_word("shipping") == [content_id_1]   # Case-insensitive
+    assert FullTextIndexing.search_word("  Shipping   ") == [content_id_1]   # Ignores leading/trailing blanks
+    assert FullTextIndexing.search_word("ship") == [content_id_1]       # Substring
+    assert FullTextIndexing.search_word("R/D") == [content_id_1]
+    assert FullTextIndexing.search_word("r/d") == [content_id_1]        # Case-insensitive
+    assert FullTextIndexing.search_word("ab") == [content_id_1]         # This will match both "lab" and "absence"
+
+    result = FullTextIndexing.search_word("  Shipping   ", all_properties=True)
+    assert result == [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, 'neo4j_labels': ['Content Item']}]
+
+
+    # Add a 2nd data node of type "Content Item"...
+    content_id_2 = NeoSchema.add_data_point(class_name="Content Item", properties={"filename": "some_other_file.txt"})
+    # ...and then index some words to it
+    FullTextIndexing.new_indexing(content_item_id=content_id_2, unique_words={"ship", "lab", "glassware"})
+
+    assert FullTextIndexing.search_word("missing") == []                # Word not present
+
+    assert FullTextIndexing.search_word("glassware") == [content_id_2]
+    assert FullTextIndexing.search_word("r/d") == [content_id_1]
+    assert compare_unordered_lists(FullTextIndexing.search_word("lab"), [content_id_1, content_id_2])
+
+    assert FullTextIndexing.search_word("shipping") == [content_id_1]   # "shipping" only matches one...
+    assert compare_unordered_lists(FullTextIndexing.search_word("ship"), [content_id_1, content_id_2])  # ...while "ship" matches both
+
+    result = FullTextIndexing.search_word("ship", all_properties=True)
+    expected = [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, 'neo4j_labels': ['Content Item']},
+                {'filename': 'some_other_file.txt', 'internal_id': content_id_2, 'neo4j_labels': ['Content Item']}
+               ]
+
+    assert compare_recordsets(result, expected)

@@ -1,6 +1,6 @@
 import re
 import html
-from typing import Union
+from typing import Union, List, Set
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
@@ -24,20 +24,22 @@ class FullTextIndexing:
     # TODO: allow over-ride in config file
     COMMON_WORDS = ['and', 'or', 'either', 'nor', 'neither',
                     'the', 'an', 'with', 'without', 'within',
-                    'in', 'out', 'on', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by',
+                    'in', 'out', 'on', 'off', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by', 'upon',
                     'if', 'whether', 'then', 'else',
                     'me', 'my', 'mine', 'he', 'she', 'it', 'him', 'his', 'her', 'its',
-                    'we', 'our', 'you', 'your', 'yours', 'they', 'them', 'their',
+                    'we', 'us', 'our', 'you', 'your', 'yours', 'they', 'them', 'their',
                     'why', 'because', 'since', 'how', 'for', 'both', 'indeed',
                     'help', 'helps', 'let', 'lets',
-                    'go', 'goes', 'going', 'gone', 'became', 'become',
-                    'be', 'is', 'isn', 'am', 'are', 'aren', 'been', 'was', 'wasn', 'being',
+                    'go', 'goes', 'going', 'gone', 'went',
+                    'became', 'become', 'becomes', 'come', 'comes', 'came',
+                    'be', 'is', 'isn', 'am', 'are', 'aren', 'were', 'been', 'was', 'wasn', 'being',
                     'can', 'cannot', 'could', 'might', 'may', 'do', 'does', 'did', 'didn', 'done', 'doing',
                     'make', 'made', 'making',
                     'have', 'haven', 'has', 'had', 'hadn', 'having',
-                    'must', 'need', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
+                    'must', 'need', 'needs', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
                     'will', 'would', 'shall',
-                    'get', 'gets', 'got', 'take', 'takes',
+                    'get', 'gets', 'got', 'take', 'takes', 'took', 'put', 'bring',
+                    'see', 'given', 'end',
                     'ask', 'asks', 'answer', 'answers',
                     'when', 'where', 'which', 'who', 'why', 'what',
                     'no', 'yes', 'maybe', 'ok', 'oh',
@@ -46,19 +48,20 @@ class FullTextIndexing:
                     'good', 'better', 'best', 'great', 'well', 'bad',  'worse', 'worst',
                     'just', 'about', 'above', 'again', 'ago',
                     'times', 'date', 'dates', 'today', 'day', 'month', 'year', 'yr', 'days', 'months', 'years',
-                    'hour', 'hr', 'minute', 'min', 'second', 'sec',
+                    'hour', 'hr', 'minute', 'min', 'second', 'sec', 'pm',
                     'now', 'currently', 'late', 'early', 'soon', 'later', 'earlier', 'already',
                     'after', 'before', 'yet', 'whenever', 'while', 'during', 'ever',
-                    'never', 'occasionally', 'sometimes', 'often', 'always', 'eventually',
+                    'never', 'occasionally', 'sometimes', 'often', 'always', 'usually', 'eventually',
                     'really', 'approximately',
                     'old', 'older', 'new', 'newer',
                     'begin', 'began', 'start', 'starting', 'started',
                     'in', 'out', 'here', 'there',
+                    'instead',
                     'up', 'down', 'over', 'above', 'under', 'below', 'between', 'among', 'wherever',
-                    'next', 'previous', 'other', 'another', 'thing', 'things',
+                    'next', 'previous', 'other', 'others', 'another', 'thing', 'things',
                     'like', 'as', 'such', 'fairly', 'actual', 'actually',
                     'simple', 'simpler', 'simplest',
-                    'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than', 'extra', 'enough',
+                    'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than', 'extra', 'enough', 'only',
                     'everything', 'nothing',
                     'few', 'fewer', 'many', 'multiple', 'much', 'same', 'different', 'equal',
                     'full', 'empty', 'lot', 'very', 'around', 'vary', 'varying',
@@ -69,70 +72,29 @@ class FullTextIndexing:
                     'this', 'that', 'these', 'those',
                     'too', 'also',
                     'related', 'issues', 'issue',
-                    'use', 'used',
-                    'com', 'www', 'http', 'https',
-                    'one', 'two',
-                    'include', 'including', 'incl', 'except', 'test', 'testing', 'sure', 'according', 'accordingly',
+                    'use', 'uses', 'used', 'using',
+                    'com', 'org', 'www', 'http', 'https',
+                    'one', 'two', 'ones',
+                    'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly',
                     'basically', 'essentially', 'called', 'named', 'consider', 'considering', 'however', 'especially', 'etc',
                     'happen', 'happens',
                     'small', 'smaller', 'smallest', 'big', 'bigger', 'biggest', 'large', 'larger', 'largest',
+                    'hello', 'hi',
+                    're', 'vs', 'ex',
 
                     'data', 'value', 'values']
 
+
+    # TODO: allow user-specific words.  For example, for German: ich, du, er, sie, wir, ihr
 
 
     ##########   STRING METHODS   ##########
 
     @classmethod
-    def extract_unique_good_words(cls, text: str) -> [str]:
-        """
-        From the given text, zap HTML, HTML entities (such as &ndash;) and punctuation;
-        then, turn into lower case, and break up into individual words.
-
-        Next, eliminate "words" that are 1 character long, or that are numbers,
-        or that are in a list of common words.
-
-        Finally, eliminate duplicates, and return the list of acceptable, unique words.
-
-        Note: no stemming is done.
-
-        EXAMPLE - given '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
-                  it returns:
-                  ['mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit']
-
-        :param text:   A string with the text to analyze and index
-        :return:       A list of strings containing "acceptable", unique words in the text
-        """
-
-        assert type(text) == str, \
-            f"extract_unique_good_words(): the argument must be a string; instead, it was of type {type(text)}"
-
-        # Extract words from string, and convert them to lower case
-        split_text = cls.split_into_words(text, to_lower_case=True)
-        #print("The split text is : ", split_text)
-
-        # Eliminate "words" that are 1 character long, or that are numbers,
-        # or that are in a list of common words.  Don't include duplicates
-        word_list = []
-
-        for word in split_text:
-            if len(word) > 1 \
-                    and not word.isnumeric() \
-                    and word not in cls.COMMON_WORDS \
-                    and word not in word_list:
-                word_list.append(word)
-
-        #print("The word list for the index is: ", word_list)
-
-        return word_list    # TODO: turn into a SET
-
-
-
-    @classmethod
-    def split_into_words(cls, text: str, to_lower_case=True) ->[str]:
+    def split_into_words(cls, text: str, to_lower_case=True) -> [str]:
         """
         Zap HTML, HTML entities (such as &ndash;) and punctuation from the given text;
-        then, break it up into individual words.  If requested, turn it all to lower case.
+        then, break it up into individual words, returned as a list.  If requested, turn it all to lower case.
 
         Care is taken to make sure that the stripping of special characters does NOT fuse words together;
         e.g. avoid turning 'Long&ndash;Term' into a single word as 'LongTerm';
@@ -145,7 +107,7 @@ class FullTextIndexing:
 
         :param text:            A string with the text to parse
         :param to_lower_case:   If True, all text is converted to lower case
-        :return:                A list of words in the text,
+        :return:                A (possibly empty) list of words in the text,
                                     free of punctuation, HTML and HTML entities such as &ndash;
         """
         unescaped_text = html.unescape(text)    # Turn HTML entities such as "&ndash;" into text
@@ -158,14 +120,60 @@ class FullTextIndexing:
             stripped_text = stripped_text.lower()   # If requested, turn everything to lower case
 
         result = re.findall(r'\w+', stripped_text)  # Use regex to split off the string into individual words
-                                                    # (note that the "&" in the original string is treated as blank space)
+        # (note that the "&" in the original string is treated as blank space)
         # EXAMPLE:  ['Mr', 'Joe', 'sons', 'A', 'Long', 'Term', 'business', 'Find', 'it', 'at', 'http', 'example', 'com', 'home', 'Visit', 'Joe', 's', 'NOW']
 
         return result
 
 
 
-    ##########   GRAPH METHODS   ##########
+    @classmethod
+    def extract_unique_good_words(cls, text :str) -> Set[str]:
+        """
+        From the given text, zap HTML, HTML entities (such as &ndash;) and punctuation;
+        then, turn into lower case, and break up into individual words.
+
+        Next, eliminate "words" that are 1 character long, or that are numbers,
+        or that are in a list of common words.
+
+        Finally, eliminate duplicates, and return the set of acceptable, unique words.
+
+        Note: no stemming or other grammatical analysis is done.
+
+        EXAMPLE - given '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
+                  it returns:
+                  ['mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit']
+
+        :param text:    A string with the text to analyze and index
+        :return:        A (possibly empty) set of strings containing "acceptable",
+                            unique words in the text
+        """
+
+        assert type(text) == str, \
+            f"extract_unique_good_words(): the argument must be a string; instead, it was of type {type(text)}"
+
+        # Extract words from string, and convert them to lower case
+        split_text = cls.split_into_words(text, to_lower_case=True)
+        #print("The split text is : ", split_text)
+
+        # Eliminate "words" that are 1 character long, or that are numbers,
+        # or that are in a list of common words.  Don't include duplicates
+        word_set = set()    # Empty set
+
+        for word in split_text:
+            if len(word) > 1 \
+                    and not word.isnumeric() \
+                    and word not in cls.COMMON_WORDS:
+                word_set.add(word)      # Adding an element to the set
+
+        #print("The word set for the index is: ", word_set)
+
+        return word_set
+
+
+
+
+    #############   GRAPH METHODS   #############
 
     @classmethod
     def initialize_schema(cls, content_item_class_id=None) -> None:
@@ -191,11 +199,11 @@ class FullTextIndexing:
             if NeoSchema.class_name_exists("Content Item"):
                 content_item_class_id = NeoSchema.get_class_internal_id(class_name="Content Item")
             else:
-                content_item_class_id, _ = NeoSchema.create_class(name="Content Item", schema_type="L")
+                content_item_class_id, _ = NeoSchema.create_class(name="Content Item", strict=False)
 
-        indexer_class_id, _ = NeoSchema.create_class(name="Indexer", schema_type="S")
+        indexer_class_id, _ = NeoSchema.create_class(name="Indexer", strict=True)
 
-        NeoSchema.create_class_with_properties(class_name="Word", strict=True,
+        NeoSchema.create_class_with_properties(name="Word", strict=True,
                                                property_list=["name"],
                                                class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
 
@@ -204,10 +212,10 @@ class FullTextIndexing:
 
 
     @classmethod
-    def new_indexing(cls, content_item_id: int, unique_words: [str]):
+    def new_indexing(cls, content_item_id :int, unique_words :Set[str], to_lower_case=True) -> None:
         """
         Used to create a new index, linking the given list of unique words
-        to the specified "Content Item" data node.
+        to the specified data node that represents a "Content Item".
         
         Create a data node of type "Indexer",
         with inbound relationships named "occurs" from "Word" data nodes (pre-existing or newly-created)
@@ -215,9 +223,10 @@ class FullTextIndexing:
         Also, create a relationship named "has_index" from an existing "Content Item" data node to the new "Indexer" node.
         TODO: consider combining new_indexing() and update_indexing()
 
-        :param content_item_id: The internal database ID of an existing "Content Item" data node
+        :param content_item_id: The internal database ID of an existing data node that represents a "Content Item"
         :param unique_words:    A list of strings containing unique words
                                     - for example as returned by extract_unique_good_words()
+        :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
         """
         indexer_id = cls.get_indexer_node_id(content_item_id)
@@ -229,18 +238,24 @@ class FullTextIndexing:
                                                         links =[{"internal_id": content_item_id, "rel_name": "has_index",
                                                                   "rel_dir": "IN"}])
 
-        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words)
+        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
 
 
 
     @classmethod
-    def populate_index(cls, indexer_id: int, unique_words: [str]) -> None:
+    def populate_index(cls, indexer_id :int, unique_words :Set[str], to_lower_case :bool) -> None:
         """
 
         :param indexer_id:
-        :param unique_words:
-        :return:            None
+        :param unique_words:    Set of strings, with unique words for the index
+        :param to_lower_case:   If True, all text is converted to lower case
+        :return:                None
         """
+        if to_lower_case:
+            unique_words = list(map(str.lower, unique_words))
+        else:
+            unique_words = list(unique_words)
+
         # Locate (if already present), or create, a "Word" data node for each word in the list unique_words
         class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
         result = NeoSchema.add_data_column_merge(class_internal_id=class_db_id,
@@ -258,7 +273,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def update_indexing(cls, content_item_id : int, unique_words: [str]) -> None:
+    def update_indexing(cls, content_item_id :int, unique_words :Set[str], to_lower_case=True) -> None:
         """
         Used to update an index, linking the given list of unique words
         to the specified "Indexer" data node, which was created by a call to new_indexing()
@@ -274,6 +289,7 @@ class FullTextIndexing:
         :param content_item_id: The internal database ID of an existing "Content Item" data node
         :param unique_words:    A list of strings containing unique words
                                     - for example as returned by extract_unique_good_words()
+        :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
         """
         indexer_id = cls.get_indexer_node_id(content_item_id)
@@ -285,12 +301,12 @@ class FullTextIndexing:
         # i.e. give a "clean slate" to the "Indexer" data node
         NeoSchema.remove_multiple_data_relationships(node_id=indexer_id, rel_name="occurs", rel_dir="IN", labels="Word")
 
-        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words)
+        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
 
 
 
     @classmethod
-    def get_indexer_node_id(cls, content_item_id: int) -> Union[int, None]:
+    def get_indexer_node_id(cls, content_item_id :int) -> Union[int, None]:
         """
         Retrieve and return the internal database ID of the "Indexer" data node
         associated to the given Content Item data node.
@@ -315,7 +331,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def remove_indexing(cls, content_item_id : int) -> None:
+    def remove_indexing(cls, content_item_id :int) -> None:
         """
         Drop the "Indexer" node linked to the given Content Item node.
         If no index exists, an Exception is raised
@@ -334,7 +350,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def count_indexed_words(cls, content_item_id : int) -> int:
+    def count_indexed_words(cls, content_item_id :int) -> int:
         """
         Determine and return the number of words attached to the index
         of the given Content Item data node
@@ -348,3 +364,155 @@ class FullTextIndexing:
             RETURN count(w) AS word_count
             '''
         return cls.db.query(q, data_binding={"content_item_id": content_item_id}, single_cell="word_count")
+
+
+
+    @classmethod
+    def most_common_words_NOT_YET_USED(cls) -> [str]:    # TODO: finish implementing
+        """
+        Return the 200 or so most common words in the current index
+        """
+        q = '''
+            MATCH (w:Word)-[:occurs]->(i:Indexer) 
+            RETURN w.name, count(i) AS c
+            ORDER by c DESC LIMIT 200
+        '''
+
+        return ["Not yet implemented"]
+
+
+
+    @classmethod
+    def word_occurrence_NOT_YET_USED(cls, word: str) -> int:    # TODO: finish implementing
+        """
+        Return the usage count of the given word in the current index
+        :param word:
+        :return:
+        """
+        q = '''
+        MATCH (w:Word {name:$word})-[:occurs]->(i:Indexer) 
+        RETURN count(i) AS word_occurrence
+        '''
+
+        return 0
+
+
+
+    @classmethod
+    def index_size_NOT_YET_USED(cls):    # TODO: finish implementing
+        """
+        Return the number of content items current being indexed
+
+        :return:
+        """
+        q = '''
+            MATCH (n:Indexer) RETURN count(n)
+            '''
+
+
+
+    @classmethod
+    def number_word_NOT_YET_USED(cls):    # TODO: finish implementing
+        """
+        Return the number of words current being used in the indexing
+
+        :return:
+        """
+        q = '''
+            MATCH (n:Word) RETURN count(n)
+            '''
+
+
+    @classmethod
+    def unused_word_NOT_YET_USED(cls):    # TODO: finish implementing
+        """
+        Return a list of words in the indexing that lack any usage
+
+        :return:
+        """
+        pass
+
+
+
+    @classmethod
+    def rebuild_index_NOT_YET_USED(cls, directory :str):    # TODO: finish implementing
+        """
+        Rebuild the index from all the (text or HTML) files in the given directory.
+
+        TODO: a version that looks up that list from the database
+
+        :param directory:     EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
+        :return:
+        """
+        import os
+        from BrainAnnex.modules.media_manager.media_manager import MediaManager
+
+        file_list = os.listdir(directory)
+        print(f"Total number of files: {len(file_list)}")
+
+        # Index the content of all the files
+        i = 1
+        for filename in file_list:
+            print(f"\n {i} -------------------------\n", filename)
+            (basename, suffix) = os.path.splitext(filename)
+            q = f"MATCH (n:Notes) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN ID(n) AS node_int_id"
+            node_int_id = cls.db.query(q, single_cell="node_int_id")
+            print("    node's integer ID: ", node_int_id)
+            file_contents = MediaManager.get_from_file(filename)
+            #print(file_contents)
+            word_list = FullTextIndexing.extract_unique_good_words(file_contents)
+            print(word_list)
+            FullTextIndexing.new_indexing(content_item_id = node_int_id, unique_words = word_list)
+            i += 1
+
+
+
+
+    #########################   SEARCHING   #########################
+
+    @classmethod
+    def search_word(cls, word :str, all_properties=False) -> Union[List[int], List[dict]]:
+        """
+        Look up in the index for any stored words that contains the requested string
+        (ignoring case and leading/trailing blanks.)
+
+        Then locate the Content nodes that are indexed by any of those words.
+        Return a (possibly empty) list of either the internal database ID's of all the found nodes,
+        or a list of their full attributes.
+
+        :param word:    A string, typically containing a word or word fragment;
+                            case is ignored, and so are leading/trailing blanks
+        :param all_properties:
+        :return:        If all_properties is False,
+                            a (possibly empty) list of the internal database ID's
+                            of all the found nodes
+                        If all_properties is True,
+                            a (possibly empty) list of dictionaries with all the data
+                            of all the found nodes; each dict contain all of the nodes' attributes,
+                            plus keys called 'internal_id' and 'neo4j_labels'
+                            EXAMPLE: [{'filename': 'My_Document.pdf', 'internal_id': 66, 'neo4j_labels': ['Content Item']}]
+        """
+        clean_term = word.strip()   # Zap leading/trailing blanks
+
+        if clean_term == "":
+            # This is done as special handling because a blank string would match any word!
+            return []
+
+        if all_properties:
+            return_statement = "RETURN DISTINCT c"
+        else:
+            return_statement = "RETURN DISTINCT id(c) AS content_id"
+
+        q = f'''MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
+             (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(c)
+             WHERE w.name CONTAINS toLower('{clean_term}')
+             {return_statement} 
+             '''
+
+        #print(q)
+
+        if all_properties:
+            result = cls.db.query_extended(q, flatten=True)
+        else:
+            result = cls.db.query(q, single_column="content_id")
+        return result

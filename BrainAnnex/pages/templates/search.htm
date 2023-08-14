@@ -1,33 +1,36 @@
 <!DOCTYPE html>
-{#  NON-EDITABLE version of the viewer page for a list of Content Items (the list is specified in Flask parameter: content_items)
+{#  NON-EDITABLE version of the viewer page, used for a search-result page,
+    given a list of Content Items (the list is specified in Flask parameter: content_items)
     Vue.js is used for the rendering
 
     Flask-passed parameters:
-        category_id     An integer with the URI of a Category
-        category_name   The name of the above Category
-        subcategories
 
-        content_items:  A list of dictionaries
+        page_header     A string that, if passed, gets prominently shown at the top of the page
+                        EXAMPLE:  10 SEARCH RESULT(S) for `boat`
+
+        content_items:  A list of dictionaries.  At present, only used for Content Items of type 'Notes'
                         EXAMPLE:
-                        [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0},
-                         {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10},
-                         {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20}
+                        [
+                         {'basename': 'notes-3460', 'item_id': 3460, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm',
+                            'internal_id': 3962,
+                            'neo4j_labels': ['BA', 'Notes'],
+                            'internal_links': [{'item_id': 966, 'schema_code': 'cat', 'name': "Physics"}]
+                         }
                         ]
 
     ----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-23 Julian A. West
 	----------------------------------------------------------------------------------
-
  #}
 
 
 <html lang="en">
 <head>
-    <title>{{category_name}}</title>
+    <title>Search Results</title>
 
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/page_viewer.css">
-
+    <!-- General and module styling -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/page_viewer.css">
 
     <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
@@ -41,6 +44,7 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
 
+    <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
 </head>
@@ -52,32 +56,23 @@
 <div id="vue-root">   <!-- Container for VUE COMPONENTS  : considered the ROOT of the components below-->
 
 
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
 
-<!--   The "scroll-canvas" is the main part of the page,
-       incl. the navbar at the top, but exclusive of the fixed left sidebar -->
+
+
+<!--   The "scroll-canvas" is the MAIN part of the page,
+       incl. the navbar at the top,
+       but exclusive of the left sidebar, which is fixed in position -->
 <div v-bind:class="{ 'scroll-canvas': show_left_sidebar, 'scroll-canvas--collapsed-left': !show_left_sidebar }">
 
 
 
-
-<div v-show='show_left_sidebar' class='sidebar-left'> 	<!-- START OF sidebar-left : used for Table of Contents -->
-
-
-<!-- Page navigation section -->
-<span style='color:gray'>PAGE CONTENTS</span><br>
-
-<a href='#' style='font-size:14px; font-weight:bold'>TOP</a><br>
+{# TOP NAVIGATION BAR (scrolls with main part of page) #}
+{% include "navbar_top.htm" %}
 
 
-<!-- A simple Table-of-Contents -->
-<div class="page-toc">
-    <template v-for="item in content_array">
-        <p v-if="item.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.item_id">[[item.text]]</a><br></p>
-        <p v-if="item.schema_code == 'cd'">&nbsp; &diams; <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.name">[[item.name]]</a><br></p>
-    </template>
-</div>      <!-- END of page-toc -->
 
-</div>		<!-- END OF sidebar-left-->
 
 <!-- Collapsed version of sidebar-left -->
 <div v-show='!show_left_sidebar' class='sidebar-left-collapsed'>
@@ -92,38 +87,33 @@
 
 
 {#  Uncomment for debugging (to view some of the Flask-passed parameters)
-<br>{{content_items}}<br><br>
-#}
+<br>{{content_items}}<br><br><br>
+ #}
 
-{% if category_name %}
-<p class="headline">{{category_name}}</p>
+
+{% if page_header %}
+<p class="headline">{{page_header}}</p>
 {% endif %}
 
-
-{% if subcategories %}
-<div class='subsections'>
-    <span class='subsections-label'>Subsections: </span>
-    {% for subcategory in subcategories %}
-        {% if loop.index == 1 %}
-        <span class='subsection-link'><a href="/BA/pages/viewer/{{subcategory['id']}}">{{subcategory['name']}}</a></span>
-        {% else %}
-        <span class='subsection-link'>&nbsp; &diams; &nbsp;<a href="/BA/pages/viewer/{{subcategory['id']}}">{{subcategory['name']}}</a></span>
-        {% endif %}
-    {% endfor %}
-</div>
-<br>
-{% endif %}
 
 
 {# Give notice if no Content Items were passed #}
-{% if (content_items | count == 0) and (not subcategories) %}
-    <p style="margin-top:50px; color:#888">NO CONTENT ITEMS FOUND IN THE DATABASE : you may need to re-import them</p>
+{% if (content_items | count == 0) %}
+    <p style="margin-top:50px; color:#888">NO SEARCH RESULTS : you may need to re-phrase your search</p>
 {% endif %}
 
 
+<div class="content-block">
+    <div class="content-block-title">Search Again</div>
+    <form method='GET' action='search'>
+        <input type='text' name='term'  size="25" maxlength="35" placeholder="Enter a single word to search for">
+        <input type="submit" value="SEARCH">
+    </form>
+</div>
+<br>
 
 
-<!-- For each Content Item on this page, make use of the appropriate Vue component (picked dynamically)
+<!-- For each Content Item on this page, make use of the appropriate Vue component (picked dynamically).
      Type-specific display is handled by the individual components
 
      v-bind:key Used to provide unique identifiers for each component
@@ -134,14 +124,19 @@
             v-bind:allow_editing="expose_controls"
             v-bind:category_id="category_id"
      -->
-<component v-for="item in content_array"
-            v-bind:key="item.schema_code + item.item_id + item.pos"
-            v-bind:is="plugin_component_name(item)"
-            v-bind:item_data="item"
-            v-bind:allow_editing="expose_controls"
-            v-bind:category_id="category_id"
->
-</component>
+<div v-for="item in content_array">
+    <component
+                v-bind:key="item.schema_code + item.item_id + item.pos"
+                v-bind:is="plugin_component_name(item)"
+                v-bind:item_data="item"
+                v-bind:allow_editing="expose_controls"
+                v-bind:category_id="category_id"
+    >
+    </component>
+
+    Links: &nbsp; <span v-html="compose_category_links(item)"></span>
+    <br><br><br>
+</div>
 
 
 <br><br>
@@ -191,15 +186,31 @@ new Vue({
                                                     // EXAMPLE: [{"item_id":5,"schema_code":"h","pos":0,"text":"GENERAL METHODS"},
                                                     //           {"basename":"mypix","schema_code":"i","item_id":8,"pos":50,"suffix":"png"}]
         expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
-        category_id: {{category_id}},   // Integer
+        category_id: 0,                 // TODO: not in use, but (some of?) the components might require it
         show_left_sidebar: true
     },
 
 
     methods:  {
+        compose_category_links(item)
+        // TODO: generalize
+        {
+            var elements = item.internal_links;
+
+            link_str = "";
+            for (var i = 0; i < elements.length; i++) {
+                el = elements[i];
+                link_str += `<a href="viewer/${el.item_id}">${el.name}</a> &nbsp;&nbsp; `;
+            }
+
+            return link_str;
+        },
+
+
         locate_item(schema_code, item_id)
         /*  Helper function, to locate the specified Content Item in the array of Content Items.
             If found, return its index in the array; otherwise, return -1
+            TODO: rename to locate_item_index()
          */
         {
             //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}`);
@@ -213,6 +224,7 @@ new Vue({
 
             return -1;    // Didn't find it
         },
+
 
         locate_item_pos(schema_code, item_id, pos)
         /*  Same as locate_item(), but also requiring a match on position

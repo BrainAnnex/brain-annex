@@ -3,6 +3,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
+from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
 import re                   # For REGEX
 import pandas as pd
 import os
@@ -756,9 +757,82 @@ class APIRequestHandler:
 
 
 
-    #############################################################
-    #                            FILTERS                        #
-    #############################################################
+    #####################################################################################################
+
+    '''                                        ~   SEARCH   ~                                         '''
+
+    def ________SEARCH________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def search_for_word(cls, word: str) -> [dict]:
+        """
+        Look up any stored words that contains the requested string
+        (ignoring case and leading/trailing blanks.)
+
+        Then locate the Content nodes that are indexed by any of those words.
+        Return a (possibly empty) list of the data of all the found nodes.
+
+        :param word:    A string, typically containing a word or word fragment;
+                            case and leading/trailing blanks are ignored
+        :return:
+        """
+        result = FullTextIndexing.search_word(word, all_properties=True)
+        # EXAMPLE:
+        #   [{'basename': 'notes-2', 'item_id': 55, 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
+        #    {'basename': 'notes-3', 'item_id': 14, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
+        #   ]
+
+        for node in result:
+            internal_id = node["internal_id"]
+            #print("\n\n--- internal_id: ", internal_id)
+
+
+            # TODO: generalize the following line, to other types of links
+            neighbor_props = cls.db.follow_links(match=internal_id,
+                                                rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Categories")
+            # EXAMPLE of neighbor_props:
+            #   [{'item_id': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
+            #print(neighbor_props)
+            node["internal_links"] = neighbor_props
+
+            '''
+            #TODO: consider the following generalized approach
+            
+            new_result = []     # SET OUTSIDE of this loop
+            
+            labels = node["neo4j_labels"]
+            del node["internal_id"]
+            del node["neo4j_labels"]
+            dn = NeoSchema.DataNode(internal_id=internal_id, labels=labels], properties=node)
+            # All the above lines would be un-necessary if FullTextIndexing.search_word returned a DataNode object!
+            
+            for neighbor_data in neighbor_props:
+                neighbor_node = NeoSchema.DataNode(internal_id=None, labels="Categories", properties=neighbor_data)
+                dn.add_relationship(link_name="BA_in_category", link_direction="OUT", link_properties=None, node_obj=neighbor_node)
+                
+            new_result.append(dn)
+            
+            # And then return new_result outside of the loop
+            '''
+
+
+        # Note: attributes 'pos' and 'class_name' (used by some HTML templates) are not in the the result
+        #print("------- RESULT -------------  :\n", result)
+        return result
+
+
+
+
+
+    #####################################################################################################
+
+    '''                                        ~   FILTERS   ~                                        '''
+
+    def ________FILTERS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
 
     @classmethod
@@ -821,7 +895,7 @@ class APIRequestHandler:
         :return:            Status string (error or success message)
         """
         # If a return URL was provided, compose a link for it
-        return_link = "" if return_url is None else f" <a href='{return_url}'>Go back</a>"
+        return_link = "" if return_url is None else f" <a href='{return_url}'>GO BACK</a><br><br>"
 
         try:
             upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
@@ -1251,6 +1325,8 @@ class APIRequestHandler:
 
 class DocumentationGenerator:
     """
+    # TODO: move to a separate file
+
     To generate an HTML for a documentation page, from a python file written in the style of BrainAnnex
     """
 
@@ -1322,6 +1398,8 @@ class DocumentationGenerator:
         """
         THIS PARTICULAR PATTERN IS FOR THE CREATION OF DOCUMENTATION FROM PYTHON FILES
 
+        The python files has some expectations about their formatting; for example, as used in neo_schema.py
+
         Define a REGEX pattern for parsing of data files, for use in import_datafile()
 
         The pattern is expected to be used in a re.findall() that uses re.DOTALL as the last argument
@@ -1364,18 +1442,31 @@ class DocumentationGenerator:
     @classmethod
     def generate_documentation(cls, df) -> str:
         """
-        Print out, and return, HTML code to create a documentation page, from a Pandas data frame with the data
+        Print out, and return as a string, the HTML code to create a documentation page,
+        from a Pandas data frame with the data.
 
-        :param df:  A Pandas data frame
+        Note: the HTML code also contains references to some CSS classes for styling.
+
+        :param df:  A Pandas data frame, with the following columns:
+                        class_name, class_description, method_name, args, return_value, comments
         :return:    A string with HTML code
         """
 
+        summary = ""    # Links to Classes (TODO: to be expanded to also cover sections)
         htm = ""
 
         for ind in df.index:    # EXAMPLE of df.index: RangeIndex(start=0, stop=11, step=1)
-            if df['class_name'][ind]:
-                htm += f"<h1 class='class-name'>Class {df['class_name'][ind]}</h1>\n"
-                htm += f"<pre>{df['class_description'][ind]}</pre>\n\n\n"
+            # For each row in the Pandas data frame
+
+            if df['class_name'][ind]:   # Starting documenting a new pythons class
+                python_class_name = df['class_name'][ind]
+                python_class_description = df['class_description'][ind]
+
+                summary += f"<br><hr><br><a href='#{python_class_name}'>Class {python_class_name}</a><br><br>\n"
+
+                htm += f"<a name='{python_class_name}'></a>\n"
+                htm += f"<h1 class='class-name'>Class {python_class_name}</h1>\n"
+                htm += f"<pre>{python_class_description}</pre>\n\n\n"
 
             elif "____" in df['method_name'][ind]:      # A BrainAnnex styling convention to indicate a new section
                 section_name = df['method_name'][ind]
@@ -1402,10 +1493,13 @@ class DocumentationGenerator:
                 htm += "</table>\n\n\n"
 
 
+        summary += "<br>\n\n"
 
         print("###################################################################################")
+        print(summary)
         print(htm)
         print("###################################################################################")
-        return htm
+
+        return summary + htm
 
 

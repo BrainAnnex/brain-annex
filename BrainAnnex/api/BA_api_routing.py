@@ -1469,7 +1469,7 @@ class ApiRouting:
             status_msg = APIRequestHandler.import_datafile(tmp_filename_for_upload, full_filename, test_only=True)
 
             # Provide a return link
-            status_msg += f" <a href='{return_url}' style='margin-left:50px'>Go back</a>"
+            status_msg += f" <a href='{return_url}' style='margin-left:50px'>GO BACK</a><br><br>"
         
             return status_msg
 
@@ -1479,7 +1479,8 @@ class ApiRouting:
         @login_required
         def document_python() -> str:
             """
-            EXPERIMENTAL!  Upload and parse a python file, and then print out HTML to create a documentation page.
+            EXPERIMENTAL!  Upload and parse a python file (with some expectations about its formatting),
+            and then generate HTML code to create a documentation page.
             The regular expression for the parsing is currently hardwired in DocumentationGenerator.import_python_file()
             Typically, the uploads are initiated by forms containing:
                 <input type="file" name="imported_datafile">
@@ -1512,13 +1513,13 @@ class ApiRouting:
 
             return_url = request.form["return_url"] # This originates from the HTML form - namely the line:
             #    <input type="hidden" name="return_url" value="my_return_url">
-            print("return_url: ", return_url)
+            #print("return_url: ", return_url)
 
             #status_msg = "Testing"
             status_msg = DocumentationGenerator.import_python_file(tmp_filename_for_upload, full_filename)
 
             # Provide a return link
-            status_msg += f" <a href='{return_url}' style='margin-left:50px'>Go back</a>"
+            status_msg += f" <a href='{return_url}' style='margin-left:50px'>GO BACK</a><br><br>"
 
             return status_msg
 

@@ -184,8 +184,8 @@ class HomeRouting:
 
             #user_id_as_int = flask_user_id         # In my test, this also worked if User.get_id is changed to return an integer
 
-            print(f"Inside callback function load_user().  flask_user_id = {repr(flask_user_id)} , with integer representation : {user_id_as_int}")
-            print("~~~ Flask session ID: ", session.get("_id"))
+            #print(f"Inside callback function load_user().  flask_user_id = {repr(flask_user_id)} , with integer representation : {user_id_as_int}")
+            #print("~~~ Flask session ID: ", session.get("_id"))
 
             return UserManagerNeo4j.obtain_user_obj(user_id_as_int)
 

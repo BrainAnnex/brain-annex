@@ -119,3 +119,32 @@ class MediaManager:
             return True
         else:
             return False    # "The file does not exist"
+
+
+
+    @classmethod
+    def locate_orphan_media_NOT_YET_USED(cls, directory: str, db) -> [str]:    # TODO: finish implementing
+        """
+        Locate files in a LOCAL directory
+        that lack a corresponding database record (for now, just considering Notes)
+
+        :param directory:   EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
+        :param db:          Object of type "NeoAccess"; TODO: should be able to avoid it
+                                by using the NeoSchema layer instead
+        :return:            A list of names of "orphaned" file s
+        """
+        file_list = os.listdir(directory)
+        print(f"Total number of files: {len(file_list)}")
+
+        # Locate files that lack a database record
+        orphans = []
+        for filename in file_list:
+            #print(filename)
+            (basename, suffix) = os.path.splitext(filename)
+            q = f"MATCH (n:Notes) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN COUNT(n) AS number_nodes"
+            n = db.query(q, single_cell="number_nodes")
+            if n == 0:
+                print(f"Notes record for file `{filename}`  NOT FOUND!")
+                orphans.append(filename)
+
+        return orphans

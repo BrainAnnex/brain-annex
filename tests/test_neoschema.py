@@ -22,14 +22,14 @@ def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY
 
-    patient_id, _  = NeoSchema.create_class_with_properties(class_name="patient",
-                                                      property_list=["name", "age", "balance"])
+    patient_id, _  = NeoSchema.create_class_with_properties(name="patient",
+                                                            property_list=["name", "age", "balance"])
 
-    result_id, _  = NeoSchema.create_class_with_properties(class_name="result",
-                                                      property_list=["biomarker", "value"])
+    result_id, _  = NeoSchema.create_class_with_properties(name="result",
+                                                           property_list=["biomarker", "value"])
 
-    doctor_id, _  = NeoSchema.create_class_with_properties(class_name="doctor",
-                                                      property_list=["name", "specialty"])
+    doctor_id, _  = NeoSchema.create_class_with_properties(name="doctor",
+                                                           property_list=["name", "specialty"])
 
     NeoSchema.create_class_relationship(from_class="patient", to_class="result", rel_name="HAS_RESULT")
     NeoSchema.create_class_relationship(from_class="patient", to_class="doctor", rel_name="IS_ATTENDED_BY")
@@ -41,10 +41,10 @@ def create_sample_schema_1():
 def create_sample_schema_2():
     # Class "quotes" with relationship named "in_category" to Class "categories";
     # each Class has some properties
-    _, sch_1 = NeoSchema.create_class_with_properties(class_name="quotes",
+    _, sch_1 = NeoSchema.create_class_with_properties(name="quotes",
                                                       property_list=["quote", "attribution", "verified"])
 
-    _, sch_2 = NeoSchema.create_class_with_properties(class_name="categories",
+    _, sch_2 = NeoSchema.create_class_with_properties(name="categories",
                                                       property_list=["name", "remarks"])
 
     NeoSchema.create_class_relationship(from_class="quotes", to_class="categories", rel_name="in_category")
@@ -72,9 +72,6 @@ def test_create_class(db):
 
     with pytest.raises(Exception):
         assert NeoSchema.create_class("A", strict=False)  # A class by that name already exists; so, nothing gets created
-
-    with pytest.raises(Exception):
-        assert NeoSchema.create_class("B", schema_type="X")   # Non-existent schema_type that raises exception
 
 
 
