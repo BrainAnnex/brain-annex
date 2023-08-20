@@ -1,7 +1,7 @@
 import pytest
 from neoaccess import NeoAccess
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
+from BrainAnnex.api.data_manager import DataManager
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 
@@ -14,7 +14,7 @@ MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/me
 @pytest.fixture(scope="module")
 def db():
     neo_obj = NeoAccess(debug=True)
-    APIRequestHandler.db = neo_obj
+    DataManager.db = neo_obj
     NeoSchema.set_database(neo_obj)
     yield neo_obj
 

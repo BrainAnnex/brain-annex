@@ -6,7 +6,7 @@
 from flask import Blueprint, render_template, current_app, make_response, request   # The "request" package
                                                                                     # makes available a GLOBAL request object
 from flask_login import login_required, current_user
-from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
+from BrainAnnex.api.data_manager import DataManager
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from BrainAnnex.modules.categories.categories import Categories
 from datetime import datetime
@@ -116,8 +116,8 @@ class PagesRouting:
 
             siblings_categories = Categories.viewer_handler(category_id)
 
-            records_types = APIRequestHandler.get_leaf_records()
-            records_schema_data = APIRequestHandler.get_records_schema_data(category_id)  # TODO: *** TEST
+            records_types = DataManager.get_leaf_records()
+            records_schema_data = DataManager.get_records_schema_data(category_id)  # TODO: *** TEST
             #print("records_schema_data: ", records_schema_data)
 
             bread_crumbs = Categories.create_bread_crumbs(category_id)
@@ -220,7 +220,7 @@ class PagesRouting:
             EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager
             """
             template = "schema_manager.htm"
-            class_list = APIRequestHandler.all_schema_classes()
+            class_list = DataManager.all_schema_classes()
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    class_list=class_list)
 
@@ -234,8 +234,8 @@ class PagesRouting:
             EXAMPLE invocation: http://localhost:5000/BA/pages/data-import
             """
             template = "data_import.htm"
-            class_list = APIRequestHandler.all_schema_classes()
-            intake_status = APIRequestHandler.data_intake_status()
+            class_list = DataManager.all_schema_classes()
+            intake_status = DataManager.data_intake_status()
 
             # Extract some config parameters (used for Continuous Data Ingestion)
             intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
@@ -296,7 +296,7 @@ class PagesRouting:
             if search_terms is None:
                 raise Exception("Missing value for parameter `term`")   # TODO: deal with empty searches
 
-            content_items = APIRequestHandler.search_for_word(search_terms)
+            content_items = DataManager.search_for_word(search_terms)
 
             page_header = f"{len(content_items)} SEARCH RESULT(S) for `{search_terms}`"
 
@@ -333,7 +333,7 @@ class PagesRouting:
 
             template = "node_explorer.htm"
 
-            label_list = APIRequestHandler.get_node_labels()
+            label_list = DataManager.get_node_labels()
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    label_list = label_list)
@@ -365,7 +365,7 @@ class PagesRouting:
             """
 
             template = "manage_node_labels.htm"
-            label_list = APIRequestHandler.get_node_labels()
+            label_list = DataManager.get_node_labels()
             return render_template(template, label_list = label_list, current_page=request.path,
                                    site_pages=cls.site_pages)
 
@@ -378,7 +378,7 @@ class PagesRouting:
 
             template = "node_explorer.htm"
 
-            label_list = APIRequestHandler.get_node_labels()
+            label_list = DataManager.get_node_labels()
             return "TEMPORARILY DISABLED"
             # TODO: fix infinite loop in print statements
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = \

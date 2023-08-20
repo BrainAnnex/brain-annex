@@ -1,3 +1,5 @@
+# Classes "DataManager" and "DocumentationGenerator"
+
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
@@ -20,7 +22,7 @@ from datetime import datetime
 
 
 
-class APIRequestHandler:
+class DataManager:
     """
     For general database-interaction operations.
     Used by the UI for Page Generation,
@@ -28,10 +30,7 @@ class APIRequestHandler:
 
     This class does NOT get instantiated.
 
-    TODO: absorb (the non-Categories part of) PagesRequestHandler {DONE!}, and
-          get renamed DataManager
-
-    Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
+    TODO: maybe move the file to its own module
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
@@ -49,19 +48,8 @@ class APIRequestHandler:
 
 
 
-    @classmethod
-    def add_new_label(cls, label: str) -> bool:
-        """
-        Create a new blank node with the specified label
 
-        :return:    True if successful, or False otherwise
-        """
-
-        cls.db.create_node(label, {})
-
-        return True     # TODO: check the actual success of the operation
-
-
+    #######################     LOW-LEVEL DATABASE-NODE UTILITIES       #######################
 
     @classmethod
     def get_node_labels(cls) -> [str]:
@@ -75,6 +63,19 @@ class APIRequestHandler:
         label_list = cls.db.get_labels()        # Fetch all the node labels in the database
 
         return label_list
+
+
+
+    @classmethod
+    def add_new_label(cls, label: str) -> int:
+        """
+        Create a new blank node with the specified label
+
+        :return:    The internal database ID of the new node
+        """
+
+        return  cls.db.create_node(label)
+
 
 
 

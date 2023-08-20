@@ -5,8 +5,8 @@
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from flask_login import login_required
-from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
-from BrainAnnex.api.BA_api_request_handler import DocumentationGenerator
+from BrainAnnex.api.data_manager import DataManager
+from BrainAnnex.api.data_manager import DocumentationGenerator
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
@@ -427,7 +427,7 @@ class ApiRouting:
             """
         
             try:
-                result = APIRequestHandler.get_leaf_records()
+                result = DataManager.get_leaf_records()
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -502,13 +502,13 @@ class ApiRouting:
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["new_class_name"])
-                APIRequestHandler.new_schema_class(class_specs)
+                DataManager.new_schema_class(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"Unable to create a new Schema Class. {ex}"
                 return_value = cls.ERROR_PREFIX + err_status    # Failure
 
-            print(f"create_new_schema_class() is returning: `{return_value}`")
+            #print(f"create_new_schema_class() is returning: `{return_value}`")
 
             return return_value
 
@@ -533,7 +533,7 @@ class ApiRouting:
 
             try:
                 class_specs = cls.extract_post_pars(post_data)
-                APIRequestHandler.schema_add_property_to_class_handler(class_specs)
+                DataManager.schema_add_property_to_class_handler(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"Unable to add the new property. {ex}"
@@ -567,7 +567,7 @@ class ApiRouting:
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
-                APIRequestHandler.add_schema_relationship_handler(class_specs)
+                DataManager.add_schema_relationship_handler(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"Unable to add a new relationship. {ex}"
@@ -599,7 +599,7 @@ class ApiRouting:
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
-                APIRequestHandler.delete_schema_relationship_handler(class_specs)
+                DataManager.delete_schema_relationship_handler(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"Unable to delete the relationship. {ex}"
@@ -670,7 +670,7 @@ class ApiRouting:
 
             try:
                 item_id = int(item_id_str)
-                payload = APIRequestHandler.get_text_media_content(item_id, "n")
+                payload = DataManager.get_text_media_content(item_id, "n")
                 response = cls.SUCCESS_PREFIX + payload
             except Exception as ex:
                 err_details = f"Unable to retrieve the requested note: {ex}"
@@ -696,7 +696,7 @@ class ApiRouting:
 
             try:
                 item_id = int(item_id_str)
-                payload = APIRequestHandler.get_text_media_content(item_id, "n", public_required=True)
+                payload = DataManager.get_text_media_content(item_id, "n", public_required=True)
 
                 text_response = cls.SUCCESS_PREFIX + payload
                 response = make_response(text_response)
@@ -746,7 +746,7 @@ class ApiRouting:
             default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
 
             try:
-                (suffix, content) = APIRequestHandler.get_binary_content(int(item_id), th)
+                (suffix, content) = DataManager.get_binary_content(int(item_id), th)
                 response = make_response(content)
                 # set the MIME type
                 mime_type = mime_mapping.get(suffix.lower(), default_mime)
@@ -789,7 +789,7 @@ class ApiRouting:
             """
             try:
                 item_id = cls.str_to_int(item_id_str)
-                payload = APIRequestHandler.get_link_summary(item_id, omit_names = ['BA_in_category'])
+                payload = DataManager.get_link_summary(item_id, omit_names = ['BA_in_category'])
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -814,7 +814,7 @@ class ApiRouting:
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['item_id', 'rel_name', 'dir'])
                 data_dict["item_id"] = cls.str_to_int(data_dict["item_id"])
-                payload = APIRequestHandler.get_records_by_link(data_dict)
+                payload = DataManager.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -844,7 +844,7 @@ class ApiRouting:
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['item_id'])
-                APIRequestHandler.update_content_item(data_dict)
+                DataManager.update_content_item(data_dict)
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
@@ -864,7 +864,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete/46/n
             """
             try:
-                APIRequestHandler.delete_content_item(item_id, schema_code)
+                DataManager.delete_content_item(item_id, schema_code)
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
@@ -905,7 +905,7 @@ class ApiRouting:
             # Create a new Content Item with the POST data
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
-                new_id = APIRequestHandler.new_content_item_in_category(pars_dict)
+                new_id = DataManager.new_content_item_in_category(pars_dict)
                 return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
@@ -1184,7 +1184,7 @@ class ApiRouting:
             cls.show_post_data(post_data, "get_filtered")
         
             try:
-                result = APIRequestHandler.get_nodes_by_filter(dict(post_data))
+                result = DataManager.get_nodes_by_filter(dict(post_data))
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -1216,7 +1216,7 @@ class ApiRouting:
 
             try:
                 post_pars = cls.extract_post_pars(post_data, required_par_list=["use_schema"])
-                result = APIRequestHandler.upload_import_json_file(post_pars)
+                result = DataManager.upload_import_json_file(post_pars)
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -1235,7 +1235,7 @@ class ApiRouting:
             :return:
             """
             try:
-                APIRequestHandler.do_stop_data_intake()
+                DataManager.do_stop_data_intake()
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
@@ -1271,7 +1271,7 @@ class ApiRouting:
                 intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
                 outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
 
-                result = APIRequestHandler.do_bulk_import(intake_folder, outtake_folder, schema_class)
+                result = DataManager.do_bulk_import(intake_folder, outtake_folder, schema_class)
 
                 response = {"status": "ok", "result": result}              # Successful termination
             except Exception as ex:
@@ -1303,7 +1303,7 @@ class ApiRouting:
             #    <input type="hidden" name="return_url" value="my_return_url">
             print("return_url: ", return_url)
         
-            status = APIRequestHandler.upload_import_json(verbose=False, return_url=return_url)
+            status = DataManager.upload_import_json(verbose=False, return_url=return_url)
             return status
         
         
@@ -1466,7 +1466,7 @@ class ApiRouting:
             print("return_url: ", return_url)
 
             #status_msg = "Testing"
-            status_msg = APIRequestHandler.import_datafile(tmp_filename_for_upload, full_filename, test_only=True)
+            status_msg = DataManager.import_datafile(tmp_filename_for_upload, full_filename, test_only=True)
 
             # Provide a return link
             status_msg += f" <a href='{return_url}' style='margin-left:50px'>GO BACK</a><br><br>"
@@ -1541,7 +1541,7 @@ class ApiRouting:
             """
             try:
                 if download_type == "full":
-                    result = APIRequestHandler.export_full_dbase()
+                    result = DataManager.export_full_dbase()
                     export_filename = "exported_dbase.json"
                 elif download_type == "schema":
                     result = NeoSchema.export_schema()
@@ -1576,19 +1576,21 @@ class ApiRouting:
         #                EXPERIMENTAL                 #
         #---------------------------------------------#
         
-        @bp.route('/add_label/<new_label>')
+        @bp.route('/simple/add_label/<new_label>')
         @login_required
         def add_label(new_label) -> str:
             """
             Add a new blank node with the specified label
-            EXAMPLE invocation: http://localhost:5000/api/add_label/boat
+            EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_label/Customer
             """
-            status = APIRequestHandler.add_new_label(new_label)
-        
-            if status:
-                return cls.SUCCESS_PREFIX
-            else:
-                return cls.ERROR_PREFIX
+            try:
+                internal_id = DataManager.add_new_label(new_label)
+                return_value = cls.SUCCESS_PREFIX + str(internal_id)    # Success
+            except Exception as ex:
+                err_status = f"Unable to create a new node with the given label (new_label). {ex}"
+                return_value = cls.ERROR_PREFIX + err_status            # Failure
+
+            return return_value
 
 
         ##################  END OF ROUTING DEFINITIONS  ##################
