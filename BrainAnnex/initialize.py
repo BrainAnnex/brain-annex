@@ -1,4 +1,3 @@
-from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
 from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.categories.categories import Collections
@@ -24,7 +23,6 @@ class InitializeBrainAnnex:
         :param db_handle:   Object of class "NeoAccess"
         :return:            None
         """
-        PagesRequestHandler.db = db_handle
         APIRequestHandler.db = db_handle
         Categories.db = db_handle
         Collections.db = db_handle

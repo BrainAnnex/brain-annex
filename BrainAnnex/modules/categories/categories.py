@@ -118,6 +118,34 @@ class Categories:
                                        neighbor_labels="BA")
 
 
+    @classmethod
+    def get_subcategories_alt(cls, category_id) -> [dict]:  # TODO: merge with get_subcategories()
+        """
+        Return all the (immediate) subcategories of the given category,
+        as a list of dictionaries with keys 'id' and 'name' TODO: fix
+        EXAMPLE:
+            OLD -> [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
+            [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
+
+        :param category_id:
+        :return:    A list of dictionaries
+        """
+        q =  '''
+             MATCH (sub:BA {schema_code:"cat"})-[BA_subcategory_of]->(c:BA {schema_code:"cat", item_id:$category_id})
+             RETURN sub.item_id AS id, sub.name AS name
+             '''
+        result = cls.db.query(q, {"category_id": category_id})
+
+        '''
+        new = cls.db.follow_links(labels="BA", key_name="item_id", key_value=category_id,
+                                  rel_name="BA_subcategory_of", rel_dir="IN",
+                                  neighbor_labels="BA")
+        # OR: properties_condition = {"item_id": category_id, "schema_code": "cat"}
+        '''
+
+        return result
+
+
 
     @classmethod
     def get_parent_categories(cls, category_id) -> [dict]:
@@ -135,6 +163,30 @@ class Categories:
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                    neighbor_labels="BA")
+
+
+    @classmethod
+    def get_parent_categories_alt(cls, category_id) -> [dict]:  # TODO: merge with get_parent_categories()
+        """
+        Return all the (immediate) parent categories of the given category,
+        as a list of dictionaries with all the keys of the Category Class
+
+        TODO: fix inconsistency.  This function uses item_id ; others use just id
+
+        EXAMPLE:
+            [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
+
+        :param category_id:
+        :return:    A list of dictionaries
+        """
+        match = cls.db.match(labels="BA",
+                             properties={"item_id": category_id, "schema_code": "cat"})
+
+        result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
+                                     neighbor_labels="BA")
+
+        return result
+
 
 
 
@@ -180,6 +232,45 @@ class Categories:
             for item in result:
                 if item["remarks"] is None:
                     del item["remarks"]     # To avoid a dictionary entry of the type 'remarks': None
+
+        return result
+
+
+    @classmethod
+    def get_all_categories_alt(cls, exclude_root=True) -> [dict]:
+        """
+        TODO: phase out, in favor of Categories.get_all_categories (which uses 'item_id' instead of 'id')
+
+        Return all the existing Categories - possibly except the root -
+        as a list of dictionaries with keys 'id', 'name', 'remarks'
+        sorted by name
+        EXAMPLE:
+            [{'id': 3, 'name': 'Hobbies'}, {'id': 2, 'name': 'Work', 'remarks': 'paid jobs'}]
+
+        Note that missing "remarks" values are not in the dictionaries
+
+        :param exclude_root:
+        :return:                A list of dictionaries
+        """
+        clause = ""
+        if exclude_root:
+            clause = "WHERE cat.item_id <> 1"
+
+        q =  f'''
+             MATCH (cat:BA {{schema_code:"cat"}})
+             {clause}
+             RETURN cat.item_id AS id, cat.name AS name, cat.remarks AS remarks
+             ORDER BY toLower(cat.name)
+             '''
+        # Notes: 1 is the ROOT
+        # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
+
+        result = cls.db.query(q)
+
+        # Ditch all the missing "remarks" values
+        for cat in result:
+            if cat["remarks"] is None:
+                del cat["remarks"]
 
         return result
 
@@ -560,6 +651,56 @@ class Categories:
         """
         #TODO: make use of cls.db.reattach_node()
         pass    # switchChildNode($parentID, $oldChildID, $newChildID)
+
+
+
+
+    #####################################################################################################
+
+    '''                                ~   VIEW ITEMS IN CATEGORIES   ~                                '''
+
+    def ________VIEW_ITEMS_IN_CATEGORIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def get_content_items_by_category(cls, category_id = 1) -> [{}]:
+        """
+        Return the records for all nodes linked to the Category node identified by its item_id value
+
+        :param category_id:
+        :return:    A list of dictionaries
+                    EXAMPLE:
+                    [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                     {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                     {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                    ]
+        """
+
+        # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
+        # TODO: switch to using one of the Collections methods
+        cypher = """
+            MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", item_id:$category_id})
+            RETURN n, r.pos AS pos, cl.name AS class_name
+            ORDER BY r.pos
+            """
+
+        result = cls.db.query(cypher, {"category_id": category_id})
+        #print(result)
+
+
+        content_item_list = []
+        for elem in result:
+            item_record = elem["n"]             # A dictionary with the various fields
+
+            # TODO: eliminate possible conflict if the node happens to have
+            #       attributes named "pos" or "class_name"!
+            item_record["pos"] = elem["pos"]                # Inject into the record a positional value
+            item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
+            content_item_list.append(item_record)
+
+        #print(content_item_list)
+        return content_item_list
 
 
 

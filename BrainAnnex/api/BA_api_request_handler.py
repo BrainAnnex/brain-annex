@@ -28,7 +28,7 @@ class APIRequestHandler:
 
     This class does NOT get instantiated.
 
-    TODO: absorb (the non-Categories part of) PagesRequestHandler, and
+    TODO: absorb (the non-Categories part of) PagesRequestHandler {DONE!}, and
           get renamed DataManager
 
     Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
@@ -49,7 +49,6 @@ class APIRequestHandler:
 
 
 
-
     @classmethod
     def add_new_label(cls, label: str) -> bool:
         """
@@ -61,6 +60,22 @@ class APIRequestHandler:
         cls.db.create_node(label, {})
 
         return True     # TODO: check the actual success of the operation
+
+
+
+    @classmethod
+    def get_node_labels(cls) -> [str]:
+        """
+        Look up and return a list of all the node labels in the database.
+        EXAMPLE: ["my_label_1", "my_label_2"]
+
+        :return:    A list of strings
+        """
+
+        label_list = cls.db.get_labels()        # Fetch all the node labels in the database
+
+        return label_list
+
 
 
 
@@ -117,6 +132,16 @@ class APIRequestHandler:
 
     #######################     SCHEMA-RELATED       #######################
     # TODO: possibly move to separate class
+
+
+    @classmethod
+    def all_schema_classes(cls) -> [str]:
+        """
+        Return a list of all the existing Schema classes
+        :return:
+        """
+        return NeoSchema.get_all_classes()
+
 
     @classmethod
     def new_schema_class(cls, class_specs: dict) -> None:

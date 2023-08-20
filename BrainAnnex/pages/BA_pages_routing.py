@@ -6,8 +6,7 @@
 from flask import Blueprint, render_template, current_app, make_response, request   # The "request" package
                                                                                     # makes available a GLOBAL request object
 from flask_login import login_required, current_user
-from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
-from BrainAnnex.api.BA_api_request_handler import APIRequestHandler         # TODO: reorganize, to avoid this
+from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from BrainAnnex.modules.categories.categories import Categories
 from datetime import datetime
@@ -109,9 +108,9 @@ class PagesRouting:
             category_name = category_info.get("name", "[No name]")
             category_remarks = category_info.get("remarks", "")
 
-            parent_categories = PagesRequestHandler.get_parent_categories(category_id)
-            subcategories = PagesRequestHandler.get_subcategories(category_id)
-            all_categories = PagesRequestHandler.get_all_categories(exclude_root=False) # TODO: switch to Categories.get_all_categories(), below
+            parent_categories = Categories.get_parent_categories_alt(category_id)
+            subcategories = Categories.get_subcategories_alt(category_id)
+            all_categories = Categories.get_all_categories_alt(exclude_root=False) # TODO: switch to Categories.get_all_categories(), below
             #all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)   # TODO: when switching to this,
                                                                                                         #  change pages to use "item_id" instead of "id"
 
@@ -124,7 +123,7 @@ class PagesRouting:
             bread_crumbs = Categories.create_bread_crumbs(category_id)
 
             # Fetch all the Content Items attached to this Category
-            content_items = PagesRequestHandler.get_content_items_by_category(category_id)
+            content_items = Categories.get_content_items_by_category(category_id)
             #   List of dictionaries.  EXAMPLE:
             #       [
             #           {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
@@ -163,7 +162,7 @@ class PagesRouting:
             """
             template = "md_file_generator.htm"
 
-            content_items = PagesRequestHandler.get_content_items_by_category(category_id=int(category_id))
+            content_items = Categories.get_content_items_by_category(category_id=int(category_id))
 
             return render_template(template, content_items=content_items)
 
@@ -181,12 +180,12 @@ class PagesRouting:
             category_id = int(category_id)
 
             # Fetch all the Content Items attached to the given Category
-            content_items = PagesRequestHandler.get_content_items_by_category(category_id)
+            content_items = Categories.get_content_items_by_category(category_id)
 
             category_info = Categories.get_category_info(category_id)
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")
             category_remarks = category_info.get("remarks", "")
-            subcategories = PagesRequestHandler.get_subcategories(category_id)
+            subcategories = Categories.get_subcategories_alt(category_id)
                             # EXAMPLE: [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
 
             return render_template(template,
@@ -221,7 +220,7 @@ class PagesRouting:
             EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager
             """
             template = "schema_manager.htm"
-            class_list = PagesRequestHandler.all_schema_classes()
+            class_list = APIRequestHandler.all_schema_classes()
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    class_list=class_list)
 
@@ -235,7 +234,7 @@ class PagesRouting:
             EXAMPLE invocation: http://localhost:5000/BA/pages/data-import
             """
             template = "data_import.htm"
-            class_list = PagesRequestHandler.all_schema_classes()
+            class_list = APIRequestHandler.all_schema_classes()
             intake_status = APIRequestHandler.data_intake_status()
 
             # Extract some config parameters (used for Continuous Data Ingestion)
@@ -334,7 +333,7 @@ class PagesRouting:
 
             template = "node_explorer.htm"
 
-            label_list = PagesRequestHandler.get_node_labels()
+            label_list = APIRequestHandler.get_node_labels()
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    label_list = label_list)
@@ -366,7 +365,7 @@ class PagesRouting:
             """
 
             template = "manage_node_labels.htm"
-            label_list = PagesRequestHandler.get_node_labels()
+            label_list = APIRequestHandler.get_node_labels()
             return render_template(template, label_list = label_list, current_page=request.path,
                                    site_pages=cls.site_pages)
 
@@ -379,7 +378,7 @@ class PagesRouting:
 
             template = "node_explorer.htm"
 
-            label_list = PagesRequestHandler.get_node_labels()
+            label_list = APIRequestHandler.get_node_labels()
             return "TEMPORARILY DISABLED"
             # TODO: fix infinite loop in print statements
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = \
