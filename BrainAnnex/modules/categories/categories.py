@@ -190,14 +190,28 @@ class Categories:
         """
         Return the data of all the "siblings" of the given Category
 
-        :param category_internal_id:
-        :return:
+        :param category_internal_id:    The internal database ID of a "Category" data node
+        :return:                        A list of dictionaries, with one element for each "sibling";
+                                            each element contains the 'internal_id' and 'neo4j_labels' keys,
+                                            plus whatever attributes are stored on that node.
+                                            EXAMPLE of single element:
+                                            {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories', 'BA']}
         """
-        result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of")
+
+        #TODO: switch to this after the next update of NeoAccess
+        #result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of", order_by="name")
+
+        q = f"""
+                MATCH (n) - [:BA_subcategory_of] -> (parent) <- [:BA_subcategory_of] - (sibling)
+                WHERE id(n) = {category_internal_id}
+                RETURN sibling
+                ORDER BY toLower(sibling.name)
+            """
+        result = cls.db.query_extended(q, flatten=True)
 
         # Ditch unneeded attributes
         for item in result:
-            del item["neo4j_labels"]
+            del item["internal_id"]
 
         return result
 
@@ -254,82 +268,6 @@ class Categories:
 
 
     @classmethod
-    def paths_from_root(cls, category_id: int):     # *** NOT IN CURRENT USE ***
-        """
-        Extract and return all the existing paths from the ROOT category to the given one,
-        traversing the relationship "BA_subcategory_of"
-
-        :param category_id:
-        :return:            A list of of paths.  Each path is a list of nodes along it.  Each node is a dict of its properties
-                            EXAMPLE 1:
-                                [[{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Jobs', 'item_id': 799, 'schema_code': 'cat'}]]
-                            EXAMPLE 2:
-                                [
-                                 [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Food', 'item_id': 61, 'schema_code': 'cat'}, {'name': 'Nutrition', 'item_id': 814, 'schema_code': 'cat'}],
-                                 [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Health', 'item_id': 799, 'schema_code': 'cat'}, {'name': 'Nutrition', 'item_id': 814, 'schema_code': 'cat'}]
-                                ]
-
-        """
-        # Look up and return all the paths (p) from the ROOT category (ID 1) to the given one,
-        #   following 1 or more hops along the relationship "BA_subcategory_of"
-        q = '''
-            MATCH p=(root :BA {schema_code:"cat", item_id:1})<-[:BA_subcategory_of*]-(c :BA {schema_code:"cat", item_id:$category_id}) 
-            RETURN p
-            '''
-
-        result = cls.db.query(q, {"category_id": category_id})
-        # EXAMPLE:
-        #   [{'p': [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, 'BA_subcategory_of', {'name': 'Jobs', 'item_id': 799, 'schema_code': 'cat'}]}]
-        #print(f"\n*****  PATHS TO CATEGORY {category_id} ***********")
-        #print(f"result contains {len(result)} elements")
-        #print(result)
-
-        all_paths = []
-        for path_map in result:
-            #print(path_map)
-            path = path_map["p"]
-
-            node_path = []
-            for i, step in enumerate(path):
-                # Only take the 0-th, 2nd, 4th, etc. elements, skipping over the relationship name
-                if i%2 == 0:
-                    node_path.append(step)
-
-            all_paths.append(node_path)
-
-        #print("all_paths: ", all_paths, "\n")
-        return all_paths
-
-        '''
-        # Desired intermediate structure:
-        example = \
-        [
-            [
-                {'name': 'HOME', 'item_id': 1, 'remarks': 'ROOT NODE'},
-                {'name': 'Professional Networking', 'item_id': 61},
-                {'name': 'People at XYZ', 'item_id': 814}
-            ],
-            [
-                {'name': 'HOME', 'item_id': 1, 'remarks': 'ROOT NODE'},
-                {'name': 'Jobs', 'item_id': 799},
-                {'name': 'XYZ', 'item_id': 526},
-                {'name': 'People at XYZ', 'item_id': 814}
-            ]
-        ]
-
-        # Desired final structure:
-        parents_map = {814: [526, 61], 526: [799], 799: [1], 61: [1], 1: []}
-        names = {814: 'People at GSK', 526: 'GSK', 799: 'Jobs', 61: 'Professional Networking', 1: 'HOME'
-                 } # Ignoring `remarks` field for now
-
-        # Maybe encode a tree in JSON
-        json_data = [[['HOME', 'Jobs', 'GSK'] , ['HOME', 'Professional Networking']], 'People at GSK']
-        # OR
-        json_data_2 = ['People at GSK', [ ['Professional Networking', 'HOME'],  ['GSK', ['Jobs', 'HOME']] ] ]
-        '''
-
-
-    @classmethod
     def create_bread_crumbs(cls, category_ID) -> list:
         """
         Return a list of Category ID's together with token strings, providing directives for the HTML structure of
@@ -365,14 +303,14 @@ class Categories:
 
 
     @classmethod
-    def recursive(cls, category_ID, parents_map) -> list:
+    def recursive(cls, category_ID, parents_map :dict) -> list:
         """
 
         :param category_ID:
-        :param parents_map:
+        :param parents_map: the dict structure returned by create_parent_map()
         :return:
         """
-        if category_ID == 1:    # If it is the root
+        if category_ID == 1:    # If it is the root.    TODO: this will eventually have to be managed differently
             return [1]
 
         parent_list = parents_map.get(category_ID, [])
@@ -398,6 +336,7 @@ class Categories:
             bc.append("ARROW")
             bc.append(category_ID)
             return bc
+
 
 
 
@@ -954,8 +893,8 @@ class Categories:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
-    # TODO: page-handler methods are meant to plugin-provided complete functionality,
-    #       to combine what's currently in BA_pages_routing.py and in BA_pages_request_handler.py
+    # TODO: page-handler methods are meant to be plugin-provided complete functionality,
+    #       to be combined with what's currently in BA_pages_routing.py and in BA_pages_request_handler.py
 
     @classmethod
     def viewer_handler(cls, category_id: int):
