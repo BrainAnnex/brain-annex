@@ -2700,7 +2700,7 @@ class NeoSchema:
         #       in particular, add "Import Data" to the Schema if not already present
 
         cache = SchemaCache()        # All needed Schema-related data will be automatically queried and cached here
-        print("***************************** cache initialized ***************************** ")
+        cls.debug_print("***************************** cache initialized ***************************** ")
 
         if type(data) == dict:      # If the top-level Python data structure is a dictionary
             # Create a single tree
@@ -2749,7 +2749,7 @@ class NeoSchema:
         or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
 
         IMPORTANT:  any part of the data that doesn't match the Schema,
-                    gets silently dropped.  TODO: issue some report about that
+                    gets silently dropped.  TODO: issue some report about anything that gets dropped
 
         EXAMPLES:
         (1) {"state": "California", "city": "Berkeley"}

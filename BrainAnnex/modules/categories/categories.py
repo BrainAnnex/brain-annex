@@ -206,26 +206,41 @@ class Categories:
     @classmethod
     def create_parent_map(cls, category_id: int) -> dict:
         """
-        Taking into account the set of all the ancestor nodes of the given Category (i.e. all its super-categories),
-        create and return a dictionary that maps each of the Category IDs of the nodes of that set
-        into list of ID's of its parent Categories.
+        Consider the set comprising the given Category and all its ancestors (i.e. all its super-categories),
+        up to a maximum hop length.
 
-        :param category_id:
-        :return:            A dictionary mapping integers into lists of integers
-                            EXAMPLES:       {799: [1]}
-                                            {823: [709], 709: [544], 544: [1]}              # A single 3-hop path from Category 823 to the root (1)
-                                            {814: [526, 61], 61: [1], 526: [799], 799: [1]} # Two paths from Category 514 to the root
+        Create and return a dictionary that maps each of the item_id in that set of Categories,
+        to a list of the item_id's of its parent Categories.
+
+        :param category_id: The item_id of the Category of interest
+        :return:            A dictionary mapping integers into lists of integers.
+                            The keys are item_id's of the given Category and any of its ancestors (super-categories),
+                            up to a maximum hop length;
+                            the values are lists of the item_id's of the parent categories of the Category specified by the key
+                            EXAMPLES:       {123: [1]}                                  # The given category (123) is a child of the root (1)
+                                            {823: [709], 709: [544], 544: [1]}          # A simple 3-hop path from Category 823 to the root (1) :
+                                                                                        #   823 is subcategory of 709,
+                                                                                        #   which is subcategory of 544, which is subcategory of the root
+                                            {814: [20, 30], 20: [1], 30: [79], 79: [1]} # Two paths from Category 814 to the root;
+                                                                                        #   814 is subcategory of 20 and 30;
+                                                                                        #   20 is an subcategory of the root,
+                                                                                        #   while with 30 we have to go thru an extra hop
         """
+
         # Based on the "BA_subcategory_of" relationship,
-        #       extract a child (c) - parent (p) map,
-        #       where the child is an ancestor node of the given Category node
+        #       extract a set of maps of the form child (c) -> all its parent categories,
+        #       where the child c is any ancestor node of the given Category node.
+        #       A limit is imposed on the max length of the path
         q = '''
-            MATCH (:BA {schema_code:"cat", item_id:$category_id})-[:BA_subcategory_of*0..5]->(c :BA)-[:BA_subcategory_of]->(p)
-            WITH c, collect(p.item_id) AS all_parents
+            MATCH (start :BA:Categories {item_id:$category_id})-[:BA_subcategory_of*0..9]->
+                  (c :Categories)-[:BA_subcategory_of]->(p :Categories)
+            WITH c, collect(DISTINCT p.item_id) AS all_parents
             RETURN c.item_id AS item_id, all_parents
             '''
         result = cls.db.query(q, {"category_id": category_id})      # A list of dictionaries
-        # EXAMPLE:  [{'item_id': 876, 'all_parents': [799]}, {'item_id': 799, 'all_parents': [1]}]
+        # EXAMPLE:  [{'item_id': 823, 'all_parents': [709]},
+        #            {'item_id': 709, 'all_parents': [544]},
+        #            {'item_id': 544, 'all_parents': [1]}]
 
         parent_map = {}
         for entry in result:
@@ -233,7 +248,7 @@ class Categories:
             value = entry["all_parents"]
             parent_map[key] = value
 
-        #print(parent_map, "\n")
+        # EXAMPLE of parent_map:   {823: [709], 709: [544], 544: [1]}
         return parent_map
 
 
@@ -282,9 +297,10 @@ class Categories:
 
             all_paths.append(node_path)
 
-        print(all_paths, "\n")
+        #print("all_paths: ", all_paths, "\n")
         return all_paths
 
+        '''
         # Desired intermediate structure:
         example = \
         [
@@ -310,7 +326,7 @@ class Categories:
         json_data = [[['HOME', 'Jobs', 'GSK'] , ['HOME', 'Professional Networking']], 'People at GSK']
         # OR
         json_data_2 = ['People at GSK', [ ['Professional Networking', 'HOME'],  ['GSK', ['Jobs', 'HOME']] ] ]
-
+        '''
 
 
     @classmethod
@@ -319,8 +335,10 @@ class Categories:
         Return a list of Category ID's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
-        :param category_ID:
-        :return:            EXAMPLE 1:  [1]
+        :param category_ID: The item_id of the Category whose "ancestry bread crumbs" we want to construct
+        :return:            A list of Category ID's together with token strings,
+                            providing directives for the HTML structure of the bread crumbs
+                            EXAMPLE 1:  [1]
                             EXAMPLE 2:  ['START_CONTAINER', [1, 'ARROW', 799, 'ARROW', 876], 'END_CONTAINER']
                             EXAMPLE 3:
                                 [
