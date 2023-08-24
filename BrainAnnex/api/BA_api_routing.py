@@ -1365,6 +1365,7 @@ class ApiRouting:
         
             try:
                 properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=cls.MEDIA_FOLDER)
+                #   properties contains the following keys: "caption", "basename", "suffix", "width", "height"
             except Exception as ex:
                 (exc_type, _, _) = sys.exc_info()
                 err_status = "Unable save, or make a thumb from, the uploaded image. " + str(exc_type) + " : " + str(ex)
@@ -1374,6 +1375,8 @@ class ApiRouting:
             # Update the database (for now, the image is added AT THE END of the Category page)
             try:
                 Categories.add_content_media(category_id, properties=properties)
+                # TODO: switch to the next line
+                # Categories.add_content_at_end(category_id=category_id, item_class_name="Images", item_properties=properties)
                 response = ""
             except Exception as ex:
                 (exc_type, _, _) = sys.exc_info()
@@ -1580,7 +1583,9 @@ class ApiRouting:
         @login_required
         def add_label(new_label) -> str:
             """
-            Add a new blank node with the specified label
+            Add a new blank node with the specified label.
+            As a payload, return the internal ID of the new node
+
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_label/Customer
             """
             try:

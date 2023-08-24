@@ -721,7 +721,7 @@ class Categories:
         TODO: superseded by add_content_at_end()
 
         :param category_id: The integer "item_ID" of the Category to which this new Content Media is to be attached
-        :param properties:  A dictionary with keys "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
+        :param properties:  A dictionary with keys "width", "height", "caption", "basename", "suffix" (TODO: verify against schema)
         :param pos:         TODO: currently not in use
         :return:            None
         """
@@ -729,6 +729,8 @@ class Categories:
         print(f"    category_id: {category_id}")
 
         cls.add_content_at_end(category_id=category_id, item_class_name="Images", item_properties=properties)
+        # NOTE: properties such as  "basename", "suffix" are stored with the Image node, NOT with the Content Item node ;
+        #       this is allowed by our convention about "INSTANCE_OF" relationships
 
 
 
@@ -738,8 +740,13 @@ class Categories:
         Add a new Content Item, with the given properties and Class, to the beginning of the specified Category.
 
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+                                TODO: rename to "category_uri"
+
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
+        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                TODO: rename to "new_uri"
+
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
         new_item_id = Collections.add_to_collection_at_beginning(collection_id=category_id, membership_rel_name="BA_in_category",
@@ -755,9 +762,12 @@ class Categories:
         Add a new Content Item, with the given properties and Class, to the end of the specified Category.
 
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+                                TODO: rename to "category_uri"
+
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                TODO: rename to "new_uri"
 
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
@@ -775,10 +785,14 @@ class Categories:
         (in the context of the positional order encoded in the relationship attribute "pos")
 
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+                                TODO: rename to "category_uri"
+
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param insert_after:
-        :param new_item_id:
+        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                TODO: rename to "new_uri"
+
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
         new_item_id = Collections.add_to_collection_after_element(collection_id=category_id, membership_rel_name="BA_in_category",

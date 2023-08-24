@@ -1313,7 +1313,7 @@ def test_delete_data_point(db):
     assert patient is None    # The patient is now gone
 
 
-    doctor_data_id = NeoSchema.create_data_node(class_node="doctor", labels=["doctor", "employee"],
+    doctor_data_id = NeoSchema.create_data_node(class_node="doctor", extra_labels=["doctor", "employee"],
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
     doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_id)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
@@ -1322,7 +1322,7 @@ def test_delete_data_point(db):
     doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_id)
     assert doctor is None   # The doctor got deleted
 
-    doctor_data_id = NeoSchema.create_data_node(class_node="doctor", labels=["doctor", "employee"],
+    doctor_data_id = NeoSchema.create_data_node(class_node="doctor", extra_labels=["doctor", "employee"],
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
     doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_id)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}

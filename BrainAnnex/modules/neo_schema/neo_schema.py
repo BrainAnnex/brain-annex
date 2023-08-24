@@ -1204,9 +1204,12 @@ class NeoSchema:
     @classmethod
     def get_schema_code(cls, class_name: str) -> str:
         """
-        Obtain the schema code of a Class, specified by its name
+        Obtain the "schema code" of a Class, specified by its name.
+        The "schema code" is an optional but convenient text code,
+        stored either on a Class node, or on any of its ancestors by way of "INSTANCE_OF" relationships
 
-        :return:    A string with the Schema code (empty string if not present)
+        :return:    A string with the Schema code (empty string if not found)
+                    EXAMPLE: "i"
         """
         q = '''
         MATCH (c:CLASS {name: $_CLASS_NAME})-[:INSTANCE_OF*0..]->(ancestor:CLASS)
@@ -1215,9 +1218,9 @@ class NeoSchema:
         '''
         # Search 0 or more hops from the given Class node
 
-        result = cls.db.query(q, {"_CLASS_NAME": class_name})
+        result = cls.db.query(q, {"_CLASS_NAME": class_name})   # TODO: use the single_cell argument of query()
         if result == []:
-            return ""
+            return ""       # not found
 
         return result[0]["code"]
 
@@ -1462,7 +1465,7 @@ class NeoSchema:
 
 
     @classmethod    # TODO: unit test
-    def create_data_node(cls, class_node: Union[int, str], properties = None, labels = None,
+    def create_data_node(cls, class_node: Union[int, str], properties = None, extra_labels = None,
                          assign_uri=False, new_uri=None, silently_drop=False) -> int:
         """
         A newer version of the deprecated add_data_point_OLD() and add_data_point()
@@ -1483,8 +1486,8 @@ class NeoSchema:
                                 or a string with its name
         :param properties:  (Optional) Dictionary with the properties of the new data node.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param labels:      (Optional) String, or list of strings, with label(s) to assign to the new data node;
-                                if not specified, the Class name is used
+        :param extra_labels:      (Optional) String, or list/tuple of strings, with label(s) to assign to the new data node,
+                                IN ADDITION TO the Class name (which is always used as label)
         :param assign_uri:  If True, the new node is given an extra attribute named "item_id",
                                 with a unique auto-increment value, as well an extra attribute named "schema_code"
         :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
@@ -1505,9 +1508,14 @@ class NeoSchema:
             class_name = cls.get_class_name_by_neo_id(class_node)
             class_internal_id = class_node
 
-        if labels is None:
+        if extra_labels is None:
             # If not specified, use the Class name
-            labels = class_name
+            extra_labels = class_name
+        else:
+            if type(extra_labels) == str:
+                extra_labels = extra_labels.append(class_name)
+            elif class_name in extra_labels:      # If we get thus far, labels is a list or tuple
+                extra_labels = extra_labels.append(class_name)
 
         if properties is None:
             properties = {}
@@ -1549,7 +1557,7 @@ class NeoSchema:
 
         links = [link_to_schema_class]
 
-        neo_id = cls.db.create_node_with_links(labels=labels,
+        neo_id = cls.db.create_node_with_links(labels=extra_labels,
                                                properties=properties_to_set,
                                                links=links)
 
@@ -1785,17 +1793,19 @@ class NeoSchema:
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
         TODO: verify that all the requested links conform to the Schema
-        TODO: invoke special plugin-code, if applicable
+        TODO: invoke special plugin-code, if applicable???
         TODO: maybe rename to add_data_node()
 
         :param class_name:  The name of the Class that this new data node is an instance of.
                                 Also use to set a label on the new node, if labels isn't specified
         :param class_internal_id: OPTIONAL alternative to class_name.  If both specified,
                                 class_internal_id prevails
+                            TODO: merge class_name and class_internal_id into class_node, as done
+                                  for create_data_node()
         :param properties:  An optional dictionary with the properties of the new data node.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param labels:      OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
-                                if not specified, use the Class name.  TODO: ALWAYS include the Class name
+                                if not specified, use the Class name.  TODO: ALWAYS include the Class name, as done in create_data_node()
         :param links:       OPTIONAL list of dicts identifying existing nodes,
                                 and specifying the name, direction and optional properties
                                 to give to the links connecting to them;
@@ -1809,10 +1819,10 @@ class NeoSchema:
         :param assign_item_id:  If True, the new node is given an extra attribute named "item_id",
                                     with a unique auto-increment value, as well an extra attribute named "schema_code".
                                     Default is False
-                                    TODO: rename to assign_token
+                                    TODO: rename to assign_uri (or perhaps assign_token)
         :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
                                     If new_item_id is provided, then assign_item_id is automatically made True
-                                    TODO: rename to new_token
+                                    TODO: rename to new_uri (or perhaps new_token)
 
         :return:                If successful, an integer with the internal database ID of the node just created;
                                     otherwise, an Exception is raised
