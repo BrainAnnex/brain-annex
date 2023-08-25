@@ -19,9 +19,11 @@
 
         bread_crumbs
 
-        records_types   EXAMPLE: ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
-                        Used for the addition of new records
-                        (TODO: maybe obtain thru server call, when first needed)
+        records_types   A list of all the Classes that can be used for new Records
+                            (i.e. classes that are INSTANCE_OF the "Records" class)
+                            EXAMPLE: ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
+                            Used for the addition of new records
+                            (TODO: maybe obtain thru a server call, when first needed)
 
         records_schema_data: A dictionary of record class names mapped into their ordered property names
                              EXAMPLE:
@@ -203,7 +205,12 @@
 
  **************************************************************** -->
 
-<!-- Original version, to be used when the editing controls are shown.
+<!-- Depending on whether the EDITING CONTROLS are shown or hidden,
+     one of the following 2 blocks gets show
+  -->
+
+
+<!-- Original version, to be used when the EDITING CONTROLS are SHOWN.
      This version separates all the Content Items into individual entities.
 
      For each Content Item on this page, make use of the appropriate Vue component (picked dynamically).
@@ -267,7 +274,7 @@
 
 
 <!--
-    New version, to be used when the editing controls are hidden.
+    New version, to be used when the EDITING CONTROLS are HIDDEN.
     This version groups together similar adjacent records
   -->
 

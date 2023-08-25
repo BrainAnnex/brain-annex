@@ -1,5 +1,8 @@
-/*  Vue component to display and edit Content Items of any type.  Based on the specific type,
-    it dispatches to components specialized for that type.
+/*  Vue component to display and edit Content Items of ANY type.  Based on the specific type,
+    it DISPATCHES to components specialized for that type.
+
+    IMPORTANT: if no handler is registered - for now inside the function plugin_component_name() -
+               it will default to be treated as a generic record, managed by the general "r" handler
  */
 
 Vue.component('vue-content-items',
@@ -12,6 +15,7 @@ Vue.component('vue-content-items',
             index:          The zero-based position of this Content Items on the page
             item_count:     The total number of Content Items (of all types) on the page
             records_types:  A list of all the Classes that can be used for new Records
+                                (i.e. classes that are INSTANCE_OF the "Records" class)
             schema_data:    Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
                                 EXAMPLE: ["French", "English", "notes"]
 
@@ -151,10 +155,17 @@ Vue.component('vue-content-items',
 
 
             plugin_component_name(item)
-            // Compose the name of the plugin-provided Vue component to handle the given item (based on its type)
+            /* This is where the DISPATCHING (to specialized Vue components) gets set up.
+               Compose the name of the plugin-provided Vue component to handle the given item (based on its type).
+               IMPORTANT: if no handler is registered, default to the generic "r" (general records) handler
+             */
             {
-                // TODO: make sure that item.schema_code is known, or return a special "generic" type
-                return "vue-plugin-" + item.schema_code;
+                var registered_plugins = ["n", "i", "h", "cd", "r"];    // TODO: move to a more central location
+
+                if (registered_plugins.includes(item.schema_code))
+                    return "vue-plugin-" + item.schema_code;
+                else
+                    return "vue-plugin-r"
             }
 
         }  // METHODS
