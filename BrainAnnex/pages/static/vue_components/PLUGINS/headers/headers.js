@@ -1,7 +1,6 @@
 // TODO: the special handling for "closing" Headers
 
-/*  MIT License.  Copyright (c) 2021 Julian A. West
-    This file is part of the "Brain Annex" project (https://BrainAnnex.org)
+/*  Vue component to display and edit Content Items of type "h" (Headers)
  */
 
 Vue.component('vue-plugin-h',
@@ -9,8 +8,9 @@ Vue.component('vue-plugin-h',
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
         /*  item_data:  EXAMPLE: {"item_id":52,"pos":10,"schema_code":"h","text":"MY NEW SECTION"}
                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
-            index:      the zero-based position of the Record on the page
-            item_count: the total number of Content Items (of all types) on the page
+            allow_editing:  A boolean indicating whether in editing mode
+            index:          the zero-based position of the Record on the page
+            item_count:     the total number of Content Items (of all types) on the page
          */
 
         template: `

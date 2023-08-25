@@ -160,7 +160,7 @@ Vue.component('vue-content-items',
                IMPORTANT: if no handler is registered, default to the generic "r" (general records) handler
              */
             {
-                var registered_plugins = ["n", "i", "h", "cd", "r"];    // TODO: move to a more central location
+                var registered_plugins = ["n", "i", "h", "cd", "d", "r"];    // TODO: move to a more central location
 
                 if (registered_plugins.includes(item.schema_code))
                     return "vue-plugin-" + item.schema_code;

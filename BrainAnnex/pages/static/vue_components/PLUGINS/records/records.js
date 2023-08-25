@@ -1,5 +1,4 @@
-/*  Vue component to display and edit Content Items at type "r" (Record)
-    MIT License.  Copyright (c) 2021-22 Julian A. West
+/*  Vue component to display and edit Content Items of type "r" (genetic Records)
  */
 
 Vue.component('vue-plugin-r',
@@ -8,6 +7,8 @@ Vue.component('vue-plugin-r',
         /*  item_data:  EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
                                   "German":"Tier", "English":"animal"}
                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
+
+            allow_editing:  A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of the Record on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]

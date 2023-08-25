@@ -1,5 +1,4 @@
-/*  Vue component to display and edit a single "note" (HTML-formatted text)
-    MIT License.  Copyright (c) 2021-22 Julian A. West
+/*  Vue component to display and edit Content Items of type "n" (a single "note", i.e. HTML-formatted text)
  */
 
 Vue.component('vue-plugin-n',
@@ -7,8 +6,9 @@ Vue.component('vue-plugin-n',
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
         /*   item_data:  EXAMPLE: {"item_id":52,"pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm"}
                                   (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
-            index:      the zero-based position of the Record on the page
-            item_count: the total number of Content Items (of all types) on the page
+            allow_editing:  A boolean indicating whether in editing mode
+            index:          the zero-based position of the Record on the page
+            item_count:     the total number of Content Items (of all types) on the page
          */
 
         template: `
