@@ -720,8 +720,9 @@ class ApiRouting:
         @login_required
         def serve_media(item_id, th=None):
             """
-            Retrieve and return the contents of a data media item (for now, just images or documents)
-            If ANY value is specified for the argument "th", then the thumbnail version is returned
+            Retrieve and return the contents of a data media item (for now, just images or documents.)
+            If ANY value is specified for the argument "th", then the thumbnail version is returned (only
+                applicable to images)
 
             TODO: (at least for large media) read the file in blocks.
 
@@ -740,22 +741,25 @@ class ApiRouting:
                             'xlsx': 'application/vnd.ms-excel',
                             'xls': 'application/vnd.ms-excel',
 
+                            'ppt' : 'application/vnd.ms-powerpoint',
+                            'pptx' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+
                             'zip': 'application/zip'
-                            }   # TODO: add more MIME types, when more plugins are introduced, and move to APIRequestHandler
+                            }   # TODO: add more MIME types, when more plugins are introduced, and move to DataManager
 
             default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
 
             try:
                 (suffix, content) = DataManager.get_binary_content(int(item_id), th)
                 response = make_response(content)
-                # set the MIME type
+                # Set the MIME type
                 mime_type = mime_mapping.get(suffix.lower(), default_mime)
                 response.headers['Content-Type'] = mime_type
-                #print(f"serve_media() is returning an image, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
+                #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
             except Exception as ex:
-                err_details = f"Unable to retrieve image id `{item_id}` : {ex}"
+                err_details = f"Unable to retrieve Content Item with URI `{item_id}`. {exceptions.exception_helper(ex)}"
                 print(f"serve_media() encountered the following error: {err_details}")
-                response = make_response(err_details, 500)
+                response = make_response(err_details, 404)  # TODO: make sure that 404 works well, vs. the 500 previously used
 
             return response
 

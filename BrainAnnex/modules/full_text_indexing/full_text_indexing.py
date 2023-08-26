@@ -461,7 +461,8 @@ class FullTextIndexing:
             q = f"MATCH (n:Notes) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN ID(n) AS node_int_id"
             node_int_id = cls.db.query(q, single_cell="node_int_id")
             print("    node's integer ID: ", node_int_id)
-            file_contents = MediaManager.get_from_file(filename)
+            path = "TBA"
+            file_contents = MediaManager.get_from_file(path, filename)
             #print(file_contents)
             word_list = FullTextIndexing.extract_unique_good_words(file_contents)
             print(word_list)

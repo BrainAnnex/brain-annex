@@ -11,17 +11,17 @@ def exception_helper(ex, safe_html=False) -> str:
     for example, in case of a key error, all that it returns is the key name!
 
     :param ex:          The Exemption object
-    :param safe_html:   Flag indicating whether to make safe for display in a browser (for example,
-                        the exception type may contain triangular brackets)
+    :param safe_html:   TODO: NO LONGER IN USE
 
     :return:    A string with a more detailed explanation of the given Exception
-                (prefixed by the Exception type, in an HTML-safe form in case it gets sent to a web page)
-                EXAMPLE (as seen when displayed in a browser):
-                    <class 'neo4j.exceptions.ClientError'> : THE_INFO_MESSAGE_IN_ex
+                (prefixed by the Exception type)
+                EXAMPLE:
+                    (class 'neo4j.exceptions.ClientError') : THE_INFO_MESSAGE_IN_ex
     """
     (exc_type, _, _) = sys.exc_info()
 
-    if safe_html:
-        exc_type = html.escape(str(exc_type))
+    friendly_error = f"{exc_type} : {ex}"
 
-    return f"{exc_type} : {ex}"
+    # If triangular brackets are present, turn them into round ones
+    # (to prevent problems if shown on a web page)
+    return friendly_error.replace("<", "(").replace(">", ")")

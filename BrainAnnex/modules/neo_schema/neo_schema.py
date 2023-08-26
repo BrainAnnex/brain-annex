@@ -1257,10 +1257,12 @@ class NeoSchema:
     @classmethod
     def all_properties(cls, label, primary_key_name, primary_key_value) -> [str]:
         """
-        Return the list of the names of all the Properties associated with the given DATA node,
+        Return the list of the *names* of all the Properties associated with the given DATA node,
         based on the Schema it is associated with, sorted their by schema-specified position.
         The desired node is identified by specifying which one of its attributes is a primary key,
-        and providing a value for it
+        and providing a value for it.
+
+        IMPORTANT : this function returns the NAMES of the Properties; not their values
 
         :param label:
         :param primary_key_name:
@@ -1329,6 +1331,7 @@ class NeoSchema:
         :param properties:  OPTIONAL (generally, redundant) ways to locate the data node
 
         :return:            A dictionary with all the key/value pairs, if found; or None if not
+                                TODO: {} is actually currently returned, till get_nodes() gets fixed
         """
         if internal_id is None:
             assert item_id is not None, \
@@ -1348,8 +1351,10 @@ class NeoSchema:
         """
         EXPERIMENTAL - a generalization of fetch_data_node()
 
-        Return the "match" structure to locate a node identified
+        Return the "match" structure to later use to locate a node identified
         either by its internal database ID (default), or by a primary key (with optional label.)
+
+        No database operation is actually performed.
 
         :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
         :param id_type: For example, "item_id";

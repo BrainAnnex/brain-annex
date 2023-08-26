@@ -385,6 +385,7 @@ class DataManager:
         :param item_id:         An integer identifying the desired Content Item, which ought to be text media
         :param schema_code:     TODO: maybe phase out
         :param public_required: If True, the Content Item is returned only if has an the attribute "public: true"
+                                    TODO: unclear if actually useful
 
         :return:                A string with the HTML text of the requested note;
                                     or an Exception in case of failure
@@ -405,8 +406,13 @@ class DataManager:
         suffix = content_node['suffix']
         filename = f"{basename}.{suffix}"
 
+        folder = cls.MEDIA_FOLDER     # Includes the final "/"
+
+        if content_node['schema_code'] == "n":
+            folder += "notes/"
+
         try:
-            file_contents = MediaManager.get_from_file(filename)
+            file_contents = MediaManager.get_from_file(folder, filename)
             return file_contents
         except Exception as ex:
             return f"I/O failure while reading in contents of item {item_id}. {ex}"     # File I/O failed
@@ -414,32 +420,39 @@ class DataManager:
 
 
     @classmethod
-    def get_binary_content(cls, item_id: int, th: str) -> (str, bytes):
+    def get_binary_content(cls, item_id: int, th) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored on a local file.
         In case of error, raise an Exception
 
-        :param th:
-        :param item_id:
-        :return:    The binary data
+        :param item_id: Integer identifier for a media item     TODO: use strings
+        :param th:      If not None, then the thumbnail version is returned (only
+                            applicable to images)
+        :return:        The binary data
 
         """
-        match = cls.db.match(labels="BA", properties={"item_id": item_id})
-        content_node = cls.db.get_nodes(match)
+        #print("In get_binary_content(): item_id = ", item_id)
+        content_node = NeoSchema.fetch_data_node(item_id = item_id)
         #print("content_node:", content_node)
-        if (content_node is None) or (content_node == []):
-            raise Exception("Metadata not found")
+        if not content_node:
+            raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
 
-        basename = content_node[0]['basename']
-        suffix = content_node[0]['suffix']
+        basename = content_node['basename']
+        suffix = content_node['suffix']
         filename = f"{basename}.{suffix}"
 
-        try:
-            if th:
-                file_contents = MediaManager.get_from_binary_file(cls.MEDIA_FOLDER + "resized/", filename)
-            else:
-                file_contents = MediaManager.get_from_binary_file(cls.MEDIA_FOLDER, filename)
+        folder = cls.MEDIA_FOLDER     # Includes the final "/"
 
+        if content_node['schema_code'] == "d":
+            folder += "documents/"
+        elif content_node['schema_code'] == "i":
+            folder += "images/"
+
+        if th is not None:
+            folder += "resized/"
+
+        try:
+            file_contents = MediaManager.get_from_binary_file(folder, filename)
             return (suffix, file_contents)
         except Exception as ex:
             raise Exception(f"Reading of data file for Content Item {item_id} failed: {ex}")     # File I/O failed

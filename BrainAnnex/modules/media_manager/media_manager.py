@@ -8,7 +8,7 @@ class MediaManager:
     """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
-                        # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+                        # Example on Windows: "D:/media/"
                         #                     (notice the forward slashes, even on Windows)
                         # This class variable gets set by initialize.py
 
@@ -27,14 +27,15 @@ class MediaManager:
 
 
     @classmethod
-    def get_from_file(cls, filename: str) -> str:
+    def get_from_file(cls, path: str, filename: str) -> str:
         """
         Read in and return the contents of the specified text file
 
-        :param filename:    EXCLUSIVE of path (stored in the class variable MEDIA_FOLDER)
-        :return:            The contents of the file
+        :param path:        String that must include a final "/"
+        :param filename:    EXCLUSIVE of path
+        :return:            The contents of the text file
         """
-        full_file_name = cls.MEDIA_FOLDER + filename
+        full_file_name = path + filename
         with open(full_file_name, 'r', encoding='utf8') as fh:
             file_contents = fh.read()
             return file_contents
@@ -46,11 +47,10 @@ class MediaManager:
         """
         Read in and return the contents of the specified binary file
 
-        :param path:
+        :param path:        String that must include a final "/"
         :param filename:    EXCLUSIVE of path
         :return:            The contents of the binary file
         """
-        #full_file_name = cls.MEDIA_FOLDER + filename
         full_file_name = path + filename
         with open(full_file_name, 'rb') as fh:
             file_contents = fh.read()
@@ -69,7 +69,7 @@ class MediaManager:
         :return:            None.  In case of errors, detailed Exceptions are raised
         """
 
-        full_file_name = cls.MEDIA_FOLDER + filename
+        full_file_name = cls.MEDIA_FOLDER + "notes/" + filename     # TODO: use a path argument, instead of hardwired "notes"
 
         try:
             f = open(full_file_name, "w", encoding='utf8')
@@ -93,7 +93,7 @@ class MediaManager:
 
         :param basename:    File name, exclusive of path and of suffix
         :param suffix:      String such as "htm" (don't include the dot!)
-        :param subfolder:   It must end with "/"  .  EXAMPLE:  "resized/"
+        :param subfolder:   It must end with "/"  .  EXAMPLES:  "notes" or "images/resized/"
         :return:            True if successful, or False otherwise
         """
         filename = basename + "." + suffix
