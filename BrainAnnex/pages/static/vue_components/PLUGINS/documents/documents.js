@@ -21,9 +21,13 @@ Vue.component('vue-plugin-d',
             <div class='doc'>
                 <img src="/BA/pages/static/graphics/document_48_8168668.png" style="float: left; margin-right: 5px">
                 <span style='font-weight:bold; font-size:12px'>&ldquo;{{item_data.caption}}&rdquo;</span><br><br>
-                <a href v-bind:href="image_url(item_data)" target="_blank" title="{{item_data.caption}}" alt="{{item_data.caption}}">
+                <a href v-bind:href="document_url(item_data)"
+                        v-bind:title="item_data.caption" v-bind:alt="item_data.caption"
+                        target="_blank"
+                >
                     {{item_data.basename}}.{{item_data.suffix}}
-                </a><br><br>
+                </a>
+                <br><br>
             </div>		<!-- End of Document container -->
 
 
@@ -55,17 +59,12 @@ Vue.component('vue-plugin-d',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
-            image_url(item_data)
+            document_url(item_data)
             // Return the URL of the full documents
             {
                 return '/BA/api/simple/serve_media/' + item_data.item_id;           // Invoke the file server
              },
 
-            image_url_thumb(item_data)
-            // Return the URL of the thumbnail
-            {
-                return '/BA/api/simple/serve_media/' + item_data.item_id + '/th';    // Invoke the file server, with the thumbnail option
-             },
 
             edit_content_item(item)
             {

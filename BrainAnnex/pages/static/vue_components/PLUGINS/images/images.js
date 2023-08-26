@@ -56,7 +56,7 @@ Vue.component('vue-plugin-i',
              },
 
             image_url_thumb(item_data)
-            // Return the URL of the thumbnail
+            // Return the URL of the thumbnail version of the image
             {
                 return '/BA/api/simple/serve_media/' + item_data.item_id + '/th';    // Invoke the file server, with the thumbnail option
              },
