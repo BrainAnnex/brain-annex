@@ -36,8 +36,6 @@ class DataManager:
 
     db = None           # Object of class "NeoAccess".  MUST be set before using this class!
 
-    MEDIA_FOLDER = None # Location where the media for Content Items is stored
-                        # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
     LOG_FOLDER = None   # Location where the log file is stored
 
     ongoing_data_intake = False
@@ -406,10 +404,7 @@ class DataManager:
         suffix = content_node['suffix']
         filename = f"{basename}.{suffix}"
 
-        folder = cls.MEDIA_FOLDER     # Includes the final "/"
-
-        if content_node['schema_code'] == "n":
-            folder += "notes/"
+        folder = MediaManager.lookup_file_path(content_node['schema_code'])     # Includes the final "/"
 
         try:
             file_contents = MediaManager.get_from_file(folder, filename)
@@ -441,21 +436,19 @@ class DataManager:
         suffix = content_node['suffix']
         filename = f"{basename}.{suffix}"
 
-        folder = cls.MEDIA_FOLDER     # Includes the final "/"
+        if th:
+            thumb = True
+        else:
+            thumb = False
 
-        if content_node['schema_code'] == "d":
-            folder += "documents/"
-        elif content_node['schema_code'] == "i":
-            folder += "images/"
-
-        if th is not None:
-            folder += "resized/"
+        folder = MediaManager.lookup_file_path(content_node['schema_code'], thumb)  # Includes the final "/"
 
         try:
             file_contents = MediaManager.get_from_binary_file(folder, filename)
             return (suffix, file_contents)
         except Exception as ex:
-            raise Exception(f"Reading of data file for Content Item {item_id} failed: {ex}")     # File I/O failed
+            # File I/O failed
+            raise Exception(f"Reading of data file for Content Item {item_id} failed: {ex}")
 
 
 
@@ -624,16 +617,16 @@ class DataManager:
         #       (TODO: try to infer that from the Schema)
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
-            ###status = cls.delete_attached_media_file(item_id)
             record = cls.lookup_media_record(item_id)
             if record is not None:
-                MediaManager.delete_media_file(record["basename"], record["suffix"])
+                MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code)
 
         if schema_code == "i":
+            # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             record = cls.lookup_media_record(item_id)
             if record is not None:
-                MediaManager.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
+                MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code, thumbs=True)
 
         if schema_code == "n":
             Notes.delete_content_before(item_id)
@@ -938,7 +931,8 @@ class DataManager:
 
         try:
             upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
-            (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_json", verbose=False)
+            (basename, full_filename, original_name, mime_type) = \
+                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_json", verbose=False)
             # basename and full name of the temporary file created during the upload
         except Exception as ex:
             return f"ERROR in upload: {ex} {return_link}"
@@ -982,8 +976,8 @@ class DataManager:
         upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
                                                                     # TODO: maybe extract in the api_routing file
         # 'file' is just an identifier attached to the upload by the frontend
-        (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
-                                                                                    key_name=None, verbose=False)
+        (basename, full_filename, original_name, mime_type) = \
+                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name=None, verbose=False)
         # basename and full name of the temporary file created during the upload
 
         assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"

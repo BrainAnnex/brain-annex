@@ -44,7 +44,6 @@ class InitializeBrainAnnex:
         :param log_folder:
         :return:
         """
-        DataManager.MEDIA_FOLDER = media_folder
         DataManager.LOG_FOLDER = log_folder
 
         MediaManager.MEDIA_FOLDER = media_folder

@@ -9,11 +9,12 @@ from BrainAnnex.api.data_manager import DataManager
 from BrainAnnex.api.data_manager import DocumentationGenerator
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
-import BrainAnnex.modules.utilities.exceptions as exceptions
-import sys                  # Used to give better feedback on Exceptions
+import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
-#from time import sleep     # Used for tests of delays in asynchronous fetching
+import os
+#from time import sleep     # For tests of delays in asynchronous fetching
 
 
 
@@ -1249,8 +1250,9 @@ class ApiRouting:
             return return_value
 
 
+
         @bp.route('/bulk_import', methods=['POST'])
-        #@login_required                # TODO: RESTORE
+        @login_required
         def bulk_import() -> str:
             """
             Bulk import (for now of JSON files)
@@ -1287,9 +1289,6 @@ class ApiRouting:
 
 
 
-
-
-
         @bp.route('/import_json_dump', methods=['GET', 'POST'])
         @login_required
         def import_json_dump() -> str:
@@ -1322,27 +1321,30 @@ class ApiRouting:
         
             USAGE EXAMPLE:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload_media">
-                    <input type="file" name="file"><br>   <!-- IMPORTANT: the name parameter is assumed to be "file" -->
+                    <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
                     <input type="submit" value="Upload file">
                     <input type='hidden' name='category_id' value='123'>
-                    <input type='hidden' name='pos' value='10'> <!-- TODO: NOT YET IN USE! Media added at END OF PAGE -->
+                    <input type='hidden' name='pos' value='10'> <!-- TODO: NOT YET IN USE! Media is always added at END OF PAGE -->
                 </form>
         
-            (Note: the "Dropzone" module invokes this handler in a similar way)
+            (Note: the "Dropzone" front-end module invokes this handler in a similar way)
         
             If the upload is successful, a normal status (200) is returned (no response data);
-                in case of error, a server error status is return (500), with an text error message
+                in case of error, a server error status is return (500), with a text error message
             """
 
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('schema_code', 'r'), ('field_1', 'hello')])
         
-            print("Uploading content thru upload_media()")
+            print("Uploading media content thru upload_media()")
+            print("Raw POST data: ", post_data)
             print("POST variables: ", dict(post_data))
         
             try:
-                upload_dir = current_app.config['UPLOAD_FOLDER']
-                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
+                upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the directory used for the uploads.
+                                                                    #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
+                (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
+                            UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1350,41 +1352,58 @@ class ApiRouting:
                 response = make_response(err_status, 500)
                 return response
         
-        
+
+            # Map the MIME type of the uploaded file into a schema_code
+            if mime_type.split('/')[0] == "image":      # For example, 'image/jpeg', 'image/png', etc.
+                schema_code = "i"
+            else:
+                schema_code = "d"       # Any unrecognized MIME type is treated as a Document
+
+
             # Move the uploaded file from its temp location to the media folder
             # TODO: let upload_helper (optionally) handle it
         
             src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
-            dest_folder = cls.MEDIA_FOLDER
+            #dest_folder = cls.MEDIA_FOLDER
+            dest_folder = MediaManager.lookup_file_path(schema_code=schema_code)
             dest_fullname = dest_folder + tmp_filename_for_upload
             print(f"Attempting to move `{src_fullname}` to `{dest_fullname}`")
             try:
                 shutil.move(src_fullname, dest_fullname)
             except Exception as ex:
+                # TODO: create the folder if not present
                 err_status = f"Error in moving the file to the intended final destination ({dest_folder}) after upload. {ex}"
                 return make_response(err_status, 500)
         
         
             category_id = int(post_data["category_id"])
-        
-            try:
-                properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=cls.MEDIA_FOLDER)
-                #   properties contains the following keys: "caption", "basename", "suffix", "width", "height"
-            except Exception as ex:
-                (exc_type, _, _) = sys.exc_info()
-                err_status = "Unable save, or make a thumb from, the uploaded image. " + str(exc_type) + " : " + str(ex)
-                return make_response(err_status, 500)
-        
-        
+
+
+            if schema_code == "i":
+                # This is specifically for Images
+                try:
+                    properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=dest_folder)
+                    #   properties contains the following keys: "caption", "basename", "suffix", "width", "height"
+                except Exception as ex:
+                    err_status = "Unable save, or make a thumb from, the uploaded image. " + exceptions.exception_helper(ex)
+                    return make_response(err_status, 500)
+            else:
+                # This is specifically for Documents
+                (basename, suffix) = os.path.splitext(tmp_filename_for_upload)     # EXAMPLE: "test.jpg" becomes ("test", ".jpg")
+                suffix = suffix[1:]     # Drop the first character (the ".")  EXAMPLE: "jpg"
+
+                properties = {"caption": basename,
+                              "basename": basename, "suffix": suffix}
+
+
             # Update the database (for now, the image is added AT THE END of the Category page)
             try:
                 Categories.add_content_media(category_id, properties=properties)
-                # TODO: switch to the next line
+                # TODO: switch the above to the next line
                 # Categories.add_content_at_end(category_id=category_id, item_class_name="Images", item_properties=properties)
                 response = ""
             except Exception as ex:
-                (exc_type, _, _) = sys.exc_info()
-                err_status = "Unable to store the file in the database. " + str(exc_type) + " : " + str(ex)
+                err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)
                 response = make_response(err_status, 500)
         
             return response
@@ -1417,7 +1436,8 @@ class ApiRouting:
         
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']
-                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
+                (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
+                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1461,8 +1481,8 @@ class ApiRouting:
             try:
                 # Manage the upload
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # Defined in main file
-                (tmp_filename_for_upload, full_filename, original_name) = \
-                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+                (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
+                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         
@@ -1511,8 +1531,8 @@ class ApiRouting:
             try:
                 # Manage the upload
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # Defined in main file
-                (tmp_filename_for_upload, full_filename, original_name) = \
-                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+                (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
+                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
 

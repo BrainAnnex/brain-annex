@@ -6,7 +6,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 
 
-MEDIA_FOLDER = "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+MEDIA_FOLDER = "D:/Docs/media/"
 
 
 
