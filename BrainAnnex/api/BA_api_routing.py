@@ -1334,11 +1334,11 @@ class ApiRouting:
             """
 
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('schema_code', 'r'), ('field_1', 'hello')])
+            post_data = request.form     # Example: ImmutableMultiDict([('category_id', '3677'), ('pos', 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW')])
         
             print("Uploading media content thru upload_media()")
-            print("Raw POST data: ", post_data)
-            print("POST variables: ", dict(post_data))
+            #print("Raw POST data: ", post_data)
+            print("POST variables: ", dict(post_data))  # Example: {'category_id': '3677', 'pos': 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'}
         
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the directory used for the uploads.
@@ -1355,17 +1355,17 @@ class ApiRouting:
 
             # Map the MIME type of the uploaded file into a schema_code
             if mime_type.split('/')[0] == "image":      # For example, 'image/jpeg', 'image/png', etc.
-                schema_code = "i"
+                class_name = "Images"
             else:
-                schema_code = "d"       # Any unrecognized MIME type is treated as a Document
+                class_name = "Documents"        # Any unrecognized MIME type is treated as a Document
 
 
             # Move the uploaded file from its temp location to the media folder
             # TODO: let upload_helper (optionally) handle it
         
             src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
-            #dest_folder = cls.MEDIA_FOLDER
-            dest_folder = MediaManager.lookup_file_path(schema_code=schema_code)
+
+            dest_folder = MediaManager.lookup_file_path(class_name=class_name)
             dest_fullname = dest_folder + tmp_filename_for_upload
             print(f"Attempting to move `{src_fullname}` to `{dest_fullname}`")
             try:
@@ -1379,7 +1379,7 @@ class ApiRouting:
             category_id = int(post_data["category_id"])
 
 
-            if schema_code == "i":
+            if class_name == "Images":
                 # This is specifically for Images
                 try:
                     properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=dest_folder)
@@ -1398,9 +1398,7 @@ class ApiRouting:
 
             # Update the database (for now, the image is added AT THE END of the Category page)
             try:
-                Categories.add_content_media(category_id, properties=properties)
-                # TODO: switch the above to the next line
-                # Categories.add_content_at_end(category_id=category_id, item_class_name="Images", item_properties=properties)
+                Categories.add_content_at_end(category_id=category_id, item_class_name=class_name, item_properties=properties)
                 response = ""
             except Exception as ex:
                 err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)

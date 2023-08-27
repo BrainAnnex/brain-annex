@@ -714,27 +714,6 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def add_content_media(cls, category_id:int, properties: dict, pos=None) -> None:
-        """
-        Update the database, to reflect the upload of an image file, and its linking to the specified Category.
-        TODO: media is currently added to the END of the Category page.  Not using the "pos" argument
-        TODO: superseded by add_content_at_end()
-
-        :param category_id: The integer "item_ID" of the Category to which this new Content Media is to be attached
-        :param properties:  A dictionary with keys "width", "height", "caption", "basename", "suffix" (TODO: verify against schema)
-        :param pos:         TODO: currently not in use
-        :return:            None
-        """
-        print("In add_content_media().  properties: ", properties)
-        print(f"    category_id: {category_id}")
-
-        cls.add_content_at_end(category_id=category_id, item_class_name="Images", item_properties=properties)
-        # NOTE: properties such as  "basename", "suffix" are stored with the Image node, NOT with the Content Item node ;
-        #       this is allowed by our convention about "INSTANCE_OF" relationships
-
-
-
-    @classmethod
     def add_content_at_beginning(cls, category_id:int, item_class_name: str, item_properties: dict, new_item_id=None) -> int:
         """
         Add a new Content Item, with the given properties and Class, to the beginning of the specified Category.
@@ -774,6 +753,10 @@ class Categories:
         new_item_id = Collections.add_to_collection_at_end(collection_id=category_id, membership_rel_name="BA_in_category",
                                                            item_class_name=item_class_name, item_properties=item_properties,
                                                            new_item_id=new_item_id)
+        # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
+        #       NOT with the Content Item node ;
+        #       this is allowed by our convention about "INSTANCE_OF" relationships
+
         return new_item_id
 
 

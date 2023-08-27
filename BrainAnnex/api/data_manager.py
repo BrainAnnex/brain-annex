@@ -404,7 +404,7 @@ class DataManager:
         suffix = content_node['suffix']
         filename = f"{basename}.{suffix}"
 
-        folder = MediaManager.lookup_file_path(content_node['schema_code'])     # Includes the final "/"
+        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'])     # Includes the final "/"
 
         try:
             file_contents = MediaManager.get_from_file(folder, filename)
@@ -441,7 +441,7 @@ class DataManager:
         else:
             thumb = False
 
-        folder = MediaManager.lookup_file_path(content_node['schema_code'], thumb)  # Includes the final "/"
+        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)  # Includes the final "/"
 
         try:
             file_contents = MediaManager.get_from_binary_file(folder, filename)

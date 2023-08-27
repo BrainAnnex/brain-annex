@@ -95,10 +95,11 @@ class UploadHelper:
 
         """
         if verbose:
-            request_dict = request_obj.__dict__     # A dictionary of all names and attributes of object.
+            request_dict = request_obj.__dict__     # A dictionary of all names and attributes of the flask.request object
             keys_list = list(request_dict)
             # EXAMPLE: ['method', 'scheme', 'server', 'root_path', 'path', 'query_string', 'headers',
-            #           'remote_addr', 'environ', 'shallow', 'cookies', 'url_rule', 'view_args']
+            #           'remote_addr', 'environ', 'shallow', 'cookies', 'url_rule', 'view_args',
+            #           'stream', '_parsed_content_type', 'content_length', 'form', 'files']
 
             print(f"Upload flask.request object contains {len(request_dict)} items:\n    {keys_list}\n")
 

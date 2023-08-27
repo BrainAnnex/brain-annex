@@ -29,7 +29,7 @@ class MediaManager:
 
 
     @classmethod
-    def lookup_file_path(cls, schema_code :str, thumb=False) -> str:
+    def lookup_file_path(cls, schema_code=None, class_name=None, thumb=False) -> str:
         """
         Return the full file path, including the final "/" of media of
         a particular type, identified by the schema_code argument
@@ -37,6 +37,9 @@ class MediaManager:
               one based on their type
 
         :param schema_code: String identifier used by the various plugins
+        :param class_name:  An alternate way to identify the type of the media file.
+                                If both schema_code and class_name are specified,
+                                class_name prevails
         :param thumb:       If True, then the "thumbnail" version is returned
                                 (only applicable to some media types, such as images)
         :return:            EXAMPLES on Windows:
@@ -45,12 +48,18 @@ class MediaManager:
         """
         folder = cls.MEDIA_FOLDER    # Includes the final "/"
 
-        if schema_code == "d":
-            folder +=  "documents/"
-        elif schema_code == "i":
-            folder += "images/"
-        elif schema_code == "n":
-            folder += "notes/"
+        if class_name is not None:
+            folder += f"{class_name.lower()}/"
+        elif schema_code is not None:
+            if schema_code == "d":
+                folder +=  "documents/"
+            elif schema_code == "i":
+                folder += "images/"
+            elif schema_code == "n":
+                folder += "notes/"
+        else:
+            raise Exception("lookup_file_path(): at least one of two arguments "
+                            "`class_name` and `schema_code` must be provided")
 
         if thumb:
             folder += "resized/"
@@ -104,7 +113,7 @@ class MediaManager:
         :return:            None.  In case of errors, detailed Exceptions are raised
         """
 
-        folder = cls.lookup_file_path("n")                          # TODO: pass schema_code as an argument, instead of being hardwired
+        folder = cls.lookup_file_path(schema_code="n")                          # TODO: pass schema_code as an argument, instead of being hardwired
         full_file_name = folder + filename
         #full_file_name = cls.MEDIA_FOLDER + "notes/" + filename
 
@@ -137,7 +146,7 @@ class MediaManager:
         filename = basename + "." + suffix
         print(f"Attempting to delete file `{filename}`")
 
-        folder = cls.lookup_file_path(schema_code, thumbs)
+        folder = cls.lookup_file_path(schema_code=schema_code, thumb=thumbs)
         full_file_name = folder + filename
 
         #full_file_name = cls.MEDIA_FOLDER + subfolder + filename
