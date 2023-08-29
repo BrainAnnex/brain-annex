@@ -9,6 +9,7 @@ from BrainAnnex.api.data_manager import DataManager
 from BrainAnnex.api.data_manager import DocumentationGenerator
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
@@ -1379,6 +1380,7 @@ class ApiRouting:
             category_id = int(post_data["category_id"])
 
 
+            # TODO: turn into a call to a plugin-provided method, prior to database add
             if class_name == "Images":
                 # This is specifically for Images
                 try:
@@ -1396,14 +1398,21 @@ class ApiRouting:
                               "basename": basename, "suffix": suffix}
 
 
-            # Update the database (for now, the image is added AT THE END of the Category page)
+            # Update the database (for now, the media is added AT THE END of the Category page)
+            # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
             try:
-                Categories.add_content_at_end(category_id=category_id, item_class_name=class_name, item_properties=properties)
+                new_item_id = Categories.add_content_at_end(category_id=category_id,
+                                                            item_class_name=class_name, item_properties=properties)
+
+                if class_name == "Documents":
+                    Documents.new_content_item_successful(item_id=new_item_id, pars=properties, mime_type=mime_type)
+
                 response = ""
+
             except Exception as ex:
                 err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)
                 response = make_response(err_status, 500)
-        
+
             return response
         
         

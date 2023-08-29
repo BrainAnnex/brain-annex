@@ -69,9 +69,9 @@ class MediaManager:
 
 
     @classmethod
-    def get_from_file(cls, path: str, filename: str) -> str:
+    def get_from_text_file(cls, path: str, filename: str) -> str:
         """
-        Read in and return the contents of the specified text file
+        Read in and return the contents of the specified TEXT file
 
         :param path:        String that must include a final "/", containing the full path of the file
                                 EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
@@ -88,7 +88,7 @@ class MediaManager:
     @classmethod
     def get_from_binary_file(cls, path: str, filename: str) -> bytes:
         """
-        Read in and return the contents of the specified binary file
+        Read in and return the contents of the specified BINARY file
 
         :param path:        String that must include a final "/", containing the full path of the file
                                 EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)

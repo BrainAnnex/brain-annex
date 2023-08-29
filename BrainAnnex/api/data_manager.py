@@ -3,6 +3,7 @@
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
+from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
@@ -407,7 +408,7 @@ class DataManager:
         folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'])     # Includes the final "/"
 
         try:
-            file_contents = MediaManager.get_from_file(folder, filename)
+            file_contents = MediaManager.get_from_text_file(folder, filename)
             return file_contents
         except Exception as ex:
             return f"I/O failure while reading in contents of item {item_id}. {ex}"     # File I/O failed
@@ -584,7 +585,7 @@ class DataManager:
         number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
 
         if schema_code == "n":
-            Notes.update_content_item_SUCCESSFUL(item_id, original_post_data)
+            Notes.update_content_item_successful(item_id, original_post_data)
 
         # If the update was NOT for a "note" (in which case it might only be about the note than its metadata)
         # verify that some fields indeed got changed
@@ -757,10 +758,43 @@ class DataManager:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if schema_code == "n":
-            Notes.new_content_item_SUCCESSFUL(new_item_id, original_post_data)
+            Notes.new_content_item_successful(new_item_id, original_post_data)
 
 
         return new_item_id     # Success
+
+
+
+    @classmethod
+    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :int, new_item_id, class_name,
+                                                post_data, original_post_data):
+        # TODO: NOT YET IN USE
+        #       Meant to take over the final parts of BA_Api_Routing.upload_media() and DataManager.new_content_item_in_category()
+        # Create the new node and required relationships
+        if insert_after == "TOP":
+            Categories.add_content_at_beginning(category_id=category_id,
+                                                item_class_name=class_name, item_properties=post_data,
+                                                new_item_id=new_item_id)
+        elif insert_after == "BOTTOM":
+            Categories.add_content_at_end(category_id=category_id,
+                                          item_class_name=class_name, item_properties=post_data,
+                                          new_item_id=new_item_id)
+        else:   # Insert at a position that is not the top nor bottom
+            try:
+                insert_after = int(insert_after)
+            except Exception:
+                raise Exception(f"`insert_after` must be an integer, unless it's 'TOP' or 'BOTTOM'. Value passed: `{insert_after}`")
+
+            Categories.add_content_after_element(category_id=category_id,
+                                                 item_class_name=class_name, item_properties=post_data,
+                                                 insert_after=insert_after, new_item_id=new_item_id)
+
+
+        # A final round of PLUGIN-SPECIFIC OPERATIONS
+        if class_name == "Notes":
+            Notes.new_content_item_successful(new_item_id, original_post_data)
+        elif class_name == "Documents":
+            Documents.new_content_item_successful(new_item_id, original_post_data)
 
 
 
