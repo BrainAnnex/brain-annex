@@ -1318,6 +1318,24 @@ class NeoSchema:
 
 
     @classmethod
+    def get_data_node_id(cls, key_value, key_name="item_id") -> int:
+        """
+        Get the internal database ID of a data node given some other primary key
+
+        :return:   An integer with the Neo4j ID of the data node
+        """
+
+        match = cls.db.match(key_name=key_name, key_value=key_value)
+        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
+
+        if result is None:
+            raise Exception(f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`")
+
+        return result
+
+
+
+    @classmethod
     def fetch_data_node(cls, item_id = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data node
@@ -1471,7 +1489,7 @@ class NeoSchema:
 
     @classmethod    # TODO: unit test
     def create_data_node(cls, class_node: Union[int, str], properties = None, extra_labels = None,
-                         assign_uri=False, new_uri=None, silently_drop=False) -> int:
+                         assign_uri=False, new_uri=None, silently_drop=False) -> (int, str):
         """
         A newer version of the deprecated add_data_point_OLD() and add_data_point()
 
@@ -1491,7 +1509,7 @@ class NeoSchema:
                                 or a string with its name
         :param properties:  (Optional) Dictionary with the properties of the new data node.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param extra_labels:      (Optional) String, or list/tuple of strings, with label(s) to assign to the new data node,
+        :param extra_labels:(Optional) String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
         :param assign_uri:  If True, the new node is given an extra attribute named "item_id",
                                 with a unique auto-increment value, as well an extra attribute named "schema_code"
@@ -1501,7 +1519,8 @@ class NeoSchema:
                                 otherwise, an Exception is raised if any property isn't allowed
                                 TODO: only applicable for "Strict" schema - with a "Lax" schema anything goes
 
-        :return:            The internal database ID of the new data node just created
+        :return:            The pair: (internal database ID, newly-assigned URI) of the new data node just created.
+                                Note that the newly-assigned URI is always a STRING, and will be "" if no URI was assigned
         """
         cls.assert_valid_class_identifier(class_node)
 
@@ -1518,7 +1537,7 @@ class NeoSchema:
             extra_labels = class_name
         else:
             if type(extra_labels) == str:
-                extra_labels = extra_labels.append(class_name)
+                extra_labels = [extra_labels, class_name]
             elif class_name in extra_labels:      # If we get thus far, labels is a list or tuple
                 extra_labels = extra_labels.append(class_name)
 
@@ -1555,7 +1574,8 @@ class NeoSchema:
             # EXAMPLE of properties_to_set at this stage:
             #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
             #       where 123 is the next auto-assigned item_id
-
+        else:
+            new_id = ""
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node
         link_to_schema_class = {"internal_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
@@ -1566,7 +1586,7 @@ class NeoSchema:
                                                properties=properties_to_set,
                                                links=links)
 
-        return neo_id
+        return (neo_id, str(new_id))
 
 
 
@@ -2580,24 +2600,6 @@ class NeoSchema:
             '''
 
         return cls.db.query(q)
-
-
-
-    @classmethod
-    def get_data_node_id(cls, key_value, key_name="item_id") -> int:
-        """
-        Get the internal database ID of a data node given some other primary key
-
-        :return:   An integer with the Neo4j ID of the data node
-        """
-
-        match = cls.db.match(key_name=key_name, key_value=key_value)
-        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
-
-        if result is None:
-            raise Exception(f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`")
-
-        return result
 
 
 

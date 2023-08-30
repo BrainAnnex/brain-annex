@@ -1349,7 +1349,7 @@ class ApiRouting:
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
-                print(err_status)
+                print("upload_media(): ", err_status)
                 response = make_response(err_status, 500)
                 return response
         
@@ -1411,6 +1411,7 @@ class ApiRouting:
 
             except Exception as ex:
                 err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)
+                print("upload_media(): ", err_status)
                 response = make_response(err_status, 500)
 
             return response

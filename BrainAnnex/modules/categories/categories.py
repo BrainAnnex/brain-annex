@@ -718,6 +718,10 @@ class Categories:
         """
         Add a new Content Item, with the given properties and Class, to the beginning of the specified Category.
 
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
+
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
                                 TODO: rename to "category_uri"
 
@@ -750,9 +754,49 @@ class Categories:
 
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
+        #print("Inside Categories.add_content_at_end()")
+        (new_internal_id, new_uri) = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
+                                                     extra_labels="BA", assign_uri=True, new_uri=new_item_id,
+                                                     silently_drop=True)
+        print("Returned from NeoSchema.create_data_node")
+        new_item_id = int(new_uri)
+
+        print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_item_id = {new_item_id}")
+
+        # ATOMIC database update that locats the next-available "pos" number, and creates a relationship using it
+        q = '''
+            MATCH (cat :BA:Categories {item_id: $category_id}) 
+            WITH cat
+            OPTIONAL MATCH (n:BA) -[r :BA_in_category]-> (cat)
+            WITH r.pos AS pos, cat
+            WITH 
+                CASE WHEN pos IS NULL THEN
+                    0
+                ELSE
+                    max(pos) + 20
+                END AS new_pos, cat
+            
+            MATCH (ci :BA {item_id: $new_item_id})
+            MERGE (ci)-[:BA_in_category {pos: new_pos}]->(cat)
+        '''
+        #TODO: replace 20 with cls.DELTA_POS
+        #TODO: turn into a Collection-wide operation
+
+        status = cls.db.update_query(q, data_binding={"category_id": category_id, "new_item_id": new_item_id})
+        print("add_content_at_end(): status is ", status)
+        # status should be contain {'relationships_created': 1, 'properties_set': 1}
+        assert status.get('relationships_created') == 1, \
+                f"add_content_at_end(): unable to add new Content Item (internal dbase ID {new_internal_id}) to the Category"
+
+        assert status.get('properties_set') == 1, \
+                f"add_content_at_end(): errors while adding new Content Item (internal dbase ID {new_internal_id}) to the Category"
+
+        '''
+        # OLD, non-atomic way of performing operation
         new_item_id = Collections.add_to_collection_at_end(collection_id=category_id, membership_rel_name="BA_in_category",
                                                            item_class_name=item_class_name, item_properties=item_properties,
                                                            new_item_id=new_item_id)
+        '''
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
         #       NOT with the Content Item node ;
         #       this is allowed by our convention about "INSTANCE_OF" relationships
@@ -766,6 +810,10 @@ class Categories:
         """
         Add a new Content Item, with the given properties and Class, inserted into the given Category after the specified Item
         (in the context of the positional order encoded in the relationship attribute "pos")
+
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
 
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
                                 TODO: rename to "category_uri"
@@ -1143,6 +1191,10 @@ class Collections:
                                                         item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
         <SEE add_to_collection_at_end>
 
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
+
         :return:                    The auto-increment "item_ID" assigned to the newly-created data node
         """
         assert type(collection_id) == int, "The argument `collection_id` MUST be an integer"
@@ -1186,6 +1238,10 @@ class Collections:
 
         EXAMPLE:  new_item_id = add_to_collection_at_end(collection_id=708, membership_rel_name="BA_in_category",
                                                         item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
+
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
 
         :param collection_id:       The item_id of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name:
@@ -1237,6 +1293,10 @@ class Collections:
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add to the specified Collection, linked by the specified relationship and inserted after the given collection Item
         (in the context of the positional order encoded in the relationship attribute "pos")
+
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
 
         :param collection_id:       The item_id of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply
