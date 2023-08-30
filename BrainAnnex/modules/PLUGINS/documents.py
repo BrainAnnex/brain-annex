@@ -72,8 +72,15 @@ class Documents:
 
         unique_words = FullTextIndexing.extract_unique_good_words(body)
         content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
-        print(f"new_content_item_successful(): CREATING INDEXING for item {item_id}. Words: {unique_words}")
+
+        n_words = len(unique_words)
+        if n_words < 10:
+            print(f"new_content_item_successful(): CREATING INDEXING for item {item_id}. {n_words} unique words: {unique_words}")
+        else:
+            print(f"new_content_item_successful(): CREATING INDEXING for item {item_id}. {n_words} unique words.  First few: {list(unique_words)[:10]}")
+
         FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=unique_words)
+        print("new_content_item_successful(): Completed the indexing")
 
 
 

@@ -763,7 +763,7 @@ class Categories:
 
         print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_item_id = {new_item_id}")
 
-        # ATOMIC database update that locats the next-available "pos" number, and creates a relationship using it
+        # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
         q = '''
             MATCH (cat :BA:Categories {item_id: $category_id}) 
             WITH cat

@@ -76,10 +76,11 @@ class MediaManager:
         :param path:        String that must include a final "/", containing the full path of the file
                                 EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
         :param filename:    EXCLUSIVE of path
-        :return:            The contents of the text file, using 'utf8' encoding
+        :return:            The contents of the text file, using 'latin-1' encoding
         """
         full_file_name = path + filename
-        with open(full_file_name, 'r', encoding='utf8') as fh:
+        # Note: 'utf8' encoding led to problems.  More info: https://stackoverflow.com/questions/5552555/unicodedecodeerror-invalid-continuation-byte
+        with open(full_file_name, 'r', encoding='latin-1') as fh:
             file_contents = fh.read()
             return file_contents
 
