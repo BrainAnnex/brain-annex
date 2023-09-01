@@ -54,6 +54,12 @@ class NeoSchema:
           as well as their descendants under the "INSTANCE_OF" relationships.
           Conceptually, the "schema_code" is a relationship to an entity consisting of software code.
 
+        - Class can be of the "S" (Strict) or "L" (Lenient) type.
+            A "lenient" Class will accept data nodes with any properties, whether declared in the Class Schema or not;
+            by contrast, a "strict" class will prevent data nodes that contains properties not declared in the Schema
+
+            (TODO: also implement required properties and property data types)
+
 
     IMPLEMENTATION DETAILS
 
@@ -1449,28 +1455,29 @@ class NeoSchema:
 
 
     @classmethod
-    def allowable_props(cls, class_neo_id: int, requested_props: dict, silently_drop: bool, schema_cache=None) -> dict:
+    def allowable_props(cls, class_internal_id: int, requested_props: dict, silently_drop: bool, schema_cache=None) -> dict:
         """
-        Return a pared-down version, or possibly raise an Exception, of the requested list of properties
-        that are meant to be assigned to a new data node.
-        A new data node gets created only if
-        there's no other data node with the same allowed properties;
+        If any of the properties in the requested list of properties is not a declared (and thus allowed) Schema property,
+        then:
+            1) if silently_drop is True, drop that property from the returned pared-down list
+            2) if silently_drop is False, raise an Exception
+
         TODO: possibly expand to handle REQUIRED properties
 
-        :param class_neo_id:    The internal ID of a Schema Class node
+        :param class_internal_id:    The internal ID of a Schema Class node
         :param requested_props: A dictionary of properties one wishes to assign to a new data node, if the Schema allows
         :param silently_drop:   If True, any requested properties not allowed by the Schema are simply dropped;
                                     otherwise, an Exception is raised if any property isn't allowed
-        :param schema_cache:    (OPTIONAL) "NeoSchemaExperimental" object
+        :param schema_cache:    (OPTIONAL) "SchemaCache" object
 
         :return:                A possibly pared-down version of the requested_props dictionary
         """
-        if not cls.is_strict_class(class_neo_id, schema_cache=schema_cache):    #TODO: phase out?
+        if not cls.is_strict_class(class_internal_id, schema_cache=schema_cache):    #TODO: phase out?
             return requested_props      # Any properties are allowed if the Class isn't strict
 
 
         allowed_props = {}
-        class_properties = cls.get_class_properties_fast(class_neo_id)  # List of Properties registered with the Class
+        class_properties = cls.get_class_properties_fast(class_internal_id)  # List of Properties registered with the Class
 
         for requested_prop in requested_props.keys():
             # Check each of the requested properties
@@ -1480,14 +1487,14 @@ class NeoSchema:
                 # Not allowed
                 if not silently_drop:
                     raise Exception(f"NeoSchema.allowable_props(): "
-                                    f"the requested attribute `{requested_prop}` is not among the registered Properties "
-                                    f"of the Class `{cls.get_class_name_by_neo_id(class_neo_id)}`")
+                                    f"the requested property `{requested_prop}` is not among the registered Properties "
+                                    f"of the Class `{cls.get_class_name_by_neo_id(class_internal_id)}`")
 
         return allowed_props
 
 
 
-    @classmethod    # TODO: unit test
+    @classmethod
     def create_data_node(cls, class_node: Union[int, str], properties = None, extra_labels = None,
                          assign_uri=False, new_uri=None, silently_drop=False) -> (int, str):
         """
@@ -1511,7 +1518,7 @@ class NeoSchema:
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param extra_labels:(Optional) String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
-        :param assign_uri:  If True, the new node is given an extra attribute named "item_id",
+        :param assign_uri:  If True, the new node is given an extra attribute named "item_id" (TODO: rename "uri"),
                                 with a unique auto-increment value, as well an extra attribute named "schema_code"
         :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
                                 If new_item_id is provided, then assign_item_id is automatically made True
@@ -1524,6 +1531,8 @@ class NeoSchema:
         """
         cls.assert_valid_class_identifier(class_node)
 
+
+
         # TODO: simplify not having to lug around both name and internal ID
         if type(class_node) == str:
             class_name = class_node
@@ -1532,14 +1541,22 @@ class NeoSchema:
             class_name = cls.get_class_name_by_neo_id(class_node)
             class_internal_id = class_node
 
+
+        # Verify whether all properties are allowed, and possibly trim them down
+        properties = cls.allowable_props(class_internal_id=class_internal_id, requested_props=properties,
+                                         silently_drop=silently_drop)
+
         if extra_labels is None:
             # If not specified, use the Class name
             extra_labels = class_name
         else:
             if type(extra_labels) == str:
-                extra_labels = [extra_labels, class_name]
-            elif class_name in extra_labels:      # If we get thus far, labels is a list or tuple
-                extra_labels = extra_labels.append(class_name)
+                if extra_labels.strip() != class_name:
+                    extra_labels = [extra_labels, class_name]
+
+            elif class_name not in extra_labels:      # If we get thus far, labels is a list or tuple
+                if class_name not in extra_labels:
+                    extra_labels.append(class_name)
 
         if properties is None:
             properties = {}
@@ -1734,6 +1751,7 @@ class NeoSchema:
         properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
                                                 silently_drop=silently_drop, schema_cache=schema_cache)
 
+        # TODO: for efficiency, the merge_node and linking ought to be done in a single step
         result = cls.db.merge_node(labels=labels, properties=properties_to_set)
         datanode_neo_id = result["internal_id"]
 

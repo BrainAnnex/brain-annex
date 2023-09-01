@@ -301,8 +301,8 @@ class Categories:
         result = cls.db.query_extended(q, flatten=True)
 
         # Ditch unneeded attributes
-        for item in result:
-            del item["internal_id"]
+        #for item in result:
+        #    del item["neo4j_labels"]
 
         return result
 

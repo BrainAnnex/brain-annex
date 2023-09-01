@@ -541,76 +541,76 @@ def test_allowable_props(db):
     strict_int_id, strict_schema_id = NeoSchema.create_class_with_properties("My Strict class", ["A", "B"], strict=True)
 
 
-    d = NeoSchema.allowable_props(class_neo_id=lax_int_id,
+    d = NeoSchema.allowable_props(class_internal_id=lax_int_id,
                                   requested_props={"A": 123}, silently_drop=True)
     assert d == {"A": 123}  # Nothing got dropped
 
-    d = NeoSchema.allowable_props(class_neo_id=strict_int_id,
+    d = NeoSchema.allowable_props(class_internal_id=strict_int_id,
                                   requested_props={"A": 123}, silently_drop=True)
     assert d == {"A": 123}  # Nothing got dropped
 
 
-    d = NeoSchema.allowable_props(class_neo_id=lax_int_id,
+    d = NeoSchema.allowable_props(class_internal_id=lax_int_id,
                                   requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=True)
     assert d == {"A": 123, "C": "trying to intrude"}  # Nothing got dropped, because "anything goes" with a "Lax" Class
 
-    d = NeoSchema.allowable_props(class_neo_id=strict_int_id,
+    d = NeoSchema.allowable_props(class_internal_id=strict_int_id,
                                   requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=True)
     assert d == {"A": 123}  # "C" got silently dropped
 
     with pytest.raises(Exception):
-        NeoSchema.allowable_props(class_neo_id=strict_int_id,
+        NeoSchema.allowable_props(class_internal_id=strict_int_id,
                                   requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=False)
 
 
-    d = NeoSchema.allowable_props(class_neo_id=lax_int_id,
+    d = NeoSchema.allowable_props(class_internal_id=lax_int_id,
                                   requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=True)
     assert d == {"X": 666, "C": "trying to intrude"}  # Nothing got dropped, because "anything goes" with a "Lax" Class
 
-    d = NeoSchema.allowable_props(class_neo_id=strict_int_id,
+    d = NeoSchema.allowable_props(class_internal_id=strict_int_id,
                                   requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=True)
     assert d == {}      # Everything got silently dropped
 
     with pytest.raises(Exception):
-        NeoSchema.allowable_props(class_neo_id=strict_int_id,
+        NeoSchema.allowable_props(class_internal_id=strict_int_id,
                                   requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=False)
 
 
     # Repeating, using the SchemaCache
     schema_cache = SchemaCache()
 
-    d = NeoSchema.allowable_props(class_neo_id=lax_int_id, schema_cache=schema_cache,
+    d = NeoSchema.allowable_props(class_internal_id=lax_int_id, schema_cache=schema_cache,
                                   requested_props={"A": 123}, silently_drop=True)
     assert d == {"A": 123}  # Nothing got dropped
 
-    d = NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+    d = NeoSchema.allowable_props(class_internal_id=strict_int_id, schema_cache=schema_cache,
                                   requested_props={"A": 123}, silently_drop=True)
     assert d == {"A": 123}  # Nothing got dropped
 
 
-    d = NeoSchema.allowable_props(class_neo_id=lax_int_id, schema_cache=schema_cache,
+    d = NeoSchema.allowable_props(class_internal_id=lax_int_id, schema_cache=schema_cache,
                                   requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=True)
     assert d == {"A": 123, "C": "trying to intrude"}  # Nothing got dropped, because "anything goes" with a "Lax" Class
 
-    d = NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+    d = NeoSchema.allowable_props(class_internal_id=strict_int_id, schema_cache=schema_cache,
                                   requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=True)
     assert d == {"A": 123}  # "C" got silently dropped
 
     with pytest.raises(Exception):
-        NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+        NeoSchema.allowable_props(class_internal_id=strict_int_id, schema_cache=schema_cache,
                                   requested_props={"A": 123, "C": "trying to intrude"}, silently_drop=False)
 
 
-    d = NeoSchema.allowable_props(class_neo_id=lax_int_id, schema_cache=schema_cache,
+    d = NeoSchema.allowable_props(class_internal_id=lax_int_id, schema_cache=schema_cache,
                                   requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=True)
     assert d == {"X": 666, "C": "trying to intrude"}  # Nothing got dropped, because "anything goes" with a "Lax" Class
 
-    d = NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+    d = NeoSchema.allowable_props(class_internal_id=strict_int_id, schema_cache=schema_cache,
                                   requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=True)
     assert d == {}      # Everything got silently dropped
 
     with pytest.raises(Exception):
-        NeoSchema.allowable_props(class_neo_id=strict_int_id, schema_cache=schema_cache,
+        NeoSchema.allowable_props(class_internal_id=strict_int_id, schema_cache=schema_cache,
                                   requested_props={"X": 666, "C": "trying to intrude"}, silently_drop=False)
 
     # Check the internal data structure of the schema cache
@@ -618,6 +618,121 @@ def test_allowable_props(db):
     assert cached_data["class_attributes"] == {"name": "My Lax class", "schema_id": lax_schema_id, "type": "L"}
     cached_data = schema_cache.get_all_cached_class_data(strict_int_id)
     assert cached_data["class_attributes"] == {"name": "My Strict class", "schema_id": strict_schema_id, "type": "S"}
+
+
+
+def test_create_data_node_1(db):
+    db.empty_dbase()
+
+    create_sample_schema_1()    # Schema with patient/result/doctor
+
+    # Create a 1st "doctor" data node
+    (internal_id, uri) = NeoSchema.create_data_node(class_node="doctor",
+                               properties={"name": "Dr. Preeti", "specialty": "sports medicine"},
+                               extra_labels = None,
+                               assign_uri=False, new_uri=None, silently_drop=False)
+    assert uri == ""
+
+    q = '''
+        MATCH (d :doctor {name: "Dr. Preeti", specialty: "sports medicine"}) 
+        -[:SCHEMA]-> (:CLASS {name: "doctor"})
+        WHERE id(d) = $internal_id
+        RETURN d
+        '''
+
+    result = db.query(q, data_binding={"internal_id": internal_id})
+    assert len(result) == 1
+    assert result[0] == {'d': {'specialty': 'sports medicine', 'name': 'Dr. Preeti'}}
+
+
+    # Create a 2nd "doctor" data node, this time assigning an extra label and generating a URI
+    (internal_id, uri) = NeoSchema.create_data_node(class_node="doctor",
+                                                    properties={"name": "Dr. Watson", "specialty": "genetics"},
+                                                    extra_labels = "Nobelist",
+                                                    assign_uri=True, new_uri=None, silently_drop=False)
+    assert type(uri) == str
+
+    q = '''
+        MATCH (d :doctor:Nobelist {name: "Dr. Watson", specialty: "genetics"}) 
+        -[:SCHEMA]-> (:CLASS {name: "doctor"})
+        WHERE id(d) = $internal_id
+        RETURN d
+        '''
+    result = db.query(q, data_binding={"internal_id": internal_id})
+    assert len(result) == 1
+    assert result[0] == {'d': {'specialty': 'genetics', 'name': 'Dr. Watson', 'item_id': int(uri)}}
+
+
+    # Create a 3rd "doctor" data node, this time assigning 2 extra labels and also assigning a URI
+    (internal_id, uri) = NeoSchema.create_data_node(class_node="doctor",
+                                                    properties={"name": "Dr. Lewis", "specialty": "radiology"},
+                                                    extra_labels = ["retired", "person"],
+                                                    new_uri="d-123", silently_drop=False)
+    assert uri == "d-123"
+
+    q = '''
+        MATCH (d :doctor:retired:person {name: "Dr. Lewis", specialty: "radiology"}) 
+        -[:SCHEMA]-> (:CLASS {name: "doctor"})
+        WHERE id(d) = $internal_id
+        RETURN d
+        '''
+    result = db.query(q, data_binding={"internal_id": internal_id})
+    assert len(result) == 1
+
+    assert result[0] == {'d': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'item_id': "d-123"}}
+
+
+
+def test_create_data_node_2(db):
+    db.empty_dbase()
+
+    # Using a class of type "strict"
+    NeoSchema.create_class_with_properties(name="person",
+                                           property_list=["name", "age"], strict=True)
+
+    # Create a "person" data node, attempting to set a property not declared in the Schema; this will fail
+    with pytest.raises(Exception):
+        NeoSchema.create_data_node(class_node="person",
+                                   properties={"name": "Joe", "address": "extraneous undeclared field"},
+                                   extra_labels = None, assign_uri=False, new_uri=None,
+                                   silently_drop=False)
+
+    # To prevent a failure, we can ask to silently drop any undeclared property
+    (internal_id, uri) = NeoSchema.create_data_node(class_node="person",
+                                                   properties={"age": 22, "address": "extraneous undeclared field"},
+                                                   extra_labels = None, assign_uri=False, new_uri=None,
+                                                   silently_drop=True)
+    q = '''
+        MATCH (p :person {age: 22}) 
+        -[:SCHEMA]-> (:CLASS {name: 'person'})
+        WHERE id(p) = $internal_id
+        RETURN p
+        '''
+
+    result = db.query(q, data_binding={"internal_id": internal_id})
+    assert len(result) == 1
+    assert result[0] == {'p': {'age': 22}}      # Notice that the address never made it into the database
+
+
+    # Switch a new class, of type "lenient"
+    NeoSchema.create_class_with_properties(name="car",
+                                           property_list=["brand"], strict=False)
+
+    # Because the class is "lenient", data nodes may be created with undeclared properties
+    (internal_id, uri) = NeoSchema.create_data_node(class_node="car",
+                                                    properties={"brand": "Toyota", "color": "white"},
+                                                    extra_labels = None, assign_uri=False, new_uri=None,
+                                                    silently_drop=False)
+    q = '''
+        MATCH (c :car {brand: "Toyota", color: "white"}) 
+        -[:SCHEMA]-> (:CLASS {name: 'car'})
+        WHERE id(c) = $internal_id
+        RETURN c
+        '''
+
+    result = db.query(q, data_binding={"internal_id": internal_id})
+    assert len(result) == 1
+    assert result[0] == {'c': {"brand": "Toyota", "color": "white"}}      # The color, though undeclared in the Schema, got set
 
 
 
@@ -1281,10 +1396,10 @@ def test_delete_data_point(db):
 
 
     # Create new data nodes
-    doctor_data_id = NeoSchema.create_data_node(class_node="doctor",
+    (doctor_data_id, _) = NeoSchema.create_data_node(class_node="doctor",
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
 
-    patient_data_id = NeoSchema.create_data_node(class_node="patient",
+    (patient_data_id, _) = NeoSchema.create_data_node(class_node="patient",
                                                  properties={"name": "Val", "age": 22})
 
     doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_id)
@@ -1313,7 +1428,7 @@ def test_delete_data_point(db):
     assert patient is None    # The patient is now gone
 
 
-    doctor_data_id = NeoSchema.create_data_node(class_node="doctor", extra_labels=["doctor", "employee"],
+    (doctor_data_id, _) = NeoSchema.create_data_node(class_node="doctor", extra_labels="employee",
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
     doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_id)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
@@ -1322,8 +1437,9 @@ def test_delete_data_point(db):
     doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_id)
     assert doctor is None   # The doctor got deleted
 
-    doctor_data_id = NeoSchema.create_data_node(class_node="doctor", extra_labels=["doctor", "employee"],
+    (doctor_data_id, _) = NeoSchema.create_data_node(class_node="doctor", extra_labels=["doctor", "employee"],
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+                                                # No harm in re-specifying the "doctor" label
     doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_id)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 

@@ -195,6 +195,9 @@ class FullTextIndexing:
         NOTE: if an existing Class named "Content Item" is not found,
               it will be created with some default values
 
+        TODO: manage indexing.  If done in Cypher:
+                                CREATE TEXT INDEX word_lookup FOR (n:Word) ON (n.name)
+
         :param content_item_class_id: (OPTIONAL) The internal database ID of an existing "Content Item" Class;
                                             if not passed, it gets looked up
         :return:                None
