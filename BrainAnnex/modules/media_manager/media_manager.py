@@ -8,7 +8,7 @@ class MediaManager:
     """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
-                        # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
+                        # Example on Windows: "D:/media/"
                         #                     (notice the forward slashes, even on Windows)
                         # This class variable gets set by initialize.py
 
@@ -17,7 +17,9 @@ class MediaManager:
     def set_media_folder(cls, path_name: str) -> None:
         """
 
-        :param path_name:
+        :param path_name:   Location where the media for Content Items is stored, including the final "/"
+                                EXAMPLE on Windows: "D:/media/"
+                                (notice the forward slashes, even on Windows)
         :return:            None
         """
         # TODO: if path_name doesn't end with "/", add it
@@ -27,15 +29,58 @@ class MediaManager:
 
 
     @classmethod
-    def get_from_file(cls, filename: str) -> str:
+    def lookup_file_path(cls, schema_code=None, class_name=None, thumb=False) -> str:
         """
-        Read in and return the contents of the specified text file
+        Return the full file path, including the final "/" of media of
+        a particular type, identified by the schema_code argument
+        TODO: allow media files to have a variety of locations - not just a standard
+              one based on their type
 
-        :param filename:    EXCLUSIVE of path (stored in the class variable MEDIA_FOLDER)
-        :return:            The contents of the file
+        :param schema_code: String identifier used by the various plugins
+        :param class_name:  An alternate way to identify the type of the media file.
+                                If both schema_code and class_name are specified,
+                                class_name prevails
+        :param thumb:       If True, then the "thumbnail" version is returned
+                                (only applicable to some media types, such as images)
+        :return:            EXAMPLES on Windows:
+                                "D:/media/documents/"
+                                "D:/media/images/resized/"
         """
-        full_file_name = cls.MEDIA_FOLDER + filename
-        with open(full_file_name, 'r', encoding='utf8') as fh:
+        folder = cls.MEDIA_FOLDER    # Includes the final "/"
+
+        if class_name is not None:
+            folder += f"{class_name.lower()}/"
+        elif schema_code is not None:
+            if schema_code == "d":
+                folder +=  "documents/"
+            elif schema_code == "i":
+                folder += "images/"
+            elif schema_code == "n":
+                folder += "notes/"
+        else:
+            raise Exception("lookup_file_path(): at least one of two arguments "
+                            "`class_name` and `schema_code` must be provided")
+
+        if thumb:
+            folder += "resized/"
+
+        return folder
+
+
+
+    @classmethod
+    def get_from_text_file(cls, path: str, filename: str) -> str:
+        """
+        Read in and return the contents of the specified TEXT file
+
+        :param path:        String that must include a final "/", containing the full path of the file
+                                EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
+        :param filename:    EXCLUSIVE of path
+        :return:            The contents of the text file, using 'latin-1' encoding
+        """
+        full_file_name = path + filename
+        # Note: 'utf8' encoding led to problems.  More info: https://stackoverflow.com/questions/5552555/unicodedecodeerror-invalid-continuation-byte
+        with open(full_file_name, 'r', encoding='latin-1') as fh:
             file_contents = fh.read()
             return file_contents
 
@@ -44,13 +89,13 @@ class MediaManager:
     @classmethod
     def get_from_binary_file(cls, path: str, filename: str) -> bytes:
         """
-        Read in and return the contents of the specified binary file
+        Read in and return the contents of the specified BINARY file
 
-        :param path:
+        :param path:        String that must include a final "/", containing the full path of the file
+                                EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
         :param filename:    EXCLUSIVE of path
         :return:            The contents of the binary file
         """
-        #full_file_name = cls.MEDIA_FOLDER + filename
         full_file_name = path + filename
         with open(full_file_name, 'rb') as fh:
             file_contents = fh.read()
@@ -65,21 +110,23 @@ class MediaManager:
         In case of error, detailed Exceptions are raised
 
         :param contents:    String to store into the file
-        :param filename:    EXCLUSIVE of MEDIA_FOLDER part (stored as class variable)
+        :param filename:    EXCLUSIVE of file path
         :return:            None.  In case of errors, detailed Exceptions are raised
         """
 
-        full_file_name = cls.MEDIA_FOLDER + filename
+        folder = cls.lookup_file_path(schema_code="n")                          # TODO: pass schema_code as an argument, instead of being hardwired
+        full_file_name = folder + filename
+        #full_file_name = cls.MEDIA_FOLDER + "notes/" + filename
 
         try:
             f = open(full_file_name, "w", encoding='utf8')
         except Exception as ex:
-            raise Exception(f"Unable to open file {full_file_name} for writing. {ex}")
+            raise Exception(f"save_into_file(): Unable to open file {full_file_name} for writing. {ex}")
 
         try:
             f.write(contents)
         except Exception as ex:
-            raise Exception(f"Unable write data to file {full_file_name}. "
+            raise Exception(f"save_into_file(): Unable write data to file {full_file_name}. "
                             f"First 20 characters: `{contents[:20]}`. {exceptions.exception_helper(ex)}")
 
         f.close()
@@ -87,19 +134,23 @@ class MediaManager:
 
 
     @classmethod
-    def delete_media_file(cls, basename: str, suffix: str, subfolder = "") -> bool:
+    def delete_media_file(cls, basename: str, suffix: str, schema_code, thumbs=False) -> bool:
         """
         Delete the specified media file, assumed in a standard location
 
         :param basename:    File name, exclusive of path and of suffix
         :param suffix:      String such as "htm" (don't include the dot!)
-        :param subfolder:   It must end with "/"  .  EXAMPLE:  "resized/"
+        :param schema_code:
+        :param thumbs:
         :return:            True if successful, or False otherwise
         """
         filename = basename + "." + suffix
         print(f"Attempting to delete file `{filename}`")
 
-        full_file_name = cls.MEDIA_FOLDER + subfolder + filename
+        folder = cls.lookup_file_path(schema_code=schema_code, thumb=thumbs)
+        full_file_name = folder + filename
+
+        #full_file_name = cls.MEDIA_FOLDER + subfolder + filename
 
         return cls.delete_file(full_file_name)
 
@@ -130,7 +181,7 @@ class MediaManager:
 
         :param directory:   EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
         :param db:          Object of type "NeoAccess"; TODO: should be able to avoid it
-                                by using the NeoSchema layer instead
+                                                              by using the NeoSchema layer instead
         :return:            A list of names of "orphaned" file s
         """
         file_list = os.listdir(directory)

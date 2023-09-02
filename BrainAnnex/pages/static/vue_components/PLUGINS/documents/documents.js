@@ -1,25 +1,35 @@
-/*  Vue component to display and edit Content Items of type "i" (Images)
+/*  Vue component to display and edit Content Items of type "d" (Documents)
  */
 
-Vue.component('vue-plugin-i',
+Vue.component('vue-plugin-d',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
-        /*  item_data:  EXAMPLE: {"item_id":52,"pos":10,"schema_code":"i","basename":"my pic","suffix":"jpg",
-                                                    "caption":"my 1st pic", width:450, height:760}
+        /*  item_data:  EXAMPLE: {"basename": "test", "caption": "My first document", "class_name": "Documents",
+                                  "item_id": 4849, "pos": 0, "schema_code": "d", "suffix": "txt"}
                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
 
             allow_editing:  A boolean indicating whether in editing mode
-            index:          the zero-based position of the Record on the page
-            item_count:     the total number of Content Items (of all types) on the page
+            category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
+            index:          The zero-based position of this Document on the page
+            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */
 
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-            <a class='i-image-link' v-bind:href="image_url(item_data)" target="_blank">
-                <img v-bind:src="image_url_thumb(item_data)">
-            </a>
-            <template v-if="'caption' in item_data"><br><span class='i-caption'>{{item_data.caption}}</span></template>
+            <!-- Document container -->
+            <div class='doc'>
+                <img src="/BA/pages/static/graphics/document_48_8168668.png" style="float: left; margin-right: 5px">
+                <span style='font-weight:bold; font-size:12px'>&ldquo;{{item_data.caption}}&rdquo;</span><br><br>
+                <a href v-bind:href="document_url(item_data)"
+                        v-bind:title="item_data.caption" v-bind:alt="item_data.caption"
+                        target="_blank"
+                >
+                    {{item_data.basename}}.{{item_data.suffix}}
+                </a>
+                <br><br>
+            </div>		<!-- End of Document container -->
+
 
             <!--  STANDARD CONTROLS
                   (signals from them get relayed to the parent of this component, but some get handled here)
@@ -49,22 +59,17 @@ Vue.component('vue-plugin-i',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
-            image_url(item_data)
-            // Return the URL of the full image
+            document_url(item_data)
+            // Return the URL of the full documents
             {
                 return '/BA/api/simple/serve_media/' + item_data.item_id;           // Invoke the file server
              },
 
-            image_url_thumb(item_data)
-            // Return the URL of the thumbnail version of the image
-            {
-                return '/BA/api/simple/serve_media/' + item_data.item_id + '/th';    // Invoke the file server, with the thumbnail option
-             },
 
             edit_content_item(item)
             {
-                console.log(`Image component received signal to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
-                alert("Editing of Images not yet implemented");
+                console.log(`Documents component received signal to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
+                alert("Editing of Documents not yet implemented");
             }
 
         }

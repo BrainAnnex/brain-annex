@@ -1,5 +1,4 @@
-from BrainAnnex.pages.BA_pages_request_handler import PagesRequestHandler
-from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
+from BrainAnnex.api.data_manager import DataManager
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.categories.categories import Collections
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
@@ -24,8 +23,7 @@ class InitializeBrainAnnex:
         :param db_handle:   Object of class "NeoAccess"
         :return:            None
         """
-        PagesRequestHandler.db = db_handle
-        APIRequestHandler.db = db_handle
+        DataManager.db = db_handle
         Categories.db = db_handle
         Collections.db = db_handle
         NeoSchema.db = db_handle
@@ -46,7 +44,6 @@ class InitializeBrainAnnex:
         :param log_folder:
         :return:
         """
-        APIRequestHandler.MEDIA_FOLDER = media_folder
-        APIRequestHandler.LOG_FOLDER = log_folder
+        DataManager.LOG_FOLDER = log_folder
 
         MediaManager.MEDIA_FOLDER = media_folder

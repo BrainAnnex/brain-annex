@@ -1,6 +1,9 @@
+# Classes "DataManager" and "DocumentationGenerator"
+
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
+from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
@@ -20,7 +23,7 @@ from datetime import datetime
 
 
 
-class APIRequestHandler:
+class DataManager:
     """
     For general database-interaction operations.
     Used by the UI for Page Generation,
@@ -28,17 +31,12 @@ class APIRequestHandler:
 
     This class does NOT get instantiated.
 
-    TODO: absorb (the non-Categories part of) PagesRequestHandler, and
-          get renamed DataManager
-
-    Note: "Request Handlers" are the ONLY CLASSES THAT DIRECTLY COMMUNICATES WITH THE DATABASE INTERFACE
+    TODO: maybe move the file to its own module
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
     db = None           # Object of class "NeoAccess".  MUST be set before using this class!
 
-    MEDIA_FOLDER = None # Location where the media for Content Items is stored
-                        # Example on Windows: "D:/Docs/- MY CODE/Brain Annex/BA-Win7/BrainAnnex/pages/static/media/"
     LOG_FOLDER = None   # Location where the log file is stored
 
     ongoing_data_intake = False
@@ -50,17 +48,34 @@ class APIRequestHandler:
 
 
 
+    #######################     LOW-LEVEL DATABASE-NODE UTILITIES       #######################
+
     @classmethod
-    def add_new_label(cls, label: str) -> bool:
+    def get_node_labels(cls) -> [str]:
+        """
+        Look up and return a list of all the node labels in the database.
+        EXAMPLE: ["my_label_1", "my_label_2"]
+
+        :return:    A list of strings
+        """
+
+        label_list = cls.db.get_labels()        # Fetch all the node labels in the database
+
+        return label_list
+
+
+
+    @classmethod
+    def add_new_label(cls, label: str) -> int:
         """
         Create a new blank node with the specified label
 
-        :return:    True if successful, or False otherwise
+        :return:    The internal database ID of the new node
         """
 
-        cls.db.create_node(label, {})
+        return  cls.db.create_node(label)
 
-        return True     # TODO: check the actual success of the operation
+
 
 
 
@@ -117,6 +132,16 @@ class APIRequestHandler:
 
     #######################     SCHEMA-RELATED       #######################
     # TODO: possibly move to separate class
+
+
+    @classmethod
+    def all_schema_classes(cls) -> [str]:
+        """
+        Return a list of all the existing Schema classes
+        :return:
+        """
+        return NeoSchema.get_all_classes()
+
 
     @classmethod
     def new_schema_class(cls, class_specs: dict) -> None:
@@ -359,6 +384,7 @@ class APIRequestHandler:
         :param item_id:         An integer identifying the desired Content Item, which ought to be text media
         :param schema_code:     TODO: maybe phase out
         :param public_required: If True, the Content Item is returned only if has an the attribute "public: true"
+                                    TODO: unclear if actually useful
 
         :return:                A string with the HTML text of the requested note;
                                     or an Exception in case of failure
@@ -379,8 +405,10 @@ class APIRequestHandler:
         suffix = content_node['suffix']
         filename = f"{basename}.{suffix}"
 
+        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'])     # Includes the final "/"
+
         try:
-            file_contents = MediaManager.get_from_file(filename)
+            file_contents = MediaManager.get_from_text_file(folder, filename)
             return file_contents
         except Exception as ex:
             return f"I/O failure while reading in contents of item {item_id}. {ex}"     # File I/O failed
@@ -388,35 +416,40 @@ class APIRequestHandler:
 
 
     @classmethod
-    def get_binary_content(cls, item_id: int, th: str) -> (str, bytes):
+    def get_binary_content(cls, item_id: int, th) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored on a local file.
         In case of error, raise an Exception
 
-        :param th:
-        :param item_id:
-        :return:    The binary data
+        :param item_id: Integer identifier for a media item     TODO: use strings
+        :param th:      If not None, then the thumbnail version is returned (only
+                            applicable to images)
+        :return:        The binary data
 
         """
-        match = cls.db.match(labels="BA", properties={"item_id": item_id})
-        content_node = cls.db.get_nodes(match)
+        #print("In get_binary_content(): item_id = ", item_id)
+        content_node = NeoSchema.fetch_data_node(item_id = item_id)
         #print("content_node:", content_node)
-        if (content_node is None) or (content_node == []):
-            raise Exception("Metadata not found")
+        if not content_node:
+            raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
 
-        basename = content_node[0]['basename']
-        suffix = content_node[0]['suffix']
+        basename = content_node['basename']
+        suffix = content_node['suffix']
         filename = f"{basename}.{suffix}"
 
-        try:
-            if th:
-                file_contents = MediaManager.get_from_binary_file(cls.MEDIA_FOLDER + "resized/", filename)
-            else:
-                file_contents = MediaManager.get_from_binary_file(cls.MEDIA_FOLDER, filename)
+        if th:
+            thumb = True
+        else:
+            thumb = False
 
+        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)  # Includes the final "/"
+
+        try:
+            file_contents = MediaManager.get_from_binary_file(folder, filename)
             return (suffix, file_contents)
         except Exception as ex:
-            raise Exception(f"Reading of data file for Content Item {item_id} failed: {ex}")     # File I/O failed
+            # File I/O failed
+            raise Exception(f"Reading of data file for Content Item {item_id} failed: {ex}")
 
 
 
@@ -552,7 +585,7 @@ class APIRequestHandler:
         number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
 
         if schema_code == "n":
-            Notes.update_content_item_SUCCESSFUL(item_id, original_post_data)
+            Notes.update_content_item_successful(item_id, original_post_data)
 
         # If the update was NOT for a "note" (in which case it might only be about the note than its metadata)
         # verify that some fields indeed got changed
@@ -585,16 +618,16 @@ class APIRequestHandler:
         #       (TODO: try to infer that from the Schema)
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
-            ###status = cls.delete_attached_media_file(item_id)
             record = cls.lookup_media_record(item_id)
             if record is not None:
-                MediaManager.delete_media_file(record["basename"], record["suffix"])
+                MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code)
 
         if schema_code == "i":
+            # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             record = cls.lookup_media_record(item_id)
             if record is not None:
-                MediaManager.delete_media_file(record["basename"], record["suffix"], subfolder="resized/")
+                MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code, thumbs=True)
 
         if schema_code == "n":
             Notes.delete_content_before(item_id)
@@ -725,10 +758,43 @@ class APIRequestHandler:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if schema_code == "n":
-            Notes.new_content_item_SUCCESSFUL(new_item_id, original_post_data)
+            Notes.new_content_item_successful(new_item_id, original_post_data)
 
 
         return new_item_id     # Success
+
+
+
+    @classmethod
+    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :int, new_item_id, class_name,
+                                                post_data, original_post_data):
+        # TODO: NOT YET IN USE
+        #       Meant to take over the final parts of BA_Api_Routing.upload_media() and DataManager.new_content_item_in_category()
+        # Create the new node and required relationships
+        if insert_after == "TOP":
+            Categories.add_content_at_beginning(category_id=category_id,
+                                                item_class_name=class_name, item_properties=post_data,
+                                                new_item_id=new_item_id)
+        elif insert_after == "BOTTOM":
+            Categories.add_content_at_end(category_id=category_id,
+                                          item_class_name=class_name, item_properties=post_data,
+                                          new_item_id=new_item_id)
+        else:   # Insert at a position that is not the top nor bottom
+            try:
+                insert_after = int(insert_after)
+            except Exception:
+                raise Exception(f"`insert_after` must be an integer, unless it's 'TOP' or 'BOTTOM'. Value passed: `{insert_after}`")
+
+            Categories.add_content_after_element(category_id=category_id,
+                                                 item_class_name=class_name, item_properties=post_data,
+                                                 insert_after=insert_after, new_item_id=new_item_id)
+
+
+        # A final round of PLUGIN-SPECIFIC OPERATIONS
+        if class_name == "Notes":
+            Notes.new_content_item_successful(new_item_id, original_post_data)
+        elif class_name == "Documents":
+            Documents.new_content_item_successful(new_item_id, original_post_data)
 
 
 
@@ -899,7 +965,8 @@ class APIRequestHandler:
 
         try:
             upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
-            (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_json", verbose=False)
+            (basename, full_filename, original_name, mime_type) = \
+                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_json", verbose=False)
             # basename and full name of the temporary file created during the upload
         except Exception as ex:
             return f"ERROR in upload: {ex} {return_link}"
@@ -943,8 +1010,8 @@ class APIRequestHandler:
         upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
                                                                     # TODO: maybe extract in the api_routing file
         # 'file' is just an identifier attached to the upload by the frontend
-        (basename, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir,
-                                                                                    key_name=None, verbose=False)
+        (basename, full_filename, original_name, mime_type) = \
+                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name=None, verbose=False)
         # basename and full name of the temporary file created during the upload
 
         assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"

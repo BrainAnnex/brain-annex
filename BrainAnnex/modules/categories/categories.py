@@ -118,6 +118,34 @@ class Categories:
                                        neighbor_labels="BA")
 
 
+    @classmethod
+    def get_subcategories_alt(cls, category_id) -> [dict]:  # TODO: merge with get_subcategories()
+        """
+        Return all the (immediate) subcategories of the given category,
+        as a list of dictionaries with keys 'id' and 'name' TODO: fix
+        EXAMPLE:
+            OLD -> [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
+            [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
+
+        :param category_id:
+        :return:    A list of dictionaries
+        """
+        q =  '''
+             MATCH (sub:BA {schema_code:"cat"})-[BA_subcategory_of]->(c:BA {schema_code:"cat", item_id:$category_id})
+             RETURN sub.item_id AS id, sub.name AS name
+             '''
+        result = cls.db.query(q, {"category_id": category_id})
+
+        '''
+        new = cls.db.follow_links(labels="BA", key_name="item_id", key_value=category_id,
+                                  rel_name="BA_subcategory_of", rel_dir="IN",
+                                  neighbor_labels="BA")
+        # OR: properties_condition = {"item_id": category_id, "schema_code": "cat"}
+        '''
+
+        return result
+
+
 
     @classmethod
     def get_parent_categories(cls, category_id) -> [dict]:
@@ -135,6 +163,30 @@ class Categories:
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                    neighbor_labels="BA")
+
+
+    @classmethod
+    def get_parent_categories_alt(cls, category_id) -> [dict]:  # TODO: merge with get_parent_categories()
+        """
+        Return all the (immediate) parent categories of the given category,
+        as a list of dictionaries with all the keys of the Category Class
+
+        TODO: fix inconsistency.  This function uses item_id ; others use just id
+
+        EXAMPLE:
+            [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
+
+        :param category_id:
+        :return:    A list of dictionaries
+        """
+        match = cls.db.match(labels="BA",
+                             properties={"item_id": category_id, "schema_code": "cat"})
+
+        result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
+                                     neighbor_labels="BA")
+
+        return result
+
 
 
 
@@ -184,20 +236,73 @@ class Categories:
         return result
 
 
+    @classmethod
+    def get_all_categories_alt(cls, exclude_root=True) -> [dict]:
+        """
+        TODO: phase out, in favor of Categories.get_all_categories (which uses 'item_id' instead of 'id')
+
+        Return all the existing Categories - possibly except the root -
+        as a list of dictionaries with keys 'id', 'name', 'remarks'
+        sorted by name
+        EXAMPLE:
+            [{'id': 3, 'name': 'Hobbies'}, {'id': 2, 'name': 'Work', 'remarks': 'paid jobs'}]
+
+        Note that missing "remarks" values are not in the dictionaries
+
+        :param exclude_root:
+        :return:                A list of dictionaries
+        """
+        clause = ""
+        if exclude_root:
+            clause = "WHERE cat.item_id <> 1"
+
+        q =  f'''
+             MATCH (cat:BA {{schema_code:"cat"}})
+             {clause}
+             RETURN cat.item_id AS id, cat.name AS name, cat.remarks AS remarks
+             ORDER BY toLower(cat.name)
+             '''
+        # Notes: 1 is the ROOT
+        # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
+
+        result = cls.db.query(q)
+
+        # Ditch all the missing "remarks" values
+        for cat in result:
+            if cat["remarks"] is None:
+                del cat["remarks"]
+
+        return result
+
+
 
     @classmethod
     def get_sibling_categories(cls, category_internal_id: int) -> [dict]:
         """
         Return the data of all the "siblings" of the given Category
 
-        :param category_internal_id:
-        :return:
+        :param category_internal_id:    The internal database ID of a "Category" data node
+        :return:                        A list of dictionaries, with one element for each "sibling";
+                                            each element contains the 'internal_id' and 'neo4j_labels' keys,
+                                            plus whatever attributes are stored on that node.
+                                            EXAMPLE of single element:
+                                            {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories', 'BA']}
         """
-        result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of")
+
+        #TODO: switch to this after the next update of NeoAccess
+        #result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of", order_by="name")
+
+        q = f"""
+                MATCH (n) - [:BA_subcategory_of] -> (parent) <- [:BA_subcategory_of] - (sibling)
+                WHERE id(n) = {category_internal_id}
+                RETURN sibling
+                ORDER BY toLower(sibling.name)
+            """
+        result = cls.db.query_extended(q, flatten=True)
 
         # Ditch unneeded attributes
-        for item in result:
-            del item["neo4j_labels"]
+        #for item in result:
+        #    del item["neo4j_labels"]
 
         return result
 
@@ -206,26 +311,41 @@ class Categories:
     @classmethod
     def create_parent_map(cls, category_id: int) -> dict:
         """
-        Taking into account the set of all the ancestor nodes of the given Category (i.e. all its super-categories),
-        create and return a dictionary that maps each of the Category IDs of the nodes of that set
-        into list of ID's of its parent Categories.
+        Consider the set comprising the given Category and all its ancestors (i.e. all its super-categories),
+        up to a maximum hop length.
 
-        :param category_id:
-        :return:            A dictionary mapping integers into lists of integers
-                            EXAMPLES:       {799: [1]}
-                                            {823: [709], 709: [544], 544: [1]}              # A single 3-hop path from Category 823 to the root (1)
-                                            {814: [526, 61], 61: [1], 526: [799], 799: [1]} # Two paths from Category 514 to the root
+        Create and return a dictionary that maps each of the item_id in that set of Categories,
+        to a list of the item_id's of its parent Categories.
+
+        :param category_id: The item_id of the Category of interest
+        :return:            A dictionary mapping integers into lists of integers.
+                            The keys are item_id's of the given Category and any of its ancestors (super-categories),
+                            up to a maximum hop length;
+                            the values are lists of the item_id's of the parent categories of the Category specified by the key
+                            EXAMPLES:       {123: [1]}                                  # The given category (123) is a child of the root (1)
+                                            {823: [709], 709: [544], 544: [1]}          # A simple 3-hop path from Category 823 to the root (1) :
+                                                                                        #   823 is subcategory of 709,
+                                                                                        #   which is subcategory of 544, which is subcategory of the root
+                                            {814: [20, 30], 20: [1], 30: [79], 79: [1]} # Two paths from Category 814 to the root;
+                                                                                        #   814 is subcategory of 20 and 30;
+                                                                                        #   20 is an subcategory of the root,
+                                                                                        #   while with 30 we have to go thru an extra hop
         """
+
         # Based on the "BA_subcategory_of" relationship,
-        #       extract a child (c) - parent (p) map,
-        #       where the child is an ancestor node of the given Category node
+        #       extract a set of maps of the form child (c) -> all its parent categories,
+        #       where the child c is any ancestor node of the given Category node.
+        #       A limit is imposed on the max length of the path
         q = '''
-            MATCH (:BA {schema_code:"cat", item_id:$category_id})-[:BA_subcategory_of*0..5]->(c :BA)-[:BA_subcategory_of]->(p)
-            WITH c, collect(p.item_id) AS all_parents
+            MATCH (start :BA:Categories {item_id:$category_id})-[:BA_subcategory_of*0..9]->
+                  (c :Categories)-[:BA_subcategory_of]->(p :Categories)
+            WITH c, collect(DISTINCT p.item_id) AS all_parents
             RETURN c.item_id AS item_id, all_parents
             '''
         result = cls.db.query(q, {"category_id": category_id})      # A list of dictionaries
-        # EXAMPLE:  [{'item_id': 876, 'all_parents': [799]}, {'item_id': 799, 'all_parents': [1]}]
+        # EXAMPLE:  [{'item_id': 823, 'all_parents': [709]},
+        #            {'item_id': 709, 'all_parents': [544]},
+        #            {'item_id': 544, 'all_parents': [1]}]
 
         parent_map = {}
         for entry in result:
@@ -233,83 +353,8 @@ class Categories:
             value = entry["all_parents"]
             parent_map[key] = value
 
-        #print(parent_map, "\n")
+        # EXAMPLE of parent_map:   {823: [709], 709: [544], 544: [1]}
         return parent_map
-
-
-
-    @classmethod
-    def paths_from_root(cls, category_id: int):     # *** NOT IN CURRENT USE ***
-        """
-        Extract and return all the existing paths from the ROOT category to the given one,
-        traversing the relationship "BA_subcategory_of"
-
-        :param category_id:
-        :return:            A list of of paths.  Each path is a list of nodes along it.  Each node is a dict of its properties
-                            EXAMPLE 1:
-                                [[{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Jobs', 'item_id': 799, 'schema_code': 'cat'}]]
-                            EXAMPLE 2:
-                                [
-                                 [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Food', 'item_id': 61, 'schema_code': 'cat'}, {'name': 'Nutrition', 'item_id': 814, 'schema_code': 'cat'}],
-                                 [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, {'name': 'Health', 'item_id': 799, 'schema_code': 'cat'}, {'name': 'Nutrition', 'item_id': 814, 'schema_code': 'cat'}]
-                                ]
-
-        """
-        # Look up and return all the paths (p) from the ROOT category (ID 1) to the given one,
-        #   following 1 or more hops along the relationship "BA_subcategory_of"
-        q = '''
-            MATCH p=(root :BA {schema_code:"cat", item_id:1})<-[:BA_subcategory_of*]-(c :BA {schema_code:"cat", item_id:$category_id}) 
-            RETURN p
-            '''
-
-        result = cls.db.query(q, {"category_id": category_id})
-        # EXAMPLE:
-        #   [{'p': [{'name': 'HOME', 'item_id': 1, 'schema_code': 'cat', 'remarks': 'ROOT NODE'}, 'BA_subcategory_of', {'name': 'Jobs', 'item_id': 799, 'schema_code': 'cat'}]}]
-        #print(f"\n*****  PATHS TO CATEGORY {category_id} ***********")
-        #print(f"result contains {len(result)} elements")
-        #print(result)
-
-        all_paths = []
-        for path_map in result:
-            #print(path_map)
-            path = path_map["p"]
-
-            node_path = []
-            for i, step in enumerate(path):
-                # Only take the 0-th, 2nd, 4th, etc. elements, skipping over the relationship name
-                if i%2 == 0:
-                    node_path.append(step)
-
-            all_paths.append(node_path)
-
-        print(all_paths, "\n")
-        return all_paths
-
-        # Desired intermediate structure:
-        example = \
-        [
-            [
-                {'name': 'HOME', 'item_id': 1, 'remarks': 'ROOT NODE'},
-                {'name': 'Professional Networking', 'item_id': 61},
-                {'name': 'People at XYZ', 'item_id': 814}
-            ],
-            [
-                {'name': 'HOME', 'item_id': 1, 'remarks': 'ROOT NODE'},
-                {'name': 'Jobs', 'item_id': 799},
-                {'name': 'XYZ', 'item_id': 526},
-                {'name': 'People at XYZ', 'item_id': 814}
-            ]
-        ]
-
-        # Desired final structure:
-        parents_map = {814: [526, 61], 526: [799], 799: [1], 61: [1], 1: []}
-        names = {814: 'People at GSK', 526: 'GSK', 799: 'Jobs', 61: 'Professional Networking', 1: 'HOME'
-                 } # Ignoring `remarks` field for now
-
-        # Maybe encode a tree in JSON
-        json_data = [[['HOME', 'Jobs', 'GSK'] , ['HOME', 'Professional Networking']], 'People at GSK']
-        # OR
-        json_data_2 = ['People at GSK', [ ['Professional Networking', 'HOME'],  ['GSK', ['Jobs', 'HOME']] ] ]
 
 
 
@@ -319,8 +364,10 @@ class Categories:
         Return a list of Category ID's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
-        :param category_ID:
-        :return:            EXAMPLE 1:  [1]
+        :param category_ID: The item_id of the Category whose "ancestry bread crumbs" we want to construct
+        :return:            A list of Category ID's together with token strings,
+                            providing directives for the HTML structure of the bread crumbs
+                            EXAMPLE 1:  [1]
                             EXAMPLE 2:  ['START_CONTAINER', [1, 'ARROW', 799, 'ARROW', 876], 'END_CONTAINER']
                             EXAMPLE 3:
                                 [
@@ -347,14 +394,14 @@ class Categories:
 
 
     @classmethod
-    def recursive(cls, category_ID, parents_map) -> list:
+    def recursive(cls, category_ID, parents_map :dict) -> list:
         """
 
         :param category_ID:
-        :param parents_map:
+        :param parents_map: the dict structure returned by create_parent_map()
         :return:
         """
-        if category_ID == 1:    # If it is the root
+        if category_ID == 1:    # If it is the root.    TODO: this will eventually have to be managed differently
             return [1]
 
         parent_list = parents_map.get(category_ID, [])
@@ -384,6 +431,7 @@ class Categories:
 
 
 
+
     #####################################################################################################
 
     '''                                 ~   UPDATE CATEGORY DATA   ~                                  '''
@@ -407,9 +455,10 @@ class Categories:
 
         data_dict["root"] = True
 
-        return NeoSchema.add_data_point(class_name="Categories",
-                                        properties = data_dict,
-                                        assign_item_id=True)
+        internal_id, _ = NeoSchema.create_data_node(class_node="Categories",
+                                                    properties = data_dict,
+                                                    assign_uri=True)
+        return internal_id
 
 
 
@@ -609,6 +658,56 @@ class Categories:
 
     #####################################################################################################
 
+    '''                                ~   VIEW ITEMS IN CATEGORIES   ~                                '''
+
+    def ________VIEW_ITEMS_IN_CATEGORIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def get_content_items_by_category(cls, category_id = 1) -> [{}]:
+        """
+        Return the records for all nodes linked to the Category node identified by its item_id value
+
+        :param category_id:
+        :return:    A list of dictionaries
+                    EXAMPLE:
+                    [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                     {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                     {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                    ]
+        """
+
+        # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
+        # TODO: switch to using one of the Collections methods
+        cypher = """
+            MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", item_id:$category_id})
+            RETURN n, r.pos AS pos, cl.name AS class_name
+            ORDER BY r.pos
+            """
+
+        result = cls.db.query(cypher, {"category_id": category_id})
+        #print(result)
+
+
+        content_item_list = []
+        for elem in result:
+            item_record = elem["n"]             # A dictionary with the various fields
+
+            # TODO: eliminate possible conflict if the node happens to have
+            #       attributes named "pos" or "class_name"!
+            item_record["pos"] = elem["pos"]                # Inject into the record a positional value
+            item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
+            content_item_list.append(item_record)
+
+        #print(content_item_list)
+        return content_item_list
+
+
+
+
+    #####################################################################################################
+
     '''                                ~   ADD ITEMS TO CATEGORIES   ~                                '''
 
     def ________ADD_ITEMS_TO_CATEGORIES________(DIVIDER):
@@ -616,32 +715,22 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def add_content_media(cls, category_id:int, properties: dict, pos=None) -> None:
-        """
-        Update the database, to reflect the upload of an image file, and its linking to the specified Category.
-        TODO: media is currently added to the END of the Category page.  Not using the "pos" argument
-        TODO: superseded by add_content_at_end()
-
-        :param category_id: The integer "item_ID" of the Category to which this new Content Media is to be attached
-        :param properties:  A dictionary with keys "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
-        :param pos:         TODO: currently not in use
-        :return:            None
-        """
-        print("In add_content_media().  properties: ", properties)
-        print(f"    category_id: {category_id}")
-
-        cls.add_content_at_end(category_id=category_id, item_class_name="Images", item_properties=properties)
-
-
-
-    @classmethod
     def add_content_at_beginning(cls, category_id:int, item_class_name: str, item_properties: dict, new_item_id=None) -> int:
         """
         Add a new Content Item, with the given properties and Class, to the beginning of the specified Category.
 
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
+
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+                                TODO: rename to "category_uri"
+
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
+        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                TODO: rename to "new_uri"
+
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
         new_item_id = Collections.add_to_collection_at_beginning(collection_id=category_id, membership_rel_name="BA_in_category",
@@ -657,15 +746,62 @@ class Categories:
         Add a new Content Item, with the given properties and Class, to the end of the specified Category.
 
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+                                TODO: rename to "category_uri"
+
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                TODO: rename to "new_uri"
 
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
+        #print("Inside Categories.add_content_at_end()")
+        (new_internal_id, new_uri) = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
+                                                     extra_labels="BA", assign_uri=True, new_uri=new_item_id,
+                                                     silently_drop=True)
+        print("Returned from NeoSchema.create_data_node")
+        new_item_id = int(new_uri)
+
+        print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_item_id = {new_item_id}")
+
+        # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
+        q = '''
+            MATCH (cat :BA:Categories {item_id: $category_id}) 
+            WITH cat
+            OPTIONAL MATCH (n:BA) -[r :BA_in_category]-> (cat)
+            WITH r.pos AS pos, cat
+            WITH 
+                CASE WHEN pos IS NULL THEN
+                    0
+                ELSE
+                    max(pos) + 20
+                END AS new_pos, cat
+            
+            MATCH (ci :BA {item_id: $new_item_id})
+            MERGE (ci)-[:BA_in_category {pos: new_pos}]->(cat)
+        '''
+        #TODO: replace 20 with cls.DELTA_POS
+        #TODO: turn into a Collection-wide operation
+
+        status = cls.db.update_query(q, data_binding={"category_id": category_id, "new_item_id": new_item_id})
+        print("add_content_at_end(): status is ", status)
+        # status should be contain {'relationships_created': 1, 'properties_set': 1}
+        assert status.get('relationships_created') == 1, \
+                f"add_content_at_end(): unable to add new Content Item (internal dbase ID {new_internal_id}) to the Category"
+
+        assert status.get('properties_set') == 1, \
+                f"add_content_at_end(): errors while adding new Content Item (internal dbase ID {new_internal_id}) to the Category"
+
+        '''
+        # OLD, non-atomic way of performing operation
         new_item_id = Collections.add_to_collection_at_end(collection_id=category_id, membership_rel_name="BA_in_category",
                                                            item_class_name=item_class_name, item_properties=item_properties,
                                                            new_item_id=new_item_id)
+        '''
+        # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
+        #       NOT with the Content Item node ;
+        #       this is allowed by our convention about "INSTANCE_OF" relationships
+
         return new_item_id
 
 
@@ -676,11 +812,19 @@ class Categories:
         Add a new Content Item, with the given properties and Class, inserted into the given Category after the specified Item
         (in the context of the positional order encoded in the relationship attribute "pos")
 
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
+
         :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+                                TODO: rename to "category_uri"
+
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param insert_after:
-        :param new_item_id:
+        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                TODO: rename to "new_uri"
+
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
         new_item_id = Collections.add_to_collection_after_element(collection_id=category_id, membership_rel_name="BA_in_category",
@@ -936,8 +1080,8 @@ class Categories:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
-    # TODO: page-handler methods are meant to plugin-provided complete functionality,
-    #       to combine what's currently in BA_pages_routing.py and in BA_pages_request_handler.py
+    # TODO: page-handler methods are meant to be plugin-provided complete functionality,
+    #       to be combined with what's currently in BA_pages_routing.py and in BA_pages_request_handler.py
 
     @classmethod
     def viewer_handler(cls, category_id: int):
@@ -1048,6 +1192,10 @@ class Collections:
                                                         item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
         <SEE add_to_collection_at_end>
 
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
+
         :return:                    The auto-increment "item_ID" assigned to the newly-created data node
         """
         assert type(collection_id) == int, "The argument `collection_id` MUST be an integer"
@@ -1091,6 +1239,10 @@ class Collections:
 
         EXAMPLE:  new_item_id = add_to_collection_at_end(collection_id=708, membership_rel_name="BA_in_category",
                                                         item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
+
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
 
         :param collection_id:       The item_id of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name:
@@ -1142,6 +1294,10 @@ class Collections:
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add to the specified Collection, linked by the specified relationship and inserted after the given collection Item
         (in the context of the positional order encoded in the relationship attribute "pos")
+
+        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+              which can lead to incorrect values of the "pos" relationship attributes.
+              -> Follow the new way it is handled in add_content_at_end()
 
         :param collection_id:       The item_id of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply

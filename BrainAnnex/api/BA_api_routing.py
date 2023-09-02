@@ -5,15 +5,17 @@
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from flask_login import login_required
-from BrainAnnex.api.BA_api_request_handler import APIRequestHandler
-from BrainAnnex.api.BA_api_request_handler import DocumentationGenerator
+from BrainAnnex.api.data_manager import DataManager
+from BrainAnnex.api.data_manager import DocumentationGenerator
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.PLUGINS.documents import Documents
+from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
-import BrainAnnex.modules.utilities.exceptions as exceptions
-import sys                  # Used to give better feedback on Exceptions
+import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
-#from time import sleep     # Used for tests of delays in asynchronous fetching
+import os
+#from time import sleep     # For tests of delays in asynchronous fetching
 
 
 
@@ -427,7 +429,7 @@ class ApiRouting:
             """
         
             try:
-                result = APIRequestHandler.get_leaf_records()
+                result = DataManager.get_leaf_records()
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -502,13 +504,13 @@ class ApiRouting:
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["new_class_name"])
-                APIRequestHandler.new_schema_class(class_specs)
+                DataManager.new_schema_class(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"Unable to create a new Schema Class. {ex}"
                 return_value = cls.ERROR_PREFIX + err_status    # Failure
 
-            print(f"create_new_schema_class() is returning: `{return_value}`")
+            #print(f"create_new_schema_class() is returning: `{return_value}`")
 
             return return_value
 
@@ -533,7 +535,7 @@ class ApiRouting:
 
             try:
                 class_specs = cls.extract_post_pars(post_data)
-                APIRequestHandler.schema_add_property_to_class_handler(class_specs)
+                DataManager.schema_add_property_to_class_handler(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"Unable to add the new property. {ex}"
@@ -567,7 +569,7 @@ class ApiRouting:
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
-                APIRequestHandler.add_schema_relationship_handler(class_specs)
+                DataManager.add_schema_relationship_handler(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"Unable to add a new relationship. {ex}"
@@ -599,7 +601,7 @@ class ApiRouting:
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
-                APIRequestHandler.delete_schema_relationship_handler(class_specs)
+                DataManager.delete_schema_relationship_handler(class_specs)
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"Unable to delete the relationship. {ex}"
@@ -670,7 +672,7 @@ class ApiRouting:
 
             try:
                 item_id = int(item_id_str)
-                payload = APIRequestHandler.get_text_media_content(item_id, "n")
+                payload = DataManager.get_text_media_content(item_id, "n")
                 response = cls.SUCCESS_PREFIX + payload
             except Exception as ex:
                 err_details = f"Unable to retrieve the requested note: {ex}"
@@ -696,7 +698,7 @@ class ApiRouting:
 
             try:
                 item_id = int(item_id_str)
-                payload = APIRequestHandler.get_text_media_content(item_id, "n", public_required=True)
+                payload = DataManager.get_text_media_content(item_id, "n", public_required=True)
 
                 text_response = cls.SUCCESS_PREFIX + payload
                 response = make_response(text_response)
@@ -720,8 +722,9 @@ class ApiRouting:
         @login_required
         def serve_media(item_id, th=None):
             """
-            Retrieve and return the contents of a data media item (for now, just images or documents)
-            If ANY value is specified for the argument "th", then the thumbnail version is returned
+            Retrieve and return the contents of a data media item (for now, just images or documents.)
+            If ANY value is specified for the argument "th", then the thumbnail version is returned (only
+                applicable to images)
 
             TODO: (at least for large media) read the file in blocks.
 
@@ -740,22 +743,25 @@ class ApiRouting:
                             'xlsx': 'application/vnd.ms-excel',
                             'xls': 'application/vnd.ms-excel',
 
+                            'ppt' : 'application/vnd.ms-powerpoint',
+                            'pptx' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+
                             'zip': 'application/zip'
-                            }   # TODO: add more MIME types, when more plugins are introduced, and move to APIRequestHandler
+                            }   # TODO: add more MIME types, when more plugins are introduced, and move to DataManager
 
             default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
 
             try:
-                (suffix, content) = APIRequestHandler.get_binary_content(int(item_id), th)
+                (suffix, content) = DataManager.get_binary_content(int(item_id), th)
                 response = make_response(content)
-                # set the MIME type
+                # Set the MIME type
                 mime_type = mime_mapping.get(suffix.lower(), default_mime)
                 response.headers['Content-Type'] = mime_type
-                #print(f"serve_media() is returning an image, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
+                #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
             except Exception as ex:
-                err_details = f"Unable to retrieve image id `{item_id}` : {ex}"
+                err_details = f"Unable to retrieve Content Item with URI `{item_id}`. {exceptions.exception_helper(ex)}"
                 print(f"serve_media() encountered the following error: {err_details}")
-                response = make_response(err_details, 500)
+                response = make_response(err_details, 404)  # TODO: make sure that 404 works well, vs. the 500 previously used
 
             return response
 
@@ -789,7 +795,7 @@ class ApiRouting:
             """
             try:
                 item_id = cls.str_to_int(item_id_str)
-                payload = APIRequestHandler.get_link_summary(item_id, omit_names = ['BA_in_category'])
+                payload = DataManager.get_link_summary(item_id, omit_names = ['BA_in_category'])
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -814,7 +820,7 @@ class ApiRouting:
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['item_id', 'rel_name', 'dir'])
                 data_dict["item_id"] = cls.str_to_int(data_dict["item_id"])
-                payload = APIRequestHandler.get_records_by_link(data_dict)
+                payload = DataManager.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -844,7 +850,7 @@ class ApiRouting:
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['item_id'])
-                APIRequestHandler.update_content_item(data_dict)
+                DataManager.update_content_item(data_dict)
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
@@ -864,7 +870,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete/46/n
             """
             try:
-                APIRequestHandler.delete_content_item(item_id, schema_code)
+                DataManager.delete_content_item(item_id, schema_code)
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
@@ -905,7 +911,7 @@ class ApiRouting:
             # Create a new Content Item with the POST data
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
-                new_id = APIRequestHandler.new_content_item_in_category(pars_dict)
+                new_id = DataManager.new_content_item_in_category(pars_dict)
                 return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
@@ -1184,7 +1190,7 @@ class ApiRouting:
             cls.show_post_data(post_data, "get_filtered")
         
             try:
-                result = APIRequestHandler.get_nodes_by_filter(dict(post_data))
+                result = DataManager.get_nodes_by_filter(dict(post_data))
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -1216,7 +1222,7 @@ class ApiRouting:
 
             try:
                 post_pars = cls.extract_post_pars(post_data, required_par_list=["use_schema"])
-                result = APIRequestHandler.upload_import_json_file(post_pars)
+                result = DataManager.upload_import_json_file(post_pars)
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -1235,7 +1241,7 @@ class ApiRouting:
             :return:
             """
             try:
-                APIRequestHandler.do_stop_data_intake()
+                DataManager.do_stop_data_intake()
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
@@ -1245,8 +1251,9 @@ class ApiRouting:
             return return_value
 
 
+
         @bp.route('/bulk_import', methods=['POST'])
-        #@login_required                # TODO: RESTORE
+        @login_required
         def bulk_import() -> str:
             """
             Bulk import (for now of JSON files)
@@ -1271,7 +1278,7 @@ class ApiRouting:
                 intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
                 outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
 
-                result = APIRequestHandler.do_bulk_import(intake_folder, outtake_folder, schema_class)
+                result = DataManager.do_bulk_import(intake_folder, outtake_folder, schema_class)
 
                 response = {"status": "ok", "result": result}              # Successful termination
             except Exception as ex:
@@ -1280,9 +1287,6 @@ class ApiRouting:
             print(f"bulk_import() is returning: `{response}`")
 
             return jsonify(response)   # This function also takes care of the Content-Type header
-
-
-
 
 
 
@@ -1303,7 +1307,7 @@ class ApiRouting:
             #    <input type="hidden" name="return_url" value="my_return_url">
             print("return_url: ", return_url)
         
-            status = APIRequestHandler.upload_import_json(verbose=False, return_url=return_url)
+            status = DataManager.upload_import_json(verbose=False, return_url=return_url)
             return status
         
         
@@ -1318,68 +1322,98 @@ class ApiRouting:
         
             USAGE EXAMPLE:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload_media">
-                    <input type="file" name="file"><br>   <!-- IMPORTANT: the name parameter is assumed to be "file" -->
+                    <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
                     <input type="submit" value="Upload file">
                     <input type='hidden' name='category_id' value='123'>
-                    <input type='hidden' name='pos' value='10'> <!-- TODO: NOT YET IN USE! Media added at END OF PAGE -->
+                    <input type='hidden' name='pos' value='10'> <!-- TODO: NOT YET IN USE! Media is always added at END OF PAGE -->
                 </form>
         
-            (Note: the "Dropzone" module invokes this handler in a similar way)
+            (Note: the "Dropzone" front-end module invokes this handler in a similar way)
         
             If the upload is successful, a normal status (200) is returned (no response data);
-                in case of error, a server error status is return (500), with an text error message
+                in case of error, a server error status is return (500), with a text error message
             """
 
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('schema_code', 'r'), ('field_1', 'hello')])
+            post_data = request.form     # Example: ImmutableMultiDict([('category_id', '3677'), ('pos', 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW')])
         
-            print("Uploading content thru upload_media()")
-            print("POST variables: ", dict(post_data))
+            print("Uploading media content thru upload_media()")
+            #print("Raw POST data: ", post_data)
+            print("POST variables: ", dict(post_data))  # Example: {'category_id': '3677', 'pos': 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'}
         
             try:
-                upload_dir = current_app.config['UPLOAD_FOLDER']
-                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
+                upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the directory used for the uploads.
+                                                                    #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
+                (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
+                            UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
-                print(err_status)
+                print("upload_media(): ", err_status)
                 response = make_response(err_status, 500)
                 return response
         
-        
+
+            # Map the MIME type of the uploaded file into a schema_code
+            if mime_type.split('/')[0] == "image":      # For example, 'image/jpeg', 'image/png', etc.
+                class_name = "Images"
+            else:
+                class_name = "Documents"        # Any unrecognized MIME type is treated as a Document
+
+
             # Move the uploaded file from its temp location to the media folder
             # TODO: let upload_helper (optionally) handle it
         
             src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
-            dest_folder = cls.MEDIA_FOLDER
+
+            dest_folder = MediaManager.lookup_file_path(class_name=class_name)
             dest_fullname = dest_folder + tmp_filename_for_upload
             print(f"Attempting to move `{src_fullname}` to `{dest_fullname}`")
             try:
                 shutil.move(src_fullname, dest_fullname)
             except Exception as ex:
+                # TODO: create the folder if not present
                 err_status = f"Error in moving the file to the intended final destination ({dest_folder}) after upload. {ex}"
                 return make_response(err_status, 500)
         
         
             category_id = int(post_data["category_id"])
-        
+
+
+            # TODO: turn into a call to a plugin-provided method, prior to database add
+            if class_name == "Images":
+                # This is specifically for Images
+                try:
+                    properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=dest_folder)
+                    #   properties contains the following keys: "caption", "basename", "suffix", "width", "height"
+                except Exception as ex:
+                    err_status = "Unable save, or make a thumb from, the uploaded image. " + exceptions.exception_helper(ex)
+                    return make_response(err_status, 500)
+            else:
+                # This is specifically for Documents
+                (basename, suffix) = os.path.splitext(tmp_filename_for_upload)     # EXAMPLE: "test.jpg" becomes ("test", ".jpg")
+                suffix = suffix[1:]     # Drop the first character (the ".")  EXAMPLE: "jpg"
+
+                properties = {"caption": basename,
+                              "basename": basename, "suffix": suffix}
+
+
+            # Update the database (for now, the media is added AT THE END of the Category page)
+            # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
             try:
-                properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=cls.MEDIA_FOLDER)
-            except Exception as ex:
-                (exc_type, _, _) = sys.exc_info()
-                err_status = "Unable save, or make a thumb from, the uploaded image. " + str(exc_type) + " : " + str(ex)
-                return make_response(err_status, 500)
-        
-        
-            # Update the database (for now, the image is added AT THE END of the Category page)
-            try:
-                Categories.add_content_media(category_id, properties=properties)
+                new_item_id = Categories.add_content_at_end(category_id=category_id,
+                                                            item_class_name=class_name, item_properties=properties)
+
+                if class_name == "Documents":
+                    Documents.new_content_item_successful(item_id=new_item_id, pars=properties, mime_type=mime_type)
+
                 response = ""
+
             except Exception as ex:
-                (exc_type, _, _) = sys.exc_info()
-                err_status = "Unable to store the file in the database. " + str(exc_type) + " : " + str(ex)
+                err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)
+                print("upload_media(): ", err_status)
                 response = make_response(err_status, 500)
-        
+
             return response
         
         
@@ -1410,7 +1444,8 @@ class ApiRouting:
         
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']
-                (tmp_filename_for_upload, full_filename, original_name) = UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
+                (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
+                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1454,8 +1489,8 @@ class ApiRouting:
             try:
                 # Manage the upload
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # Defined in main file
-                (tmp_filename_for_upload, full_filename, original_name) = \
-                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+                (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
+                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         
@@ -1466,7 +1501,7 @@ class ApiRouting:
             print("return_url: ", return_url)
 
             #status_msg = "Testing"
-            status_msg = APIRequestHandler.import_datafile(tmp_filename_for_upload, full_filename, test_only=True)
+            status_msg = DataManager.import_datafile(tmp_filename_for_upload, full_filename, test_only=True)
 
             # Provide a return link
             status_msg += f" <a href='{return_url}' style='margin-left:50px'>GO BACK</a><br><br>"
@@ -1504,8 +1539,8 @@ class ApiRouting:
             try:
                 # Manage the upload
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # Defined in main file
-                (tmp_filename_for_upload, full_filename, original_name) = \
-                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+                (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
+                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
 
@@ -1541,7 +1576,7 @@ class ApiRouting:
             """
             try:
                 if download_type == "full":
-                    result = APIRequestHandler.export_full_dbase()
+                    result = DataManager.export_full_dbase()
                     export_filename = "exported_dbase.json"
                 elif download_type == "schema":
                     result = NeoSchema.export_schema()
@@ -1576,19 +1611,23 @@ class ApiRouting:
         #                EXPERIMENTAL                 #
         #---------------------------------------------#
         
-        @bp.route('/add_label/<new_label>')
+        @bp.route('/simple/add_label/<new_label>')
         @login_required
         def add_label(new_label) -> str:
             """
-            Add a new blank node with the specified label
-            EXAMPLE invocation: http://localhost:5000/api/add_label/boat
+            Add a new blank node with the specified label.
+            As a payload, return the internal ID of the new node
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_label/Customer
             """
-            status = APIRequestHandler.add_new_label(new_label)
-        
-            if status:
-                return cls.SUCCESS_PREFIX
-            else:
-                return cls.ERROR_PREFIX
+            try:
+                internal_id = DataManager.add_new_label(new_label)
+                return_value = cls.SUCCESS_PREFIX + str(internal_id)    # Success
+            except Exception as ex:
+                err_status = f"Unable to create a new node with the given label (new_label). {ex}"
+                return_value = cls.ERROR_PREFIX + err_status            # Failure
+
+            return return_value
 
 
         ##################  END OF ROUTING DEFINITIONS  ##################

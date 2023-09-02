@@ -96,7 +96,7 @@ class FullTextIndexing:
     @classmethod
     def split_into_words(cls, text: str, to_lower_case=True) -> [str]:
         """
-        Zap HTML, HTML entities (such as &ndash;) and punctuation from the given text;
+        Given a string, zap HTML tags, HTML entities (such as &ndash;) and punctuation from the given text;
         then, break it up into individual words, returned as a list.  If requested, turn it all to lower case.
 
         Care is taken to make sure that the stripping of special characters does NOT fuse words together;
@@ -107,6 +107,8 @@ class FullTextIndexing:
             '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
             It will return (if to_lower_case is False):
             ['Mr', 'Joe', 'sons', 'A', 'Long', 'Term', 'business', 'Find', 'it', 'at', 'http', 'example', 'com', 'home', 'Visit', 'Joe', 's', 'NOW']
+
+        TODO: consider treating underscores as blanks (maybe optionally?)
 
         :param text:            A string with the text to parse
         :param to_lower_case:   If True, all text is converted to lower case
@@ -193,6 +195,9 @@ class FullTextIndexing:
         NOTE: if an existing Class named "Content Item" is not found,
               it will be created with some default values
 
+        TODO: manage indexing.  If done in Cypher:
+                                CREATE TEXT INDEX word_lookup FOR (n:Word) ON (n.name)
+
         :param content_item_class_id: (OPTIONAL) The internal database ID of an existing "Content Item" Class;
                                             if not passed, it gets looked up
         :return:                None
@@ -249,7 +254,8 @@ class FullTextIndexing:
     def populate_index(cls, indexer_id :int, unique_words :Set[str], to_lower_case :bool) -> None:
         """
 
-        :param indexer_id:
+        :param indexer_id:      Internal database ID of a data node used to hold all the "occurs" relationships
+                                    to the various Word nodes
         :param unique_words:    Set of strings, with unique words for the index
         :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
@@ -259,11 +265,13 @@ class FullTextIndexing:
         else:
             unique_words = list(unique_words)
 
+        # TODO: make more efficient; maybe combine the creation and linking to the Word nodes
+
         # Locate (if already present), or create, a "Word" data node for each word in the list unique_words
         class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
         result = NeoSchema.add_data_column_merge(class_internal_id=class_db_id,
                                                  property_name="name", value_list=unique_words)
-        #print("result: ", result)
+        #print("result: ", result)      # A dict with 2 keys: 'old_nodes' and 'new_nodes'
 
         word_node_list = result['old_nodes'] + result['new_nodes']      # Join the 2 lists
 
@@ -461,7 +469,8 @@ class FullTextIndexing:
             q = f"MATCH (n:Notes) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN ID(n) AS node_int_id"
             node_int_id = cls.db.query(q, single_cell="node_int_id")
             print("    node's integer ID: ", node_int_id)
-            file_contents = MediaManager.get_from_file(filename)
+            path = "TBA"
+            file_contents = MediaManager.get_from_text_file(path, filename)
             #print(file_contents)
             word_list = FullTextIndexing.extract_unique_good_words(file_contents)
             print(word_list)

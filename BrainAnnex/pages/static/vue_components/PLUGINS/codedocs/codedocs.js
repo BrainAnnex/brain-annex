@@ -1,12 +1,12 @@
-/*  Vue component to display and edit Content Items at type "cd" (Code Documentation)
-    MIT License.  Copyright (c) 2021-22 Julian A. West
+/*  Vue component to display and edit Content Items of type "cd" (Code Documentation)
  */
 
 Vue.component('vue-plugin-cd',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
-        /*  index:      the zero-based position of the Record on the page
-            item_count: the total number of Content Items (of all types) on the page
+        /*  index:          the zero-based position of the Record on the page
+            allow_editing:  A boolean indicating whether in editing mode
+            item_count:     the total number of Content Items (of all types) on the page
          */
 
         template: `

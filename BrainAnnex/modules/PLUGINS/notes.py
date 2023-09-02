@@ -99,35 +99,35 @@ class Notes:
 
 
     @classmethod
-    def new_content_item_SUCCESSFUL(cls, item_id: int, pars: dict) -> None:
+    def new_content_item_successful(cls, item_id: int, pars: dict) -> None:
         """
         Invoked after a new Content Item of this type gets successfully added
 
         :param item_id: An integer with the URI of the Content Item
-        :param pars:
+        :param pars:     Dict with the various properties of this Content Item
         :return:        None
         """
-        #return  # For now, index isn't being done.  TODO: test and restore
         body = pars.get("body")
+
         unique_words = FullTextIndexing.extract_unique_good_words(body)
         content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
-        print(f"***** CREATING INDEXING for item {item_id}. Words: {unique_words}")
+        print(f"new_content_item_successful(): CREATING INDEXING for item {item_id}. Words: {unique_words}")
         FullTextIndexing.new_indexing(content_item_id=content_id, unique_words=unique_words)
 
 
 
     @classmethod
-    def update_content_item_SUCCESSFUL(cls, item_id: int, pars: dict) -> None:
+    def update_content_item_successful(cls, item_id: int, pars: dict) -> None:
         """
         Invoked after a Content Item of this type gets successfully updated
 
         :param item_id: An integer with the URI of the Content Item
-        :param pars:
+        :param pars:     Dict with the various properties of this Content Item
         :return:        None
         """
-        #return  # For now, index isn't being done.  TODO: test and restore
         body = pars.get("body")
+
         unique_words = FullTextIndexing.extract_unique_good_words(body)
         content_id = NeoSchema.get_data_node_internal_id(item_id=item_id)
-        print(f"***** UPDATING INDEXING for item {item_id}. Words: {unique_words}")
+        print(f"update_content_item_successful(): UPDATING INDEXING for item {item_id}. Words: {unique_words}")
         FullTextIndexing.update_indexing(content_item_id=content_id, unique_words=unique_words)

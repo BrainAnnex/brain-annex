@@ -712,7 +712,7 @@ def test_create_data_nodes_from_python_data_9(db):
     assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="Import Data") == 2
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
-    # Verify the data types
+    # Verify the data types  (Note: APOC must be installed, and enabled in the Neo4j config file)
     q = '''
         MATCH (n)
         WHERE id(n) = $quote_id

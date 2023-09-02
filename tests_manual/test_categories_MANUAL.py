@@ -48,15 +48,6 @@ def test_create_parent_map(db):
     Categories.create_parent_map(1)       # the root
 
 
-def test_paths_from_root(db):
-    Categories.paths_from_root(799)     # single path, 1-hop
-    Categories.paths_from_root(876)     # single path, 2-hop
-    Categories.paths_from_root(823)     # single path, 3-hop
-
-    Categories.paths_from_root(814)     # 2 paths, a 2-hop and a 3-hop one
-
-    Categories.paths_from_root(1)       # the root
-
 
 def test_bread_crumbs(db):
     print(Categories.create_bread_crumbs(1))   # [1]

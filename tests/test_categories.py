@@ -102,8 +102,15 @@ def test_get_sibling_categories(db):
     assert len(result) == 1
     entry = result[0]
     assert entry["name"] == "French"   # The sibling of "Italian" is "French"
-    expected = [{"name": "French", "item_id": french_item_id, "internal_id": french_internal_id}]
-    assert compare_recordsets(result, expected)
+
+    expected = {"name": "French", "item_id": french_item_id, "internal_id": french_internal_id, "neo4j_labels": ['BA', 'Categories']}
+
+    # We'll check the node labels separately, because their order may be reshuffled
+    assert compare_unordered_lists(entry["neo4j_labels"], expected["neo4j_labels"])
+
+    del entry["neo4j_labels"]
+    del expected["neo4j_labels"]
+    assert entry == expected
 
     # Add a new Categories ("German") as a subcategories of "Languages"
     Categories.add_subcategory({"category_id": language_item_id, "subcategory_name": "German"})

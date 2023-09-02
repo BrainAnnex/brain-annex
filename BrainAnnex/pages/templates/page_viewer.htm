@@ -19,9 +19,11 @@
 
         bread_crumbs
 
-        records_types   EXAMPLE: ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
-                        Used for the addition of new records
-                        (TODO: maybe obtain thru server call, when first needed)
+        records_types   A list of all the Classes that can be used for new Records
+                            (i.e. classes that are INSTANCE_OF the "Records" class)
+                            EXAMPLE: ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
+                            Used for the addition of new records
+                            (TODO: maybe obtain thru a server call, when first needed)
 
         records_schema_data: A dictionary of record class names mapped into their ordered property names
                              EXAMPLE:
@@ -67,6 +69,7 @@
     <!-- Plugin-specific styling -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/headers/headers.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/images/images.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/documents/documents.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
@@ -203,7 +206,12 @@
 
  **************************************************************** -->
 
-<!-- Original version, to be used when the editing controls are shown.
+<!-- Depending on whether the EDITING CONTROLS are shown or hidden,
+     one of the following 2 blocks gets show
+  -->
+
+
+<!-- Original version, to be used when the EDITING CONTROLS are SHOWN.
      This version separates all the Content Items into individual entities.
 
      For each Content Item on this page, make use of the appropriate Vue component (picked dynamically).
@@ -267,7 +275,7 @@
 
 
 <!--
-    New version, to be used when the editing controls are hidden.
+    New version, to be used when the EDITING CONTROLS are HIDDEN.
     This version groups together similar adjacent records
   -->
 
@@ -343,7 +351,7 @@
 
     <div style='border:1px solid gray; padding:10px; background-color:#DDDDDD; margin-top:5px; margin-bottom:5px; margin-right:5px'>		<!-- Maybe the DIV wrapper could be ditched? -->
 
-    <b>UPLOAD IMAGES (or, not yet implemented, DOCUMENTS)</b>:<br>
+    <b>UPLOAD IMAGES or DOCUMENTS</b>:<br>
 
     <form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
         <input type='hidden' name='category_id' value='{{category_id}}'>
@@ -445,6 +453,7 @@
 
 <script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/documents/documents.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
 
