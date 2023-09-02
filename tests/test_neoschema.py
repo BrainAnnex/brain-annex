@@ -1657,17 +1657,17 @@ def test_class_of_data_point(db):
 #############   EXPORT SCHEMA   ###########
 
 
-###############   INTERNAL  METHODS   ###############
+###############   URI'S   ###############
 
-def test_valid_schema_id(db):
+def test_generate_uri(db):
     db.empty_dbase()
-    _ , result = NeoSchema.create_class("Records")
-    assert NeoSchema.valid_schema_id(result)
-
-
-
-def test_next_available_id(db):
-    pass    # TODO
+    assert NeoSchema.generate_uri("d-", "documents", "") == "d-1"
+    assert NeoSchema.generate_uri("d-", "documents", "") == "d-2"
+    assert NeoSchema.generate_uri("doc.", "documents", ".new") == "doc.3.new"
+    assert NeoSchema.generate_uri("i_", "images", "") == "i_1"
+    assert NeoSchema.generate_uri("i_", "images", "") == "i_2"
+    assert NeoSchema.generate_uri("", "documents", "") == "4"
+    assert NeoSchema.generate_uri("", "documents", "/view") == "5/view"
 
 
 
@@ -1675,18 +1675,51 @@ def test_next_autoincrement(db):
     db.empty_dbase()
     assert NeoSchema.next_autoincrement("a") == 1
     assert NeoSchema.next_autoincrement("a") == 2
-    assert NeoSchema.next_autoincrement("a") == 3
     assert NeoSchema.next_autoincrement("schema") == 1
     assert NeoSchema.next_autoincrement("schema") == 2
-    assert NeoSchema.next_autoincrement("data_node") == 1
-    assert NeoSchema.next_autoincrement("data_node") == 2
+    assert NeoSchema.next_autoincrement("a") == 3
+    assert NeoSchema.next_autoincrement("documents") == 1
+    assert NeoSchema.next_autoincrement("documents") == 2
+
+    # The following line will "reserve" the values 3 and 4
+    assert NeoSchema.next_autoincrement("documents", advance=2) == 3
+    assert NeoSchema.next_autoincrement("documents") == 5
+
+    # The following line will "reserve" the values 1 thru 10
+    assert NeoSchema.next_autoincrement("image", advance=10) == 1
+    assert NeoSchema.next_autoincrement("image") == 11
+    assert NeoSchema.next_autoincrement("          image   ") == 12 # Leading/trailing blanks are ignored
+
+    with pytest.raises(Exception):
+        assert NeoSchema.next_autoincrement(123)    # Not a string
+
+    with pytest.raises(Exception):
+        assert NeoSchema.next_autoincrement("")
+
+    with pytest.raises(Exception):
+        assert NeoSchema.next_autoincrement(namespace ="a", advance ="not an integer")
+
+    with pytest.raises(Exception):
+        assert NeoSchema.next_autoincrement(namespace ="a", advance = 0)  # Advance isn't >= 1
 
 
-def test_next_available_datapoint_id(db):
+
+def test_next_available_datanode_id(db):
     db.empty_dbase()
     assert NeoSchema.next_available_datanode_id() == 1
     assert NeoSchema.next_available_datanode_id() == 2
     assert NeoSchema.next_available_datanode_id() == 3
+
+
+
+
+###############   PRIVATE  METHODS   ###############
+
+def test_valid_schema_id(db):
+    db.empty_dbase()
+    _ , result = NeoSchema.create_class("Records")
+    assert NeoSchema.valid_schema_id(result)
+
 
 
 

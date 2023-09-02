@@ -2989,12 +2989,100 @@ class NeoSchema:
 
     #####################################################################################################
 
+    '''                                       ~   URI'S   ~                                           '''
+
+    def ________URI________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def generate_uri(cls, prefix, namespace, suffix) -> str:    # TODO: test
+        """
+
+        :param prefix:
+        :param namespace:
+        :param suffix:
+        :return:
+        """
+        return f"{prefix}{cls.next_autoincrement(namespace)}{suffix}"
+
+
+
+    @classmethod
+    def next_autoincrement(cls, namespace: str, advance=1) -> int:
+        """
+        This utilizes an ATOMIC database operation to both read and advance the autoincrement counter,
+        based on a (single) node with label `Schema Autoincrement`
+        and an attribute indicating the desired namespace (group);
+        if no such node exists (for example, after a new installation), it gets created, and 1 is returned.
+
+        Note that the returned number (or sequence of numbers, if advance > 1)
+        is de-facto "permanently reserved" on behalf of the calling function,
+        and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
+
+        :param namespace:   A string used to maintain completely separate groups of auto-increment values;
+                                leading/trailing blanks are ignored
+        :param advance:     Normally, auto-increment advances by 1 unit, but a different positive integer
+                                may be used
+
+        :return:            An integer that is a unique auto-increment for the specified namespace
+                                (starting with 1); it's ready-to-use and "reserved", i.e. could be used
+                                at any future time
+        """
+        assert type(namespace) == str, \
+            "next_autoincrement(): the argument `namespace` is required and must be a string"
+        assert namespace != "", \
+            "next_autoincrement(): the argument `namespace` must be a non-empty string"
+
+        assert type(advance) == int, \
+            "next_autoincrement(): the argument `advance` is required and must be an integer"
+        assert advance >= 1, \
+            "next_autoincrement(): the argument `advance` must be an integer >= 1"
+
+
+        namespace = namespace.strip()   # Zap leading/trailing blanks
+
+        q = f'''
+            MATCH (n: `Schema Autoincrement` {{namespace: $namespace}})
+            SET n.next_count = n.next_count + {advance}
+            RETURN n.next_count AS next_count
+            '''
+        next_count = cls.db.query(q, data_binding={"namespace": namespace}, single_cell="next_count")
+
+        if next_count is None:     # If no node found
+            cls.db.create_node(labels="Schema Autoincrement",
+                               properties={"namespace": namespace, "next_count": 1+advance})
+            return 1       # Start a new count for this namespace
+        else:
+            return next_count-advance
+
+
+
+    @classmethod
+    def next_available_datanode_id(cls) -> int:
+        """
+        Reserve and return the next available auto-increment ID,
+        in the separately-maintained group called "data_node".
+        This value (currently often referred to as "item_id", and not to be confused
+        with the internal ID assigned by Neo4j to each node),
+        is meant as a permanent primary key, on which a URI could be based.
+
+        For unique ID's to use on schema nodes, use next_available_schema_id() instead
+
+        :return:    A unique auto-increment integer used for Data nodes
+        """
+        return cls.next_autoincrement("data_node")
+
+
+
+
+    #####################################################################################################
+
     '''                                  ~   PRIVATE METHODS   ~                                      '''
 
     def ________PRIVATE_METHODS________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
-
 
     @classmethod
     def valid_schema_id(cls, schema_id: int) -> bool:
@@ -3021,89 +3109,6 @@ class NeoSchema:
         :return:     A unique auto-increment integer used for Schema nodes
         """
         return cls.next_autoincrement("schema_node")
-
-
-
-    @classmethod
-    def next_autoincrement(cls, kind: str) -> int:
-        """
-        This utilizes an ATOMIC database operation to both read and advance the autoincrement counter,
-        based on a (single) node with label `Schema Autoincrement`
-        and an attribute indicating the desired kind (group);
-        if no such node exists (for example, after a new installation), it gets created, and 1 is returned
-
-        :param kind:    A string used to maintain completely separate groups of auto-increment values
-                            Currently used values: "data_node" and "schema_node"
-
-        :return:        An integer that is a unique auto-increment for the specified group
-        """
-        q = '''
-            MATCH (n: `Schema Autoincrement` {kind: $kind})
-            SET n.last_id = n.last_id + 1
-            RETURN n.last_id AS last_id
-            '''
-        last_id = cls.db.query(q, data_binding={"kind": kind}, single_cell="last_id")
-
-        if last_id is None:
-            cls.db.create_node(labels="Schema Autoincrement", properties={"kind": kind, "last_id": 1})
-            return 1       # Start a new count for this group
-        else:
-            return last_id
-
-
-    @classmethod
-    def next_available_datanode_id(cls) -> int:
-        """
-        Reserve and return the next available auto-increment ID,
-        in the separately-maintained group called "data_node".
-        This value (currently often referred to as "item_id", and not to be confused
-        with the internal ID assigned by Neo4j to each node),
-        is meant as a permanent primary key, on which a URI could be based.
-
-        For unique ID's to use on schema nodes, use next_available_schema_id() instead
-
-        :return:    A unique auto-increment integer used for Data nodes
-        """
-        return cls.next_autoincrement("data_node")
-
-
-
-    @classmethod
-    def next_available_id_general(cls, labels, attr_name: str) -> int:    # TODO: this belongs to NeoAccess
-        """
-        Return the next available value of the specified attribute, treated as an Auto-Increment value, for all nodes
-        with the given label.
-        If a list of labels is given, match ANY of them.
-        If no matches are found, return 1 (arbitrarily used as the first Auto-Increment value.)
-
-        :param labels:  Either a string or a list of strings
-        :param attr_name:
-        :return:    An integer with the next available ID
-        """
-
-        if type(labels) == str:
-            label_list = [labels]
-        else:
-            label_list = labels
-
-        where_clause = "WHERE n:`" + "` OR n:`".join(label_list) + "`"
-        # EXAMPLE:  "WHERE n:`CLASS` OR n:`PROPERTY`"
-        # See https://github.com/neo4j/neo4j/issues/5002
-        #       and https://stackoverflow.com/questions/20003769/neo4j-match-multiple-labels-2-or-more
-
-        cypher = f"MATCH (n) {where_clause} RETURN 1+max(n.`{attr_name}`) AS next_value"
-        #print("\n", cypher)
-
-        result_list = cls.db.query(cypher)
-        # Note: if no node was matched in the query, the result of the 1+max will be None
-        #print(result_list)
-        result = result_list[0]["next_value"]        # Extract the single element from the list, and then get the "next_value" field
-        #print("Next available ID: ", result)
-
-        if result is None:
-            return 1        # Arbitrarily use 1 as the first Auto-Increment value, if no other value is present
-
-        return result
 
 
 
