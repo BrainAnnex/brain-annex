@@ -455,9 +455,10 @@ class Categories:
 
         data_dict["root"] = True
 
-        return NeoSchema.add_data_point(class_name="Categories",
-                                        properties = data_dict,
-                                        assign_item_id=True)
+        internal_id, _ = NeoSchema.create_data_node(class_node="Categories",
+                                                    properties = data_dict,
+                                                    assign_uri=True)
+        return internal_id
 
 
 

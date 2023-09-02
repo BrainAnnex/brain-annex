@@ -78,6 +78,12 @@ class NeoSchema:
         Julian West
 
 
+    TODO:   - continue the process of making the methods more efficient,
+              by directly generate Cypher code, rather than using high-level methods in NeoAccess;
+              for example, as done by create_data_node()
+            - complete the switch-over from integer "item_id" to string "uri"
+
+
     ----------------------------------------------------------------------------------
 	MIT License
 
@@ -1472,7 +1478,10 @@ class NeoSchema:
 
         :return:                A possibly pared-down version of the requested_props dictionary
         """
-        if not cls.is_strict_class(class_internal_id, schema_cache=schema_cache):    #TODO: phase out?
+        if requested_props == {} or requested_props is None:
+            return requested_props      # It's a moot point, if not attempting to set any property
+
+        if not cls.is_strict_class(class_internal_id, schema_cache=schema_cache):
             return requested_props      # Any properties are allowed if the Class isn't strict
 
 
@@ -1524,13 +1533,12 @@ class NeoSchema:
                                 If new_item_id is provided, then assign_item_id is automatically made True
         :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
-                                TODO: only applicable for "Strict" schema - with a "Lax" schema anything goes
+                                Note: only applicable for "Strict" schema - with a "Lenient" schema anything goes
 
         :return:            The pair: (internal database ID, newly-assigned URI) of the new data node just created.
                                 Note that the newly-assigned URI is always a STRING, and will be "" if no URI was assigned
         """
         cls.assert_valid_class_identifier(class_node)
-
 
 
         # TODO: simplify not having to lug around both name and internal ID
@@ -1546,23 +1554,28 @@ class NeoSchema:
         properties = cls.allowable_props(class_internal_id=class_internal_id, requested_props=properties,
                                          silently_drop=silently_drop)
 
-        if extra_labels is None:
-            # If not specified, use the Class name
-            extra_labels = class_name
-        else:
-            if type(extra_labels) == str:
-                if extra_labels.strip() != class_name:
-                    extra_labels = [extra_labels, class_name]
 
-            elif class_name not in extra_labels:      # If we get thus far, labels is a list or tuple
-                if class_name not in extra_labels:
-                    extra_labels.append(class_name)
+        assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
+            "create_data_node(): argument `extra_labels`, if passed, must be a string, or list/tuple of strings"
+
+        labels = class_name     # By default, use the Class name
+
+        if type(extra_labels) == str and extra_labels.strip() != class_name:
+            labels = [extra_labels, class_name]
+
+        elif isinstance(extra_labels, (list, tuple)):
+            # If we get thus far, labels is a list or tuple
+            labels = list(extra_labels)
+            if class_name not in extra_labels:
+                labels += [class_name]
+
 
         if properties is None:
             properties = {}
 
         assert type(properties) == dict, \
             "NeoSchema.add_data_node(): The `properties` argument, if provided, MUST be a dictionary"
+
 
         # Make sure that the Class accepts Data Nodes
         if not cls.allows_data_nodes(class_neo_id=class_internal_id):
@@ -1586,7 +1599,7 @@ class NeoSchema:
 
             schema_code = cls.get_schema_code(class_name)
             if schema_code != "":
-                properties_to_set["schema_code"] = schema_code  # Expand the dictionary
+                properties_to_set["schema_code"] = schema_code      # Expand the dictionary
 
             # EXAMPLE of properties_to_set at this stage:
             #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
@@ -1594,116 +1607,36 @@ class NeoSchema:
         else:
             new_id = ""
 
+
+        # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
+        #   to define the new node to be created
+        labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
+        (cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(properties_to_set)
+        # EXAMPLE:
+        #   cypher_props_str = "{`name`: $par_1, `city`: $par_2}"
+        #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
+
+        # Create a new Data node, with a "SCHEMA" relationship to its Class node
+        q = f'''
+            MATCH (cl :CLASS)
+            WHERE id(cl) = {class_internal_id}           
+            CREATE (dn {labels_str} {cypher_props_str})
+            MERGE (dn)-[:SCHEMA]->(cl)           
+            RETURN id(dn) AS internal_id
+            '''
+
+        neo_id = cls.db.query(q, data_binding, single_cell="internal_id")
+
+        '''
         # Create a new data node, with a "SCHEMA" relationship to its Class node
         link_to_schema_class = {"internal_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
-
         links = [link_to_schema_class]
-
-        neo_id = cls.db.create_node_with_links(labels=extra_labels,
+        neo_id = cls.db.create_node_with_links(labels=labels,
                                                properties=properties_to_set,
                                                links=links)
+        '''
 
         return (neo_id, str(new_id))
-
-
-
-    @classmethod    # TODO: obsolete in favor of create_data_node()
-    def add_data_point(cls, class_name=None, class_internal_id=None, properties = None, labels = None,
-                       assign_item_id=False, new_item_id=None, silently_drop=False) -> int:
-        """
-        TODO: maybe rename create_data_node(), for consistency with create_class()
-        TODO: merge class_name and class_internal_id
-        A more "modern" version of the deprecated add_data_point_OLD()
-
-        Add a new data node, of the specified Class,
-        with the given (possibly none) attributes and label(s);
-        if no labels are given, the name of the Class is used as a label.
-
-        The new data node, if successfully created, will optionally be assigned
-        a passed value, or a unique auto-gen value, for its field item_id.
-        If the requested Class doesn't exist, an Exception is raised
-
-        If the data point needs to be created with links to other existing data points, use add_data_node_with_links() instead
-
-        :param class_name:      Name of the Class for the new data point
-        :param class_internal_id: The internal database ID of the Class node for the new data point
-                                NOTE: if both class_name and class_internal_id are specified, the latter prevails
-        :param properties:      An optional dictionary with the properties of the new data point.
-                                    EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param labels:          OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
-                                    if not specified, the Class name is used
-        :param assign_item_id:  If True, the new node is given an extra attribute named "item_id",
-                                    with a unique auto-increment value, as well an extra attribute named "schema_code"
-        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                    If new_item_id is provided, then assign_item_id is automatically made True
-        :param silently_drop:   If True, any requested properties not allowed by the Schema are simply dropped;
-                                    otherwise, an Exception is raised if any property isn't allowed
-                                    TODO: only true for "Strict" schema - with a "Lax" schema anything goes; but "Lax" schema
-                                          will probably be phased out
-
-        :return:                The internal database ID of the new data node just created
-        """
-        #schema_cache = SchemaCache()   # TODO: later restore the cached Schema data
-        #class_attrs = schema_cache.get_cached_class_data(class_internal_id, request="class_attributes")
-        #class_name = class_attrs["name"]
-        if class_internal_id is None:
-            if not class_name:
-                raise Exception("add_data_point(): at least one of the arguments `class_name` or `class_internal_id` must be provided")
-            else:
-                cls.assert_valid_class_name(class_name)
-
-            class_internal_id = cls.get_class_internal_id(class_name)
-        else:
-            class_name = cls.get_class_name_by_neo_id(class_internal_id)
-
-        if labels is None:
-            # If not specified, use the Class name
-            labels = class_name
-
-        if properties is None:
-            properties = {}
-
-        assert type(properties) == dict, \
-            "NeoSchema.add_data_point(): The `properties` argument, if provided, MUST be a dictionary"
-
-        # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
-            raise Exception(f"NeoSchema.add_data_point(): "
-                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
-
-        properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
-                                                silently_drop=silently_drop)
-
-
-        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
-        # if requested, expand properties_to_set accordingly
-        if assign_item_id or new_item_id:
-            if not new_item_id:
-                new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
-            else:
-                new_id = new_item_id
-            #print("New ID assigned to new data node: ", new_id)
-            properties_to_set["item_id"] = new_id               # Expand the dictionary
-
-            schema_code = cls.get_schema_code(class_name)
-            if schema_code != "":
-                properties_to_set["schema_code"] = schema_code  # Expand the dictionary
-
-            # EXAMPLE of properties_to_set at this stage:
-            #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
-            #       where 123 is the next auto-assigned item_id
-
-
-        # Create a new data node, with a "SCHEMA" relationship to its Class node
-        link_to_schema_class = {"internal_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
-
-        links = [link_to_schema_class]
-
-        neo_id = cls.db.create_node_with_links(labels=labels,
-                                           properties=properties_to_set,
-                                           links=links)
-
-        return neo_id
 
 
 
@@ -2053,7 +1986,7 @@ class NeoSchema:
                            data_dict=None, labels=None,
                            connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
                            new_item_id=None, return_item_ID=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_node_with_links()
-                                                                        # TO DITCH *AFTER* add_data_node_with_links() gets link validation!
+                                                                            #       TO DITCH *AFTER* add_data_node_with_links() gets link validation!
         """
         Add a new data node, of the Class specified by name or ID,
         with the given (possibly none) attributes and label(s),
