@@ -1507,7 +1507,7 @@ class NeoSchema:
     def create_data_node(cls, class_node: Union[int, str], properties = None, extra_labels = None,
                          assign_uri=False, new_uri=None, silently_drop=False) -> (int, str):
         """
-        A newer version of the deprecated add_data_point_OLD() and add_data_point()
+        A newer version of the deprecated add_data_point_OLD()
 
         Create a new data node, of the type indicated by specified Class,
         with the given (possibly none) attributes and label(s);
@@ -2996,8 +2996,14 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def generate_uri(cls, prefix, namespace, suffix) -> str:    # TODO: test
+    def generate_uri(cls, prefix, namespace, suffix) -> str:
         """
+        Generate a URI (or fragment thereof, aka "token"),
+        using the given prefix and suffix;
+        the middle part is a unique auto-increment value (separately maintained
+        in various groups, or "namespaces".)
+
+        EXAMPLE:  generate_uri("doc.", "documents", ".new") might produce "doc.3.new"
 
         :param prefix:
         :param namespace:

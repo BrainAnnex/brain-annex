@@ -27,7 +27,7 @@ class DataManager:
     """
     For general database-interaction operations.
     Used by the UI for Page Generation,
-    as well as by the API to produce data for the endpoints.
+    as well as by the web API to produce data for the endpoints.
 
     This class does NOT get instantiated.
 
