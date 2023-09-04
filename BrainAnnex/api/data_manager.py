@@ -408,7 +408,7 @@ class DataManager:
         folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'])     # Includes the final "/"
 
         try:
-            file_contents = MediaManager.get_from_text_file(folder, filename)
+            file_contents = MediaManager.get_from_text_file(folder, filename, encoding="utf8")
             return file_contents
         except Exception as ex:
             return f"I/O failure while reading in contents of item {item_id}. {ex}"     # File I/O failed

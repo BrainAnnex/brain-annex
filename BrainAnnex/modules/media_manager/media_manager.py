@@ -69,18 +69,22 @@ class MediaManager:
 
 
     @classmethod
-    def get_from_text_file(cls, path: str, filename: str) -> str:
+    def get_from_text_file(cls, path: str, filename: str, encoding="latin-1") -> str:
         """
         Read in and return the contents of the specified TEXT file
+
+        Note: 'utf8' encoding at times led to problems.
+               More info: https://stackoverflow.com/questions/5552555/unicodedecodeerror-invalid-continuation-byte
 
         :param path:        String that must include a final "/", containing the full path of the file
                                 EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
         :param filename:    EXCLUSIVE of path
+        :param encoding:    A string such as "latin-1" (aka "iso-8859-1") or "utf8"
         :return:            The contents of the text file, using 'latin-1' encoding
         """
         full_file_name = path + filename
-        # Note: 'utf8' encoding led to problems.  More info: https://stackoverflow.com/questions/5552555/unicodedecodeerror-invalid-continuation-byte
-        with open(full_file_name, 'r', encoding='latin-1') as fh:
+
+        with open(full_file_name, 'r', encoding=encoding) as fh:
             file_contents = fh.read()
             return file_contents
 
