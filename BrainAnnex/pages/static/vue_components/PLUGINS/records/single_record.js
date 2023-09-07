@@ -1,6 +1,5 @@
 /*  EXPERIMENTAL Vue component to display and edit a single table rows of data (NOT headers)
     from a Content Item at type "r" (Record)
-    MIT License.  Copyright (c) 2021-22 Julian A. West
  */
 
 Vue.component('vue-plugin-single-record',

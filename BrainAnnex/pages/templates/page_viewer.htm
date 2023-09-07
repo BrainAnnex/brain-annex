@@ -207,7 +207,7 @@
  **************************************************************** -->
 
 <!-- Depending on whether the EDITING CONTROLS are shown or hidden,
-     one of the following 2 blocks gets show
+     one of the following 2 blocks gets shown
   -->
 
 
@@ -255,6 +255,7 @@
         v-bind:index="index"
         v-bind:item_count="content_array.length"
 
+        v-bind:registered_plugins = "registered_plugins"
         v-bind:records_types="records_types"
 
         v-bind:schema_data="get_schema_data(item)"
@@ -291,6 +292,7 @@
             v-bind:index="group.index"
             v-bind:item_count="content_array.length"
 
+            v-bind:registered_plugins = "registered_plugins"
             v-bind:records_types="records_types"
 
             v-bind:schema_data="get_schema_data(content_array[group.index])"
@@ -334,9 +336,10 @@
     <span style="margin-right:10px">Add new:</span>
     <button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
     <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
+    <button @click="add_new_item_at_bottom('sl')" style="margin-right:10px">Site Link (Bookmark)</button>
     <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
 
-    <!-- Show all leaf Classes that are instances of "Records" -->
+    <!-- Show all leaf Classes that are direct instances of "Records" -->
     <br>Add new record of type:
     {% for class_name in records_types %}
         <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
@@ -474,6 +477,11 @@ new Vue({
 
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
+
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl"],  // "r" not included here, because a generic core one
+                                                            // TODO: either pass from the database, or infer from some config file
+                                                            // IMPORTANT: the items in the list MUST correspond to the folders in
+                                                            //      BrainAnnex/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page

@@ -1,19 +1,21 @@
 /*  Vue component to display and edit Content Items of ANY type.  Based on the specific type,
     it DISPATCHES to components specialized for that type.
 
-    IMPORTANT: if no handler is registered - for now inside the function plugin_component_name() -
+    IMPORTANT: if no handler is registered - as described by the argument 'registered_plugins' -
                it will default to be treated as a generic record, managed by the general "r" handler
  */
 
 Vue.component('vue-content-items',
     {
-        props: ['item', 'expose_controls', 'category_id', 'index', 'item_count', 'records_types', 'schema_data'],
+        props: ['item', 'expose_controls', 'category_id', 'index', 'item_count', 'registered_plugins', 'records_types', 'schema_data'],
         /*  item:       EXAMPLE: {item_id:52, pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Headers"}
                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
             expose_controls: Flag indicating whether in edit mode
             category_id:    Indicating which Category-viewer page is using this component
             index:          The zero-based position of this Content Items on the page
             item_count:     The total number of Content Items (of all types) on the page
+            registered_plugins: A list of codes of Content Items that have a dedicated Vue plugin
+                                    EXAMPLE: ["n", "i", "h", "cd", "d"]
             records_types:  A list of all the Classes that can be used for new Records
                                 (i.e. classes that are INSTANCE_OF the "Records" class)
             schema_data:    Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
@@ -38,7 +40,7 @@ Vue.component('vue-content-items',
                     v-on:add-content            (from the 'vue-controls' component)
             -->
             <component
-                v-bind:is="plugin_component_name(item)"
+                v-bind:is="plugin_component_name(item, registered_plugins)"
 
                 v-bind:item_data="item"
                 v-bind:allow_editing="expose_controls"
@@ -154,14 +156,18 @@ Vue.component('vue-content-items',
             },
 
 
-            plugin_component_name(item)
+            plugin_component_name(item, registered_plugins)
             /* This is where the DISPATCHING (to specialized Vue components) gets set up.
-               Compose the name of the plugin-provided Vue component to handle the given item (based on its type).
+               Compose and return the name of the plugin-provided
+               Vue component to handle the given item (based on its type, stored in item.schema_code)
+
                IMPORTANT: if no handler is registered, default to the generic "r" (general records) handler
+
+               :param item:                 An object representing a Content Item
+               :param registered_plugins:   A list of item codes for which a plugin exists
+               :return:                     A string.   EXAMPLE:  "vue-plugin-n"
              */
             {
-                var registered_plugins = ["n", "i", "h", "cd", "d", "r"];    // TODO: move to a more central location
-
                 if (registered_plugins.includes(item.schema_code))
                     return "vue-plugin-" + item.schema_code;
                 else
