@@ -4,16 +4,18 @@
 Vue.component('vue-plugin-sl',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:  EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
-                                  "German":"Tier", "English":"animal"}
-                                 (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
+        /*  EXAMPLE: {"item_data": {class_name:"Site Link", name:"test", url:"http://example.com"},
+                                              "allow_editing": false, "category_id": 123,
+                                              "index": 2, "item_count": 10,
+                                              "schema_data": ["url","name","date","comments","rating","read"]
+                                             }
 
+            item_data:      An object with the relevant data about this Site Link item
             allow_editing:  A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
-            index:          The zero-based position of the Record on the page
+            index:          The zero-based position of this Site Link item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    A list of field names, in order.
-                                EXAMPLE: ["French", "English", "notes"]
+            schema_data:    A list of field names, in Schema order.  EXAMPLE: ["url","name","date","comments","rating","read"]
          */
 
         template: `
@@ -395,12 +397,12 @@ Vue.component('vue-plugin-sl',
 
 
             get_fields_from_server(item)
-            // Initiate request to server, to get all the field and link names specified by the Schema for this Record
+            // Initiate request to server, to get all the field names specified by the Schema for Site Links
             {
-                console.log(`Looking up Schema info for a Content Item of type 'r', with item_id = ${item.item_id}`);
+                console.log(`Looking up Schema info for a Content Item of type 'sl', with item_id = ${item.item_id}`);
 
                 // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
-                let url_server = "/BA/api/get_class_schema";
+                let url_server = "/BA/api/get_class_schema";        // TODO: switch to the simple API endpoint /get_properties_by_class_name
                 let post_obj = {class_name: item.class_name};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
@@ -422,9 +424,9 @@ Vue.component('vue-plugin-sl',
                     /*  EXAMPLE:
                             {
                             "properties":   [
+                                              "url",
                                               "name",
-                                              "website",
-                                              "address"
+                                              "notes"
                                             ],
                             "in_links":     ["BA_served_at"],
                             "out_links":    ["BA_located_in", "BA_cuisine_type"]
@@ -432,7 +434,7 @@ Vue.component('vue-plugin-sl',
                      */
 
                     let properties = server_payload["properties"];
-                    // EXAMPLE:  [ "Notes", "English", "French" ]
+                    // EXAMPLE:  [ "url", "name", "notes" ]
 
                     // Create new cloned objects (if one just alters existing objects, Vue doesn't detect the change!)
                     new_current_data = Object.assign({}, this.current_data);    // Clone the object

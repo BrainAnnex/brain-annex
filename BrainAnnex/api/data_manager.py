@@ -341,14 +341,15 @@ class DataManager:
 
 
     @classmethod
-    def get_records_schema_data(cls, category_id: int) -> [dict]:
+    def get_records_schema_data(cls, category_id: int) -> dict:
         """
-        TODO: test
+        Locate all the Classes of type record ("r") used by Content Items attached to the
+        given Category
+        TODO: being phased out in favor of Categories.get_items_schema_data()
+
         :param category_id:
         :return:
         """
-        # Locate all the Classes of type record ("r") used by Content Items attached to the
-        # given Category
         q = '''
             MATCH  (cat :BA {item_id: $category_id}) <- 
                         [:BA_in_category] - (rec :BA {schema_code:"r"}) - [:SCHEMA]->(cl:CLASS) 

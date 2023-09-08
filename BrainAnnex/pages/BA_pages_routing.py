@@ -117,7 +117,11 @@ class PagesRouting:
             siblings_categories = Categories.viewer_handler(category_id)
 
             records_types = DataManager.get_leaf_records()
-            records_schema_data = DataManager.get_records_schema_data(category_id)  # TODO: *** TEST
+            #records_schema_data = DataManager.get_records_schema_data(category_id)  # TODO: *** TEST
+            records_schema_data = Categories.get_items_schema_data(category_id)     # TODO: *** TEST
+            # EXAMPLE: {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
+            #           'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
+            #           'Headers': ['text']}
             #print("records_schema_data: ", records_schema_data)
 
             bread_crumbs = Categories.create_bread_crumbs(category_id)

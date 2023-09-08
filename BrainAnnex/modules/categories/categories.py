@@ -838,6 +838,52 @@ class Categories:
 
     #####################################################################################################
 
+    '''                                  ~   SCHEMA-RELATED    ~                                      '''
+
+    def ________POSITIONING________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def get_items_schema_data(cls, category_id: int) -> dict:
+        """
+        Locate all the Classes used by Content Items attached to the given Category,
+        and return a list with the Properties of each
+
+        TODO: test
+        :param category_id:
+        :return:            A dictionary whose keys are Class names, and the values are the Properties (in order) of
+                            those Classes
+                            EXAMPLE:
+                                {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
+                                 'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
+                                 'Headers': ['text']}
+        """
+        q = '''
+            MATCH  (cat :BA {item_id: $category_id}) <- 
+                        [:BA_in_category] - (rec :BA) - [:SCHEMA]->(cl:CLASS) 
+            RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
+            '''
+
+        class_list = cls.db.query(q, data_binding={"category_id": category_id})
+        # EXAMPLE: [ {"class_name": "French Vocabulary" , "schema_id": 4},
+        #            {"class_name": "Site Link" , "schema_id": 63}]
+
+
+        # Now extract all the Property fields, in the schema-stored order, of the above Classes
+        records_schema_data = {}
+        for cl in class_list:
+            prop_list = NeoSchema.get_class_properties(schema_id=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
+            class_name = cl["class_name"]
+            records_schema_data[class_name] = prop_list
+
+        return records_schema_data
+
+
+
+
+    #####################################################################################################
+
     '''                          ~   POSITION WITHIN CATEGORIES    ~                                  '''
 
     def ________POSITIONING________(DIVIDER):

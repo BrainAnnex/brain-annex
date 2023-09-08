@@ -62,9 +62,11 @@ Vue.component('vue-content-items',
             </p>
 
             <p v-if="insert_box" class="insert-box">
+                <!-- TODO: should be merged with counterpart on page_viewer.htm -->
                 <span style="margin-right:10px">Add new:</span>
                 <button @click="add_new_item_below('h')" style="margin-right:10px">Header</button>
                 <button @click="add_new_item_below('n')" style="margin-right:10px">Note</button>
+                <button @click="add_new_item_below('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
                 <button @click="add_new_item_below('cd')" style="margin-right:10px">Code Documentation</button>
 
                 <!-- All leaf Classes that are instances of "Records" -->

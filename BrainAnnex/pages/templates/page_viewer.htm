@@ -337,7 +337,7 @@
     <span style="margin-right:10px">Add new:</span>
     <button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
     <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
-    <button @click="add_new_item_at_bottom('sl')" style="margin-right:10px">Site Link (Bookmark)</button>
+    <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
     <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
 
     <!-- Show all leaf Classes that are direct instances of "Records" -->
@@ -600,8 +600,8 @@ new Vue({
         get_schema_data(item)
         // If the given Content Item is a record, return a list of its field names (Properties), in order
         {
-            if (item.schema_code != "r")
-                return [];                      // Nothing is being done for non-record Content Items (at least for now)
+            //if (item.schema_code != "r")
+                //return [];                      // Nothing is being done for non-record Content Items (at least for now)
 
             const record_type = item.class_name;
 
@@ -677,7 +677,7 @@ new Vue({
 
         insert_new_item_after(item, {schema_code, class_name})
         /*  Add a new Content Item of the specified type, placed after the specified Item;
-            class_name is an OPTIONAL argument, only used for Content Item of type 'r'.
+            class_name is an OPTIONAL argument, only used for Content Item of type 'r' (but possibly being phased in for other types)
          */
         {
             //console.log(item);
@@ -701,9 +701,9 @@ new Vue({
             }
 
             // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
-            if (schema_code == "r")   // This is the one type that makes uses of the Schema
+            if (class_name)     // If a class name was passed, store it
                 blank_record = {item_id: -1, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
-            else
+            else                // No class name was provided
                 blank_record = {item_id: -1, schema_code: schema_code, insert_after: insert_after_id};
 
             // Insert the newly-created record after the specified existing element
@@ -715,15 +715,17 @@ new Vue({
 
         add_new_item_at_bottom(schema_code, class_name)
         /*  Add a new Content Item of the specified type, placed at the bottom of the page (past the last Item);
-            class_name is an OPTIONAL argument, only used for Content Item of type 'r'.
+            class_name is an OPTIONAL argument, historically only used for Content Item of type 'r' - but being
+            phased in for other types
          */
         {
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: ${class_name}`);
 
             // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
-            if (schema_code == "r")   // This is the one type that makes uses of the Schema
+            // TODO: replace the -1 with an autoincrement unique number for the page
+            if (class_name)   // If a class name was passed, store it
                 blank_record = {"item_id": -1, "schema_code": schema_code, "class_name": class_name, insert_after: "BOTTOM"};
-            else
+            else             // No class name was provided
                 blank_record = {"item_id": -1, "schema_code": schema_code, insert_after: "BOTTOM"};
 
             this.content_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items

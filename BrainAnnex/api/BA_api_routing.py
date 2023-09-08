@@ -244,7 +244,7 @@ class ApiRouting:
         def get_properties_by_class_name():
             """
             Get all Properties of the given Class node (as specified by its name passed as a POST variable),
-            including indirect ones thru chains of outbound "INSTANCE_OF" relationships.
+            including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class.
 
             EXAMPLE invocation:
@@ -252,9 +252,10 @@ class ApiRouting:
 
             1 POST FIELD:
                 class_name
+                TODO: add an optional extra field, "include_ancestors"
 
             :return:  A JSON with a list of the Property names of the specified Class,
-                      including indirect ones thru chains of outbound "INSTANCE_OF" relationships
+                      including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships (TODO: make optional)
                          EXAMPLE:
                             {
                                 "payload":  [
