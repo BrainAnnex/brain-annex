@@ -1,72 +1,25 @@
-table.r-main {
-    border:1px solid #DDD;
+table.sl-main {
     border-collapse: collapse;
     margin-top:10px;
     margin-bottom:5px;
 }
 
-table.r-main td, th {
-    border:1px solid #DDD;
+table.sl-main td, th {
     padding:5px;
 }
 
-table.r-main th {
+table.sl-main th {
     background-color: #333;
     color:#DDD;
-    font-size:13px;
+    font-size:11px;
 }
 
-table.r-main th.subrecord-in {
-    background-color:cyan;
-    color:black;
-    font-size:10px;
-}
-
-table.r-main th.subrecord-out {
-    background-color:magenta;
-    color:black;
-    font-size:10px;
-}
-
-table.r-main td {
+table.sl-main td {
     border:1px solid #DDD;
-    padding:5px;
     font-size:12px;
 }
 
-table.r-main td.r-description {
-    color:#888;
-}
 
-
-div.edit-link  {
-    display: inline-block;
-    border: 1px solid gray;
-    padding: 5px;
-    margin-left: 10px;
-}
-
-
-/* A little box showing a relationships */
-span.relationship-in {
-    display: inline-block;
-    margin-right: 5px;
-    padding: 3px 8px;
-    border-radius: 8px;
-    color: #333;
-    background-color: cyan;
-}
-
-span.relationship-out {
-    display: inline-block;
-    margin-right: 5px;
-    padding: 3px 8px;
-    border-radius: 8px;
-    color: #333;
-    background-color: magenta;
-}
-
-span.link-count {
-    color:gray;
-    font-size:9px;
+table.sl-main td.no-borders {
+     border:0px;
 }

@@ -848,20 +848,22 @@ class Categories:
     def get_items_schema_data(cls, category_id: int) -> dict:
         """
         Locate all the Classes used by Content Items attached to the given Category,
-        and return a list with the Properties of each
+        and return a dictionary with the Properties (in Schema order) of each
 
-        TODO: test
-        :param category_id:
-        :return:            A dictionary whose keys are Class names, and the values are the Properties (in order) of
-                            those Classes
+        TODO: unit test
+        :param category_id: An integer identifying the desired Category
+
+        :return:            A dictionary whose keys are Class names (of Content Items attached to the given Category),
+                            and whose values are the Properties (in declared Schema order) of those Classes.
+                            Properties declared in "ancestor" Classes (thru "INSTANCE_OF" relationships) are also included.
                             EXAMPLE:
                                 {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
                                  'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
                                  'Headers': ['text']}
         """
         q = '''
-            MATCH  (cat :BA {item_id: $category_id}) <- 
-                        [:BA_in_category] - (rec :BA) - [:SCHEMA]->(cl:CLASS) 
+            MATCH  (cat :BA {item_id: $category_id}) <- [:BA_in_category] - 
+                   (:BA) - [:SCHEMA] -> (cl:CLASS) 
             RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
             '''
 
