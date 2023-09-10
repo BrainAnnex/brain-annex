@@ -144,7 +144,11 @@ Vue.component('vue-plugin-sl',
 
             set_name()
             {
-                console.log('Detected change in the URL');
+                const url = this.current_data.url;
+                console.log(`Detected change in the URL ; new value: ${url}`);
+
+
+
                 if (this.current_data.name == "")
                     this.current_data.name = "WILL BE SETTING THE NAME HERE!";
             },
