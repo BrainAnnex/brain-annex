@@ -392,7 +392,7 @@ class ApiRouting:
 
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'Restaurants')])
-            cls.show_post_data(post_data, "get_class_schema")
+            #cls.show_post_data(post_data, "get_class_schema")
 
             data_dict = dict(post_data)
             if "class_name" not in data_dict:
@@ -412,7 +412,7 @@ class ApiRouting:
                     except Exception as ex:
                         response = {"status": "error", "error_message": str(ex)}
 
-            print(f"get_class_schema() is returning: `{response}`")
+            #print(f"get_class_schema() is returning: `{response}`")
 
             return jsonify(response)   # This function also takes care of the Content-Type header
 

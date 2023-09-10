@@ -493,6 +493,8 @@ new Vue({
                                     // EXAMPLE: [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
                                     //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                     //          ]
+                                    // TODO: component-editable fields and non-editable ones ("pos", "item_id", "schema_code", "class_name") ought to be treated differently
+                                    // TODO: switch from "item_id" to "uri"
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
@@ -873,13 +875,15 @@ new Vue({
         /*  Update the entry for the specified item in this.content_array, with the new data passed by a component
             (generally done at the end of an update on the server.)
             In terms of item's attributes:
-                * "item_id" can be different if it was a newly-added item (which is assigned a temporary value of -1)
+                * "item_id" in new_data can be different if it was a newly-added item (which is assigned a temporary value of -1)
                 * "schema_code" doesn't vary under normal edits
-                * "pos" is not changed thru edits (it uses separate mechanisms to move items about)
+                * "pos" is not changed thru edits (it uses separate mechanisms to reposition items)
                 * everything else will be updated
          */
         {
-            console.log(`Root element received signal to UPDATE the content item of type '${item.schema_code}' , original id ${item.item_id}, current id ${new_data.item_id}`);
+            console.log(`Root element received signal to UPDATE the content item of type '${item.schema_code}' , original id ${item.item_id}`);
+            if (new_data.item_id)
+                console.log(`    A new current id was passed: ${new_data.item_id}`);
 
             //if (item.item_id != -1)
                 //alert("Attempting to modify an existing ID.  Request ignored...  Save your work and refresh the page");
@@ -904,6 +908,14 @@ new Vue({
             for (field_name in new_data)
                 if (field_name != "pos" && field_name != "schema_code")
                     this.content_array[index][field_name] = new_data[field_name];
+
+            // Ditch any fields that were deleted in the edit (however, "pos", "schema_code", "class_name", "item_id" are left alone)
+            // TODO: editable fields and non-editable ones (such as the special cases above) ought to be treated differently
+            for (old_field_name in this.content_array[index])
+                if ((old_field_name != "pos") && (old_field_name != "schema_code") && (old_field_name != "class_name") && (old_field_name != "item_id") && !(old_field_name in new_data))  {
+                    console.log(`absorb_item_updates(): Ditching the old field '${old_field_name}' because it was eliminated in the edit`);
+                    delete this.content_array[index][old_field_name];
+                }
         },
 
 

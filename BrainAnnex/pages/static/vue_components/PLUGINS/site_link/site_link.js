@@ -4,7 +4,16 @@
 Vue.component('vue-plugin-sl',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  EXAMPLE: {"item_data": {class_name:"Site Link", name:"test", url:"http://example.com"},
+        /*  EXAMPLE: {"item_data": {class_name:"Site Link",
+                                    item_id: 4912,
+
+                                    [whatever other fields were set in this item; for example]
+                                    url:"http://example.com",
+                                    name:"test",
+
+                                    position: 20,
+                                    schema_code: "sl"
+                                   },
                       "allow_editing": false, "category_id": 123,
                       "index": 2, "item_count": 10,
                       "schema_data": ["url","name","date","comments","rating","read"]
@@ -18,38 +27,38 @@ Vue.component('vue-plugin-sl',
             schema_data:    A list of field names, in Schema order.  EXAMPLE: ["url","name","date","comments","rating","read"]
          */
 
+
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
             <table class='sl-main'>
-            <!-- Header row  -->
-            <tr>
-                <td rowspan=2 class="no-borders">
-                    <img src="/BA/pages/static/graphics/bookmark_32_60162.png">
-                </td>
 
-                <th v-for="cell in this.determine_headers()">
-                {{cell}}
-                </th>
+                <!--
+                    Header row
+                 -->
+                <tr @dblclick="enter_editing_mode">
+                    <td rowspan=2 class="no-borders">
+                        <img src="/BA/pages/static/graphics/bookmark_32_60162.png">
+                    </td>
 
-            </tr>
-
-
-            <!--
-                Row for the data, the controls and the links
-             -->
-            <tr>
+                    <th v-for="cell in this.determine_headers()">
+                        {{cell}}
+                    </th>
+                </tr>
 
 
+                <!--
+                    Row for the data
+                 -->
+                <tr @dblclick="enter_editing_mode">
+                    <td v-for="key in this.determine_cells()">
+                        <!-- Display SPAN or INPUT elements, depending on the editing status -->
+                        <span v-if = "!editing_mode" v-html="render_cell(current_data[key])"></span>
+                        <input v-else-if = "editing_mode && key=='url'" type="text" @change="set_name" v-model="current_data[key]" style='color:blue'>
+                        <input v-else type="text" size="25" v-model="current_data[key]">
+                    </td>
+                </tr>
 
-                <td v-for="key in this.determine_cells()">
-                    <!-- Display SPAN or INPUT elements, depending on the editing status -->
-                    <span v-if = "!editing_mode" v-html="render_cell(current_data[key])"></span>
-                    <input v-else-if = "editing_mode && key=='url'" type="text" @change="set_name" v-model="current_data[key]" style='color:blue'>
-                    <input v-else type="text" size="25" v-model="current_data[key]">
-                </td>
-
-            </tr>
             </table>
 
 
@@ -58,7 +67,6 @@ Vue.component('vue-plugin-sl',
                 <button @click="save()">SAVE</button>
                 <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
                 <span v-if="waiting_mode" style="margin-left:15px">saving...</span>
-                <span v-if="waiting_for_server" style="margin-left:15px; color:gray">Loading all fields...</span>
             </p>
 
             <span v-if="status!='' && !editing_mode">Status : {{status}}</span>
@@ -70,16 +78,18 @@ Vue.component('vue-plugin-sl',
             -->
             <vue-controls v-bind:allow_editing="allow_editing"  v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item(item_data)">
+                          v-on:edit-content-item="edit_content_item">
             </vue-controls>
 
             </div>		<!-- End of outer container -->
             `,
 
 
+
+        // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.item_id < 0  ? true : false),    // Negative means "new Item"
+                editing_mode: (this.item_data.item_id < 0  ? true : false),    // Negative item_id means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 
@@ -95,43 +105,33 @@ Vue.component('vue-plugin-sl',
 
                     EXAMPLE of item_data (a PROP, not a variable of this component!):
                         {
-{                           class_name:"Site Link",
-                            name:"test",
-                            url:"http://example.com"}
-                        }
+                            class_name:"Site Link",
+                            item_id: 4912,
+
+                            [whatever other fields were set in this item; for example]
+                            url:"http://example.com",
+                            name:"some website",
+
+                            position: 20,
+                            schema_code: "sl"
+                       }
 
                     EXAMPLE of current_data and original_data:
                         {
-                            TBA
+                            url:"http://example.com",
+                            name:"some website"
                         }
 
-                    Note that the objects may lack some of the fields specified by the Schema;
-                        or, if the Schema is lax, extra fields might be present
+                    Note that the objects may lack some of the fields specified by the Schema
                  */
-                current_data: this.clone_and_standardize(this.item_data),   // Scrub some data, so that it won't show up in the tabular format
-                original_data: this.clone_and_standardize(this.item_data),
-                // NOTE: clone_and_standardize() gets called twice
 
-                expanded_row: false,
 
-                in_links_schema: [],    // List of the names of all Inbound links as specified by the Schema
-                out_links_schema: [],   // List of the names of all Outbound links as specified by the Schema (except for "INSTANCE_OF")
-
-                in_links: [],           // List of the names/counts of all the actual Inbound links
-                out_links: [],          // List of the names/counts of all the actual Outbound links
-                links_status: '',
-                links_error_indicator: false,
-                waiting_for_links: false,   // Note that we have 2 different "wait for server" flags: this one is specific to getting the links
-
-                linked_records: [],
-                // For now, just one set of linked records (linked thru a given relationship) is shown at a time
-                link_name: '',
-                rel_dir: 'IN',
-
-                // Note that we have 2 different "wait for server" flags
-                waiting_for_server: ((this.item_data.item_id != -1) ? false : this.get_fields_from_server(this.item_data)), // -1 means "new Item"
+                // Note: negative item_id means "new Item"
+                current_data: (this.item_data.item_id < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
+                original_data: (this.item_data.item_id < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
 
                 waiting_mode: false,
+
                 status: "",
                 error_indicator: false
             }
@@ -139,8 +139,29 @@ Vue.component('vue-plugin-sl',
 
 
 
-        // ------------------------------   METHODS   ------------------------------
+
+        // ------------------------------------   METHODS   ------------------------------------
         methods: {
+
+            enter_editing_mode()
+            {
+                console.log(`In enter_editing_mode()`);
+
+                //this.current_data = this.clone_and_standardize(this.item_data);   // Scrub some data, so that it won't show up in the tabular format
+                //this.original_data = this.clone_and_standardize(this.item_data);
+                // NOTE: clone_and_standardize() gets called twice
+
+                this.waiting_mode = false;
+                this.status = "";
+                this.error_indicator = false;
+
+                this.editing_mode = true;
+
+                this.display_all_fields();      // This will set the "current_data" property
+                this.original_data = this.clone_and_standardize(this.item_data);
+            },
+
+
 
             set_name()
             /* Invoked whenever a change of the URL field is detected while in editing mode
@@ -223,6 +244,107 @@ Vue.component('vue-plugin-sl',
             },
 
 
+            prepare_blank_record()
+            /*  Meant to be invoked upon entering Editing mode with a new record
+             */
+            {
+                console.log("In prepare_blank_record()");
+
+                let properties = this.schema_data;
+                console.log("    properties looked up: " , properties);
+                // EXAMPLE:  ['url', 'name', 'date', 'comments', 'rating', 'read']
+
+                // Create a new  object based on the schema data
+                new_blank_record = {};    // Empty object
+
+                for (let i = 0; i < properties.length; i++) {
+                    field_name = properties[i];
+
+                    console.log("    Adding field from Schema: ", field_name);
+                    new_blank_record[field_name] = "";
+                }
+
+                return new_blank_record;
+            },
+
+
+            display_all_fields()
+            /*  Meant to be invoked upon entering Editing mode:
+                present all the fields declared in the Schema (including any hidden before because it lacked data.)
+
+                Modify the "current_data" property, to also include any fields in the Schema.
+                Perform this operation in a matter than will be detected by Vue
+             */
+            {
+                console.log("In show_all_fields()");
+
+                let properties = this.schema_data;
+                console.log("    properties looked up: " , properties);
+                // EXAMPLE:  ['url', 'name', 'date', 'comments', 'rating', 'read']
+
+                // Create a new cloned object based on the current record data
+                // (that's because if one just alters existing objects, Vue doesn't detect the change!)
+                new_current_data = Object.assign({}, this.current_data);    // Clone the current_data object
+
+                for (let i = 0; i < properties.length; i++) {
+                    field_name = properties[i];
+
+                    /* Only add fields not already present
+                     */
+                    if (!(field_name in this.current_data))  {
+                        console.log("    Adding missing field: ", field_name);
+                        new_current_data[field_name] = "";
+                    }
+                }
+
+                this.current_data = new_current_data;   // This assignment will get Vue's attention!
+            },
+
+
+            clone_and_standardize(obj)
+            // Clone, and remove keys that don't get shown nor edited
+            {
+                clone_obj = Object.assign({}, obj);     // Clone the object
+
+                // Scrub some data, so that it won't show up in the tabular format
+                delete clone_obj.item_id;
+                delete clone_obj.schema_code;
+                delete clone_obj.class_name;
+                delete clone_obj.insert_after;
+                delete clone_obj.pos;           // TODO: this might be getting phased out
+
+                return clone_obj;
+            },
+
+
+
+            edit_content_item()
+            {
+                console.log(`'Site Links' component received Event to edit contents`);
+                this.editing_mode = true;
+
+                this.display_all_fields();          // Consult the schema
+            },
+
+
+
+            cancel_edit()
+            {
+                // Restore the data to how it was prior to the aborted changes
+                this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
+
+                if (this.current_data.item_id == -1) {
+                    // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
+                    console.log("Records component sending `cancel-edit` signal to its parent");
+                    this.$emit('cancel-edit');
+                }
+
+                this.editing_mode = false;      // Exit the editing mode
+            },
+
+
+
+
             /*
                 SERVER CALLS
              */
@@ -244,7 +366,7 @@ Vue.component('vue-plugin-sl',
             // Callback function to wrap up the action of get_webpage_title() upon getting a response from the server
             {
                 console.log("Finalizing the get_webpage_title operation...");
-                
+
                 if (success)  {     // Server reported SUCCESS
                     this.current_data.name = server_payload;
                 }
@@ -255,14 +377,15 @@ Vue.component('vue-plugin-sl',
 
 
 
-            get_fields_from_server(item)
-            // Initiate request to server, to get all the field names specified by the Schema for Site Links
+            get_fields_from_server(class_name)
+            // Initiate request to server, to get all the field names for the Site Links' Class
+            // Always returns true
             {
-                console.log(`Looking up Schema info for a Content Item of type 'sl', with item_id = ${item.item_id}`);
+                console.log(`----------- Looking up Schema info for Class "${class_name}"`);
 
                 // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
                 let url_server = "/BA/api/get_class_schema";        // TODO: switch to the simple API endpoint /get_properties_by_class_name
-                let post_obj = {class_name: item.class_name};
+                let post_obj = {class_name: class_name};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
                 ServerCommunication.contact_server(url_server,
@@ -286,20 +409,19 @@ Vue.component('vue-plugin-sl',
                                               "url",
                                               "name",
                                               "notes"
-                                            ],
-                            "in_links":     ["BA_served_at"],
-                            "out_links":    ["BA_located_in", "BA_cuisine_type"]
+                                            ]
                             }
                      */
 
                     let properties = server_payload["properties"];
+                    console.log("    properties retrieved: " , properties);
                     // EXAMPLE:  [ "url", "name", "notes" ]
 
                     // Create new cloned objects (if one just alters existing objects, Vue doesn't detect the change!)
                     new_current_data = Object.assign({}, this.current_data);    // Clone the object
 
                     for (let i = 0; i < properties.length; i++) {
-                        field_name = properties[i]
+                        field_name = properties[i];
 
                         /* Only add fields not already present
                          */
@@ -310,46 +432,14 @@ Vue.component('vue-plugin-sl',
                     }
 
                     this.current_data = new_current_data;
-
-                    this.in_links_schema = server_payload["in_links"];
-                    this.out_links_schema = server_payload["out_links"];
                 }
                 else  {             // Server reported FAILURE
                     //this.status = `FAILED lookup of extra fields`;
                     //this.error_indicator = true;
                 }
 
-                // Final wrap-up, regardless of error or success
-                this.waiting_for_server = false;
-
             }, // finish_get_fields_from_server
 
-
-            clone_and_standardize(obj)
-            // Clone, and remove keys that don't get shown nor edited
-            {
-                clone_obj = Object.assign({}, obj);     // Clone the object
-
-                // Scrub some data, so that it won't show up in the tabular format
-                delete clone_obj.item_id;
-                delete clone_obj.schema_code;
-                delete clone_obj.class_name;
-                delete clone_obj.insert_after;
-                delete clone_obj.pos;           // TODO: this might be getting phased out
-
-                return clone_obj;
-            },
-
-
-
-            edit_content_item(item)
-            {
-                console.log(`'Records' component received Event to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
-                this.editing_mode = true;
-
-                this.get_fields_from_server(item);      // Consult the schema
-                this.waiting_for_server = true;
-            },
 
 
             save()
@@ -412,7 +502,7 @@ Vue.component('vue-plugin-sl',
                 this.waiting_mode = true;
                 this.error_indicator = false;   // Clear possible past message
 
-                console.log("In 'vue-plugin-r', save().  post_body: ", post_body);
+                console.log("In 'vue-plugin-sl', save().  post_body: ", post_body);
                 ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
             }, // save
 
@@ -432,7 +522,7 @@ Vue.component('vue-plugin-sl',
                             console.log("Field still needed because non-empty: ", field);
                         else if (field in this.original_data)  {
                             console.log("Field blank but was in original data [deleted anyway]: ", field);
-                            delete this.current_data[field];     // Zap b/c blank,
+                            delete this.current_data[field];     // Zap b/c blank
                         }
                         else {
                             console.log("Eliminating field no longer in need to display: ", field);
@@ -445,7 +535,7 @@ Vue.component('vue-plugin-sl',
                         this.current_data.item_id = server_payload;
 
                     // Inform the parent component of the new state of the data
-                    console.log("Records component sending `updated-item` signal to its parent");
+                    console.log("Site Links component sending `updated-item` signal to its parent");
                     this.$emit('updated-item', this.current_data);
 
                     // Synchronize the accepted baseline data to the current one
@@ -462,22 +552,7 @@ Vue.component('vue-plugin-sl',
                 // Final wrap-up, regardless of error or success
                 this.waiting_mode = false;      // Make a note that the asynchronous operation has come to an end
 
-            }, // finish_save
-
-
-            cancel_edit()
-            {
-                // Restore the data to how it was prior to the aborted changes
-                this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
-
-                if (this.current_data.item_id == -1) {
-                    // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
-                    console.log("Records component sending `cancel-edit` signal to its parent");
-                    this.$emit('cancel-edit');
-                }
-
-                this.editing_mode = false;      // Exit the editing mode
-            } // cancel_edit
+            } // finish_save
 
         }  // METHODS
 
