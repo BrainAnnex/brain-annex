@@ -115,7 +115,7 @@ class FullTextIndexing:
         :return:                A (possibly empty) list of words in the text,
                                     free of punctuation, HTML and HTML entities such as &ndash;
         """
-        unescaped_text = html.unescape(text)    # Turn HTML entities such as "&ndash;" into text
+        unescaped_text = html.unescape(text)    # Turn HTML entities into characters; e.g. "&ndash;" into "-"
         #print(unescaped_text)  # <p>Mr. Joe&sons<br>A Long–Term business! Find it at > (http://example.com/home)<br>Visit Joe's "NOW!"</p>
 
         stripped_text = cls.TAG_RE.sub(' ', unescaped_text) # Use regex to strip off all HTML and turn each occurrence into a blank

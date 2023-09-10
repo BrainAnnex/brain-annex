@@ -17,6 +17,7 @@ import requests
 import re                   # REGEX
 import shutil
 import os
+import html
 #from time import sleep     # For tests of delays in asynchronous fetching
 
 
@@ -1140,10 +1141,11 @@ class ApiRouting:
             Retrieve the Title of a remote webpage, given its URL
 
             EXAMPLE invocation:
-                http://localhost:5000/BA/api/simple/fetch-remote-title?url=https://example.com
+                http://localhost:5000/BA/api/simple/fetch-remote-title?url=https://brainannex.org
 
             :return:    A string with the title of the page specified by the "url" query string, or an error message,
                             with a "+" or "-" prefix (for success/failure)
+                            Any HTML entities in the title are turned into characters; e.g. "&ndash;" becomes "-"
             """
             remote_url = request.args.get('url')
             #print(f"Attempting to retrieve remove web page {remote_url}")
@@ -1152,20 +1154,26 @@ class ApiRouting:
                 response = requests.get(remote_url)
 
                 if response.status_code == 200:
-                    #print(response.text[:300])
-                    # Use regular expression to find the title tag
+                    #print(response.text[:800])     # Show the early part of the file
+
+                    # Use regular expressions to find the title tag
                     title_match = re.search(r'<title.*?>(.*?)</title>', response.text, re.IGNORECASE)
                     #    .    means "any single character, except line breaks"
                     #    *?   means "0 or more times (non-greedy)"
                     #    ()   means "capture group"
 
+                    # Note: some websites contain alternate way to express titles, such as:
+                    # <meta data-react-helmet="true" name="title" content="THE REAL PAGE TITLE">
+
                     if title_match:
-                        title = title_match.group(1)        # The 1st capture group
-                        #TODO: turn &amp; into & , etc.
-                        return_value = cls.SUCCESS_PREFIX + title       # Success
+                        title = title_match.group(1)            # The 1st capture group
+                        unescaped_title = html.unescape(title)  # Turn HTML entities into characters;
+                                                                # e.g. "&ndash;" into "-"
+                        print(unescaped_title)
+                        return_value = cls.SUCCESS_PREFIX + unescaped_title     # Success
                     else:
                         err_status = f"Unable to extract title from {remote_url}"
-                        return_value = cls.ERROR_PREFIX + err_status    # Failure
+                        return_value = cls.ERROR_PREFIX + err_status            # Failure
 
                     '''
                     # Alternate approach using BeautifulSoup (untested):
@@ -1178,12 +1186,12 @@ class ApiRouting:
                     '''
 
                 else:   # Response status other that 200
-                    err_status =  f'Remote page ({remote_url}) returned failure code: {response.status_code}'
-                    return_value = cls.ERROR_PREFIX + err_status        # Failure
+                    err_status =  f'Remote page ({remote_url}) returned failure code {response.status_code}'
+                    return_value = cls.ERROR_PREFIX + err_status                # Failure
 
-            except requests.RequestException as ex:
+            except Exception as ex:
                 err_status =  f'Error in fetching the remote page. {ex})'
-                return_value = cls.ERROR_PREFIX + err_status            # Failure
+                return_value = cls.ERROR_PREFIX + err_status                    # Failure
 
             return return_value
 

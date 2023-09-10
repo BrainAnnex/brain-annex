@@ -438,7 +438,10 @@ class ServerCommunication
 
     static report_fetch_errors(err)
     /*  Invoked in case of ANY failure during a the fetch() call to the specified URL,
-        including: 1) errors in the fetch() call itself ; 2) HTTP error ; 3) server response messages indicative of error
+        including:
+            1) errors in the fetch() call itself
+            2) HTTP error
+            3) server response messages indicative of error
         Compose an error message, log it to the console, issue an alert about it, and return it as a string.
 
         ARGUMENTS:
@@ -447,11 +450,11 @@ class ServerCommunication
                   See https://stackoverflow.com/questions/9156176/what-is-the-difference-between-throw-new-error-and-throw-someobject
       */
     {
-        console.error('Error during fetch() operation. Details in the next line: ');
+        console.error('Error during the fetch() operation. Details in the next line: ');
         console.log(err);
 
-        const fetch_failure_message = "Failed interaction with the server in the fetch() call. "
-                                      + err.name + " - " + err.message;
+        // Old verbose message:  "Failed interaction with the server in the fetch() call. " +
+        const fetch_failure_message = err.name + " - " + err.message;
         alert(fetch_failure_message);
 
         /* TODO: there might be a timing (or caching??) bug in Firefox.  I sporadically get an error with name "TypeError"

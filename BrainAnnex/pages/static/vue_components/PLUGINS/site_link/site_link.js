@@ -143,14 +143,17 @@ Vue.component('vue-plugin-sl',
         methods: {
 
             set_name()
+            /* Invoked whenever a change of the URL field is detected while in editing mode
+                (upon the user clicking away from that field);
+                it attempts to retrieve the webpage title of the URL just entered by the user,
+                and it sets the "name" field (on the editing form) to it
+             */
             {
                 const url = this.current_data.url;
                 console.log(`Detected change in the URL ; new value: ${url}`);
 
-
-
-                if (this.current_data.name == "")
-                    this.current_data.name = "WILL BE SETTING THE NAME HERE!";
+                this.current_data.name = "[Fetching the page title...]";
+                this.get_webpage_title(url);
             },
 
 
@@ -194,13 +197,6 @@ Vue.component('vue-plugin-sl',
             },
 
 
-            // Used to copy cell contents into the system clipboard
-            onCopy: function (e) {
-                console.log('You just copied: ' + e.text);
-            },
-            onError: function (e) {
-                alert('Failed to copy texts');
-            },
 
             render_cell(cell_data)
             /*  If the passed string appears to be a URL, convert it into a hyperlink, opening in a new window;
@@ -230,6 +226,34 @@ Vue.component('vue-plugin-sl',
             /*
                 SERVER CALLS
              */
+
+            get_webpage_title(url)
+            /*  Query the server to find out the title of the webpage identified by the given URL.
+                (Note: letting the server handle this, to avoid running afoul of CORS.)
+             */
+            {
+                console.log(`Retrieving title of webpage ${url}`);
+
+                let url_server = `/BA/api/simple/fetch-remote-title?url=${url}`;
+                console.log(`About to contact the server at ${url_server}`);
+
+                ServerCommunication.contact_server(url_server,  {callback_fn: this.finish_get_webpage_title});
+            },
+
+            finish_get_webpage_title(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of get_webpage_title() upon getting a response from the server
+            {
+                console.log("Finalizing the get_webpage_title operation...");
+                
+                if (success)  {     // Server reported SUCCESS
+                    this.current_data.name = server_payload;
+                }
+                else  {             // Server reported FAILURE
+                    this.current_data.name = "Unable to extract webpage title";
+                }
+            },
+
+
 
             get_fields_from_server(item)
             // Initiate request to server, to get all the field names specified by the Schema for Site Links
