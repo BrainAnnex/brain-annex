@@ -58,7 +58,7 @@ class ServerCommunication
 
             payload_type:   Either "TEXT" or "JSON" - optional; by default "TEXT"
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
-            custom_data     If present, it is passed as a final argument to the callback function
+            custom_data:    If present, it is passed as a final argument to the callback function
 
         EXAMPLE of invocation:
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});
@@ -66,14 +66,19 @@ class ServerCommunication
         EXAMPLE of callback_fn:
 
             function finish_get_note(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of delete_content_item() upon getting a response from the server
+            //  Callback function to wrap up the action of get_note() upon getting a response from the server
+            //      success:        boolean indicating whether the server call succeeded
+            //      server_payload: whatever the server returned (stripped of information about the success of the operation)
+            //      error_message:  a string only applicable in case of failure
+            //      custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
             {
                 console.log("Finalizing the get_note operation...");
+
                 if (success)  {     // Server reported SUCCESS
-                    ...
+                    ...             // do something with the server_payload value
                 }
                 else  {             // Server reported FAILURE
-                    ...
+                    ...             // do something with the error_message value
                 }
                 ...  // Op to do at the end in either case
             }
@@ -418,8 +423,8 @@ class ServerCommunication
         if (resp_obj.ok)  {
             // FOR DEBUGGING:
             console.log(`Received response object from server: `, resp_obj);
-            console.log('    Content-Type: ', resp_obj.headers.get('Content-Type'));
-            console.log('    Date: ', resp_obj.headers.get('Date'));
+            console.log('    Content-Type of response: ', resp_obj.headers.get('Content-Type'));
+            //console.log('    Date: ', resp_obj.headers.get('Date'));
             // END OF DEBUGGING
 
             return resp_obj;	// Just pass thru the response object

@@ -31,7 +31,7 @@ class DataManager:
 
     This class does NOT get instantiated.
 
-    TODO: maybe move the file to its own module
+    TODO: move the file to its own module
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 

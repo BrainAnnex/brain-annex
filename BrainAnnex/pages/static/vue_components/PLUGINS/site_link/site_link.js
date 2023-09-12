@@ -66,10 +66,10 @@ Vue.component('vue-plugin-sl',
             <p v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:5px">
                 <button @click="save()">SAVE</button>
                 <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
-                <span v-if="waiting_mode" style="margin-left:15px">saving...</span>
+                <span v-if="waiting" style="margin-left:15px">saving...</span>
             </p>
 
-            <span v-if="status!='' && !editing_mode">Status : {{status}}</span>
+            <span v-if="status_message!='' && !editing_mode">Status : {{status_message}}</span>
 
             <!--  STANDARD CONTROLS
                   (signals from them get relayed to the parent of this component, but some get handled here)
@@ -130,10 +130,9 @@ Vue.component('vue-plugin-sl',
                 current_data: (this.item_data.item_id < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
                 original_data: (this.item_data.item_id < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
 
-                waiting_mode: false,
-
-                status: "",
-                error_indicator: false
+                waiting: false,
+                error: false,
+                status_message : ""
             }
         }, // data
 
@@ -151,9 +150,9 @@ Vue.component('vue-plugin-sl',
                 //this.original_data = this.clone_and_standardize(this.item_data);
                 // NOTE: clone_and_standardize() gets called twice
 
-                this.waiting_mode = false;
-                this.status = "";
-                this.error_indicator = false;
+                this.waiting = false;
+                this.status_message = "";
+                this.error = false;
 
                 this.editing_mode = true;
 
@@ -434,8 +433,8 @@ Vue.component('vue-plugin-sl',
                     this.current_data = new_current_data;
                 }
                 else  {             // Server reported FAILURE
-                    //this.status = `FAILED lookup of extra fields`;
-                    //this.error_indicator = true;
+                    //this.status_message = `FAILED lookup of extra fields`;
+                    //this.error = true;
                 }
 
             }, // finish_get_fields_from_server
@@ -461,60 +460,71 @@ Vue.component('vue-plugin-sl',
                             "pos": 0
                         }
                 */
+                console.log(`In 'vue-plugin-sl', save()`);
 
-                // Start the body of the POST to send to the server.  TODO: switch to newer methods of ServerCommunication
-                post_body = "schema_code=" + this.item_data.schema_code;
+                let post_obj = {schema_code: this.item_data.schema_code};
 
-                if (this.item_data.item_id == -1)  {     // The -1 is a convention indicating a new Content Item to create
+                if (this.item_data.item_id < 0)  {     // Negative item_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
-                    post_body += "&category_id=" + this.category_id;
-                    post_body += "&class_name=" + encodeURIComponent(this.item_data.class_name);
-                    const insert_after = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    post_body += "&insert_after=" + insert_after;
+                    post_obj["category_id"] = this.category_id;
+                    post_obj["class_name="] = this.item_data.class_name;
+                    post_obj["insert_after"] = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data)  {
                         // Only pass non-blank values
                         if (this.current_data[key] != "")
-                            post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
+                            post_obj[key] = this.current_data[key];
                     }
-                    // EXAMPLE of post_body for a NEW record:
+                    // EXAMPLE of post_obj for a NEW record:
                     //          "schema_code=r&category_id=12&class_name=German%20Vocabulary&insert_after=123&German=Liebe"
 
-                    url_server = `/BA/api/simple/add_item_to_category`;   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/simple/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {
                     // Update an EXISTING record
-                    post_body += "&item_id=" + this.item_data.item_id;
+                    post_obj["item_id"] = this.item_data.item_id;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
                         if ( (this.current_data[key] != "")  ||  (key in this.original_data) )
                             // Non-blanks always lead to updates; blanks only if the field was originally present
-                            post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
+                            post_obj[key] = this.current_data[key];
                     }
-                    // EXAMPLE of post_body for an EXISTING record: "schema_code=r&item_id=62&English=Love&German=Liebe"
+                    // EXAMPLE of post_obj for an EXISTING record: "schema_code=r&item_id=62&English=Love&German=Liebe"
 
-                    url_server = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
                 }
 
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
 
-                this.waiting_mode = true;
-                this.error_indicator = false;   // Clear possible past message
+                console.log(`About to contact the server at ${url_server_api}.  POST object:`);
+                console.log(post_obj);
 
-                console.log("In 'vue-plugin-sl', save().  post_body: ", post_body);
-                ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
+                // Initiate asynchronous contact with the server, using POST data
+                ServerCommunication.contact_server(url_server_api,
+                            {payload_type: "TEXT",
+                             post_obj: post_obj,
+                             callback_fn: this.finish_save});
             }, // save
 
 
-            finish_save(success, server_payload, error_message)
+            finish_save(success, server_payload, error_message, custom_data)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID
+
+                success:        boolean indicating whether the server call succeeded
+                server_payload: whatever the server returned (stripped of information about the success of the operation)
+                error_message:  a string only applicable in case of failure
+                custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
              */
             {
-                console.log("Finalizing the Record saving operation...");
+                console.log("Finalizing the SiteLink saving operation...");
+
                 if (success)  {     // Server reported SUCCESS
-                    this.status = `Successful edit`;
+                    this.status_message = `Successful edit`;
 
                     // Eliminate some un-needed fields from the display
                     for (field in this.current_data)  {
@@ -530,8 +540,8 @@ Vue.component('vue-plugin-sl',
                         }
                     }
 
-                    // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.item_id == -1)
+                    // If this was a new item (with the temporary negative ID), update its ID with the value assigned by the server
+                    if (this.item_data.item_id < 0)
                         this.current_data.item_id = server_payload;
 
                     // Inform the parent component of the new state of the data
@@ -544,13 +554,13 @@ Vue.component('vue-plugin-sl',
                     this.editing_mode = false;      // Exit the editing mode
                 }
                 else  {             // Server reported FAILURE
-                    this.status = `FAILED edit`;
-                    this.error_indicator = true;
+                    this.error = true;
+                    this.status_message = `FAILED edit`;
                     this.cancel_edit();     // Restore the data to how it was prior to the failed changes
                 }
 
                 // Final wrap-up, regardless of error or success
-                this.waiting_mode = false;      // Make a note that the asynchronous operation has come to an end
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
 
             } // finish_save
 
