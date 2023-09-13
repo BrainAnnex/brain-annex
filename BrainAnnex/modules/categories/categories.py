@@ -445,9 +445,11 @@ class Categories:
     def create_categories_root(cls, data_dict=None) -> int:
         """
         Create a ROOT Category node;
-        return the internal database ID of the new Categories node
+        and return its internal database ID
 
-        :param data_dict:
+        :param data_dict:   (OPTIONAL) Dict to specify alternate desired values
+                                for the "name" and "remarks" fields of the Root Category
+                                (by default, "HOME" and "top level", respectively)
         :return:            The internal database ID of the new data node just created
         """
         if data_dict is None:
@@ -455,7 +457,7 @@ class Categories:
 
         data_dict["root"] = True
 
-        internal_id, _ = NeoSchema.create_data_node(class_node="Categories",
+        internal_id = NeoSchema.create_data_node(class_node="Categories",
                                                     properties = data_dict,
                                                     assign_uri=True)
         return internal_id
@@ -756,11 +758,17 @@ class Categories:
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
         #print("Inside Categories.add_content_at_end()")
-        (new_internal_id, new_uri) = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
-                                                     extra_labels="BA", assign_uri=True, new_uri=new_item_id,
+        if new_item_id is None:
+            # If a URI (for now called item_id) was not provided for the newly-created node,
+            # then auto-generate it (for now an integer)
+            new_item_id = NeoSchema.generate_uri(prefix="", namespace="data_node")  # Returns a string
+
+        new_item_id = int(new_item_id)
+
+        new_internal_id = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
+                                                     extra_labels="BA", assign_uri=False, new_uri=new_item_id,
                                                      silently_drop=True)
-        print("Returned from NeoSchema.create_data_node")
-        new_item_id = int(new_uri)
+        #print("Returned from NeoSchema.create_data_node")
 
         print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_item_id = {new_item_id}")
 

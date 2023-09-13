@@ -28,7 +28,7 @@ def setup_sample_index(db) -> int:
     FullTextIndexing.initialize_schema()
 
     # Create a data node of type "Content Item"...
-    content_id, _ = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Document.pdf"})
+    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Document.pdf"})
 
     return content_id
 
@@ -119,7 +119,7 @@ def test_new_indexing(db):
     # Now test a scenario where some Word node already exist
 
     # Create a data node of type "Content Item"...
-    content_id, _ = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Other_Document.txt"})
+    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...and then index some words to it
     FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"research", "science"}, to_lower_case=True)
 
@@ -287,7 +287,7 @@ def test_search_word(db):
 
 
     # Add a 2nd data node of type "Content Item"...
-    content_id_2, _ = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "some_other_file.txt"})
+    content_id_2 = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "some_other_file.txt"})
     # ...and then index some words to it
     FullTextIndexing.new_indexing(content_item_id=content_id_2, unique_words={"ship", "lab", "glassware"})
 
