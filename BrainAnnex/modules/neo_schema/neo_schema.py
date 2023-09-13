@@ -1521,6 +1521,9 @@ class NeoSchema:
         If the data node needs to be created with links to other existing data nodes,
         use add_data_node_with_links() instead
 
+        TODO: the responsibility for picking a URI probably best belongs to the calling function
+              (which will typically make use of a namespace - a concept that belongs to the higher layer!)
+
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
         :param properties:  (Optional) Dictionary with the properties of the new data node.
@@ -1537,6 +1540,7 @@ class NeoSchema:
 
         :return:            The pair: (internal database ID, newly-assigned URI) of the new data node just created.
                                 Note that the newly-assigned URI is always a STRING, and will be "" if no URI was assigned
+                                TODO: probably revert to just returning the internal database ID
         """
         cls.assert_valid_class_identifier(class_node)
 
@@ -2238,6 +2242,73 @@ class NeoSchema:
             raise Exception("Failed to created the new relationship (`SCHEMA`)")
 
         return new_item_id
+
+
+
+    @classmethod
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict , drop_blanks = True) -> int:
+        """
+        Update, possibly adding and/or dropping fields, properties of an existing Data Node
+
+        :param data_node:   Either an integer with the internal database ID, or a string with a URI value
+        :param set_dict:    A dictionary of field name/values to create/update the node's attributes
+                                (note: blanks ARE allowed in the keys)
+        :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
+                                (as opposed to setting its value to "")
+        :return:            The number of properties set or removed;
+                                if the record wasn't found, or an empty set_dict was passed, return 0
+                                Important: a property is counted as "set" even if the new value is
+                                           identical to the old value!
+        """
+        #TODO: check whether the Schema allows the added/dropped fields, if applicable
+
+        if set_dict == {}:
+            return 0            # Nothing to do!
+
+        if type(data_node) == int:
+            where_clause =  f'WHERE id(n) = {data_node}'
+        elif type(data_node) == str:
+            where_clause =  f'WHERE n.uri = "{data_node}"'
+        else:
+            raise Exception("update_data_node(): argument `data_node` must be an integer or a string")
+
+
+        data_binding = {}
+        set_list = []
+        remove_list = []
+        for field_name, field_value in set_dict.items():                # field_name, field_value are key/values in set_dict
+            if (field_value != "") or (drop_blanks == False):
+                field_name_safe = field_name.replace(" ", "_")              # To protect against blanks in name, which could not be used
+                                                                            #   in names of data-binding variables.  E.g., "end date" becomes "end_date"
+                set_list.append(f"n.`{field_name}` = ${field_name_safe}")   # Example:  "n.`end date` = end_date"
+                data_binding[field_name_safe] = field_value                 # Add entry the Cypher data-binding dictionary, of the form {"end_date": some_value}
+            else:
+                remove_list.append(f"n.`{field_name}`")
+
+        # Example of data_binding at the end of the loop: {'color': 'white', 'max_quantity': 7000}
+
+        set_clause = ""
+        if set_list:
+            set_clause = "SET " + ", ".join(set_list)   # Example:  "SET n.`color` = $color, n.`max quantity` = $max_quantity"
+
+        remove_clause = ""
+        if drop_blanks and remove_list:
+            remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
+
+
+        q = f'''
+            MATCH (n) {where_clause}
+            {set_clause} 
+            {remove_clause}            
+            '''
+
+        cls.db.debug_query_print(q, data_binding, force_output=True)
+
+
+        stats = cls.db.update_query(q, data_binding, )
+        print(stats)
+        number_properties_set = stats.get("properties_set", 0)
+        return number_properties_set
 
 
 
@@ -2996,7 +3067,7 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def generate_uri(cls, prefix, namespace, suffix) -> str:
+    def generate_uri(cls, prefix, namespace, suffix="") -> str:
         """
         Generate a URI (or fragment thereof, aka "token"),
         using the given prefix and suffix;
@@ -3015,7 +3086,7 @@ class NeoSchema:
 
 
     @classmethod
-    def next_autoincrement(cls, namespace: str, advance=1) -> int:
+    def next_autoincrement(cls, namespace :str, advance=1) -> int:
         """
         This utilizes an ATOMIC database operation to both read and advance the autoincrement counter,
         based on a (single) node with label `Schema Autoincrement`

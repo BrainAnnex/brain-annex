@@ -894,6 +894,89 @@ def test_create_data_node_3(db):
 
 
 
+def test_update_data_node(db):
+    db.empty_dbase()
+
+    create_sample_schema_1()    # Schema with patient/result/doctor
+
+    # Create a "doctor" data node
+    uri = NeoSchema.generate_uri(prefix = "doc-", namespace="doctor")
+    (internal_id, _) = NeoSchema.create_data_node(class_node="doctor",
+                                                    properties={"name": "Dr. Watson", "specialty": "pediatrics"},
+                                                    new_uri=uri)
+
+    # The doctor is changing specialty...
+    count = NeoSchema.update_data_node(data_node=internal_id, set_dict={"specialty": "ob/gyn"})
+
+    assert count == 1
+    result = db.get_nodes(match=internal_id,
+                         return_internal_id=False, return_labels=False)
+    assert result == [{'item_id': uri, "name": "Dr. Watson", "specialty": "ob/gyn"}]
+
+
+    # Completely drop the specialty field
+    count = NeoSchema.update_data_node(data_node=internal_id, set_dict={"specialty": ""}, drop_blanks = True)
+
+    assert count == 1
+    result = db.get_nodes(match=internal_id,
+                          return_internal_id=False, return_labels=False)
+    assert result == [{'item_id': uri, "name": "Dr. Watson"}]
+
+
+    # Turn the name value blank, but don't drop the field
+    count = NeoSchema.update_data_node(data_node=internal_id, set_dict={"name": ""}, drop_blanks = False)
+
+    assert count == 1
+    result = db.get_nodes(match=internal_id,
+                          return_internal_id=False, return_labels=False)
+    assert result == [{'item_id': uri, "name": ""}]
+
+
+    # Change the URI field      (TODO: in the future, this will happen automatically, and "item_id" will become "uri"
+    count = NeoSchema.update_data_node(data_node=internal_id, set_dict={"uri": uri})
+
+    assert count == 1
+    result = db.get_nodes(match=internal_id,
+                          return_internal_id=False, return_labels=False)
+    assert result == [{'item_id': uri, "uri": uri, "name": ""}]
+
+
+    # Set the name, this time locating the record by its URI
+    count = NeoSchema.update_data_node(data_node=uri, set_dict={"name": "Prof. Fleming"})
+
+    assert count == 1
+    result = db.get_nodes(match=internal_id,
+                          return_internal_id=False, return_labels=False)
+    assert result == [{'item_id': uri, "uri": uri, "name": "Prof. Fleming"}]
+
+
+    # Add 2 extra fields
+    count = NeoSchema.update_data_node(data_node=uri, set_dict={"location": "San Francisco", "retired": False})
+
+    assert count == 2
+    result = db.get_nodes(match=internal_id,
+                          return_internal_id=False, return_labels=False)
+    assert result == [{'item_id': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+
+
+    # A vacuous "change" that doesn't actually do anything
+    count = NeoSchema.update_data_node(data_node=uri, set_dict={})
+
+    assert count == 0
+    result = db.get_nodes(match=internal_id,
+                          return_internal_id=False, return_labels=False)
+    assert result == [{'item_id': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+
+
+    # A "change" that doesn't actually change anything, but nonetheless is counted as 1 property set
+    count = NeoSchema.update_data_node(data_node=uri, set_dict={"location": "San Francisco"})
+    assert count == 1
+    result = db.get_nodes(match=internal_id,
+                          return_internal_id=False, return_labels=False)
+    assert result == [{'item_id': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+
+
+
 def test_add_data_point_with_links(db):
     db.empty_dbase()
 

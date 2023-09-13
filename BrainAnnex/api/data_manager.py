@@ -570,9 +570,9 @@ class DataManager:
             raise Exception(f"Bad item_id: {item_id}")
 
 
-        set_dict = {}
+        set_dict = {}       # Dictionary of field values to set
         for k, v in data_binding.items():
-            if k not in ("schema_code", "item_id"):    # Exclude some keys
+            if k not in ("schema_code", "item_id"):    # Exclude some special keys
                 set_dict[k] = v
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
