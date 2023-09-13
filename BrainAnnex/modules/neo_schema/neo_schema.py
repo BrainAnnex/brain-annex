@@ -2158,6 +2158,124 @@ class NeoSchema:
 
 
     @classmethod
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict , drop_blanks = True) -> int:
+        """
+        Update, possibly adding and/or dropping fields, the properties of an existing Data Node
+
+        :param data_node:   Either an integer with the internal database ID, or a string with a URI value
+        :param set_dict:    A dictionary of field name/values to create/update the node's attributes
+                                (note: blanks ARE allowed in the keys)
+        :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
+                                (as opposed to setting its value to "")
+        :return:            The number of properties set or removed;
+                                if the record wasn't found, or an empty set_dict was passed, return 0
+                                Important: a property is counted as "set" even if the new value is
+                                           identical to the old value!
+        """
+        #TODO: check whether the Schema allows the added/dropped fields, if applicable
+
+        if set_dict == {}:
+            return 0            # Nothing to do!
+
+        if type(data_node) == int:
+            where_clause =  f'WHERE id(n) = {data_node}'
+        elif type(data_node) == str:
+            where_clause =  f'WHERE n.uri = "{data_node}"'
+        else:
+            raise Exception("update_data_node(): argument `data_node` must be an integer or a string")
+
+
+        data_binding = {}
+        set_list = []
+        remove_list = []
+        for field_name, field_value in set_dict.items():                # field_name, field_value are key/values in set_dict
+            if (field_value != "") or (drop_blanks == False):
+                field_name_safe = field_name.replace(" ", "_")              # To protect against blanks in name, which could not be used
+                                                                            #   in names of data-binding variables.  E.g., "end date" becomes "end_date"
+                set_list.append(f"n.`{field_name}` = ${field_name_safe}")   # Example:  "n.`end date` = end_date"
+                data_binding[field_name_safe] = field_value                 # Add entry the Cypher data-binding dictionary, of the form {"end_date": some_value}
+            else:
+                remove_list.append(f"n.`{field_name}`")
+
+        # Example of data_binding at the end of the loop: {'color': 'white', 'max_quantity': 7000}
+
+        set_clause = ""
+        if set_list:
+            set_clause = "SET " + ", ".join(set_list)   # Example:  "SET n.`color` = $color, n.`max quantity` = $max_quantity"
+
+        remove_clause = ""
+        if drop_blanks and remove_list:
+            remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
+
+
+        q = f'''
+            MATCH (n) {where_clause}
+            {set_clause} 
+            {remove_clause}            
+            '''
+
+        #cls.db.debug_query_print(q, data_binding, force_output=True)
+
+        stats = cls.db.update_query(q, data_binding)
+        #print(stats)
+        number_properties_set = stats.get("properties_set", 0)
+        return number_properties_set
+
+
+
+    @classmethod
+    def delete_data_node(cls, node_id=None, uri=None, class_node=None, labels=None) -> None:
+        """
+        Delete the given data node.
+        If no node gets deleted, or if more than 1 get deleted, an Exception is raised
+
+        :param node_id:     An integer with the internal database ID of an existing data node
+        :param uri:         An alternate way to refer to the node.  TODO: implement
+        :param class_node:  NOT IN CURRENT USE.  Specify the Class to which this node belongs TODO: implement
+        :param labels:      (OPTIONAL) String or list of strings.
+                                If passed, each label must be present in the node, for a match to occur
+                                (no problem if the node also includes other labels not listed here.)
+                                Generally, redundant, as a precaution against deleting wrong node
+        :return:            None
+        """
+        # Validate arguments
+        CypherUtils.assert_valid_internal_id(node_id)
+
+        cypher_labels = CypherUtils.prepare_labels(labels)
+
+        q = f'''
+            MATCH (:CLASS)<-[:SCHEMA]-(data {cypher_labels})
+            WHERE id(data) = $node_id
+            DETACH DELETE data
+            '''
+        #print(q)
+        stats = cls.db.update_query(q, data_binding={"node_id": node_id})
+
+        number_nodes_deleted = stats.get("nodes_deleted", 0)
+
+        if number_nodes_deleted == 0:
+            raise Exception("delete_data_node(): nothing was deleted")
+        elif number_nodes_deleted > 1:
+            raise Exception(f"delete_data_node(): more than 1 node was deleted.  Number deleted: {number_nodes_deleted}")
+
+
+
+    @classmethod
+    def delete_data_point(cls, item_id: int, labels=None) -> int:
+        """
+        Delete the given data point.  TODO: obsolete in favor of delete_data_node()
+
+        :param item_id:
+        :param labels:      OPTIONAL (generally, redundant)
+        :return:            The number of nodes deleted (possibly zero)
+        """
+        match = cls.db.match(key_name="item_id", key_value=item_id, properties={"schema_code": "cat"},
+                            labels=labels)
+        return cls.db.delete_nodes(match)
+
+
+
+    @classmethod
     def register_existing_data_node(cls, class_name="", schema_id=None,
                                     existing_neo_id=None, new_item_id=None) -> int:
         """
@@ -2242,125 +2360,6 @@ class NeoSchema:
             raise Exception("Failed to created the new relationship (`SCHEMA`)")
 
         return new_item_id
-
-
-
-    @classmethod
-    def update_data_node(cls, data_node :Union[int, str], set_dict :dict , drop_blanks = True) -> int:
-        """
-        Update, possibly adding and/or dropping fields, properties of an existing Data Node
-
-        :param data_node:   Either an integer with the internal database ID, or a string with a URI value
-        :param set_dict:    A dictionary of field name/values to create/update the node's attributes
-                                (note: blanks ARE allowed in the keys)
-        :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
-                                (as opposed to setting its value to "")
-        :return:            The number of properties set or removed;
-                                if the record wasn't found, or an empty set_dict was passed, return 0
-                                Important: a property is counted as "set" even if the new value is
-                                           identical to the old value!
-        """
-        #TODO: check whether the Schema allows the added/dropped fields, if applicable
-
-        if set_dict == {}:
-            return 0            # Nothing to do!
-
-        if type(data_node) == int:
-            where_clause =  f'WHERE id(n) = {data_node}'
-        elif type(data_node) == str:
-            where_clause =  f'WHERE n.uri = "{data_node}"'
-        else:
-            raise Exception("update_data_node(): argument `data_node` must be an integer or a string")
-
-
-        data_binding = {}
-        set_list = []
-        remove_list = []
-        for field_name, field_value in set_dict.items():                # field_name, field_value are key/values in set_dict
-            if (field_value != "") or (drop_blanks == False):
-                field_name_safe = field_name.replace(" ", "_")              # To protect against blanks in name, which could not be used
-                                                                            #   in names of data-binding variables.  E.g., "end date" becomes "end_date"
-                set_list.append(f"n.`{field_name}` = ${field_name_safe}")   # Example:  "n.`end date` = end_date"
-                data_binding[field_name_safe] = field_value                 # Add entry the Cypher data-binding dictionary, of the form {"end_date": some_value}
-            else:
-                remove_list.append(f"n.`{field_name}`")
-
-        # Example of data_binding at the end of the loop: {'color': 'white', 'max_quantity': 7000}
-
-        set_clause = ""
-        if set_list:
-            set_clause = "SET " + ", ".join(set_list)   # Example:  "SET n.`color` = $color, n.`max quantity` = $max_quantity"
-
-        remove_clause = ""
-        if drop_blanks and remove_list:
-            remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
-
-
-        q = f'''
-            MATCH (n) {where_clause}
-            {set_clause} 
-            {remove_clause}            
-            '''
-
-        cls.db.debug_query_print(q, data_binding, force_output=True)
-
-
-        stats = cls.db.update_query(q, data_binding, )
-        print(stats)
-        number_properties_set = stats.get("properties_set", 0)
-        return number_properties_set
-
-
-
-    @classmethod
-    def delete_data_node(cls, node_id=None, uri=None, class_node=None, labels=None) -> None:
-        """
-        Delete the given data node.
-        If no node gets deleted, or if more than 1 get deleted, an Exception is raised
-
-        :param node_id:     An integer with the internal database ID of an existing data node
-        :param uri:         An alternate way to refer to the node.  TODO: implement
-        :param class_node:  NOT IN CURRENT USE.  Specify the Class to which this node belongs TODO: implement
-        :param labels:      (OPTIONAL) String or list of strings.
-                                If passed, each label must be present in the node, for a match to occur
-                                (no problem if the node also includes other labels not listed here.)
-                                Generally, redundant, as a precaution against deleting wrong node
-        :return:            None
-        """
-        # Validate arguments
-        CypherUtils.assert_valid_internal_id(node_id)
-
-        cypher_labels = CypherUtils.prepare_labels(labels)
-
-        q = f'''
-            MATCH (:CLASS)<-[:SCHEMA]-(data {cypher_labels})
-            WHERE id(data) = $node_id
-            DETACH DELETE data
-            '''
-        #print(q)
-        stats = cls.db.update_query(q, data_binding={"node_id": node_id})
-
-        number_nodes_deleted = stats.get("nodes_deleted", 0)
-
-        if number_nodes_deleted == 0:
-            raise Exception("delete_data_node(): nothing was deleted")
-        elif number_nodes_deleted > 1:
-            raise Exception(f"delete_data_node(): more than 1 node was deleted.  Number deleted: {number_nodes_deleted}")
-
-
-
-    @classmethod
-    def delete_data_point(cls, item_id: int, labels=None) -> int:
-        """
-        Delete the given data point.  TODO: obsolete in favor of delete_data_node()
-
-        :param item_id:
-        :param labels:      OPTIONAL (generally, redundant)
-        :return:            The number of nodes deleted (possibly zero)
-        """
-        match = cls.db.match(key_name="item_id", key_value=item_id, properties={"schema_code": "cat"},
-                            labels=labels)
-        return cls.db.delete_nodes(match)
 
 
 

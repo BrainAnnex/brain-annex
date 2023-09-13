@@ -581,9 +581,9 @@ class DataManager:
         if schema_code == "n":
             set_dict = Notes.update_content(data_binding, set_dict)
 
-        # TODO: utilize the schema layer, rather than directly access the database
-        match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
-        number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
+        # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
+        internal_dbase_id = NeoSchema.get_data_node_internal_id(item_id)    # TODO: this will become unnecessary after switching to uri's
+        number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
 
         if schema_code == "n":
             Notes.update_content_item_successful(item_id, original_post_data)
