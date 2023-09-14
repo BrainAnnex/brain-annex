@@ -4,9 +4,13 @@
 Vue.component('vue-plugin-r',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:  EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
+        /*  item_data:  An object with the relevant data about this Record item
+
+                        EXAMPLE: {class_name:"German Vocabulary",
+                                  "item_id":52, "pos":10, "schema_code":"r",
                                   "German":"Tier", "English":"animal"}
-                                 (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
+                                 (if item_id is is negative, it means that it's a newly-created header,
+                                  not yet registered with the server)
 
             allow_editing:  A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
@@ -139,9 +143,11 @@ Vue.component('vue-plugin-r',
             `,
 
 
+
+        // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.item_id == -1 ? true : false),    // -1 means "new Item"
+                editing_mode: (this.item_data.item_id < 0  ? true : false), // Negative item_id means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 

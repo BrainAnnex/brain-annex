@@ -58,7 +58,7 @@ class ServerCommunication
 
             payload_type:   Either "TEXT" or "JSON" - optional; by default "TEXT"
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
-            custom_data     If present, it is passed as a final argument to the callback function
+            custom_data:    If present, it is passed as a final argument to the callback function
 
         EXAMPLE of invocation:
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});
@@ -66,14 +66,19 @@ class ServerCommunication
         EXAMPLE of callback_fn:
 
             function finish_get_note(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of delete_content_item() upon getting a response from the server
+            //  Callback function to wrap up the action of get_note() upon getting a response from the server
+            //      success:        boolean indicating whether the server call succeeded
+            //      server_payload: whatever the server returned (stripped of information about the success of the operation)
+            //      error_message:  a string only applicable in case of failure
+            //      custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
             {
                 console.log("Finalizing the get_note operation...");
+
                 if (success)  {     // Server reported SUCCESS
-                    ...
+                    ...             // do something with the server_payload value
                 }
                 else  {             // Server reported FAILURE
-                    ...
+                    ...             // do something with the error_message value
                 }
                 ...  // Op to do at the end in either case
             }
@@ -418,8 +423,8 @@ class ServerCommunication
         if (resp_obj.ok)  {
             // FOR DEBUGGING:
             console.log(`Received response object from server: `, resp_obj);
-            console.log('    Content-Type: ', resp_obj.headers.get('Content-Type'));
-            console.log('    Date: ', resp_obj.headers.get('Date'));
+            console.log('    Content-Type of response: ', resp_obj.headers.get('Content-Type'));
+            //console.log('    Date: ', resp_obj.headers.get('Date'));
             // END OF DEBUGGING
 
             return resp_obj;	// Just pass thru the response object
@@ -438,7 +443,10 @@ class ServerCommunication
 
     static report_fetch_errors(err)
     /*  Invoked in case of ANY failure during a the fetch() call to the specified URL,
-        including: 1) errors in the fetch() call itself ; 2) HTTP error ; 3) server response messages indicative of error
+        including:
+            1) errors in the fetch() call itself
+            2) HTTP error
+            3) server response messages indicative of error
         Compose an error message, log it to the console, issue an alert about it, and return it as a string.
 
         ARGUMENTS:
@@ -447,11 +455,11 @@ class ServerCommunication
                   See https://stackoverflow.com/questions/9156176/what-is-the-difference-between-throw-new-error-and-throw-someobject
       */
     {
-        console.error('Error during fetch() operation. Details in the next line: ');
+        console.error('Error during the fetch() operation. Details in the next line: ');
         console.log(err);
 
-        const fetch_failure_message = "Failed interaction with the server in the fetch() call. "
-                                      + err.name + " - " + err.message;
+        // Old verbose message:  "Failed interaction with the server in the fetch() call. " +
+        const fetch_failure_message = err.name + " - " + err.message;
         alert(fetch_failure_message);
 
         /* TODO: there might be a timing (or caching??) bug in Firefox.  I sporadically get an error with name "TypeError"

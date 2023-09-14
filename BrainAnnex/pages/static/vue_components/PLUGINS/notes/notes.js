@@ -78,8 +78,8 @@ Vue.component('vue-plugin-n',
                 // Clone, used to restore the data in case of a Cancel or failed save
                 original_data: Object.assign({}, this.item_data),
 
-                waiting: true,         // Flag to indicate whether the Note is still being fetched from the server
-                save_waiting_mode: false,   // To distinguish from waiting (from fetching value)
+                waiting: true,              // Flag to indicate whether the Note is still being fetched from the server
+                save_waiting_mode: false,   // To distinguish from "waiting" (used for fetching value)
                 error_indicator: false,
                 status: ""
             }

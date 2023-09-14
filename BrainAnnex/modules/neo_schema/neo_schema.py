@@ -1505,9 +1505,9 @@ class NeoSchema:
 
     @classmethod
     def create_data_node(cls, class_node: Union[int, str], properties = None, extra_labels = None,
-                         assign_uri=False, new_uri=None, silently_drop=False) -> (int, str):
+                         assign_uri=False, new_uri=None, silently_drop=False) -> int:
         """
-        A newer version of the deprecated add_data_point_OLD() and add_data_point()
+        A newer version of the deprecated add_data_point_OLD()
 
         Create a new data node, of the type indicated by specified Class,
         with the given (possibly none) attributes and label(s);
@@ -1521,22 +1521,31 @@ class NeoSchema:
         If the data node needs to be created with links to other existing data nodes,
         use add_data_node_with_links() instead
 
+        Note: the responsibility for picking a URI belongs to the calling function
+              (which will typically make use of a namespace)   TODO: finish the rollout of this approach
+
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
         :param properties:  (Optional) Dictionary with the properties of the new data node.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param extra_labels:(Optional) String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
-        :param assign_uri:  If True, the new node is given an extra attribute named "item_id" (TODO: rename "uri"),
-                                with a unique auto-increment value, as well an extra attribute named "schema_code"
-        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                If new_item_id is provided, then assign_item_id is automatically made True
+
+        :param assign_uri:  (DEPRECATED) If True, the new node is given an extra attribute named "item_id",
+                                with a unique auto-increment value in the "data_node" namespace,
+                                as well an extra attribute named "schema_code"
+                                (TODO: drop)
+
+        :param new_uri:     If new_uri is provided, then a field called "item_id" (TODO: rename to "uri")
+                                is set to that value;
+                                also, an extra attribute named "schema_code" gets set
+                                # TODO: "schema_code" should perhaps be responsibility of the higher layer
+
         :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
                                 Note: only applicable for "Strict" schema - with a "Lenient" schema anything goes
 
-        :return:            The pair: (internal database ID, newly-assigned URI) of the new data node just created.
-                                Note that the newly-assigned URI is always a STRING, and will be "" if no URI was assigned
+        :return:            The internal database ID of the new data node just created
         """
         cls.assert_valid_class_identifier(class_node)
 
@@ -1591,11 +1600,14 @@ class NeoSchema:
         # if requested, expand properties_to_set accordingly
         if assign_uri or new_uri:
             if not new_uri:
-                new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
+                # TODO: phase out this branch
+                new_id = cls.next_available_datanode_id()           # Obtain (and reserve) the next auto-increment value
+                                                                    # in the "data_node" namespace
             else:
                 new_id = new_uri
+
             #print("New ID assigned to new data node: ", new_id)
-            properties_to_set["item_id"] = new_id               # Expand the dictionary
+            properties_to_set["item_id"] = new_id                   # Expand the dictionary
 
             schema_code = cls.get_schema_code(class_name)
             if schema_code != "":
@@ -1604,8 +1616,7 @@ class NeoSchema:
             # EXAMPLE of properties_to_set at this stage:
             #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
             #       where 123 is the next auto-assigned item_id
-        else:
-            new_id = ""
+
 
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
@@ -1627,16 +1638,7 @@ class NeoSchema:
 
         neo_id = cls.db.query(q, data_binding, single_cell="internal_id")
 
-        '''
-        # Create a new data node, with a "SCHEMA" relationship to its Class node
-        link_to_schema_class = {"internal_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
-        links = [link_to_schema_class]
-        neo_id = cls.db.create_node_with_links(labels=labels,
-                                               properties=properties_to_set,
-                                               links=links)
-        '''
-
-        return (neo_id, str(new_id))
+        return neo_id
 
 
 
@@ -2154,6 +2156,124 @@ class NeoSchema:
 
 
     @classmethod
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict , drop_blanks = True) -> int:
+        """
+        Update, possibly adding and/or dropping fields, the properties of an existing Data Node
+
+        :param data_node:   Either an integer with the internal database ID, or a string with a URI value
+        :param set_dict:    A dictionary of field name/values to create/update the node's attributes
+                                (note: blanks ARE allowed in the keys)
+        :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
+                                (as opposed to setting its value to "")
+        :return:            The number of properties set or removed;
+                                if the record wasn't found, or an empty set_dict was passed, return 0
+                                Important: a property is counted as "set" even if the new value is
+                                           identical to the old value!
+        """
+        #TODO: check whether the Schema allows the added/dropped fields, if applicable
+
+        if set_dict == {}:
+            return 0            # Nothing to do!
+
+        if type(data_node) == int:
+            where_clause =  f'WHERE id(n) = {data_node}'
+        elif type(data_node) == str:
+            where_clause =  f'WHERE n.uri = "{data_node}"'
+        else:
+            raise Exception("update_data_node(): argument `data_node` must be an integer or a string")
+
+
+        data_binding = {}
+        set_list = []
+        remove_list = []
+        for field_name, field_value in set_dict.items():                # field_name, field_value are key/values in set_dict
+            if (field_value != "") or (drop_blanks == False):
+                field_name_safe = field_name.replace(" ", "_")              # To protect against blanks in name, which could not be used
+                                                                            #   in names of data-binding variables.  E.g., "end date" becomes "end_date"
+                set_list.append(f"n.`{field_name}` = ${field_name_safe}")   # Example:  "n.`end date` = end_date"
+                data_binding[field_name_safe] = field_value                 # Add entry the Cypher data-binding dictionary, of the form {"end_date": some_value}
+            else:
+                remove_list.append(f"n.`{field_name}`")
+
+        # Example of data_binding at the end of the loop: {'color': 'white', 'max_quantity': 7000}
+
+        set_clause = ""
+        if set_list:
+            set_clause = "SET " + ", ".join(set_list)   # Example:  "SET n.`color` = $color, n.`max quantity` = $max_quantity"
+
+        remove_clause = ""
+        if drop_blanks and remove_list:
+            remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
+
+
+        q = f'''
+            MATCH (n) {where_clause}
+            {set_clause} 
+            {remove_clause}            
+            '''
+
+        #cls.db.debug_query_print(q, data_binding, force_output=True)
+
+        stats = cls.db.update_query(q, data_binding)
+        #print(stats)
+        number_properties_set = stats.get("properties_set", 0)
+        return number_properties_set
+
+
+
+    @classmethod
+    def delete_data_node(cls, node_id=None, uri=None, class_node=None, labels=None) -> None:
+        """
+        Delete the given data node.
+        If no node gets deleted, or if more than 1 get deleted, an Exception is raised
+
+        :param node_id:     An integer with the internal database ID of an existing data node
+        :param uri:         An alternate way to refer to the node.  TODO: implement
+        :param class_node:  NOT IN CURRENT USE.  Specify the Class to which this node belongs TODO: implement
+        :param labels:      (OPTIONAL) String or list of strings.
+                                If passed, each label must be present in the node, for a match to occur
+                                (no problem if the node also includes other labels not listed here.)
+                                Generally, redundant, as a precaution against deleting wrong node
+        :return:            None
+        """
+        # Validate arguments
+        CypherUtils.assert_valid_internal_id(node_id)
+
+        cypher_labels = CypherUtils.prepare_labels(labels)
+
+        q = f'''
+            MATCH (:CLASS)<-[:SCHEMA]-(data {cypher_labels})
+            WHERE id(data) = $node_id
+            DETACH DELETE data
+            '''
+        #print(q)
+        stats = cls.db.update_query(q, data_binding={"node_id": node_id})
+
+        number_nodes_deleted = stats.get("nodes_deleted", 0)
+
+        if number_nodes_deleted == 0:
+            raise Exception("delete_data_node(): nothing was deleted")
+        elif number_nodes_deleted > 1:
+            raise Exception(f"delete_data_node(): more than 1 node was deleted.  Number deleted: {number_nodes_deleted}")
+
+
+
+    @classmethod
+    def delete_data_point(cls, item_id: int, labels=None) -> int:
+        """
+        Delete the given data point.  TODO: obsolete in favor of delete_data_node()
+
+        :param item_id:
+        :param labels:      OPTIONAL (generally, redundant)
+        :return:            The number of nodes deleted (possibly zero)
+        """
+        match = cls.db.match(key_name="item_id", key_value=item_id, properties={"schema_code": "cat"},
+                            labels=labels)
+        return cls.db.delete_nodes(match)
+
+
+
+    @classmethod
     def register_existing_data_node(cls, class_name="", schema_id=None,
                                     existing_neo_id=None, new_item_id=None) -> int:
         """
@@ -2238,58 +2358,6 @@ class NeoSchema:
             raise Exception("Failed to created the new relationship (`SCHEMA`)")
 
         return new_item_id
-
-
-
-    @classmethod
-    def delete_data_node(cls, node_id=None, uri=None, class_node=None, labels=None) -> None:
-        """
-        Delete the given data node.
-        If no node gets deleted, or if more than 1 get deleted, an Exception is raised
-
-        :param node_id:     An integer with the internal database ID of an existing data node
-        :param uri:         An alternate way to refer to the node.  TODO: implement
-        :param class_node:  NOT IN CURRENT USE.  Specify the Class to which this node belongs TODO: implement
-        :param labels:      (OPTIONAL) String or list of strings.
-                                If passed, each label must be present in the node, for a match to occur
-                                (no problem if the node also includes other labels not listed here.)
-                                Generally, redundant, as a precaution against deleting wrong node
-        :return:            None
-        """
-        # Validate arguments
-        CypherUtils.assert_valid_internal_id(node_id)
-
-        cypher_labels = CypherUtils.prepare_labels(labels)
-
-        q = f'''
-            MATCH (:CLASS)<-[:SCHEMA]-(data {cypher_labels})
-            WHERE id(data) = $node_id
-            DETACH DELETE data
-            '''
-        #print(q)
-        stats = cls.db.update_query(q, data_binding={"node_id": node_id})
-
-        number_nodes_deleted = stats.get("nodes_deleted", 0)
-
-        if number_nodes_deleted == 0:
-            raise Exception("delete_data_node(): nothing was deleted")
-        elif number_nodes_deleted > 1:
-            raise Exception(f"delete_data_node(): more than 1 node was deleted.  Number deleted: {number_nodes_deleted}")
-
-
-
-    @classmethod
-    def delete_data_point(cls, item_id: int, labels=None) -> int:
-        """
-        Delete the given data point.  TODO: obsolete in favor of delete_data_node()
-
-        :param item_id:
-        :param labels:      OPTIONAL (generally, redundant)
-        :return:            The number of nodes deleted (possibly zero)
-        """
-        match = cls.db.match(key_name="item_id", key_value=item_id, properties={"schema_code": "cat"},
-                            labels=labels)
-        return cls.db.delete_nodes(match)
 
 
 
@@ -2996,20 +3064,26 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def generate_uri(cls, prefix, namespace, suffix) -> str:    # TODO: test
+    def generate_uri(cls, prefix, namespace, suffix="") -> str:
         """
+        Generate a URI (or fragment thereof, aka "token"),
+        using the given prefix and suffix;
+        the middle part is a unique auto-increment value (separately maintained
+        in various groups, or "namespaces".)
 
-        :param prefix:
-        :param namespace:
-        :param suffix:
-        :return:
+        EXAMPLE:  generate_uri("doc.", "documents", ".new") might produce "doc.3.new"
+
+        :param prefix:      A string to place at the start of the URI
+        :param namespace:   A string with the name of the desired group of auto-increment values
+        :param suffix:      (OPTIONAL) A string to place at the end of the URI
+        :return:            A string with a newly-generated URI (unique in the given namespace)
         """
         return f"{prefix}{cls.next_autoincrement(namespace)}{suffix}"
 
 
 
     @classmethod
-    def next_autoincrement(cls, namespace: str, advance=1) -> int:
+    def next_autoincrement(cls, namespace :str, advance=1) -> int:
         """
         This utilizes an ATOMIC database operation to both read and advance the autoincrement counter,
         based on a (single) node with label `Schema Autoincrement`
@@ -3062,7 +3136,7 @@ class NeoSchema:
     def next_available_datanode_id(cls) -> int:
         """
         Reserve and return the next available auto-increment ID,
-        in the separately-maintained group called "data_node".
+        in the separately-maintained group (i.e. namespace) called "data_node".
         This value (currently often referred to as "item_id", and not to be confused
         with the internal ID assigned by Neo4j to each node),
         is meant as a permanent primary key, on which a URI could be based.

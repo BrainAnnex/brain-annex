@@ -58,7 +58,7 @@
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/modules/dropzone/dropzone.css">
 
-    <!-- Styling for Vue core components -->
+    <!-- Styling for Vue CORE components -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/toc_sidebar/toc_sidebar.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/category_navbox/category_navbox.css">
@@ -66,12 +66,13 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
     
-    <!-- Plugin-specific styling -->
+    <!-- PLUGIN-specific styling -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/headers/headers.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/images/images.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/documents/documents.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
 
     <!-- JavaScript -->
@@ -207,7 +208,7 @@
  **************************************************************** -->
 
 <!-- Depending on whether the EDITING CONTROLS are shown or hidden,
-     one of the following 2 blocks gets show
+     one of the following 2 blocks gets shown
   -->
 
 
@@ -255,6 +256,7 @@
         v-bind:index="index"
         v-bind:item_count="content_array.length"
 
+        v-bind:registered_plugins = "registered_plugins"
         v-bind:records_types="records_types"
 
         v-bind:schema_data="get_schema_data(item)"
@@ -291,6 +293,7 @@
             v-bind:index="group.index"
             v-bind:item_count="content_array.length"
 
+            v-bind:registered_plugins = "registered_plugins"
             v-bind:records_types="records_types"
 
             v-bind:schema_data="get_schema_data(content_array[group.index])"
@@ -334,9 +337,10 @@
     <span style="margin-right:10px">Add new:</span>
     <button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
     <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
+    <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
     <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
 
-    <!-- Show all leaf Classes that are instances of "Records" -->
+    <!-- Show all leaf Classes that are direct instances of "Records" -->
     <br>Add new record of type:
     {% for class_name in records_types %}
         <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
@@ -451,18 +455,22 @@
 <script src="/BA/pages/static/vue_components/content_items/content_items.js"></script>
 <script src="/BA/pages/static/vue_components/controls/controls.js"></script>
 
+<script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
+
+
+<!-- PLUGIN-specific Vue components -->
 <script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/documents/documents.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
 
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/records/single_record.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/records/table.js"></script>
 
-<script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
 
 
 <script>
@@ -475,11 +483,18 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl"],  // "r" not included here, because a generic core one
+                                                            // TODO: either pass from the database, or infer from some config file
+                                                            // IMPORTANT: the items in the list MUST correspond to the folders in
+                                                            //      BrainAnnex/pages/static/vue_components/PLUGINS
+
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
                                     // EXAMPLE: [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
                                     //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                     //          ]
+                                    // TODO: component-editable fields and non-editable ones ("pos", "item_id", "schema_code", "class_name") ought to be treated differently
+                                    // TODO: switch from "item_id" to "uri"
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
@@ -587,8 +602,8 @@ new Vue({
         get_schema_data(item)
         // If the given Content Item is a record, return a list of its field names (Properties), in order
         {
-            if (item.schema_code != "r")
-                return [];                      // Nothing is being done for non-record Content Items (at least for now)
+            //if (item.schema_code != "r")
+                //return [];                      // Nothing is being done for non-record Content Items (at least for now)
 
             const record_type = item.class_name;
 
@@ -664,7 +679,7 @@ new Vue({
 
         insert_new_item_after(item, {schema_code, class_name})
         /*  Add a new Content Item of the specified type, placed after the specified Item;
-            class_name is an OPTIONAL argument, only used for Content Item of type 'r'.
+            class_name is an OPTIONAL argument, only used for Content Item of type 'r' (but possibly being phased in for other types)
          */
         {
             //console.log(item);
@@ -688,9 +703,9 @@ new Vue({
             }
 
             // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
-            if (schema_code == "r")   // This is the one type that makes uses of the Schema
+            if (class_name)     // If a class name was passed, store it
                 blank_record = {item_id: -1, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
-            else
+            else                // No class name was provided
                 blank_record = {item_id: -1, schema_code: schema_code, insert_after: insert_after_id};
 
             // Insert the newly-created record after the specified existing element
@@ -702,15 +717,17 @@ new Vue({
 
         add_new_item_at_bottom(schema_code, class_name)
         /*  Add a new Content Item of the specified type, placed at the bottom of the page (past the last Item);
-            class_name is an OPTIONAL argument, only used for Content Item of type 'r'.
+            class_name is an OPTIONAL argument, historically only used for Content Item of type 'r' - but being
+            phased in for other types
          */
         {
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: ${class_name}`);
 
             // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
-            if (schema_code == "r")   // This is the one type that makes uses of the Schema
+            // TODO: replace the -1 with an autoincrement unique number for the page
+            if (class_name)   // If a class name was passed, store it
                 blank_record = {"item_id": -1, "schema_code": schema_code, "class_name": class_name, insert_after: "BOTTOM"};
-            else
+            else             // No class name was provided
                 blank_record = {"item_id": -1, "schema_code": schema_code, insert_after: "BOTTOM"};
 
             this.content_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
@@ -858,13 +875,15 @@ new Vue({
         /*  Update the entry for the specified item in this.content_array, with the new data passed by a component
             (generally done at the end of an update on the server.)
             In terms of item's attributes:
-                * "item_id" can be different if it was a newly-added item (which is assigned a temporary value of -1)
+                * "item_id" in new_data can be different if it was a newly-added item (which is assigned a temporary value of -1)
                 * "schema_code" doesn't vary under normal edits
-                * "pos" is not changed thru edits (it uses separate mechanisms to move items about)
+                * "pos" is not changed thru edits (it uses separate mechanisms to reposition items)
                 * everything else will be updated
          */
         {
-            console.log(`Root element received signal to UPDATE the content item of type '${item.schema_code}' , original id ${item.item_id}, current id ${new_data.item_id}`);
+            console.log(`Root element received signal to UPDATE the content item of type '${item.schema_code}' , original id ${item.item_id}`);
+            if (new_data.item_id)
+                console.log(`    A new current id was passed: ${new_data.item_id}`);
 
             //if (item.item_id != -1)
                 //alert("Attempting to modify an existing ID.  Request ignored...  Save your work and refresh the page");
@@ -889,6 +908,14 @@ new Vue({
             for (field_name in new_data)
                 if (field_name != "pos" && field_name != "schema_code")
                     this.content_array[index][field_name] = new_data[field_name];
+
+            // Ditch any fields that were deleted in the edit (however, "pos", "schema_code", "class_name", "item_id" are left alone)
+            // TODO: editable fields and non-editable ones (such as the special cases above) ought to be treated differently
+            for (old_field_name in this.content_array[index])
+                if ((old_field_name != "pos") && (old_field_name != "schema_code") && (old_field_name != "class_name") && (old_field_name != "item_id") && !(old_field_name in new_data))  {
+                    console.log(`absorb_item_updates(): Ditching the old field '${old_field_name}' because it was eliminated in the edit`);
+                    delete this.content_array[index][old_field_name];
+                }
         },
 
 

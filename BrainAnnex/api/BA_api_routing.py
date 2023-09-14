@@ -13,8 +13,11 @@ from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
+import requests
+import re                   # REGEX
 import shutil
 import os
+import html
 #from time import sleep     # For tests of delays in asynchronous fetching
 
 
@@ -60,11 +63,11 @@ class ApiRouting:
     #######################################################################################################################
 
     ERROR_PREFIX = "-"      # Prefix used in the "simple API" protocol to indicate an error in the response value;
-    #       the remainder of the response string will the be understood to be the error message
+                            #       the remainder of the response string will the be understood to be the error message
 
     SUCCESS_PREFIX = "+"    # Prefix used in the "simple API" protocol to indicate a successful operation;
-    #       the remainder of the response string will the be understood to be the optional data payload
-    #       (such as a status message)
+                            #       the remainder of the response string will the be understood to be the optional data payload
+                            #       (such as a status message)
 
     # NOTE: To test POST-based API access points, on the Linux shell or Windows PowerShell issue commands such as:
     #            curl http://localhost:5000/BA/api/simple/add_item_to_category -d "schema_id=1&category_id=60"
@@ -244,7 +247,7 @@ class ApiRouting:
         def get_properties_by_class_name():
             """
             Get all Properties of the given Class node (as specified by its name passed as a POST variable),
-            including indirect ones thru chains of outbound "INSTANCE_OF" relationships.
+            including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class.
 
             EXAMPLE invocation:
@@ -252,9 +255,10 @@ class ApiRouting:
 
             1 POST FIELD:
                 class_name
+                TODO: add an optional extra field, "include_ancestors"
 
             :return:  A JSON with a list of the Property names of the specified Class,
-                      including indirect ones thru chains of outbound "INSTANCE_OF" relationships
+                      including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships (TODO: make optional)
                          EXAMPLE:
                             {
                                 "payload":  [
@@ -388,7 +392,7 @@ class ApiRouting:
 
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'Restaurants')])
-            cls.show_post_data(post_data, "get_class_schema")
+            #cls.show_post_data(post_data, "get_class_schema")
 
             data_dict = dict(post_data)
             if "class_name" not in data_dict:
@@ -408,7 +412,7 @@ class ApiRouting:
                     except Exception as ex:
                         response = {"status": "error", "error_message": str(ex)}
 
-            print(f"get_class_schema() is returning: `{response}`")
+            #print(f"get_class_schema() is returning: `{response}`")
 
             return jsonify(response)   # This function also takes care of the Content-Type header
 
@@ -1123,6 +1127,72 @@ class ApiRouting:
         
             print(f"reposition() is returning: `{return_value}`")
         
+            return return_value
+
+
+
+        #---------------------------------------------#
+        #                     UTILS                   #
+        #---------------------------------------------#
+
+        @bp.route('/simple/fetch-remote-title')
+        def fetch_remote_title():
+            """
+            Retrieve the Title of a remote webpage, given its URL
+
+            EXAMPLE invocation:
+                http://localhost:5000/BA/api/simple/fetch-remote-title?url=https://brainannex.org
+
+            :return:    A string with the title of the page specified by the "url" query string, or an error message,
+                            with a "+" or "-" prefix (for success/failure)
+                            Any HTML entities in the title are turned into characters; e.g. "&ndash;" becomes "-"
+            """
+            remote_url = request.args.get('url')
+            #print(f"Attempting to retrieve remove web page {remote_url}")
+
+            try:
+                response = requests.get(remote_url)
+
+                if response.status_code == 200:
+                    #print(response.text[:800])     # Show the early part of the file
+
+                    # Use regular expressions to find the title tag
+                    title_match = re.search(r'<title.*?>(.*?)</title>', response.text, re.IGNORECASE)
+                    #    .    means "any single character, except line breaks"
+                    #    *?   means "0 or more times (non-greedy)"
+                    #    ()   means "capture group"
+
+                    # Note: some websites contain alternate way to express titles, such as:
+                    # <meta data-react-helmet="true" name="title" content="THE REAL PAGE TITLE">
+
+                    if title_match:
+                        title = title_match.group(1)            # The 1st capture group
+                        unescaped_title = html.unescape(title)  # Turn HTML entities into characters;
+                                                                # e.g. "&ndash;" into "-"
+                        print(unescaped_title)
+                        return_value = cls.SUCCESS_PREFIX + unescaped_title     # Success
+                    else:
+                        err_status = f"Unable to extract title from {remote_url}"
+                        return_value = cls.ERROR_PREFIX + err_status            # Failure
+
+                    '''
+                    # Alternate approach using BeautifulSoup (untested):
+                    
+                        from bs4 import BeautifulSoup
+                        # Parse the HTML content
+                        soup = BeautifulSoup(response.text, 'html.parser')                  
+                        # Extract the title element and its text
+                        title = soup.title.string if soup.title else 'No Title Found
+                    '''
+
+                else:   # Response status other that 200
+                    err_status =  f'Remote page ({remote_url}) returned failure code {response.status_code}'
+                    return_value = cls.ERROR_PREFIX + err_status                # Failure
+
+            except Exception as ex:
+                err_status =  f'Error in fetching the remote page. {ex})'
+                return_value = cls.ERROR_PREFIX + err_status                    # Failure
+
             return return_value
 
 

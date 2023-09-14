@@ -27,11 +27,11 @@ class DataManager:
     """
     For general database-interaction operations.
     Used by the UI for Page Generation,
-    as well as by the API to produce data for the endpoints.
+    as well as by the web API to produce data for the endpoints.
 
     This class does NOT get instantiated.
 
-    TODO: maybe move the file to its own module
+    TODO: move the file to its own module
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
@@ -341,14 +341,15 @@ class DataManager:
 
 
     @classmethod
-    def get_records_schema_data(cls, category_id: int) -> [dict]:
+    def get_records_schema_data(cls, category_id: int) -> dict:
         """
-        TODO: test
+        Locate all the Classes of type record ("r") used by Content Items attached to the
+        given Category
+        TODO: being phased out in favor of Categories.get_items_schema_data()
+
         :param category_id:
         :return:
         """
-        # Locate all the Classes of type record ("r") used by Content Items attached to the
-        # given Category
         q = '''
             MATCH  (cat :BA {item_id: $category_id}) <- 
                         [:BA_in_category] - (rec :BA {schema_code:"r"}) - [:SCHEMA]->(cl:CLASS) 
@@ -408,7 +409,7 @@ class DataManager:
         folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'])     # Includes the final "/"
 
         try:
-            file_contents = MediaManager.get_from_text_file(folder, filename)
+            file_contents = MediaManager.get_from_text_file(folder, filename, encoding="utf8")
             return file_contents
         except Exception as ex:
             return f"I/O failure while reading in contents of item {item_id}. {ex}"     # File I/O failed
@@ -569,9 +570,9 @@ class DataManager:
             raise Exception(f"Bad item_id: {item_id}")
 
 
-        set_dict = {}
+        set_dict = {}       # Dictionary of field values to set
         for k, v in data_binding.items():
-            if k not in ("schema_code", "item_id"):    # Exclude some keys
+            if k not in ("schema_code", "item_id"):    # Exclude some special keys
                 set_dict[k] = v
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
@@ -580,9 +581,9 @@ class DataManager:
         if schema_code == "n":
             set_dict = Notes.update_content(data_binding, set_dict)
 
-        # TODO: utilize the schema layer, rather than directly access the database
-        match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
-        number_updated = cls.db.set_fields(match=match, set_dict=set_dict)
+        # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
+        internal_dbase_id = NeoSchema.get_data_node_internal_id(item_id)    # TODO: this will become unnecessary after switching to uri's
+        number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
 
         if schema_code == "n":
             Notes.update_content_item_successful(item_id, original_post_data)

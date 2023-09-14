@@ -445,9 +445,11 @@ class Categories:
     def create_categories_root(cls, data_dict=None) -> int:
         """
         Create a ROOT Category node;
-        return the internal database ID of the new Categories node
+        and return its internal database ID
 
-        :param data_dict:
+        :param data_dict:   (OPTIONAL) Dict to specify alternate desired values
+                                for the "name" and "remarks" fields of the Root Category
+                                (by default, "HOME" and "top level", respectively)
         :return:            The internal database ID of the new data node just created
         """
         if data_dict is None:
@@ -455,7 +457,7 @@ class Categories:
 
         data_dict["root"] = True
 
-        internal_id, _ = NeoSchema.create_data_node(class_node="Categories",
+        internal_id = NeoSchema.create_data_node(class_node="Categories",
                                                     properties = data_dict,
                                                     assign_uri=True)
         return internal_id
@@ -756,11 +758,17 @@ class Categories:
         :return:                The auto-increment "item_ID" assigned to the newly-created data node
         """
         #print("Inside Categories.add_content_at_end()")
-        (new_internal_id, new_uri) = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
-                                                     extra_labels="BA", assign_uri=True, new_uri=new_item_id,
+        if new_item_id is None:
+            # If a URI (for now called item_id) was not provided for the newly-created node,
+            # then auto-generate it (for now an integer)
+            new_item_id = NeoSchema.generate_uri(prefix="", namespace="data_node")  # Returns a string
+
+        new_item_id = int(new_item_id)
+
+        new_internal_id = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
+                                                     extra_labels="BA", assign_uri=False, new_uri=new_item_id,
                                                      silently_drop=True)
-        print("Returned from NeoSchema.create_data_node")
-        new_item_id = int(new_uri)
+        #print("Returned from NeoSchema.create_data_node")
 
         print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_item_id = {new_item_id}")
 
@@ -832,6 +840,54 @@ class Categories:
                                                                   insert_after=insert_after,
                                                                   new_item_id=new_item_id)
         return new_item_id
+
+
+
+
+    #####################################################################################################
+
+    '''                                  ~   SCHEMA-RELATED    ~                                      '''
+
+    def ________POSITIONING________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def get_items_schema_data(cls, category_id: int) -> dict:
+        """
+        Locate all the Classes used by Content Items attached to the given Category,
+        and return a dictionary with the Properties (in Schema order) of each
+
+        TODO: unit test
+        :param category_id: An integer identifying the desired Category
+
+        :return:            A dictionary whose keys are Class names (of Content Items attached to the given Category),
+                            and whose values are the Properties (in declared Schema order) of those Classes.
+                            Properties declared in "ancestor" Classes (thru "INSTANCE_OF" relationships) are also included.
+                            EXAMPLE:
+                                {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
+                                 'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
+                                 'Headers': ['text']}
+        """
+        q = '''
+            MATCH  (cat :BA {item_id: $category_id}) <- [:BA_in_category] - 
+                   (:BA) - [:SCHEMA] -> (cl:CLASS) 
+            RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
+            '''
+
+        class_list = cls.db.query(q, data_binding={"category_id": category_id})
+        # EXAMPLE: [ {"class_name": "French Vocabulary" , "schema_id": 4},
+        #            {"class_name": "Site Link" , "schema_id": 63}]
+
+
+        # Now extract all the Property fields, in the schema-stored order, of the above Classes
+        records_schema_data = {}
+        for cl in class_list:
+            prop_list = NeoSchema.get_class_properties(schema_id=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
+            class_name = cl["class_name"]
+            records_schema_data[class_name] = prop_list
+
+        return records_schema_data
 
 
 
