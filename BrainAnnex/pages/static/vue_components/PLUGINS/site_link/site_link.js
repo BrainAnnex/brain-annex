@@ -33,30 +33,45 @@ Vue.component('vue-plugin-sl',
 
             <table class='sl-main'>
 
-                <!--
-                    Header row
-                 -->
-                <tr @dblclick="enter_editing_mode">
+                <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
                     <td rowspan=2 class="no-borders">
                         <img src="/BA/pages/static/graphics/bookmark_32_60162.png">
                     </td>
 
-                    <th v-for="cell in this.determine_headers()">
-                        {{cell}}
-                    </th>
+                    <td v-html="render_cell(item_data.url)"></td>
+                    <td class="name">{{item_data.name}}</td>
+                    <td class="small">{{item_data.read}}</td>
+                </tr>
+                <tr v-else @dblclick="enter_editing_mode">
+                    <td>
+                        <span class="hint">url</span><br>
+                        <textarea rows="4" cols="20"  v-model="current_data.url"  @change="set_name">
+                        </textarea>
+                    </td>
+                    <td>
+                        <span class="hint">name</span><br>
+                        <textarea rows="4" cols="60"  v-model="current_data.name">
+                        </textarea>
+                    </td>
+                    <td>
+                        <span class="hint">read?</span><br><input type="text" size="6" v-model="current_data.read">
+                    </td>
                 </tr>
 
 
-                <!--
-                    Row for the data
-                 -->
-                <tr @dblclick="enter_editing_mode">
-                    <td v-for="key in this.determine_cells()">
-                        <!-- Display SPAN or INPUT elements, depending on the editing status -->
-                        <span v-if = "!editing_mode" v-html="render_cell(current_data[key])"></span>
-                        <input v-else-if = "editing_mode && key=='url'" type="text" @change="set_name" v-model="current_data[key]" style='color:blue'>
-                        <input v-else type="text" size="25" v-model="current_data[key]">
+                <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
+                    <td class="small">{{item_data.date}}</td>
+                    <td class="comments">{{item_data.comments}}</td>
+                    <td>{{item_data.rating}}</td>
+                </tr>
+                <tr v-else @dblclick="enter_editing_mode">
+                    <td><span class="hint">date</span><br><input type="text" size="6" v-model="current_data.date"></td>
+                    <td>
+                        <span class="hint">comments</span><br>
+                        <textarea rows="4" cols="60"  v-model="current_data.comments">
+                        </textarea>
                     </td>
+                    <td><span class="hint">rating</span><br><input type="text" size="1" v-model="current_data.rating"></td>
                 </tr>
 
             </table>

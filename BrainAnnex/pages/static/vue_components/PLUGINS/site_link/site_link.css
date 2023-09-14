@@ -23,3 +23,22 @@ table.sl-main td {
 table.sl-main td.no-borders {
      border:0px;
 }
+
+table.sl-main td.name {
+     font-size:11px;
+     font-weight:bold;
+}
+
+table.sl-main td.comments {
+     font-size:10px;
+     color: #333;
+}
+
+table.sl-main td.small {
+     font-size:10px;
+}
+
+table.sl-main span.hint {
+    font-size:11px;
+    color: #AAA;
+}
