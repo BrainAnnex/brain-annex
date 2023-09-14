@@ -5,28 +5,28 @@ Vue.component('vue-plugin-sl',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  EXAMPLE: {"item_data": {class_name:"Site Link",
-                                    item_id: 4912,
+                                    item_id: 4912, position: 20,  schema_code: "sl"
 
                                     [whatever other fields were set in this item; for example]
                                     url:"http://example.com",
-                                    name:"test",
-
-                                    position: 20,
-                                    schema_code: "sl"
+                                    name:"test"
                                    },
                       "allow_editing": false, "category_id": 123,
                       "index": 2, "item_count": 10,
                       "schema_data": ["url","name","date","comments","rating","read"]
                      }
 
+                     (if item_id is is negative, it means that it's a newly-created header,
+                      not yet registered with the server)
+
             item_data:      An object with the relevant data about this Site Link item
             allow_editing:  A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of this Site Link item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    A list of field names, in Schema order.  EXAMPLE: ["url","name","date","comments","rating","read"]
+            schema_data:    A list of field names, in Schema order.
+                                EXAMPLE: ["url","name","date","comments","rating","read"]
          */
-
 
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
@@ -89,7 +89,7 @@ Vue.component('vue-plugin-sl',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.item_id < 0  ? true : false),    // Negative item_id means "new Item"
+                editing_mode: (this.item_data.item_id < 0  ? true : false), // Negative item_id means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 
@@ -375,72 +375,6 @@ Vue.component('vue-plugin-sl',
             },
 
 
-
-            get_fields_from_server(class_name)
-            // Initiate request to server, to get all the field names for the Site Links' Class
-            // Always returns true
-            {
-                console.log(`----------- Looking up Schema info for Class "${class_name}"`);
-
-                // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
-                let url_server = "/BA/api/get_class_schema";        // TODO: switch to the simple API endpoint /get_properties_by_class_name
-                let post_obj = {class_name: class_name};
-                console.log(`About to contact the server at ${url_server}.  POST object:`);
-                console.log(post_obj);
-                ServerCommunication.contact_server(url_server,
-                            {payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
-
-                return true;
-            },
-
-            finish_get_fields_from_server(success, server_payload, error_message)
-            /*  Callback function to wrap up the action of get_fields_from_server() upon getting a response from the server.
-                The server returns a JSON value.
-                TODO: maybe save the returned values in the root component, to reduce server calls
-              */
-            {
-                console.log("Finalizing the get_fields_from_server() operation...");
-                if (success)  {     // Server reported SUCCESS
-                    console.log("    server call was successful; it returned: " , server_payload);
-                    /*  EXAMPLE:
-                            {
-                            "properties":   [
-                                              "url",
-                                              "name",
-                                              "notes"
-                                            ]
-                            }
-                     */
-
-                    let properties = server_payload["properties"];
-                    console.log("    properties retrieved: " , properties);
-                    // EXAMPLE:  [ "url", "name", "notes" ]
-
-                    // Create new cloned objects (if one just alters existing objects, Vue doesn't detect the change!)
-                    new_current_data = Object.assign({}, this.current_data);    // Clone the object
-
-                    for (let i = 0; i < properties.length; i++) {
-                        field_name = properties[i];
-
-                        /* Only add fields not already present
-                         */
-                        if (!(field_name in this.current_data))  {
-                            console.log("    Adding missing field: ", field_name);
-                            new_current_data[field_name] = "";
-                        }
-                    }
-
-                    this.current_data = new_current_data;
-                }
-                else  {             // Server reported FAILURE
-                    //this.status_message = `FAILED lookup of extra fields`;
-                    //this.error = true;
-                }
-
-            }, // finish_get_fields_from_server
-
-
-
             save()
             {
                 /*  EXAMPLE of this.current_data and this.original_data:
@@ -467,7 +401,7 @@ Vue.component('vue-plugin-sl',
                 if (this.item_data.item_id < 0)  {     // Negative item_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
-                    post_obj["class_name="] = this.item_data.class_name;
+                    post_obj["class_name"] = this.item_data.class_name;
                     post_obj["insert_after"] = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
