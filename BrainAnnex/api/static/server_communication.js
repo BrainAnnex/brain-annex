@@ -2,7 +2,7 @@
     ----------------------------------------------------------------------------------
 	MIT License
 
-    Copyright (c) 2021-22 Julian A. West
+    Copyright (c) 2021-23 Julian A. West
 
     This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -28,9 +28,11 @@
 
 
 class ServerCommunication
-/* 	STATIC class to communicate with the server using the fetch() API.
+/*  STATIC class to communicate with the server using the fetch() API.
 
     Some methods are general; others implement one of the protocols detailed further down.
+
+    Guide:  https://brainannex.org/docs/server_communication.htm
  */
 {
     static contact_server(url_server,
@@ -476,15 +478,21 @@ class ServerCommunication
 
     /****************************************************************************************************************
 
-             METHODS APPLICABLE TO SERVER COMMUNICATION USING THE FOLLOWING "SIMPLE COMMUNICATION PROTOCOL"
+             METHODS APPLICABLE TO SERVER COMMUNICATION USING THE FOLLOWING "SIMPLE TEXT PROTOCOL"
+
+                IN BRIEF:   a string with the payload or error,
+                            prefixed by the single character "+" or "-" respectively in case of success or failure
 
                 PROTOCOL: 	1) a server response is expected; its lack is regarded as an error
+
                             2) if the response starts with the character "+", it's taken to be an successful operation,
                                and the optional rest of the string is taken to be a data payload
+
                             3) if the response starts with the character "-", it's taken to be an error status,
                                and the rest of the string is taken to be the error message
+
                             4) responses that DON'T start with either "+" or "-" are taken to be
-                               unexpected error (not correctly handled), and the entire text is regarded as a presumed error message
+                               an unexpected error (not correctly handled), and the entire text is regarded as a presumed error message
 
      ****************************************************************************************************************/
 
@@ -559,8 +567,10 @@ class ServerCommunication
                  METHODS APPLICABLE TO SERVER COMMUNICATION USING THE "STANDARD JSON PROTOCOL" FOR THIS CLASS
 
                  1) JSON RESPONSE is expected to always be present.
-                 2) If successful, 2 keys are expected: "status" (with the value "ok") and "payload"
-                 3) In case of failure, 2 keys are expected: "status" (with the value "error") and "error_message" (with details)
+                 2) If successful, 2 keys are expected:
+                            "status" (containing the value "ok") and "payload" (with the actual data)
+                 3) In case of failure, 2 keys are expected:
+                            "status" (containing the value "error") and "error_message" (with details)
 
      ****************************************************************************************************************/
 
