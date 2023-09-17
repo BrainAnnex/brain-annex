@@ -7,13 +7,12 @@ from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-import re                   # For REGEX
+import re                               # For REGEX
 import pandas as pd
 import os
 from flask import request, current_app  # TODO: phase out (?)
 from typing import Union
 import shutil
-from time import sleep
 from datetime import datetime
 
 
@@ -30,8 +29,6 @@ class DataManager:
     as well as by the web API to produce data for the endpoints.
 
     This class does NOT get instantiated.
-
-    TODO: move the file to its own module
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 

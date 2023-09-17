@@ -22,8 +22,8 @@ class NeoSchema:
 
     GOAL
 
-        To infuse into Neo4j functionality that some people turn to RDF for.  However, carving out a new path
-        rather than attempting to emulate RDF!
+        To infuse into Neo4j functionality that some people turn to RDF, or to relational databases, for.
+        However, carve out a new path rather than attempting to emulate RDF or relational databases!
 
 
     SECTIONS IN THIS CLASS:
