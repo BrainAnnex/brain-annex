@@ -1555,6 +1555,7 @@ class DocumentationGenerator:
 
         summary = ""    # Links to Classes and methods  (TODO: to be expanded to also cover sections)
         htm = ""
+        python_class_name = ""
 
         for ind in df.index:    # EXAMPLE of df.index: RangeIndex(start=0, stop=11, step=1)
             # For each row in the Pandas data frame
@@ -1570,16 +1571,21 @@ class DocumentationGenerator:
                 htm += f"<h1 class='class-name'>Class {python_class_name}</h1>\n"
                 htm += f"<pre>{python_class_description}</pre>\n\n\n"
 
-            elif "____" in df['method_name'][ind]:      # A BrainAnnex styling convention to indicate a new section.  TODO: add to index
+            elif "____" in df['method_name'][ind]:      # A BrainAnnex styling convention to indicate a new section
                 section_name = df['method_name'][ind]
-                clean_name = section_name.replace("_", " ")
+                clean_name = section_name.replace("_", " ").strip()
+
+                summary += f"    <span style='margin-left:25px'>{clean_name}:</span><br>\n"
                 htm += f"<br><h2 class='section-header'>{clean_name}</h2>\n\n"
 
             else:           # Document an individual class method
-                method_name = df['method_name'][ind]                # TODO: use classname_methodname , because some method names (such as __init__) may appear in multiple classes
-                htm += f"<a name='anchor_{method_name}'></a>\n"     # TODO: ditto
-                summary += f"<a href='#anchor_{method_name}' style='margin-left:50px'>{method_name}</a><br>\n"
+                method_name = df['method_name'][ind]
+                anchor_name = f"anchor_{python_class_name}_{method_name}"   # Needed because some method names (such as __init__) may appear in multiple classes
+                                                                            # EXAMPLE:  "anchor_NeoAccess_query"
 
+                summary += f"<a href='#{anchor_name}' style='margin-left:50px'>{method_name}</a><br>\n"
+
+                htm += f"<a name='{anchor_name}'></a>\n"
                 htm += "<table class='cd-main'>\n"
                 htm += "<tr><th>name</th><th>arguments</th><th>returns</th></tr>\n"
 
