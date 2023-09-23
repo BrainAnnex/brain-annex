@@ -389,7 +389,7 @@ class NeoSchema:
         match = cls.db.match(labels="CLASS", internal_id=class_internal_id)
         result = cls.db.get_nodes(match, single_row=True)
 
-        if not result :
+        if result is None :
             raise Exception(f"NeoSchema.get_class_attributes(): no Class with an internal database ID of {class_internal_id} found")
 
         if "name" not in result:
@@ -1361,7 +1361,6 @@ class NeoSchema:
         :param properties:  OPTIONAL (generally, redundant) ways to locate the data node
 
         :return:            A dictionary with all the key/value pairs, if found; or None if not
-                                TODO: {} is actually currently returned, till get_nodes() gets fixed
         """
         if internal_id is None:
             assert item_id is not None, \
