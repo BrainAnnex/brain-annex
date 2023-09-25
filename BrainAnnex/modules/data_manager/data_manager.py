@@ -1395,7 +1395,8 @@ class DocumentationGenerator:
     """
     # TODO: move to a separate file
 
-    To generate an HTML for a documentation page, from a python file written in the style of BrainAnnex
+    To generate an HTML for a documentation page, from a python file
+    (for best results, a file following some styling conventions as done in the BrainAnnex project)
     """
 
     @classmethod
