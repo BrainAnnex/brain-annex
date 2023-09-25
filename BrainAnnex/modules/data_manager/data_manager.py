@@ -1488,25 +1488,59 @@ class DocumentationGenerator:
         """
         # The R before the string escapes all characters ("raw strings" aka "verbatim strings")
 
-        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)' # Match and capture the method name:
-        #   "def" followed by 1 or more blanks, followed by
-        #   (one letter or underscore, followed by any number of letters, numbers or underscores)
+        '''
+        PART A - Python Class Methods
+        '''
 
-        pattern_2 = R'\((.*?)\)'                    # Match and capture (non-greedy) everything inside round parentheses after method name
+        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)'   # Match and capture the method name:
+                                                        #   "def" followed by 1 or more blanks, followed by
+                                                        #   (one letter or underscore, followed by any number of letters, numbers or underscores)
 
-        pattern_3 = R'\s*(?:\s*->\s*(.*?)\s*)?:'    # Match and capture (non-greedy) the method's return type - which may or may not be present.
-        #   The ?: after the opening parenthesis = grouping WITHOUT capturing
-        #   The ? at the end makes the previous expression optional
+        pattern_2 = R'\((.*?)\)'                        # Match and capture (non-greedy) everything inside the round parentheses after method name
 
-        pattern_4 = R'(?:\s+"""(.*?)""")?'          # TODO: deal with the comments that might be at the end of the definition line
-        # Match and capture (non-greedy) everything within the following pair of """
-        #   The ?: after the opening parenthesis = grouping WITHOUT capturing
-        #   \s+ = 1 or more blanks.  Note: that required character is the newline
+        #pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:'
+        #pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:(?:\s*#.*?\n)?'
+        pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:.*?\n'              # Match and capture (non-greedy) the method's return type - which may or may not be present
+                                                                # Advance (there might be blanks and/or optional comments) until the end of the line
+        '''
+            (?:                 Start of NON-capturing grouping
+                \s*                 0+ blanks
+                ->                  Literal "->"
+                \s*                 0+ blanks
+                (                   Start of capture group
+                    +*?                 Any single character, 1 or more times (non-greedy)
+                )                   End of capture group
+                \s*                 0+ blanks
+            )                   End of non-capturing grouping
+            ?                   Make the preceding group optional
+            :                   Literal ":"
+            .*?                 Any single character, 0 or more times (non-greedy)
+            \n                  End of line           
+        '''
+
+
+        pattern_4 = R'(?:\s+"""(.*?)""")?'          # Match and capture (non-greedy) everything within the following pair of """
+        '''
+            (?:                 Start of NON-capturing grouping
+                \s+                 1+ blanks
+                """                 Literal triple double quotes
+                (                   Start of capture group
+                    .*?                 Any single character, 0 or more times (non-greedy)
+                                        Note: newlines also matched because the calling functions uses re.DOTALL
+                                              as the 3rd argument in re.findall()
+                )                   End of capture group
+                """                 Literal triple double quotes
+            )                   End of non-capturing grouping
+            ?                   Make the preceding group optional
+        '''
+
 
         pattern_A = pattern_1 + pattern_2 + pattern_3 + pattern_4
 
 
-
+        '''
+        PART B - Python Class Names
+        '''
         # Match and capture a python class name
         #       EXAMPLE 1:  "class NeoAccessCore:"
         #       EXAMPLE 2:  "class NeoAccess(NeoAccessCore):"
@@ -1518,7 +1552,7 @@ class DocumentationGenerator:
                 [a-zA-Z]            letter
                 [a-zA-Z0-9_]*       0+ alphanumeric or underscore
             )                   Capture end
-            (?:                 Start of non-capturing grouping
+            (?:                 Start of NON-capturing grouping
                 \(                  Literal "("
                 [a-zA-Z]            letter
                 [a-zA-Z0-9_]*       0+ alphanumeric or underscore  
@@ -1530,8 +1564,9 @@ class DocumentationGenerator:
         '''
 
         pattern_2 = R'.+?"""(.*?)"""'               # Match and capture (non-greedy) everything within the following pair of """
-        #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the newline
+        #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the preceding newline
         pattern_B = pattern_1 + pattern_2
+
 
         pattern = f"(?:{pattern_A})|(?:{pattern_B})"    # Deal with alternations.  Note: "?:" means that the parentheses are NOT a capture group
 
@@ -1581,8 +1616,8 @@ class DocumentationGenerator:
 
             else:           # Document an individual class method
                 method_name = df['method_name'][ind]
-                anchor_name = f"anchor_{python_class_name}_{method_name}"   # Needed because some method names (such as __init__) may appear in multiple classes
-                                                                            # EXAMPLE:  "anchor_NeoAccess_query"
+                anchor_name = f"{python_class_name}_{method_name}"   # Needed because some method names (such as __init__) may appear in multiple classes
+                                                                     # EXAMPLE:  "NeoAccess_query"
 
                 summary += f"<a href='#{anchor_name}' style='margin-left:50px'>{method_name}</a><br>\n"
 
@@ -1616,5 +1651,3 @@ class DocumentationGenerator:
         '''
 
         return summary + htm
-
-
