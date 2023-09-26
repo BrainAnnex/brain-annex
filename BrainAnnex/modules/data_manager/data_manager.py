@@ -1600,7 +1600,7 @@ class DocumentationGenerator:
                 python_class_name = df['class_name'][ind]
                 python_class_description = df['class_description'][ind]
 
-                summary += f"<br><hr><br><a href='#{python_class_name}'><b>Class {python_class_name}</b></a><br><br>\n"
+                summary += f"<br><hr><br><a href='#{python_class_name}' style='font-weight:bold; font-size:18px'>Class {python_class_name}</a><br><br>\n"
 
                 htm += "<br><br><hr>"
                 htm += f"<a name='{python_class_name}'></a>\n"
