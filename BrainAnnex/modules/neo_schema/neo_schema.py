@@ -22,8 +22,8 @@ class NeoSchema:
 
     GOAL
 
-        To infuse into Neo4j functionality that some people turn to RDF for.  However, carving out a new path
-        rather than attempting to emulate RDF!
+        To infuse into Neo4j functionality that some people turn to RDF, or to relational databases, for.
+        However, carve out a new path rather than attempting to emulate RDF or relational databases!
 
 
     SECTIONS IN THIS CLASS:
@@ -196,20 +196,23 @@ class NeoSchema:
                                 if it was created;
                                 an Exception is raised if a class by that name already exists
         """
+        '''
         if strict:
             schema_type="S"
         else:
             schema_type="L"
+        '''
 
         name = name.strip()     # Strip any whitespace at the ends
-        assert name != "", "NeoSchema.create_class(): Unacceptable Class name, either empty or blank"
+        assert name != "", "NeoSchema.create_class(): Unacceptable Class name that is empty or blank"
 
         if cls.class_name_exists(name):
-            raise Exception(f"A class named `{name}` ALREADY exists")
+            raise Exception(f"NeoSchema.create_class(): A class named `{name}` ALREADY exists")
 
         schema_id = cls.next_available_schema_id()    # A schema-wide ID, also used for Property nodes
 
-        attributes = {"name": name, "schema_id": schema_id, "type": schema_type}
+        #attributes = {"name": name, "schema_id": schema_id, "type": schema_type}
+        attributes = {"name": name, "schema_id": schema_id, "strict": strict}
         if code:
             attributes["code"] = code
         if no_datanodes:
@@ -382,14 +385,14 @@ class NeoSchema:
         :param class_internal_id:   An integer with the Neo4j ID of the desired class
         :return:                    A dictionary of attributed of the class with the given Schema ID;
                                         an Exception is raised if not found
-                                        EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
+                                        EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'strict': False}
         """
         #cls.db.assert_valid_internal_id(class_internal_id)
 
         match = cls.db.match(labels="CLASS", internal_id=class_internal_id)
         result = cls.db.get_nodes(match, single_row=True)
 
-        if not result :
+        if result is None :
             raise Exception(f"NeoSchema.get_class_attributes(): no Class with an internal database ID of {class_internal_id} found")
 
         if "name" not in result:
@@ -461,6 +464,8 @@ class NeoSchema:
     @classmethod
     def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:
         """
+        Return True if the given Class is of "Strict" type,
+        or False otherwise (or if the information is missing)
 
         :param class_internal_id:   The internal ID of a Schema Class node
         :param schema_cache:        (OPTIONAL) "SchemaCache" object
@@ -471,7 +476,7 @@ class NeoSchema:
         else:
             class_attrs = NeoSchema.get_class_attributes(class_internal_id)
 
-        return class_attrs['type'] == 'S'   # True if "Strict"
+        return class_attrs.get('strict', False)    # True if a "Strict" Class
 
 
 
@@ -1361,7 +1366,6 @@ class NeoSchema:
         :param properties:  OPTIONAL (generally, redundant) ways to locate the data node
 
         :return:            A dictionary with all the key/value pairs, if found; or None if not
-                                TODO: {} is actually currently returned, till get_nodes() gets fixed
         """
         if internal_id is None:
             assert item_id is not None, \
@@ -3262,7 +3266,7 @@ class SchemaCache:
         If request == "class_attributes":
             return the attributes of the requested Class,
             i.e. a dictionary of all the Class node's attributes
-            EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'type': 'L'}
+            EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'strict': False}
 
         If request == "class_properties":
             return the properties of the requested Class,

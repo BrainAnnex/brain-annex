@@ -1,4 +1,4 @@
-# Classes "DataManager" and "DocumentationGenerator"
+# Classes "DataManager" and "DocumentationGenerator"    # TODO: separate
 
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
@@ -7,13 +7,12 @@ from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-import re                   # For REGEX
+import re                               # For REGEX
 import pandas as pd
 import os
 from flask import request, current_app  # TODO: phase out (?)
 from typing import Union
 import shutil
-from time import sleep
 from datetime import datetime
 
 
@@ -30,8 +29,6 @@ class DataManager:
     as well as by the web API to produce data for the endpoints.
 
     This class does NOT get instantiated.
-
-    TODO: move the file to its own module
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
@@ -399,7 +396,7 @@ class DataManager:
         match = cls.db.match(labels="BA", properties=properties)
         content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
-        if not content_node:    # Metadata not found
+        if content_node is None:    # Metadata not found
             raise Exception(f"The metadata for the Content Item (id {item_id}) wasn't found, or the items is not publicly accessible")
 
         basename = content_node['basename']
@@ -431,7 +428,7 @@ class DataManager:
         #print("In get_binary_content(): item_id = ", item_id)
         content_node = NeoSchema.fetch_data_node(item_id = item_id)
         #print("content_node:", content_node)
-        if not content_node:
+        if content_node is None:
             raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
 
         basename = content_node['basename']
@@ -1208,6 +1205,7 @@ class DataManager:
     @classmethod
     def import_datafile(cls, basename, full_filename, test_only=True) -> str:
         """
+        TODO: NOT in current use.  See DocumentationGenerator.import_python_file()
         TODO: generalize!  For now, used for an ad-hoc import, using REGEX to extract the desired fields
 
         :param basename:        EXAMPLE: "my_file_being_uploaded.txt"
@@ -1216,6 +1214,8 @@ class DataManager:
 
         :return:                String with status message (whether successful or not)
         """
+        return "NOT IN CURRENT USE"
+
         n_chars_to_show = 400
         try:
             with open(full_filename, 'r') as fh:
@@ -1266,7 +1266,7 @@ class DataManager:
         print("...")
         print(df.tail(10))
 
-        cls.generate_documentation(df)
+        DocumentationGenerator.generate_documentation(df)
 
 
         if test_only:
@@ -1395,19 +1395,20 @@ class DocumentationGenerator:
     """
     # TODO: move to a separate file
 
-    To generate an HTML for a documentation page, from a python file written in the style of BrainAnnex
+    To generate an HTML for a documentation page, from a python file
+    (for best results, a file following some styling conventions as done in the BrainAnnex project)
     """
 
     @classmethod
     def import_python_file(cls, basename, full_filename) -> str:
         """
+        Parse a python file (with a few conventions) and generate HTML to create a documentation page
 
         :param basename:        EXAMPLE: "my_file_being_uploaded.txt"
         :param full_filename:   EXAMPLE: "D:/tmp/my_file_being_uploaded.txt"
-        :param test_only:       If True, the file is parsed, but nothing is actually added to the database
-
-        :return:                String with status message (whether successful or not)
+        :return:                HTML code to populate a documentation page
         """
+        # Read in the python file
         n_chars_to_show = 400
         try:
             with open(full_filename, 'r') as fh:
@@ -1417,18 +1418,23 @@ class DocumentationGenerator:
             return f"import_python_file(): File I/O failed (on uploaded file {full_filename})"
 
 
-        pattern = cls.define_pattern()
+        pattern = cls.define_pattern()      # String that will be used for REGEX parsing
         print("Pattern used for the matches: ", pattern)
 
         all_matches = re.findall(pattern, file_contents, re.DOTALL)
         # It returns (possibly-empty) list of tuples
         # OR a list of strings (if there's only 1 capture group in pattern)
-
-        #print("all_matches: ", all_matches)
+        print(f"\n-- {len(all_matches)} MATCHES --")
+        for m in all_matches:
+            abridged_match = []
+            for el in m:
+                abridged_match.append(el[:60])
+            print(f"match: {abridged_match}")
 
 
         if all_matches:     # If the list is not empty, i.e. if matches were found
             #print(f"{len(all_matches)} MATCH(ES) found")
+            # Produce a simple table to present the various matches that were found
             scan_results = "<table border='1' style='border-collapse: collapse'>"
             for match_instance in all_matches:   # Consider each match in turn
                 #print("Overall Single Match: " , match_instance) # This would normally be a tuple of capture groups
@@ -1444,16 +1450,22 @@ class DocumentationGenerator:
             return f"File `{basename}` uploaded successfully, but <b>NO MATCHES</b> found"
 
 
+        # Put together the parsing data as a Pandas dataframe
         column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
         df = pd.DataFrame(all_matches, columns = column_names)
         print(df.count())
+        '''
         print(df.head(10))
         print("...")
         print(df.tail(10))
+        '''
 
+        # Produce HTML code to documented the python file from its parsing data
         htm = cls.generate_documentation(df)
 
         safe_htm = htm.replace("<", "&lt;").replace(">", "&gt;")
+
+        # TODO:  < and >  in code comments are still not sufficiently protected
 
         return f"File `{basename}` uploaded successfully.  <b>{len(all_matches)} MATCH(ES)</b> found.  Nothing added to database.  " \
                f"Scan results:<br><br>{scan_results}<br><br>" \
@@ -1476,42 +1488,99 @@ class DocumentationGenerator:
         """
         # The R before the string escapes all characters ("raw strings" aka "verbatim strings")
 
-        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)' # Match and capture the method name:
-        #   "def" followed by 1 or more blanks, followed by
-        #   (one letter or underscore, followed by any number of letters, numbers or underscores)
+        '''
+        PART A - Python Class Methods
+        '''
 
-        pattern_2 = R'\((.*?)\)'                    # Match and capture (non-greedy) everything inside round parentheses after method name
+        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)'   # Match and capture the method name:
+                                                        #   "def" followed by 1 or more blanks, followed by
+                                                        #   (one letter or underscore, followed by any number of letters, numbers or underscores)
 
-        pattern_3 = R'\s*(?:\s*->\s*(.*?)\s*)?:'    # Match and capture (non-greedy) the method's return type - which may or may not be present.
-        #   The ?: after the opening parenthesis = grouping WITHOUT capturing
-        #   The ? at the end makes the previous expression optional
+        pattern_2 = R'\((.*?)\)'                        # Match and capture (non-greedy) everything inside the round parentheses after method name
 
-        pattern_4 = R'(?:\s+"""(.*?)""")?'          # TODO: deal with the comments that might be at the end of the definition line
-        # Match and capture (non-greedy) everything within the following pair of """
-        #   The ?: after the opening parenthesis = grouping WITHOUT capturing
-        #   \s+ = 1 or more blanks.  Note: that required character is the newline
+        #pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:'
+        #pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:(?:\s*#.*?\n)?'
+        pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:.*?\n'              # Match and capture (non-greedy) the method's return type - which may or may not be present
+                                                                # Advance (there might be blanks and/or optional comments) until the end of the line
+        '''
+            (?:                 Start of NON-capturing grouping
+                \s*                 0+ blanks
+                ->                  Literal "->"
+                \s*                 0+ blanks
+                (                   Start of capture group
+                    +*?                 Any single character, 1 or more times (non-greedy)
+                )                   End of capture group
+                \s*                 0+ blanks
+            )                   End of non-capturing grouping
+            ?                   Make the preceding group optional
+            :                   Literal ":"
+            .*?                 Any single character, 0 or more times (non-greedy)
+            \n                  End of line           
+        '''
+
+
+        pattern_4 = R'(?:\s+"""(.*?)""")?'          # Match and capture (non-greedy) everything within the following pair of """
+        '''
+            (?:                 Start of NON-capturing grouping
+                \s+                 1+ blanks
+                """                 Literal triple double quotes
+                (                   Start of capture group
+                    .*?                 Any single character, 0 or more times (non-greedy)
+                                        Note: newlines also matched because the calling functions uses re.DOTALL
+                                              as the 3rd argument in re.findall()
+                )                   End of capture group
+                """                 Literal triple double quotes
+            )                   End of non-capturing grouping
+            ?                   Make the preceding group optional
+        '''
+
 
         pattern_A = pattern_1 + pattern_2 + pattern_3 + pattern_4
 
 
-        pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)\s*:'  # Match and capture the class name
+        '''
+        PART B - Python Class Names
+        '''
+        # Match and capture a python class name
+        #       EXAMPLE 1:  "class NeoAccessCore:"
+        #       EXAMPLE 2:  "class NeoAccess(NeoAccessCore):"
+        pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)(?:\([a-zA-Z][a-zA-Z0-9_]*\))?\s*:'
+        '''
+            class               Literal "class"
+            \s+                 1+ blanks
+            (                   Capture start
+                [a-zA-Z]            letter
+                [a-zA-Z0-9_]*       0+ alphanumeric or underscore
+            )                   Capture end
+            (?:                 Start of NON-capturing grouping
+                \(                  Literal "("
+                [a-zA-Z]            letter
+                [a-zA-Z0-9_]*       0+ alphanumeric or underscore  
+                \)                  Literal ")"    
+            )                   End of non-capturing grouping
+            ?                   Make the preceding group optional
+            \s*                 0+ blanks
+            :                   Literal ":"
+        '''
 
         pattern_2 = R'.+?"""(.*?)"""'               # Match and capture (non-greedy) everything within the following pair of """
-        #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the newline
+        #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the preceding newline
         pattern_B = pattern_1 + pattern_2
 
 
-        pattern = f"(?:{pattern_A})|(?:{pattern_B})"    # Deal with alternations
+        pattern = f"(?:{pattern_A})|(?:{pattern_B})"    # Deal with alternations.  Note: "?:" means that the parentheses are NOT a capture group
 
         return pattern
 
 
 
     @classmethod
-    def generate_documentation(cls, df) -> str:
+    def generate_documentation(cls, df :pd.DataFrame) -> str:
         """
         Print out, and return as a string, the HTML code to create a documentation page,
-        from a Pandas data frame with the data.
+        from a Pandas data frame containing the data about the various elements
+        of the python file.
+        TODO: probably switch to a Flask template
 
         Note: the HTML code also contains references to some CSS classes for styling.
 
@@ -1520,28 +1589,39 @@ class DocumentationGenerator:
         :return:    A string with HTML code
         """
 
-        summary = ""    # Links to Classes (TODO: to be expanded to also cover sections)
+        summary = ""    # Links to Classes and methods  (TODO: to be expanded to also cover sections)
         htm = ""
+        python_class_name = ""
 
         for ind in df.index:    # EXAMPLE of df.index: RangeIndex(start=0, stop=11, step=1)
             # For each row in the Pandas data frame
 
-            if df['class_name'][ind]:   # Starting documenting a new pythons class
+            if df['class_name'][ind]:                   # Start documenting a new pythons class
                 python_class_name = df['class_name'][ind]
                 python_class_description = df['class_description'][ind]
 
-                summary += f"<br><hr><br><a href='#{python_class_name}'>Class {python_class_name}</a><br><br>\n"
+                summary += f"<br><hr><br><a href='#{python_class_name}' style='font-weight:bold; font-size:18px'>Class {python_class_name}</a><br><br>\n"
 
+                htm += "<br><br><hr>"
                 htm += f"<a name='{python_class_name}'></a>\n"
                 htm += f"<h1 class='class-name'>Class {python_class_name}</h1>\n"
                 htm += f"<pre>{python_class_description}</pre>\n\n\n"
 
             elif "____" in df['method_name'][ind]:      # A BrainAnnex styling convention to indicate a new section
                 section_name = df['method_name'][ind]
-                clean_name = section_name.replace("_", " ")
+                clean_name = section_name.replace("_", " ").strip()
+
+                summary += f"    <span style='margin-left:25px'>{clean_name}:</span><br>\n"
                 htm += f"<br><h2 class='section-header'>{clean_name}</h2>\n\n"
 
-            else:
+            else:           # Document an individual class method
+                method_name = df['method_name'][ind]
+                anchor_name = f"{python_class_name}_{method_name}"   # Needed because some method names (such as __init__) may appear in multiple classes
+                                                                     # EXAMPLE:  "NeoAccess_query"
+
+                summary += f"<a href='#{anchor_name}' style='margin-left:50px'>{method_name}</a><br>\n"
+
+                htm += f"<a name='{anchor_name}'></a>\n"
                 htm += "<table class='cd-main'>\n"
                 htm += "<tr><th>name</th><th>arguments</th><th>returns</th></tr>\n"
 
@@ -1563,11 +1643,11 @@ class DocumentationGenerator:
 
         summary += "<br>\n\n"
 
+        '''
         print("###################################################################################")
         print(summary)
         print(htm)
         print("###################################################################################")
+        '''
 
         return summary + htm
-
-

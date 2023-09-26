@@ -101,7 +101,7 @@
 
 <!-- -------------   NEW BLOCK   ------------- -->
 <div class="content-block">
-    <div class="content-block-title">Continuous Data Ingestion</div>
+    <div class="content-block-title">Continuous JSON Data Ingestion</div>
 
     <!-- TODO: move to Vue component -->
     <p style="font-weight:bold">
@@ -140,27 +140,11 @@
 
 
 
-
 <br><br><br>
 <!-- UNTESTED:  @change="handleFileUpload( $event )"   -->
 <!-- -------------   NEW BLOCK   ------------- -->
 <div class="content-block">
-    <div class="content-block-title">RegEx Data Parse (Experimental!)</div>
-
-    <form enctype="multipart/form-data" action="/BA/api/parse_datafile" method="POST">
-        <p>IMPORT data file to parse : <input type="file" name="imported_datafile"></p>
-        <p><input type="submit" value="Import data file"></p>
-        <input type="hidden" name="return_url" value="/BA/pages/admin">
-    </form>
-</div>
-
-
-
-<br><br><br>
-<!-- UNTESTED:  @change="handleFileUpload( $event )"   -->
-<!-- -------------   NEW BLOCK   ------------- -->
-<div class="content-block">
-    <div class="content-block-title">Generate Python Documentation Page (Experimental!)</div>
+    <div class="content-block-title">Generate Python Documentation Page (Experimental)</div>
 
     <form enctype="multipart/form-data" action="/BA/api/document_python" method="POST">
         <p>IMPORT python file to document : <input type="file" name="imported_datafile"></p>
@@ -168,6 +152,26 @@
         <input type="hidden" name="return_url" value="/BA/pages/data-import">
     </form>
 </div>
+
+
+
+
+<br><br><br>
+<!-- UNTESTED:  @change="handleFileUpload( $event )"   -->
+<!-- -------------   NEW BLOCK   ------------- -->
+<div class="content-block">
+    <div class="content-block-title">RegEx Data Parse (Experimental, not currently usable)</div>
+
+    <form enctype="multipart/form-data" action="/BA/api/parse_datafile" method="POST">
+        <p>IMPORT data file to parse : <input type="file" name="imported_datafile"></p>
+        <p><input type="submit" disabled="disabled" value="Import data file"></p>
+        <input type="hidden" name="return_url" value="/BA/pages/admin">
+    </form>
+</div>
+
+
+
+<br>
 
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->

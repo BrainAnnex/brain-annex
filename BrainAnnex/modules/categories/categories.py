@@ -38,7 +38,7 @@ class Categories:
     @classmethod
     def get_category_info(cls, category_id) -> dict:
         """
-        Return the Name and Remarks attached to the given Category.  If not found, return an empty dictionary
+        Return the Name and Remarks attached to the given Category.  If not found, return None
 
         :return:    The Category's name (or a blank dictionary if not found)
                     EXAMPLE:  {"item_id": 123, "name": "Astronomy", "remarks": "except cosmology"}
@@ -505,6 +505,8 @@ class Categories:
                                 assign_item_id=True)
 
         new_data_point = NeoSchema.fetch_data_node(internal_id = new_internal_id)
+        assert new_data_point is not None, "failure to fetch data node"
+
         return new_data_point["item_id"]
 
 
@@ -1404,11 +1406,11 @@ class Collections:
 
         result = cls.db.query(q, data_binding, single_row=True)
         print(result)
-        if result == {}:
+        if result is None:
             # An empty find is indicative of either an "insert at the end" (no n_after found),
             #       or a bad insert_after value that matches no node
             node = NeoSchema.fetch_data_node(item_id = insert_after)
-            if node == {}:
+            if node is None:
                 raise Exception(f"There is no node with the `item_id` value ({insert_after}) passed by `insert_after`")
 
             print("It's case of insert AT THE END")
