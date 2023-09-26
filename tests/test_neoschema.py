@@ -60,18 +60,18 @@ def test_create_class(db):
     db.empty_dbase()
 
     _ , french_class_id = NeoSchema.create_class("French Vocabulary")
-    match = db.match(labels="CLASS")   # All Class nodes
-    result = db.get_nodes(match)
-    assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'}]
+    match_specs = db.match(labels="CLASS")   # All Class nodes
+    result = db.get_nodes(match_specs)
+    assert result == [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'strict': False}]
 
     _ , class_A_id = NeoSchema.create_class("A", strict=True)
-    result = db.get_nodes(match)
-    expected = [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'type': 'L'},
-                {'name': 'A', 'schema_id': class_A_id, 'type': 'S'}]
+    result = db.get_nodes(match_specs)
+    expected = [{'name': 'French Vocabulary', 'schema_id': french_class_id, 'strict': False},
+                {'name': 'A', 'schema_id': class_A_id, 'strict': True}]
     assert compare_recordsets(result, expected)
 
     with pytest.raises(Exception):
-        assert NeoSchema.create_class("A", strict=False)  # A class by that name already exists; so, nothing gets created
+        assert NeoSchema.create_class("A", strict=False)  # A class by that name already exists
 
 
 
@@ -171,12 +171,13 @@ def test_get_class_name_by_neo_id(db):
 
 def test_get_class_attributes(db):
     db.empty_dbase()
+
     class_A_neoid , class_A_id = NeoSchema.create_class("A")
-    assert NeoSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'schema_id': class_A_id, 'type': 'L'}
+    assert NeoSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'schema_id': class_A_id, 'strict': False}
 
     class_B_neoid , class_B_id = NeoSchema.create_class("B", no_datanodes=True)
-    assert NeoSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'schema_id': class_A_id, 'type': 'L'}
-    assert NeoSchema.get_class_attributes(class_B_neoid) == {'name': 'B', 'schema_id': class_B_id, 'type': 'L', 'no_datanodes': True}
+    assert NeoSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'schema_id': class_A_id, 'strict': False}
+    assert NeoSchema.get_class_attributes(class_B_neoid) == {'name': 'B', 'schema_id': class_B_id, 'strict': False, 'no_datanodes': True}
 
     with pytest.raises(Exception):
         NeoSchema.get_class_attributes(2345)                    # No such Class exists
@@ -371,6 +372,17 @@ def test_delete_class(db):
     RETURN count(d) AS number_orphaned
     '''
     assert db.query(q, single_cell="number_orphaned") == 1  # Now there's an "orphaned" data node
+
+
+
+def test_is_strict_class(db):
+    db.empty_dbase()
+
+    internal_id , _ = NeoSchema.create_class("I am strict", strict=True)
+    assert NeoSchema.is_strict_class(internal_id)
+
+    internal_id , _ = NeoSchema.create_class("I am lax", strict=False)
+    assert not NeoSchema.is_strict_class(internal_id)
 
 
 
@@ -615,9 +627,9 @@ def test_allowable_props(db):
 
     # Check the internal data structure of the schema cache
     cached_data = schema_cache.get_all_cached_class_data(lax_int_id)
-    assert cached_data["class_attributes"] == {"name": "My Lax class", "schema_id": lax_schema_id, "type": "L"}
+    assert cached_data["class_attributes"] == {"name": "My Lax class", "schema_id": lax_schema_id, "strict": False}
     cached_data = schema_cache.get_all_cached_class_data(strict_int_id)
-    assert cached_data["class_attributes"] == {"name": "My Strict class", "schema_id": strict_schema_id, "type": "S"}
+    assert cached_data["class_attributes"] == {"name": "My Strict class", "schema_id": strict_schema_id, "strict": True}
 
 
 
@@ -1817,7 +1829,7 @@ def test_get_cached_class_data(db):
     # Test "class_attributes" option
     class_attrs = NeoSchema.get_class_attributes(car_class_id)
     assert class_attrs["name"] == "Cars"
-    assert class_attrs["type"] == "L"
+    assert not class_attrs["strict"]
 
     assert schema_cache.get_cached_class_data(car_class_id, request="class_attributes") == class_attrs
     # A 2nd identical run will use the previously-cached data
@@ -1869,20 +1881,20 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
     neo_id, schema_id = NeoSchema.create_class("My first class", strict=False)
 
     cache.get_cached_class_data(class_id=neo_id, request="class_attributes")
-    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'type': 'L'}
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'strict': False}
                             }
     assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class
 
 
     cache.get_cached_class_data(class_id=neo_id, request="class_properties")
-    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'type': 'L'},
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'strict': False},
                             "class_properties":  []
                             }
     assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class
 
 
     cache.get_cached_class_data(class_id=neo_id, request="out_neighbors")
-    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'type': 'L'},
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'schema_id': schema_id, 'strict': False},
                             "class_properties":  [],
                             "out_neighbors": {}
                             }
@@ -1906,21 +1918,21 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
 
     cache.get_cached_class_data(class_id=patient_id, request="class_attributes")
     assert len(cache._schema) == 2
-    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'type': 'L'}
+    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'strict': False}
                        }
     assert cache.get_all_cached_class_data(class_id=patient_id) == expected_patient
     assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class     # Unchanged
 
 
     cache.get_cached_class_data(class_id=patient_id, request="class_properties")
-    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'type': 'L'},
+    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'strict': False},
                         "class_properties": ['name', 'age', 'balance']
                         }
     assert cache.get_all_cached_class_data(class_id=patient_id) == expected_patient
     assert cache.get_all_cached_class_data(class_id=neo_id) == expected_first_class     # Unchanged
 
     cache.get_cached_class_data(class_id=patient_id, request="out_neighbors")
-    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'type': 'L'},
+    expected_patient = {"class_attributes":  {'name': 'patient', 'schema_id': schema_id_patient, 'strict': False},
                         "class_properties": ['name', 'age', 'balance'],
                         "out_neighbors": {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
                         }
@@ -1931,7 +1943,7 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
 
     cache.get_cached_class_data(class_id=result_id, request="class_attributes")
     assert len(cache._schema) == 3
-    expected_result = {"class_attributes":  {'name': 'result', 'schema_id': schema_id_result, 'type': 'L'}
+    expected_result = {"class_attributes":  {'name': 'result', 'schema_id': schema_id_result, 'strict': False}
                       }
     assert cache.get_all_cached_class_data(class_id=result_id) == expected_result
     assert cache.get_all_cached_class_data(class_id=patient_id) == expected_patient     # Unchanged
@@ -1942,7 +1954,7 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
 
     cache.get_cached_class_data(class_id=doctor_id, request="class_attributes")
     assert len(cache._schema) == 4
-    expected_doctor = {"class_attributes":  {'name': 'doctor', 'schema_id': schema_id_doctor, 'type': 'L'}
+    expected_doctor = {"class_attributes":  {'name': 'doctor', 'schema_id': schema_id_doctor, 'strict': False}
                        }
     assert cache.get_all_cached_class_data(class_id=doctor_id) == expected_doctor
     assert cache.get_all_cached_class_data(class_id=result_id) == expected_result       # Unchanged
