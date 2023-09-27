@@ -24,7 +24,7 @@ from datetime import datetime
 
 class DataManager:
     """
-    For general database-interaction operations.
+    For general, high-level database-interaction operations.
     Used by the UI for Page Generation,
     as well as by the web API to produce data for the endpoints.
 
