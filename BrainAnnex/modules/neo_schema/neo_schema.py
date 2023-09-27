@@ -196,12 +196,6 @@ class NeoSchema:
                                 if it was created;
                                 an Exception is raised if a class by that name already exists
         """
-        '''
-        if strict:
-            schema_type="S"
-        else:
-            schema_type="L"
-        '''
 
         name = name.strip()     # Strip any whitespace at the ends
         assert name != "", "NeoSchema.create_class(): Unacceptable Class name that is empty or blank"
@@ -211,7 +205,6 @@ class NeoSchema:
 
         schema_id = cls.next_available_schema_id()    # A schema-wide ID, also used for Property nodes
 
-        #attributes = {"name": name, "schema_id": schema_id, "type": schema_type}
         attributes = {"name": name, "schema_id": schema_id, "strict": strict}
         if code:
             attributes["code"] = code
