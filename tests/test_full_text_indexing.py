@@ -35,6 +35,7 @@ def setup_sample_index(db) -> int:
 
 
 def test_split_into_words():
+    # Tests of the lower-level function
     result = FullTextIndexing.split_into_words("Hello world!")
     assert result == ["hello", "world"]
 
@@ -46,19 +47,39 @@ def test_split_into_words():
     result = FullTextIndexing.split_into_words(text, to_lower_case=True)
     assert result == ['mr', 'joe', 'sons', 'a', 'long', 'term', 'business', 'find', 'it', 'at', 'http', 'example', 'com', 'home', 'visit', 'joe', 's', 'now']
 
+
     # Examples with no usable text
     assert FullTextIndexing.split_into_words("") == []
     assert FullTextIndexing.split_into_words("           ") == []
     assert FullTextIndexing.split_into_words(" + - / % <br> &amp; <h1>...</h1> ? ") == []
 
 
+    # Explore numeric values, which are often not indexed
+    text = "2.3 5 99 -99 0 4912.42"
+    assert FullTextIndexing.split_into_words(text) == ['2', '3', '5', '99', '99', '0', '4912', '42']
+
+
+    text = '''
+        Seven key ideas that\nlie at the heart of present-day machine-learning algorithms and that\nmay apply equally well to our brains—seven different definitions of\nwhat “learning” means.\nLEARNING IS ADJUSTING THE PARAMETERS OF A MENTAL MODEL\nAdjusting a mental model is sometimes very simple. How, for\nexample, do we reach out to an object that we see? In the\nseventeenth century, René Descartes (1596–1650) had already\nguessed that our nervous system must contain processing loops that\ntransform visual inputs into muscular commands
+        '''
+    result = FullTextIndexing.split_into_words(text, to_lower_case=True)
+    assert result == ['seven', 'key', 'ideas', 'that', 'lie', 'at', 'the', 'heart', 'of', 'present', 'day', 'machine', 'learning', 'algorithms',
+            'and', 'that', 'may', 'apply', 'equally', 'well', 'to', 'our', 'brains', 'seven', 'different', 'definitions', 'of', 'what', 'learning',
+            'means', 'learning', 'is', 'adjusting', 'the', 'parameters', 'of', 'a', 'mental', 'model', 'adjusting', 'a', 'mental', 'model', 'is',
+            'sometimes', 'very', 'simple', 'how', 'for', 'example', 'do', 'we', 'reach', 'out', 'to', 'an', 'object', 'that', 'we', 'see', 'in',
+            'the', 'seventeenth', 'century', 'rené', 'descartes', '1596', '1650', 'had', 'already', 'guessed', 'that', 'our', 'nervous', 'system',
+            'must', 'contain', 'processing', 'loops', 'that', 'transform', 'visual', 'inputs', 'into', 'muscular', 'commands']
+
+
 
 def test_extract_unique_good_words():
+    # Tests of the higher-level function.
+    # NOTE: subject to changes if the list of "Common Words" is altered
     with pytest.raises(Exception):
-        FullTextIndexing.extract_unique_good_words(None)
+        FullTextIndexing.extract_unique_good_words(None)    # Not a string
 
     with pytest.raises(Exception):
-        FullTextIndexing.extract_unique_good_words(123)
+        FullTextIndexing.extract_unique_good_words(123)     # Not a string
 
     result = FullTextIndexing.extract_unique_good_words("Hello world!")
     assert result == {"world"}
@@ -74,13 +95,28 @@ def test_extract_unique_good_words():
 
     text = '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
     result = FullTextIndexing.extract_unique_good_words(text)
-    assert result == {'mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit'}
+    assert result == {'mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'home', 'visit'}
 
 
     # Examples with no usable text, returning an empty set
     assert FullTextIndexing.extract_unique_good_words("") == set()
     assert FullTextIndexing.extract_unique_good_words("           ") == set()
     assert FullTextIndexing.extract_unique_good_words(" + - / % <br> &amp; <h1>...</h1> ? ") == set()
+
+
+    # Explore numeric values, which are not indexed
+    text = "2.3 5 99 -99 0 4912.42 -124 100 2023"
+    assert FullTextIndexing.extract_unique_good_words(text) == set()
+
+
+    text = '''
+        Seven key ideas that\nlie at the heart of present-day machine-learning algorithms and that\nmay apply equally well to our brains—seven different definitions of\nwhat “learning” means.\nLEARNING IS ADJUSTING THE PARAMETERS OF A MENTAL MODEL\nAdjusting a mental model is sometimes very simple. How, for\nexample, do we reach out to an object that we see? In the\nseventeenth century, René Descartes (1596–1650) had already\nguessed that our nervous system must contain processing loops that\ntransform visual inputs into muscular commands
+        '''
+    result = FullTextIndexing.extract_unique_good_words(text)
+    assert result == {'learning', 'adjusting', 'visual', 'key', 'inputs', 'parameters', 'nervous', 'equally', 'object', 'model', 'heart',
+            'descartes', 'definitions', 'system', 'algorithms', 'processing', 'commands', 'contain', 'ideas', 'mental', 'reach', 'brains',
+            'rené', 'means', 'machine', 'lie', 'loops', 'century', 'apply', 'seventeenth', 'guessed', 'muscular', 'transform', 'present'}
+
 
 
 

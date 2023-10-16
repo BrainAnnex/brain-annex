@@ -77,8 +77,8 @@ class FullTextIndexing:
                     'related', 'issues', 'issue',
                     'use', 'uses', 'used', 'using',
                     'com', 'org', 'www', 'http', 'https',
-                    'one', 'two', 'ones',
-                    'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly',
+                    'one', 'ones', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+                    'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly', 'example',
                     'basically', 'essentially', 'called', 'named', 'consider', 'considering', 'however', 'especially', 'etc',
                     'happen', 'happens',
                     'small', 'smaller', 'smallest', 'big', 'bigger', 'biggest', 'large', 'larger', 'largest',
@@ -88,7 +88,7 @@ class FullTextIndexing:
                     'data', 'value', 'values']
 
 
-    # TODO: allow user-specific words.  For example, for German: ich, du, er, sie, wir, ihr
+    # TODO: allow user-specific words, from a configuration file.  For example, for German: ich, du, er, sie, wir, ihr
 
 
     ##########   STRING METHODS   ##########
@@ -96,6 +96,8 @@ class FullTextIndexing:
     @classmethod
     def split_into_words(cls, text: str, to_lower_case=True) -> [str]:
         """
+        Lower-level function to index text that may contain HTML.
+
         Given a string, zap HTML tags, HTML entities (such as &ndash;) and punctuation from the given text;
         then, break it up into individual words, returned as a list.  If requested, turn it all to lower case.
 
@@ -108,6 +110,8 @@ class FullTextIndexing:
             It will return (if to_lower_case is False):
             ['Mr', 'Joe', 'sons', 'A', 'Long', 'Term', 'business', 'Find', 'it', 'at', 'http', 'example', 'com', 'home', 'Visit', 'Joe', 's', 'NOW']
 
+        Note about numbers:  * negative signs are lost  * numbers with decimals will get split into two parts
+        TODO: maybe eliminate the decimal numbers while leaving the integers alone, to allow indexing of (some) integer numbers such as dates
         TODO: consider treating underscores as blanks (maybe optionally?)
 
         :param text:            A string with the text to parse
@@ -125,7 +129,7 @@ class FullTextIndexing:
             stripped_text = stripped_text.lower()   # If requested, turn everything to lower case
 
         result = re.findall(r'\w+', stripped_text)  # Use regex to split off the string into individual words
-        # (note that the "&" in the original string is treated as blank space)
+        # (note that the "&" in the original string is treated as blank space/word separator)
         # EXAMPLE:  ['Mr', 'Joe', 'sons', 'A', 'Long', 'Term', 'business', 'Find', 'it', 'at', 'http', 'example', 'com', 'home', 'Visit', 'Joe', 's', 'NOW']
 
         return result
@@ -135,6 +139,8 @@ class FullTextIndexing:
     @classmethod
     def extract_unique_good_words(cls, text :str) -> Set[str]:
         """
+        Higher-level function to index text that may contain HTML.
+
         From the given text, zap HTML, HTML entities (such as &ndash;) and punctuation;
         then, turn into lower case, and break up into individual words.
 
@@ -165,11 +171,12 @@ class FullTextIndexing:
         # or that are in a list of common words.  Don't include duplicates
         word_set = set()    # Empty set
 
+
         for word in split_text:
             if len(word) > 1 \
                     and not word.isnumeric() \
                     and word not in cls.COMMON_WORDS:
-                word_set.add(word)      # Adding an element to the set
+                word_set.add(word)      # Add the element to the set, if it passed all the exclusions
 
         #print("The word set for the index is: ", word_set)
 
