@@ -59,6 +59,13 @@ def test_split_into_words():
     assert FullTextIndexing.split_into_words(text) == ['2', '3', '5', '99', '99', '0', '4912', '42']
 
 
+    # Explore situations where we don't want to dropping HTML from non-HTML text
+    text = " house price hopefully < 400000 but it is certainly > 200000     "
+    assert FullTextIndexing.split_into_words(text, drop_html=False) == ["house", "price", "hopefully", "400000", "but", "it", "is", "certainly", "200000"]
+    # If the text had been interpreted as HTML, tha part between "<" and ">" would have been dropped!
+    assert FullTextIndexing.split_into_words(text, drop_html=True) == ["house", "price", "hopefully", "200000"]
+
+
     text = '''
         Seven key ideas that\nlie at the heart of present-day machine-learning algorithms and that\nmay apply equally well to our brains—seven different definitions of\nwhat “learning” means.\nLEARNING IS ADJUSTING THE PARAMETERS OF A MENTAL MODEL\nAdjusting a mental model is sometimes very simple. How, for\nexample, do we reach out to an object that we see? In the\nseventeenth century, René Descartes (1596–1650) had already\nguessed that our nervous system must contain processing loops that\ntransform visual inputs into muscular commands
         '''
@@ -110,13 +117,31 @@ def test_extract_unique_good_words():
 
 
     text = '''
-        Seven key ideas that\nlie at the heart of present-day machine-learning algorithms and that\nmay apply equally well to our brains—seven different definitions of\nwhat “learning” means.\nLEARNING IS ADJUSTING THE PARAMETERS OF A MENTAL MODEL\nAdjusting a mental model is sometimes very simple. How, for\nexample, do we reach out to an object that we see? In the\nseventeenth century, René Descartes (1596–1650) had already\nguessed that our nervous system must contain processing loops that\ntransform visual inputs into muscular commands
+        Seven key ideas that\nlie at the heart of present-day machine-learning algorithms and that\nmay 
+        apply equally well to our brains—seven different definitions of\nwhat “learning” means.\nLEARNING 
+        IS ADJUSTING THE PARAMETERS OF A MENTAL MODEL\nAdjusting a mental model is sometimes very simple. 
+        How, for\nexample, do we reach out to an object that we see? In the\nseventeenth century, René 
+        Descartes (1596–1650) had already\nguessed that our nervous system must contain processing 
+        loops that\ntransform visual inputs into muscular commands
         '''
-    result = FullTextIndexing.extract_unique_good_words(text)
+    result = FullTextIndexing.extract_unique_good_words(text, drop_html=False)
     assert result == {'learning', 'adjusting', 'visual', 'key', 'inputs', 'parameters', 'nervous', 'equally', 'object', 'model', 'heart',
             'descartes', 'definitions', 'system', 'algorithms', 'processing', 'commands', 'contain', 'ideas', 'mental', 'reach', 'brains',
             'rené', 'means', 'machine', 'lie', 'loops', 'century', 'apply', 'seventeenth', 'guessed', 'muscular', 'transform', 'present'}
 
+
+    text = '''
+        What Are the\xa0High-Clearance Drugs?\nHigh-clearance drugs are liver blood flow dependent. 
+        The hepatic elimination of [...]\nDosing in\xa0Liver Disease\n• Antipsychotics\n• Beta-blockers 
+        (most)\n• Calcium channel blockers\n• Lignocaine\n• Nitrates\n• Opioids (most)\n• SSRIs\n• For 
+        severe liver dysfunction (albumin<30\xa0g/L, INR >1.2):\n (a) If the drug is a high-clearance drug 
+        (liver blood flow dependent) \nreduce dose by 50%:\n1 General Pharmacology\n
+        '''
+    result = FullTextIndexing.extract_unique_good_words(text, drop_html=False)
+    assert result == {"clearance", "drugs", "liver", "blood", "flow", "dependent", "hepatic", "elimination",
+                    "dosing", "disease", "antipsychotics", "beta", "blockers",
+                    "calcium", "channel", "lignocaine", "nitrates", "opioids", "ssris", "severe", "dysfunction",
+                    "albumin", "inr", "drug", "reduce", "dose", "general", "pharmacology"}
 
 
 

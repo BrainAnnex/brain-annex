@@ -64,7 +64,7 @@ class FullTextIndexing:
                     'next', 'previous', 'other', 'others', 'another', 'thing', 'things',
                     'like', 'as', 'such', 'fairly', 'actual', 'actually',
                     'simple', 'simpler', 'simplest',
-                    'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than', 'extra', 'enough', 'only',
+                    'each', 'any', 'all', 'some', 'more', 'most', 'less', 'least', 'than', 'extra', 'enough', 'only', 'further',
                     'everything', 'nothing',
                     'few', 'fewer', 'many', 'multiple', 'much', 'same', 'different', 'equal',
                     'full', 'empty', 'lot', 'very', 'around', 'vary', 'varying',
@@ -78,10 +78,13 @@ class FullTextIndexing:
                     'use', 'uses', 'used', 'using',
                     'com', 'org', 'www', 'http', 'https',
                     'one', 'ones', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
-                    'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly', 'example',
+                    'first', 'second', 'third',
+                    'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly', 'example', 'define',
                     'basically', 'essentially', 'called', 'named', 'consider', 'considering', 'however', 'especially', 'etc',
                     'happen', 'happens',
                     'small', 'smaller', 'smallest', 'big', 'bigger', 'biggest', 'large', 'larger', 'largest',
+                    'low', 'lower', 'lowest', 'high', 'higher', 'highest', 'limited',
+                    'increase', 'increased', 'decrease', 'decreased',
                     'hello', 'hi',
                     're', 'vs', 'ex',
 
@@ -94,12 +97,13 @@ class FullTextIndexing:
     ##########   STRING METHODS   ##########
 
     @classmethod
-    def split_into_words(cls, text: str, to_lower_case=True) -> [str]:
+    def split_into_words(cls, text: str, to_lower_case=True, drop_html=True) -> [str]:
         """
         Lower-level function to index text that may contain HTML.
 
-        Given a string, zap HTML tags, HTML entities (such as &ndash;) and punctuation from the given text;
-        then, break it up into individual words, returned as a list.  If requested, turn it all to lower case.
+        Given a string, optionally zap HTML tags, HTML entities (such as &ndash;)
+        then ditch punctuation from the given text;
+        finally, break it up into individual words, returned as a list.  If requested, turn it all to lower case.
 
         Care is taken to make sure that the stripping of special characters does NOT fuse words together;
         e.g. avoid turning 'Long&ndash;Term' into a single word as 'LongTerm';
@@ -116,14 +120,19 @@ class FullTextIndexing:
 
         :param text:            A string with the text to parse
         :param to_lower_case:   If True, all text is converted to lower case
+        :param drop_html:       Use True if passing HTML text
         :return:                A (possibly empty) list of words in the text,
                                     free of punctuation, HTML and HTML entities such as &ndash;
         """
-        unescaped_text = html.unescape(text)    # Turn HTML entities into characters; e.g. "&ndash;" into "-"
-        #print(unescaped_text)  # <p>Mr. Joe&sons<br>A Long–Term business! Find it at > (http://example.com/home)<br>Visit Joe's "NOW!"</p>
+        if drop_html:
+            unescaped_text = html.unescape(text)    # Turn HTML entities into characters; e.g. "&ndash;" into "-"
+            #print(unescaped_text)  # <p>Mr. Joe&sons<br>A Long–Term business! Find it at > (http://example.com/home)<br>Visit Joe's "NOW!"</p>
 
-        stripped_text = cls.TAG_RE.sub(' ', unescaped_text) # Use regex to strip off all HTML and turn each occurrence into a blank
-        #print(stripped_text)   # Mr. Joe&sons A Long–Term business! Find it at > (http://example.com/home) Visit Joe's "NOW!"    <- Note: blank space at end
+            stripped_text = cls.TAG_RE.sub(' ', unescaped_text) # Use regex to strip off all HTML and turn each occurrence into a blank
+            #print(stripped_text)   # Mr. Joe&sons A Long–Term business! Find it at > (http://example.com/home) Visit Joe's "NOW!"    <- Note: blank space at end
+        else:
+            stripped_text = text
+
 
         if to_lower_case:
             stripped_text = stripped_text.lower()   # If requested, turn everything to lower case
@@ -137,7 +146,7 @@ class FullTextIndexing:
 
 
     @classmethod
-    def extract_unique_good_words(cls, text :str) -> Set[str]:
+    def extract_unique_good_words(cls, text :str, drop_html=True) -> Set[str]:
         """
         Higher-level function to index text that may contain HTML.
 
@@ -164,7 +173,7 @@ class FullTextIndexing:
             f"extract_unique_good_words(): the argument must be a string; instead, it was of type {type(text)}"
 
         # Extract words from string, and convert them to lower case
-        split_text = cls.split_into_words(text, to_lower_case=True)
+        split_text = cls.split_into_words(text, to_lower_case=True, drop_html=drop_html)
         #print("The split text is : ", split_text)
 
         # Eliminate "words" that are 1 character long, or that are numbers,
