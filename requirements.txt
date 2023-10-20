@@ -22,3 +22,4 @@ pillow==10.1.0
 jupyterlab==3.4.8
 
 pymupdf==1.23.5
+pypdf==3.16.4

@@ -1388,7 +1388,7 @@ class ApiRouting:
             """
             Upload new media Content, to the (currently hardwired) media folder, and attach it to the Category
             specified in the POST variable "category_id"
-            TODO: media is currently added to the END of the Category page
+            TODO: media is currently added in a fixed position to the END of the Category page
         
             USAGE EXAMPLE:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload_media">
@@ -1412,7 +1412,7 @@ class ApiRouting:
             print("POST variables: ", dict(post_data))  # Example: {'category_id': '3677', 'pos': 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'}
         
             try:
-                upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the directory used for the uploads.
+                upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the temporary directory used for the uploads.
                                                                     #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
                 (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
                             UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
@@ -1425,10 +1425,10 @@ class ApiRouting:
         
 
             # Map the MIME type of the uploaded file into a schema_code
-            if mime_type.split('/')[0] == "image":      # For example, 'image/jpeg', 'image/png', etc.
+            if mime_type.split('/')[0] == "image":  # For example, 'image/jpeg', 'image/png', etc.
                 class_name = "Images"
             else:
-                class_name = "Documents"        # Any unrecognized MIME type is treated as a Document
+                class_name = "Documents"            # Any unrecognized MIME type is treated as a Document
 
 
             # Move the uploaded file from its temp location to the media folder
@@ -1474,6 +1474,7 @@ class ApiRouting:
                 new_item_id = Categories.add_content_at_end(category_id=category_id,
                                                             item_class_name=class_name, item_properties=properties)
 
+                # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Documents":
                     Documents.new_content_item_successful(item_id=new_item_id, pars=properties, mime_type=mime_type)
 

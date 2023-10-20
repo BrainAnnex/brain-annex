@@ -25,47 +25,58 @@ class FullTextIndexing:
     # List of common English words to skip from indexing (stopword list)
     # See https://github.com/Alir3z4/stop-words
     # TODO: allow over-ride in config file
+    # Note: 2-letter words could be dropped because those don't get indexed
     COMMON_WORDS = ['and', 'or', 'either', 'nor', 'neither',
                     'the', 'an', 'with', 'without', 'within',
                     'in', 'out', 'on', 'off', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by', 'upon',
                     'if', 'whether', 'then', 'else',
                     'me', 'my', 'mine', 'he', 'she', 'it', 'him', 'his', 'her', 'its',
                     'we', 'us', 'our', 'you', 'your', 'yours', 'they', 'them', 'their',
-                    'why', 'because', 'due', 'since', 'how', 'for', 'both', 'indeed',
+                    'why', 'because', 'due', 'since', 'until', 'through', 'thru',
+                    'how', 'for', 'both', 'indeed',
                     'help', 'helps', 'let', 'lets',
                     'go', 'goes', 'going', 'gone', 'went',
                     'became', 'become', 'becomes', 'come', 'comes', 'came',
                     'be', 'is', 'isn', 'am', 'are', 'aren', 'were', 'been', 'was', 'wasn', 'being',
-                    'can', 'cannot', 'could', 'might', 'may', 'do', 'does', 'did', 'didn', 'done', 'doing',
+                    'can', 'cannot', 'could', 'might', 'may', 'do', 'does', 'doesn', 'did', 'didn', 'done', 'doing',
                     'make', 'made', 'making',
                     'have', 'haven', 'has', 'had', 'hadn', 'having',
-                    'must', 'need', 'needs', 'seem', 'seems', 'want', 'wants', 'should', 'shouldn',
+                    'must', 'need', 'needs', 'seem', 'seems', 'seemed', 'want', 'wants', 'should', 'shouldn',
                     'will', 'would', 'shall',
-                    'get', 'gets', 'got', 'give', 'gives', 'gave', 'take', 'takes', 'took', 'taking', 'put', 'bring',
-                    'see', 'given', 'end',
+                    'get', 'gets', 'got', 'give', 'gives', 'gave',
+                    'take', 'takes', 'took', 'taking', 'put', 'bring', 'brings', 'bringing',
+                    'see', 'sees', 'given', 'end', 'start', 'starts', 'starting',
                     'ask', 'asks', 'answer', 'answers',
                     'when', 'where', 'which', 'who', 'why', 'what',
-                    'no', 'yes', 'maybe', 'ok', 'oh',
+                    'no', 'non', 'not', 'yes', 'maybe', 'ok', 'oh',
                     'ie', 'i.e', 'eg', 'e.g',
                     'll', 've', 'so',
-                    'good', 'better', 'best', 'great', 'well', 'bad',  'worse', 'worst',
+                    'good', 'better', 'best', 'well', 'bad',  'worse', 'worst',
                     'just', 'about', 'above', 'again', 'ago',
                     'times', 'date', 'dates', 'today', 'day', 'month', 'year', 'yr', 'days', 'months', 'years',
                     'hour', 'hr', 'minute', 'min', 'second', 'sec', 'pm',
                     'now', 'currently', 'late', 'early', 'soon', 'later', 'earlier', 'already',
                     'after', 'before', 'yet', 'whenever', 'while', 'during', 'ever',
                     'follow', 'follows', 'following', 'along',
-                    'never', 'occasionally', 'sometimes', 'often', 'always', 'usually', 'eventually', 'typical', 'typically',
+                    'never', 'seldom', 'occasionally', 'sometimes',
+                    'often', 'always', 'usually', 'eventually', 'typical', 'typically',
+                    'almost', 'quite',
+                    'frequent', 'ubiquitous', 'usual', 'common', 'commonly',
+                    'remarkable', 'impressive',
                     'really', 'approximately',
-                    'old', 'older', 'new', 'newer',
+                    'allow', 'allows', 'allowing',
+                    'old', 'older', 'new', 'newer', 'recent', 'recently',
                     'begin', 'began', 'start', 'starting', 'started',
                     'in', 'out', 'here', 'there',
                     'instead', 'alternative', 'alternatively', 'case', 'cases', 'extent',
                     'up', 'down', 'over', 'above', 'under', 'below', 'between', 'among', 'wherever',
                     'next', 'previous', 'other', 'others', 'another', 'thing', 'things',
-                    'like', 'as', 'such', 'fairly', 'actual', 'actually',
+                    'like', 'as', 'aka', 'akin', 'such', 'fairly', 'actual', 'actually',
+                    'likewise', 'similar', 'similarly',
                     'simple', 'simpler', 'simplest',
-                    'each', 'any', 'all', 'some', 'more', 'most', 'mostly', 'less', 'least', 'than', 'extra', 'enough', 'only', 'further',
+                    'each', 'any', 'all', 'everyone', 'anyone', 'anybody', 'anything', 'something', 'someone', 'some',
+                    'more', 'most', 'mostly', 'additional', 'extra',
+                    'less', 'least', 'than', 'enough', 'only', 'further',
                     'everything', 'nothing',
                     'few', 'fewer', 'many', 'multiple', 'much', 'same', 'different', 'equal',
                     'full', 'empty', 'lot', 'very', 'around', 'vary', 'varying',
@@ -73,7 +84,7 @@ class FullTextIndexing:
                     'directly', 'indirectly',
                     'part', 'parts', 'wide', 'broad', 'narrow', 'side', 'across',
                     'hence', 'therefore', 'thus', 'whereas', 'nevertheless', 'notwithstanding',
-                    'whom', 'whoever', 'whose',
+                    'whom', 'whoever', 'whomever', 'whatever', 'whose',
                     'this', 'that', 'these', 'those',
                     'too', 'also',
                     'related', 'issues', 'issue', 'referred',
@@ -81,12 +92,13 @@ class FullTextIndexing:
                     'use', 'uses', 'used', 'using',
                     'com', 'org', 'www', 'http', 'https',
                     'one', 'ones', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
-                    'first', 'second', 'third',
-                    'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly', 'example', 'define',
+                    'first', 'second', 'third', 'last',
+                    'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly',
+                    'example', 'examples', 'define', 'defined',
                     'basically', 'essentially', 'called', 'named', 'consider', 'considering', 'however', 'especially', 'etc',
                     'happen', 'happens', 'happening', 'continue', 'continues', 'continuing',
                     'change', 'changes', 'changing', 'changed',
-                    'small', 'smaller', 'smallest', 'little',
+                    'small', 'smaller', 'smallest', 'little', 'brief', 'briefly',
                     'big', 'bigger', 'biggest', 'large', 'larger', 'largest',
                     'low', 'lower', 'lowest', 'high', 'higher', 'highest', 'limited',
                     'increase', 'increased', 'decrease', 'decreased', 'vary', 'varies', 'varying',
@@ -94,7 +106,9 @@ class FullTextIndexing:
                     'description', 'descriptions', 'describe', 'describing',
                     'hello', 'hi',
                     're', 'vs', 'ex',
-                    'data', 'value', 'values']
+                    'data', 'value', 'values',
+                    'obvious', 'obviously', 'clearly',
+                    'show', 'shows', 'showing', 'find', 'finds', 'found', 'finding', 'findings', 'respectively']
 
 
     # TODO: allow user-specific words, from a configuration file.  For example, for German: ich, du, er, sie, wir, ihr
@@ -159,20 +173,25 @@ class FullTextIndexing:
         From the given text, zap HTML, HTML entities (such as &ndash;) and punctuation;
         then, turn into lower case, and break up into individual words.
 
-        Next, eliminate "words" that are 1 character long, or that are numbers,
-        or that are in a list of common words.
+        Next, eliminate "words" that match at least one of these EXCLUSION test:
+            * are 1 or characters long
+            * are numbers
+            * contain a digit anywhere (e.g. "50m" or "test2")
+            * are in a list of common words
 
         Finally, eliminate duplicates, and return the set of acceptable, unique words.
 
         Note: no stemming or other grammatical analysis is done.
 
-        EXAMPLE - given '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
+        EXAMPLE - given
+                  '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
                   it returns:
                   ['mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'example', 'home', 'visit']
 
-        :param text:    A string with the text to analyze and index
-        :return:        A (possibly empty) set of strings containing "acceptable",
-                            unique words in the text
+        :param text:        A string with the text to analyze and index
+        :param drop_html:   Use True if passing HTML text
+        :return:            A (possibly empty) set of strings containing "acceptable",
+                                unique words in the text
         """
 
         assert type(text) == str, \
@@ -186,11 +205,14 @@ class FullTextIndexing:
         # or that are in a list of common words.  Don't include duplicates
         word_set = set()    # Empty set
 
+        # Define a regular expression pattern to match numeric characters
+        pattern = r"\d"
 
         for word in split_text:
-            if len(word) > 1 \
+            if len(word) > 2 \
                     and not word.isnumeric() \
-                    and word not in cls.COMMON_WORDS:
+                    and word not in cls.COMMON_WORDS \
+                    and not re.search(pattern, word):
                 word_set.add(word)      # Add the element to the set, if it passed all the exclusions
 
         #print("The word set for the index is: ", word_set)
