@@ -4,28 +4,29 @@
 Vue.component('vue-plugin-sl',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  EXAMPLE: {"item_data": {class_name:"Site Link",
-                                    item_id: 4912, position: 20,  schema_code: "sl"
-
-                                    [whatever other fields were set in this item; for example]
-                                    url:"http://example.com",
-                                    name:"test"
-                                   },
-                      "allow_editing": false, "category_id": 123,
-                      "index": 2, "item_count": 10,
-                      "schema_data": ["url","name","date","comments","rating","read"]
-                     }
-
-                     (if item_id is is negative, it means that it's a newly-created header,
-                      not yet registered with the server)
-
-            item_data:      An object with the relevant data about this Site Link item
+        /*
+            item_data:      An object with the relevant data about this Site Link item;
+                                if the "item_id" attribute is negative,
+                                it means that it's a newly-created header, not yet registered with the server
             allow_editing:  A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of this Site Link item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names, in Schema order.
                                 EXAMPLE: ["url","name","date","comments","rating","read"]
+
+            EXAMPLE: {"item_data": {class_name:"Site Link",
+                                            item_id: 4912, position: 20,  schema_code: "sl"
+
+                                            [whatever other fields were set in this item; for example]
+                                            url:"http://example.com",
+                                            name:"test"
+                                           },
+                              "allow_editing": false, "category_id": 123,
+                              "index": 2, "item_count": 10,
+                              "schema_data": ["url","name","date","comments","rating","read"]
+                             }
+
          */
 
         template: `
@@ -145,9 +146,9 @@ Vue.component('vue-plugin-sl',
                 current_data: (this.item_data.item_id < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
                 original_data: (this.item_data.item_id < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
 
-                waiting: false,
-                error: false,
-                status_message : ""
+                waiting: false,         // Whether any server request is still pending
+                error: false,           // Whether the last server communication resulted in error
+                status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
             }
         }, // data
 
@@ -156,26 +157,6 @@ Vue.component('vue-plugin-sl',
 
         // ------------------------------------   METHODS   ------------------------------------
         methods: {
-
-            enter_editing_mode()
-            {
-                console.log(`In enter_editing_mode()`);
-
-                //this.current_data = this.clone_and_standardize(this.item_data);   // Scrub some data, so that it won't show up in the tabular format
-                //this.original_data = this.clone_and_standardize(this.item_data);
-                // NOTE: clone_and_standardize() gets called twice
-
-                this.waiting = false;
-                this.status_message = "";
-                this.error = false;
-
-                this.editing_mode = true;
-
-                this.display_all_fields();      // This will set the "current_data" property
-                this.original_data = this.clone_and_standardize(this.item_data);
-            },
-
-
 
             set_name()
             /* Invoked whenever a change of the URL field is detected while in editing mode
@@ -332,12 +313,36 @@ Vue.component('vue-plugin-sl',
 
 
 
-            edit_content_item()
+            enter_editing_mode()
+            // Switch to the editing mode of this Vue component
             {
-                console.log(`'Site Links' component received Event to edit contents`);
+                console.log(`In enter_editing_mode()`);
+
+                //this.current_data = this.clone_and_standardize(this.item_data);   // Scrub some data, so that it won't show up in the tabular format
+                //this.original_data = this.clone_and_standardize(this.item_data);
+                // NOTE: clone_and_standardize() gets called twice
+
+                // Clear any old value
+                this.waiting = false;
+                this.error = false;
+                this.status_message = "";
+
+                this.editing_mode = true;       // Enter editing mode
+
+                this.display_all_fields();      // This will set the "current_data" property
+                this.original_data = this.clone_and_standardize(this.item_data);
+            },
+
+
+            edit_content_item()
+            /*  Handler for the "edit_content_item" Event,
+                which is generated by clicking on the Edit button in the "vue-controls" component
+             */
+            {
+                console.log(`'Site Links' component received Event to edit its contents`);
                 this.editing_mode = true;
 
-                this.display_all_fields();          // Consult the schema
+                this.display_all_fields();      // Consult the schema
             },
 
 
