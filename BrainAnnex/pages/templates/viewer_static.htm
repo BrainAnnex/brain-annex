@@ -9,9 +9,9 @@
 
         content_items:  A list of dictionaries
                         EXAMPLE:
-                        [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0},
-                         {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10},
-                         {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20}
+                        [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0},
+                         {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10},
+                         {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20}
                         ]
 
     ----------------------------------------------------------------------------------
@@ -73,8 +73,8 @@
 <!-- A simple Table-of-Contents -->
 <div class="page-toc">
     <template v-for="item in content_array">
-        <p v-if="item.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.item_id">[[item.text]]</a><br></p>
-        <p v-if="item.schema_code == 'cd'">&nbsp; &diams; <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.name">[[item.name]]</a><br></p>
+        <p v-if="item.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.uri">[[item.text]]</a><br></p>
+        <p v-if="item.schema_code == 'cd'">&nbsp; &diams; <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.name">[[item.name]]</a><br></p>
     </template>
 </div>      <!-- END of page-toc -->
 
@@ -136,7 +136,7 @@
             v-bind:category_id="category_id"
      -->
 <component v-for="item in content_array"
-            v-bind:key="item.schema_code + item.item_id + item.pos"
+            v-bind:key="item.schema_code + item.uri + item.pos"
             v-bind:is="plugin_component_name(item)"
             v-bind:item_data="item"
             v-bind:allow_editing="expose_controls"
@@ -190,8 +190,8 @@ new Vue({
 
     data: {     // Global data for the whole page (Vue root element).  This is the handover of data from Flask to Vue
         content_array: {{content_items | tojson(indent=4)}},  // Array containing item-data objects
-                                                    // EXAMPLE: [{"item_id":5,"schema_code":"h","pos":0,"text":"GENERAL METHODS"},
-                                                    //           {"basename":"mypix","schema_code":"i","item_id":8,"pos":50,"suffix":"png"}]
+                                                    // EXAMPLE: [{"uri":5,"schema_code":"h","pos":0,"text":"GENERAL METHODS"},
+                                                    //           {"basename":"mypix","schema_code":"i","uri":8,"pos":50,"suffix":"png"}]
         expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
         category_id: {{category_id}},   // Integer
         show_left_sidebar: true
@@ -199,34 +199,34 @@ new Vue({
 
 
     methods:  {
-        locate_item(schema_code, item_id)
+        locate_item(schema_code, uri)
         /*  Helper function, to locate the specified Content Item in the array of Content Items.
             If found, return its index in the array; otherwise, return -1
          */
         {
-            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}`);
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${uri}`);
 
             const number_items = this.content_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].item_id == item_id)
+                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].uri == uri)
                     return i;          //  Found it
             }
 
             return -1;    // Didn't find it
         },
 
-        locate_item_pos(schema_code, item_id, pos)
+        locate_item_pos(schema_code, uri, pos)
         /*  Same as locate_item(), but also requiring a match on position
          */
         {
-            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}, pos ${pos}`);
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${uri}, pos ${pos}`);
 
             const number_items = this.content_array.length;
 
             for (var i = 0; i < number_items; i++) {
                 if (this.content_array[i].schema_code == schema_code  &&
-                    this.content_array[i].item_id == item_id  &&
+                    this.content_array[i].uri == uri  &&
                     this.content_array[i].pos == pos)
                     return i;          //  Found it
             }

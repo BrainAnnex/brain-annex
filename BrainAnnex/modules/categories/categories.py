@@ -41,11 +41,11 @@ class Categories:
         Return the Name and Remarks attached to the given Category.  If not found, return None
 
         :return:    The Category's name (or a blank dictionary if not found)
-                    EXAMPLE:  {"item_id": 123, "name": "Astronomy", "remarks": "except cosmology"}
+                    EXAMPLE:  {"uri": 123, "name": "Astronomy", "remarks": "except cosmology"}
         """
         # Note: since the category_id is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
-        return NeoSchema.fetch_data_node(item_id=category_id, labels="BA", properties={"schema_code": "cat"})
+        return NeoSchema.fetch_data_node(uri=category_id, labels="BA", properties={"schema_code": "cat"})
 
 
 
@@ -55,10 +55,10 @@ class Categories:
         Return True if the given ID corresponds to the ROOT Category, or False otherwise
 
         TODO: maybe raise an Exception if the argument isn't a valid ID
-        :param category_id: An integer with the item_id of a Category node
+        :param category_id: An integer with the uri of a Category node
         :return:            True if the given ID corresponds to the ROOT Category, or False otherwise
         """
-        # NOTE: historically, 1 has been used for the ROOT Category; however, now that item_id is shared
+        # NOTE: historically, 1 has been used for the ROOT Category; however, now that uri is shared
         #       among all types of plugins, maybe a different approach would be better (such as an attribute in the node)
         return True if category_id == 1 else False
 
@@ -68,15 +68,15 @@ class Categories:
     def count_subcategories(cls, category_id: int) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, item_id=category_id, class_name="Categories")
+        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_id, class_name="Categories")
 
-        :param category_id: An integer with a value of the "item_id" field
+        :param category_id: An integer with a value of the "uri" field
                             that identifies a data node containing the desired Category
         :return:            The number of (direct) Subcategories of the given Category; possibly, zero
         """
 
         match = cls.db.match(labels="BA",
-                            properties={"item_id": category_id, "schema_code": "cat"})
+                            properties={"uri": category_id, "schema_code": "cat"})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="IN")
 
@@ -85,15 +85,15 @@ class Categories:
     def count_parent_categories(cls, category_id: int) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, item_id=category_id, class_name="Categories")
+        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_id, class_name="Categories")
 
-        :param category_id: An integer with a value of the "item_id" field
+        :param category_id: An integer with a value of the "uri" field
                             that identifies a data node containing the desired Category
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
         """
 
         match = cls.db.match(labels="BA",
-                            properties={"item_id": category_id, "schema_code": "cat"})
+                            properties={"uri": category_id, "schema_code": "cat"})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="OUT")
 
@@ -105,14 +105,14 @@ class Categories:
         Return all the (direct) Subcategories of the given category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
-            [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
+            [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
-        :param category_id: An integer with a value of the "item_id" field
+        :param category_id: An integer with a value of the "uri" field
                                     that identifies a data node containing the desired Category
         :return:            A list of dictionaries
         """
         match = cls.db.match(labels="BA",
-                            properties={"item_id": category_id, "schema_code": "cat"})
+                            properties={"uri": category_id, "schema_code": "cat"})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
                                        neighbor_labels="BA")
@@ -125,22 +125,22 @@ class Categories:
         as a list of dictionaries with keys 'id' and 'name' TODO: fix
         EXAMPLE:
             OLD -> [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
-            [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
+            [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
         :param category_id:
         :return:    A list of dictionaries
         """
         q =  '''
-             MATCH (sub:BA {schema_code:"cat"})-[BA_subcategory_of]->(c:BA {schema_code:"cat", item_id:$category_id})
-             RETURN sub.item_id AS id, sub.name AS name
+             MATCH (sub:BA {schema_code:"cat"})-[BA_subcategory_of]->(c:BA {schema_code:"cat", uri:$category_id})
+             RETURN sub.uri AS id, sub.name AS name
              '''
         result = cls.db.query(q, {"category_id": category_id})
 
         '''
-        new = cls.db.follow_links(labels="BA", key_name="item_id", key_value=category_id,
+        new = cls.db.follow_links(labels="BA", key_name="uri", key_value=category_id,
                                   rel_name="BA_subcategory_of", rel_dir="IN",
                                   neighbor_labels="BA")
-        # OR: properties_condition = {"item_id": category_id, "schema_code": "cat"}
+        # OR: properties_condition = {"uri": category_id, "schema_code": "cat"}
         '''
 
         return result
@@ -153,13 +153,13 @@ class Categories:
         Return all the (direct) parent categories of the given category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
-            [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
+            [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
         :param category_id:
         :return:            A list of dictionaries
         """
         match = cls.db.match(labels="BA",
-                             properties={"item_id": category_id, "schema_code": "cat"})
+                             properties={"uri": category_id, "schema_code": "cat"})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                    neighbor_labels="BA")
@@ -171,16 +171,16 @@ class Categories:
         Return all the (immediate) parent categories of the given category,
         as a list of dictionaries with all the keys of the Category Class
 
-        TODO: fix inconsistency.  This function uses item_id ; others use just id
+        TODO: fix inconsistency.  This function uses uri ; others use just id
 
         EXAMPLE:
-            [{'item_id': 2, 'name': 'Work', remarks: 'outside employment'}, {'item_id': 3, 'name': 'Hobbies'}]
+            [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
         :param category_id:
         :return:    A list of dictionaries
         """
         match = cls.db.match(labels="BA",
-                             properties={"item_id": category_id, "schema_code": "cat"})
+                             properties={"uri": category_id, "schema_code": "cat"})
 
         result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                      neighbor_labels="BA")
@@ -194,32 +194,32 @@ class Categories:
     def get_all_categories(cls, exclude_root=True, include_remarks=False) -> [dict]:
         """
         Return all the existing Categories - possibly except the root -
-        as a list of dictionaries with keys 'item_id' and 'name',
+        as a list of dictionaries with keys 'uri' and 'name',
         sorted by name.
 
         EXAMPLES:
-            [{'item_id': 3, 'name': 'Hobbies'}, {'item_id': 2, 'name': 'Work'}]
-            [{'item_id': 3, 'name': 'Hobbies'}, {'item_id': 2, 'name': 'Work', 'remarks': 'Current or past'}]
+            [{'uri': 3, 'name': 'Hobbies'}, {'uri': 2, 'name': 'Work'}]
+            [{'uri': 3, 'name': 'Hobbies'}, {'uri': 2, 'name': 'Work', 'remarks': 'Current or past'}]
 
         :return:    A list of dictionaries
         """
         clause = ""
         if exclude_root:
-            clause = "WHERE cat.item_id <> 1"
+            clause = "WHERE cat.uri <> 1"
 
         remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
 
         q =  f'''
              MATCH (cat:Categories)-[:SCHEMA]->(:CLASS {{name:"Categories"}}) 
              {clause}
-             RETURN cat.item_id AS item_id, cat.name AS name {remarks_subquery}
+             RETURN cat.uri AS uri, cat.name AS name {remarks_subquery}
              ORDER BY toLower(cat.name)
              '''
 
         q_NO_LONGER_USED =  f'''
              MATCH (cat:BA {{schema_code:"cat"}})
              {clause}
-             RETURN cat.item_id AS item_id, cat.name AS name {remarks_subquery}
+             RETURN cat.uri AS uri, cat.name AS name {remarks_subquery}
              ORDER BY toLower(cat.name)
              '''
         # Notes: 1 is the ROOT category.  TODO: replace with check .root = true
@@ -239,7 +239,7 @@ class Categories:
     @classmethod
     def get_all_categories_alt(cls, exclude_root=True) -> [dict]:
         """
-        TODO: phase out, in favor of Categories.get_all_categories (which uses 'item_id' instead of 'id')
+        TODO: phase out, in favor of Categories.get_all_categories (which uses 'uri' instead of 'id')
 
         Return all the existing Categories - possibly except the root -
         as a list of dictionaries with keys 'id', 'name', 'remarks'
@@ -254,12 +254,12 @@ class Categories:
         """
         clause = ""
         if exclude_root:
-            clause = "WHERE cat.item_id <> 1"
+            clause = "WHERE cat.uri <> 1"
 
         q =  f'''
              MATCH (cat:BA {{schema_code:"cat"}})
              {clause}
-             RETURN cat.item_id AS id, cat.name AS name, cat.remarks AS remarks
+             RETURN cat.uri AS id, cat.name AS name, cat.remarks AS remarks
              ORDER BY toLower(cat.name)
              '''
         # Notes: 1 is the ROOT
@@ -314,14 +314,14 @@ class Categories:
         Consider the set comprising the given Category and all its ancestors (i.e. all its super-categories),
         up to a maximum hop length.
 
-        Create and return a dictionary that maps each of the item_id in that set of Categories,
-        to a list of the item_id's of its parent Categories.
+        Create and return a dictionary that maps each of the uri in that set of Categories,
+        to a list of the uri's of its parent Categories.
 
-        :param category_id: The item_id of the Category of interest
+        :param category_id: The uri of the Category of interest
         :return:            A dictionary mapping integers into lists of integers.
-                            The keys are item_id's of the given Category and any of its ancestors (super-categories),
+                            The keys are uri's of the given Category and any of its ancestors (super-categories),
                             up to a maximum hop length;
-                            the values are lists of the item_id's of the parent categories of the Category specified by the key
+                            the values are lists of the uri's of the parent categories of the Category specified by the key
                             EXAMPLES:       {123: [1]}                                  # The given category (123) is a child of the root (1)
                                             {823: [709], 709: [544], 544: [1]}          # A simple 3-hop path from Category 823 to the root (1) :
                                                                                         #   823 is subcategory of 709,
@@ -337,19 +337,19 @@ class Categories:
         #       where the child c is any ancestor node of the given Category node.
         #       A limit is imposed on the max length of the path
         q = '''
-            MATCH (start :BA:Categories {item_id:$category_id})-[:BA_subcategory_of*0..9]->
+            MATCH (start :BA:Categories {uri:$category_id})-[:BA_subcategory_of*0..9]->
                   (c :Categories)-[:BA_subcategory_of]->(p :Categories)
-            WITH c, collect(DISTINCT p.item_id) AS all_parents
-            RETURN c.item_id AS item_id, all_parents
+            WITH c, collect(DISTINCT p.uri) AS all_parents
+            RETURN c.uri AS uri, all_parents
             '''
         result = cls.db.query(q, {"category_id": category_id})      # A list of dictionaries
-        # EXAMPLE:  [{'item_id': 823, 'all_parents': [709]},
-        #            {'item_id': 709, 'all_parents': [544]},
-        #            {'item_id': 544, 'all_parents': [1]}]
+        # EXAMPLE:  [{'uri': 823, 'all_parents': [709]},
+        #            {'uri': 709, 'all_parents': [544]},
+        #            {'uri': 544, 'all_parents': [1]}]
 
         parent_map = {}
         for entry in result:
-            key = entry["item_id"]
+            key = entry["uri"]
             value = entry["all_parents"]
             parent_map[key] = value
 
@@ -364,7 +364,7 @@ class Categories:
         Return a list of Category ID's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
-        :param category_ID: The item_id of the Category whose "ancestry bread crumbs" we want to construct
+        :param category_ID: The uri of the Category whose "ancestry bread crumbs" we want to construct
         :return:            A list of Category ID's together with token strings,
                             providing directives for the HTML structure of the bread crumbs
                             EXAMPLE 1:  [1]
@@ -469,12 +469,12 @@ class Categories:
         """
         Add a new Subcategory to a given Category
         :param data_dict:   Dictionary with the following keys:
-                                category_id                     The item_id to identify the Category
+                                category_id                     The uri to identify the Category
                                                                     to which to add a Subcategory
                                 subcategory_name                The name to give to the new Subcategory
                                 subcategory_remarks (optional)  A comment field for the new Subcategory
 
-        :return:                If successful, an integer with auto-increment "item_id" value of the node just created;
+        :return:                If successful, an integer with auto-increment "uri" value of the node just created;
                                 otherwise, an Exception is raised
         """
         category_id = data_dict.get("category_id")
@@ -496,18 +496,18 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_id, key_name="item_id")
+        parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_id, key_name="uri")
 
         new_internal_id = NeoSchema.add_data_node_with_links(
                                 class_name = "Categories",
                                 properties = data_dict, labels = ["BA", "Categories"],
                                 links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
-                                assign_item_id=True)
+                                assign_uri=True)
 
         new_data_point = NeoSchema.fetch_data_node(internal_id = new_internal_id)
         assert new_data_point is not None, "failure to fetch data node"
 
-        return new_data_point["item_id"]
+        return new_data_point["uri"]
 
 
 
@@ -517,7 +517,7 @@ class Categories:
         Delete the specified Category, provided that there are no Content Items linked to it.
         In case of error or failure, an Exception is raised.
 
-        :param category_id: The "item_id" integer value identifying the desired Category
+        :param category_id: The "uri" integer value identifying the desired Category
         :return:            None
         """
 
@@ -534,7 +534,7 @@ class Categories:
         if cls.count_subcategories(category_id) > 0:
             raise Exception(f"Cannot delete the requested Category (ID {category_id}) because it has sub-categories. Use the Category manager to first sever those relationships")
 
-        number_deleted = NeoSchema.delete_data_point(item_id=category_id, labels="BA")
+        number_deleted = NeoSchema.delete_data_point(uri=category_id, labels="BA")
 
         if number_deleted != 1:
             raise Exception(f"Failed to delete the requested Category (ID {category_id})")
@@ -561,7 +561,7 @@ class Categories:
         #   (the originator) of the relationship
         try:
             NeoSchema.add_data_relationship_OLD(from_id=subcategory_id, to_id=category_id,
-                                                rel_name="BA_subcategory_of", id_type="item_id")
+                                                rel_name="BA_subcategory_of", id_type="uri")
         except Exception as ex:
             raise Exception(f"Unable to create a subcategory relationship. {ex}")
 
@@ -588,8 +588,8 @@ class Categories:
 
         NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
 
-        :param from_id:     Integer with the item_id of the subcategory node
-        :param to_id:       Integer with the item_id of the parent-category node
+        :param from_id:     Integer with the uri of the subcategory node
+        :param to_id:       Integer with the uri of the parent-category node
         :param rel_name:    NOT USED
         :return:            None.  If the requested new relationship should not be created, raise an Exception
         """
@@ -615,8 +615,8 @@ class Categories:
 
         NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
 
-        :param from_id:     Integer with the item_id of the subcategory node
-        :param to_id:       NOT USED.  Integer with the item_id of the parent-category node
+        :param from_id:     Integer with the uri of the subcategory node
+        :param to_id:       NOT USED.  Integer with the uri of the parent-category node
         :param rel_name:    NOT USED
         :return:            None.  If the requested new relationship should not be deleted, raise an Exception
         """
@@ -671,21 +671,21 @@ class Categories:
     @classmethod
     def get_content_items_by_category(cls, category_id = 1) -> [{}]:
         """
-        Return the records for all nodes linked to the Category node identified by its item_id value
+        Return the records for all nodes linked to the Category node identified by its uri value
 
         :param category_id:
         :return:    A list of dictionaries
                     EXAMPLE:
-                    [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
-                     {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                     {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                    [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                     {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                     {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
                     ]
         """
 
         # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
         # TODO: switch to using one of the Collections methods
         cypher = """
-            MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", item_id:$category_id})
+            MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", uri:$category_id})
             RETURN n, r.pos AS pos, cl.name AS class_name
             ORDER BY r.pos
             """
@@ -719,7 +719,7 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def add_content_at_beginning(cls, category_id:int, item_class_name: str, item_properties: dict, new_item_id=None) -> int:
+    def add_content_at_beginning(cls, category_id:int, item_class_name: str, item_properties: dict, new_uri=None) -> int:
         """
         Add a new Content Item, with the given properties and Class, to the beginning of the specified Category.
 
@@ -727,56 +727,56 @@ class Categories:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+        :param category_id:     The integer "uri" of the Category to which this new Content Media is to be attached
                                 TODO: rename to "category_uri"
 
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
-        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
                                 TODO: rename to "new_uri"
 
-        :return:                The auto-increment "item_ID" assigned to the newly-created data node
+        :return:                The auto-increment "uri" assigned to the newly-created data node
         """
-        new_item_id = Collections.add_to_collection_at_beginning(collection_id=category_id, membership_rel_name="BA_in_category",
+        new_uri = Collections.add_to_collection_at_beginning(collection_id=category_id, membership_rel_name="BA_in_category",
                                                                  item_class_name=item_class_name, item_properties=item_properties,
-                                                                 new_item_id=new_item_id)
-        return new_item_id
+                                                                 new_uri=new_uri)
+        return new_uri
 
 
 
     @classmethod
-    def add_content_at_end(cls, category_id:int, item_class_name: str, item_properties: dict, new_item_id=None) -> int:
+    def add_content_at_end(cls, category_id:int, item_class_name: str, item_properties: dict, new_uri=None) -> int:
         """
         Add a new Content Item, with the given properties and Class, to the end of the specified Category.
 
-        :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+        :param category_id:     The integer "uri" of the Category to which this new Content Media is to be attached
                                 TODO: rename to "category_uri"
 
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
-        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
                                 TODO: rename to "new_uri"
 
-        :return:                The auto-increment "item_ID" assigned to the newly-created data node
+        :return:                The auto-increment "uri" assigned to the newly-created data node
         """
         #print("Inside Categories.add_content_at_end()")
-        if new_item_id is None:
-            # If a URI (for now called item_id) was not provided for the newly-created node,
+        if new_uri is None:
+            # If a URI (for now called uri) was not provided for the newly-created node,
             # then auto-generate it (for now an integer)
-            new_item_id = NeoSchema.generate_uri(prefix="", namespace="data_node")  # Returns a string
+            new_uri = NeoSchema.generate_uri(prefix="", namespace="data_node")  # Returns a string
 
-        new_item_id = int(new_item_id)
+        new_uri = int(new_uri)
 
         new_internal_id = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
-                                                     extra_labels="BA", assign_uri=False, new_uri=new_item_id,
+                                                     extra_labels="BA", assign_uri=False, new_uri=new_uri,
                                                      silently_drop=True)
         #print("Returned from NeoSchema.create_data_node")
 
-        print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_item_id = {new_item_id}")
+        print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_uri = {new_uri}")
 
         # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
         q = '''
-            MATCH (cat :BA:Categories {item_id: $category_id}) 
+            MATCH (cat :BA:Categories {uri: $category_id}) 
             WITH cat
             OPTIONAL MATCH (n:BA) -[r :BA_in_category]-> (cat)
             WITH r.pos AS pos, cat
@@ -787,13 +787,13 @@ class Categories:
                     max(pos) + 20
                 END AS new_pos, cat
             
-            MATCH (ci :BA {item_id: $new_item_id})
+            MATCH (ci :BA {uri: $new_uri})
             MERGE (ci)-[:BA_in_category {pos: new_pos}]->(cat)
         '''
         #TODO: replace 20 with cls.DELTA_POS
         #TODO: turn into a Collection-wide operation
 
-        status = cls.db.update_query(q, data_binding={"category_id": category_id, "new_item_id": new_item_id})
+        status = cls.db.update_query(q, data_binding={"category_id": category_id, "new_uri": new_uri})
         print("add_content_at_end(): status is ", status)
         # status should be contain {'relationships_created': 1, 'properties_set': 1}
         assert status.get('relationships_created') == 1, \
@@ -804,20 +804,20 @@ class Categories:
 
         '''
         # OLD, non-atomic way of performing operation
-        new_item_id = Collections.add_to_collection_at_end(collection_id=category_id, membership_rel_name="BA_in_category",
+        new_uri = Collections.add_to_collection_at_end(collection_id=category_id, membership_rel_name="BA_in_category",
                                                            item_class_name=item_class_name, item_properties=item_properties,
-                                                           new_item_id=new_item_id)
+                                                           new_uri=new_uri)
         '''
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
         #       NOT with the Content Item node ;
         #       this is allowed by our convention about "INSTANCE_OF" relationships
 
-        return new_item_id
+        return new_uri
 
 
 
     @classmethod
-    def add_content_after_element(cls, category_id:int, item_class_name: str, item_properties: dict, insert_after: int, new_item_id=None) -> int:
+    def add_content_after_element(cls, category_id:int, item_class_name: str, item_properties: dict, insert_after: int, new_uri=None) -> int:
         """
         Add a new Content Item, with the given properties and Class, inserted into the given Category after the specified Item
         (in the context of the positional order encoded in the relationship attribute "pos")
@@ -826,22 +826,22 @@ class Categories:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param category_id:     The integer "item_ID" of the Category to which this new Content Media is to be attached
+        :param category_id:     The integer "uri" of the Category to which this new Content Media is to be attached
                                 TODO: rename to "category_uri"
 
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param insert_after:
-        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
                                 TODO: rename to "new_uri"
 
-        :return:                The auto-increment "item_ID" assigned to the newly-created data node
+        :return:                The auto-increment "uri" assigned to the newly-created data node
         """
-        new_item_id = Collections.add_to_collection_after_element(collection_id=category_id, membership_rel_name="BA_in_category",
+        new_uri = Collections.add_to_collection_after_element(collection_id=category_id, membership_rel_name="BA_in_category",
                                                                   item_class_name=item_class_name, item_properties=item_properties,
                                                                   insert_after=insert_after,
-                                                                  new_item_id=new_item_id)
-        return new_item_id
+                                                                  new_uri=new_uri)
+        return new_uri
 
 
 
@@ -872,7 +872,7 @@ class Categories:
                                  'Headers': ['text']}
         """
         q = '''
-            MATCH  (cat :BA {item_id: $category_id}) <- [:BA_in_category] - 
+            MATCH  (cat :BA {uri: $category_id}) <- [:BA_in_category] - 
                    (:BA) - [:SCHEMA] -> (cl:CLASS) 
             RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
             '''
@@ -906,19 +906,19 @@ class Categories:
     def check_for_duplicates(cls, category_id) -> str:
         """
         Look for duplicates values in the "pos" attributes
-        of the "BA_in_category" relationships ending in the specified Category node (specified by its item_id)
+        of the "BA_in_category" relationships ending in the specified Category node (specified by its uri)
 
         :param category_id:
         :return:            In case of duplicates, return a text with an explanation;
                             if no duplicates, return an empty string
         """
         q = '''
-            MATCH (i1:BA)-[r1:BA_in_category]->(:BA {schema_code:"cat", item_id: $item_id})<-[r2:BA_in_category]-(i2:BA) 
-            WHERE r1.pos = r2.pos AND i1.item_id <> i2.item_id
-            RETURN r1.pos AS pos, i1.item_id AS item1 ,i2.item_id AS item2
+            MATCH (i1:BA)-[r1:BA_in_category]->(:BA {schema_code:"cat", uri: $uri})<-[r2:BA_in_category]-(i2:BA) 
+            WHERE r1.pos = r2.pos AND i1.uri <> i2.uri
+            RETURN r1.pos AS pos, i1.uri AS item1 ,i2.uri AS item2
             LIMIT 1
             '''
-        data_binding = {"item_id": category_id}
+        data_binding = {"uri": category_id}
         duplicates = cls.db.query(q, data_binding)
         if duplicates == []:
             return ""
@@ -947,7 +947,7 @@ class Categories:
 
 
     @classmethod
-    def reposition_content(cls, category_id: int, item_id: int, move_after_n: int):
+    def reposition_content(cls, category_id: int, uri: int, move_after_n: int):
         """
         Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
 
@@ -955,20 +955,20 @@ class Categories:
               its "pos" value will change
 
         :param category_id:     An integer with the Category ID
-        :param item_id:         An integer with the ID of the Content Item we're repositioning
+        :param uri:         An integer with the ID of the Content Item we're repositioning
         :param move_after_n:    The index (counting from 1) of the item after which we want to position the item being moved
                                     Use n=0 to indicate "move before anything else"
         :return:
         """
         assert type(category_id) == int, "ERROR: argument 'category_id' is not an integer"
-        assert type(item_id) == int, "ERROR: argument 'item_id' is not an integer"
+        assert type(uri) == int, "ERROR: argument 'uri' is not an integer"
         assert type(move_after_n) == int, "ERROR: argument 'move_after_n' is not an integer"
         assert move_after_n >= 0, "ERROR: argument 'move_after_n' cannot be negative"
 
         # Collect a subset of the first sorted "pos" values: enough values to cover across the insertion point
         number_to_consider = move_after_n + 1
         q = f'''
-            MATCH (c:BA {{schema_code: "cat", item_id: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos
             ORDER by pos
             LIMIT {number_to_consider}
@@ -1009,17 +1009,17 @@ class Categories:
 
         # Change the "pos" attribute of the relationship to the Content Item being moved
         q = f'''
-            MATCH (:BA {{schema_code: "cat", item_id: $category_id}}) <- [r:BA_in_category] - (:BA {{item_id: $item_id}})
+            MATCH (:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
             SET r.pos = {new_pos}
             '''
 
         print("q: ", q)
 
-        result = cls.db.update_query(q, {"category_id": category_id, "item_id": item_id})
+        result = cls.db.update_query(q, {"category_id": category_id, "uri": uri})
         number_props_set = result.get('properties_set')
         print("number_props_set: ", number_props_set)
         if number_props_set != 1:
-            raise Exception(f"Content Item (id {item_id}) not found in Category (id {category_id}), or could not be moved")
+            raise Exception(f"Content Item (id {uri}) not found in Category (id {category_id}), or could not be moved")
 
 
 
@@ -1055,7 +1055,7 @@ class Categories:
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
 
         q = f'''
-            MATCH (c:BA {{schema_code: "cat", item_id: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos, r
             ORDER by pos
             SKIP {n_to_skip}
@@ -1068,29 +1068,29 @@ class Categories:
 
 
     @classmethod
-    def swap_content_items(cls, item_id_1: str, item_id_2: str, cat_id: str) -> str:
+    def swap_content_items(cls, uri_1: str, uri_2: str, cat_id: str) -> str:
         """
         Swap the positions of the specified Content Items within the given Category
 
-        :param item_id_1:   A string with the (integer) ID of the 1st Content Item
-        :param item_id_2:   A string with the (integer) ID of the 2nd Content Item
+        :param uri_1:   A string with the (integer) ID of the 1st Content Item
+        :param uri_2:   A string with the (integer) ID of the 2nd Content Item
         :param cat_id:      A string with the (integer) ID of the Category
         :return:            An empty string if successful, or an error message otherwise
         """
 
         # Validate the arguments
-        if item_id_1 == item_id_2:
-            return f"Attempt to swap a Content Item (ID {item_id_1}) with itself!"
+        if uri_1 == uri_2:
+            return f"Attempt to swap a Content Item (ID {uri_1}) with itself!"
 
         try:
-            item_id_1 = int(item_id_1)
+            uri_1 = int(uri_1)
         except Exception:
-            return f"The first Content Item ID ({item_id_1}) is missing or not an integer"
+            return f"The first Content Item ID ({uri_1}) is missing or not an integer"
 
         try:
-            item_id_2 = int(item_id_2)
+            uri_2 = int(uri_2)
         except Exception:
-            return f"The second Content Item ID ({item_id_2}) is missing or not an integer"
+            return f"The second Content Item ID ({uri_2}) is missing or not an integer"
 
         try:
             cat_id = int(cat_id)
@@ -1101,14 +1101,14 @@ class Categories:
         # Look for a Category node (c) that is connected to 2 Content Items (n1 and n2)
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
         q = '''
-            MATCH (n1:BA {item_id: $item_id_1})
-                        -[r1:BA_in_category]->(c:BA {schema_code:"cat", item_id: $cat_id})<-[r2:BA_in_category]-
-                  (n2:BA {item_id: $item_id_2})
+            MATCH (n1:BA {uri: $uri_1})
+                        -[r1:BA_in_category]->(c:BA {schema_code:"cat", uri: $cat_id})<-[r2:BA_in_category]-
+                  (n2:BA {uri: $uri_2})
             WITH r1.pos AS tmp, r1, r2
             SET r1.pos = r2.pos, r2.pos = tmp
             '''
 
-        data_binding = {"item_id_1": item_id_1, "item_id_2": item_id_2, "cat_id": cat_id}
+        data_binding = {"uri_1": uri_1, "uri_2": uri_2, "cat_id": cat_id}
 
         #print(q)
         #print(data_binding)
@@ -1117,7 +1117,7 @@ class Categories:
         #print("stats of query: ", stats)
 
         if stats == {}:
-            return f"The action had no effect : the specified Content Items ({item_id_1} and {item_id_2})" \
+            return f"The action had no effect : the specified Content Items ({uri_1} and {uri_2})" \
                    f" were not found attached to the given Category ({cat_id})"
 
         number_properties_set = stats.get("properties_set")
@@ -1143,7 +1143,7 @@ class Categories:
 
     @classmethod
     def viewer_handler(cls, category_id: int):
-        category_internal_id = NeoSchema.get_data_node_internal_id(item_id = category_id)
+        category_internal_id = NeoSchema.get_data_node_internal_id(uri = category_id)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 
         return siblings_categories
@@ -1181,15 +1181,15 @@ class Collections:
     @classmethod
     def is_collection(cls, collection_id: int) -> bool:
         """
-        Return True if the data node whose "item_id" has the given value is a Collection,
+        Return True if the data node whose "uri" has the given value is a Collection,
         that is, if its schema is a Class that is an INSTANCE_OF the "Collection" Class
         TODO: maybe allow the scenario where there's a longer chain of "INSTANCE_OF" relationships
 
-        :param collection_id:   The item_id of a data node
+        :param collection_id:   The uri of a data node
         :return:                True if the given data node is a Collection, or False i
         """
         q = '''
-            MATCH p=(n :BA {item_id: $collection_id}) -[:SCHEMA]-> (s :CLASS) -[:INSTANCE_OF]-> (coll :CLASS {name: "Collections"})
+            MATCH p=(n :BA {uri: $collection_id}) -[:SCHEMA]-> (s :CLASS) -[:INSTANCE_OF]-> (coll :CLASS {name: "Collections"})
             RETURN count(p) AS number_paths
             '''
         data_binding = {"collection_id": collection_id}
@@ -1204,19 +1204,19 @@ class Collections:
         """
         Return the number of elements in the given Collection (i.e. Data Items linked to it thru the specified relationship)
 
-        :param collection_id:       The item_id of a data node whose schema is an instance of the Class "Collections"
+        :param collection_id:       The uri of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship from other Data Items to the given Collection node
-        :param skip_check:          If True, no check is done to verify that the data node whose item_id matches collection_id
+        :param skip_check:          If True, no check is done to verify that the data node whose uri matches collection_id
                                     is indeed a Collection.
                                     Without a check, this function will return a zero if given a bad collection_id;
                                     with a check, it'll raise an Exception
         :return:                    The number of elements in the given Collection (possibly zero)
         """
         if not skip_check:
-            assert cls.is_collection(collection_id), f"The data node with item_id {collection_id} doesn't exist or is not a Collection"
+            assert cls.is_collection(collection_id), f"The data node with uri {collection_id} doesn't exist or is not a Collection"
 
         q = f'''
-            MATCH (coll :BA {{item_id: $collection_id}}) <- [:{membership_rel_name}] - (i :BA) 
+            MATCH (coll :BA {{uri: $collection_id}}) <- [:{membership_rel_name}] - (i :BA) 
             RETURN count(i) AS node_count
             '''
         data_binding = {"collection_id": collection_id}
@@ -1232,7 +1232,7 @@ class Collections:
         Delete the specified Collection, provided that there are no Data Items linked to it.
         In case of error or failure, an Exception is raised.
 
-        :param collection_id:   The "item_id" integer value identifying the desired Collection
+        :param collection_id:   The "uri" integer value identifying the desired Collection
         :return:                None
         """
         pass
@@ -1241,12 +1241,12 @@ class Collections:
 
     @classmethod
     def add_to_collection_at_beginning(cls, collection_id: int, membership_rel_name: str, item_class_name: str, item_properties: dict,
-                                       new_item_id=None) -> int:
+                                       new_uri=None) -> int:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add it at the beginning of the specified Collection, linked by the specified relationship
 
-        EXAMPLE:  new_item_id = add_to_collection_at_beginning(collection_id=708, membership_rel_name="BA_in_category",
+        EXAMPLE:  new_uri = add_to_collection_at_beginning(collection_id=708, membership_rel_name="BA_in_category",
                                                         item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
         <SEE add_to_collection_at_end>
 
@@ -1254,7 +1254,7 @@ class Collections:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :return:                    The auto-increment "item_ID" assigned to the newly-created data node
+        :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
         assert type(collection_id) == int, "The argument `collection_id` MUST be an integer"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
@@ -1263,7 +1263,7 @@ class Collections:
 
         # TODO: this query and the one in add_data_point(), below, ought to be combined, to avoid concurrency problems
         q = f'''
-            MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{item_id: $collection_id}}) 
+            MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{uri: $collection_id}}) 
             RETURN min(r.pos) AS min_pos
             '''
         data_binding = {"collection_id": collection_id}
@@ -1283,32 +1283,32 @@ class Collections:
                                             connected_to_id=collection_id, connected_to_labels="BA",
                                             rel_name=membership_rel_name,
                                             rel_prop_key="pos", rel_prop_value=pos,
-                                            new_item_id=new_item_id
+                                            new_uri=new_uri
                                             )
 
 
 
     @classmethod
     def add_to_collection_at_end(cls, collection_id: int, membership_rel_name: str, item_class_name: str, item_properties: dict,
-                                 new_item_id=None) -> int:
+                                 new_uri=None) -> int:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add it at the end of the specified Collection, linked by the specified relationship
 
-        EXAMPLE:  new_item_id = add_to_collection_at_end(collection_id=708, membership_rel_name="BA_in_category",
+        EXAMPLE:  new_uri = add_to_collection_at_end(collection_id=708, membership_rel_name="BA_in_category",
                                                         item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
 
         TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param collection_id:       The item_id of a data node whose schema is an instance of the Class "Collections"
+        :param collection_id:       The uri of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name:
         :param item_class_name:
         :param item_properties:
-        :param new_item_id:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
-        :return:                    The auto-increment "item_ID" assigned to the newly-created data node
+        :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
         assert type(collection_id) == int, "The argument `collection_id` MUST be an integer"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
@@ -1317,7 +1317,7 @@ class Collections:
 
         # TODO: this query and the one in add_data_point(), below, ought to be combined, to avoid concurrency problems
         q = f'''
-            MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{item_id: $collection_id}}) 
+            MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{uri: $collection_id}}) 
             RETURN max(r.pos) AS max_pos
             '''
         data_binding = {"collection_id": collection_id}
@@ -1339,7 +1339,7 @@ class Collections:
                                             connected_to_id=collection_id, connected_to_labels="BA",
                                             rel_name=membership_rel_name,
                                             rel_prop_key="pos", rel_prop_value=pos,
-                                            new_item_id=new_item_id
+                                            new_uri=new_uri
                                             )
 
 
@@ -1347,7 +1347,7 @@ class Collections:
     @classmethod
     def add_to_collection_after_element(cls, collection_id: int, membership_rel_name: str,
                                         item_class_name: str, item_properties: dict, insert_after: int,
-                                        new_item_id=None) -> int:
+                                        new_uri=None) -> int:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add to the specified Collection, linked by the specified relationship and inserted after the given collection Item
@@ -1357,26 +1357,26 @@ class Collections:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param collection_id:       The item_id of a data node whose schema is an instance of the Class "Collections"
+        :param collection_id:       The uri of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply
         :param item_class_name:     Name of the Class for the newly-created node
         :param item_properties:     Dictionary with the properties of the newly-created node
-        :param insert_after:        The "item_id" of the element after which we want to insert
-        :param new_item_id:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param insert_after:        The "uri" of the element after which we want to insert
+        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
-        :return:                    The auto-increment "item_ID" assigned to the newly-created data node
+        :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
         assert type(collection_id) == int, "The argument `collection_id` MUST be an integer"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
         assert type(insert_after) == int, "The argument `insert_after` MUST be an integer"
-        if new_item_id:
-            assert type(new_item_id) == int, f"The argument `new_item_id`, when provided, MUST be an integer (it was `{new_item_id}`)"
+        if new_uri:
+            assert type(new_uri) == int, f"The argument `new_uri`, when provided, MUST be an integer (it was `{new_uri}`)"
 
         q = f'''
-        MATCH (n_before :BA {{item_id: $insert_after}})-[r_before :{membership_rel_name}] 
-                    -> (c :BA {{item_id: $collection_id}}) <-
+        MATCH (n_before :BA {{uri: $insert_after}})-[r_before :{membership_rel_name}] 
+                    -> (c :BA {{uri: $collection_id}}) <-
                                             [r_after :{membership_rel_name}]-(n_after :BA)
         WHERE r_after.pos > r_before.pos
         RETURN r_before.pos AS pos_before, r_after.pos AS pos_after
@@ -1385,7 +1385,7 @@ class Collections:
         '''
         #EXAMPLE:
         '''
-        MATCH (n_before :BA {item_id: 717})-[r_before :BA_in_category] -> (c :BA {item_id: 708}) <-[r_after :BA_in_category]-(n_after :BA)
+        MATCH (n_before :BA {uri: 717})-[r_before :BA_in_category] -> (c :BA {uri: 708}) <-[r_after :BA_in_category]-(n_after :BA)
         WHERE r_after.pos > r_before.pos
         RETURN r_before.pos AS pos_before, r_after.pos AS pos_after
         ORDER BY pos_after
@@ -1396,7 +1396,7 @@ class Collections:
 
         # ALTERNATE WAY OF PHRASING THE QUERY:
         '''
-        MATCH (n_before:BA {item_id: 717})-[r_before :BA_in_category] -> (c:BA {item_id: 708}) <- [r_after :BA_in_category]-(n_after :BA)
+        MATCH (n_before:BA {uri: 717})-[r_before :BA_in_category] -> (c:BA {uri: 708}) <- [r_after :BA_in_category]-(n_after :BA)
         WITH r_before.pos AS pos_before, r_after
         WHERE r_after.pos > pos_before
         RETURN pos_before, r_after.pos AS pos_after
@@ -1409,12 +1409,12 @@ class Collections:
         if result is None:
             # An empty find is indicative of either an "insert at the end" (no n_after found),
             #       or a bad insert_after value that matches no node
-            node = NeoSchema.fetch_data_node(item_id = insert_after)
+            node = NeoSchema.fetch_data_node(uri = insert_after)
             if node is None:
-                raise Exception(f"There is no node with the `item_id` value ({insert_after}) passed by `insert_after`")
+                raise Exception(f"There is no node with the `uri` value ({insert_after}) passed by `insert_after`")
 
             print("It's case of insert AT THE END")
-            return cls.add_to_collection_at_end(collection_id, membership_rel_name, item_class_name, item_properties,new_item_id=new_item_id)
+            return cls.add_to_collection_at_end(collection_id, membership_rel_name, item_class_name, item_properties,new_uri=new_uri)
 
 
         pos_before = result["pos_before"]
@@ -1435,17 +1435,17 @@ class Collections:
                                             connected_to_id=collection_id, connected_to_labels="BA",
                                             rel_name=membership_rel_name,
                                             rel_prop_key="pos", rel_prop_value=new_pos,
-                                            new_item_id=new_item_id
+                                            new_uri=new_uri
                                             )
 
-        #link_to = [{"labels": "BA", "key": "item_id", "value": collection_id,
+        #link_to = [{"labels": "BA", "key": "uri", "value": collection_id,
         #            "rel_name": membership_rel_name, "rel_attrs": {"pos": new_pos}}]
 
         #new_neo_id = cls.db.create_node_with_relationships(labels="BA", properties=item_properties, connections=link_to)
 
-        #item_id = NeoSchema.register_existing_data_node(class_name=item_class_name, existing_neo_id=new_neo_id, new_item_id=new_item_id)
+        #uri = NeoSchema.register_existing_data_node(class_name=item_class_name, existing_neo_id=new_neo_id, new_uri=new_uri)
 
-        #return item_id
+        #return uri
 
 
 
@@ -1456,7 +1456,7 @@ class Collections:
         starting with nodes with the specified position value (and all greater values);
         this operation applies to nodes linked to the specified Collection thru a relationship with the given name.
 
-        :param collection_id:       The item_id of a data node whose schema is an instance of the Class "Collections"
+        :param collection_id:       The uri of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply
         :param first_to_move:       All position ("pos") values greater or equal to this one will get shifted down
         :return:                    The number of modified items
@@ -1464,7 +1464,7 @@ class Collections:
         # Starting with a particular Collection node, look at all its relationships whose name is specified by membership_rel_name,
         #       and increase the value of the "pos" attributes on those relationships if their current values is at least first_to_move
         q = f'''
-        MATCH (c:BA {{item_id: $collection_id}}) <- [r :{membership_rel_name}] - (n :BA)
+        MATCH (c:BA {{uri: $collection_id}}) <- [r :{membership_rel_name}] - (n :BA)
         WHERE r.pos >= $first_to_move
         SET r.pos = r.pos + {cls.DELTA_POS}
         '''

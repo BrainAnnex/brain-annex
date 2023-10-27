@@ -7,10 +7,10 @@ Vue.component('vue-plugin-table',
     {
         props: ['record_data_list', 'common_fields', 'common_schema_data'],
         /*  record_data_list:  EXAMPLE:
-                                 [{"item_id":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
+                                 [{"uri":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
                                   "German":"Tier", "English":"animal"}
                                  ]
-                                 (if any item_id is -1, it means that it's a newly-created header, not yet registered with the server)
+                                 (if any uri is -1, it means that it's a newly-created header, not yet registered with the server)
 
             common_fields:  A list of field names, in order - shared among all records in the table
                                  EXAMPLE: ["French", "English", "notes", "some extra field"]
@@ -38,7 +38,7 @@ Vue.component('vue-plugin-table',
                     Data row
                   -->
                 <tr v-for="record in record_data_list" is="vue-plugin-single-record"
-                    v-bind:key="record.item_id"
+                    v-bind:key="record.uri"
 
                     v-bind:record_data="record"
                     v-bind:field_list="common_fields"

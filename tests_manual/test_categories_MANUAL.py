@@ -64,25 +64,25 @@ def test_bread_crumbs(db):
 
 
 def test_add_content_at_end(db):
-    new_item_id = Categories.add_content_at_end(category_id=708,
+    new_uri = Categories.add_content_at_end(category_id=708,
                                                 item_class_name="Headers",
                                                 item_properties={"text": "This is a New Caption, added at the end"})
-    print("new_item_id:", new_item_id)
+    print("new_uri:", new_uri)
 
 
 def test_add_content_at_beginning(db):
-    new_item_id = Categories.add_content_at_beginning(category_id=708,
+    new_uri = Categories.add_content_at_beginning(category_id=708,
                                                 item_class_name="Headers",
                                                 item_properties={"text": "This is a New Caption, added before anything else"})
-    print("new_item_id:", new_item_id)
+    print("new_uri:", new_uri)
 
 
 def test_add_content_after_element(db):
-    new_item_id = \
+    new_uri = \
         Categories.add_content_after_element(category_id=708,
                                                 item_class_name="Headers", item_properties={"text": "Caption 4, inserted 'after element'"},
                                                 insert_after=729)
-    print("new_item_id: ", new_item_id)
+    print("new_uri: ", new_uri)
 
 
 def test_delete_category(db):
@@ -109,14 +109,14 @@ def test_check_all_categories_for_duplicates(db):
 """
 For testing on Neo4j browser:
 
-MATCH (n:BA)-[r :BA_in_category]->(cat:BA {item_id: 708}) RETURN r.pos, n.text, n.name, n.item_id, n.basename ORDER BY r.pos
+MATCH (n:BA)-[r :BA_in_category]->(cat:BA {uri: 708}) RETURN r.pos, n.text, n.name, n.uri, n.basename ORDER BY r.pos
 
-MATCH (c:BA {item_id: 708}) <- [r :BA_in_category] - (n :BA)
-RETURN r.pos, n.item_id, n.text, n.basename
+MATCH (c:BA {uri: 708}) <- [r :BA_in_category] - (n :BA)
+RETURN r.pos, n.uri, n.text, n.basename
 ORDER by r.pos
 
-MATCH (n:BA {item_id: xxx}) RETURN n
+MATCH (n:BA {uri: xxx}) RETURN n
 
-MATCH (n:BA {item_id: xxx}) DETACH DELETE n
+MATCH (n:BA {uri: xxx}) DETACH DELETE n
 
 """

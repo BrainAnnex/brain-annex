@@ -8,8 +8,8 @@
 Vue.component('vue-content-items',
     {
         props: ['item', 'expose_controls', 'category_id', 'index', 'item_count', 'registered_plugins', 'records_types', 'schema_data'],
-        /*  item:       EXAMPLE: {item_id:52, pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Headers"}
-                                 (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
+        /*  item:       EXAMPLE: {uri:52, pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Headers"}
+                                 (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
             expose_controls: Flag indicating whether in edit mode
             category_id:    Indicating which Category-viewer page is using this component
             index:          The zero-based position of this Content Items on the page
@@ -28,7 +28,7 @@ Vue.component('vue-content-items',
         template: `
             <div v-bind:class="{'highlight': highlight }">	<!-- Outer container, serving as Vue-required template root  -->
 
-            <a v-bind:name="item.schema_code + '_' + item.item_id"></a>  <!-- Anchor for page scrolling -->
+            <a v-bind:name="item.schema_code + '_' + item.uri"></a>  <!-- Anchor for page scrolling -->
 
             <!--
                  The line with "v-bind:is" dynamically dispatches to the appropriate specialized component.
@@ -56,7 +56,7 @@ Vue.component('vue-content-items',
             >
             </component>
 
-            <p v-if="show_button" class="confirm-question">Confirm DELETE (item {{item.item_id}})?
+            <p v-if="show_button" class="confirm-question">Confirm DELETE (item {{item.uri}})?
                 <button button @click="confirm_delete" class='confirm-button'>OK</button>
                 <button button @click="cancel_delete" class='cancel-button'>Cancel</button>
             </p>
@@ -110,7 +110,7 @@ Vue.component('vue-content-items',
             add_content_below(item)
             // Expose a box below the Item, to let the user enter a new Content Item
             {
-                console.log(`'vue-content-items' component received Event 'add-content'. Adding new content Item below Item ID: ${item.item_id}`);
+                console.log(`'vue-content-items' component received Event 'add-content'. Adding new content Item below Item ID: ${item.uri}`);
                 //console.log(item);
                 this.insert_box = true;
             },
@@ -122,7 +122,7 @@ Vue.component('vue-content-items',
              */
             {
                 console.log(`In 'vue-content-items' component, add_new_item_below().`);
-                console.log(`    Request to insert new Content Item below Item with ID ${this.item.item_id}`);
+                console.log(`    Request to insert new Content Item below Item with ID ${this.item.uri}`);
                 console.log(`    New item - schema_code: ${schema_code}, class_name (optional): ${class_name}`);
                 console.log("    `vue-content-items` component is sending 'insert-new-item' signal to its parent");
                 // This signal will be handled in the root component

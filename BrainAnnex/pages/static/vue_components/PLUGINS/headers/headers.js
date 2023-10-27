@@ -7,9 +7,9 @@ Vue.component('vue-plugin-h',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
         /*  item_data:      An object with the relevant data about this Header item;
-                                if the "item_id" attribute is negative,
+                                if the "uri" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
-                            EXAMPLE: {"item_id":52,"pos":10,"schema_code":"h","text":"MY NEW SECTION"}
+                            EXAMPLE: {"uri":52,"pos":10,"schema_code":"h","text":"MY NEW SECTION"}
 
             allow_editing:  A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this Header is displayed (used when creating new records)
@@ -51,7 +51,7 @@ Vue.component('vue-plugin-h',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.item_id == -1 ? true : false),    // -1 means "new Item" (automatically placed in editing mode)
+                editing_mode: (this.item_data.uri == -1 ? true : false),    // -1 means "new Item" (automatically placed in editing mode)
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -102,7 +102,7 @@ Vue.component('vue-plugin-h',
                 // Start the body of the POST to send to the server
                 post_body = "schema_code=" + this.current_data.schema_code;
 
-                if (this.item_data.item_id == -1)  {     // -1 is a convention indicating a new Content Item to create,
+                if (this.item_data.uri == -1)  {     // -1 is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
                      post_body += "&category_id=" + this.category_id;
                      const insert_after = this.item_data.insert_after;      // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
@@ -111,7 +111,7 @@ Vue.component('vue-plugin-h',
                      url_server = `/BA/api/simple/add_item_to_category`;    // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING header
-                    post_body += "&item_id=" + this.item_data.item_id;
+                    post_body += "&uri=" + this.item_data.uri;
 
                     url_server = `/BA/api/simple/update`;                   // URL to communicate with the server's endpoint
                 }
@@ -143,8 +143,8 @@ Vue.component('vue-plugin-h',
                     this.status_message = `Successful edit`;
 
                     // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.item_id == -1)
-                        this.current_data.item_id = server_payload;
+                    if (this.item_data.uri == -1)
+                        this.current_data.uri = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Headers component sending `updated-item` signal to its parent");
@@ -171,7 +171,7 @@ Vue.component('vue-plugin-h',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.item_id == -1) {
+                if (this.current_data.uri == -1) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Headers sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');

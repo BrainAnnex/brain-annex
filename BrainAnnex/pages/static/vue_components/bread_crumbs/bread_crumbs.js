@@ -1,4 +1,4 @@
-/*  MIT License.  Copyright (c) 2021 Julian A. West
+/*  MIT License.  Copyright (c) 2023 Julian A. West
  */
 
 Vue.component('vue-bread-crumbs',

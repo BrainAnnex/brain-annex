@@ -102,7 +102,7 @@ def test_extract_unique_good_words():
 
     text = '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
     result = FullTextIndexing.extract_unique_good_words(text)
-    assert result == {'mr', 'joe', 'sons', 'long', 'term', 'business', 'find', 'home', 'visit'}
+    assert result == {'joe', 'sons', 'long', 'term', 'business', 'home', 'visit'}
 
 
     # Examples with no usable text, returning an empty set
@@ -154,12 +154,12 @@ def test_new_indexing(db):
     # Set up a new indexing system, and create a sample Content node
     content_id = setup_sample_index(db)
     # ...and then index some words to it
-    FullTextIndexing.new_indexing(content_item_id=content_id,
+    FullTextIndexing.new_indexing(content_uri=content_id,
                                   unique_words={"lab", "research", "R/D"}, to_lower_case=True)
 
     with pytest.raises(Exception):
         # Cannot create a new index, when one already exists
-        FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"duplicate", "index"})
+        FullTextIndexing.new_indexing(content_uri=content_id, unique_words={"duplicate", "index"})
 
     assert NeoSchema.count_data_nodes_of_class(class_id="Word") == 3
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
@@ -182,7 +182,7 @@ def test_new_indexing(db):
     # Create a data node of type "Content Item"...
     content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...and then index some words to it
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"research", "science"}, to_lower_case=True)
+    FullTextIndexing.new_indexing(content_uri=content_id, unique_words={"research", "science"}, to_lower_case=True)
 
     assert NeoSchema.count_data_nodes_of_class(class_id="Word") == 4    # One word from earlier got re-used
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 2
@@ -211,10 +211,10 @@ def test_update_indexing(db):
 
     with pytest.raises(Exception):
         # Cannot update an index that hasn't yet been created
-        FullTextIndexing.update_indexing(content_item_id=content_id, unique_words={"impossible"})
+        FullTextIndexing.update_indexing(content_uri=content_id, unique_words={"impossible"})
 
     # Index some words to or Content Item
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"lab", "research", "R/D"})
+    FullTextIndexing.new_indexing(content_uri=content_id, unique_words={"lab", "research", "R/D"})
 
     assert FullTextIndexing.count_indexed_words(content_id) == 3
     assert NeoSchema.count_data_nodes_of_class("Word") == 3
@@ -224,7 +224,7 @@ def test_update_indexing(db):
 
 
     # Now, change the indexing (of that same Content Item) to a new set of words
-    FullTextIndexing.update_indexing(content_item_id=content_id, unique_words={"closed", "renovation"})
+    FullTextIndexing.update_indexing(content_uri=content_id, unique_words={"closed", "renovation"})
 
     assert FullTextIndexing.count_indexed_words(content_id) == 2
     assert NeoSchema.count_data_nodes_of_class("Word") == 5
@@ -242,7 +242,7 @@ def test_update_indexing(db):
 
     # Now,again change the indexing (of that same Content Item) to a new set of words - this time,
     # partially overlapping with existing Word nodes
-    FullTextIndexing.update_indexing(content_item_id=content_id, unique_words={"research", "neuroscience"})
+    FullTextIndexing.update_indexing(content_uri=content_id, unique_words={"research", "neuroscience"})
 
     assert FullTextIndexing.count_indexed_words(content_id) == 2
     assert NeoSchema.count_data_nodes_of_class("Word") == 6
@@ -268,7 +268,7 @@ def test_remove_indexing(db):
         FullTextIndexing.remove_indexing(content_id)
 
     # Index some words to our "Content Item"
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"lab", "research", "R/D"})
+    FullTextIndexing.new_indexing(content_uri=content_id, unique_words={"lab", "research", "R/D"})
 
     assert FullTextIndexing.count_indexed_words(content_id) == 3
     assert NeoSchema.count_data_nodes_of_class("Word") == 3
@@ -291,16 +291,16 @@ def test_remove_indexing(db):
 def test_get_indexer_node_id(db):
     db.empty_dbase()
 
-    assert FullTextIndexing.get_indexer_node_id(content_item_id = -1) is None   # Bad ID
+    assert FullTextIndexing.get_indexer_node_id(content_uri = -1) is None   # Bad ID
 
-    assert FullTextIndexing.get_indexer_node_id(content_item_id = "Not an integer") is None   # Bad ID
+    assert FullTextIndexing.get_indexer_node_id(content_uri = "Not an integer") is None   # Bad ID
 
-    assert FullTextIndexing.get_indexer_node_id(content_item_id = 1) is None  # The dbase is empty
+    assert FullTextIndexing.get_indexer_node_id(content_uri = 1) is None  # The dbase is empty
 
     # Set up a new indexing system, and create a sample Content node
     content_id = setup_sample_index(db)
     # ...and then index some words to it
-    FullTextIndexing.new_indexing(content_item_id=content_id, unique_words={"lab", "research", "R/D"})
+    FullTextIndexing.new_indexing(content_uri=content_id, unique_words={"lab", "research", "R/D"})
 
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
 
@@ -327,7 +327,7 @@ def test_search_word(db):
     # Set up a new indexing system, and create a sample Content node
     content_id_1 = setup_sample_index(db)
     # ...and then index some words to it
-    FullTextIndexing.new_indexing(content_item_id=content_id_1,
+    FullTextIndexing.new_indexing(content_uri=content_id_1,
                                   unique_words={"lab", "R/D", "SHIPPING","absence"},
                                   to_lower_case=True)
 
@@ -350,7 +350,7 @@ def test_search_word(db):
     # Add a 2nd data node of type "Content Item"...
     content_id_2 = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "some_other_file.txt"})
     # ...and then index some words to it
-    FullTextIndexing.new_indexing(content_item_id=content_id_2, unique_words={"ship", "lab", "glassware"})
+    FullTextIndexing.new_indexing(content_uri=content_id_2, unique_words={"ship", "lab", "glassware"})
 
     assert FullTextIndexing.search_word("missing") == []                # Word not present
 

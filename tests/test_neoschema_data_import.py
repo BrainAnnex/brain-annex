@@ -183,14 +183,14 @@ def test_create_data_nodes_from_python_data_1(db):
         MATCH (c1:CLASS {name:"Import Data"})<-[:SCHEMA]-
               (n1:`Import Data`)-[:imported_data]->(n2:my_class_1)
               -[:SCHEMA]->(c2:CLASS {name:"my_class_1"})
-        WHERE id(n2) = $item_id
+        WHERE id(n2) = $uri
         RETURN n2
         '''
-    root_node = db.query(q, data_binding={"item_id": root_id}, single_row=True)
+    root_node = db.query(q, data_binding={"uri": root_id}, single_row=True)
 
     root_record = root_node["n2"]
     assert root_record["legit"] == 123
-    #assert "item_id" in root_record            # Not currently is use
+    #assert "uri" in root_record            # Not currently is use
     assert "unexpected" not in root_record      # Only the key in the Schema gets imported
 
 
@@ -251,16 +251,16 @@ def test_create_data_nodes_from_python_data_3(db):
         MATCH (c1:CLASS {name:"Import Data"})<-[:SCHEMA]-
               (n1:`Import Data`)-[:imported_data]->(n2:patient)
               -[:SCHEMA]->(c2:CLASS {name:"patient"})
-        WHERE id(n2) = $item_id
+        WHERE id(n2) = $uri
         RETURN n2
         '''
-    root_node = db.query(q, data_binding={"item_id": root_id}, single_row=True)
+    root_node = db.query(q, data_binding={"uri": root_id}, single_row=True)
 
     # Only the keys in the Schema gets imported; the relationship "result" is not in the Schema, either
     root_record = root_node["n2"]
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
-    #assert "item_id" in root_record            # Not currently is use
+    #assert "uri" in root_record            # Not currently is use
     assert len(root_record) == 2     # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
@@ -312,7 +312,7 @@ def test_create_data_nodes_from_python_data_4(db):
     assert root_record["name"] == "Stephanie"
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
-    #assert "item_id" in root_record        # Not currently is use
+    #assert "uri" in root_record        # Not currently is use
     assert len(root_record) == 3            # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
@@ -720,4 +720,4 @@ def test_create_data_nodes_from_python_data_9(db):
     '''
     data_types = db.query(q, data_binding={"quote_id": new_root_id}, single_cell="data_types")
     #print(data_types)
-    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING'}    # 'item_id': 'INTEGER' (not in current use)
+    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING'}    # 'uri': 'INTEGER' (not in current use)

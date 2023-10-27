@@ -7,8 +7,8 @@ Vue.component('vue-toc-sidebar',
     {
         props: ['content_array', 'show_left_sidebar'],
         /*  content_array:  Array containing item-data objects.  EXAMPLE:
-                            [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                             {pos:50,"item_id":8,schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
+                            [{pos:0,"uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                             {pos:50,"uri":8,schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
                             ]
             show_left_sidebar: Flag indicating whether the sidebar containing the TOC is to be show
          */
@@ -33,24 +33,24 @@ Vue.component('vue-toc-sidebar',
                     <div class="page-toc">
                         <template v-for="item in content_array">
                             <p v-if="item.schema_code == 'h'" class="header">
-                                <br><a v-bind:href="'#h_' + item.item_id">{{item.text}}</a><br>
+                                <br><a v-bind:href="'#h_' + item.uri">{{item.text}}</a><br>
                             </p>
 
                             <template v-if="expand_categories">
                                 <!-- Case-by-case, based on the type of Content Item -->
                                 <p v-if="item.schema_code == 'cd'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.name">{{item.name}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.name">{{item.name}}</a>
                                     <br>
                                 </p>
 
                                 <p v-if="item.schema_code == 'i'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.caption">{{item.caption}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
                                     <img src='/BA/pages/static/graphics/image_14_1814111.png'>
                                     <br>
                                 </p>
 
                                 <p v-if="item.schema_code == 'n' && item.title">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.item_id" v-bind:title="item.caption">{{item.title}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.title}}</a>
                                     <br>
                                 </p>
                             </template>

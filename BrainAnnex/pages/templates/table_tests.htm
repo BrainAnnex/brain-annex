@@ -176,20 +176,20 @@ new Vue({
     delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
     data: {
-        content_array: [{"pos":-50, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+        content_array: [{"pos":-50, "uri":1, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Leben", "English":"life"},
-                        {"pos":-40, "item_id":2, "schema_code":"r", class_name:"German Vocabulary",
+                        {"pos":-40, "uri":2, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Tier", "English":"animal"},
-                        {"pos":-30, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
+                        {"pos":-30, "uri":3, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"krank", "English":"ill (sick)", "notes": "https://translate.google.com/?sl=de&tl=en&text=krank%0A&op=translate"},
-                        {"pos":-20, "item_id":3, "schema_code":"r", class_name:"German Vocabulary",
+                        {"pos":-20, "uri":3, "schema_code":"r", class_name:"German Vocabulary",
                              "notes": "fields in different order", "English":"wonderful", "German":"wunderbar"},
 
-                        {"pos":-10, "item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                        {"pos":-10, "uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
                         {
                             "attribution": "Oscar Wilde",
                             "class_name": "Quotes",
-                            "item_id": 824,
+                            "uri": 824,
                             "pos": 0,
                             "quote": "A dirty mind is a joy forever",
                             "schema_code": "r"
@@ -197,7 +197,7 @@ new Vue({
                         {
                             "attribution": "William James",
                             "class_name": "Quotes",
-                            "item_id": 825,
+                            "uri": 825,
                             "pos": 20,
                             "quote": "A great many people think they are thinking when they are merely REARRANGING THEIR PREJUDICES",
                             "schema_code": "r"
@@ -205,7 +205,7 @@ new Vue({
                         {
                             "attribution": "Robert Heinlein",
                             "class_name": "Quotes",
-                            "item_id": 1120,
+                            "uri": 1120,
                             "pos": 30,
                             "quote": "A human being should be able to change a diaper, plan an invasion, butcher a hog, conn a ship, design a building, write a sonnet, balance accounts, build a wall, set a bone, comfort the dying, take orders, give orders, cooperate, act alone, solve equations, analyze a new problem, pitch manure, program a computer, cook a tasty meal, fight efficiently, die gallantly. Specialization is for insects",
                             "schema_code": "r"
@@ -213,21 +213,21 @@ new Vue({
                         {
                             "attribution": "Mae West",
                             "class_name": "Quotes",
-                            "item_id": 833,
+                            "uri": 833,
                             "pos": 40,
                             "quote": "A man\u0027s kiss is his signature",
                             "schema_code": "r"
                         },
                         {
                             "class_name": "Quotes",
-                            "item_id": 834,
+                            "uri": 834,
                             "pos": 60,
                             "quote": "A paper cut is a tree\u0027s last revenge",
                             "schema_code": "r"
                         },
                         {
                             "class_name": "Quotes",
-                            "item_id": 835,
+                            "uri": 835,
                             "pos": 80,
                             "quote": "Active listening is the highest form of intimacy",
                             "schema_code": "r"
@@ -235,14 +235,14 @@ new Vue({
                         {
                             "attribution": "Jack Kornfield",
                             "class_name": "Quotes",
-                            "item_id": 836,
+                            "uri": 836,
                             "pos": 100,
                             "quote": "As surely as there is a voyage away, there is a journey home",
                             "schema_code": "r"
                         },
                         {
                             "class_name": "Quotes",
-                            "item_id": 865,
+                            "uri": 865,
                             "pos": 120,
                             "quote": "Comparison is the thief of joy",
                             "schema_code": "r"
@@ -250,14 +250,14 @@ new Vue({
                         {
                             "attribution": "Maria Popova",
                             "class_name": "Quotes",
-                            "item_id": 866,
+                            "uri": 866,
                             "pos": 140,
                             "quote": "Critical thinking without hope is cynicism. But hope without critical thinking is naivet\u00e9. In order to thrive as individuals and as a civilization we need to bridge critical thinking with hope",
                             "schema_code": "r"
                         },
                         {
                             "class_name": "Quotes",
-                            "item_id": 867,
+                            "uri": 867,
                             "pos": 160,
                             "quote": "Depend on the rabbit\u0027s foot if you will, but remember it didn\u0027t work for the rabbit",
                             "schema_code": "r"
@@ -265,14 +265,14 @@ new Vue({
                         {
                             "attribution": "Jane Seabrook",
                             "class_name": "Quotes",
-                            "item_id": 868,
+                            "uri": 868,
                             "pos": 180,
                             "quote": "Do you believe in love at first sight? Or should I walk past you again?",
                             "schema_code": "r"
                         },
                         {
                             "class_name": "Quotes",
-                            "item_id": 869,
+                            "uri": 869,
                             "pos": 200,
                             "quote": "Don\u0027t blame yourself. Let me do it",
                             "schema_code": "r"
@@ -280,7 +280,7 @@ new Vue({
                         {
                             "attribution": "Carl Sagan",
                             "class_name": "Quotes",
-                            "item_id": 920,
+                            "uri": 920,
                             "pos": 220,
                             "quote": "At the heart of science is an essential balance between two seemingly contradictory attitudes \u2014 an openness to new ideas, no matter how bizarre or counterintuitive they may be, and the most ruthless skeptical scrutiny of all ideas, old and new",
                             "schema_code": "r"
@@ -288,7 +288,7 @@ new Vue({
                         {
                             "attribution": "Dante",
                             "class_name": "Quotes",
-                            "item_id": 931,
+                            "uri": 931,
                             "notes": "\"Non ragioniam di lor [coloro che visser sanza \u2019nfamia e sanza lodo], ma guarda e passa\"",
                             "pos": 240,
                             "quote": "Let us not speak of them [those who lived without disgrace yet without praise] \u2014 just look and pass by",
@@ -296,13 +296,13 @@ new Vue({
                         },
                         {
                             "class_name": "Quotes",
-                            "item_id": 1121,
+                            "uri": 1121,
                             "pos": 260,
                             "quote": "\u2018One man\u2019s TRASH is another man\u2019s treasure\u2019... is an awesome phrase, but it\u2019s a horrible way to tell your kids they\u2019re adopted !!",
                             "schema_code": "r"
                         },
 
-                        {pos:990, "item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                        {pos:990, "uri":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                        ],       // Array containing objects with the data for all the Content Items on the page
 
         field_list: ["German", "English"],
@@ -354,21 +354,21 @@ new Vue({
             TODO: simplify with Lodash
 
             EXAMPLES (assuming that the Schema for "Quotes" is ["quote", "attribution", "notes"]):
-                {"pos":10, "item_id":1, "extra": "some value"}
+                {"pos":10, "uri":1, "extra": "some value"}
                     ->  [ "extra" ]
-                {"pos":10, "item_id":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "uri":1, "extra": "some value", class_name:"Quotes"}
                     ->  [ "extra" ]
-                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes"}
                     ->  [ "notes", "extra" ]
-                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
                     ->  [ "quote", "notes", "extra" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra" ]
-                {"attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quotes", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"UNKNOWN", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"UNKNOWN", "quote": "My quote"}
                     ->  [ "extra", "attribution", "notes", "extra2", "quote" ]
          */
         {
@@ -484,7 +484,7 @@ new Vue({
 
         extract_fields(content_item)
         /*  Scrub out all the standard fields (i.e. all fields that won't appear in a tabular format)
-            EXAMPLE:  {"pos":10, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+            EXAMPLE:  {"pos":10, "uri":1, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Leben", "English":"life"}
                        will return  [ "German", "English" ]
 
@@ -497,7 +497,7 @@ new Vue({
             // TODO: maybe use Lodash _.difference function
             for (i in all_fields) {
                 key = all_fields[i];
-                if (key != "pos" && key != "item_id" && key != "schema_code" && key != "class_name")
+                if (key != "pos" && key != "uri" && key != "schema_code" && key != "class_name")
                     shown_fields.push(key);
             }
 

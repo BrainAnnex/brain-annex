@@ -348,7 +348,7 @@ class DataManager:
         :return:
         """
         q = '''
-            MATCH  (cat :BA {item_id: $category_id}) <- 
+            MATCH  (cat :BA {uri: $category_id}) <- 
                         [:BA_in_category] - (rec :BA {schema_code:"r"}) - [:SCHEMA]->(cl:CLASS) 
             RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
             '''
@@ -373,13 +373,13 @@ class DataManager:
     #######################     CONTENT-ITEM RELATED      #######################
 
     @classmethod
-    def get_text_media_content(cls, item_id: int, schema_code, public_required = False) -> str:
+    def get_text_media_content(cls, uri: int, schema_code, public_required = False) -> str:
         """
         Fetch and return the contents of a media item stored on a local file,
         optionally requiring it to be marked as "public".
         In case of error, raise an Exception
 
-        :param item_id:         An integer identifying the desired Content Item, which ought to be text media
+        :param uri:         An integer identifying the desired Content Item, which ought to be text media
         :param schema_code:     TODO: maybe phase out
         :param public_required: If True, the Content Item is returned only if has an the attribute "public: true"
                                     TODO: unclear if actually useful
@@ -389,7 +389,7 @@ class DataManager:
                                     (e.g., if public_required is True and the item isn't public)
 
         """
-        properties = {"item_id": item_id, "schema_code": schema_code}
+        properties = {"uri": uri, "schema_code": schema_code}
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
@@ -397,7 +397,7 @@ class DataManager:
         content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
         if content_node is None:    # Metadata not found
-            raise Exception(f"The metadata for the Content Item (id {item_id}) wasn't found, or the items is not publicly accessible")
+            raise Exception(f"The metadata for the Content Item (id {uri}) wasn't found, or the items is not publicly accessible")
 
         basename = content_node['basename']
         suffix = content_node['suffix']
@@ -409,24 +409,24 @@ class DataManager:
             file_contents = MediaManager.get_from_text_file(folder, filename, encoding="utf8")
             return file_contents
         except Exception as ex:
-            return f"I/O failure while reading in contents of item {item_id}. {ex}"     # File I/O failed
+            return f"I/O failure while reading in contents of item {uri}. {ex}"     # File I/O failed
 
 
 
     @classmethod
-    def get_binary_content(cls, item_id: int, th) -> (str, bytes):
+    def get_binary_content(cls, uri: int, th) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored on a local file.
         In case of error, raise an Exception
 
-        :param item_id: Integer identifier for a media item     TODO: use strings
+        :param uri: Integer identifier for a media item     TODO: use strings
         :param th:      If not None, then the thumbnail version is returned (only
                             applicable to images)
         :return:        The binary data
 
         """
-        #print("In get_binary_content(): item_id = ", item_id)
-        content_node = NeoSchema.fetch_data_node(item_id = item_id)
+        #print("In get_binary_content(): uri = ", uri)
+        content_node = NeoSchema.fetch_data_node(uri = uri)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
@@ -447,40 +447,40 @@ class DataManager:
             return (suffix, file_contents)
         except Exception as ex:
             # File I/O failed
-            raise Exception(f"Reading of data file for Content Item {item_id} failed: {ex}")
+            raise Exception(f"Reading of data file for Content Item {uri} failed: {ex}")
 
 
 
     @classmethod
     def get_records_by_link(cls, request_data: dict) -> [dict]:
         """
-        Locate and return the data of the nodes linked to the one specified by item_id,
+        Locate and return the data of the nodes linked to the one specified by uri,
         by the relationship named by rel_name, in the direction specified by dir
 
-        :param request_data: A dictionary with 3 keys, "item_id", "rel_name", "dir"
+        :param request_data: A dictionary with 3 keys, "uri", "rel_name", "dir"
         :return:             A list of dictionaries with all the properties of the neighbor nodes
         """
-        item_id = request_data["item_id"]        # This must be an integer
+        uri = request_data["uri"]        # This must be an integer
         rel_name = request_data["rel_name"]
         dir = request_data["dir"]                # Must be either "IN or "OUT"
 
         assert dir in ["IN", "OUT"], f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
-        assert type(item_id) == int, "get_records_by_link(): The value of the parameter `item_id` must be an integer"
+        assert type(uri) == int, "get_records_by_link(): The value of the parameter `uri` must be an integer"
 
-        match = cls.db.match(labels="BA", key_name="item_id", key_value=item_id)
+        match = cls.db.match(labels="BA", key_name="uri", key_value=uri)
 
         return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, neighbor_labels ="BA")
 
 
 
     @classmethod
-    def get_link_summary(cls, item_id: int, omit_names = None) -> dict:
+    def get_link_summary(cls, uri: int, omit_names = None) -> dict:
         """
         Return a dictionary structure identifying the names and counts of all
         inbound and outbound links to/from the given data node.
         TODO: move most of it to the "~ FOLLOW LINKS ~" section of NeoAccess
 
-        :param item_id:     ID of a data node
+        :param uri:     ID of a data node
         :param omit_names:  Optional list of relationship names to disregard
         :return:            A dictionary with the names and counts of inbound and outbound links.
                             Each inner list is a pair [name, count]
@@ -503,23 +503,23 @@ class DataManager:
 
         # Get outbound links (names and counts)
         q_out = f'''
-                MATCH (n :BA {{item_id:$item_id}})-[r]->(n2 :BA)
+                MATCH (n :BA {{uri:$uri}})-[r]->(n2 :BA)
                 {where_clause}
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_out, data_binding={"item_id": item_id})
+        result = cls.db.query(q_out, data_binding={"uri": uri})
         rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
 
         # Get inbound links (names and counts)
         q_in = f'''
-                MATCH (n :BA {{item_id:$item_id}})<-[r]-(n2 :BA)
+                MATCH (n :BA {{uri:$uri}})<-[r]-(n2 :BA)
                 {where_clause}
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_in,data_binding={"item_id": item_id})
+        result = cls.db.query(q_in,data_binding={"uri": uri})
         rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
         return  {"in": rel_in, "out": rel_out}
@@ -536,7 +536,7 @@ class DataManager:
         In case of error, an Exception is raised
 
         NOTE: the "schema_code" field is currently required, but it's redundant.  Only
-              used as a safety mechanism against incorrect values of item_id
+              used as a safety mechanism against incorrect values of uri
 
         TODO: if any (non-special?) field is blank, drop it altogether from the node;
               maybe add this capability to set_fields()
@@ -550,11 +550,11 @@ class DataManager:
         print("Item Type: ", schema_code)
 
         try:
-            item_id = int(post_data.get("item_id"))
+            uri = int(post_data.get("uri"))
         except Exception as ex:
-            raise Exception(f"item_id is missing or not an integer. {ex}")
+            raise Exception(f"uri is missing or not an integer. {ex}")
 
-        print("Item Type: ", item_id)
+        print("Item Type: ", uri)
 
         #print("All Item Data: ")
         #print("-----------")
@@ -563,13 +563,13 @@ class DataManager:
 
         data_binding = post_data
 
-        if item_id < 0:     # Validate item_id
-            raise Exception(f"Bad item_id: {item_id}")
+        if uri < 0:     # Validate uri
+            raise Exception(f"Bad uri: {uri}")
 
 
         set_dict = {}       # Dictionary of field values to set
         for k, v in data_binding.items():
-            if k not in ("schema_code", "item_id"):    # Exclude some special keys
+            if k not in ("schema_code", "uri"):    # Exclude some special keys
                 set_dict[k] = v
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
@@ -579,11 +579,11 @@ class DataManager:
             set_dict = Notes.update_content(data_binding, set_dict)
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        internal_dbase_id = NeoSchema.get_data_node_internal_id(item_id)    # TODO: this will become unnecessary after switching to uri's
+        internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to uri's
         number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
 
         if schema_code == "n":
-            Notes.update_content_item_successful(item_id, original_post_data)
+            Notes.update_content_item_successful(uri, original_post_data)
 
         # If the update was NOT for a "note" (in which case it might only be about the note than its metadata)
         # verify that some fields indeed got changed
@@ -594,57 +594,57 @@ class DataManager:
 
 
     @classmethod
-    def delete_content_item(cls, item_id: str, schema_code: str) -> None:
+    def delete_content_item(cls, uri: str, schema_code: str) -> None:
         """
         Delete the specified individual Content Item.
         Note that schema_code is redundant.
         In case of error, an Exception is raised
 
-        :param item_id:     String version of the unique ID
+        :param uri:     String version of the unique ID
         :param schema_code: Redundant
         :return:            None.  In case of error, an Exception is raised
         """
-        print(f"In delete_content_item(). Attempting to delete item_id {item_id} of type `{schema_code}`")
+        print(f"In delete_content_item(). Attempting to delete uri {uri} of type `{schema_code}`")
 
         try:
-            item_id = int(item_id)
+            uri = int(uri)
         except Exception as ex:
-            raise Exception(f"item_id is missing or not an integer. {ex}")
+            raise Exception(f"uri is missing or not an integer. {ex}")
 
 
         # PLUGIN-SPECIFIC OPERATIONS that perform filesystem operations
         #       (TODO: try to infer that from the Schema)
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
-            record = cls.lookup_media_record(item_id)
+            record = cls.lookup_media_record(uri)
             if record is not None:
                 MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code)
 
         if schema_code == "i":
             # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
-            record = cls.lookup_media_record(item_id)
+            record = cls.lookup_media_record(uri)
             if record is not None:
                 MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code, thumbs=True)
 
         if schema_code == "n":
-            Notes.delete_content_before(item_id)
+            Notes.delete_content_before(uri)
 
-        match = cls.db.match(labels="BA", properties={"item_id": item_id, "schema_code": schema_code})
+        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
         number_deleted = cls.db.delete_nodes(match)
 
         if number_deleted == 1:
             if schema_code == "n":
                 # Extra processing for the "Notes" plugin
-                Notes.delete_content_successful(item_id)    # Not actually needed for notes, but setting up the system
+                Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the system
 
             return       # Successful termination, with 1 Content Item deleted, as expected
 
         elif number_deleted == 0:
-            raise Exception(f"Unable to delete Content Item id {item_id} of type `{schema_code}`")  # Error message (nothing deleted)
+            raise Exception(f"Unable to delete Content Item id {uri} of type `{schema_code}`")  # Error message (nothing deleted)
         else:
             raise Exception(f"{number_deleted} Content Items deleted, instead of the expected 1")    # Error message (too much deleted)
-                                                                                                     # Should not happen, since item_id is a primary key
+                                                                                                     # Should not happen, since uri is a primary key
 
 
     @classmethod
@@ -660,10 +660,10 @@ class DataManager:
                     * schema_id (Optional)
                     * class_name (Required only for Class Items of type "record")
 
-            - insert_after        Either an item_id (int), or one of the special values "TOP" or "BOTTOM"
+            - insert_after        Either an uri (int), or one of the special values "TOP" or "BOTTOM"
             - PLUS all applicable plugin-specific fields (all the key/values for the new Content Item)
 
-        :return:    The item_id of the newly-created node
+        :return:    The uri of the newly-created node
                     In case of error, an Exception is raised
         """
 
@@ -711,8 +711,8 @@ class DataManager:
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_item_id = NeoSchema.next_available_datanode_id()
-        print("New item will be assigned ID:", new_item_id)
+        new_uri = NeoSchema.next_available_datanode_id()
+        print("New item will be assigned ID:", new_uri)
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
         #       TODO: try to infer them from the Schema
@@ -724,7 +724,7 @@ class DataManager:
         #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
         if schema_code == "n":
-            post_data = Notes.add_content(new_item_id, post_data)
+            post_data = Notes.add_content(new_uri, post_data)
 
 
         print("Revised post_data: ", post_data)
@@ -738,11 +738,11 @@ class DataManager:
         if insert_after == "TOP":
             Categories.add_content_at_beginning(category_id=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
-                                                new_item_id=new_item_id)
+                                                new_uri=new_uri)
         elif insert_after == "BOTTOM":
             Categories.add_content_at_end(category_id=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
-                                                new_item_id=new_item_id)
+                                                new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             try:
                 insert_after = int(insert_after)
@@ -751,20 +751,20 @@ class DataManager:
 
             Categories.add_content_after_element(category_id=category_id,
                                              item_class_name=class_name, item_properties=post_data,
-                                             insert_after=insert_after, new_item_id=new_item_id)
+                                             insert_after=insert_after, new_uri=new_uri)
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if schema_code == "n":
-            Notes.new_content_item_successful(new_item_id, original_post_data)
+            Notes.new_content_item_successful(new_uri, original_post_data)
 
 
-        return new_item_id     # Success
+        return new_uri     # Success
 
 
 
     @classmethod
-    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :int, new_item_id, class_name,
+    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :int, new_uri, class_name,
                                                 post_data, original_post_data):
         # TODO: NOT YET IN USE
         #       Meant to take over the final parts of BA_Api_Routing.upload_media() and DataManager.new_content_item_in_category()
@@ -772,11 +772,11 @@ class DataManager:
         if insert_after == "TOP":
             Categories.add_content_at_beginning(category_id=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
-                                                new_item_id=new_item_id)
+                                                new_uri=new_uri)
         elif insert_after == "BOTTOM":
             Categories.add_content_at_end(category_id=category_id,
                                           item_class_name=class_name, item_properties=post_data,
-                                          new_item_id=new_item_id)
+                                          new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             try:
                 insert_after = int(insert_after)
@@ -785,14 +785,14 @@ class DataManager:
 
             Categories.add_content_after_element(category_id=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
-                                                 insert_after=insert_after, new_item_id=new_item_id)
+                                                 insert_after=insert_after, new_uri=new_uri)
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Notes":
-            Notes.new_content_item_successful(new_item_id, original_post_data)
+            Notes.new_content_item_successful(new_uri, original_post_data)
         elif class_name == "Documents":
-            Documents.new_content_item_successful(new_item_id, original_post_data)
+            Documents.new_content_item_successful(new_uri, original_post_data)
 
 
 
@@ -800,15 +800,15 @@ class DataManager:
     #######################     MEDIA-RELATED      #######################
 
     @classmethod
-    def lookup_media_record(cls, item_id: int) -> Union[dict, None]:
+    def lookup_media_record(cls, uri: int) -> Union[dict, None]:
         """
         Attempt to retrieve the metadata for the media file attached to the specified Content Item
         TODO: move to MediaManager class
 
-        :param item_id: An integer with the URI of the Content Item
+        :param uri: An integer with the URI of the Content Item
         :return:        If found, return a dict with the record; otherwise, return None
         """
-        record = cls.db.get_record_by_primary_key("BA", "item_id", item_id)
+        record = cls.db.get_record_by_primary_key("BA", "uri", uri)
         if record is None:
             return None
 
@@ -844,8 +844,8 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'item_id': 55, 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
-        #    {'basename': 'notes-3', 'item_id': 14, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
+        #   [{'basename': 'notes-2', 'uri': 55, 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
+        #    {'basename': 'notes-3', 'uri': 14, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
         #   ]
 
         for node in result:
@@ -857,7 +857,7 @@ class DataManager:
             neighbor_props = cls.db.follow_links(match=internal_id,
                                                 rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Categories")
             # EXAMPLE of neighbor_props:
-            #   [{'item_id': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
+            #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)
             node["internal_links"] = neighbor_props
 
@@ -904,7 +904,7 @@ class DataManager:
         """
 
         :param filter_dict: A dictionary.
-                            EXAMPLE: {"labels": "BA", "key_name": "item_id", "key_value": 123, "limit": 25}
+                            EXAMPLE: {"labels": "BA", "key_name": "uri", "key_value": 123, "limit": 25}
 
         :return:            A (possibly-empty) list of dictionaries
         """
@@ -1234,7 +1234,7 @@ class DataManager:
 
         #print("all_matches: ", all_matches)
 
-        # Zap leading/trailing blanks from all entries, and add 2 extra fields (for item_id and schema_code)
+        # Zap leading/trailing blanks from all entries, and add 2 extra fields (for uri and schema_code)
         '''
         id_offset = NeoSchema.next_available_datanode_id()
         
@@ -1258,7 +1258,7 @@ class DataManager:
             return f"File `{basename}` uploaded successfully, but <b>NO MATCHES</b> found"
 
 
-        #column_names = ["name", "role", "location", "item_id", "schema_code"]
+        #column_names = ["name", "role", "location", "uri", "schema_code"]
         column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
         df = pd.DataFrame(all_matches, columns = column_names)
         print(df.count())
@@ -1276,11 +1276,11 @@ class DataManager:
         cls.db.load_pandas(df, label="IP")     # Using a temporary label for ease of the next steps
         '''
         """
-        # Done manually.  The first item_id in the new data is 69, and we want to map it a pos value of 30;
+        # Done manually.  The first uri in the new data is 69, and we want to map it a pos value of 30;
         # 70 will map to 40, and so on:
-        MATCH (c:BA {schema_code:"cat", item_id:61}),          // <------ This is the Category "Professional Networking"
+        MATCH (c:BA {schema_code:"cat", uri:61}),          // <------ This is the Category "Professional Networking"
         (n:IP)
-        MERGE (n)-[:BA_in_category {pos:(n.item_id - 69)*10+30}]->(c)
+        MERGE (n)-[:BA_in_category {pos:(n.uri - 69)*10+30}]->(c)
 
         # Rename all "IP" labels to "BA"
         MATCH (n:IP) SET n:BA

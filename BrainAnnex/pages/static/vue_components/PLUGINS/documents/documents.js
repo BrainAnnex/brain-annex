@@ -5,8 +5,8 @@ Vue.component('vue-plugin-d',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
         /*  item_data:  EXAMPLE: {"basename": "test", "caption": "My first document", "class_name": "Documents",
-                                  "item_id": 4849, "pos": 0, "schema_code": "d", "suffix": "txt"}
-                                 (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
+                                  "uri": 4849, "pos": 0, "schema_code": "d", "suffix": "txt"}
+                                 (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
 
             allow_editing:  A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
@@ -62,13 +62,13 @@ Vue.component('vue-plugin-d',
             document_url(item_data)
             // Return the URL of the full documents
             {
-                return '/BA/api/simple/serve_media/' + item_data.item_id;           // Invoke the file server
+                return '/BA/api/simple/serve_media/' + item_data.uri;           // Invoke the file server
              },
 
 
             edit_content_item(item)
             {
-                console.log(`Documents component received signal to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
+                console.log(`Documents component received signal to edit content item of type '${item.schema_code}' , id ${item.uri}`);
                 alert("Editing of Documents not yet implemented");
             }
 
