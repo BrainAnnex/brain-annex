@@ -118,7 +118,7 @@ class ApiRouting:
 
         EXAMPLE:
             try:
-                item_id = cls.str_to_int(item_id_str)
+                uri = cls.str_to_int(uri_str)
             except Exception as ex:
                 # Do something
 
@@ -150,15 +150,15 @@ class ApiRouting:
                 post_pars = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
 
         TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
-              Example - int_pars = ['item_id']
+              Example - int_pars = ['uri']
 
         TODO: merge with UploadHelper.get_form_data()
 
         :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
                                     that can contain multiple values for the same key.
-                                    EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at')])
+                                    EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
 
-        :param required_par_list:   A list or tuple.  EXAMPLE: ['item_id', 'rel_name']
+        :param required_par_list:   A list or tuple.  EXAMPLE: ['uri', 'rel_name']
         :return:                    A dict populated with the POST data
         """
         data_dict = post_data.to_dict(flat=True)    # WARNING: if multiple identical keys occur,
@@ -444,14 +444,14 @@ class ApiRouting:
 
 
 
-        @bp.route('/get_properties_by_item_id/<item_id>')
-        def get_properties_by_item_id(item_id):
+        @bp.route('/get_properties_by_uri/<uri>')
+        def get_properties_by_uri(uri):
             """
-            Get all properties of a DATA node specified by item_id
+            Get all properties of a DATA node specified by uri
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/get_properties_by_item_id/123
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_properties_by_uri/123
 
-            :param item_id:
+            :param uri:
             :return:            A JSON object with a list of the Properties of the specified Class
                                 EXAMPLE:
                                     [
@@ -460,7 +460,7 @@ class ApiRouting:
                                       "French"
                                     ]
             """
-            prop_list = NeoSchema.all_properties("BA", "item_id", int(item_id))
+            prop_list = NeoSchema.all_properties("BA", "uri", int(uri))
             response = {"status": "ok", "payload": prop_list}
             # TODO: handle error scenarios
 
@@ -663,9 +663,9 @@ class ApiRouting:
 
         ################   VIEWING CONTENT ITEMS   ################
 
-        @bp.route('/simple/get_media/<item_id_str>')
+        @bp.route('/simple/get_media/<uri_str>')
         @login_required
-        def get_media(item_id_str) -> str:
+        def get_media(uri_str) -> str:
             """
             Retrieve and return the contents of a text media item (for now, just "notes"),
             including the request status
@@ -675,8 +675,8 @@ class ApiRouting:
             #sleep(1)    # For debugging
 
             try:
-                item_id = int(item_id_str)
-                payload = DataManager.get_text_media_content(item_id, "n")
+                uri = int(uri_str)
+                payload = DataManager.get_text_media_content(uri, "n")
                 response = cls.SUCCESS_PREFIX + payload
             except Exception as ex:
                 err_details = f"Unable to retrieve the requested note: {ex}"
@@ -689,8 +689,8 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/remote_access_note/<item_id_str>')
-        def remote_access_note(item_id_str) -> str:     # NO LOGIN REQUIRED
+        @bp.route('/simple/remote_access_note/<uri_str>')
+        def remote_access_note(uri_str) -> str:     # NO LOGIN REQUIRED
             """
             Similar to get_media(), but:
                 1) no login required
@@ -701,8 +701,8 @@ class ApiRouting:
             """
 
             try:
-                item_id = int(item_id_str)
-                payload = DataManager.get_text_media_content(item_id, "n", public_required=True)
+                uri = int(uri_str)
+                payload = DataManager.get_text_media_content(uri, "n", public_required=True)
 
                 text_response = cls.SUCCESS_PREFIX + payload
                 response = make_response(text_response)
@@ -721,10 +721,10 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/serve_media/<item_id>')
-        @bp.route('/simple/serve_media/<item_id>/<th>')
+        @bp.route('/simple/serve_media/<uri>')
+        @bp.route('/simple/serve_media/<uri>/<th>')
         @login_required
-        def serve_media(item_id, th=None):
+        def serve_media(uri, th=None):
             """
             Retrieve and return the contents of a data media item (for now, just images or documents.)
             If ANY value is specified for the argument "th", then the thumbnail version is returned (only
@@ -756,14 +756,14 @@ class ApiRouting:
             default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
 
             try:
-                (suffix, content) = DataManager.get_binary_content(int(item_id), th)
+                (suffix, content) = DataManager.get_binary_content(int(uri), th)
                 response = make_response(content)
                 # Set the MIME type
                 mime_type = mime_mapping.get(suffix.lower(), default_mime)
                 response.headers['Content-Type'] = mime_type
                 #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
             except Exception as ex:
-                err_details = f"Unable to retrieve Content Item with URI `{item_id}`. {exceptions.exception_helper(ex)}"
+                err_details = f"Unable to retrieve Content Item with URI `{uri}`. {exceptions.exception_helper(ex)}"
                 print(f"serve_media() encountered the following error: {err_details}")
                 response = make_response(err_details, 404)  # TODO: make sure that 404 works well, vs. the 500 previously used
 
@@ -771,8 +771,8 @@ class ApiRouting:
 
 
 
-        @bp.route('/get_link_summary/<item_id_str>')
-        def get_link_summary_api(item_id_str) -> str:
+        @bp.route('/get_link_summary/<uri_str>')
+        def get_link_summary_api(uri_str) -> str:
             """
             Return a JSON structure identifying the names and counts of all
             inbound and outbound links to/from the given data node.
@@ -781,7 +781,7 @@ class ApiRouting:
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_link_summary/47
 
-            :param item_id_str: ID of a data node
+            :param uri_str: ID of a data node
             :return:            A JSON object with the names and counts of inbound and outbound links
                                 EXAMPLE:
                                     {
@@ -798,8 +798,8 @@ class ApiRouting:
                                     }
             """
             try:
-                item_id = cls.str_to_int(item_id_str)
-                payload = DataManager.get_link_summary(item_id, omit_names = ['BA_in_category'])
+                uri = cls.str_to_int(uri_str)
+                payload = DataManager.get_link_summary(uri, omit_names = ['BA_in_category'])
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -811,19 +811,19 @@ class ApiRouting:
         @bp.route('/get_records_by_link', methods=['POST'])
         def get_records_by_link_api() -> str:
             """
-            Locate and return the data of the nodes linked to the one specified by item_id,
+            Locate and return the data of the nodes linked to the one specified by uri,
             by the relationship named by rel_name, in the direction specified by dir
             EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/get_records_by_link -d "item_id=123&rel_name=BA_served_at&dir=IN"
+                curl http://localhost:5000/BA/api/get_records_by_link -d "uri=123&rel_name=BA_served_at&dir=IN"
             """
             # Extract the POST values
             post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('item_id', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
+            # EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
             cls.show_post_data(post_data)
 
             try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['item_id', 'rel_name', 'dir'])
-                data_dict["item_id"] = cls.str_to_int(data_dict["item_id"])
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['uri', 'rel_name', 'dir'])
+                data_dict["uri"] = cls.str_to_int(data_dict["uri"])
                 payload = DataManager.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
@@ -842,18 +842,18 @@ class ApiRouting:
             """
             Update an existing Content Item.
             NOTE: the "schema_code" field is currently required, but it's redundant.  Only
-                  used as a safety mechanism against incorrect values of item_id
+                  used as a safety mechanism against incorrect values of uri
 
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/update -d "item_id=11&schema_code=h&text=my_header"
-                curl http://localhost:5000/BA/api/simple/update -d "item_id=62&schema_code=r&English=Love&German=Liebe"
+                curl http://localhost:5000/BA/api/simple/update -d "uri=11&schema_code=h&text=my_header"
+                curl http://localhost:5000/BA/api/simple/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
             """
             # Extract the POST values
-            post_data = request.form    # Example: ImmutableMultiDict([('item_id', '11'), ('schema_code', 'r')])
+            post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('schema_code', 'r')])
             cls.show_post_data(post_data, "update")
 
             try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['item_id'])
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['uri'])
                 DataManager.update_content_item(data_dict)
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
@@ -865,16 +865,16 @@ class ApiRouting:
         
         
         
-        @bp.route('/simple/delete/<item_id>/<schema_code>')
+        @bp.route('/simple/delete/<uri>/<schema_code>')
         @login_required
-        def delete(item_id, schema_code) -> str:
+        def delete(uri, schema_code) -> str:
             """
             Delete the specified Content Item.
             Note that schema_code is redundant.
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete/46/n
             """
             try:
-                DataManager.delete_content_item(item_id, schema_code)
+                DataManager.delete_content_item(uri, schema_code)
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
                 return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
@@ -904,7 +904,7 @@ class ApiRouting:
             POST FIELDS:
                 category_id         Integer identifying the Category to which attach the new Content Item
                 schema_code         A string to identify the Schema that the new Content Item belongs to
-                insert_after        Either an item_id (int), or one of the special values "TOP" or "BOTTOM"
+                insert_after        Either an uri (int), or one of the special values "TOP" or "BOTTOM"
                 PLUS any applicable plugin-specific fields
             """
             # Extract the POST values
@@ -1010,8 +1010,8 @@ class ApiRouting:
             Remove the specified relationship (edge)
 
             POST FIELDS:
-                from                    The item_id of the node from which the relationship originates
-                to                      The item_id of the node into which the relationship takes
+                from                    The uri of the node from which the relationship originates
+                to                      The uri of the node into which the relationship takes
                 rel_name                The name of the relationship to remove
                 schema_code (optional)  If passed, the appropriate plugin gets invoked
             :return:
@@ -1032,7 +1032,7 @@ class ApiRouting:
                     Categories.remove_relationship(from_id=from_id, to_id=to_id,
                                                    rel_name=rel_name)       # Category-specific action
 
-                NeoSchema.remove_data_relationship(from_item_id=from_id, to_item_id=to_id,
+                NeoSchema.remove_data_relationship(from_uri=from_id, to_uri=to_id,
                                                    rel_name=rel_name, labels="BA")
 
                 return_value = cls.SUCCESS_PREFIX              # If no errors
@@ -1051,8 +1051,8 @@ class ApiRouting:
             Add the specified relationship (edge)
 
             POST FIELDS:
-                from                    The item_id of the node from which the relationship originates
-                to                      The item_id of the node into which the relationship takes
+                from                    The uri of the node from which the relationship originates
+                to                      The uri of the node into which the relationship takes
                 rel_name                The name of the relationship to add
                 schema_code (optional)  If passed, the appropriate plugin gets invoked
             :return:
@@ -1074,7 +1074,7 @@ class ApiRouting:
                                                 rel_name=rel_name)       # Category-specific action
 
                 NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
-                                                    rel_name=rel_name, id_type="item_id")
+                                                    rel_name=rel_name, id_type="uri")
 
                 return_value = cls.SUCCESS_PREFIX              # If no errors
             except Exception as ex:
@@ -1088,15 +1088,15 @@ class ApiRouting:
 
         #############    POSITIONING WITHIN CATEGORIES    #############
         
-        @bp.route('/simple/swap/<item_id_1>/<item_id_2>/<cat_id>')
+        @bp.route('/simple/swap/<uri_1>/<uri_2>/<cat_id>')
         @login_required
-        def swap(item_id_1, item_id_2, cat_id) -> str:
+        def swap(uri_1, uri_2, cat_id) -> str:
             """
             Swap the positions of the specified Content Items within the given Category.
         
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/swap/23/45/2
             """
-            err_status:str = Categories.swap_content_items(item_id_1, item_id_2, cat_id)
+            err_status:str = Categories.swap_content_items(uri_1, uri_2, cat_id)
         
             if err_status == "":    # If no errors
                 return_value = cls.SUCCESS_PREFIX
@@ -1109,9 +1109,9 @@ class ApiRouting:
         
         
         
-        @bp.route('/simple/reposition/<category_id>/<item_id>/<move_after_n>')
+        @bp.route('/simple/reposition/<category_id>/<uri>/<move_after_n>')
         @login_required
-        def reposition(category_id, item_id, move_after_n) -> str:
+        def reposition(category_id, uri, move_after_n) -> str:
             """
             Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
             TODO: switch to an after-item version?
@@ -1119,7 +1119,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/reposition/60/576/4
             """
             try:
-                Categories.reposition_content(category_id=int(category_id), item_id=int(item_id), move_after_n=int(move_after_n))
+                Categories.reposition_content(category_id=int(category_id), uri=int(uri), move_after_n=int(move_after_n))
                 return_value = cls.SUCCESS_PREFIX               # Success
             except Exception as ex:
                 err_status = f"UNABLE TO REPOSITION ELEMENT: {ex}"
@@ -1210,10 +1210,10 @@ class ApiRouting:
         
             EXAMPLE invocation -    send a POST request to http://localhost:5000/BA/api/get-filtered-json
                                     with body:
-                                    {"label":"BA", "key_name":"item_id", "key_value":123}
+                                    {"label":"BA", "key_name":"uri", "key_value":123}
         
                 On Win7 command prompt (but NOT the PowerShell!!), do:
-                    curl http://localhost:5000/BA/api/get-filtered-json -d "{\"label\":\"BA\", \"key_name\":\"item_id\", \"key_value\":123}"
+                    curl http://localhost:5000/BA/api/get-filtered-json -d "{\"label\":\"BA\", \"key_name\":\"uri\", \"key_value\":123}"
         
             JSON KEYS (all optional):
                 label       To name of a single Neo4j label
@@ -1223,7 +1223,7 @@ class ApiRouting:
             """
             # Extract the POST values
             #post_data = request.form
-            #json_data = dict(post_data).get("json")     # EXAMPLE: '{"label": "BA", "key_name": "item_id", "key_value": 123}'
+            #json_data = dict(post_data).get("json")     # EXAMPLE: '{"label": "BA", "key_name": "uri", "key_value": 123}'
         
             json_data = request.get_json(force=True)    # force=True is needed if using the Win7 command prompt, even if including
                                                         # the option    -H 'Content-Type: application/json'
@@ -1245,7 +1245,7 @@ class ApiRouting:
             Note: a JSON version is also available
         
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/get_filtered -d "labels=BA&key_name=item_id&key_value=123"
+                curl http://localhost:5000/BA/api/get_filtered -d "labels=BA&key_name=uri&key_value=123"
                 curl http://localhost:5000/BA/api/get_filtered -d "labels=CLASS&key_name=code&key_value=h"
         
             POST FIELDS (all optional):
@@ -1256,7 +1256,7 @@ class ApiRouting:
                 limit       The max number of entries to return
             """
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'item_id'), ('key_value', '123')])
+            post_data = request.form     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
             cls.show_post_data(post_data, "get_filtered")
         
             try:
@@ -1388,7 +1388,7 @@ class ApiRouting:
             """
             Upload new media Content, to the (currently hardwired) media folder, and attach it to the Category
             specified in the POST variable "category_id"
-            TODO: media is currently added to the END of the Category page
+            TODO: media is currently added in a fixed position to the END of the Category page
         
             USAGE EXAMPLE:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload_media">
@@ -1412,7 +1412,7 @@ class ApiRouting:
             print("POST variables: ", dict(post_data))  # Example: {'category_id': '3677', 'pos': 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'}
         
             try:
-                upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the directory used for the uploads.
+                upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the temporary directory used for the uploads.
                                                                     #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
                 (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
                             UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
@@ -1425,10 +1425,10 @@ class ApiRouting:
         
 
             # Map the MIME type of the uploaded file into a schema_code
-            if mime_type.split('/')[0] == "image":      # For example, 'image/jpeg', 'image/png', etc.
+            if mime_type.split('/')[0] == "image":  # For example, 'image/jpeg', 'image/png', etc.
                 class_name = "Images"
             else:
-                class_name = "Documents"        # Any unrecognized MIME type is treated as a Document
+                class_name = "Documents"            # Any unrecognized MIME type is treated as a Document
 
 
             # Move the uploaded file from its temp location to the media folder
@@ -1471,11 +1471,12 @@ class ApiRouting:
             # Update the database (for now, the media is added AT THE END of the Category page)
             # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
             try:
-                new_item_id = Categories.add_content_at_end(category_id=category_id,
+                new_uri = Categories.add_content_at_end(category_id=category_id,
                                                             item_class_name=class_name, item_properties=properties)
 
+                # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Documents":
-                    Documents.new_content_item_successful(item_id=new_item_id, pars=properties, mime_type=mime_type)
+                    Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type)
 
                 response = ""
 

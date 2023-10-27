@@ -71,7 +71,7 @@ Vue.component('vue-plugin-cd',
 
         data: function() {
             return {
-                editing_mode: (this.item_data.item_id == -1 ? true : false),    // -1 means "new Item"
+                editing_mode: (this.item_data.uri == -1 ? true : false),    // -1 means "new Item"
                 /*
                 fun_name: this.item_data.fun,
                 fun_args: this.item_data.args,
@@ -122,7 +122,7 @@ Vue.component('vue-plugin-cd',
 
             edit_content_item(item)
             {
-                console.log(`Codecods component received event to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
+                console.log(`Codecods component received event to edit content item of type '${item.schema_code}' , id ${item.uri}`);
                 this.editing_mode = true;
             },
 
@@ -132,7 +132,7 @@ Vue.component('vue-plugin-cd',
                 // Start the body of the POST to send to the server
                 post_body = "schema_code=" + this.current_data.schema_code;
 
-                if (this.item_data.item_id == -1)  {     // The -1 is a convention indicating a new Content Item to create
+                if (this.item_data.uri == -1)  {     // The -1 is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
                     post_body += "&category_id=" + this.category_id;
                     const insert_after = this.item_data.insert_after;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
@@ -141,7 +141,7 @@ Vue.component('vue-plugin-cd',
                     url_server = `/BA/api/simple/add_item_to_category`;     // URL to communicate with the server's endpoint
                 }
                 else {   // Update an existing Content Item
-                    post_body += "&item_id=" + this.item_data.item_id;
+                    post_body += "&uri=" + this.item_data.uri;
 
                     url_server = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
                 }
@@ -187,8 +187,8 @@ Vue.component('vue-plugin-cd',
                     this.status = `Successful edit`;
 
                     // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.item_id == -1)
-                        this.current_data.item_id = server_payload;
+                    if (this.item_data.uri == -1)
+                        this.current_data.uri = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Codedoc component sending `updated-item` signal to its parent");
@@ -214,7 +214,7 @@ Vue.component('vue-plugin-cd',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.item_id == -1) {
+                if (this.current_data.uri == -1) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("CodeDocs sending `cancel-edit` signal to the parent component");
                     this.$emit('cancel-edit');

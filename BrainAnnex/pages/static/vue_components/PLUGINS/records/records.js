@@ -7,9 +7,9 @@ Vue.component('vue-plugin-r',
         /*  item_data:  An object with the relevant data about this Record item
 
                         EXAMPLE: {class_name:"German Vocabulary",
-                                  "item_id":52, "pos":10, "schema_code":"r",
+                                  "uri":52, "pos":10, "schema_code":"r",
                                   "German":"Tier", "English":"animal"}
-                                 (if item_id is is negative, it means that it's a newly-created header,
+                                 (if uri is is negative, it means that it's a newly-created header,
                                   not yet registered with the server)
 
             allow_editing:  A boolean indicating whether in editing mode
@@ -102,7 +102,7 @@ Vue.component('vue-plugin-r',
                 <!-- Display each linked record in turn -->
                 <div v-for="(item, index) in linked_records">
                     <vue-plugin-r-linked
-                        v-bind:key="item.item_id"
+                        v-bind:key="item.uri"
 
                         v-bind:item_data="item"
                         v-bind:rel_name="link_name"
@@ -147,7 +147,7 @@ Vue.component('vue-plugin-r',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.item_id < 0  ? true : false), // Negative item_id means "new Item"
+                editing_mode: (this.item_data.uri < 0  ? true : false), // Negative uri means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 
@@ -165,7 +165,7 @@ Vue.component('vue-plugin-r',
                         {
                             "English": "Love",
                             "German": "Liebe",
-                            "item_id": 61,
+                            "uri": 61,
                             "schema_code": "r",
                             "class_name": "German Vocabulary",
                             "pos": 0    <- BEING PHASED OUT
@@ -201,7 +201,7 @@ Vue.component('vue-plugin-r',
                 rel_dir: 'IN',
 
                 // Note that we have 2 different "wait for server" flags
-                waiting_for_server: ((this.item_data.item_id != -1) ? false : this.get_fields_from_server(this.item_data)), // -1 means "new Item"
+                waiting_for_server: ((this.item_data.uri != -1) ? false : this.get_fields_from_server(this.item_data)), // -1 means "new Item"
 
                 waiting_mode: false,
                 status: "",
@@ -215,7 +215,7 @@ Vue.component('vue-plugin-r',
         methods: {
             show_linked_records(rel_name, dir)
             {
-                const record_id = this.item_data.item_id;
+                const record_id = this.item_data.uri;
 
                 console.log(`Show the records linked to record ID ${record_id} by the ${dir}-bound relationship '${rel_name}'`);
                 this.get_linked_records_from_server(record_id, rel_name, dir);
@@ -308,14 +308,14 @@ Vue.component('vue-plugin-r',
 
             get_linked_records_from_server(record_id, rel_name, dir)
             /* Initiate request to server, to get the list of the properties
-               of the data nodes linked to the one specified by item_id,
+               of the data nodes linked to the one specified by uri,
                by the relationship named by rel_name, in the direction specified by dir
              */
             {
-                console.log(`Getting the properties of data nodes linked to record with item_id ${record_id} by means of the ${dir}-bound relationship '${rel_name}'`);
+                console.log(`Getting the properties of data nodes linked to record with uri ${record_id} by means of the ${dir}-bound relationship '${rel_name}'`);
 
                 let url_server = "/BA/api/get_records_by_link";
-                let post_obj = {item_id: record_id, rel_name: rel_name, dir: dir};
+                let post_obj = {uri: record_id, rel_name: rel_name, dir: dir};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
 
@@ -336,8 +336,8 @@ Vue.component('vue-plugin-r',
                     console.log("    server call was successful; it returned: " , server_payload);
                     /*  EXAMPLE:
                             [
-                                {item_id: 100, name: "mushrooms pie", eval: "+", schema_code: "r"},
-                                {item_id: 180, name: "Margherita pie", eval: "OK", schema_code: "r"}
+                                {uri: 100, name: "mushrooms pie", eval: "+", schema_code: "r"},
+                                {uri: 180, name: "Margherita pie", eval: "OK", schema_code: "r"}
                             ]
                      */
                     this.linked_records = server_payload;
@@ -359,8 +359,8 @@ Vue.component('vue-plugin-r',
             get_link_summary_from_server(item)
             // Initiate request to server, to get the list of the names/counts of all the actual Inbound and Outbound links
             {
-                console.log(`Getting the links info for a Content Item of type 'r', with item_id = ${item.item_id}`);
-                let url_server = "/BA/api/get_link_summary/" + item.item_id;
+                console.log(`Getting the links info for a Content Item of type 'r', with uri = ${item.uri}`);
+                let url_server = "/BA/api/get_link_summary/" + item.uri;
                 console.log(`About to contact the server at ${url_server}`);
                 this.waiting_for_links = true;
                 ServerCommunication.contact_server(url_server,
@@ -403,7 +403,7 @@ Vue.component('vue-plugin-r',
             get_fields_from_server(item)
             // Initiate request to server, to get all the field and link names specified by the Schema for this Record
             {
-                console.log(`Looking up Schema info for a Content Item of type 'r', with item_id = ${item.item_id}`);
+                console.log(`Looking up Schema info for a Content Item of type 'r', with uri = ${item.uri}`);
 
                 // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
                 let url_server = "/BA/api/get_class_schema";
@@ -476,7 +476,7 @@ Vue.component('vue-plugin-r',
                 clone_obj = Object.assign({}, obj);     // Clone the object
 
                 // Scrub some data, so that it won't show up in the tabular format
-                delete clone_obj.item_id;
+                delete clone_obj.uri;
                 delete clone_obj.schema_code;
                 delete clone_obj.class_name;
                 delete clone_obj.insert_after;
@@ -502,7 +502,7 @@ Vue.component('vue-plugin-r',
 
             edit_content_item(item)
             {
-                console.log(`'Records' component received Event to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
+                console.log(`'Records' component received Event to edit content item of type '${item.schema_code}' , id ${item.uri}`);
                 this.editing_mode = true;
 
                 this.get_fields_from_server(item);      // Consult the schema
@@ -522,7 +522,7 @@ Vue.component('vue-plugin-r',
                         {
                             "English": "Love",
                             "German": "Liebe",
-                            "item_id": 61,
+                            "uri": 61,
                             "schema_code": "r",
                             "insert_after": 123,
                             "class_name": "German Vocabulary",
@@ -533,7 +533,7 @@ Vue.component('vue-plugin-r',
                 // Start the body of the POST to send to the server.  TODO: switch to newer methods of ServerCommunication
                 post_body = "schema_code=" + this.item_data.schema_code;
 
-                if (this.item_data.item_id == -1)  {     // The -1 is a convention indicating a new Content Item to create
+                if (this.item_data.uri == -1)  {     // The -1 is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_body += "&category_id=" + this.category_id;
                     post_body += "&class_name=" + encodeURIComponent(this.item_data.class_name);
@@ -553,7 +553,7 @@ Vue.component('vue-plugin-r',
                 }
                 else  {
                     // Update an EXISTING record
-                    post_body += "&item_id=" + this.item_data.item_id;
+                    post_body += "&uri=" + this.item_data.uri;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
@@ -561,7 +561,7 @@ Vue.component('vue-plugin-r',
                             // Non-blanks always lead to updates; blanks only if the field was originally present
                             post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
                     }
-                    // EXAMPLE of post_body for an EXISTING record: "schema_code=r&item_id=62&English=Love&German=Liebe"
+                    // EXAMPLE of post_body for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
                     url_server = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
                 }
@@ -599,8 +599,8 @@ Vue.component('vue-plugin-r',
                     }
 
                     // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.item_id == -1)
-                        this.current_data.item_id = server_payload;
+                    if (this.item_data.uri == -1)
+                        this.current_data.uri = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Records component sending `updated-item` signal to its parent");
@@ -628,7 +628,7 @@ Vue.component('vue-plugin-r',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.item_id == -1) {
+                if (this.current_data.uri == -1) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Records component sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');

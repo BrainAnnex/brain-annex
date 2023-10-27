@@ -112,7 +112,7 @@ class PagesRouting:
             subcategories = Categories.get_subcategories_alt(category_id)
             all_categories = Categories.get_all_categories_alt(exclude_root=False) # TODO: switch to Categories.get_all_categories(), below
             #all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)   # TODO: when switching to this,
-                                                                                                        #  change pages to use "item_id" instead of "id"
+                                                                                                        #  change pages to use "uri" instead of "id"
 
             siblings_categories = Categories.viewer_handler(category_id)
 
@@ -130,8 +130,8 @@ class PagesRouting:
             content_items = Categories.get_content_items_by_category(category_id)
             #   List of dictionaries.  EXAMPLE:
             #       [
-            #           {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-            #           {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+            #           {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+            #           {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
             #       ]
 
 
@@ -269,7 +269,7 @@ class PagesRouting:
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")
             category_remarks = category_info.get("remarks", "")
 
-            # EXAMPLE of the various categories listings, below: [{'item_id': 2, 'name': 'Work'}, {'item_id': 3, 'name': 'Hobbies'}]
+            # EXAMPLE of the various categories listings, below: [{'uri': 2, 'name': 'Work'}, {'uri': 3, 'name': 'Hobbies'}]
             subcategories = Categories.get_subcategories(category_id)
             all_categories = Categories.get_all_categories(exclude_root=False)
             parent_categories = Categories.get_parent_categories(category_id)

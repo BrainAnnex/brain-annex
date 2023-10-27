@@ -671,7 +671,7 @@ def test_create_data_node_1(db):
         '''
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
-    assert result[0] == {'d': {'specialty': 'genetics', 'name': 'Dr. Watson', 'item_id': uri}}
+    assert result[0] == {'d': {'specialty': 'genetics', 'name': 'Dr. Watson', 'uri': uri}}
 
 
     # Create a 3rd "doctor" data node, this time assigning 2 extra labels and also assigning a URI
@@ -690,7 +690,7 @@ def test_create_data_node_1(db):
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
 
-    assert result[0] == {'d': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'item_id': uri}}
+    assert result[0] == {'d': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'uri': uri}}
 
 
     # Create a 4th "doctor" data node, this time using a tuple rather than a list to assign 2 extra labels
@@ -709,7 +709,7 @@ def test_create_data_node_1(db):
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
 
-    assert result[0] == {'d': {'specialty': 'pediatrics', 'name': 'Dr. Clark', 'item_id': uri}}
+    assert result[0] == {'d': {'specialty': 'pediatrics', 'name': 'Dr. Clark', 'uri': uri}}
 
 
 
@@ -922,7 +922,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                          return_internal_id=False, return_labels=False)
-    assert result == [{'item_id': uri, "name": "Dr. Watson", "specialty": "ob/gyn"}]
+    assert result == [{'uri': uri, "name": "Dr. Watson", "specialty": "ob/gyn"}]
 
 
     # Completely drop the specialty field
@@ -931,7 +931,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'item_id': uri, "name": "Dr. Watson"}]
+    assert result == [{'uri': uri, "name": "Dr. Watson"}]
 
 
     # Turn the name value blank, but don't drop the field
@@ -940,16 +940,16 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'item_id': uri, "name": ""}]
+    assert result == [{'uri': uri, "name": ""}]
 
 
-    # Change the URI field      (TODO: in the future, this will happen automatically, and "item_id" will become "uri"
+    # Change the URI field      (TODO: in the future, this will happen automatically, and "uri" will become "uri"
     count = NeoSchema.update_data_node(data_node=internal_id, set_dict={"uri": uri})
 
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'item_id': uri, "uri": uri, "name": ""}]
+    assert result == [{'uri': uri, "uri": uri, "name": ""}]
 
 
     # Set the name, this time locating the record by its URI
@@ -958,7 +958,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'item_id': uri, "uri": uri, "name": "Prof. Fleming"}]
+    assert result == [{'uri': uri, "uri": uri, "name": "Prof. Fleming"}]
 
 
     # Add 2 extra fields
@@ -967,7 +967,7 @@ def test_update_data_node(db):
     assert count == 2
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'item_id': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'uri': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
 
 
     # A vacuous "change" that doesn't actually do anything
@@ -976,7 +976,7 @@ def test_update_data_node(db):
     assert count == 0
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'item_id': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'uri': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
 
 
     # A "change" that doesn't actually change anything, but nonetheless is counted as 1 property set
@@ -984,7 +984,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'item_id': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'uri': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
 
 
 
@@ -1043,11 +1043,11 @@ def test_add_data_point_with_links(db):
 
 
     # Create a new data point for a "result", linked to the existing "patient" data point;
-    #   this time, request the assignment of an autoincrement "item_id" to the new data node
+    #   this time, request the assignment of an autoincrement "uri" to the new data node
     result_neo_id = NeoSchema.add_data_node_with_links(class_name="result",
                                                        properties={"biomarker": "glucose", "value": 99.0},
                                                        links=[{"internal_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
-                                                       assign_item_id= True)
+                                                       assign_uri= True)
 
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
@@ -1060,15 +1060,15 @@ def test_add_data_point_with_links(db):
                                        })
     assert len(result) == 1
     record = result[0]
-    assert record['r']['item_id'] == 1  # The first auto-increment value
+    assert record['r']['uri'] == 1  # The first auto-increment value
 
 
     # Create a 2nd data point for a "result", linked to the existing "patient" data point;
-    #   this time, request the assignment of specific "item_id" to the new data node
+    #   this time, request the assignment of specific "uri" to the new data node
     result2_neo_id = NeoSchema.add_data_node_with_links(class_name="result",
                                                         properties={"biomarker": "cholesterol", "value": 180.0},
                                                         links=[{"internal_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
-                                                        new_item_id=9999)
+                                                        new_uri=9999)
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
         -[:HAS_RESULT]->(cr:CLASS {name: "result"})<-[:SCHEMA]-(r2 :result {biomarker: "cholesterol", value: 180.0})
@@ -1081,7 +1081,7 @@ def test_add_data_point_with_links(db):
     assert len(result) == 1
     print(result)
     record = result[0]
-    assert record['r2']['item_id'] == 9999      # The specific "item_id" that was passed
+    assert record['r2']['uri'] == 9999      # The specific "uri" that was passed
 
 
 
@@ -1350,12 +1350,12 @@ def test_add_data_point_fast(db):
 
 
     # Create a new data point for a "result", linked to the existing "patient" data point;
-    #   this time, request the assignment of an autoincrement "item_id" to the new data node
+    #   this time, request the assignment of an autoincrement "uri" to the new data node
     result_neo_id = NeoSchema.add_data_point_fast_OBSOLETE(class_name="result",
                                                            properties={"biomarker": "glucose", "value": 99.0},
                                                            connected_to_neo_id = patient_neo_id,
                                                            rel_name= "HAS_RESULT", rel_dir="IN",
-                                                           assign_item_id= True)
+                                                           assign_uri= True)
 
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
@@ -1369,16 +1369,16 @@ def test_add_data_point_fast(db):
     assert len(result) == 1
     #print(result)
     record = result[0]
-    assert record['r']['item_id'] == 1  # The first auto-increment value
+    assert record['r']['uri'] == 1  # The first auto-increment value
 
 
     # Create a 2nd data point for a "result", linked to the existing "patient" data point;
-    #   this time, request the assignment of specific "item_id" to the new data node
+    #   this time, request the assignment of specific "uri" to the new data node
     result2_neo_id = NeoSchema.add_data_point_fast_OBSOLETE(class_name="result",
                                                             properties={"biomarker": "cholesterol", "value": 180.0},
                                                             connected_to_neo_id = patient_neo_id,
                                                             rel_name="HAS_RESULT", rel_dir="IN",
-                                                            new_item_id=9999)
+                                                            new_uri=9999)
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
         -[:HAS_RESULT]->(cr:CLASS {name: "result"})<-[:SCHEMA]-(r2 :result {biomarker: "cholesterol", value: 180.0})
@@ -1391,7 +1391,7 @@ def test_add_data_point_fast(db):
     assert len(result) == 1
     print(result)
     record = result[0]
-    assert record['r2']['item_id'] == 9999      # The specific "item_id" that was passed
+    assert record['r2']['uri'] == 9999      # The specific "uri" that was passed
 
 
 
@@ -1401,18 +1401,18 @@ def test_add_data_point(db):
 
     create_sample_schema_1()    # Schema with patient/result/doctor
 
-    # Create a new data point, and get its item_id
+    # Create a new data point, and get its uri
     doctor_data_id = NeoSchema.add_data_point_OLD(class_name="doctor",
                                                   data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
-                                                  return_item_ID=True)
+                                                  return_uri=True)
 
     # Create a new data point, and this time get its Neo4j ID
     result_neo_id = NeoSchema.add_data_point_OLD(class_name="result",
                                                  data_dict={"biomarker": "glucose", "value": 99.0},
-                                                 return_item_ID=False)
+                                                 return_uri=False)
 
     q = '''
-        MATCH (d:doctor {item_id: $doctor, name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]-(c1:CLASS)
+        MATCH (d:doctor {uri: $doctor, name:"Dr. Preeti", specialty:"sports medicine"})-[:SCHEMA]-(c1:CLASS)
             -[*]-
             (c2:CLASS)<-[:SCHEMA]-(r:result {biomarker: "glucose", value: 99.0})
         WHERE id(r) = $result_neo_id
@@ -1438,11 +1438,11 @@ def test_add_and_link_data_point(db):
 
     doctor_neo_id = NeoSchema.add_data_point_OLD(class_name="doctor",
                                                  data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
-                                                 return_item_ID=False)
+                                                 return_uri=False)
 
     result_neo_id = NeoSchema.add_data_point_OLD(class_name="result",
                                                  data_dict={"biomarker": "glucose", "value": 99.0},
-                                                 return_item_ID=False)
+                                                 return_uri=False)
 
     patient_neo_id = NeoSchema.add_and_link_data_point_OBSOLETE(class_name="patient",
                                                                 properties={"name": "Jill", "age": 19, "balance": 312.15},
@@ -1581,26 +1581,26 @@ def test_add_data_relationship(db):
 
     with pytest.raises(Exception):
         # No such relationship exists between their Classes
-        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="uri")
 
     # Add the "DRIVE" relationship between the classes
     NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="DRIVES")
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="", id_type="item_id")  # Lacks relationship name
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="", id_type="uri")  # Lacks relationship name
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name=None, id_type="item_id")  # Lacks relationship name
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name=None, id_type="uri")  # Lacks relationship name
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_OLD(from_id=car_id, to_id=person_id, rel_name="DRIVES", id_type="item_id")  # Wrong direction
+        NeoSchema.add_data_relationship_OLD(from_id=car_id, to_id=person_id, rel_name="DRIVES", id_type="uri")  # Wrong direction
 
     # Now, finally, it'll work
-    NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+    NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="uri")
 
     # Verify the cycle of "DRIVES" relationships
     q = '''
-    MATCH (c:Car {item_id:$car_id})<-[:DRIVES]-(p:Person {item_id:$person_id})
+    MATCH (c:Car {uri:$car_id})<-[:DRIVES]-(p:Person {uri:$person_id})
     -[:SCHEMA]->(cl1:CLASS {name:"Person"})-[:DRIVES]->(cl2:CLASS {name:"Car"})
     <-[:SCHEMA]-(c)
     RETURN COUNT(c) AS number_cars
@@ -1611,11 +1611,11 @@ def test_add_data_relationship(db):
 
     with pytest.raises(Exception):
         # Attempting to add it again
-        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="item_id")
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="DRIVES", id_type="uri")
 
     with pytest.raises(Exception):
         # Relationship name not declared in the Schema
-        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="SOME_OTHER_NAME", id_type="item_id")
+        NeoSchema.add_data_relationship_OLD(from_id=person_id, to_id=car_id, rel_name="SOME_OTHER_NAME", id_type="uri")
 
 
     # Now add reverse a relationship, and this time use the Neo4j ID's to locate the nodes
@@ -1627,7 +1627,7 @@ def test_add_data_relationship(db):
 
     # Verify the cycle of "IS_DRIVEN_BY" relationships
     q = '''
-    MATCH (c:Car {item_id:$car_id})-[:IS_DRIVEN_BY]->(p:Person {item_id:$person_id})
+    MATCH (c:Car {uri:$car_id})-[:IS_DRIVEN_BY]->(p:Person {uri:$person_id})
     -[:SCHEMA]->(cl1:CLASS {name:"Person"})<-[:IS_DRIVEN_BY]-(cl2:CLASS {name:"Car"})
     <-[:SCHEMA]-(c)
     RETURN COUNT(c) AS number_cars
@@ -1637,7 +1637,7 @@ def test_add_data_relationship(db):
 
     # Verify that the cycle of "DRIVES" relationships is also still there
     q = '''
-    MATCH (c:Car {item_id:$car_id})<-[:DRIVES]-(p:Person {item_id:$person_id})
+    MATCH (c:Car {uri:$car_id})<-[:DRIVES]-(p:Person {uri:$person_id})
     -[:SCHEMA]->(cl1:CLASS {name:"Person"})-[:DRIVES]->(cl2:CLASS {name:"Car"})
     <-[:SCHEMA]-(c)
     RETURN COUNT(c) AS number_cars
@@ -1719,20 +1719,20 @@ def test_class_of_data_point(db):
         NeoSchema.class_of_data_node(node_id=neo_id)     # It's not a data node
 
     NeoSchema.create_class("Person")
-    item_id = NeoSchema.add_data_point_OLD("Person")
+    uri = NeoSchema.add_data_point_OLD("Person")
 
-    assert NeoSchema.class_of_data_node(node_id=item_id, id_type="item_id") == "Person"
-    assert NeoSchema.class_of_data_node(node_id=item_id, id_type="item_id", labels="Person") == "Person"
+    assert NeoSchema.class_of_data_node(node_id=uri, id_type="uri") == "Person"
+    assert NeoSchema.class_of_data_node(node_id=uri, id_type="uri", labels="Person") == "Person"
 
     # Now locate thru the Neo4j ID
-    neo_id = NeoSchema.get_data_node_id(item_id)
+    neo_id = NeoSchema.get_data_node_id(uri)
     #print("neo_id: ", neo_id)
     assert NeoSchema.class_of_data_node(node_id=neo_id) == "Person"
 
     NeoSchema.create_class("Extra")
     # Create a forbidden scenario with a data node having 2 Schema classes
     q = f'''
-        MATCH (n {{item_id: {item_id} }}), (c :CLASS {{name: 'Extra'}})
+        MATCH (n {{uri: {uri} }}), (c :CLASS {{name: 'Extra'}})
         MERGE (n)-[:SCHEMA]->(c)
         '''
     #db.debug_print(q, {}, "test")

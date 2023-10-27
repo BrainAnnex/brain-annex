@@ -17,6 +17,8 @@ pandas==1.4.3
 
 pytest==6.2.5
 
-pillow==9.0.1
+pillow==10.1.0
 
 jupyterlab==3.4.8
+
+pymupdf==1.23.5

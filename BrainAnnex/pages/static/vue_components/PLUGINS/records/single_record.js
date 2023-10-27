@@ -6,7 +6,7 @@ Vue.component('vue-plugin-single-record',
     {
         props: ['record_data', 'field_list'],
         /*  record_data:    EXAMPLE:
-                            {"item_id":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
+                            {"uri":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Tier", "English":"animal"}
 
             field_list:     A list of field names, in order.

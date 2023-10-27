@@ -53,7 +53,7 @@ class ServerCommunication
 
             post_obj:       If a non-empty object is passed, the method is automatically forced to POST
                                 (and it will disregard the contents of post_body)
-                                EXAMPLE:  {item_id: 123, text: "Some data"}
+                                EXAMPLE:  {uri: 123, text: "Some data"}
             post_body:      If a non-empty string is passed, the method is automatically forced to POST;
                                 (disregarded if a non-empty post_obj was passed,
                                  i.e. post_obj has higher priority over post_obj)
@@ -118,7 +118,7 @@ class ServerCommunication
         Use this function if the payload is general text.
 
         post_body : if a blank string, a GET is assumed, unless method="POST" is specified
-            EXAMPLE of post_body: "item_id=62&schema_code=r"
+            EXAMPLE of post_body: "uri=62&schema_code=r"
 
         custom_data is an OPTIONAL argument; if present, it is passed as a final argument to the callback function
 
@@ -180,7 +180,7 @@ class ServerCommunication
         Use this function if the payload is JSON text.
 
         post_body : if a blank string, a GET is assumed, unless method="POST" is specified
-            EXAMPLE of post_body: "item_id=62&schema_code=r"
+            EXAMPLE of post_body: "uri=62&schema_code=r"
 
         custom_data is an OPTIONAL argument; if present, it is passed as a final argument to the callback function
 

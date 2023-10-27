@@ -7,11 +7,11 @@ Vue.component('vue-category-navbox',
         /*  category_name:          Name of the Category currently being viewed
             parent_categories:      List of the parent categories of the Current Category;
                                         each item is an object, whose keys include
-                                        "item_id" and "name" (among others)
+                                        "uri" and "name" (among others)
             subcategories:
             siblings_categories:    List of the parent categories of the Current Category;
                                     each item is an object, whose keys include
-                                    "item_id" and "name", "remarks" and "internal_id" (among others)
+                                    "uri" and "name", "remarks" and "internal_id" (among others)
             all_categories:
             show_right_sidebox: Flag indicating whether the sidebar is expanded or contracted
          */
@@ -39,7 +39,7 @@ Vue.component('vue-category-navbox',
                     <span class='category-relatives'>Parent Categories:</span>
                     <span class='category-relatives' v-if="parent_categories.length === 0">None</span>
                     <template v-for="category in parent_categories">
-                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['item_id']">{{category.name}}</a>
+                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
                     </template>
                     <br><br>
 
@@ -55,7 +55,7 @@ Vue.component('vue-category-navbox',
                         <span class='category-relatives'>Sibling Categories:</span>
                         <span class='category-relatives' v-if="siblings_categories.length === 0">None</span>
                         <template v-for="category in siblings_categories">
-                            <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['item_id']">{{category.name}}</a>
+                            <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
                         </template>
                     </div>
 

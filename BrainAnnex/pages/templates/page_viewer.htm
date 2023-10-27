@@ -34,9 +34,9 @@
 
         content_items:  A list of dictionaries
                         EXAMPLE:
-                        [{'schema_code': 'i', 'item_id': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
-                         {'schema_code': 'h', 'item_id': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                         {'schema_code': 'n', 'item_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                        [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                         {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                         {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
                         ]
 
     ----------------------------------------------------------------------------------
@@ -248,7 +248,7 @@
 <div v-if="expose_controls"  v-for="(item, index) in content_array" class="content-item">
 
     <vue-content-items
-        v-bind:key="item.schema_code + '_' + item.item_id + '_' + index"
+        v-bind:key="item.schema_code + '_' + item.uri + '_' + index"
 
         v-bind:item="item"
         v-bind:expose_controls="expose_controls"
@@ -285,7 +285,7 @@
 
     <!-- If it's "UN-grouped", show it here as an individual Content Item-->
     <vue-content-items  v-if="!group.use_group"
-            v-bind:key="content_array[group.index].schema_code + '_' + content_array[group.index].item_id + '_' + group.index + '_bis'"
+            v-bind:key="content_array[group.index].schema_code + '_' + content_array[group.index].uri + '_' + group.index + '_bis'"
 
             v-bind:item="content_array[group.index]"
             v-bind:expose_controls="expose_controls"
@@ -355,16 +355,16 @@
 
     <div style='border:1px solid gray; padding:10px; background-color:#DDDDDD; margin-top:5px; margin-bottom:5px; margin-right:5px'>		<!-- Maybe the DIV wrapper could be ditched? -->
 
-    <b>UPLOAD IMAGES or DOCUMENTS</b>:<br>
+        <b>UPLOAD IMAGES or DOCUMENTS</b>:<br>
 
-    <form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
-        <input type='hidden' name='category_id' value='{{category_id}}'>
-        <input type='hidden' name='pos' value='TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'>
-    </form>
+        <form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
+            <input type='hidden' name='category_id' value='{{category_id}}'>
+            <input type='hidden' name='pos' value='TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'>
+        </form>
 
-    <!--  The "DONE" button simply reloads the viewer page -->
-    <a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Close</a>
-    <span style='color:gray; margin-left:20px; font-size:10px'>The "Close" button not yet implemented: currently, it refreshes the page (use when uploads complete)</span><br>
+        <!--  The "DONE" button simply reloads the viewer page -->
+        <a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Close</a>
+        <span style='color:gray; margin-left:20px; font-size:10px'>The "Close" button not yet implemented: currently, it refreshes the page (use when uploads complete)</span><br>
 
     </div>	<!--  Terminate the wrapper DIV for uploads -->
 
@@ -490,11 +490,11 @@ new Vue({
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
-                                    // EXAMPLE: [{pos:0,"item_id":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                                    //           {pos:50,"item_id":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                                    // EXAMPLE: [{pos:0,"uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                                    //           {pos:50,"uri":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                     //          ]
-                                    // TODO: component-editable fields and non-editable ones ("pos", "item_id", "schema_code", "class_name") ought to be treated differently
-                                    // TODO: switch from "item_id" to "uri"
+                                    // TODO: component-editable fields and non-editable ones ("pos", "uri", "schema_code", "class_name") ought to be treated differently
+                                    // TODO: switch from "uri" to "uri"
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
@@ -521,7 +521,7 @@ new Vue({
                         // EXAMPLE: [{"id":709,"name":"English"},{"id":708,"name":"Italian"},{"id":514,"name":"French"}]
 
         siblings_categories: {{siblings_categories | tojson}},
-                        // EXAMPLE: [{'name': 'French', 'item_id': 514, 'schema_code': 'cat', 'internal_id': 522}]
+                        // EXAMPLE: [{'name': 'French', 'uri': 514, 'schema_code': 'cat', 'internal_id': 522}]
 
         all_categories: {{all_categories | tojson}},
                         // EXAMPLE: [{"id": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"id": 123, "name": "work"}]
@@ -666,10 +666,10 @@ new Vue({
 
         cancel_edit(item)
         {
-            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , id ${item.item_id} , pos ${item.pos}`);
-            if (item.item_id == -1)  {
+            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , id ${item.uri} , pos ${item.pos}`);
+            if (item.uri == -1)  {
                 // If we're aborting the edit of a new Content Item, delete it from the page
-                index = this.locate_item_pos(item.schema_code, item.item_id, item.pos);
+                index = this.locate_item_pos(item.schema_code, item.uri, item.pos);
                 console.log(`Aborting the edit of a NEW Content Item, whose index position on the page is ${index}`);
                 this.content_array.splice(index, 1);    // It modifies the array, to take out 1 element in position index
             }
@@ -684,9 +684,9 @@ new Vue({
         {
             //console.log(item);
             console.log(`In root component, insert_new_item_after()`);
-            console.log(`    Insert after Item ID: ${item.item_id}. New item - schema_code: ${schema_code}, class_name (optional): ${class_name}`);
+            console.log(`    Insert after Item ID: ${item.uri}. New item - schema_code: ${schema_code}, class_name (optional): ${class_name}`);
 
-            this.create_new_item_after(item.item_id, schema_code, class_name);
+            this.create_new_item_after(item.uri, schema_code, class_name);
         },
 
 
@@ -704,9 +704,9 @@ new Vue({
 
             // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
             if (class_name)     // If a class name was passed, store it
-                blank_record = {item_id: -1, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
+                blank_record = {uri: -1, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
             else                // No class name was provided
-                blank_record = {item_id: -1, schema_code: schema_code, insert_after: insert_after_id};
+                blank_record = {uri: -1, schema_code: schema_code, insert_after: insert_after_id};
 
             // Insert the newly-created record after the specified existing element
             this.content_array.splice(insert_after_index + 1, 0, blank_record);
@@ -726,9 +726,9 @@ new Vue({
             // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
             // TODO: replace the -1 with an autoincrement unique number for the page
             if (class_name)   // If a class name was passed, store it
-                blank_record = {"item_id": -1, "schema_code": schema_code, "class_name": class_name, insert_after: "BOTTOM"};
+                blank_record = {"uri": -1, "schema_code": schema_code, "class_name": class_name, insert_after: "BOTTOM"};
             else             // No class name was provided
-                blank_record = {"item_id": -1, "schema_code": schema_code, insert_after: "BOTTOM"};
+                blank_record = {"uri": -1, "schema_code": schema_code, insert_after: "BOTTOM"};
 
             this.content_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
 
@@ -739,8 +739,8 @@ new Vue({
         delete_content_item(item)
         // Delete from the page and from the database the specified Content Item
         {
-            console.log(`Root element received signal to delete content item of type '${item.schema_code}' , id ${item.item_id}`);
-            const index = this.locate_item(item.schema_code, item.item_id);
+            console.log(`Root element received signal to delete content item of type '${item.schema_code}' , id ${item.uri}`);
+            const index = this.locate_item(item.schema_code, item.uri);
             console.log(`Content item located in position ${index}`);
 
             if (index == -1)  {
@@ -748,7 +748,7 @@ new Vue({
                 return;
             }
 
-            url_server = `/BA/api/simple/delete/${item.item_id}/${item.schema_code}`;
+            url_server = `/BA/api/simple/delete/${item.uri}/${item.schema_code}`;
             ServerCommunication.contact_server_TEXT(url_server, "", this.finish_delete, index);
 
         },  // delete_content_item()
@@ -773,9 +773,9 @@ new Vue({
         //
         {
             const schema_code = item.schema_code;
-            const item_id = item.item_id;
+            const uri = item.uri;
 
-            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , id ${item_id}`);
+            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , id ${uri}`);
 
             const number_items = this.content_array.length;
 
@@ -784,10 +784,10 @@ new Vue({
                 return;
             }
 
-            const i = this.locate_item(schema_code, item_id);     // Locate the specified Content Item in the array of Content Items
+            const i = this.locate_item(schema_code, uri);     // Locate the specified Content Item in the array of Content Items
 
             if (i == -1)  {  // Not found
-                alert(`Item type '${schema_code}' , id ${item_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
+                alert(`Item type '${schema_code}' , id ${uri} NOT found. Maybe was deleted in another browser tab? No action taken`);
                 return;
             }
             if (i == 0)  {
@@ -796,8 +796,8 @@ new Vue({
             }
 
             // Request the server to perform the operation on the data
-            const swap_item_id = this.content_array[i-1].item_id;       // The ID of the Item that we're swapping with
-            const url_server = `/BA/api/simple/swap/${item_id}/${swap_item_id}/${this.category_id}`;
+            const swap_uri = this.content_array[i-1].uri;       // The ID of the Item that we're swapping with
+            const url_server = `/BA/api/simple/swap/${uri}/${swap_uri}/${this.category_id}`;
             console.log(url_server);
 
             ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_up, i);
@@ -824,9 +824,9 @@ new Vue({
         //
         {
             const schema_code = item.schema_code;
-            const item_id = item.item_id;
+            const uri = item.uri;
 
-            console.log(`Root element received signal to move DOWN the content item of type '${item.schema_code}' , id ${item.item_id}`);
+            console.log(`Root element received signal to move DOWN the content item of type '${item.schema_code}' , id ${item.uri}`);
 
             const number_items = this.content_array.length;
 
@@ -835,10 +835,10 @@ new Vue({
                 return;
             }
 
-            const i = this.locate_item(schema_code, item_id);     // Locate the specified Content Item in the array of Content Items
+            const i = this.locate_item(schema_code, uri);     // Locate the specified Content Item in the array of Content Items
 
             if (i == -1)  {  // Not found
-                alert(`Item type '${schema_code}' , id ${item_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
+                alert(`Item type '${schema_code}' , id ${uri} NOT found. Maybe was deleted in another browser tab? No action taken`);
                 return;
             }
             if (i == number_items - 1)  {
@@ -847,8 +847,8 @@ new Vue({
             }
 
             // Request the server to perform the operation on the data
-            const swap_item_id = this.content_array[i+1].item_id;       // The ID of the Item that we're swapping with
-            const url_server = `/BA/api/simple/swap/${item_id}/${swap_item_id}/${this.category_id}`;
+            const swap_uri = this.content_array[i+1].uri;       // The ID of the Item that we're swapping with
+            const url_server = `/BA/api/simple/swap/${uri}/${swap_uri}/${this.category_id}`;
             console.log(url_server);
 
             ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_down, i);
@@ -875,23 +875,23 @@ new Vue({
         /*  Update the entry for the specified item in this.content_array, with the new data passed by a component
             (generally done at the end of an update on the server.)
             In terms of item's attributes:
-                * "item_id" in new_data can be different if it was a newly-added item (which is assigned a temporary value of -1)
+                * "uri" in new_data can be different if it was a newly-added item (which is assigned a temporary value of -1)
                 * "schema_code" doesn't vary under normal edits
                 * "pos" is not changed thru edits (it uses separate mechanisms to reposition items)
                 * everything else will be updated
          */
         {
-            console.log(`Root element received signal to UPDATE the content item of type '${item.schema_code}' , original id ${item.item_id}`);
-            if (new_data.item_id)
-                console.log(`    A new current id was passed: ${new_data.item_id}`);
+            console.log(`Root element received signal to UPDATE the content item of type '${item.schema_code}' , original id ${item.uri}`);
+            if (new_data.uri)
+                console.log(`    A new current id was passed: ${new_data.uri}`);
 
-            //if (item.item_id != -1)
+            //if (item.uri != -1)
                 //alert("Attempting to modify an existing ID.  Request ignored...  Save your work and refresh the page");
 
             // **********  TODO:  The following will NOT work if there's more than one NEW item of the same type!!!!!
             // 2 strategy ideas: 1) for new items, assign temp ID's of -1, -2, -3, etc. (instead of giving -1 to all)
             //                   2) search by ID (-1) AND by pos
-            const index = this.locate_item(item.schema_code, item.item_id);
+            const index = this.locate_item(item.schema_code, item.uri);
 
             if (index == -1)    // If the Item is not found on the page
                 alert("Unable to update the display so as to set the ID of the newly-added Content Item.  Save your work and refresh the page");
@@ -909,10 +909,10 @@ new Vue({
                 if (field_name != "pos" && field_name != "schema_code")
                     this.content_array[index][field_name] = new_data[field_name];
 
-            // Ditch any fields that were deleted in the edit (however, "pos", "schema_code", "class_name", "item_id" are left alone)
+            // Ditch any fields that were deleted in the edit (however, "pos", "schema_code", "class_name", "uri" are left alone)
             // TODO: editable fields and non-editable ones (such as the special cases above) ought to be treated differently
             for (old_field_name in this.content_array[index])
-                if ((old_field_name != "pos") && (old_field_name != "schema_code") && (old_field_name != "class_name") && (old_field_name != "item_id") && !(old_field_name in new_data))  {
+                if ((old_field_name != "pos") && (old_field_name != "schema_code") && (old_field_name != "class_name") && (old_field_name != "uri") && !(old_field_name in new_data))  {
                     console.log(`absorb_item_updates(): Ditching the old field '${old_field_name}' because it was eliminated in the edit`);
                     delete this.content_array[index][old_field_name];
                 }
@@ -926,9 +926,9 @@ new Vue({
          */
         {
             const schema_code = item.schema_code;
-            const item_id = item.item_id;
+            const uri = item.uri;
 
-            console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , id ${item.item_id} to just after the ${where_to}-th entry, within category ${this.category_id}`);
+            console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , id ${item.uri} to just after the ${where_to}-th entry, within category ${this.category_id}`);
 
             const number_items = this.content_array.length;
 
@@ -937,10 +937,10 @@ new Vue({
                 return;
             }
 
-            const i = this.locate_item_simplified(item_id);     // Locate the specified Content Item in the array of Content Items
+            const i = this.locate_item_simplified(uri);     // Locate the specified Content Item in the array of Content Items
 
             if (i == -1)  {  // Not found
-                alert(`Item type '${schema_code}' , id ${item_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
+                alert(`Item type '${schema_code}' , id ${uri} NOT found. Maybe was deleted in another browser tab? No action taken`);
                 return;
             }
 
@@ -952,7 +952,7 @@ new Vue({
             }
 
             // Request the server to perform the operation on the database
-            const url_server = `/BA/api/simple/reposition/${this.category_id}/${item_id}/${where_to}`;
+            const url_server = `/BA/api/simple/reposition/${this.category_id}/${uri}/${where_to}`;
             console.log(url_server);
 
             ServerCommunication.contact_server_TEXT(url_server, "", this.finish_relocate_content_item, i);
@@ -1011,42 +1011,42 @@ new Vue({
 
 
 
-        locate_item_simplified(item_id)
+        locate_item_simplified(uri)
         /*  Locate the specified Content Item in the array of Content Items.
-            The item is identified by its item_id.
+            The item is identified by its uri.
             If found, return its index in the array; otherwise, return -1
             (No check is done as to whether there might be more than one match; the first one is returned.)
             TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
          */
         {
-            //console.log(`Attempting to locate content item with id ${item_id}`);
+            //console.log(`Attempting to locate content item with id ${uri}`);
 
             const number_items = this.content_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].item_id == item_id)
+                if (this.content_array[i].uri == uri)
                     return i;          //  Found it
             }
 
             return -1;    // Didn't find it
         },
 
-        locate_item(schema_code, item_id)
+        locate_item(schema_code, uri)
         /*  TODO: maybe phase out in favor of locate_item_simplified()
             TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
 
             Helper function, to locate the specified Content Item in the array of Content Items.
-            The item is identified by its schema_code and item_id.  (Note: schema_code is redundant.)
+            The item is identified by its schema_code and uri.  (Note: schema_code is redundant.)
             If found, return its index in the array; otherwise, return -1
             (No check is done as to whether there might be more than one match; the first one is returned.)
          */
         {
-            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}`);
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${uri}`);
 
             const number_items = this.content_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].item_id == item_id)
+                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].uri == uri)
                     return i;          //  Found it
             }
 
@@ -1054,17 +1054,17 @@ new Vue({
         },
 
 
-        locate_item_pos(schema_code, item_id, pos)
+        locate_item_pos(schema_code, uri, pos)
         /*  Same as locate_item(), but also requiring a match on position.  ONLY USED TO TAKE OUT NEW ITEMS WHOSE ADDITION GOT CANCELLED
          */
         {
-            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${item_id}, pos ${pos}`);
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${uri}, pos ${pos}`);
 
             const number_items = this.content_array.length;
 
             for (var i = 0; i < number_items; i++) {
                 if (this.content_array[i].schema_code == schema_code  &&
-                    this.content_array[i].item_id == item_id  &&
+                    this.content_array[i].uri == uri  &&
                     this.content_array[i].pos == pos)
                     return i;          //  Found it
             }
@@ -1097,21 +1097,21 @@ new Vue({
             TODO: simplify with Lodash
 
             EXAMPLES (assuming that the Schema for "Quotes" is ["quote", "attribution", "notes"]):
-                {"pos":10, "item_id":1, "extra": "some value"}
+                {"pos":10, "uri":1, "extra": "some value"}
                     ->  [ "extra" ]
-                {"pos":10, "item_id":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "uri":1, "extra": "some value", class_name:"Quotes"}
                     ->  [ "extra" ]
-                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes"}
                     ->  [ "notes", "extra" ]
-                {"pos":10, "notes": "my note", "item_id":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
                     ->  [ "quote", "notes", "extra" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra" ]
-                {"attribution": "Napoleon", "pos":10, "notes": "my note", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quotes", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "item_id":1,  class_name:"UNKNOWN", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"UNKNOWN", "quote": "My quote"}
                     ->  [ "extra", "attribution", "notes", "extra2", "quote" ]
          */
         {
@@ -1227,7 +1227,7 @@ new Vue({
 
         extract_fields(content_item)
         /*  Scrub out all the standard fields (i.e. all fields that won't appear in a tabular format)
-            EXAMPLE:  {"pos":10, "item_id":1, "schema_code":"r", class_name:"German Vocabulary",
+            EXAMPLE:  {"pos":10, "uri":1, "schema_code":"r", class_name:"German Vocabulary",
                              "German":"Leben", "English":"life"}
                        will return  [ "German", "English" ]
 
@@ -1240,7 +1240,7 @@ new Vue({
             // TODO: maybe use Lodash _.difference function
             for (i in all_fields) {
                 key = all_fields[i];
-                if (key != "pos" && key != "item_id" && key != "schema_code" && key != "class_name")
+                if (key != "pos" && key != "uri" && key != "schema_code" && key != "class_name")
                     shown_fields.push(key);
             }
 

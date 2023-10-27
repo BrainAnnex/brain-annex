@@ -140,11 +140,11 @@ def test_initialize_schema(db):
 
     q = '''
         MATCH (c:CLASS {schema_id:1})
-        MERGE (c)<-[:SCHEMA]-(n:BA {German: "Guten", item_id:88})
+        MERGE (c)<-[:SCHEMA]-(n:BA {German: "Guten", uri:88})
         '''
     db.query(q)
 
-    result = NeoSchema.all_properties("BA", "item_id", 88)
+    result = NeoSchema.all_properties("BA", "uri", 88)
     assert result == ['Notes', 'English', 'German']     # Note: order might differ!
 
 
@@ -292,12 +292,12 @@ def test_add_data_point(db):
 def test_add_existing_data_point(db):
 
     neo_id = db.create_node("BA", {"note": "TO DELETE!"})
-    new_item_ID = NeoSchema.register_existing_data_node(schema_id=19, existing_neo_id=neo_id)
-    print("new_item_ID: ", new_item_ID)
+    new_uri = NeoSchema.register_existing_data_node(schema_id=19, existing_neo_id=neo_id)
+    print("new_uri: ", new_uri)
 
     neo_id = db.create_node("BA", {"formula": "NH3"})
-    new_item_ID = NeoSchema.register_existing_data_node(class_name="Chemicals", existing_neo_id=neo_id)
-    print("new_item_ID: ", new_item_ID)
+    new_uri = NeoSchema.register_existing_data_node(class_name="Chemicals", existing_neo_id=neo_id)
+    print("new_uri: ", new_uri)
 
 
 
@@ -316,4 +316,4 @@ def test_add_data_relationship(db):
 
 
 def test_remove_data_relationship(db):
-    NeoSchema.remove_data_relationship(from_item_id=3, to_item_id=1, rel_name="BA_subcategory_of")
+    NeoSchema.remove_data_relationship(from_uri=3, to_uri=1, rel_name="BA_subcategory_of")

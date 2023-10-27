@@ -33,7 +33,7 @@ def test_get_leaf_records(db):
 
 
 def test_reposition_content():
-    Categories.reposition_content(60, item_id=576, move_after_n=4)
+    Categories.reposition_content(60, uri=576, move_after_n=4)
 
 
 

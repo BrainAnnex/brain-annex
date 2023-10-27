@@ -4,8 +4,8 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
-        /*   item_data:  EXAMPLE: {"item_id":52,"pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm"}
-                                  (if item_id is -1, it means that it's a newly-created header, not yet registered with the server)
+        /*   item_data:  EXAMPLE: {"uri":52,"pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm"}
+                                  (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
             allow_editing:  A boolean indicating whether in editing mode
             index:          the zero-based position of the Record on the page
             item_count:     the total number of Content Items (of all types) on the page
@@ -15,9 +15,9 @@ Vue.component('vue-plugin-n',
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
             <!-- Show when NOT in editing mode  -->
-            <div class="notes" v-if="!editing_mode" v-html="body_of_note">
+            <div class="notes" v-if="!editing_mode" v-html="body_of_note"   @dblclick="enter_editing_mode">
                 <!-- Body of Note, and status of last edit  -->
-                <span v-bind:class="{'n-waiting': waiting}">{{status}}</span>
+                <span v-bind:class="{'n-waiting': waiting}">{{status_message}}</span>
             </div>
 
 
@@ -53,11 +53,12 @@ Vue.component('vue-plugin-n',
 
 
 
+        // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.item_id == -1 ? true : false),    // -1 means "new Item"
+                editing_mode: (this.item_data.uri == -1 ? true : false),    // -1 means "new Item"
 
-                body_of_note: (this.item_data.item_id == -1 ? "NEW NOTE" : "Retrieving note id " + this.item_data.item_id + "..."),
+                body_of_note: (this.item_data.uri == -1 ? "NEW NOTE" : "Retrieving note id " + this.item_data.uri + "..."),
 
                 note_editor: null,          // CKeditor object
                 old_note_value: "",         // The pre-edit value.  TODO: switch to using the "original_data" Object
@@ -78,10 +79,10 @@ Vue.component('vue-plugin-n',
                 // Clone, used to restore the data in case of a Cancel or failed save
                 original_data: Object.assign({}, this.item_data),
 
-                waiting: true,              // Flag to indicate whether the Note is still being fetched from the server
+                waiting: true,              // Whether any server request is still pending
                 save_waiting_mode: false,   // To distinguish from "waiting" (used for fetching value)
-                error_indicator: false,
-                status: ""
+                error: false,               // Whether the last server communication resulted in error
+                status_message: ""          // Message for user about status of last operation upon server response (NOT for "waiting" status)
             }
         }, // data
 
@@ -104,7 +105,7 @@ Vue.component('vue-plugin-n',
             console.log(`the Notes component has been mounted`);
             //alert("the Notes component has been mounted");
 
-            if (this.item_data.item_id == -1)
+            if (this.item_data.uri == -1)
                 this.create_new_editor("");     // We're dealing with an "ADD" operation; so, we start with an empty Note
             else
                 this.get_note(this.item_data);  // Fetch contents of existing Note from the server
@@ -133,16 +134,16 @@ Vue.component('vue-plugin-n',
 
             get_note(item_data)
             {
-                console.log("In get_note. Item to look up : `" + item_data.item_id + "`");
+                console.log("In get_note. Item to look up : `" + item_data.uri + "`");
 
                 this.waiting = true;
 
                 // Prepare a URL to communicate with the server's endpoint
-                url_server = "/BA/api/simple/get_media/" + item_data.item_id;
+                url_server = "/BA/api/simple/get_media/" + item_data.uri;
 
                 ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});
 
-                console.log("    SENT REQUEST TO SERVER to retrieve note id " + item_data.item_id + "...");
+                console.log("    SENT REQUEST TO SERVER to retrieve note id " + item_data.uri + "...");
             }, // get_note
 
             finish_get_note(success, server_payload, error_message, index)
@@ -165,11 +166,9 @@ Vue.component('vue-plugin-n',
 
 
 
-            edit_content_item(item)
-            // Handler for the 'edit-content-item' signal received from child component
+            enter_editing_mode()
+            // Switch to the editing mode of this Vue component
             {
-                console.log(`'Note' component received signal to edit content item of type '${item.schema_code}' , id ${item.item_id}`);
-
                 this.old_note_value = this.body_of_note;    // Save the current Note contents, in case of aborted or failed edit
                 this.editing_mode = true;
 
@@ -182,6 +181,16 @@ Vue.component('vue-plugin-n',
                 }
                 else
                     console.log("Re-using existing CKEDITOR object");
+            },
+
+
+            edit_content_item(item)
+            /*  Handler for the "edit_content_item" Event received from the child component "vue-controls"
+                (which is generated there when clicking on the Edit button)
+             */
+            {
+                console.log(`'Note' component received received Event to edit its contents`);
+                this.enter_editing_mode();
             },
 
 
@@ -266,7 +275,7 @@ Vue.component('vue-plugin-n',
             save_edit()
             // Invoked by clicking on the "SAVE" link (only visible in editing mode)
             {
-                noteID = this.item_data.item_id;    // -1 indicates a new Note
+                noteID = this.item_data.uri;    // -1 indicates a new Note
 
                 console.log("Inside save_edit().  noteID = " + noteID);
 
@@ -323,7 +332,7 @@ Vue.component('vue-plugin-n',
                     var url_server = "/BA/api/simple/add_item_to_category";
                 }
                 else  {				    // Edit EXISTING note
-                    post_obj.item_id = noteID;
+                    post_obj.uri = noteID;
                     post_obj.body = newBody;
                     post_obj.title = this.current_data['title'];
 
@@ -332,7 +341,7 @@ Vue.component('vue-plugin-n',
 
 
                 this.save_waiting = true;
-                this.error_indicator = false;   // Clear possible past message
+                this.error = false;   // Clear possible past message
 
                 //console.log("In 'vue-plugin-n', do_box_save().  post_obj: ", post_obj);
                 ServerCommunication.contact_server(url_server, {post_obj: post_obj,
@@ -362,12 +371,12 @@ Vue.component('vue-plugin-n',
                  */
 
                 if (success) {          // Server reported SUCCESS
-                    this.status = "Successful edit";
-                    this.error_indicator = false;
+                    this.status_message = "Successful edit";
+                    this.error = false;
 
                     // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.item_id == -1)
-                        this.current_data.item_id = server_payload;
+                    if (this.item_data.uri == -1)
+                        this.current_data.uri = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Notes component sending `updated-item` signal to its parent");
@@ -379,8 +388,8 @@ Vue.component('vue-plugin-n',
                     this.original_data = Object.assign({}, this.current_data);      // Clone
                 }
                 else  {		            // Server reported FAILURE
-                    this.status = "FAILED SAVE. " + error_message;
-                    this.error_indicator = true;
+                    this.status_message = "FAILED SAVE. " + error_message;
+                    this.error = true;
                     boxValue = this.old_note_value;         // Restore the old value
                     this.inform_component_root_of_cancel();
                     //alert(oldValue);
@@ -404,7 +413,7 @@ Vue.component('vue-plugin-n',
             cancel_edit()
             // Invoked by clicking on the "CANCEL" link (only visible in editing mode)
             {
-                noteID = this.item_data.item_id;    // -1 indicates a new Note
+                noteID = this.item_data.uri;    // -1 indicates a new Note
 
                 console.log("Inside cancel_edit().  noteID = " + noteID);
 
@@ -426,7 +435,7 @@ Vue.component('vue-plugin-n',
             inform_component_root_of_cancel()
             // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
             {
-                if (this.current_data.item_id == -1) {
+                if (this.current_data.uri == -1) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Headers sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
@@ -449,7 +458,7 @@ Vue.component('vue-plugin-n',
                 See: https://docs.mathjax.org/en/v2.7-latest/advanced/dynamic.html
              */
             {
-                console.log(`Re-loading the MathJax script for note ${this.item_data.item_id}...`);
+                console.log(`Re-loading the MathJax script for note ${this.item_data.uri}...`);
 
                 var script = document.createElement("script");
                 script.type = "text/javascript";

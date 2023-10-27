@@ -65,7 +65,8 @@ class NeoSchema:
 
         - Every node used by this class has a unique attribute "schema_id",
           containing a non-negative integer.
-          Similarly, data nodes have a separate unique attribute "item_id" (TODO: rename "uri" or "token")
+          Similarly, data nodes have a separate unique attribute "uri" (formerly "item_id");
+          note that this is actually a "token", i.e. a part of a URI - not a full URI
 
         - The names of the Classes and Properties are stored in node attributes called "name".
           We also avoid calling them "label", as done in RDFS, because in Labeled Graph Databases
@@ -81,7 +82,6 @@ class NeoSchema:
     TODO:   - continue the process of making the methods more efficient,
               by directly generate Cypher code, rather than using high-level methods in NeoAccess;
               for example, as done by create_data_node()
-            - complete the switch-over from integer "item_id" to string "uri"
 
 
     ----------------------------------------------------------------------------------
@@ -1289,7 +1289,7 @@ class NeoSchema:
 
         # EXAMPLE:
         '''
-        MATCH (d: `my data label` {item_id: $primary_key_value})
+        MATCH (d: `my data label` {uri: $primary_key_value})
               -[:SCHEMA]->(c :`CLASS`)
               -[r :HAS_PROPERTY]->(p :`PROPERTY`)
         RETURN p.name AS prop_name
@@ -1305,30 +1305,30 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node_internal_id(cls, item_id: int) -> int:
+    def get_data_node_internal_id(cls, uri: int) -> int:
         """
         Returns the internal database ID of the given data node,
-        specified by its value of the item_id attribute
+        specified by its value of the uri attribute
 
-        :param item_id: Integer to identify a data node by the value of its item_id attribute
+        :param uri: Integer to identify a data node by the value of its uri attribute
         :return:        The internal database ID of the specified data node
         """
-        match = cls.db.match(key_name="item_id", key_value=item_id)
+        match = cls.db.match(key_name="uri", key_value=uri)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
         if not result:
-            raise Exception(f"NeoSchema.get_data_node_internal_id(): no Data Node with the given item_id ({item_id}) was found")
+            raise Exception(f"NeoSchema.get_data_node_internal_id(): no Data Node with the given uri ({uri}) was found")
 
         if len(result) > 1:
             raise Exception(f"NeoSchema.get_data_node_internal_id(): more than 1 Data Node "
-                            f"with the given item_id ({item_id}) was found ({len(result)} were found)")
+                            f"with the given uri ({uri}) was found ({len(result)} were found)")
 
         return result[0]["internal_id"]
 
 
 
     @classmethod
-    def get_data_node_id(cls, key_value, key_name="item_id") -> int:
+    def get_data_node_id(cls, key_value, key_name="uri") -> int:
         """
         Get the internal database ID of a data node given some other primary key
 
@@ -1346,13 +1346,13 @@ class NeoSchema:
 
 
     @classmethod
-    def fetch_data_node(cls, item_id = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
+    def fetch_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data node
 
         See also locate_node()
 
-        :param item_id:     The "item_id" field to uniquely identify the data node
+        :param uri:     The "uri" field to uniquely identify the data node
         :param internal_id: OPTIONAL alternate way to specify the data node;
                                 if present, it takes priority
         :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
@@ -1361,10 +1361,10 @@ class NeoSchema:
         :return:            A dictionary with all the key/value pairs, if found; or None if not
         """
         if internal_id is None:
-            assert item_id is not None, \
-                "NeoSchema.fetch_data_node(): arguments `item_id` and `internal_id` cannot both be None"
+            assert uri is not None, \
+                "NeoSchema.fetch_data_node(): arguments `uri` and `internal_id` cannot both be None"
 
-            match = cls.db.match(key_name="item_id", key_value=item_id,
+            match = cls.db.match(key_name="uri", key_value=uri,
                                  labels=labels, properties=properties)
         else:
             match = cls.db.match(internal_id=internal_id, labels=labels, properties=properties)
@@ -1384,7 +1384,7 @@ class NeoSchema:
         No database operation is actually performed.
 
         :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
-        :param id_type: For example, "item_id";
+        :param id_type: For example, "uri";
                             if not specified, the node ID is assumed to be Neo4j ID's
         :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
         :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
@@ -1411,10 +1411,10 @@ class NeoSchema:
         :return:            Return the Item ID's of all the Data Nodes of the given Class
         """
         q = '''
-            MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.item_id AS item_id
+            MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.uri AS uri
             '''
 
-        res = cls.db.query(q, {"class_name": class_name}, single_column="item_id")
+        res = cls.db.query(q, {"class_name": class_name}, single_column="uri")
 
         # Alternate approach
         #match = cls.db.match(labels="CLASS", properties={"name": "Categories"})
@@ -1476,7 +1476,7 @@ class NeoSchema:
         :return:                A possibly pared-down version of the requested_props dictionary
         """
         if requested_props == {} or requested_props is None:
-            return requested_props      # It's a moot point, if not attempting to set any property
+            return {}     # It's a moot point, if not attempting to set any property
 
         if not cls.is_strict_class(class_internal_id, schema_cache=schema_cache):
             return requested_props      # Any properties are allowed if the Class isn't strict
@@ -1511,7 +1511,7 @@ class NeoSchema:
         if no labels are given, the name of the Class is used as a label.
 
         The new data node, if successfully created, will optionally be assigned
-        a passed URI value, or a unique auto-gen value, for its field item_id.
+        a passed URI value, or a unique auto-gen value, for its field uri.
 
         If the requested Class doesn't exist, an Exception is raised
 
@@ -1528,12 +1528,12 @@ class NeoSchema:
         :param extra_labels:(Optional) String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
 
-        :param assign_uri:  (DEPRECATED) If True, the new node is given an extra attribute named "item_id",
+        :param assign_uri:  (DEPRECATED) If True, the new node is given an extra attribute named "uri",
                                 with a unique auto-increment value in the "data_node" namespace,
                                 as well an extra attribute named "schema_code"
                                 (TODO: drop)
 
-        :param new_uri:     If new_uri is provided, then a field called "item_id" (TODO: rename to "uri")
+        :param new_uri:     If new_uri is provided, then a field called "uri"
                                 is set to that value;
                                 also, an extra attribute named "schema_code" gets set
                                 # TODO: "schema_code" should perhaps be responsibility of the higher layer
@@ -1604,15 +1604,15 @@ class NeoSchema:
                 new_id = new_uri
 
             #print("New ID assigned to new data node: ", new_id)
-            properties_to_set["item_id"] = new_id                   # Expand the dictionary
+            properties_to_set["uri"] = new_id                   # Expand the dictionary
 
             schema_code = cls.get_schema_code(class_name)
             if schema_code != "":
                 properties_to_set["schema_code"] = schema_code      # Expand the dictionary
 
             # EXAMPLE of properties_to_set at this stage:
-            #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
-            #       where 123 is the next auto-assigned item_id
+            #       {"make": "Toyota", "color": "white", "uri": 123, "schema_code": "r"}
+            #       where 123 is the next auto-assigned uri
 
 
 
@@ -1746,7 +1746,7 @@ class NeoSchema:
     def add_data_node_with_links(cls, class_name = None, class_internal_id = None,
                                  properties = None, labels = None,
                                  links = None,
-                                 assign_item_id=False, new_item_id=None) -> int:
+                                 assign_uri=False, new_uri=None) -> int:
         """
         This is NeoSchema's counterpart of NeoAccess.create_node_with_links()
 
@@ -1758,7 +1758,7 @@ class NeoSchema:
 
         The new data node, if successfully created:
             1) will be given the Class name as a label, unless labels are specified
-            2) will optionally be assigned an "item_id" unique value
+            2) will optionally be assigned an "uri" unique value
                that is either automatically assigned or passed.
 
         EXAMPLES:   add_data_node_with_links(class_name="Cars",
@@ -1791,13 +1791,12 @@ class NeoSchema:
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
 
-        :param assign_item_id:  If True, the new node is given an extra attribute named "item_id",
+        :param assign_uri:  If True, the new node is given an extra attribute named "uri",
                                     with a unique auto-increment value, as well an extra attribute named "schema_code".
                                     Default is False
-                                    TODO: rename to assign_uri (or perhaps assign_token)
-        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                    If new_item_id is provided, then assign_item_id is automatically made True
-                                    TODO: rename to new_uri (or perhaps new_token)
+
+        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                    If new_uri is provided, then assign_uri is automatically made True
 
         :return:                If successful, an integer with the internal database ID of the node just created;
                                     otherwise, an Exception is raised
@@ -1822,23 +1821,23 @@ class NeoSchema:
         if not cls.allows_data_nodes(class_neo_id=class_internal_id):
             raise Exception(f"NeoSchema.add_data_node_with_links(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
-        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
+        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "uri" and "schema_code";
         # if requested, expand cypher_prop_dict accordingly
-        if assign_item_id or new_item_id:
-            if not new_item_id:
+        if assign_uri or new_uri:
+            if not new_uri:
                 new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
             else:
-                new_id = new_item_id
+                new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
-            cypher_prop_dict["item_id"] = new_id               # Expand the dictionary
+            cypher_prop_dict["uri"] = new_id               # Expand the dictionary
 
             schema_code = cls.get_schema_code(class_name)
             if schema_code != "":
                 cypher_prop_dict["schema_code"] = schema_code  # Expand the dictionary
 
             # EXAMPLE of cypher_prop_dict at this stage:
-            #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
-            #       where 123 is the next auto-assigned item_id
+            #       {"make": "Toyota", "color": "white", "uri": 123, "schema_code": "r"}
+            #       where 123 is the next auto-assigned uri
 
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node and, possible, also relationships to another data nodes
@@ -1859,7 +1858,7 @@ class NeoSchema:
     def add_data_point_fast_OBSOLETE(cls, class_name="", schema_id=None,
                                      properties=None, labels=None,
                                      connected_to_neo_id=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                                     assign_item_id=False, new_item_id=None) -> int:
+                                     assign_uri=False, new_uri=None) -> int:
         """
         TODO: OBSOLETED BY add_data_node_with_links() - TO DITCH *AFTER* add_data_node_with_links() gets link validation!
         A faster version of add_data_point()
@@ -1867,7 +1866,7 @@ class NeoSchema:
         with the given (possibly none) attributes and label(s),
         optionally linked to another, already existing, DATA node.
 
-        The new data node, if successfully created, will be assigned a unique value for its field item_id
+        The new data node, if successfully created, will be assigned a unique value for its field uri
         If the requested Class doesn't exist, an Exception is raised
 
         NOTE: if the new node requires MULTIPLE links to existing data points, use add_and_link_data_point() instead
@@ -1875,7 +1874,7 @@ class NeoSchema:
         EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
                     add_data_point(schema_id=123,     data_dict={"make": "Toyota", "color": "white"}, labels="car",
                                    connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
-                    assuming there's an existing class named "Cars" and an existing data point with item_id = 999, and label "salesperson"
+                    assuming there's an existing class named "Cars" and an existing data point with uri = 999, and label "salesperson"
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
@@ -1891,7 +1890,7 @@ class NeoSchema:
 
         :param connected_to_neo_id: Int or None.  To optionally specify another (already existing) DATA node
                                         to connect the new node to, specified by its Neo4j
-                                        EXAMPLE: the item_id of a data point representing a particular salesperson or dealership
+                                        EXAMPLE: the uri of a data point representing a particular salesperson or dealership
 
         The following group only applicable if connected_to_id isn't None
         :param rel_name:        Str or None.  EXAMPLE: "SOLD_BY"
@@ -1899,9 +1898,9 @@ class NeoSchema:
         :param rel_prop_key:    Str or None.  Ignored if rel_prop_value is missing
         :param rel_prop_value:  Str or None.  Ignored if rel_prop_key is missing
 
-        :param assign_item_id:  If True, the new node is given an extra attribute named "item_id" with a unique auto-increment value
-        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                    If new_item_id is provided, then assign_item_id is automatically made True
+        :param assign_uri:  If True, the new node is given an extra attribute named "uri" with a unique auto-increment value
+        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+                                    If new_uri is provided, then assign_uri is automatically made True
 
         :return:                If successful, an integer with the Neo4j ID
                                     of the node just created;
@@ -1933,23 +1932,23 @@ class NeoSchema:
             raise Exception(f"NeoSchema.add_data_point(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
-        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "item_id" and "schema_code";
+        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "uri" and "schema_code";
         # if requested, expand cypher_prop_dict accordingly
-        if assign_item_id or new_item_id:
-            if not new_item_id:
+        if assign_uri or new_uri:
+            if not new_uri:
                 new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
             else:
-                new_id = new_item_id
+                new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
-            cypher_prop_dict["item_id"] = new_id               # Expand the dictionary
+            cypher_prop_dict["uri"] = new_id               # Expand the dictionary
 
             schema_code = cls.get_schema_code(class_name)
             if schema_code != "":
                 cypher_prop_dict["schema_code"] = schema_code  # Expand the dictionary
 
             # EXAMPLE of cypher_prop_dict at this stage:
-            #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
-            #       where 123 is the next auto-assigned item_id
+            #       {"make": "Toyota", "color": "white", "uri": 123, "schema_code": "r"}
+            #       where 123 is the next auto-assigned uri
 
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node and, if requested, also a relationship to another data node
@@ -1984,25 +1983,25 @@ class NeoSchema:
     def add_data_point_OLD(cls, class_name="", schema_id=None,
                            data_dict=None, labels=None,
                            connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                           new_item_id=None, return_item_ID=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_node_with_links()
+                           new_uri=None, return_uri=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_node_with_links()
                                                                             #       TO DITCH *AFTER* add_data_node_with_links() gets link validation!
         """
         Add a new data node, of the Class specified by name or ID,
         with the given (possibly none) attributes and label(s),
         optionally linked to another DATA node, already existing.
 
-        The new data node, if successfully created, will be assigned a unique value for its field item_id
+        The new data node, if successfully created, will be assigned a unique value for its field uri
         If the requested Class doesn't exist, an Exception is raised
 
         EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
                     add_data_point(schema_id=123,     data_dict={"make": "Toyota", "color": "white"}, labels="car",
                                    connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
-                    assuming there's an existing class named "Cars" and an existing data point with item_id = 999, and label "salesperson"
+                    assuming there's an existing class named "Cars" and an existing data point with uri = 999, and label "salesperson"
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
         TODO: invoke special plugin-code, if applicable
-        TODO: make the issuance of a new item_id optional
+        TODO: make the issuance of a new uri optional
 
         :param class_name:      The name of the Class that this new data point is an instance of
         :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
@@ -2014,9 +2013,9 @@ class NeoSchema:
                                     if not specified, use the Class name.  TODO: the Class name ought to ALWAYS be added
 
         :param connected_to_id: Int or None.  To optionally specify another (already existing) DATA node
-                                        to connect the new node to, specified by its item_id.
+                                        to connect the new node to, specified by its uri.
                                         TODO: --> for efficiency, use the Neo4j ID instead [and ditch the arg "connected_to_labels"]
-                                        EXAMPLE: the item_id of a data point representing a particular salesperson or dealership
+                                        EXAMPLE: the uri of a data point representing a particular salesperson or dealership
 
         The following group only applicable if connected_to_id isn't None
         :param connected_to_labels:     EXAMPLE: "salesperson"
@@ -2025,13 +2024,13 @@ class NeoSchema:
         :param rel_prop_key:    Str or None.  Ignored if rel_prop_value is missing
         :param rel_prop_value:  Str or None.  Ignored if rel_prop_key is missing
 
-        :param new_item_id:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-        :param return_item_ID:  Default to True.    TODO: change to False
-                                If True, the returned value is the auto-increment "item_id" value of the node just created;
+        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param return_uri:  Default to True.    TODO: change to False
+                                If True, the returned value is the auto-increment "uri" value of the node just created;
                                     otherwise, it returns its Neo4j ID
 
-        :return:                If successful, an integer with either the auto-increment "item_id" value or the Neo4j ID
-                                    of the node just created (based on the flag "return_item_ID");
+        :return:                If successful, an integer with either the auto-increment "uri" value or the Neo4j ID
+                                    of the node just created (based on the flag "return_uri");
                                     otherwise, an Exception is raised
         """
         #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
@@ -2058,23 +2057,23 @@ class NeoSchema:
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
-        # In addition to the passed properties for the new node, data nodes contain 2 special attributes: "item_id" and "schema_code";
+        # In addition to the passed properties for the new node, data nodes contain 2 special attributes: "uri" and "schema_code";
         # expand cypher_props_dict accordingly
         # TODO: make this part optional
-        if not new_item_id:
+        if not new_uri:
             new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
         else:
-            new_id = new_item_id
+            new_id = new_uri
         #print("New ID assigned to new data node: ", new_id)
-        cypher_props_dict["item_id"] = new_id               # Expand the dictionary
+        cypher_props_dict["uri"] = new_id               # Expand the dictionary
 
         schema_code = cls.get_schema_code(class_name)       # TODO: this may slow down execution
         if schema_code != "":
             cypher_props_dict["schema_code"] = schema_code  # Expand the dictionary
 
         # EXAMPLE of cypher_props_dict at this stage:
-        #       {"make": "Toyota", "color": "white", "item_id": 123, "schema_code": "r"}
-        #       where 123 is the next auto-assigned item_id
+        #       {"make": "Toyota", "color": "white", "uri": 123, "schema_code": "r"}
+        #       where 123 is the next auto-assigned uri
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node and, if requested, also a relationship to another data node
         if connected_to_id:     # if requesting a relationship to an existing data node
@@ -2087,7 +2086,7 @@ class NeoSchema:
                                                   connections=[{"labels": "CLASS", "key": "name", "value": class_name,
                                                                 "rel_name": "SCHEMA"},
 
-                                                               {"labels": connected_to_labels, "key": "item_id", "value": connected_to_id,
+                                                               {"labels": connected_to_labels, "key": "uri", "value": connected_to_id,
                                                                 "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
                                                                ]
                                                   )
@@ -2097,7 +2096,7 @@ class NeoSchema:
                                                                 "rel_name": "SCHEMA"}]
                                                   )
 
-        if return_item_ID:
+        if return_uri:
             return new_id
         else:
             return neo_id
@@ -2106,7 +2105,7 @@ class NeoSchema:
 
     @classmethod
     def add_and_link_data_point_OBSOLETE(cls, class_name: str, connected_to_list: [tuple], properties=None, labels=None,
-                                         assign_item_id=False) -> int:
+                                         assign_uri=False) -> int:
         """
         TODO: OBSOLETED BY add_data_node_with_links() - TO DITCH *AFTER* add_data_node_with_links() gets link validation!
         Create a new data node, of the Class with the given name,
@@ -2120,7 +2119,7 @@ class NeoSchema:
 
         If the requested Class doesn't exist, an Exception is raised
 
-        The new data node optionally gets assigned a unique "item_id" value (TODO: make optional)
+        The new data node optionally gets assigned a unique "uri" value (TODO: make optional)
 
         EXAMPLE:
             add_and_link_data_point(
@@ -2136,13 +2135,13 @@ class NeoSchema:
         :param properties:          A dictionary of attributes to give to the new node
         :param labels:              OPTIONAL string or list of strings with label(s) to assign to new data node;
                                         if not specified, use the Class name
-        :param assign_item_id:      If True, the new node is given an extra attribute named "item_id" with a unique auto-increment value
+        :param assign_uri:      If True, the new node is given an extra attribute named "uri" with a unique auto-increment value
 
         :return:                    If successful, an integer with Neo4j ID of the node just created;
                                         otherwise, an Exception is raised
         """
         new_neo_id = cls.add_data_point_fast_OBSOLETE(class_name=class_name, properties=properties, labels=labels,
-                                                      assign_item_id=assign_item_id)
+                                                      assign_uri=assign_uri)
         # TODO: maybe expand add_data_point_fast(), so that it can link to multiple other data nodes at once
         for link in connected_to_list:
             node_neo_id, rel_name = link    # Unpack
@@ -2256,15 +2255,15 @@ class NeoSchema:
 
 
     @classmethod
-    def delete_data_point(cls, item_id: int, labels=None) -> int:
+    def delete_data_point(cls, uri: int, labels=None) -> int:
         """
         Delete the given data point.  TODO: obsolete in favor of delete_data_node()
 
-        :param item_id:
+        :param uri:
         :param labels:      OPTIONAL (generally, redundant)
         :return:            The number of nodes deleted (possibly zero)
         """
-        match = cls.db.match(key_name="item_id", key_value=item_id, properties={"schema_code": "cat"},
+        match = cls.db.match(key_name="uri", key_value=uri, properties={"schema_code": "cat"},
                             labels=labels)
         return cls.db.delete_nodes(match)
 
@@ -2272,11 +2271,11 @@ class NeoSchema:
 
     @classmethod
     def register_existing_data_node(cls, class_name="", schema_id=None,
-                                    existing_neo_id=None, new_item_id=None) -> int:
+                                    existing_neo_id=None, new_uri=None) -> int:
         """
         Register (declare to the Schema) an existing data node with the Schema Class specified by its name or ID.
-        An item_id is generated for the data node and stored on it; likewise, for a schema_code (if applicable).
-        Return the newly-assigned item_id
+        An uri is generated for the data node and stored on it; likewise, for a schema_code (if applicable).
+        Return the newly-assigned uri
 
         EXAMPLES:   register_existing_data_node(class_name="Chemicals", existing_neo_id=123)
                     register_existing_data_node(schema_id=19, existing_neo_id=456)
@@ -2290,10 +2289,10 @@ class NeoSchema:
 
         :param existing_neo_id: Internal ID to identify the node to register with the above Class.
                                 TODO: expand to use the match() structure
-        :param new_item_id:     OPTIONAL. Normally, the Item ID is auto-generated,
+        :param new_uri:     OPTIONAL. Normally, the Item ID is auto-generated,
                                 but it can also be provided (Note: MUST be unique)
 
-        :return:                If successful, an integer with the auto-increment "item_id" value of the node just created;
+        :return:                If successful, an integer with the auto-increment "uri" value of the node just created;
                                 otherwise, an Exception is raised
         """
         if not existing_neo_id:
@@ -2322,26 +2321,26 @@ class NeoSchema:
         if number_found:
             raise Exception(f"The given data node ALREADY has a SCHEMA relationship")
 
-        if not new_item_id:
-            new_item_id = cls.next_available_datanode_id()     # Generate, if not already provided
+        if not new_uri:
+            new_uri = cls.next_available_datanode_id()     # Generate, if not already provided
 
-        cls.debug_print("register_existing_data_node(). New item_id to be assigned to the data node: ", new_item_id)
+        cls.debug_print("register_existing_data_node(). New uri to be assigned to the data node: ", new_uri)
 
-        data_binding = {"class_name": class_name, "new_item_id": new_item_id, "existing_neo_id": existing_neo_id}
+        data_binding = {"class_name": class_name, "new_uri": new_uri, "existing_neo_id": existing_neo_id}
 
         schema_code = cls.get_schema_code(class_name)
         if schema_code != "":
             data_binding["schema_code"] = schema_code   # Expand the dictionary
 
         # EXAMPLE of data_binding at this stage:
-        #       {'class_name': 'Chemicals', 'new_item_id': 888, 'existing_neo_id': 123, 'schema_code': 'r'}
-        #       where 888 is the next auto-assigned item_id
+        #       {'class_name': 'Chemicals', 'new_uri': 888, 'existing_neo_id': 123, 'schema_code': 'r'}
+        #       where 888 is the next auto-assigned uri
 
         # Link the existing data node, with a "SCHEMA" relationship, to its Class node, and also set some properties on the data node
         q = f'''
             MATCH (existing), (class :CLASS {{name: $class_name}}) WHERE id(existing) = $existing_neo_id
             MERGE (existing)-[:SCHEMA]->(class)
-            SET existing.item_id = $new_item_id
+            SET existing.uri = $new_uri
             '''
         if schema_code != "":
             q += " , existing.schema_code = $schema_code"
@@ -2354,7 +2353,7 @@ class NeoSchema:
         if number_new_rels != 1:
             raise Exception("Failed to created the new relationship (`SCHEMA`)")
 
-        return new_item_id
+        return new_uri
 
 
 
@@ -2381,7 +2380,7 @@ class NeoSchema:
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
         :param labels_from: (OPTIONAL) Labels on the 1st data node
         :param labels_to:   (OPTIONAL) Labels on the 2nd data node
-        :param id_type:     For example, "item_id";
+        :param id_type:     For example, "uri";
                             if not specified, all the node ID's are assumed to be Neo4j ID's
 
         :return:            None.  If the specified relationship didn't get created (for example,
@@ -2480,17 +2479,17 @@ class NeoSchema:
 
 
     @classmethod
-    def remove_data_relationship(cls, from_item_id: int, to_item_id: int, rel_name: str, labels=None) -> None:
+    def remove_data_relationship(cls, from_uri: int, to_uri: int, rel_name: str, labels=None) -> None:
         """
         Drop the relationship with the given name, from one to the other of the 2 given data nodes.
         Note: the data nodes are left untouched.
         If the specified relationship didn't get deleted, raise an Exception
 
         TODO: first verify that the relationship is optional in the schema???
-        TODO: migrate from "item_id" values to also internal database ID's, as done in class_of_data_node()
+        TODO: migrate from "uri" values to also internal database ID's, as done in class_of_data_node()
 
-        :param from_item_id:The "item_id" value of the data node at which the relationship originates
-        :param to_item_id:  The "item_id" value of the data node at which the relationship ends
+        :param from_uri:The "uri" value of the data node at which the relationship originates
+        :param to_uri:  The "uri" value of the data node at which the relationship ends
         :param rel_name:    The name of the relationship to delete
         :param labels:      OPTIONAL (generally, redundant).  Labels required to be on both nodes
 
@@ -2498,10 +2497,10 @@ class NeoSchema:
         """
         assert rel_name != "", f"remove_data_relationship(): no name was provided for the relationship"
 
-        match_from = cls.db.match(labels=labels, key_name="item_id", key_value=from_item_id,
+        match_from = cls.db.match(labels=labels, key_name="uri", key_value=from_uri,
                                   dummy_node_name="from")
 
-        match_to =   cls.db.match(labels=labels, key_name="item_id", key_value=to_item_id,
+        match_to =   cls.db.match(labels=labels, key_name="uri", key_value=to_uri,
                                   dummy_node_name="to")
 
         cls.db.remove_links(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
@@ -2707,7 +2706,7 @@ class NeoSchema:
                 * DIRECTION OF RELATIONSHIP (cannot be specified by Python dict/JSON)
                 * LACK OF "Import Data" node (ought to be automatically created if needed)
                 * LACK OF "BA" (or "DATA"?) labels being set
-                * INABILITY TO LINK TO EXISTING NODES IN DBASE (try using: "item_id": some_int  as the only property in nodes to merge)
+                * INABILITY TO LINK TO EXISTING NODES IN DBASE (try using: "uri": some_int  as the only property in nodes to merge)
                 * HAZY responsibility for "schema_code" (set correctly for all nodes); maybe ditch to speed up execution
                 * OFFER AN OPTION TO IGNORE BLANK STRINGS IN ATTRIBUTES
                 * INTERCEPT AND BLOCK IMPORTS FROM FILES ALREADY IMPORTED
@@ -2756,11 +2755,11 @@ class NeoSchema:
             cls.debug_print("Top-level structure of the data to import is a list")
             node_id_list = cls.create_trees_from_list(data, class_name, cache=cache)  # This returns a list of Neo4j ID's
 
-            for root_item_id in node_id_list:
-                cls.debug_print(f"***Linking import node (item_id={metadata_neo_id}) with "
-                                f"data root node (Neo4j ID={root_item_id}), thru relationship `imported_data`")
+            for root_uri in node_id_list:
+                cls.debug_print(f"***Linking import node (uri={metadata_neo_id}) with "
+                                f"data root node (Neo4j ID={root_uri}), thru relationship `imported_data`")
                 # Connect the root of the import to the metadata node
-                cls.add_data_relationship(from_id=metadata_neo_id, to_id=root_item_id, rel_name="imported_data")
+                cls.add_data_relationship(from_id=metadata_neo_id, to_id=root_uri, rel_name="imported_data")
 
             return node_id_list
 
@@ -2942,7 +2941,7 @@ class NeoSchema:
                                                 labels=class_name,
                                                 properties=node_properties,
                                                 links=links,
-                                                assign_item_id=False)
+                                                assign_uri=False)
 
 
 
@@ -3134,7 +3133,7 @@ class NeoSchema:
         """
         Reserve and return the next available auto-increment ID,
         in the separately-maintained group (i.e. namespace) called "data_node".
-        This value (currently often referred to as "item_id", and not to be confused
+        This value (currently often referred to as "uri", and not to be confused
         with the internal ID assigned by Neo4j to each node),
         is meant as a permanent primary key, on which a URI could be based.
 

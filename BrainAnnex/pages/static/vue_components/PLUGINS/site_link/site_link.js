@@ -4,28 +4,29 @@
 Vue.component('vue-plugin-sl',
     {
         props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  EXAMPLE: {"item_data": {class_name:"Site Link",
-                                    item_id: 4912, position: 20,  schema_code: "sl"
-
-                                    [whatever other fields were set in this item; for example]
-                                    url:"http://example.com",
-                                    name:"test"
-                                   },
-                      "allow_editing": false, "category_id": 123,
-                      "index": 2, "item_count": 10,
-                      "schema_data": ["url","name","date","comments","rating","read"]
-                     }
-
-                     (if item_id is is negative, it means that it's a newly-created header,
-                      not yet registered with the server)
-
-            item_data:      An object with the relevant data about this Site Link item
+        /*
+            item_data:      An object with the relevant data about this Site Link item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created header, not yet registered with the server
             allow_editing:  A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of this Site Link item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names, in Schema order.
                                 EXAMPLE: ["url","name","date","comments","rating","read"]
+
+            EXAMPLE: {"item_data": {class_name:"Site Link",
+                                            uri: 4912, position: 20,  schema_code: "sl"
+
+                                            [whatever other fields were set in this item; for example]
+                                            url:"http://example.com",
+                                            name:"test"
+                                           },
+                              "allow_editing": false, "category_id": 123,
+                              "index": 2, "item_count": 10,
+                              "schema_data": ["url","name","date","comments","rating","read"]
+                             }
+
          */
 
         template: `
@@ -104,7 +105,7 @@ Vue.component('vue-plugin-sl',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.item_id < 0  ? true : false), // Negative item_id means "new Item"
+                editing_mode: (this.item_data.uri < 0  ? true : false), // Negative uri means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 
@@ -121,7 +122,7 @@ Vue.component('vue-plugin-sl',
                     EXAMPLE of item_data (a PROP, not a variable of this component!):
                         {
                             class_name:"Site Link",
-                            item_id: 4912,
+                            uri: 4912,
 
                             [whatever other fields were set in this item; for example]
                             url:"http://example.com",
@@ -141,13 +142,13 @@ Vue.component('vue-plugin-sl',
                  */
 
 
-                // Note: negative item_id means "new Item"
-                current_data: (this.item_data.item_id < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
-                original_data: (this.item_data.item_id < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
+                // Note: negative uri means "new Item"
+                current_data: (this.item_data.uri < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
+                original_data: (this.item_data.uri < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
 
-                waiting: false,
-                error: false,
-                status_message : ""
+                waiting: false,         // Whether any server request is still pending
+                error: false,           // Whether the last server communication resulted in error
+                status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
             }
         }, // data
 
@@ -156,26 +157,6 @@ Vue.component('vue-plugin-sl',
 
         // ------------------------------------   METHODS   ------------------------------------
         methods: {
-
-            enter_editing_mode()
-            {
-                console.log(`In enter_editing_mode()`);
-
-                //this.current_data = this.clone_and_standardize(this.item_data);   // Scrub some data, so that it won't show up in the tabular format
-                //this.original_data = this.clone_and_standardize(this.item_data);
-                // NOTE: clone_and_standardize() gets called twice
-
-                this.waiting = false;
-                this.status_message = "";
-                this.error = false;
-
-                this.editing_mode = true;
-
-                this.display_all_fields();      // This will set the "current_data" property
-                this.original_data = this.clone_and_standardize(this.item_data);
-            },
-
-
 
             set_name()
             /* Invoked whenever a change of the URL field is detected while in editing mode
@@ -321,7 +302,7 @@ Vue.component('vue-plugin-sl',
                 clone_obj = Object.assign({}, obj);     // Clone the object
 
                 // Scrub some data, so that it won't show up in the tabular format
-                delete clone_obj.item_id;
+                delete clone_obj.uri;
                 delete clone_obj.schema_code;
                 delete clone_obj.class_name;
                 delete clone_obj.insert_after;
@@ -332,12 +313,36 @@ Vue.component('vue-plugin-sl',
 
 
 
-            edit_content_item()
+            enter_editing_mode()
+            // Switch to the editing mode of this Vue component
             {
-                console.log(`'Site Links' component received Event to edit contents`);
+                console.log(`In enter_editing_mode()`);
+
+                //this.current_data = this.clone_and_standardize(this.item_data);   // Scrub some data, so that it won't show up in the tabular format
+                //this.original_data = this.clone_and_standardize(this.item_data);
+                // NOTE: clone_and_standardize() gets called twice
+
+                // Clear any old value
+                this.waiting = false;
+                this.error = false;
+                this.status_message = "";
+
+                this.editing_mode = true;       // Enter editing mode
+
+                this.display_all_fields();      // This will set the "current_data" property
+                this.original_data = this.clone_and_standardize(this.item_data);
+            },
+
+
+            edit_content_item()
+            /*  Handler for the "edit_content_item" Event received from the child component "vue-controls"
+                (which is generated there when clicking on the Edit button)
+             */
+            {
+                console.log(`'Site Links' component received Event to edit its contents`);
                 this.editing_mode = true;
 
-                this.display_all_fields();          // Consult the schema
+                this.display_all_fields();      // Consult the schema
             },
 
 
@@ -347,7 +352,7 @@ Vue.component('vue-plugin-sl',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.item_id == -1) {
+                if (this.current_data.uri == -1) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Records component sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
@@ -402,7 +407,7 @@ Vue.component('vue-plugin-sl',
                         {
                             "English": "Love",
                             "German": "Liebe",
-                            "item_id": 61,
+                            "uri": 61,
                             "schema_code": "r",
                             "insert_after": 123,
                             "class_name": "German Vocabulary",
@@ -413,7 +418,7 @@ Vue.component('vue-plugin-sl',
 
                 let post_obj = {schema_code: this.item_data.schema_code};
 
-                if (this.item_data.item_id < 0)  {     // Negative item_id is a convention indicating a new Content Item to create
+                if (this.item_data.uri < 0)  {     // Negative uri is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
                     post_obj["class_name"] = this.item_data.class_name;
@@ -432,7 +437,7 @@ Vue.component('vue-plugin-sl',
                 }
                 else  {
                     // Update an EXISTING record
-                    post_obj["item_id"] = this.item_data.item_id;
+                    post_obj["uri"] = this.item_data.uri;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
@@ -440,7 +445,7 @@ Vue.component('vue-plugin-sl',
                             // Non-blanks always lead to updates; blanks only if the field was originally present
                             post_obj[key] = this.current_data[key];
                     }
-                    // EXAMPLE of post_obj for an EXISTING record: "schema_code=r&item_id=62&English=Love&German=Liebe"
+                    // EXAMPLE of post_obj for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
                     url_server_api = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
                 }
@@ -490,8 +495,8 @@ Vue.component('vue-plugin-sl',
                     }
 
                     // If this was a new item (with the temporary negative ID), update its ID with the value assigned by the server
-                    if (this.item_data.item_id < 0)
-                        this.current_data.item_id = server_payload;
+                    if (this.item_data.uri < 0)
+                        this.current_data.uri = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Site Links component sending `updated-item` signal to its parent");

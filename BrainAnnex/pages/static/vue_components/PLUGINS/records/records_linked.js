@@ -6,7 +6,7 @@ Vue.component('vue-plugin-r-linked',
     {
         props: ['item_data', 'rel_name', 'rel_dir'],
         /*  item_data:  The "parent" record, from which we're following its links.
-                        EXAMPLE: {"item_id":52, "pos":10, "schema_code":"r"
+                        EXAMPLE: {"uri":52, "pos":10, "schema_code":"r"
                                   "German":"Tier", "English":"animal"}
             rel_name:   Name of the relationship that the user followed to get here.
                         EXAMPLE: "sold_by"
@@ -85,8 +85,8 @@ Vue.component('vue-plugin-r-linked',
         methods: {
             hide_record()
             {
-                const item_id = this.item_data.item_id;
-                console.log(`Hiding record with item_id ${item_id}`);
+                const uri = this.item_data.uri;
+                console.log(`Hiding record with uri ${uri}`);
                 this.display_record = false;
             },
 
@@ -109,7 +109,7 @@ Vue.component('vue-plugin-r-linked',
                 clone_obj = Object.assign({}, obj);     // Clone the object
 
                 // Scrub some data, so that it won't show up in the tabular format
-                delete clone_obj.item_id;
+                delete clone_obj.uri;
                 delete clone_obj.schema_code;
                 //delete clone_obj.class_name;
                 //delete clone_obj.insert_after;
