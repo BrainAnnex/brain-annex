@@ -56,7 +56,7 @@ class ApiRouting:
                                         #       (currently, in very limited use)
 
     #######################################################################################################################
-    #                                                                                                                     #
+    #   TODO: being phased out                                                                                            #
     #   ERROR_PREFIX and SUCCESS_PREFIX:                                                                                  #
     #   used for "simple" subset of the API, with endpoints that return PLAIN text (rather than JSON or something else)   #
     #                                                                                                                     #
@@ -111,6 +111,8 @@ class ApiRouting:
     @classmethod
     def str_to_int(cls, s: str) -> int:
         """
+        TODO: phase out in favor of the same-named method in class "DataManager"
+
         Helper function to give more friendly error messages in case non-integers are passed
         in situations where integers are expected (for example, for id's).
         Without this function, the user would see cryptic messages such as
@@ -469,9 +471,13 @@ class ApiRouting:
 
 
 
-        #------------------------------------------------------#
-        #        SCHEMA-related (creating/editing/deleting)    #
-        #------------------------------------------------------#
+        #####################################################################################################
+
+        '''                   ~   SCHEMA_RELATED (creating/editing/deleting)  ~                           '''
+
+        def ________SCHEMA_RELATED________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
 
         @bp.route('/simple/create_new_schema_class', methods=['POST'])
         @login_required
@@ -656,17 +662,50 @@ class ApiRouting:
 
 
 
-        #---------------------------------------------#
-        #            CONTENT-ITEM MANAGEMENT          #
-        #---------------------------------------------#
+        #####################################################################################################
+
+        '''                              ~   VIEWING CONTENT ITEMS   ~                                    '''
+
+        def ________VIEWING_CONTENT_ITEMS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
+        @bp.route('/get_media/<uri_str>')
+        #@login_required        # TODO: RESTORE!
+        def get_media(uri_str) -> str:
+            """
+            Retrieve and return the contents of a text media item (for now, just "notes")
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_media/123
+
+            :param uri_str: The URI of a data node for a text media item (such as a "Note")
+            :return:        A JSON string with the contents of the specified text media item
+                            EXAMPLE:
+                                {
+                                    "status": "ok",
+                                    "payload": "I'm the contents of the text media file"
+                                }
+            """
+            #sleep(1)    # For debugging
+
+            try:
+                payload = DataManager.get_text_media_content(uri_str, "n")
+                #print(f"get_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
+                response = {"status": "ok", "payload": payload}         # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to retrieve the requested Media Item: {ex}"
+                #print(f"get_media() encountered the following error: {err_details}")
+                response = {"status": "error", "error_message": err_details}    # Error termination
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
 
 
-        ################   VIEWING CONTENT ITEMS   ################
 
         @bp.route('/simple/get_media/<uri_str>')
         @login_required
-        def get_media(uri_str) -> str:
+        def get_media_OBSOLETE(uri_str) -> str:
             """
+            TODO: OBSOLETE
             Retrieve and return the contents of a text media item (for now, just "notes"),
             including the request status
         
@@ -675,8 +714,7 @@ class ApiRouting:
             #sleep(1)    # For debugging
 
             try:
-                uri = int(uri_str)
-                payload = DataManager.get_text_media_content(uri, "n")
+                payload = DataManager.get_text_media_content(uri_str, "n")
                 response = cls.SUCCESS_PREFIX + payload
             except Exception as ex:
                 err_details = f"Unable to retrieve the requested note: {ex}"
@@ -701,8 +739,7 @@ class ApiRouting:
             """
 
             try:
-                uri = int(uri_str)
-                payload = DataManager.get_text_media_content(uri, "n", public_required=True)
+                payload = DataManager.get_text_media_content(uri_str, "n", public_required=True)
 
                 text_response = cls.SUCCESS_PREFIX + payload
                 response = make_response(text_response)
@@ -782,7 +819,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/get_link_summary/47
 
             :param uri_str: ID of a data node
-            :return:            A JSON object with the names and counts of inbound and outbound links
+            :return:            A JSON string with the names and counts of inbound and outbound links
                                 EXAMPLE:
                                     {
                                         "status": "ok",

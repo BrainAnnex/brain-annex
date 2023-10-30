@@ -75,8 +75,13 @@ class DataManager:
 
 
 
+    #####################################################################################################
 
-    #######################     GENERAL UTILITIES       #######################
+    '''                                      ~   UTILITIES   ~                                        '''
+
+    def ________UTILITIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def to_int_if_possible(cls, s: str) -> Union[int, str, None]:
@@ -90,6 +95,33 @@ class DataManager:
             return int(s)
         except ValueError:
             return s
+
+
+
+    @classmethod
+    def str_to_int(cls, s: str) -> int:
+        """
+        Helper function to give more friendly error messages in case non-integers are passed
+        in situations where integers are expected.
+        Without this function, the user would see cryptic messages such as
+        "invalid literal for int() with base 10: 'q123'"
+
+        EXAMPLE of usage:
+            try:
+                uri = cls.str_to_int(uri_str)
+            except Exception as ex:
+                # Do something
+
+        :param s:   A string that should represent an integer
+        :return:    The integer represented in the passed string, if applicable;
+                        if not, an Exception is raised
+        """
+        try:
+            i = int(s)
+        except Exception:
+            raise Exception(f"The passed parameter ({s}) is not an integer as expected")
+
+        return i
 
 
 
@@ -127,9 +159,15 @@ class DataManager:
 
 
 
-    #######################     SCHEMA-RELATED       #######################
-    # TODO: possibly move to separate class
 
+    #####################################################################################################
+
+    '''                                    ~   SCHEMA-RELATED   ~                                     '''
+
+    def ________SCHEMA_RELATED________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+    # TODO: possibly move to separate class
 
     @classmethod
     def all_schema_classes(cls) -> [str]:
@@ -373,13 +411,13 @@ class DataManager:
     #######################     CONTENT-ITEM RELATED      #######################
 
     @classmethod
-    def get_text_media_content(cls, uri: int, schema_code, public_required = False) -> str:
+    def get_text_media_content(cls, uri :str, schema_code, public_required = False) -> str:
         """
         Fetch and return the contents of a media item stored on a local file,
         optionally requiring it to be marked as "public".
         In case of error, raise an Exception
 
-        :param uri:         An integer identifying the desired Content Item, which ought to be text media
+        :param uri:             A string identifying the desired Content Item, which ought to be text media
         :param schema_code:     TODO: maybe phase out
         :param public_required: If True, the Content Item is returned only if has an the attribute "public: true"
                                     TODO: unclear if actually useful
@@ -389,7 +427,9 @@ class DataManager:
                                     (e.g., if public_required is True and the item isn't public)
 
         """
-        properties = {"uri": uri, "schema_code": schema_code}
+        uri_int = cls.str_to_int(uri)
+
+        properties = {"uri": uri_int, "schema_code": schema_code}
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
@@ -816,7 +856,6 @@ class DataManager:
             return None
 
         return record
-
 
 
 
