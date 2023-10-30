@@ -207,7 +207,7 @@ class ServerCommunication
         .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
                                                         //      TODO: turn into a method that first logs the first part of the response (helpful in case of parsing errors)
         .then(server_response => {                      // Manage the server response
-            console.log("server_response received by contact_server_JSON(): ");
+            console.log("Server response received by contact_server_JSON(): ");
             console.log(server_response);
             // Check if the response indicates failure
             const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
@@ -578,7 +578,7 @@ class ServerCommunication
     static  check_for_server_error_JSON(server_response)
 	/*  ONLY APPLICABLE TO SERVER COMMUNICATION USING THE "STANDARD JSON PROTOCOL" FOR THIS CLASS.
 	    Check the given server response for the presence of errors.
-		If error is detected, return an error message; otherwise, return an empty string.
+		If an error was detected, return an error message; otherwise, return an empty string.
 	 */
 	{
 	    const SUCCESS_STATUS = "ok";        // This value for the "status" JSON flag is indicative of a successful operation
@@ -591,7 +591,7 @@ class ServerCommunication
 		}
 
 	    const server_status = server_response.status;
-        console.log(`In check_for_server_error_JSON(): server response status = ${server_status}`);
+        //console.log(`In check_for_server_error_JSON(): server response status was '${server_status}'`);
 
 	    if (server_status == SUCCESS_STATUS)
 	        return "";	    // No errors found
@@ -601,6 +601,8 @@ class ServerCommunication
 		    server_error_msg = "The server reported the following problem: " + server_response.error_message;
 		else    //  if the server didn't provided the expected error_message field
 		    server_error_msg = "The server reported a problem; no further information is available";
+
+        console.log(`In check_for_server_error_JSON(): server response status was '${server_status}'.  ${server_error_msg}`);
 
 		return server_error_msg;
 

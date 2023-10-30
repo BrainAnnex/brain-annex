@@ -671,23 +671,22 @@ class ApiRouting:
         #####################################################################################################
 
         @bp.route('/get_media/<uri_str>')
-        #@login_required        # TODO: RESTORE!
+        @login_required
         def get_media(uri_str) -> str:
             """
+            TODO: this will be the "role model" to use to phase out the "simple" protocol
             Retrieve and return the contents of a text media item (for now, just "notes")
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_media/123
 
-            :param uri_str: The URI of a data node for a text media item (such as a "Note")
-            :return:        A JSON string with the contents of the specified text media item
+            :param uri_str: The URI of a data node representing a text media Item (such as a "Note")
+            :return:        A JSON string with the contents of the specified text media Item
                             EXAMPLE:
                                 {
                                     "status": "ok",
                                     "payload": "I'm the contents of the text media file"
                                 }
             """
-            #sleep(1)    # For debugging
-
             try:
                 payload = DataManager.get_text_media_content(uri_str, "n")
                 #print(f"get_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
@@ -698,32 +697,6 @@ class ApiRouting:
                 response = {"status": "error", "error_message": err_details}    # Error termination
 
             return jsonify(response)   # This function also takes care of the Content-Type header
-
-
-
-        @bp.route('/simple/get_media/<uri_str>')
-        @login_required
-        def get_media_OBSOLETE(uri_str) -> str:
-            """
-            TODO: OBSOLETE
-            Retrieve and return the contents of a text media item (for now, just "notes"),
-            including the request status
-        
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/get_media/123
-            """
-            #sleep(1)    # For debugging
-
-            try:
-                payload = DataManager.get_text_media_content(uri_str, "n")
-                response = cls.SUCCESS_PREFIX + payload
-            except Exception as ex:
-                err_details = f"Unable to retrieve the requested note: {ex}"
-                print(f"get_media() encountered the following error: {err_details}")
-                response = cls.ERROR_PREFIX + err_details
-
-                #print(f"get_media() is returning the following text [first 30 chars]: `{response[:30]}`")
-        
-            return response
 
 
 

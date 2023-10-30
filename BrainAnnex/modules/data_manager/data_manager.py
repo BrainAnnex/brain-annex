@@ -437,7 +437,7 @@ class DataManager:
         content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
         if content_node is None:    # Metadata not found
-            raise Exception(f"The metadata for the Content Item (id {uri}) wasn't found, or the items is not publicly accessible")
+            raise Exception(f"The metadata for the Content Item (uri: `{uri}`) wasn't found, or the items is not publicly accessible")
 
         basename = content_node['basename']
         suffix = content_node['suffix']
@@ -449,7 +449,7 @@ class DataManager:
             file_contents = MediaManager.get_from_text_file(folder, filename, encoding="utf8")
             return file_contents
         except Exception as ex:
-            return f"I/O failure while reading in contents of item {uri}. {ex}"     # File I/O failed
+            return f"I/O failure while reading in contents of Item with URI `{uri}`. {ex}"     # File I/O failed
 
 
 

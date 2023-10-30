@@ -134,20 +134,21 @@ Vue.component('vue-plugin-n',
 
             get_note(item_data)
             {
-                console.log("In get_note. Item to look up : `" + item_data.uri + "`");
+                //console.log("In get_note. Item to look up has URI: `" + item_data.uri + "`");
 
                 this.waiting = true;
 
                 // Prepare a URL to communicate with the server's endpoint
-                url_server = "/BA/api/simple/get_media/" + item_data.uri;
+                url_server_api = "/BA/api/get_media/" + item_data.uri;
 
-                ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});
+                ServerCommunication.contact_server(url_server_api,
+                                                  {payload_type: "JSON", callback_fn: this.finish_get_note});
 
-                console.log("    SENT REQUEST TO SERVER to retrieve note id " + item_data.uri + "...");
+                console.log("    SENT REQUEST TO SERVER to retrieve Note whose URI is `" + item_data.uri + "`...");
             }, // get_note
 
             finish_get_note(success, server_payload, error_message, index)
-            // Callback function to wrap up the action of delete_content_item() upon getting a response from the server
+            // Callback function to wrap up the action of get_note() upon getting a response from the server
             {
                 console.log("Finalizing the get_note operation...");
                 if (success)  {     // Server reported SUCCESS
