@@ -120,7 +120,6 @@ class MediaManager:
 
         folder = cls.lookup_file_path(schema_code="n")                          # TODO: pass schema_code as an argument, instead of being hardwired
         full_file_name = folder + filename
-        #full_file_name = cls.MEDIA_FOLDER + "notes/" + filename
 
         try:
             f = open(full_file_name, "w", encoding='utf8')
@@ -174,6 +173,43 @@ class MediaManager:
             return True
         else:
             return False    # "The file does not exist"
+
+
+
+    @classmethod
+    def get_mime_type(cls, suffix :str) -> str:
+        """
+        Return the appropriate MIME type for file content type assumed from the
+        filename extension, assuming normal conventions are being followed
+
+        :param suffix:  A string with a filename's suffix (i.e. the "file extension type".)
+                            EXAMPLES: "jpg" or "PDF"
+        :return:        A string describing the MIME type for files of that particular type
+        """
+        mime_mapping = {'jpg': 'image/jpeg',
+                        'png': 'image/png',
+                        'gif': 'image/gif',
+                        'bmp': 'image/bmp',
+                        'svg': 'image/svg+xml',
+
+                        'txt': 'text/plain',
+                        'pdf': 'application/pdf',
+                        'docx': 'application/msword',
+                        'doc': 'application/msword',
+                        'xlsx': 'application/vnd.ms-excel',
+                        'xls': 'application/vnd.ms-excel',
+
+                        'ppt' : 'application/vnd.ms-powerpoint',
+                        'pptx' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+
+                        'zip': 'application/zip'
+                        }   # TODO: add more MIME types, when more plugins are introduced
+
+        default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
+
+        mime_type = mime_mapping.get(suffix.lower(), default_mime)
+
+        return mime_type
 
 
 

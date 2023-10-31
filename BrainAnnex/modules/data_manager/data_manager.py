@@ -420,7 +420,6 @@ class DataManager:
         :param uri:             A string identifying the desired Content Item, which ought to be text media
         :param schema_code:     TODO: maybe phase out
         :param public_required: If True, the Content Item is returned only if has an the attribute "public: true"
-                                    TODO: unclear if actually useful
 
         :return:                A string with the HTML text of the requested note;
                                     or an Exception in case of failure
@@ -454,19 +453,21 @@ class DataManager:
 
 
     @classmethod
-    def get_binary_content(cls, uri: int, th) -> (str, bytes):
+    def get_binary_content(cls, uri :str, th) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored on a local file.
         In case of error, raise an Exception
 
-        :param uri: Integer identifier for a media item     TODO: use strings
-        :param th:      If not None, then the thumbnail version is returned (only
-                            applicable to images)
-        :return:        The binary data
-
+        :param uri: String identifier for a media item
+        :param th:  If not None, then the thumbnail version is returned (only
+                        applicable to images)
+        :return:    The binary data
         """
+        #TODO: (at least for large media) read the file in blocks
+
+        uri_int = cls.str_to_int(uri)
         #print("In get_binary_content(): uri = ", uri)
-        content_node = NeoSchema.fetch_data_node(uri = uri)
+        content_node = NeoSchema.fetch_data_node(uri = uri_int)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception("get_binary_content(): Metadata for the Content Datafile not found")

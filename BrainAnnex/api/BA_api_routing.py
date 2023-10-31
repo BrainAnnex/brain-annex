@@ -7,10 +7,10 @@ from flask import Blueprint, jsonify, request, current_app, make_response  # The
 from flask_login import login_required
 from BrainAnnex.modules.data_manager.data_manager import DataManager
 from BrainAnnex.modules.data_manager.data_manager import DocumentationGenerator
+from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.documents import Documents
-from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
 import requests
@@ -70,7 +70,7 @@ class ApiRouting:
                             #       (such as a status message)
 
     # NOTE: To test POST-based API access points, on the Linux shell or Windows PowerShell issue commands such as:
-    #            curl http://localhost:5000/BA/api/simple/add_item_to_category -d "schema_id=1&category_id=60"
+    #            curl http://localhost:5000/BA/api/add_item_to_category -d "schema_id=1&category_id=60"
 
 
 
@@ -292,7 +292,7 @@ class ApiRouting:
                     except Exception as ex:
                         response = {"status": "error", "error_message": str(ex)}
 
-            print(f"get_properties_by_class_name() is returning: `{response}`")
+            #print(f"get_properties_by_class_name() is returning: `{response}`")
 
             return jsonify(response)   # This function also takes care of the Content-Type header
 
@@ -672,7 +672,7 @@ class ApiRouting:
 
         @bp.route('/get_media/<uri_str>')
         @login_required
-        def get_media(uri_str) -> str:
+        def get_media(uri_str):
             """
             TODO: this will be the "role model" to use to phase out the "simple" protocol
             Retrieve and return the contents of a text media item (for now, just "notes")
@@ -690,7 +690,7 @@ class ApiRouting:
             try:
                 payload = DataManager.get_text_media_content(uri_str, "n")
                 #print(f"get_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
-                response = {"status": "ok", "payload": payload}         # Successful termination
+                response = {"status": "ok", "payload": payload}                 # Successful termination
             except Exception as ex:
                 err_details = f"Unable to retrieve the requested Media Item: {ex}"
                 #print(f"get_media() encountered the following error: {err_details}")
@@ -705,7 +705,7 @@ class ApiRouting:
             """
             Similar to get_media(), but:
                 1) no login required
-                2) specifically for notes
+                2) specifically for Notes
                 3) it only serves items marked as "public"
 
             EXAMPLE invocation: http://localhost:5000/BA/api/simple/remote_access_note/123
@@ -731,8 +731,8 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/serve_media/<uri>')
-        @bp.route('/simple/serve_media/<uri>/<th>')
+        @bp.route('/serve_media/<uri>')
+        @bp.route('/serve_media/<uri>/<th>')
         @login_required
         def serve_media(uri, th=None):
             """
@@ -740,36 +740,13 @@ class ApiRouting:
             If ANY value is specified for the argument "th", then the thumbnail version is returned (only
                 applicable to images)
 
-            TODO: (at least for large media) read the file in blocks.
-
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/serve_media/1234
+            EXAMPLE invocation: http://localhost:5000/BA/api/serve_media/1234
             """
-            mime_mapping = {'jpg': 'image/jpeg',
-                            'png': 'image/png',
-                            'gif': 'image/gif',
-                            'bmp': 'image/bmp',
-                            'svg': 'image/svg+xml',
-
-                            'txt': 'text/plain',
-                            'pdf': 'application/pdf',
-                            'docx': 'application/msword',
-                            'doc': 'application/msword',
-                            'xlsx': 'application/vnd.ms-excel',
-                            'xls': 'application/vnd.ms-excel',
-
-                            'ppt' : 'application/vnd.ms-powerpoint',
-                            'pptx' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-
-                            'zip': 'application/zip'
-                            }   # TODO: add more MIME types, when more plugins are introduced, and move to DataManager
-
-            default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
-
             try:
-                (suffix, content) = DataManager.get_binary_content(int(uri), th)
+                (suffix, content) = DataManager.get_binary_content(uri, th)
                 response = make_response(content)
                 # Set the MIME type
-                mime_type = mime_mapping.get(suffix.lower(), default_mime)
+                mime_type = MediaManager.get_mime_type(suffix)
                 response.headers['Content-Type'] = mime_type
                 #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
             except Exception as ex:
