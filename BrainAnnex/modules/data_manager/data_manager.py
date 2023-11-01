@@ -67,7 +67,8 @@ class DataManager:
     @classmethod
     def add_new_label(cls, label: str) -> int:
         """
-        Create a new blank node with the specified label
+        Create a new blank node with the specified label.
+        Mostly used for testing.
 
         :return:    The internal database ID of the new node
         """

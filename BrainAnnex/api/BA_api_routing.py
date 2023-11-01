@@ -22,7 +22,7 @@ import os
 class ApiRouting:
     """
     Setup, routing and endpoints for all the web pages served by this module.
-    Note that this class does not directly interact with the Neo4j database.
+    Note that this class does not directly interact with the database.
 
     SECTIONS:
         - UTILITY methods
@@ -677,7 +677,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/get_text_media/123
 
             :param uri: The URI of a data node representing a text media Item (such as a "Note")
-            :return:    An Flask Response response object containing a JSON string
+            :return:    A Flask Response response object containing a JSON string
                             with the contents of the specified text media Item
                             EXAMPLE of successful response data:
                                 {
@@ -1139,11 +1139,12 @@ class ApiRouting:
             EXAMPLE invocation:
                 http://localhost:5000/BA/api/fetch-remote-title?url=https://brainannex.org
 
-            :return:    A string with the title of the page specified by the "url" query string, or an error message,
-                            with a "+" or "-" prefix (for success/failure)
-                            Any HTML entities in the title are turned into characters; e.g. "&ndash;" becomes "-"
+            :return:    A Flask Response response object containing a JSON string
+                            with the contents of the title of the page specified by the "url" query string,
+                            or an error message in case the fetching webpage fails or its title cannot be extracted.
+                            Note: any HTML entities in the title are turned into characters; e.g. "&ndash;" becomes "-"
             """
-            remote_url = request.args.get('url')
+            remote_url = request.args.get('url')    # Extract the value of the "url" value from the query string
             #print(f"Attempting to retrieve remove web page {remote_url}")
 
             try:
@@ -1643,23 +1644,29 @@ class ApiRouting:
         #                EXPERIMENTAL                 #
         #---------------------------------------------#
         
-        @bp.route('/simple/add_label/<new_label>')
+        @bp.route('/add_label/<new_label>')
         @login_required
-        def add_label(new_label) -> str:
+        def add_label(new_label):
             """
             Add a new blank node with the specified label.
-            As a payload, return the internal ID of the new node
+            Return the internal database ID of the new node.
+            Mostly used for testing.
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_label/Customer
+            EXAMPLE invocation: http://localhost:5000/BA/api/add_label/Customer
+
+            :param new_label:   String with the name of a Graph-Database label
+            :return:            A Flask Response response object containing
+                                    the internal database ID of the new node
             """
             try:
                 internal_id = DataManager.add_new_label(new_label)
-                return_value = cls.SUCCESS_PREFIX + str(internal_id)    # Success
+                response_data = {"status": "ok", "payload": internal_id}            # Successful termination
             except Exception as ex:
-                err_status = f"Unable to create a new node with the given label (new_label). {ex}"
-                return_value = cls.ERROR_PREFIX + err_status            # Failure
+                err_details = f"Unable to create a new database node with the given label: `{new_label}`. " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
         ##################  END OF ROUTING DEFINITIONS  ##################

@@ -106,7 +106,7 @@ Vue.component('vue-add-new-record',
                 // Prepare a URL to communicate with the server's endpoint
                 url_server = "/api/add_label/" + encodeURIComponent(this.new_label_value);
 
-                ServerCommunication.contact_server(url_server, {payload_type: "TEXT", callback_fn: this.finish_add_node});
+                ServerCommunication.contact_server(url_server, {callback_fn: this.finish_add_node});
             }, // add_node
 
 
