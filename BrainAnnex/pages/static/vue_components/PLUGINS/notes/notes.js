@@ -139,7 +139,7 @@ Vue.component('vue-plugin-n',
                 this.waiting = true;
 
                 // Prepare a URL to communicate with the server's endpoint
-                url_server_api = "/BA/api/get_media/" + item_data.uri;
+                url_server_api = "/BA/api/get_text_media/" + item_data.uri;
 
                 ServerCommunication.contact_server(url_server_api,
                                                   {payload_type: "JSON", callback_fn: this.finish_get_note});

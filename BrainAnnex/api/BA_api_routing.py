@@ -670,40 +670,41 @@ class ApiRouting:
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
-        @bp.route('/get_media/<uri_str>')
+        @bp.route('/get_text_media/<uri>')
         @login_required
-        def get_media(uri_str):
+        def get_text_media(uri):
             """
             TODO: this will be the "role model" to use to phase out the "simple" protocol
-            Retrieve and return the contents of a text media item (for now, just "notes")
+            Retrieve and return the contents of a TEXT media item (for now, just "Notes")
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/get_media/123
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_text_media/123
 
-            :param uri_str: The URI of a data node representing a text media Item (such as a "Note")
-            :return:        A JSON string with the contents of the specified text media Item
-                            EXAMPLE:
+            :param uri: The URI of a data node representing a text media Item (such as a "Note")
+            :return:    An Flask Response response object containing a JSON string
+                            with the contents of the specified text media Item
+                            EXAMPLE of response data:
                                 {
                                     "status": "ok",
                                     "payload": "I'm the contents of the text media file"
                                 }
             """
             try:
-                payload = DataManager.get_text_media_content(uri_str, "n")
-                #print(f"get_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
-                response = {"status": "ok", "payload": payload}                 # Successful termination
+                payload = DataManager.get_text_media_content(uri, "n")
+                #print(f"get_text_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
+                response_data = {"status": "ok", "payload": payload}                     # Successful termination
             except Exception as ex:
-                err_details = f"Unable to retrieve the requested Media Item: {ex}"
-                #print(f"get_media() encountered the following error: {err_details}")
-                response = {"status": "error", "error_message": err_details}    # Error termination
+                err_details = f"Unable to retrieve the requested Media Item.  {exceptions.exception_helper(ex)}"
+                #print(f"get_text_media() encountered the following error: {err_details}")
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
 
-            return jsonify(response)   # This function also takes care of the Content-Type header
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
         @bp.route('/simple/remote_access_note/<uri_str>')
         def remote_access_note(uri_str) -> str:     # NO LOGIN REQUIRED
             """
-            Similar to get_media(), but:
+            Similar to get_text_media(), but:
                 1) no login required
                 2) specifically for Notes
                 3) it only serves items marked as "public"
@@ -736,11 +737,18 @@ class ApiRouting:
         @login_required
         def serve_media(uri, th=None):
             """
-            Retrieve and return the contents of a data media item (for now, just images or documents.)
+            Retrieve and return the contents of a data media item (for now, just Images or Documents.)
             If ANY value is specified for the argument "th", then the thumbnail version is returned (only
                 applicable to images)
 
             EXAMPLE invocation: http://localhost:5000/BA/api/serve_media/1234
+
+            :param uri: The URI of a data node representing a media Item (such as an "Image" or "Document")
+            :param th:  Only applicable to Images.  If not None, then the thumbnail version is returned
+            :return:    A Flask Response object containing the data for the requested media,
+                            with a header setting the MIME type appropriate for the media format
+                        In case the media isn't found, a 404 response status is sent,
+                            together with an error message
             """
             try:
                 (suffix, content) = DataManager.get_binary_content(uri, th)
@@ -748,11 +756,12 @@ class ApiRouting:
                 # Set the MIME type
                 mime_type = MediaManager.get_mime_type(suffix)
                 response.headers['Content-Type'] = mime_type
-                #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
+                #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  "
+                #      f"Serving with MIME type `{mime_type}`")
             except Exception as ex:
-                err_details = f"Unable to retrieve Content Item with URI `{uri}`. {exceptions.exception_helper(ex)}"
+                err_details = f"Unable to retrieve Media Item with URI `{uri}`. {exceptions.exception_helper(ex)}"
                 print(f"serve_media() encountered the following error: {err_details}")
-                response = make_response(err_details, 404)  # TODO: make sure that 404 works well, vs. the 500 previously used
+                response = make_response(err_details, 404)
 
             return response
 
@@ -1642,7 +1651,7 @@ class ApiRouting:
                 else:
                     return f"Unknown requested type of download: {download_type}"
             except Exception as ex:
-                    response = exceptions.exception_helper(ex, safe_html=True)
+                    response = exceptions.exception_helper(ex)
                     error_page_body = f'''<b>Unable to perform download</b>. <br>
                                           This is typically due to the 'APOC' library not being installed on Neo4j,
                                           unless the error message below indicates something else. 
