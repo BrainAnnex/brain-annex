@@ -320,8 +320,7 @@ Vue.component('vue-plugin-r',
                 console.log(post_obj);
 
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "JSON",
-                             post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_get_linked_records_from_server,
                              custom_data: [rel_name, dir]});
             },
@@ -364,7 +363,7 @@ Vue.component('vue-plugin-r',
                 console.log(`About to contact the server at ${url_server}`);
                 this.waiting_for_links = true;
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "JSON", callback_fn: this.finish_get_link_summary_from_server});
+                            {callback_fn: this.finish_get_link_summary_from_server});
             },
 
             finish_get_link_summary_from_server(success, server_payload, error_message)
@@ -411,7 +410,7 @@ Vue.component('vue-plugin-r',
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
+                            {post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
 
                 return true;
             },

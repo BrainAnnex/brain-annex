@@ -40,7 +40,7 @@ class ServerCommunication
                                             method = "GET",
                                             post_obj = {},
                                             post_body = "",
-                                            payload_type = "TEXT",
+                                            payload_type = "JSON",
                                             callback_fn = undefined,
                                             custom_data = undefined
                                         } = {} )
@@ -58,7 +58,7 @@ class ServerCommunication
                                 (disregarded if a non-empty post_obj was passed,
                                  i.e. post_obj has higher priority over post_obj)
 
-            payload_type:   Either "TEXT" or "JSON" - optional; by default "TEXT"
+            payload_type:   Either "TEXT" or "JSON" - optional; by default "JSON"
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data:    If present, it is passed as a final argument to the callback function
 

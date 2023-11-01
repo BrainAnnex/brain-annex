@@ -240,8 +240,7 @@ new Vue({
 
             // Initiate asynchronous contact with the server
             ServerCommunication.contact_server(url_server_api,
-                        {payload_type: "JSON",
-                         post_obj: post_obj,
+                        {post_obj: post_obj,
                          callback_fn: this.finish_engage_continuous_intake
                          });
         },

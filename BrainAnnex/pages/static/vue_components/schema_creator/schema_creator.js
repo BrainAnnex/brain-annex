@@ -183,7 +183,7 @@ Vue.component('vue-schema-creator',
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server,
-                            {post_obj: post_obj,
+                            {payload_type: "TEXT", post_obj: post_obj,
                              callback_fn: this.finish_add_class});
             },
 

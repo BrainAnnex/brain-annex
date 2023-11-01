@@ -13,11 +13,8 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
-import requests
-import re                   # REGEX
 import shutil
 import os
-import html
 #from time import sleep     # For tests of delays in asynchronous fetching
 
 
@@ -682,11 +679,14 @@ class ApiRouting:
             :param uri: The URI of a data node representing a text media Item (such as a "Note")
             :return:    An Flask Response response object containing a JSON string
                             with the contents of the specified text media Item
-                            EXAMPLE of response data:
+                            EXAMPLE of successful response data:
                                 {
                                     "status": "ok",
                                     "payload": "I'm the contents of the text media file"
                                 }
+                            In case the text media isn't found, a normal response status (200) is still sent,
+                            but the JSON in the payload with provide "status": "error",
+                            and an "error_message" key with details
             """
             try:
                 payload = DataManager.get_text_media_content(uri, "n")
@@ -1131,13 +1131,13 @@ class ApiRouting:
         #                     UTILS                   #
         #---------------------------------------------#
 
-        @bp.route('/simple/fetch-remote-title')
+        @bp.route('/fetch-remote-title')
         def fetch_remote_title():
             """
             Retrieve the Title of a remote webpage, given its URL
 
             EXAMPLE invocation:
-                http://localhost:5000/BA/api/simple/fetch-remote-title?url=https://brainannex.org
+                http://localhost:5000/BA/api/fetch-remote-title?url=https://brainannex.org
 
             :return:    A string with the title of the page specified by the "url" query string, or an error message,
                             with a "+" or "-" prefix (for success/failure)
@@ -1147,49 +1147,14 @@ class ApiRouting:
             #print(f"Attempting to retrieve remove web page {remote_url}")
 
             try:
-                response = requests.get(remote_url)
-
-                if response.status_code == 200:
-                    #print(response.text[:800])     # Show the early part of the file
-
-                    # Use regular expressions to find the title tag
-                    title_match = re.search(r'<title.*?>(.*?)</title>', response.text, re.IGNORECASE)
-                    #    .    means "any single character, except line breaks"
-                    #    *?   means "0 or more times (non-greedy)"
-                    #    ()   means "capture group"
-
-                    # Note: some websites contain alternate way to express titles, such as:
-                    # <meta data-react-helmet="true" name="title" content="THE REAL PAGE TITLE">
-
-                    if title_match:
-                        title = title_match.group(1)            # The 1st capture group
-                        unescaped_title = html.unescape(title)  # Turn HTML entities into characters;
-                                                                # e.g. "&ndash;" into "-"
-                        print(unescaped_title)
-                        return_value = cls.SUCCESS_PREFIX + unescaped_title     # Success
-                    else:
-                        err_status = f"Unable to extract title from {remote_url}"
-                        return_value = cls.ERROR_PREFIX + err_status            # Failure
-
-                    '''
-                    # Alternate approach using BeautifulSoup (untested):
-                    
-                        from bs4 import BeautifulSoup
-                        # Parse the HTML content
-                        soup = BeautifulSoup(response.text, 'html.parser')                  
-                        # Extract the title element and its text
-                        title = soup.title.string if soup.title else 'No Title Found
-                    '''
-
-                else:   # Response status other that 200
-                    err_status =  f'Remote page ({remote_url}) returned failure code {response.status_code}'
-                    return_value = cls.ERROR_PREFIX + err_status                # Failure
+                title = DataManager.extract_website_title(remote_url)
+                response_data = {"status": "ok", "payload": title}                  # Successful termination
 
             except Exception as ex:
-                err_status =  f'Error in fetching the remote page. {ex})'
-                return_value = cls.ERROR_PREFIX + err_status                    # Failure
+                err_details =  f"Error in fetching the remote page.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 

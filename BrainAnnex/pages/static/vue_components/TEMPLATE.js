@@ -101,8 +101,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {payload_type: "JSON",
-                             post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_get_data_from_server,
                              custom_data: [my_var]
                              });
@@ -124,8 +123,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {payload_type: "JSON",
-                             callback_fn: this.finish_get_data_from_server,
+                            {callback_fn: this.finish_get_data_from_server,
                              custom_data: [my_var]
                              });
             },

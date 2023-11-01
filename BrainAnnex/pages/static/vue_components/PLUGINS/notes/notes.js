@@ -142,7 +142,7 @@ Vue.component('vue-plugin-n',
                 url_server_api = "/BA/api/get_text_media/" + item_data.uri;
 
                 ServerCommunication.contact_server(url_server_api,
-                                                  {payload_type: "JSON", callback_fn: this.finish_get_note});
+                                                  {callback_fn: this.finish_get_note});
 
                 console.log("    SENT REQUEST TO SERVER to retrieve Note whose URI is `" + item_data.uri + "`...");
             }, // get_note

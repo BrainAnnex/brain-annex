@@ -173,7 +173,7 @@ Vue.component('vue-plugin-cd',
                 this.error_indicator = false;      // Clear possible past message
 
                 console.log("In 'vue-plugin-cd', save().  post_body: ", post_body);
-                ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_save});
+                ServerCommunication.contact_server(url_server, {payload_type: "TEXT", post_body: post_body, callback_fn: this.finish_save});
             }, // save
 
 

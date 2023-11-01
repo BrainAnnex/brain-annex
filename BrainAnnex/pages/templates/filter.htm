@@ -155,7 +155,7 @@ new Vue({
             this.status_message = "";
 
             ServerCommunication.contact_server(url_server,
-                    {method: "POST", post_obj: post_obj, payload_type: "JSON", callback_fn: this.finish_submit_query});
+                    {method: "POST", post_obj: post_obj, callback_fn: this.finish_submit_query});
         },
 
         finish_submit_query(success, server_payload, error_message)

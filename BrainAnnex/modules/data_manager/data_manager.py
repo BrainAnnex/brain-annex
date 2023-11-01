@@ -13,6 +13,8 @@ import os
 from flask import request, current_app  # TODO: phase out (?)
 from typing import Union
 import shutil
+import requests
+import html
 from datetime import datetime
 
 
@@ -925,6 +927,57 @@ class DataManager:
         # Note: attributes 'pos' and 'class_name' (used by some HTML templates) are not in the the result
         #print("------- RESULT -------------  :\n", result)
         return result
+
+
+
+    @classmethod
+    def extract_website_title(cls, url :str) -> str:
+        """
+        Retrieve the Title of a remote webpage, given its URL
+
+        :param url: URL of the website whose title we want to fetch.
+                        EXAMPLE:  "https://brainannex.org"
+        :return:    The "Title" of the website.
+                        In case unable to locate the web page, or unable to extract its Title,
+                        raise an Exception
+        """
+        response = requests.get(url, allow_redirects=True)
+
+        if response.status_code == 200:     # Normal response code from remote website
+            #print(response.text[:800])     # Show the early part of the file
+
+            # Use regular expressions to find the title tag
+            title_match = re.search(r'<title.*?>(.*?)</title>', response.text, re.IGNORECASE)
+            #    .    means "any single character, except line breaks"
+            #    *?   means "0 or more times (non-greedy)"
+            #    ()   means "capture group"
+
+            # TODO: some websites contain alternate way to express titles, such as:
+            #       <meta data-react-helmet="true" name="title" content="THE REAL PAGE TITLE">
+
+            if title_match:
+                title = title_match.group(1)            # The 1st capture group
+                unescaped_title = html.unescape(title)  # Turn HTML entities into characters;
+                                                        # e.g. "&ndash;" into "-"
+                print(unescaped_title)
+                return unescaped_title
+            else:
+                err_status = f"Unable to extract title from website at {url}"
+                raise Exception(err_status)     # Found the web page, but couldn't extract its title
+
+            '''
+            # Alternate approach using BeautifulSoup (untested):
+            
+                from bs4 import BeautifulSoup
+                # Parse the HTML content
+                soup = BeautifulSoup(response.text, 'html.parser')                  
+                # Extract the title element and its text
+                title = soup.title.string if soup.title else 'No Title Found
+            '''
+
+        else:   # Response status other that 200
+            err_status =  f'Remote page ({url}) returned failure code {response.status_code}'
+            raise Exception(err_status)         # Problems with locating the web page
 
 
 
