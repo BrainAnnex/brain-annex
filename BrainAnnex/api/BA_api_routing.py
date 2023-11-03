@@ -1,5 +1,5 @@
 """
-    API endpoint
+    Web API endpoint
     MIT License.  Copyright (c) 2021-2023 Julian A. West
 """
 
@@ -476,7 +476,7 @@ class ApiRouting:
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
-        @bp.route('/simple/create_new_schema_class', methods=['POST'])
+        @bp.route('/create_new_schema_class', methods=['POST'])
         @login_required
         def create_new_schema_class() -> str:
             """
@@ -485,13 +485,13 @@ class ApiRouting:
             to an existing Class (often, the "Records" Class)
 
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                curl http://localhost:5000/BA/api/create_new_schema_class -d
                     "new_class_name=my%20new%20class&properties_list=A,B,C,&instance_of=Records"
 
-                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                curl http://localhost:5000/BA/api/create_new_schema_class -d
                     "new_class_name=Greek&properties_list=Greek,&instance_of=Foreign%20Vocabulary"
 
-                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                curl http://localhost:5000/BA/api/create_new_schema_class -d
                     "new_class_name=Entrees&properties_list=name,price,&instance_of=Records&linked_to=Restaurants&rel_name=served_at&rel_dir=OUT"
 
             POST FIELDS:
@@ -507,19 +507,57 @@ class ApiRouting:
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
-            cls.show_post_data(post_data, "create_new_schema_class")
+            #cls.show_post_data(post_data, "create_new_schema_class")
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["new_class_name"])
                 DataManager.new_schema_class(class_specs)
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
-                err_status = f"Unable to create a new Schema Class. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to create a new Schema Class.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # Failure
 
-            #print(f"create_new_schema_class() is returning: `{return_value}`")
+            #print(f"create_new_schema_class() is returning: `{err_details}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/delete_class', methods=['POST'])
+        @login_required
+        def delete_class() -> str:
+            """
+            Delete a Class specified by its name.
+            All its Properties will also get deleted alongside.
+            The operation will fail if the Class doesn't exist,
+            or if data nodes attached to that Class are present (those need to be deleted first)
+
+            POST FIELDS:
+                class_name
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/delete_class -d
+                        "class_name=some_class_1"
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict object
+            cls.show_post_data(post_data, "delete_class")
+
+            try:
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=["class_name"])
+                NeoSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
+                response_data = {"status": "ok"}        # Success
+            except Exception as ex:
+                # TODO: in case of failure, investigate further the problem
+                #       (e.g. no class by that name vs. class has data points still attached to it)
+                #       and give a more specific error message
+                err_details = f"Unable to delete the class.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # Failure
+
+            #print(f"delete_class() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
         @bp.route('/simple/schema_add_property_to_class', methods=['POST'])
@@ -616,43 +654,6 @@ class ApiRouting:
 
             if cls.debug:
                 print(f"delete_schema_relationship() is returning: `{return_value}`")
-
-            return return_value
-
-
-
-        @bp.route('/simple/delete_class', methods=['POST'])
-        @login_required
-        def delete_class() -> str:
-            """
-            Delete the specified Class.
-            The operation will fail if the Class doesn't exist,
-            or if data nodes attached to that Class are present (those need to be deleted first)
-
-            POST FIELDS:
-                class_name
-
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/delete_class -d
-                        "class_name=some_class_1"
-            """
-            # Extract the POST values
-            post_data = request.form     # An ImmutableMultiDict object
-            cls.show_post_data(post_data, "delete_class")
-
-            try:
-                pars_dict = cls.extract_post_pars(post_data, required_par_list=["class_name"])
-                NeoSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
-                return_value = cls.SUCCESS_PREFIX               # Success
-            except Exception as ex:
-                # TODO: in case of failure, investigate further the problem
-                #       (e.g. no class by that name vs. class has data points still attached to it)
-                #       and give a more specific error message
-                err_status = f"Unable to delete the class. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
-
-            #if cls.debug:
-            print(f"delete_class() is returning: `{return_value}`")
 
             return return_value
 

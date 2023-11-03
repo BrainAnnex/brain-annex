@@ -292,7 +292,7 @@ Vue.component('vue-schema-editor',
                 }
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/delete_class";
+                let url_server = "/BA/api/delete_class";
                 let post_obj = {class_name: this.del_class_name
                                };
 
@@ -305,7 +305,7 @@ Vue.component('vue-schema-editor',
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "TEXT", post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_delete_class});
             },
 
