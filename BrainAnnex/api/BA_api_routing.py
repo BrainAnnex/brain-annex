@@ -541,16 +541,13 @@ class ApiRouting:
             """
             # Extract the POST values
             post_data = request.form     # An ImmutableMultiDict object
-            cls.show_post_data(post_data, "delete_class")
+            #cls.show_post_data(post_data, "delete_class")
 
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=["class_name"])
                 NeoSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
-                response_data = {"status": "ok"}        # Success
+                response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
-                # TODO: in case of failure, investigate further the problem
-                #       (e.g. no class by that name vs. class has data points still attached to it)
-                #       and give a more specific error message
                 err_details = f"Unable to delete the class.  {exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}    # Failure
 
@@ -560,18 +557,18 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/schema_add_property_to_class', methods=['POST'])
+        @bp.route('/schema_add_property_to_class', methods=['POST'])
         @login_required
         def schema_add_property_to_class() -> str:
             """
-            Add a new Property to an existing Classes
+            Add a new Property to an existing Class, identified by its name
 
             POST FIELDS:
                 prop_name
                 class_name
 
             EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/schema_add_property_to_class -d
+                curl http://localhost:5000/BA/api/schema_add_property_to_class -d
                         "prop_name=gender&class_name=patient"
             """
             # Extract the POST values
@@ -581,15 +578,14 @@ class ApiRouting:
             try:
                 class_specs = cls.extract_post_pars(post_data)
                 DataManager.schema_add_property_to_class_handler(class_specs)
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
-                err_status = f"Unable to add the new property. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to add the new property.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Failure
 
             #print(f"schema_add_property_to_class() is returning: `{return_value}`")
 
-            return return_value
-
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 

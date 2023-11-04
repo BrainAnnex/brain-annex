@@ -236,7 +236,7 @@ Vue.component('vue-schema-editor',
 
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/schema_add_property_to_class";
+                let url_server = "/BA/api/schema_add_property_to_class";
                 let post_obj = {prop_name: add_prop_name.trim(),
                                 class_name: class_to_add_prop_to
                                };
@@ -251,7 +251,7 @@ Vue.component('vue-schema-editor',
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "TEXT", post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_add_property});
             },
 

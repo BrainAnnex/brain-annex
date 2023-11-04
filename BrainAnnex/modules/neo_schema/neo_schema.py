@@ -425,6 +425,10 @@ class NeoSchema:
                                      then data nodes may be left without a Schema
         :return:            None.  In case of no node deletion, an Exception is raised
         """
+        # TODO: in case of failure, investigate further the problem
+        #       (e.g. no class by that name vs. class has data points still attached to it)
+        #       and give a more specific error message
+
         if safe_delete:     # A clause is added in this branch: "WHERE NOT EXISTS (()-[:SCHEMA]->(c))"
             q = '''
             MATCH (c :CLASS {name: $name})
