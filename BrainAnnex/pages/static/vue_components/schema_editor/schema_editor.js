@@ -352,7 +352,7 @@ Vue.component('vue-schema-editor',
                 }
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/delete_schema_relationship";
+                let url_server = "/BA/api/delete_schema_relationship";
                 let post_obj = {from_class_name: this.del_linked_from,
                                 to_class_name: this.del_linked_to,
                                 rel_name: this.del_rel_name
@@ -367,7 +367,7 @@ Vue.component('vue-schema-editor',
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "TEXT", post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_delete_relationship});
             },
 
@@ -417,7 +417,7 @@ Vue.component('vue-schema-editor',
 
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/add_schema_relationship";
+                let url_server = "/BA/api/add_schema_relationship";
                 let post_obj = {from_class_name: this.add_linked_from,
                                 to_class_name: this.add_linked_to,
                                 rel_name: this.add_rel_name
@@ -433,7 +433,7 @@ Vue.component('vue-schema-editor',
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "TEXT", post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_add_relationship});
             },
 

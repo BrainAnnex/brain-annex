@@ -545,9 +545,6 @@ class NeoSchema:
               as long as the relationships differ in their attributes
               (but this method doesn't allow setting properties on the new relationship)
 
-        TODO: add a method that reports on all existing relationships among Classes?
-        TODO: allow properties on the relationship
-
         :param from_class:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name.
                                 Used to identify the node from which the new relationship originates.
@@ -558,6 +555,10 @@ class NeoSchema:
                                 (blanks allowed)
         :return:            None
         """
+        #TODO: add a method that reports on all existing relationships among Classes?
+        #TODO: allow properties on the relationship
+        #TODO: provide more feedback in case of failure
+
         # Validate the arguments
         assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
         cls.assert_valid_class_identifier(from_class)
@@ -648,6 +649,8 @@ class NeoSchema:
         :return:            The number of relationships deleted.
                             In case of error, or if no relationship was found, an Exception is raised
         """
+        #TODO: provide more feedback in case of failure
+        
         assert from_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'from_class' argument"
         assert to_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'to_class' argument"
         assert rel_name, "NeoSchema.delete_class_relationship(): A name must be provided for the relationship to delete"

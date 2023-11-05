@@ -273,18 +273,16 @@ class DataManager:
         """
         from_class_name = class_specs["from_class_name"]
         from_class_name = from_class_name.strip()
-        print("from_class_name: ", from_class_name)
+        #print("from_class_name: ", from_class_name)
 
         to_class_name = class_specs["to_class_name"]
         to_class_name = to_class_name.strip()
-        print("to_class_name: ", to_class_name)
+        #print("to_class_name: ", to_class_name)
 
         rel_name = class_specs["rel_name"]
         rel_name = rel_name.strip()
-        print("rel_name: ", rel_name)
+        #print("rel_name: ", rel_name)
 
-        #from_class_id = NeoSchema.get_class_id(from_class_name)
-        #to_class_id = NeoSchema.get_class_id(to_class_name)
         NeoSchema.create_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
 
 
@@ -340,15 +338,15 @@ class DataManager:
         """
         from_class_name = class_specs["from_class_name"]
         from_class_name = from_class_name.strip()
-        print("from_class_name: ", from_class_name)
+        #print("from_class_name: ", from_class_name)
 
         to_class_name = class_specs["to_class_name"]
         to_class_name = to_class_name.strip()
-        print("to_class_name: ", to_class_name)
+        #print("to_class_name: ", to_class_name)
 
         rel_name = class_specs["rel_name"]
         rel_name = rel_name.strip()
-        print("rel_name: ", rel_name)
+        #print("rel_name: ", rel_name)
 
         # Delete the relationship(s)
         NeoSchema.delete_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)

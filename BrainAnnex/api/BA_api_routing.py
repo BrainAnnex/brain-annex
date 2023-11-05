@@ -589,7 +589,7 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/add_schema_relationship', methods=['POST'])
+        @bp.route('/add_schema_relationship', methods=['POST'])
         @login_required
         def add_schema_relationship() -> str:
             """
@@ -601,28 +601,28 @@ class ApiRouting:
                 rel_name
 
             EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/add_schema_relationship -d
+                curl http://localhost:5000/BA/api/add_schema_relationship -d
                         "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
             """
             # Extract the POST values
             post_data = request.form     # An ImmutableMultiDict object
-            cls.show_post_data(post_data, "add_schema_relationship")
+            #cls.show_post_data(post_data, "add_schema_relationship")
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
                 DataManager.add_schema_relationship_handler(class_specs)
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                     # Success
             except Exception as ex:
-                err_status = f"Unable to add a new relationship. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to add a new relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # Failure
 
-            print(f"add_schema_relationship() is returning: `{return_value}`")
+            #print(f"add_schema_relationship() is returning: `{response_data}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
-        @bp.route('/simple/delete_schema_relationship', methods=['POST'])
+        @bp.route('/delete_schema_relationship', methods=['POST'])
         @login_required
         def delete_schema_relationship() -> str:
             """
@@ -633,25 +633,24 @@ class ApiRouting:
                 rel_name
 
             EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/delete_schema_relationship -d
+                curl http://localhost:5000/BA/api/delete_schema_relationship -d
                         "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
             """
             # Extract the POST values
             post_data = request.form     # An ImmutableMultiDict object
-            cls.show_post_data(post_data, "delete_schema_relationship")
+            #cls.show_post_data(post_data, "delete_schema_relationship")
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
                 DataManager.delete_schema_relationship_handler(class_specs)
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
-                err_status = f"Unable to delete the relationship. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to delete the relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Failure
 
-            if cls.debug:
-                print(f"delete_schema_relationship() is returning: `{return_value}`")
+            #print(f"delete_schema_relationship() is returning: `{response_data}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
