@@ -926,7 +926,9 @@ class ApiRouting:
             """
             Add a new Subcategory to a given Category
             (if the Subcategory already exists, use add_subcategory_relationship instead)
-            EXAMPLE invocation: http://localhost:5000/BA/api/add_subcategory
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/add_subcategory -d
+                            "category_id=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
         
             POST FIELDS:
                 category_id                     To identify the Category to which to add the new Subcategory
@@ -1022,7 +1024,7 @@ class ApiRouting:
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
                 DataManager.add_data_relationship_handler(data_dict)
-                response_data = {"status": "ok"}                                     # If no errors
+                response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
                 err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # In case of errors

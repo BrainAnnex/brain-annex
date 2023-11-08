@@ -447,7 +447,7 @@ new Vue({
         {
             console.log(`Attempting to make the just-selected Category ID ${this.parent_to_add} a parent of the current Category (ID ${this.category_id})`);
 
-            let url_server = "/BA/api/simple/add_relationship";
+            let url_server = "/BA/api/add_relationship";
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: this.category_id,
                             to: this.parent_to_add,
@@ -461,7 +461,7 @@ new Vue({
             this.error = false;         // Clear any error from the previous operation
 
             ServerCommunication.contact_server(url_server,
-                        {payload_type: "TEXT", post_obj: post_obj,
+                        {post_obj: post_obj,
                         callback_fn: this.finish_add_parent_category, custom_data: this.parent_to_add});
         },
 
@@ -503,7 +503,7 @@ new Vue({
         {
             console.log(`Attempting to delete relationship from Category ${parent_id} to ${child_id}`);
 
-            let url_server = "/BA/api/simple/remove_relationship";
+            let url_server = "/BA/api/remove_relationship";
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: child_id,
                             to: parent_id,
@@ -524,7 +524,7 @@ new Vue({
                 custom_data = ['child', child_id];
 
             ServerCommunication.contact_server(url_server,
-                        {payload_type: "TEXT", post_obj: post_obj,
+                        {post_obj: post_obj,
                         callback_fn: this.finish_sever_relationship, custom_data: custom_data});
         },
 
