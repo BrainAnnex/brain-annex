@@ -650,7 +650,7 @@ class NeoSchema:
                             In case of error, or if no relationship was found, an Exception is raised
         """
         #TODO: provide more feedback in case of failure
-        
+
         assert from_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'from_class' argument"
         assert to_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'to_class' argument"
         assert rel_name, "NeoSchema.delete_class_relationship(): A name must be provided for the relationship to delete"

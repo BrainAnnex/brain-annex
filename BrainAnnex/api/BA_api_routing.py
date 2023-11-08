@@ -697,15 +697,15 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/remote_access_note/<uri_str>')
+        @bp.route('/remote_access_note/<uri_str>')       # TODO: eliminate the "simple" protocol
         def remote_access_note(uri_str) -> str:     # NO LOGIN REQUIRED
             """
             Similar to get_text_media(), but:
                 1) no login required
                 2) specifically for Notes
-                3) it only serves items marked as "public"
+                3) it only serves items that are marked as "public" in the database
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/remote_access_note/123
+            EXAMPLE invocation: http://localhost:5000/BA/api/remote_access_note/123
             """
 
             try:
@@ -828,17 +828,17 @@ class ApiRouting:
 
         ################   MODIFYING EXISTING CONTENT ITEMS   ################
 
-        @bp.route('/simple/update', methods=['POST'])
+        @bp.route('/update', methods=['POST'])       # TODO: eliminate the "simple" protocol
         @login_required
         def update() -> str:
             """
             Update an existing Content Item.
-            NOTE: the "schema_code" field is currently required, but it's redundant.  Only
-                  used as a safety mechanism against incorrect values of uri
+            NOTE: the "schema_code" field in the POST data is currently required, but it's redundant.  Only
+                  used as a safety mechanism against incorrect values of their uri
 
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/update -d "uri=11&schema_code=h&text=my_header"
-                curl http://localhost:5000/BA/api/simple/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
+                curl http://localhost:5000/BA/api/update -d "uri=11&schema_code=h&text=my_header"
+                curl http://localhost:5000/BA/api/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
             """
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('schema_code', 'r')])
@@ -857,13 +857,15 @@ class ApiRouting:
         
         
         
-        @bp.route('/simple/delete/<uri>/<schema_code>')
+        @bp.route('/delete/<uri>/<schema_code>')       # TODO: eliminate the "simple" protocol
         @login_required
         def delete(uri, schema_code) -> str:
             """
             Delete the specified Content Item.
-            Note that schema_code is redundant.
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete/46/n
+            Note that schema_code is redundant.  Only
+            used as a safety mechanism against incorrect values of their uri
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/n
             """
             try:
                 DataManager.delete_content_item(uri, schema_code)
@@ -882,7 +884,7 @@ class ApiRouting:
         #         CATEGORY-RELATED  (incl. adding new Content Items)      #
         #-----------------------------------------------------------------#
         
-        @bp.route('/simple/add_item_to_category', methods=['POST'])
+        @bp.route('/add_item_to_category', methods=['POST'])       # TODO: eliminate the "simple" protocol
         @login_required
         def add_item_to_category() -> str:
             """
@@ -890,7 +892,7 @@ class ApiRouting:
             at a particular location in the "collection" (page)
 
             EXAMPLE invocation:
-            curl http://localhost:5000/BA/api/simple/add_item_to_category
+            curl http://localhost:5000/BA/api/add_item_to_category
                             -d "category_id=708&insert_after=711&schema_code=h&text=New Header"
         
             POST FIELDS:
@@ -918,13 +920,13 @@ class ApiRouting:
         
         
         
-        @bp.route('/simple/add_subcategory', methods=['POST'])
+        @bp.route('/add_subcategory', methods=['POST'])       # TODO: eliminate the "simple" protocol
         @login_required
         def add_subcategory() -> str:
             """
             Add a new Subcategory to a given Category
             (if the Subcategory already exists, use add_subcategory_relationship instead)
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_subcategory
+            EXAMPLE invocation: http://localhost:5000/BA/api/add_subcategory
         
             POST FIELDS:
                 category_id                     To identify the Category to which to add the new Subcategory
@@ -948,12 +950,12 @@ class ApiRouting:
         
         
         
-        @bp.route('/simple/delete_category/<category_id>')
+        @bp.route('/delete_category/<category_id>')       # TODO: eliminate the "simple" protocol
         @login_required
         def delete_category(category_id) -> str:
             """
             Delete the specified Category, provided that there are no Content Items linked to it
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete_category/123
+            EXAMPLE invocation: http://localhost:5000/BA/api/delete_category/123
             """
             try:
                 Categories.delete_category(int(category_id))
@@ -967,14 +969,13 @@ class ApiRouting:
         
         
         
-        @bp.route('/simple/add_subcategory_relationship')
-        # TODO: phase out in favor of the more general /simple/add_relationship
+        @bp.route('/add_subcategory_relationship')       # TODO: eliminate the "simple" protocol
         @login_required
         def add_subcategory_relationship() -> str:
             """
             Create a subcategory relationship between 2 existing Categories.
             (To add a new subcategory, use add_subcategory instead)
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_subcategory_relationship?sub=12&cat=1
+            EXAMPLE invocation: http://localhost:5000/BA/api/add_subcategory_relationship?sub=12&cat=1
             """
             try:
                 subcategory_id: int = request.args.get("sub", type = int)
@@ -995,98 +996,90 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/remove_relationship', methods=['POST'])
+        @bp.route('/remove_relationship', methods=['POST']) 
         @login_required
         def remove_relationship() -> str:
             """
-            Remove the specified relationship (edge)
+            Remove the specified relationship (edge) between data nodes
 
             POST FIELDS:
                 from                    The uri of the node from which the relationship originates
                 to                      The uri of the node into which the relationship takes
                 rel_name                The name of the relationship to remove
                 schema_code (optional)  If passed, the appropriate plugin gets invoked
-            :return:
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/remove_relationship -d
+                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
             """
+            # TODO: maybe merge with the schema endpoint /remove_schema_relationship
+
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            cls.show_post_data(post_data)
+            #cls.show_post_data(post_data, "remove_relationship")
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                from_id = cls.str_to_int(data_dict['from'])
-                to_id = cls.str_to_int(data_dict['to'])
-                rel_name = data_dict['rel_name']
-                schema_code = data_dict.get('schema_code')         # Tolerant of missing values
-
-                if schema_code == "cat":
-                    Categories.remove_relationship(from_id=from_id, to_id=to_id,
-                                                   rel_name=rel_name)       # Category-specific action
-
-                NeoSchema.remove_data_relationship(from_uri=from_id, to_uri=to_id,
-                                                   rel_name=rel_name, labels="BA")
-
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                DataManager.remove_data_relationship_handler(data_dict)
+                response_data = {"status": "ok"}                                     # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
+                err_details = f"Unable to remove the requested data relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # In case of errors
 
-            print(f"remove_relationship() is returning: `{return_value}`")
+            #print(f"remove_relationship() is returning: `{response_data}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
-        @bp.route('/simple/add_relationship', methods=['POST'])
+
+        @bp.route('/add_relationship', methods=['POST'])
         @login_required
         def add_relationship() -> str:
             """
-            Add the specified relationship (edge)
+            Add the specified relationship (edge) between data nodes
 
             POST FIELDS:
                 from                    The uri of the node from which the relationship originates
                 to                      The uri of the node into which the relationship takes
                 rel_name                The name of the relationship to add
                 schema_code (optional)  If passed, the appropriate plugin gets invoked
-            :return:
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/add_relationship -d
+                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
             """
+            # TODO: maybe merge with the schema endpoint /add_schema_relationship
+
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            cls.show_post_data(post_data)
+            #cls.show_post_data(post_data)
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                from_id = cls.str_to_int(data_dict['from'])
-                to_id = cls.str_to_int(data_dict['to'])
-                rel_name = data_dict['rel_name']
-                schema_code = data_dict.get('schema_code')         # Tolerant of missing values
-
-                if schema_code == "cat":
-                    Categories.add_relationship(from_id=from_id, to_id=to_id,
-                                                rel_name=rel_name)       # Category-specific action
-
-                NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
-                                                    rel_name=rel_name, id_type="uri")
-
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                DataManager.add_data_relationship_handler(data_dict)
+                response_data = {"status": "ok"}                                     # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
+                err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # In case of errors
 
-            print(f"add_relationship() is returning: `{return_value}`")
+            #print(f"add_relationship() is returning: `{response_data}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
 
         #############    POSITIONING WITHIN CATEGORIES    #############
         
-        @bp.route('/simple/swap/<uri_1>/<uri_2>/<cat_id>')
+        @bp.route('/swap/<uri_1>/<uri_2>/<cat_id>')       # TODO: eliminate the "simple" protocol
         @login_required
         def swap(uri_1, uri_2, cat_id) -> str:
             """
             Swap the positions of the specified Content Items within the given Category.
         
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/swap/23/45/2
+            EXAMPLE invocation: http://localhost:5000/BA/api/swap/23/45/2
             """
             err_status:str = Categories.swap_content_items(uri_1, uri_2, cat_id)
         
@@ -1101,14 +1094,14 @@ class ApiRouting:
         
         
         
-        @bp.route('/simple/reposition/<category_id>/<uri>/<move_after_n>')
+        @bp.route('/reposition/<category_id>/<uri>/<move_after_n>')       # TODO: eliminate the "simple" protocol
         @login_required
         def reposition(category_id, uri, move_after_n) -> str:
             """
             Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
             TODO: switch to an after-item version?
         
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/reposition/60/576/4
+            EXAMPLE invocation: http://localhost:5000/BA/api/reposition/60/576/4
             """
             try:
                 Categories.reposition_content(category_id=int(category_id), uri=int(uri), move_after_n=int(move_after_n))
@@ -1261,11 +1254,11 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/stop_data_intake')
+        @bp.route('/stop_data_intake')       # TODO: eliminate the "simple" protocol
         @login_required
         def stop_data_intake() -> str:
             """
-            Invoke with the URL: http://localhost:5000/BA/api/simple/stop_data_intake
+            Invoke with the URL: http://localhost:5000/BA/api/stop_data_intake
             :return:
             """
             try:

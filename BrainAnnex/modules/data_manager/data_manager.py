@@ -357,6 +357,64 @@ class DataManager:
     #######################     RECORDS-RELATED       #######################
 
     @classmethod
+    def add_data_relationship_handler(cls, data_dict: dict) -> None:
+        """
+        Add the specified relationship (edge) between data nodes.
+        In case of error, an Exception is raised.
+
+        :param data_dict: A dictionary with the following
+                from                    The uri of the node from which the relationship originates
+                to                      The uri of the node into which the relationship takes
+                rel_name                The name of the relationship to add
+                schema_code (optional)  If passed, the appropriate plugin gets invoked
+
+        :return: None
+        """
+        from_id = cls.str_to_int(data_dict['from'])
+        to_id = cls.str_to_int(data_dict['to'])
+        rel_name = data_dict['rel_name']
+        schema_code = data_dict.get('schema_code')         # Tolerant of missing values
+
+        if schema_code == "cat":
+            Categories.add_relationship(from_id=from_id, to_id=to_id,
+                                        rel_name=rel_name)       # Category-specific action
+
+        NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
+                                            rel_name=rel_name, id_type="uri")
+
+
+
+
+    @classmethod
+    def remove_data_relationship_handler(cls, data_dict: dict) -> None:
+        """
+        Remove the specified relationship (edge) between data nodes.
+        In case of error, an Exception is raised.
+
+        :param data_dict: A dictionary with the following
+                DICTIONARY KEYS:
+                    from                    The uri of the node from which the relationship originates
+                    to                      The uri of the node into which the relationship takes
+                    rel_name                The name of the relationship to remove
+                    schema_code (optional)  If passed, the appropriate plugin gets invoked
+
+        :return: None
+        """
+        from_id = cls.str_to_int(data_dict['from'])
+        to_id = cls.str_to_int(data_dict['to'])
+        rel_name = data_dict['rel_name']
+        schema_code = data_dict.get('schema_code')         # Tolerant of missing values
+
+        if schema_code == "cat":
+            Categories.remove_relationship(from_id=from_id, to_id=to_id,
+                                           rel_name=rel_name)       # Category-specific action
+
+        NeoSchema.remove_data_relationship(from_uri=from_id, to_uri=to_id,
+                                           rel_name=rel_name, labels="BA")
+
+
+
+    @classmethod
     def get_leaf_records(cls) -> [str]:
         """
         Get all Classes that are, directly or indirectly, INSTANCE_OF the Class "Records",
