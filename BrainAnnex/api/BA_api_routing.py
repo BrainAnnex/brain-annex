@@ -187,7 +187,7 @@ class ApiRouting:
                 cls.show_post_data(post_data, "name_of_calling_functions")
 
         :param post_data:   An ImmutableMultiDict, as for example returned by request.form
-        :param method_name: (Optional) Name of invoking function
+        :param method_name: (Optional) Name of the invoking function
         :return:            None
         """
         if method_name:
@@ -996,7 +996,44 @@ class ApiRouting:
 
 
 
-        @bp.route('/remove_relationship', methods=['POST']) 
+        @bp.route('/add_relationship', methods=['POST'])
+        @login_required
+        def add_relationship() -> str:
+            """
+            Add the specified relationship (edge) between data nodes
+
+            POST FIELDS:
+                from                    The uri of the node from which the relationship originates
+                to                      The uri of the node into which the relationship takes
+                rel_name                The name of the relationship to add
+                schema_code (optional)  If passed, the appropriate plugin gets invoked
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/add_relationship -d
+                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
+            """
+            # TODO: maybe merge with the schema endpoint /add_schema_relationship
+
+            # Extract the POST values
+            post_data = request.form
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            #cls.show_post_data(post_data, "add_relationship")
+
+            try:
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                DataManager.add_data_relationship_handler(data_dict)
+                response_data = {"status": "ok"}                                     # If no errors
+            except Exception as ex:
+                err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # In case of errors
+
+            #print(f"add_relationship() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/remove_relationship', methods=['POST'])
         @login_required
         def remove_relationship() -> str:
             """
@@ -1028,43 +1065,6 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}    # In case of errors
 
             #print(f"remove_relationship() is returning: `{response_data}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
-        @bp.route('/add_relationship', methods=['POST'])
-        @login_required
-        def add_relationship() -> str:
-            """
-            Add the specified relationship (edge) between data nodes
-
-            POST FIELDS:
-                from                    The uri of the node from which the relationship originates
-                to                      The uri of the node into which the relationship takes
-                rel_name                The name of the relationship to add
-                schema_code (optional)  If passed, the appropriate plugin gets invoked
-
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/add_relationship -d
-                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
-            """
-            # TODO: maybe merge with the schema endpoint /add_schema_relationship
-
-            # Extract the POST values
-            post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            #cls.show_post_data(post_data)
-
-            try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                DataManager.add_data_relationship_handler(data_dict)
-                response_data = {"status": "ok"}                                     # If no errors
-            except Exception as ex:
-                err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # In case of errors
-
-            #print(f"add_relationship() is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
