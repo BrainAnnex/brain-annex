@@ -952,22 +952,25 @@ class ApiRouting:
         
         
         
-        @bp.route('/delete_category/<category_id>')       # TODO: eliminate the "simple" protocol
+        @bp.route('/delete_category/<uri>')
         @login_required
-        def delete_category(category_id) -> str:
+        def delete_category(uri):
             """
-            Delete the specified Category, provided that there are no Content Items linked to it
+            Delete the specified Category, provided that there are no Content Items linked to it.
+
             EXAMPLE invocation: http://localhost:5000/BA/api/delete_category/123
+
+            :param uri: The URI of a data node representing a Category
             """
             try:
-                Categories.delete_category(int(category_id))
-                return_value = cls.SUCCESS_PREFIX
+                Categories.delete_category(uri)
+                response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
-        
-            print(f"delete_category() is returning: `{return_value}`")
-        
-            return return_value
+                err_details = f"Unable to delete the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+
+            return jsonify(response_data)       # This function also takes care of the Content-Type header
         
         
         

@@ -86,7 +86,7 @@ def test_add_content_after_element(db):
 
 
 def test_delete_category(db):
-    Categories.delete_category(category_id=796)
+    Categories.delete_category(uri="796")
 
 
 def test_add_subcategory_relationship(db):

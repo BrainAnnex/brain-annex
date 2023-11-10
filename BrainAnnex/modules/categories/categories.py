@@ -512,14 +512,16 @@ class Categories:
 
 
     @classmethod
-    def delete_category(cls, category_id: int) -> None:
+    def delete_category(cls, uri :str) -> None:
         """
         Delete the specified Category, provided that there are no Content Items linked to it.
         In case of error or failure, an Exception is raised.
 
-        :param category_id: The "uri" integer value identifying the desired Category
-        :return:            None
+        :param uri: The uri identifying the desired Category
+        :return:    None
         """
+
+        category_id = int(uri)      # TODO: eventually switch to using strings
 
         if cls.is_root_category(category_id):
             raise Exception("Cannot delete the Root node")
@@ -1213,7 +1215,7 @@ class Collections:
         :return:                    The number of elements in the given Collection (possibly zero)
         """
         if not skip_check:
-            assert cls.is_collection(collection_id), f"The data node with uri {collection_id} doesn't exist or is not a Collection"
+            assert cls.is_collection(collection_id), f"The data node with uri `{collection_id}` doesn't exist or is not a Collection"
 
         q = f'''
             MATCH (coll :BA {{uri: $collection_id}}) <- [:{membership_rel_name}] - (i :BA) 

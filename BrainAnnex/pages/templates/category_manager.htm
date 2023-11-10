@@ -661,14 +661,14 @@ new Vue({
                 return;
             }
 
-            const url_server = "/BA/api/simple/delete_category/" + category_id;
+            const url_server = "/BA/api/delete_category/" + category_id;
             console.log(`delete_category(): About to contact the server at ${url_server}`);
 
             // Initiate asynchronous contact with the server
             this.waiting = true;
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";
-            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_delete_category);
+            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_delete_category});
         },
 
         finish_delete_category(success, server_payload, error_message)
