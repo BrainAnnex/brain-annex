@@ -917,41 +917,9 @@ class ApiRouting:
             print(f"add_item_to_category() is returning: `{return_value}`")
         
             return return_value
-        
-        
-        
-        @bp.route('/add_subcategory', methods=['POST'])       # TODO: eliminate the "simple" protocol
-        @login_required
-        def add_subcategory() -> str:
-            """
-            Add a new Subcategory to a given Category
-            (if the Subcategory already exists, use add_subcategory_relationship instead)
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/add_subcategory -d
-                            "category_id=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
-        
-            POST FIELDS:
-                category_id                     To identify the Category to which to add the new Subcategory
-                subcategory_name                The name to give to the new Subcategory
-                subcategory_remarks (optional)  A comment field for the new Subcategory
-            """
-            # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('category_id', '12'), ('subcategory_name', 'Astronomy')])
 
-            # Create a new Subcategory to a given Category, using the POST data
-            try:
-                #post_pars = cls.extract_post_pars(post_data, ["category_id", "subcategory_name"])
-                new_id = Categories.add_subcategory(dict(post_data))
-                return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
-            except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
-        
-            print(f"add_subcategory() is returning: `{return_value}`")
-        
-            return return_value
-        
-        
-        
+
+
         @bp.route('/delete_category/<uri>')
         @login_required
         def delete_category(uri):
@@ -971,16 +939,53 @@ class ApiRouting:
 
 
             return jsonify(response_data)       # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/add_subcategory', methods=['POST'])       # TODO: eliminate the "simple" protocol
+        @login_required
+        def add_subcategory() -> str:
+            """
+            Add a new Subcategory to a given Category
+            (if the Subcategory already exists, use add_subcategory_relationship instead)
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/add_subcategory -d
+                            "category_id=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
         
+            POST FIELDS:
+                category_id                     IRI to identify the Category to which to add the new Subcategory
+                subcategory_name                The name to give to the new Subcategory
+                subcategory_remarks (optional)  A comment field for the new Subcategory
+            """
+            # Extract the POST values
+            post_data = request.form     # Example: ImmutableMultiDict([('category_id', '12'), ('subcategory_name', 'Astronomy')])
+
+            # Create a new Subcategory to a given Category, using the POST data
+            try:
+                #post_pars = cls.extract_post_pars(post_data, ["category_id", "subcategory_name"])
+                new_id = Categories.add_subcategory(dict(post_data))
+                return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
+            except Exception as ex:
+                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
         
+            print(f"add_subcategory() is returning: `{return_value}`")
+        
+            return return_value
+        
+
         
         @bp.route('/add_subcategory_relationship')       # TODO: eliminate the "simple" protocol
         @login_required
-        def add_subcategory_relationship() -> str:
+        def add_subcategory_relationship():
             """
             Create a subcategory relationship between 2 existing Categories.
-            (To add a new subcategory, use add_subcategory instead)
+            (To add a new subcategory to an existing Category, use /add_subcategory instead)
+
             EXAMPLE invocation: http://localhost:5000/BA/api/add_subcategory_relationship?sub=12&cat=1
+
+            QUERY-STRINGS FIELDS:
+                sub         URI to identify an existing Category node that is to be made a sub-category of another one
+                cat         URI to identify an existing Category node that is to be made the parent of the other Category
             """
             try:
                 subcategory_id: int = request.args.get("sub", type = int)
