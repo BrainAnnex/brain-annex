@@ -135,10 +135,26 @@ class ApiRouting:
 
 
     @classmethod
+    def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
+        """
+
+        :param get_data:
+        :param required_par_list:
+        :return:
+        """
+        data_dict = get_data.to_dict(flat=True)     # WARNING: if multiple identical keys occur,
+                                                    #          the values associated to the later keys will be discarded
+        if required_par_list:
+            for par in required_par_list:
+                assert par in data_dict, f"The expected parameter `{par}` is missing from the GET request (i.e. from the query string)"
+
+        return data_dict
+
+
+
+    @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
         """
-        TODO: maybe the parameter validation doesn't belong to this API module, which ought to remain thin
-
         Convert into a Python dictionary the given POST data
         (expressed as an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
         while enforcing the optional given list of parameters that must be present.
@@ -148,11 +164,6 @@ class ApiRouting:
                 post_data = request.form
                 post_pars = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
 
-        TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
-              Example - int_pars = ['uri']
-
-        TODO: merge with UploadHelper.get_form_data()
-
         :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
                                     that can contain multiple values for the same key.
                                     EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
@@ -160,6 +171,12 @@ class ApiRouting:
         :param required_par_list:   A list or tuple.  EXAMPLE: ['uri', 'rel_name']
         :return:                    A dict populated with the POST data
         """
+        #TODO:  maybe optionally pass a list of pars that must be int, and handle conversion and errors;
+        #       but maybe the parameter validation doesn't belong to this API module, which ought to remain thin
+        #       Example - int_pars = ['uri']
+
+        #TODO: merge with UploadHelper.get_form_data()
+
         data_dict = post_data.to_dict(flat=True)    # WARNING: if multiple identical keys occur,
                                                     #          the values associated to the later keys will be discarded
 
@@ -811,7 +828,7 @@ class ApiRouting:
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
-            cls.show_post_data(post_data)
+            #cls.show_post_data(post_data)
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['uri', 'rel_name', 'dir'])
@@ -942,44 +959,47 @@ class ApiRouting:
 
 
 
-        @bp.route('/add_subcategory', methods=['POST'])       # TODO: eliminate the "simple" protocol
+        @bp.route('/add_subcategory', methods=['POST'])
         @login_required
         def add_subcategory() -> str:
             """
             Add a new Subcategory to a given Category
-            (if the Subcategory already exists, use add_subcategory_relationship instead)
+            (if the Subcategory to link up to already exists, use add_subcategory_relationship instead)
+
             EXAMPLE invocation:
                 curl http://localhost:5000/BA/api/add_subcategory -d
                             "category_id=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
         
             POST FIELDS:
-                category_id                     IRI to identify the Category to which to add the new Subcategory
+                category_id                     URI to identify the Category to which to add the new Subcategory
                 subcategory_name                The name to give to the new Subcategory
                 subcategory_remarks (optional)  A comment field for the new Subcategory
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('category_id', '12'), ('subcategory_name', 'Astronomy')])
 
-            # Create a new Subcategory to a given Category, using the POST data
             try:
-                #post_pars = cls.extract_post_pars(post_data, ["category_id", "subcategory_name"])
-                new_id = Categories.add_subcategory(dict(post_data))
-                return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'subcategory_name'])
+                payload = Categories.add_subcategory(data_dict)     # Include the newly-added ID as a payload
+                response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
+                err_details = f"Unable to add the requested Subcategory.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
         
-            print(f"add_subcategory() is returning: `{return_value}`")
-        
-            return return_value
+            #print(f"add_subcategory() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
         
 
         
-        @bp.route('/add_subcategory_relationship')       # TODO: eliminate the "simple" protocol
+        @bp.route('/add_subcategory_relationship')
         @login_required
         def add_subcategory_relationship():
             """
             Create a subcategory relationship between 2 existing Categories.
             (To add a new subcategory to an existing Category, use /add_subcategory instead)
+
+            Notice that this is a more specialized form of the more general /add_relationship
 
             EXAMPLE invocation: http://localhost:5000/BA/api/add_subcategory_relationship?sub=12&cat=1
 
@@ -987,22 +1007,23 @@ class ApiRouting:
                 sub         URI to identify an existing Category node that is to be made a sub-category of another one
                 cat         URI to identify an existing Category node that is to be made the parent of the other Category
             """
+            # TODO: not in current use
+
+            # Extract the GET values
+            get_data = request.args     # Example: ImmutableMultiDict([('sub', '12'), ('cat', '555')])
+
             try:
-                subcategory_id: int = request.args.get("sub", type = int)
-                category_id: int = request.args.get("cat", type = int)
-                if subcategory_id is None:
-                    raise Exception("Missing value for parameter `sub`")
-                if category_id is None:
-                    raise Exception("Missing value for parameter `cat`")
-        
-                Categories.add_subcategory_relationship(subcategory_id=subcategory_id, category_id=category_id)
-                return_value = cls.SUCCESS_PREFIX
+                #print(get_data)
+                data_dict = cls.extract_get_pars(get_data, required_par_list=['sub', 'cat'])
+                Categories.add_subcategory_relationship(data_dict)
+                response_data = {"status": "ok"}
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
+                err_details = f"Unable to add the requested relationship to the specified subcategory.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
         
-            print(f"add_subcategory_relationship() is returning: `{return_value}`")
-        
-            return return_value
+            #print(f"add_subcategory_relationship() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
@@ -1013,8 +1034,8 @@ class ApiRouting:
             Add the specified relationship (edge) between data nodes
 
             POST FIELDS:
-                from                    The uri of the node from which the relationship originates
-                to                      The uri of the node into which the relationship takes
+                from                    The URI of the node from which the relationship originates
+                to                      The URI of the node into which the relationship takes
                 rel_name                The name of the relationship to add
                 schema_code (optional)  If passed, the appropriate plugin gets invoked
 

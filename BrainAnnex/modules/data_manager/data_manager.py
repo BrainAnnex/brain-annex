@@ -375,7 +375,7 @@ class DataManager:
         rel_name = data_dict['rel_name']
         schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
-        if schema_code == "cat":
+        if schema_code == "cat":        # TODO: take this part away
             Categories.add_relationship(from_id=from_id, to_id=to_id,
                                         rel_name=rel_name)       # Category-specific action
 
@@ -892,7 +892,7 @@ class DataManager:
         if class_name == "Notes":
             Notes.new_content_item_successful(new_uri, original_post_data)
         elif class_name == "Documents":
-            Documents.new_content_item_successful(new_uri, original_post_data)
+            Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
 
 
 

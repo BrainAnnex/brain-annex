@@ -621,7 +621,7 @@ new Vue({
             }
 
             // Send the request to the server, using a POST
-            url_server = "/BA/api/simple/add_subcategory"
+            url_server = "/BA/api/add_subcategory"
             // Compose the body of the POST to send to the server
             post_obj = {category_id: category_id,
                         subcategory_name: this.new_subcategory_name,
@@ -633,7 +633,7 @@ new Vue({
             this.waiting = true;
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";
-            ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_add_subcategory);
+            ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_add_subcategory});
         },
 
         finish_add_subcategory(success, server_payload, error_message)

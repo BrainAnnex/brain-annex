@@ -447,7 +447,7 @@ new Vue({
         {
             console.log(`Attempting to make the just-selected Category ID ${this.parent_to_add} a parent of the current Category (ID ${this.category_id})`);
 
-            let url_server = "/BA/api/add_relationship";
+            let url_server = "/BA/api/add_relationship";    // TODO: switch to the more specialized /BA/api/add_subcategory_relationship
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: this.category_id,
                             to: this.parent_to_add,

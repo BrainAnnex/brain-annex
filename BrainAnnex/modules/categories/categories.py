@@ -465,24 +465,28 @@ class Categories:
 
 
     @classmethod
-    def add_subcategory(cls, data_dict: dict) -> int:
+    def add_subcategory(cls, data_dict :dict) -> int:
         """
-        Add a new Subcategory to a given Category
+        Add a new Subcategory to a given, already existing, Category
+
         :param data_dict:   Dictionary with the following keys:
                                 category_id                     The uri to identify the Category
                                                                     to which to add a Subcategory
                                 subcategory_name                The name to give to the new Subcategory
                                 subcategory_remarks (optional)  A comment field for the new Subcategory
 
-        :return:                If successful, an integer with auto-increment "uri" value of the node just created;
+        :return:                If successful, an integer with the auto-increment "uri" value of the node just created;
                                 otherwise, an Exception is raised
         """
+        # TODO: return a string instead of an integer
+        # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
+        #       a Category to have multiple "children" with the same name)
         category_id = data_dict.get("category_id")
         if not category_id:
             raise Exception(f"add_subcategory(): category_id is missing")
 
         try:
-            category_id = int(category_id)
+            category_id = int(category_id)      # TODO: phase out
         except Exception as ex:
             raise Exception(f"add_subcategory(): category_id is not an integer (value passed {category_id}). {ex}")
 
@@ -490,7 +494,7 @@ class Categories:
         if not subcategory_name:
             raise Exception(f"add_subcategory(): subcategory_name is missing")
 
-        subcategory_remarks = data_dict.get("subcategory_remarks")
+        subcategory_remarks = data_dict.get("subcategory_remarks")  # This field is optional
 
         data_dict = {"name": subcategory_name}
         if subcategory_remarks:
@@ -505,7 +509,7 @@ class Categories:
                                 assign_uri=True)
 
         new_data_point = NeoSchema.fetch_data_node(internal_id = new_internal_id)
-        assert new_data_point is not None, "failure to fetch data node"
+        assert new_data_point is not None, "add_subcategory(): failure to fetch data node for the newly created subcategory"
 
         return new_data_point["uri"]
 
@@ -544,21 +548,31 @@ class Categories:
 
 
     @classmethod
-    def add_subcategory_relationship(cls, subcategory_id: int, category_id: int) -> None:
+    def add_subcategory_relationship(cls, data_dict :dict) -> None:
         """
-        TODO: phase out.  Probably, no longer really needed (the new API takes care
-        of this largely in the core module.)
-
-        Add a sub-category ("BA_subcategory_of") relationship between the specified categories.
+        Add a sub-category ("BA_subcategory_of") relationship
+        between the specified 2 existing Categories.
         If the requested new relationship cannot be created (for example, if it already exists),
         raise an Exception
 
-        TODO: verify that the category ID's are legit
+        :param data_dict:   Two keys are expected:
+                                "sub"         URI to identify an existing Category node
+                                                that is to be made a sub-category of another one
+                                "cat"         URI to identify an existing Category node
+                                                that is to be made the parent of the other Category
 
-        :param subcategory_id:
-        :param category_id:
-        :return:            None.  If the requested new relationship could not be created, raise an Exception
+        :return:            None.  If the requested new relationship could not be created,
+                                raise an Exception
         """
+        # TODO: verify that the category ID's are legit
+
+        subcategory_id = data_dict["sub"]
+        subcategory_id = int(subcategory_id)    #TODO: phase out
+
+        category_id = data_dict["cat"]
+        category_id = int(category_id)          #TODO: phase out
+
+
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
         try:
