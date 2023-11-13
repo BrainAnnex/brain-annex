@@ -1212,6 +1212,7 @@ class DataManager:
 
         :return:    None
         """
+        #print("do_stop_data_intake(): stopping the data intake")
         cls.ongoing_data_intake = False
 
 

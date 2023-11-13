@@ -1285,22 +1285,22 @@ class ApiRouting:
 
 
 
-        @bp.route('/stop_data_intake')       # TODO: eliminate the "simple" protocol
+        @bp.route('/stop_data_intake')
         @login_required
-        def stop_data_intake() -> str:
+        def stop_data_intake():
             """
             Invoke with the URL: http://localhost:5000/BA/api/stop_data_intake
-            :return:
             """
             try:
                 DataManager.do_stop_data_intake()
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                response_data = {"status": "ok"}              # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
+                err_details = f"Unable to stop the data-intake process.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
 
-            print(f"stop_data_intake() is returning: `{return_value}`")
+            #print(f"stop_data_intake() is returning: `{err_details}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 

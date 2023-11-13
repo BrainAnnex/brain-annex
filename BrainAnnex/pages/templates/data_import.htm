@@ -269,7 +269,7 @@ new Vue({
 
         terminate_continuous_intake()
         {
-            var url_server_api = "/BA/api/simple/stop_data_intake";
+            var url_server_api = "/BA/api/stop_data_intake";
 
             console.log("In terminate_continuous_intake()");
 
@@ -281,9 +281,7 @@ new Vue({
 
             // Initiate asynchronous contact with the server
             ServerCommunication.contact_server(url_server_api,
-                        {payload_type: "TEXT",
-                         callback_fn: this.finish_terminate_continuous_intake
-                         });
+                        {callback_fn: this.finish_terminate_continuous_intake});
         },
 
         finish_terminate_continuous_intake(success, server_payload, error_message, custom_data)
