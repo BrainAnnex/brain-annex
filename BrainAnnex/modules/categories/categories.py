@@ -847,9 +847,8 @@ class Categories:
 
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
-        :param insert_after:
-        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                TODO: rename to "new_uri"
+        :param insert_after:    The URI of the element after which we want to insert
+        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
@@ -1377,8 +1376,8 @@ class Collections:
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply
         :param item_class_name:     Name of the Class for the newly-created node
         :param item_properties:     Dictionary with the properties of the newly-created node
-        :param insert_after:        The "uri" of the element after which we want to insert
-        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param insert_after:        The URI of the element after which we want to insert
+        :param new_uri:             Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
         """

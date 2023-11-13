@@ -548,7 +548,7 @@ Vue.component('vue-plugin-r',
                     // EXAMPLE of post_body for a NEW record:
                     //          "schema_code=r&category_id=12&class_name=German%20Vocabulary&insert_after=123&German=Liebe"
 
-                    url_server = `/BA/api/simple/add_item_to_category`;   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {
                     // Update an EXISTING record
@@ -570,7 +570,8 @@ Vue.component('vue-plugin-r',
                 this.error_indicator = false;   // Clear possible past message
 
                 console.log("In 'vue-plugin-r', save().  post_body: ", post_body);
-                ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
+                ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_save});
+                //ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
             }, // save
 
 

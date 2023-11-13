@@ -171,6 +171,9 @@ class ApiRouting:
         :param required_par_list:   A list or tuple.  EXAMPLE: ['uri', 'rel_name']
         :return:                    A dict populated with the POST data
         """
+        #TODO: instead of accepting "post_data" as argument,
+        #      extract it here, with a:  post_data = request.form  (and optional call to show_post_data)
+
         #TODO:  maybe optionally pass a list of pars that must be int, and handle conversion and errors;
         #       but maybe the parameter validation doesn't belong to this API module, which ought to remain thin
         #       Example - int_pars = ['uri']
@@ -874,25 +877,26 @@ class ApiRouting:
         
         
         
-        @bp.route('/delete/<uri>/<schema_code>')       # TODO: eliminate the "simple" protocol
+        @bp.route('/delete/<uri>/<schema_code>')
         @login_required
         def delete(uri, schema_code) -> str:
             """
             Delete the specified Content Item.
-            Note that schema_code is redundant.  Only
-            used as a safety mechanism against incorrect values of their uri
+            Note that schema_code is redundant.  Only used
+            as a safety mechanism against incorrect values of their uri
 
             EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/n
             """
             try:
                 DataManager.delete_content_item(uri, schema_code)
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                response_data = {"status": "ok"}              # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
+                err_details = f"Unable to delete the requested Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
 
-            print(f"delete() is returning: `{return_value}`")
-        
-            return return_value
+            #print(f"delete() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
@@ -901,7 +905,7 @@ class ApiRouting:
         #         CATEGORY-RELATED  (incl. adding new Content Items)      #
         #-----------------------------------------------------------------#
         
-        @bp.route('/add_item_to_category', methods=['POST'])       # TODO: eliminate the "simple" protocol
+        @bp.route('/add_item_to_category', methods=['POST'])
         @login_required
         def add_item_to_category() -> str:
             """
@@ -913,27 +917,29 @@ class ApiRouting:
                             -d "category_id=708&insert_after=711&schema_code=h&text=New Header"
         
             POST FIELDS:
-                category_id         Integer identifying the Category to which attach the new Content Item
+                category_id         URI identifying the Category to which attach the new Content Item
                 schema_code         A string to identify the Schema that the new Content Item belongs to
-                insert_after        Either an uri (int), or one of the special values "TOP" or "BOTTOM"
-                PLUS any applicable plugin-specific fields
+                insert_after        Either an URI of an existing Content Item attached to this Category,
+                                    or one of the special values "TOP" or "BOTTOM"
+                *PLUS* any applicable plugin-specific fields
             """
             # Extract the POST values
             post_data = request.form
             # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('insert_after', '5'), ('text', 'My Header')])
-            cls.show_post_data(post_data, "add_item_to_category")
+            #cls.show_post_data(post_data, "add_item_to_category")
         
             # Create a new Content Item with the POST data
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
-                new_id = DataManager.new_content_item_in_category(pars_dict)
-                return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
+                payload = DataManager.new_content_item_in_category(pars_dict)        # Include the newly-added ID as a payload
+                response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
-        
-            print(f"add_item_to_category() is returning: `{return_value}`")
-        
-            return return_value
+                err_details = f"Unable to add the requested Content Item to the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+
+            #print(f"add_item_to_category() is returning: `{err_details}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 

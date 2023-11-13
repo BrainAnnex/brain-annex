@@ -433,7 +433,7 @@ Vue.component('vue-plugin-sl',
                     // EXAMPLE of post_obj for a NEW record:
                     //          "schema_code=r&category_id=12&class_name=German%20Vocabulary&insert_after=123&German=Liebe"
 
-                    url_server_api = `/BA/api/simple/add_item_to_category`;   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {
                     // Update an EXISTING record
@@ -459,8 +459,7 @@ Vue.component('vue-plugin-sl',
 
                 // Initiate asynchronous contact with the server, using POST data
                 ServerCommunication.contact_server(url_server_api,
-                            {payload_type: "TEXT",
-                             post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_save});
             }, // save
 

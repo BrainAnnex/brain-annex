@@ -700,19 +700,25 @@ class DataManager:
         Note that schema_code is redundant.
         In case of error, an Exception is raised
 
-        :param uri:     String version of the unique ID
+        :param uri:         String version of the unique ID
         :param schema_code: Redundant
         :return:            None.  In case of error, an Exception is raised
         """
-        print(f"In delete_content_item(). Attempting to delete uri {uri} of type `{schema_code}`")
+        #print(f"In delete_content_item(). Attempting to delete URI `{uri}` of type `{schema_code}`")
 
         try:
             uri = int(uri)
         except Exception as ex:
-            raise Exception(f"uri is missing or not an integer. {ex}")
+            raise Exception(f"URI is missing or not an integer. {ex}")
 
 
-        # PLUGIN-SPECIFIC OPERATIONS that perform filesystem operations
+        # First, make sure that the requested Content Item exists
+        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
+        records = cls.db.get_nodes(match)
+        assert records != [], f"delete_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
+
+
+        # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
         #       (TODO: try to infer that from the Schema)
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
@@ -730,13 +736,15 @@ class DataManager:
         if schema_code == "n":
             Notes.delete_content_before(uri)
 
-        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
-        number_deleted = cls.db.delete_nodes(match)
+
+        # Perform the actual deletion of the Content Item node
+        number_deleted = cls.db.delete_nodes(match)     # TODO: switch to using the Schema layer
+
 
         if number_deleted == 1:
             if schema_code == "n":
                 # Extra processing for the "Notes" plugin
-                Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the system
+                Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the general system
 
             return       # Successful termination, with 1 Content Item deleted, as expected
 
@@ -751,7 +759,6 @@ class DataManager:
     def new_content_item_in_category(cls, post_data: dict) -> int:
         """
         Create a new Content Item attached to a particular Category
-        # TODO: possibly generalize from "Category" to "Collection"
 
         :param post_data:   A dict containing the following keys
             - "category_id"  (for the linking to a Category)
@@ -760,8 +767,9 @@ class DataManager:
                     * schema_id (Optional)
                     * class_name (Required only for Class Items of type "record")
 
-            - insert_after        Either an uri (int), or one of the special values "TOP" or "BOTTOM"
-            - PLUS all applicable plugin-specific fields (all the key/values for the new Content Item)
+            - insert_after        Either an URI (int) of an existing Content Item attached to this Category,
+                                  or one of the special values "TOP" or "BOTTOM"
+            - *PLUS* all applicable plugin-specific fields (all the key/values for the new Content Item)
 
         :return:    The uri of the newly-created node
                     In case of error, an Exception is raised
@@ -771,6 +779,10 @@ class DataManager:
         #       those will be eliminated below
 
         # Validate the data, and extract some special attributes, while also paring down the post_data dictionary
+
+        # TODO: give better error messages; for example, if the requested Category doesn't exist
+
+        # TODO: possibly generalize from "Category" to "Collection"
 
         # Category-related data
         category_id = post_data.get("category_id")  # If the key isn't present, the value will be None
@@ -782,7 +794,7 @@ class DataManager:
         # Positioning within the Category
         insert_after = post_data.get("insert_after")
         if not insert_after:
-            raise Exception("Missing insert_after (ID of Item to insert the new one after)")
+            raise Exception("Missing insert_after (URI of Item to insert the new one after)")
         del post_data["insert_after"]
 
         # Schema-related data

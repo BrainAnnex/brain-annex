@@ -330,7 +330,7 @@ Vue.component('vue-plugin-n',
                     if (this.current_data['title'] != "")
                         post_obj.title = this.current_data['title'];        // TODO: implement a title creator, if not supplied by user
 
-                    var url_server = "/BA/api/simple/add_item_to_category";
+                    var url_server = "/BA/api/add_item_to_category";
                 }
                 else  {				    // Edit EXISTING note
                     post_obj.uri = noteID;
@@ -346,7 +346,6 @@ Vue.component('vue-plugin-n',
 
                 //console.log("In 'vue-plugin-n', do_box_save().  post_obj: ", post_obj);
                 ServerCommunication.contact_server(url_server, {post_obj: post_obj,
-                                                                payload_type: "TEXT",
                                                                 callback_fn: this.finish_save});
 
             },  // do_box_save()
