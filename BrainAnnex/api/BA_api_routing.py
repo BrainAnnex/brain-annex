@@ -717,8 +717,8 @@ class ApiRouting:
 
 
 
-        @bp.route('/remote_access_note/<uri_str>')       # TODO: eliminate the "simple" protocol
-        def remote_access_note(uri_str) -> str:     # NO LOGIN REQUIRED
+        @bp.route('/remote_access_note/<uri>')
+        def remote_access_note(uri) -> str:     # NO LOGIN REQUIRED
             """
             Similar to get_text_media(), but:
                 1) no login required
@@ -727,22 +727,20 @@ class ApiRouting:
 
             EXAMPLE invocation: http://localhost:5000/BA/api/remote_access_note/123
             """
-
             try:
-                payload = DataManager.get_text_media_content(uri_str, "n", public_required=True)
-
-                text_response = cls.SUCCESS_PREFIX + payload
-                response = make_response(text_response)
+                payload = DataManager.get_text_media_content(uri, "n", public_required=True)
+                #print(f"remote_access_note() is returning the following text [first 30 chars]: `{payload[:30]}`")
+                response_data = {"status": "ok", "payload": payload}    # Successful
+                response = jsonify(response_data)
                 response.headers['Access-Control-Allow-Origin'] = '*'   # This will send the header line: "Access-Control-Allow-Origin: *"
                                                                         # without it, web clients on other domains won't be able to use the payload!
                                                                         # An alternative to '*' would be a site name, such as  'https://foo.example'
 
             except Exception as ex:
-                err_details = f"Unable to retrieve the requested note: {ex}"
-                print(f"remote_access_note() encountered the following error: {err_details}")
-                response = cls.ERROR_PREFIX + err_details
-
-            #print(f"remote_access_note() is returning the following text [first 30 chars]: `{response[:30]}`")
+                err_details = f"Unable to retrieve the requested note.  {exceptions.exception_helper(ex)}"
+                #print(f"remote_access_note() encountered the following error: {err_details}")
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+                response = jsonify(response_data)
 
             return response
 
