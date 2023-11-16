@@ -143,7 +143,7 @@ Vue.component('vue-plugin-cd',
                 else {   // Update an existing Content Item
                     post_body += "&uri=" + this.item_data.uri;
 
-                    url_server = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/update`;   // URL to communicate with the server's endpoint
                 }
 
 

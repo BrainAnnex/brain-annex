@@ -603,7 +603,7 @@ new Vue({
                 return;
             }
 
-            let url_server = "/BA/api/simple/update";
+            let url_server = "/BA/api/update";
             let post_obj = {uri: this.category_id,
                             schema_code: "cat",
                             name: this.category_name_current_data,
@@ -616,7 +616,7 @@ new Vue({
             this.error = false;         // Clear any error from the previous operation
 
             ServerCommunication.contact_server(url_server,
-                        {payload_type: "TEXT", post_obj: post_obj, callback_fn: this.finish_save_name_edit});
+                        {post_obj: post_obj, callback_fn: this.finish_save_name_edit});
         },
 
 

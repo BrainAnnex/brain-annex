@@ -774,7 +774,7 @@ class ApiRouting:
                 #      f"Serving with MIME type `{mime_type}`")
             except Exception as ex:
                 err_details = f"Unable to retrieve Media Item with URI `{uri}`. {exceptions.exception_helper(ex)}"
-                print(f"serve_media() encountered the following error: {err_details}")
+                #print(f"serve_media() encountered the following error: {err_details}")
                 response = make_response(err_details, 404)
 
             return response
@@ -846,7 +846,7 @@ class ApiRouting:
 
         ################   MODIFYING EXISTING CONTENT ITEMS   ################
 
-        @bp.route('/update', methods=['POST'])       # TODO: eliminate the "simple" protocol
+        @bp.route('/update', methods=['POST'])
         @login_required
         def update() -> str:
             """
@@ -860,18 +860,19 @@ class ApiRouting:
             """
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('schema_code', 'r')])
-            cls.show_post_data(post_data, "update")
+            #cls.show_post_data(post_data, "update")
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['uri'])
                 DataManager.update_content_item(data_dict)
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
+                err_details = f"Unable to update the requested Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
         
-            print(f"update() is returning: `{return_value}`")
-        
-            return return_value
+            #print(f"update() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
         
         
         

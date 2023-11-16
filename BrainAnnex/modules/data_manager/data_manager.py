@@ -643,27 +643,23 @@ class DataManager:
 
         :return:    None.  In case of error, an Exception is raised
         """
-        print("In update_content_item(). POST dict: ", post_data)
+        #print("In update_content_item(). POST dict: ", post_data)
 
         # Validate the data
         schema_code = post_data.get("schema_code")   # If key not present, the value will be None
-        print("Item Type: ", schema_code)
+        #print("Item Type: ", schema_code)
 
         try:
             uri = int(post_data.get("uri"))
         except Exception as ex:
             raise Exception(f"uri is missing or not an integer. {ex}")
 
-        print("Item Type: ", uri)
+        #print("Item Type: ", uri)
 
-        #print("All Item Data: ")
-        #print("-----------")
-        #for k, v in post_data.items():
-            #print(k , " -> " , v)
 
         data_binding = post_data
 
-        if uri < 0:     # Validate uri
+        if uri < 0:     # Validate uri      # TODO: ditch after switching to string URI's
             raise Exception(f"Bad uri: {uri}")
 
 
@@ -672,14 +668,22 @@ class DataManager:
             if k not in ("schema_code", "uri"):    # Exclude some special keys
                 set_dict[k] = v
 
+
+        # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
+        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
+        records = cls.db.get_nodes(match)
+        assert records != [], f"update_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
+
+
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
         #       TODO: try to infer them from the Schema
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
+
         if schema_code == "n":
             set_dict = Notes.update_content(data_binding, set_dict)
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to uri's
+        internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to string uri's
         number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
 
         if schema_code == "n":
@@ -712,7 +716,7 @@ class DataManager:
             raise Exception(f"URI is missing or not an integer. {ex}")
 
 
-        # First, make sure that the requested Content Item exists
+        # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
         match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
         records = cls.db.get_nodes(match)
         assert records != [], f"delete_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"

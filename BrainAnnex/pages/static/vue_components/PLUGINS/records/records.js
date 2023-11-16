@@ -562,7 +562,7 @@ Vue.component('vue-plugin-r',
                     }
                     // EXAMPLE of post_body for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
-                    url_server = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/update`;   // URL to communicate with the server's endpoint
                 }
 
 

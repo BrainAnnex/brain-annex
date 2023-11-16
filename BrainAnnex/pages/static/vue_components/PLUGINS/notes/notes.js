@@ -337,7 +337,7 @@ Vue.component('vue-plugin-n',
                     post_obj.body = newBody;
                     post_obj.title = this.current_data['title'];
 
-                    var url_server = "/BA/api/simple/update";
+                    var url_server = "/BA/api/update";
                 }
 
 

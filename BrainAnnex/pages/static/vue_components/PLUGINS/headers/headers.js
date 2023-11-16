@@ -113,7 +113,7 @@ Vue.component('vue-plugin-h',
                 else {   // Update an EXISTING header
                     post_body += "&uri=" + this.item_data.uri;
 
-                    url_server = `/BA/api/simple/update`;                   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/update`;                   // URL to communicate with the server's endpoint
                 }
 
                 // Go over each field.  TODO: generalize

@@ -447,7 +447,7 @@ Vue.component('vue-plugin-sl',
                     }
                     // EXAMPLE of post_obj for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
-                    url_server_api = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/update`;   // URL to communicate with the server's endpoint
                 }
 
                 this.waiting = true;        // Entering a waiting-for-server mode
