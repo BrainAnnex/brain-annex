@@ -1083,34 +1083,34 @@ class Categories:
 
 
     @classmethod
-    def swap_content_items(cls, uri_1: str, uri_2: str, cat_id: str) -> str:
+    def swap_content_items(cls, uri_1 :str, uri_2 :str, cat_id :str) -> None:
         """
         Swap the positions of the specified Content Items within the given Category
 
         :param uri_1:   A string with the (integer) ID of the 1st Content Item
         :param uri_2:   A string with the (integer) ID of the 2nd Content Item
-        :param cat_id:      A string with the (integer) ID of the Category
-        :return:            An empty string if successful, or an error message otherwise
+        :param cat_id:  A string with the (integer) ID of the Category
+        :return:        None.  In case of error, raise an Exception
         """
 
         # Validate the arguments
-        if uri_1 == uri_2:
-            return f"Attempt to swap a Content Item (ID {uri_1}) with itself!"
+        assert uri_1 != uri_2, \
+            f"Attempt to swap a Content Item (URI `{uri_1}`) with itself!"
 
         try:
-            uri_1 = int(uri_1)
+            uri_1 = int(uri_1)      # TODO: later eliminate when switching to string URI's
         except Exception:
-            return f"The first Content Item ID ({uri_1}) is missing or not an integer"
+            raise Exception(f"The first Content Item URI (`{uri_1}`) is missing or not an integer")
 
         try:
-            uri_2 = int(uri_2)
+            uri_2 = int(uri_2)      # TODO: later eliminate when switching to string URI's
         except Exception:
-            return f"The second Content Item ID ({uri_2}) is missing or not an integer"
+            raise Exception(f"The second Content Item URI (`{uri_2}`) is missing or not an integer")
 
         try:
-            cat_id = int(cat_id)
+            cat_id = int(cat_id)    # TODO: later eliminate when switching to string URI's
         except Exception:
-            return f"The Category ID ({cat_id}) is missing or not an integer"
+            raise Exception(f"The Category ID ({cat_id}) is missing or not an integer")
 
 
         # Look for a Category node (c) that is connected to 2 Content Items (n1 and n2)
@@ -1131,17 +1131,18 @@ class Categories:
         stats = cls.db.update_query(q, data_binding)
         #print("stats of query: ", stats)
 
-        if stats == {}:
-            return f"The action had no effect : the specified Content Items ({uri_1} and {uri_2})" \
-                   f" were not found attached to the given Category ({cat_id})"
+        assert stats != {},  \
+            f"Irregularity detected in swap action: Unable to determine the success of the operation"
 
         number_properties_set = stats.get("properties_set")
 
-        if number_properties_set != 2:
-            return f"Irregularity detected in swap action: {number_properties_set} properties were set," \
-                   f" instead of the expected 2"
+        assert number_properties_set, \
+            f"Failure to swap content items `{uri_1}` and `{uri_2}` within Category `{cat_id}`"
 
-        return ""   # Normal termination, with no error message
+        assert number_properties_set == 2, \
+            f"Irregularity detected in swap action: {number_properties_set} properties were set," \
+            f" instead of the expected 2"
+
 
 
 

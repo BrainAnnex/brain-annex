@@ -798,10 +798,11 @@ new Vue({
 
             // Request the server to perform the operation on the data
             const swap_uri = this.content_array[i-1].uri;       // The ID of the Item that we're swapping with
-            const url_server = `/BA/api/simple/swap/${uri}/${swap_uri}/${this.category_id}`;
+            const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_id}`;
             console.log(url_server);
 
-            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_up, i);
+            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_move_up, custom_data: i});
+            //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_up, i);
 
         }, // move_up_content_item
 
@@ -849,10 +850,11 @@ new Vue({
 
             // Request the server to perform the operation on the data
             const swap_uri = this.content_array[i+1].uri;       // The ID of the Item that we're swapping with
-            const url_server = `/BA/api/simple/swap/${uri}/${swap_uri}/${this.category_id}`;
+            const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_id}`;
             console.log(url_server);
 
-            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_down, i);
+            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_move_down, custom_data: i});
+            //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_down, i);
 
         }, // move_down_content_item
 
@@ -953,10 +955,11 @@ new Vue({
             }
 
             // Request the server to perform the operation on the database
-            const url_server = `/BA/api/simple/reposition/${this.category_id}/${uri}/${where_to}`;
+            const url_server = `/BA/api/reposition/${this.category_id}/${uri}/${where_to}`;
             console.log(url_server);
 
-            ServerCommunication.contact_server_TEXT(url_server, "", this.finish_relocate_content_item, i);
+            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_relocate_content_item, custom_data: i});
+            //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_relocate_content_item, i);
 
         }, // relocate_content_item
 

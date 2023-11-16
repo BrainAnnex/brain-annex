@@ -52,21 +52,9 @@ class ApiRouting:
     debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
                                         #       (currently, in very limited use)
 
-    #######################################################################################################################
-    #   TODO: being phased out                                                                                            #
-    #   ERROR_PREFIX and SUCCESS_PREFIX:                                                                                  #
-    #   used for "simple" subset of the API, with endpoints that return PLAIN text (rather than JSON or something else)   #
-    #                                                                                                                     #
-    #######################################################################################################################
 
-    ERROR_PREFIX = "-"      # Prefix used in the "simple API" protocol to indicate an error in the response value;
-                            #       the remainder of the response string will the be understood to be the error message
 
-    SUCCESS_PREFIX = "+"    # Prefix used in the "simple API" protocol to indicate a successful operation;
-                            #       the remainder of the response string will the be understood to be the optional data payload
-                            #       (such as a status message)
-
-    # NOTE: To test POST-based API access points, on the Linux shell or Windows PowerShell issue commands such as:
+    # NOTE: To test POST-based web APIs, on the Linux shell or Windows PowerShell issue commands such as:
     #            curl http://localhost:5000/BA/api/add_item_to_category -d "schema_id=1&category_id=60"
 
 
@@ -438,7 +426,7 @@ class ApiRouting:
 
 
         @bp.route('/get_record_classes')
-        def get_record_classes() -> str:
+        def get_record_classes():
             """
             Get all Classes that are, directly or indirectly, INSTANCE_OF the Class "Records",
             as long as they are leaf nodes (with no other Class that is an INSTANCE_OF them.)
@@ -498,7 +486,7 @@ class ApiRouting:
 
         @bp.route('/create_new_schema_class', methods=['POST'])
         @login_required
-        def create_new_schema_class() -> str:
+        def create_new_schema_class():
             """
             Create a new Schema Class, possibly linked to another existing class,
             and also - typically but optionally - with the special "INSTANCE_OF" link
@@ -545,7 +533,7 @@ class ApiRouting:
 
         @bp.route('/delete_class', methods=['POST'])
         @login_required
-        def delete_class() -> str:
+        def delete_class():
             """
             Delete a Class specified by its name.
             All its Properties will also get deleted alongside.
@@ -579,7 +567,7 @@ class ApiRouting:
 
         @bp.route('/schema_add_property_to_class', methods=['POST'])
         @login_required
-        def schema_add_property_to_class() -> str:
+        def schema_add_property_to_class():
             """
             Add a new Property to an existing Class, identified by its name
 
@@ -611,7 +599,7 @@ class ApiRouting:
 
         @bp.route('/add_schema_relationship', methods=['POST'])
         @login_required
-        def add_schema_relationship() -> str:
+        def add_schema_relationship():
             """
             Add a relationship with the specified name between 2 existing Classes
 
@@ -644,7 +632,7 @@ class ApiRouting:
 
         @bp.route('/delete_schema_relationship', methods=['POST'])
         @login_required
-        def delete_schema_relationship() -> str:
+        def delete_schema_relationship():
             """
             Delete the relationship with the specified name between 2 existing Classes
             POST FIELDS:
@@ -687,7 +675,6 @@ class ApiRouting:
         @login_required
         def get_text_media(uri):
             """
-            TODO: this will be the "role model" to use to phase out the "simple" protocol
             Retrieve and return the contents of a TEXT media item (for now, just "Notes")
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_text_media/123
@@ -718,7 +705,7 @@ class ApiRouting:
 
 
         @bp.route('/remote_access_note/<uri>')
-        def remote_access_note(uri) -> str:     # NO LOGIN REQUIRED
+        def remote_access_note(uri):     # NO LOGIN REQUIRED
             """
             Similar to get_text_media(), but:
                 1) no login required
@@ -782,7 +769,7 @@ class ApiRouting:
 
 
         @bp.route('/get_link_summary/<uri_str>')
-        def get_link_summary_api(uri_str) -> str:
+        def get_link_summary_api(uri_str):
             """
             Return a JSON structure identifying the names and counts of all
             inbound and outbound links to/from the given data node.
@@ -819,7 +806,7 @@ class ApiRouting:
 
 
         @bp.route('/get_records_by_link', methods=['POST'])
-        def get_records_by_link_api() -> str:
+        def get_records_by_link_api():
             """
             Locate and return the data of the nodes linked to the one specified by uri,
             by the relationship named by rel_name, in the direction specified by dir
@@ -848,7 +835,7 @@ class ApiRouting:
 
         @bp.route('/update', methods=['POST'])
         @login_required
-        def update() -> str:
+        def update():
             """
             Update an existing Content Item.
             NOTE: the "schema_code" field in the POST data is currently required, but it's redundant.  Only
@@ -878,7 +865,7 @@ class ApiRouting:
         
         @bp.route('/delete/<uri>/<schema_code>')
         @login_required
-        def delete(uri, schema_code) -> str:
+        def delete(uri, schema_code):
             """
             Delete the specified Content Item.
             Note that schema_code is redundant.  Only used
@@ -906,7 +893,7 @@ class ApiRouting:
         
         @bp.route('/add_item_to_category', methods=['POST'])
         @login_required
-        def add_item_to_category() -> str:
+        def add_item_to_category():
             """
             Create a new Content Item attached to a particular Category,
             at a particular location in the "collection" (page)
@@ -966,7 +953,7 @@ class ApiRouting:
 
         @bp.route('/add_subcategory', methods=['POST'])
         @login_required
-        def add_subcategory() -> str:
+        def add_subcategory():
             """
             Add a new Subcategory to a given Category
             (if the Subcategory to link up to already exists, use add_subcategory_relationship instead)
@@ -1034,7 +1021,7 @@ class ApiRouting:
 
         @bp.route('/add_relationship', methods=['POST'])
         @login_required
-        def add_relationship() -> str:
+        def add_relationship():
             """
             Add the specified relationship (edge) between data nodes
 
@@ -1071,7 +1058,7 @@ class ApiRouting:
 
         @bp.route('/remove_relationship', methods=['POST'])
         @login_required
-        def remove_relationship() -> str:
+        def remove_relationship():
             """
             Remove the specified relationship (edge) between data nodes
 
@@ -1109,46 +1096,48 @@ class ApiRouting:
 
         #############    POSITIONING WITHIN CATEGORIES    #############
         
-        @bp.route('/swap/<uri_1>/<uri_2>/<cat_id>')       # TODO: eliminate the "simple" protocol
+        @bp.route('/swap/<uri_1>/<uri_2>/<cat_id>')
         @login_required
-        def swap(uri_1, uri_2, cat_id) -> str:
+        def swap(uri_1, uri_2, cat_id):
             """
             Swap the positions of the specified Content Items within the given Category.
         
             EXAMPLE invocation: http://localhost:5000/BA/api/swap/23/45/2
             """
-            err_status:str = Categories.swap_content_items(uri_1, uri_2, cat_id)
+            try:
+                Categories.swap_content_items(uri_1, uri_2, cat_id)
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to swap the requested Content Items.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            #print(f"swap() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
         
-            if err_status == "":    # If no errors
-                return_value = cls.SUCCESS_PREFIX
-            else:                   # If errors
-                return_value = cls.ERROR_PREFIX + err_status
-        
-            print(f"swap() is returning: `{return_value}`")
-        
-            return return_value
         
         
-        
-        @bp.route('/reposition/<category_id>/<uri>/<move_after_n>')       # TODO: eliminate the "simple" protocol
+        @bp.route('/reposition/<category_id>/<uri>/<move_after_n>')
         @login_required
-        def reposition(category_id, uri, move_after_n) -> str:
+        def reposition(category_id, uri, move_after_n):
             """
             Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
+            Note: moving after the 0-th item means to move to the very top
             TODO: switch to an after-item version?
         
             EXAMPLE invocation: http://localhost:5000/BA/api/reposition/60/576/4
             """
             try:
                 Categories.reposition_content(category_id=int(category_id), uri=int(uri), move_after_n=int(move_after_n))
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
-                err_status = f"UNABLE TO REPOSITION ELEMENT: {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to reposition the Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
         
-            print(f"reposition() is returning: `{return_value}`")
-        
-            return return_value
+            #print(f"reposition() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
 
@@ -1191,7 +1180,7 @@ class ApiRouting:
         
         @bp.route('/get-filtered-json', methods=['POST'])
         @login_required
-        def get_filtered_JSON() -> str:     # *** NOT IN CURRENT USE; see get_filtered() ***
+        def get_filtered_JSON():     # *** NOT IN CURRENT USE; see get_filtered() ***
             """
             Note: a form-data version is also available
         
@@ -1227,7 +1216,7 @@ class ApiRouting:
         
         @bp.route('/get_filtered', methods=['POST'])
         @login_required
-        def get_filtered() -> str:
+        def get_filtered():
             """
             Note: a JSON version is also available
         
@@ -1265,7 +1254,7 @@ class ApiRouting:
 
         @bp.route('/import_json_file', methods=['POST'])
         @login_required
-        def import_json_file() -> str:
+        def import_json_file():
             """
             Upload and import of a data file in JSON format
             Invoke with the URL: http://localhost:5000/BA/api/import_json_file
@@ -1311,7 +1300,7 @@ class ApiRouting:
 
         @bp.route('/bulk_import', methods=['POST'])
         @login_required
-        def bulk_import() -> str:
+        def bulk_import():
             """
             Bulk import (for now of JSON files)
 
@@ -1362,7 +1351,7 @@ class ApiRouting:
         
             return_url = request.form["return_url"] # This originates from the HTML form :
             #    <input type="hidden" name="return_url" value="my_return_url">
-            print("return_url: ", return_url)
+            #print("return_url: ", return_url)
         
             status = DataManager.upload_import_json(verbose=False, return_url=return_url)
             return status
@@ -1552,11 +1541,11 @@ class ApiRouting:
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         
-            print("In import_datafile(): ", (tmp_filename_for_upload, full_filename, original_name))
+            #print("In import_datafile(): ", (tmp_filename_for_upload, full_filename, original_name))
         
             return_url = request.form["return_url"] # This originates from the HTML form - namely the line:
                                                     #    <input type="hidden" name="return_url" value="my_return_url">
-            print("return_url: ", return_url)
+            #print("return_url: ", return_url)
 
             #status_msg = "Testing"
             status_msg = DataManager.import_datafile(tmp_filename_for_upload, full_filename, test_only=True)
