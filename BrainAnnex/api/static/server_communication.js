@@ -40,12 +40,11 @@ class ServerCommunication
                                             method = "GET",
                                             post_obj = {},
                                             post_body = "",
-                                            payload_type = "JSON",
                                             callback_fn = undefined,
                                             custom_data = undefined
                                         } = {} )
     /*  Send a request to the server at the specified URL
-        Using named arguments to make use of contact_server_TEXT() or contact_server_JSON, etc
+        The expected eventual payload is a JSON string
 
             method:         Either "GET" or "POST" - optional, by default "GET"
                                 (however, ignored if a non-empty string is passed to post_body,
@@ -58,7 +57,6 @@ class ServerCommunication
                                 (disregarded if a non-empty post_obj was passed,
                                  i.e. post_obj has higher priority over post_obj)
 
-            payload_type:   Either "TEXT" or "JSON" - optional; by default "JSON"
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data:    If present, it is passed as a final argument to the callback function
 
@@ -106,78 +104,14 @@ class ServerCommunication
            console.log(`contact_server() - a POST will be used, with the following data: "${post_body}"`);
         */
 
-        if (payload_type == "TEXT")
-            return ServerCommunication.contact_server_TEXT(url_server, post_body, callback_fn, custom_data, method);
-        else
-            return ServerCommunication.contact_server_JSON(url_server, post_body, callback_fn, custom_data, method);
+        return ServerCommunication.contact_server_JSON(url_server, post_body, callback_fn, custom_data, method);
     }
-
-
-    static contact_server_TEXT(url_server, post_body, callback_fn, custom_data, method)
-    /*  Send a request to the server at the specified URL, with a GET or POST method (depending on the presence of post_body)
-        Use this function if the payload is general text.
-
-        post_body : if a blank string, a GET is assumed, unless method="POST" is specified
-            EXAMPLE of post_body: "uri=62&schema_code=r"
-
-        custom_data is an OPTIONAL argument; if present, it is passed as a final argument to the callback function
-
-        TODO: factor out some parts to contact_server()
-     */
-    {
-        var success_flag;           // true if communication with the server succeeds, or false otherwise
-        var server_payload = "";    // Only applicable if success_flag is true
-        var error_message = "";     // Only applicable if success_flag is false
-        var fetch_options;
-
-        if (post_body != "" || method == "POST") {
-            //console.log("About to start asynchronous call to ", url_server, " with POST body: ", post_body);
-            fetch_options = ServerCommunication.prepare_POST_options(post_body);
-        }
-        else
-        {
-            //console.log("About to start asynchronous call to ", url_server, " with GET method");
-            fetch_options = ServerCommunication.prepare_GET_options();
-        }
-
-        fetch(url_server, fetch_options)
-        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
-        .then(fetch_resp_obj => fetch_resp_obj.text())  // Transform the response object into a JS promise that will resolve into a string
-        .then(server_response => {                      // Manage the server response
-            //console.log("server_response: ", server_response);
-            // Check if the response indicates failure
-            const error_msg = ServerCommunication.check_for_server_error(server_response);
-            if (error_msg != "")   // If server reported failure
-                throw new Error(error_msg);   // This will take us to the .catch portion, below
-            else
-            {   // Server reported SUCCESS
-                server_payload = ServerCommunication.extract_server_data(server_response);
-                //console.log("server reported success");
-                //console.log("  ...and returned the following payload: ", server_payload);
-                success_flag = true;
-            }
-        })
-        .catch(err => {  // All errors eventually go thru here
-            error_message = ServerCommunication.report_fetch_errors(err);
-            success_flag = false;
-        })
-        .finally(() => {  // Final operation regardless of error or success
-            //console.log("Completed the server call.  Passing control to the callback function");
-            if (callback_fn !== undefined) {
-                if (custom_data === undefined)
-                    callback_fn(success_flag, server_payload, error_message);
-                else
-                    callback_fn(success_flag, server_payload, error_message, custom_data);
-            }
-        });  // fetch
-
-    }  // contact_server
 
 
 
     static contact_server_JSON(url_server, post_body, callback_fn, custom_data, method)
-    /*  Send a request to the server at the specified URL, with a GET or POST method (depending on the presence of post_body)
-        Use this function if the payload is JSON text.
+    /*  Send a request to the server at the specified URL, with a GET or POST method (depending on the presence of post_body).
+        The expected eventual payload is a JSON string
 
         post_body : if a blank string, a GET is assumed, unless method="POST" is specified
             EXAMPLE of post_body: "uri=62&schema_code=r"
@@ -376,7 +310,7 @@ class ServerCommunication
         [NEW: Any blank strings in the values are left undisturbed]
 
         The returned result is ready for use as the "post_body" argument
-        in contact_server(), contact_server_TEXT() and contact_server_JSON()
+        in contact_server() and contact_server_JSON()
         Note: if post_obj contains no properties, or is null, then an empty string is returned.
 
         EXAMPLE of usage:
@@ -476,95 +410,10 @@ class ServerCommunication
 
 
 
-    /****************************************************************************************************************
-
-             METHODS APPLICABLE TO SERVER COMMUNICATION USING THE FOLLOWING "SIMPLE TEXT PROTOCOL"
-
-                IN BRIEF:   a string with the payload or error,
-                            prefixed by the single character "+" or "-" respectively in case of success or failure
-
-                PROTOCOL: 	1) a server response is expected; its lack is regarded as an error
-
-                            2) if the response starts with the character "+", it's taken to be an successful operation,
-                               and the optional rest of the string is taken to be a data payload
-
-                            3) if the response starts with the character "-", it's taken to be an error status,
-                               and the rest of the string is taken to be the error message
-
-                            4) responses that DON'T start with either "+" or "-" are taken to be
-                               an unexpected error (not correctly handled), and the entire text is regarded as a presumed error message
-
-     ****************************************************************************************************************/
-
-
-    static validate_server_response(server_response)
-    /*  ONLY APPLICABLE TO SERVER COMMUNICATION USING THE SIMPLE TEXT PROTOCOL FOR THIS CLASS.
-        If the given response indicates success, return true;
-        otherwise, log it to the console and issue an alert with the error message provided by the server, and return false
-     */
-    {
-        const server_error_msg = ServerCommunication.check_for_server_error(server_response);
-
-        if (server_error_msg)	{	// If the server response indicated an ERROR
-            console.error(server_error_msg);
-            alert(server_error_msg);
-            return false;
-        }
-        return true;           // No error
-    }
-
-
-
-	static  check_for_server_error(server_response)
-	/*  ONLY APPLICABLE TO SERVER COMMUNICATION USING THE SIMPLE TEXT PROTOCOL FOR THIS CLASS.
-	    Check the given server response for the presence of errors.
-		If error is detected, return an error message; otherwise, return an empty string.
-	 */
-	{
-	    const SUCCESS_PREFIX = "+";         // The initial "+" character is indicative of a successful operation
-	    const ERROR_PREFIX = "-";           // The initial "-" character is indicative of a failure
-
-		var server_error_msg;
-
-		if (server_response == "")  {       // Irregular situation where the server response is blank
-			server_error_msg = "Possible Error: the server didn't return any data (try again)"
-			return server_error_msg;
-		}
-
-	    const server_status = server_response.substring(0, 1);	// The initial character
-
-	    if (server_status == SUCCESS_PREFIX)
-	        return "";	// No errors found
-
-	    var parsed_server_response;
-
-	    if (server_status == ERROR_PREFIX)
-	        parsed_server_response = ServerCommunication.extract_server_data(server_response);
-	    else
-	        parsed_server_response = server_response;   // Irregular situation where the status prefix is missing
-
-		server_error_msg = "the server reported the following problem: " + parsed_server_response;
-		return server_error_msg;
-
-	} // check_for_server_error()
-
-
-
-	static  extract_server_data(server_response)
-	/*  ONLY APPLICABLE TO SERVER COMMUNICATION USING THE SIMPLE TEXT PROTOCOL FOR THIS CLASS.
-	    From the given server response, extract the data payload (either an error message or a successful result) */
-	{
-	    if (server_response == "")
-	        return "";      // This is an irregular scenario that should be avoided
-
-	    return server_response.substring(1, server_response.length);    // Drop the first character, which is the error status
-	}
-
-
 
 	/****************************************************************************************************************
 
-                 METHODS APPLICABLE TO SERVER COMMUNICATION USING THE "STANDARD JSON PROTOCOL" FOR THIS CLASS
+                 THE METHODS BELOW ARE RELATED TO JSON-SPECIFIC PARTS OF THE SERVER COMMUNICATION
 
                  1) JSON RESPONSE is expected to always be present.
                  2) If successful, 2 keys are expected:
@@ -576,8 +425,7 @@ class ServerCommunication
 
 
     static  check_for_server_error_JSON(server_response)
-	/*  ONLY APPLICABLE TO SERVER COMMUNICATION USING THE "STANDARD JSON PROTOCOL" FOR THIS CLASS.
-	    Check the given server response for the presence of errors.
+	/*  Check the given server response for the presence of errors.
 		If an error was detected, return an error message; otherwise, return an empty string.
 	 */
 	{
@@ -610,8 +458,7 @@ class ServerCommunication
 
 
 	static  extract_server_data_JSON(server_response)
-	/*  ONLY APPLICABLE TO SERVER COMMUNICATION USING THE "STANDARD JSON PROTOCOL" FOR THIS CLASS.
-	    From the given server response, extract the data payload */
+	/*  From the given server response, extract the data payload */
 	{
 	    return server_response.payload;    // TODO: verify that it is actually present
 	}
