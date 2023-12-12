@@ -30,8 +30,6 @@
 class ServerCommunication
 /*  STATIC class to communicate with the server using the fetch() API.
 
-    Some methods are general; others implement one of the protocols detailed further down.
-
     Guide:  https://brainannex.org/docs/server_communication.htm
  */
 {

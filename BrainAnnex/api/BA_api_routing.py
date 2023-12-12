@@ -1597,11 +1597,11 @@ class ApiRouting:
             #    <input type="hidden" name="return_url" value="my_return_url">
             #print("return_url: ", return_url)
 
-            #status_msg = "Testing"
-            status_msg = DocumentationGenerator.import_python_file(tmp_filename_for_upload, full_filename)
+            status_msg = "<a href='{return_url}' style='margin-left:10px; font-weight:bold'>GO BACK</a><br><br>"
+            status_msg += DocumentationGenerator.import_python_file(tmp_filename_for_upload, full_filename)
 
             # Provide a return link
-            status_msg += f" <a href='{return_url}' style='margin-left:50px'>GO BACK</a><br><br>"
+            status_msg += f" <a href='{return_url}' style='margin-left:10px; font-weight:bold'>GO BACK</a><br><br>"
 
             return status_msg
 

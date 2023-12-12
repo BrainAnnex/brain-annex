@@ -1506,7 +1506,7 @@ class DataManager:
 
         '''
         # Test for LinkedIn connections:
-        #pattern_1 = R"\n([a-zA-Z.'\- ,()]+)@@@\n"   # Full name
+        pattern_1 = R"\n([a-zA-Z.'\- ,()]+)@@@\n"   # Full name
         pattern_1 = R"\n(.+)@@@\n"                  # Full name
         pattern_2 = ".+ profile\n"                  # Throwaway line
         pattern_3 = "---1st1st degree connection\n" # Throwaway line
@@ -1768,7 +1768,7 @@ class DocumentationGenerator:
         :return:    A string with HTML code
         """
 
-        summary = ""    # Links to Classes and methods  (TODO: to be expanded to also cover sections)
+        toc = "<div class='sidebar-left'>\n"    # Table of contents, with links to Classes and methods
         htm = ""
         python_class_name = ""
 
@@ -1779,9 +1779,9 @@ class DocumentationGenerator:
                 python_class_name = df['class_name'][ind]
                 python_class_description = df['class_description'][ind]
 
-                summary += f"<br><hr><br><a href='#{python_class_name}' style='font-weight:bold; font-size:18px'>Class {python_class_name}</a><br><br>\n"
+                toc += f"\n    <br><a href='#{python_class_name}' style='font-weight:bold; font-size:18px'>Class {python_class_name}</a><br>\n"
 
-                htm += "<br><br><hr>"
+                htm += "<br><br><hr>"       # TODO: if it's the first Class, skip this line
                 htm += f"<a name='{python_class_name}'></a>\n"
                 htm += f"<h1 class='class-name'>Class {python_class_name}</h1>\n"
                 htm += f"<pre>{python_class_description}</pre>\n\n\n"
@@ -1790,7 +1790,7 @@ class DocumentationGenerator:
                 section_name = df['method_name'][ind]
                 clean_name = section_name.replace("_", " ").strip()
 
-                summary += f"    <span style='margin-left:25px'>{clean_name}:</span><br>\n"
+                toc += f"\n    <span style='margin-left:15px'>{clean_name}:</span><br>\n"
                 htm += f"<br><h2 class='section-header'>{clean_name}</h2>\n\n"
 
             else:           # Document an individual class method
@@ -1798,7 +1798,7 @@ class DocumentationGenerator:
                 anchor_name = f"{python_class_name}_{method_name}"   # Needed because some method names (such as __init__) may appear in multiple classes
                                                                      # EXAMPLE:  "NeoAccess_query"
 
-                summary += f"<a href='#{anchor_name}' style='margin-left:50px'>{method_name}</a><br>\n"
+                toc += f"    <a href='#{anchor_name}' style='margin-left:40px'>{method_name}</a><br>\n"
 
                 htm += f"<a name='{anchor_name}'></a>\n"
                 htm += "<table class='cd-main'>\n"
@@ -1820,13 +1820,13 @@ class DocumentationGenerator:
                 htm += "</table>\n\n\n"
 
 
-        summary += "<br>\n\n"
+        toc += "\n</div>    <!-- sidebar-left -->\n\n\n\n\n"     # Complete the Table of Contents
 
         '''
         print("###################################################################################")
-        print(summary)
+        print(toc)
         print(htm)
         print("###################################################################################")
         '''
 
-        return summary + htm
+        return toc + htm
