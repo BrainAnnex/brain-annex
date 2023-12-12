@@ -6,7 +6,7 @@
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from flask_login import login_required
 from BrainAnnex.modules.data_manager.data_manager import DataManager
-from BrainAnnex.modules.data_manager.data_manager import DocumentationGenerator
+from BrainAnnex.modules.data_manager.documentation_generator import DocumentationGenerator
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories

@@ -154,8 +154,8 @@ class NeoSchema:
         """
         Raise an Exception if the passed argument is not a valid Class name
 
-        :param class_name:
-        :return:
+        :param class_name:  A string with the name of a Schema Class
+        :return:            None
         """
         assert type(class_name) == str, \
             f"NeoSchema.assert_valid_class_name(): The class name ({class_name}) must be a string (instead, it's of type {type(class_name)})"
