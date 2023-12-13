@@ -831,7 +831,13 @@ class ApiRouting:
 
 
 
-        ################   MODIFYING EXISTING CONTENT ITEMS   ################
+        #####################################################################################################
+
+        '''                              ~   MODIFYING EXISTING CONTENT ITEMS   ~                         '''
+
+        def ________MODIFYING_CONTENT_ITEMS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
 
         @bp.route('/update', methods=['POST'])
         @login_required
@@ -1140,10 +1146,41 @@ class ApiRouting:
 
 
 
+        @bp.route('/add_label/<new_label>')
+        @login_required
+        def add_label(new_label):
+            """
+            Add a new blank node with the specified label.
+            Return the internal database ID of the new node.
+            Mostly used for testing.
 
-        #---------------------------------------------#
-        #                     UTILS                   #
-        #---------------------------------------------#
+            EXAMPLE invocation: http://localhost:5000/BA/api/add_label/Customer
+
+            :param new_label:   String with the name of a Graph-Database label
+            :return:            A Flask Response response object containing
+                                    the internal database ID of the new node
+            """
+            try:
+                internal_id = DataManager.add_new_label(new_label)
+                response_data = {"status": "ok", "payload": internal_id}            # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to create a new database node with the given label: `{new_label}`. " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+
+
+        #####################################################################################################
+
+        '''                                          ~   UTILS   ~                                        '''
+
+        def ________UTILS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
 
         @bp.route('/fetch-remote-title')
         def fetch_remote_title():
@@ -1174,10 +1211,14 @@ class ApiRouting:
 
 
 
-        #---------------------------------------------#
-        #                   FILTERS                   #
-        #---------------------------------------------#
-        
+        #####################################################################################################
+
+        '''                                        ~   FILTERS   ~                                        '''
+
+        def ________FILTERS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
         @bp.route('/get-filtered-json', methods=['POST'])
         @login_required
         def get_filtered_JSON():     # *** NOT IN CURRENT USE; see get_filtered() ***
@@ -1248,9 +1289,13 @@ class ApiRouting:
 
 
 
-        #---------------------------------------------#
-        #       IMPORT-EXPORT  (upload/download)      #
-        #---------------------------------------------#
+        #####################################################################################################
+
+        '''                          ~   IMPORT/EXPORT (incl. Upload/Download)   ~                        '''
+
+        def ________IMPORT_EXPORT________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
 
         @bp.route('/import_json_file', methods=['POST'])
         @login_required
@@ -1607,7 +1652,6 @@ class ApiRouting:
 
 
 
-
         @bp.route('/download_dbase_json/<download_type>')
         @login_required
         def download_dbase_json(download_type="full"):
@@ -1650,37 +1694,6 @@ class ApiRouting:
             response.headers['Content-Type'] = 'application/save'
             response.headers['Content-Disposition'] = f'attachment; filename=\"{export_filename}\"'
             return response
-
-
-
-
-        #---------------------------------------------#
-        #                EXPERIMENTAL                 #
-        #---------------------------------------------#
-        
-        @bp.route('/add_label/<new_label>')
-        @login_required
-        def add_label(new_label):
-            """
-            Add a new blank node with the specified label.
-            Return the internal database ID of the new node.
-            Mostly used for testing.
-
-            EXAMPLE invocation: http://localhost:5000/BA/api/add_label/Customer
-
-            :param new_label:   String with the name of a Graph-Database label
-            :return:            A Flask Response response object containing
-                                    the internal database ID of the new node
-            """
-            try:
-                internal_id = DataManager.add_new_label(new_label)
-                response_data = {"status": "ok", "payload": internal_id}            # Successful termination
-            except Exception as ex:
-                err_details = f"Unable to create a new database node with the given label: `{new_label}`. " \
-                              f"{exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # Error termination
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
         ##################  END OF ROUTING DEFINITIONS  ##################
