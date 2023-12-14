@@ -12,8 +12,12 @@
         category_name   The name of the above Category
         category_remarks
 
-        all_categories
-        subcategories
+        all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
+                                    EXAMPLE:
+                                          [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"},
+                                           {"uri: 123, "name": "Calculus"},
+                                           {"uri": 523, "name": "Work at Acme", 'pinned': True}]
+        subcategories       Note: this is still using "id" instead of "uri", for the time being
         parent_categories
         siblings_categories
 
@@ -155,8 +159,10 @@
  **************************************************************** -->
 
 {#  Uncomment for DEBUGGING! (to view some of the Flask-passed parameters)
-<br><b>siblings_categories</b>:<br>{{siblings_categories}}<br><br>
+    <br><b>siblings_categories</b>:<br>{{siblings_categories}}<br><br>
+    <br><b>all_categories</b>:<br>{{all_categories}}<br><br>
  #}
+
 
 
 <!-- Bread crumbs for this Category -->
@@ -524,7 +530,7 @@ new Vue({
                         // EXAMPLE: [{'name': 'French', 'uri': 514, 'schema_code': 'cat', 'internal_id': 522}]
 
         all_categories: {{all_categories | tojson}},
-                        // EXAMPLE: [{"id": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"id": 123, "name": "work"}]
+                        // EXAMPLE: [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
 
 
         // For "Add Subcategory" (TODO: move to a separate component?)

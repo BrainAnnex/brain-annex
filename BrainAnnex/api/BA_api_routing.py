@@ -866,9 +866,32 @@ class ApiRouting:
             #print(f"update() is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
-        
-        
-        
+
+
+
+        @bp.route('/pin_category/<uri>/<op>')
+        @login_required
+        def pin_category(uri, op):
+            """
+            Set or unset the "pinned" property of the specified Category
+
+            EXAMPLE invocations: http://localhost:5000/BA/api/pin_category/123/set
+                                 http://localhost:5000/BA/api/pin_category/123/unset
+
+            :param uri: The URI of a data node representing a Category
+            :param op:  Either "set" or "unset"
+            """
+            try:
+                Categories.pin_category(uri=uri, op=op)
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to changed the 'pinned' status of the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
         @bp.route('/delete/<uri>/<schema_code>')
         @login_required
         def delete(uri, schema_code):

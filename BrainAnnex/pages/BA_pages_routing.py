@@ -110,8 +110,8 @@ class PagesRouting:
 
             parent_categories = Categories.get_parent_categories_alt(category_id)
             subcategories = Categories.get_subcategories_alt(category_id)
-            all_categories = Categories.get_all_categories_alt(exclude_root=False) # TODO: switch to Categories.get_all_categories(), below
-            #all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)   # TODO: when switching to this,
+            #all_categories = Categories.get_all_categories_alt(exclude_root=False) # TODO: switch to Categories.get_all_categories(), below
+            all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)   # TODO: when switching to this,
                                                                                                         #  change pages to use "uri" instead of "id"
 
             siblings_categories = Categories.viewer_handler(category_id)

@@ -2159,13 +2159,13 @@ class NeoSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node :Union[int, str], set_dict :dict , drop_blanks = True) -> int:
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True, force_int_uri=False) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
         :param data_node:   Either an integer with the internal database ID, or a string with a URI value
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
-                                (note: blanks ARE allowed in the keys)
+                                (note: blanks ARE allowed within the keys)
         :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
         :return:            The number of properties set or removed;
@@ -2174,6 +2174,7 @@ class NeoSchema:
                                            identical to the old value!
         """
         #TODO: check whether the Schema allows the added/dropped fields, if applicable
+        #      Compare the keys of set_dict against the Properties of the Class of the Data Node
 
         if set_dict == {}:
             return 0            # Nothing to do!
@@ -2183,7 +2184,10 @@ class NeoSchema:
         elif type(data_node) == str:
             where_clause =  f'WHERE n.uri = "{data_node}"'
         else:
-            raise Exception("update_data_node(): argument `data_node` must be an integer or a string")
+            raise Exception("update_data_node(): the argument `data_node` must be an integer or a string")
+
+        if force_int_uri:
+            where_clause =  f'WHERE n.uri = {data_node}'  # TODO: ditch after the switch to string URI's
 
 
         data_binding = {}
@@ -2215,7 +2219,7 @@ class NeoSchema:
             {remove_clause}            
             '''
 
-        #cls.db.debug_query_print(q, data_binding, force_output=True)
+        #cls.db.debug_query_print(q, data_binding)
 
         stats = cls.db.update_query(q, data_binding)
         #print(stats)

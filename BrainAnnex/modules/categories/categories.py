@@ -194,12 +194,11 @@ class Categories:
     def get_all_categories(cls, exclude_root=True, include_remarks=False) -> [dict]:
         """
         Return all the existing Categories - possibly except the root -
-        as a list of dictionaries with keys 'uri' and 'name',
+        as a list of dictionaries with keys 'uri', 'name', 'pinned' and, optionally, 'remarks',
         sorted by name.
 
-        EXAMPLES:
-            [{'uri': 3, 'name': 'Hobbies'}, {'uri': 2, 'name': 'Work'}]
-            [{'uri': 3, 'name': 'Hobbies'}, {'uri': 2, 'name': 'Work', 'remarks': 'Current or past'}]
+        EXAMPLE:
+            [{'uri': 2, 'name': 'Work', 'remarks': 'Current or past'}, {'uri': 3, 'name': 'Hobbies', pinned: True} ]
 
         :return:    A list of dictionaries
         """
@@ -209,10 +208,11 @@ class Categories:
 
         remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
 
+        # TODO: switch to using the Schema library datanode operations
         q =  f'''
              MATCH (cat:Categories)-[:SCHEMA]->(:CLASS {{name:"Categories"}}) 
              {clause}
-             RETURN cat.uri AS uri, cat.name AS name {remarks_subquery}
+             RETURN cat.uri AS uri, cat.name AS name, cat.pinned AS pinned {remarks_subquery}
              ORDER BY toLower(cat.name)
              '''
 
@@ -223,15 +223,20 @@ class Categories:
              ORDER BY toLower(cat.name)
              '''
         # Notes: 1 is the ROOT category.  TODO: replace with check .root = true
-        # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
+        # Sorting must be done across names of consistent capitalization, or "GSK" will appear before "German"!
 
         result =  cls.db.query(q)
+
+        # Ditch all the MISSING "pinned" values
+        for item in result:
+            if item["pinned"] is None:
+                del item["pinned"]     # To avoid a dictionary entry of the type  'pinned': None
 
         # If remarks are being included, ditch all the MISSING "remarks" values
         if include_remarks:
             for item in result:
                 if item["remarks"] is None:
-                    del item["remarks"]     # To avoid a dictionary entry of the type 'remarks': None
+                    del item["remarks"]     # To avoid a dictionary entry of the type  'remarks': None
 
         return result
 
@@ -672,6 +677,30 @@ class Categories:
         """
         #TODO: make use of cls.db.reattach_node()
         pass    # switchChildNode($parentID, $oldChildID, $newChildID)
+
+
+
+    @classmethod
+    def pin_category(cls, uri, op :str) -> None:
+        """
+        Set or unset the "pinned" property of the specified Category
+
+        :param uri: The URI of a data node representing a Category
+        :param op:  Either "set" or "unset"
+        :return:    None
+        """
+        # TODO: verify that the node is indeed a Category - or make sure that the Schema is enforced
+        #       Maybe first locate the data node by multiple criteria
+
+        if op == "set":
+            number_set = NeoSchema.update_data_node(data_node=int(uri), set_dict={"pinned": True}, force_int_uri=True)
+        elif op == "unset":
+            number_set = NeoSchema.update_data_node(data_node=int(uri), set_dict={"pinned": False}, force_int_uri=True)
+        else:
+            raise Exception("pin_category(): the argument `op` must be equal to either 'set' or 'unset'")
+
+        assert number_set == 1, "pin_category(): no change could be made to the database"
+
 
 
 

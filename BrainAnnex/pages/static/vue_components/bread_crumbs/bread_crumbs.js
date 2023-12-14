@@ -1,4 +1,4 @@
-/*  MIT License.  Copyright (c) 2023 Julian A. West
+/*  To provide a "bread crumbs" navigation strip at the top of category-viewer pages
  */
 
 Vue.component('vue-bread-crumbs',
@@ -6,7 +6,7 @@ Vue.component('vue-bread-crumbs',
         props: ['category_id', 'bread_crumbs', 'all_categories'],
         /*  category_id:
             bread_crumbs:
-            all_categories:
+            all_categories:     EXAMPLE: [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
          */
 
         template: `
@@ -85,7 +85,7 @@ Vue.component('vue-bread-crumbs',
                 let category_map = {}
                 for (let i in this.all_categories) {   // Note:  i will be an integer, not an array element!
                     let category_data = this.all_categories[i];
-                    let key_int = category_data.id;
+                    let key_int = category_data.uri;
                     let key_str = key_int.toString();
 
                     if ('remarks' in category_data)
