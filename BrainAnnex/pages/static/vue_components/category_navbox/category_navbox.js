@@ -30,7 +30,12 @@ Vue.component('vue-category-navbox',
                          align='right' title='Click to collapse sidebox' alt='Click to collapse sidebox'>
 
                     <span class="sidebox-section">PINNED</span>
-                    <br>&bull; <a href='/BA/pages/viewer/TBA' title="TBA">TBA</a>
+                    <br>
+                    <!-- All pinned categories -->
+                    <template v-for="category in all_categories">
+                        <template v-if="category.pinned"><br>&bull; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a></template>
+                    </template>
+
 
                     <hr>
 

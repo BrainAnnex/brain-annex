@@ -189,7 +189,6 @@ class Categories:
 
 
 
-
     @classmethod
     def get_all_categories(cls, exclude_root=True, include_remarks=False) -> [dict]:
         """
@@ -197,10 +196,9 @@ class Categories:
         as a list of dictionaries with keys 'uri', 'name', 'pinned' and, optionally, 'remarks',
         sorted by name.
 
-        EXAMPLE:
-            [{'uri': 2, 'name': 'Work', 'remarks': 'Current or past'}, {'uri': 3, 'name': 'Hobbies', pinned: True} ]
-
-        :return:    A list of dictionaries
+        :return:    A list of dictionaries.  EXAMPLE:
+                        [{'uri': 2, 'name': 'Work', 'remarks': 'Current or past'},
+                         {'uri': 3, 'name': 'Hobbies', pinned: True} ]
         """
         clause = ""
         if exclude_root:
@@ -227,7 +225,7 @@ class Categories:
 
         result =  cls.db.query(q)
 
-        # Ditch all the MISSING "pinned" values
+        # Ditch all the MISSING "pinned" values  (TODO: let the Schema layer handle this!)
         for item in result:
             if item["pinned"] is None:
                 del item["pinned"]     # To avoid a dictionary entry of the type  'pinned': None
@@ -237,45 +235,6 @@ class Categories:
             for item in result:
                 if item["remarks"] is None:
                     del item["remarks"]     # To avoid a dictionary entry of the type  'remarks': None
-
-        return result
-
-
-    @classmethod
-    def get_all_categories_alt(cls, exclude_root=True) -> [dict]:
-        """
-        TODO: phase out, in favor of Categories.get_all_categories (which uses 'uri' instead of 'id')
-
-        Return all the existing Categories - possibly except the root -
-        as a list of dictionaries with keys 'id', 'name', 'remarks'
-        sorted by name
-        EXAMPLE:
-            [{'id': 3, 'name': 'Hobbies'}, {'id': 2, 'name': 'Work', 'remarks': 'paid jobs'}]
-
-        Note that missing "remarks" values are not in the dictionaries
-
-        :param exclude_root:
-        :return:                A list of dictionaries
-        """
-        clause = ""
-        if exclude_root:
-            clause = "WHERE cat.uri <> 1"
-
-        q =  f'''
-             MATCH (cat:BA {{schema_code:"cat"}})
-             {clause}
-             RETURN cat.uri AS id, cat.name AS name, cat.remarks AS remarks
-             ORDER BY toLower(cat.name)
-             '''
-        # Notes: 1 is the ROOT
-        # Sorting must be done across consistent capitalization, or "GSK" will appear before "German"!
-
-        result = cls.db.query(q)
-
-        # Ditch all the missing "remarks" values
-        for cat in result:
-            if cat["remarks"] is None:
-                del cat["remarks"]
 
         return result
 
