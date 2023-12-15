@@ -1359,7 +1359,7 @@ class NeoSchema:
 
         See also locate_node()
 
-        :param uri:     The "uri" field to uniquely identify the data node
+        :param uri:         The "uri" field to uniquely identify the data node
         :param internal_id: OPTIONAL alternate way to specify the data node;
                                 if present, it takes priority
         :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
@@ -1367,6 +1367,7 @@ class NeoSchema:
 
         :return:            A dictionary with all the key/value pairs, if found; or None if not
         """
+        # TODO: add function that only returns a specified single Property, or specified list of Properties
         if internal_id is None:
             assert uri is not None, \
                 "NeoSchema.fetch_data_node(): arguments `uri` and `internal_id` cannot both be None"
@@ -1388,7 +1389,7 @@ class NeoSchema:
         Return the "match" structure to later use to locate a node identified
         either by its internal database ID (default), or by a primary key (with optional label.)
 
-        No database operation is actually performed.
+        NOTE: No database operation is actually performed.
 
         :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
         :param id_type: For example, "uri";

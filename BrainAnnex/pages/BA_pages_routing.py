@@ -261,21 +261,23 @@ class PagesRouting:
             """
 
             template = "category_manager.htm"
-            category_id = int(category_id)
+            category_id = int(category_id)      # TODO: switch to strings
 
             category_info = Categories.get_category_info(category_id)
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")
             category_remarks = category_info.get("remarks", "")
 
-            # EXAMPLE of the various categories listings, below: [{'uri': 2, 'name': 'Work'}, {'uri': 3, 'name': 'Hobbies'}]
+            # EXAMPLE of the various categories listings, below:
+            #               [{'uri': 2, 'name': 'Work'}, {'uri': 3, 'name': 'Hobbies'}]
             subcategories = Categories.get_subcategories(category_id)
             all_categories = Categories.get_all_categories(exclude_root=False)
             parent_categories = Categories.get_parent_categories(category_id)
+            pin_status = Categories.is_pinned(category_id)
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    category_id=category_id, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
-                                   all_categories=all_categories)
+                                   all_categories=all_categories, pin_status=pin_status)
 
 
 

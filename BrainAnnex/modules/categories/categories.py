@@ -177,7 +177,7 @@ class Categories:
             [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
         :param category_id:
-        :return:    A list of dictionaries
+        :return:            A list of dictionaries
         """
         match = cls.db.match(labels="BA",
                              properties={"uri": category_id, "schema_code": "cat"})
@@ -195,6 +195,9 @@ class Categories:
         Return all the existing Categories - possibly except the root -
         as a list of dictionaries with keys 'uri', 'name', 'pinned' and, optionally, 'remarks',
         sorted by name.
+
+        :param exclude_root:
+        :param include_remarks:
 
         :return:    A list of dictionaries.  EXAMPLE:
                         [{'uri': 2, 'name': 'Work', 'remarks': 'Current or past'},
@@ -659,6 +662,23 @@ class Categories:
             raise Exception("pin_category(): the argument `op` must be equal to either 'set' or 'unset'")
 
         assert number_set == 1, "pin_category(): no change could be made to the database"
+
+
+
+    @classmethod
+    def is_pinned(cls, uri) -> bool:
+        """
+        Return True if the given Category has a "pinned" status; otherwise, False
+
+        :param uri: The URI of a data node representing a Category
+        :return:    True or False
+        """
+        all_props = NeoSchema.fetch_data_node(uri=uri, labels="Categories")    # Returns a dict, or None
+        assert all_props, "is_pinned(): unable to locate the specified Category node"
+
+        value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
+
+        return value
 
 
 

@@ -10,6 +10,7 @@
     subcategories
     parent_categories   EXAMPLE: [{'name': 'Language', 'uri': 544, 'schema_code': 'cat'}]
     all_categories      EXAMPLE: [{'name': 'Language', 'uri': 544}]
+    pin_status          True if this Category is "pinned"; otherwise, False
 #}
 
 <html>
@@ -241,7 +242,9 @@ It does *NOT* delete `' + p.name + '`'"
             </select>
         </form>
         <br>
-        <input type='checkbox' checked onClick='pinCategory(this, "pin_status")'> Pin [NOT YET IMPLEMENTED]    <span id="pin_status" style="margin-left:5px; color:gray"></span>
+        <input type='checkbox' v-model="pin_status" @click='pin_category(pin_status)'>
+        Pin
+        <span id="pin_status" style="margin-left:5px; color:gray"></span>
 
     </div>
 </div>
@@ -361,7 +364,7 @@ It does *NOT* delete `' + s.name + '`'"
 <br>
 
 <p style="background-color: yellow; margin-top:0; padding: 5px">
-    <span style="font-size:18px;">IMPORTANT: still in Beta.  <i>Several functions aren't yet implemented.</i></span>
+    <span style="font-size:18px;">IMPORTANT: still in Beta.  <i>A few functions aren't yet implemented.</i></span>
     <br>To add a new category, go to the category-viewer pages, enter editing mode, and
     use the add-category box at the bottom.
 </p>
@@ -410,6 +413,8 @@ new Vue({
         parent_to_add: -1,          // Used by the add-parent pulldown menu (-1 is its default choice - asking the user to make a selection)
 
         edit_name_mode: false,      // To expose controls for editing name/remarks
+
+        pin_status: {{pin_status | tojson}},    // true if this Category is "pinned"; otherwise, false  (Note: tojson converts bools)
 
         waiting: false,             // Whether any server request is still pending
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
@@ -648,7 +653,7 @@ new Vue({
 
 
         delete_category(category_id)
-        //
+        // Delete the specified Category
         {
             if (category_id == 1)  {
                 alert("Cannot delete the root (top) category!");
@@ -674,7 +679,7 @@ new Vue({
         finish_delete_category(success, server_payload, error_message)
         // Callback function to wrap up the action of delete_category() upon getting a response from the server
         {
-            console.log("Finalizing the delete_category() operation...");
+            //console.log("Finalizing the delete_category() operation...");
 
             if (success)  {     // Server reported SUCCESS
                 console.log("    server call was successful; it returned: " , server_payload);
@@ -689,6 +694,23 @@ new Vue({
 
             // Final wrap-up, regardless of error or success
             this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        },
+
+
+
+        pin_category(initial_status)
+        /* Flip the "pinned" status of this Category.
+           Note: initial_status is the boolean value BEFORE the click on the checkbox
+         */
+        {
+            //console.log(`Calling pin_category().  'initial_status' is: ${initial_status}`);
+
+            if (initial_status)
+                url_server = `/BA/api/pin_category/${this.category_id}/unset`;  // It was originally in the "set" status
+            else
+                url_server = `/BA/api/pin_category/${this.category_id}/set`;
+
+            console.log(url_server);
         }
 
     } // METHODS
