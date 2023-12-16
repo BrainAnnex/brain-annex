@@ -275,7 +275,7 @@ class PagesRouting:
             pin_status = Categories.is_pinned(category_id)
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
-                                   category_id=category_id, category_name=category_name, category_remarks=category_remarks,
+                                   category_uri=category_id, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    all_categories=all_categories, pin_status=pin_status)
 

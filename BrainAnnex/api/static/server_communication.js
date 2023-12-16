@@ -137,10 +137,11 @@ class ServerCommunication
         fetch(url_server, fetch_options)
         .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
         .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
-                                                        //      TODO: turn into a method that first logs the first part of the response (helpful in case of parsing errors)
+                                                        //      TODO: turn into a method that first logs the first part of the response
+                                                        //            (helpful in case of parsing errors)
         .then(server_response => {                      // Manage the server response
-            console.log("Server response received by contact_server_JSON(): ");
-            console.log(server_response);
+            //console.log("Server response received by contact_server_JSON(): ");
+            //console.log(server_response);
             // Check if the response indicates failure
             const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
             if (error_msg != "")   // If server reported failure
@@ -389,8 +390,9 @@ class ServerCommunication
                   See https://stackoverflow.com/questions/9156176/what-is-the-difference-between-throw-new-error-and-throw-someobject
       */
     {
-        console.error('Error during the fetch() operation. Details in the next line: ');
-        console.log(err);
+        console.error('Error during the fetch() operation');
+        console.log(err);   // Note: this may not immediately show up on the console, if there
+                            //       is an alert box (which needs to be dismissed first)
 
         // Old verbose message:  "Failed interaction with the server in the fetch() call. " +
         const fetch_failure_message = err.name + " - " + err.message;
@@ -456,9 +458,16 @@ class ServerCommunication
 
 
 	static  extract_server_data_JSON(server_response)
-	/*  From the given server response, extract the data payload */
+	/*  From the given server response, attempt to extract the data payload - which may or may not be present;
+	    if absent, return null */
 	{
-	    return server_response.payload;    // TODO: verify that it is actually present
+	    //console.log(`In extract_server_data_JSON -  server_response is:`);
+	    //console.log(server_response);
+
+	    if ('payload' in server_response)   // If a payload was returned by the server
+	        return server_response.payload;
+	    else
+	        return null;
 	}
 
 } // static class "ServerCommunication"

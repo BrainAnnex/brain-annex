@@ -27,7 +27,7 @@ Vue.component('vue-toc-sidebar',
 
                     <!-- Page navigation section -->
                     <a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
-                        <input @click="expand_categories = !expand_categories" type="checkbox" checked style='margin-left:8px'>Details?
+                        <input type="checkbox" v-model="expand_categories" style='margin-left:8px'>Details?
                     <br>
 
                     <div class="page-toc">

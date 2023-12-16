@@ -15,7 +15,7 @@ from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImagePr
 import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
-#from time import sleep     # For tests of delays in asynchronous fetching
+#from time import sleep     # For tests of delays in asynchronous fetching.  E.g. sleep(3) for 3 secs
 
 
 
@@ -885,7 +885,7 @@ class ApiRouting:
                 Categories.pin_category(uri=uri, op=op)
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
-                err_details = f"Unable to changed the 'pinned' status of the specified Category.  {exceptions.exception_helper(ex)}"
+                err_details = f"Unable to change the 'pinned' status of the specified Category.  {exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header

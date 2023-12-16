@@ -3,7 +3,7 @@
     current_page
     site_pages
 
-    category_id         EXAMPLE: 123
+    category_uri        EXAMPLE: 123
     category_name       EXAMPLE: "French"
     category_remarks    EXAMPLE: "Notes from class"
 
@@ -77,7 +77,7 @@
     </form>
 </div>   <!--  END PAGE HEADER -->
 
-<a href='/BA/pages/viewer/{{category_id}}' title="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;"><img src="/BA/pages/static/graphics/open_16_227574.png" title="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;" alt="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;" style="margin-left:16px">EXIT EDITOR and go to &ldquo;{{category_name}}&rdquo;</a><br>
+<a href='/BA/pages/viewer/{{category_uri}}' title="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;"><img src="/BA/pages/static/graphics/open_16_227574.png" title="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;" alt="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;" style="margin-left:16px">EXIT EDITOR and go to &ldquo;{{category_name}}&rdquo;</a><br>
 
 
 
@@ -104,13 +104,13 @@
                 <br>
 
                 <!-- TODO: this form needs replacing -->
-                <form method='POST' action='doCategoryHandler2.php?op=switchParentNode&cat={{category_id}}' id='form_0' style='display:none'>
-                    <input type='hidden' name='childID' value='{{category_id}}'>
+                <form method='POST' action='doCategoryHandler2.php?op=switchParentNode&cat={{category_uri}}' id='form_0' style='display:none'>
+                    <input type='hidden' name='childID' value='{{category_uri}}'>
                     <input type='hidden' name='oldParentID' value='8888'>
                     <select id = 'menu_0' name = 'newParentID' style = 'width:180px'>
                         <option value='-1'>[Select parent category]</option>
                         {% for s in subcategories %}
-                            {% if s['uri'] != category_id %}
+                            {% if s['uri'] != category_uri %}
                                 <option value="{{s['uri']}}">{{s['name']}}</option>
                             {% endif %}
                         {% endfor %}
@@ -118,7 +118,7 @@
                 </form>
 
                 <!-- Icon to detach this category from one of its parents [TODO: gray out if only one parent] -->
-                <img @click="sever_relationship(p.uri , {{category_id}} , 'parent')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                <img @click="sever_relationship(p.uri , {{category_uri}} , 'parent')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
                      class='clickable-icon' style="margin-left:8px"
                      v-bind:title="'SEVER the sub-category relationship between `' + p.name + '` and `{{category_name}}`\n\
 It does *NOT* delete `' + p.name + '`'"
@@ -151,7 +151,7 @@ It does *NOT* delete `' + p.name + '`'"
                 <option value='-1'>[Select parent category]</option>
 
                 {% for c in all_categories %}
-                    {% if c['uri'] != category_id %}
+                    {% if c['uri'] != category_uri %}
                         <option value="{{c['uri']}}">{{c['name']}}</option>
                     {% endif %}
                 {% endfor %}
@@ -178,7 +178,7 @@ It does *NOT* delete `' + p.name + '`'"
     <div v-bind:style="{visibility: !edit_name_mode ? 'visible' : 'hidden'}"
                 style="width:240px; text-align:right">
 
-        <a href='/BA/pages/viewer/{{category_id}}'>
+        <a href='/BA/pages/viewer/{{category_uri}}'>
             <img src='/BA/pages/static/graphics/open_16_227574.png'  style='margin-right:8px'
                  title='Visit the &ldquo;{{category_name}}&rdquo; Page (EXIT edit mode)'
                  alt='Visit the &ldquo;{{category_name}}&rdquo; Page (EXIT edit mode)'>
@@ -186,7 +186,7 @@ It does *NOT* delete `' + p.name + '`'"
 
         <!-- Icon to delete this Category -->
         <div style='display:inline-block; margin-left:5px; margin-bottom:7px'>
-            <input type='image' src='/BA/pages/static/graphics/delete_16.png' @click="delete_category({{category_id}})" title='delete this category ("{{category_name}}")' alt='delete this category ("{{category_name}}")'>
+            <input type='image' src='/BA/pages/static/graphics/delete_16.png' @click="delete_category({{category_uri}})" title='delete this category ("{{category_name}}")' alt='delete this category ("{{category_name}}")'>
         </div>
 
         <!-- Icon to edit the name/remarks of this Category -->
@@ -219,8 +219,8 @@ It does *NOT* delete `' + p.name + '`'"
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
     </div>
     <div style="width:160px; font-size:12px">
-        &diams; The "See Also" is NOT YET IMPLEMENTED<form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_id}}' style='display:inline-block; margin-left:5px'>
-        <input type='hidden' name='parentID' value='{{category_id}}'>
+        &diams; The "See Also" is NOT YET IMPLEMENTED<form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_uri}}' style='display:inline-block; margin-left:5px'>
+        <input type='hidden' name='parentID' value='{{category_uri}}'>
         <input type='hidden' name='childID' value='366'>
         <input type='image' src='/BA/pages/static/graphics/delete_12_1493279.png'
                title='SEVER the "see also" relationship between "{{category_name}}" and "OTHER CATEGORY TBA"'
@@ -228,13 +228,13 @@ It does *NOT* delete `' + p.name + '`'"
     </form>
         <br>
         Add:
-        <form method='POST' action='doCategoryHandler2.php?op=addSeeAlso&cat={{category_id}}' id='form_4'>
-            <input type='hidden' name='parentID' value='{{category_id}}'>
+        <form method='POST' action='doCategoryHandler2.php?op=addSeeAlso&cat={{category_uri}}' id='form_4'>
+            <input type='hidden' name='parentID' value='{{category_uri}}'>
             <select id = 'menu_4' name = 'childID' style = 'width:180px'>
                 <option value='-1'>[Select 'see-also' category]</option>
 
                 {% for c in all_categories %}
-                    {% if c['uri'] != category_id %}
+                    {% if c['uri'] != category_uri %}
                         <option value="{{c['uri']}}">{{c['name']}}</option>
                     {% endif %}
                 {% endfor %}
@@ -242,9 +242,7 @@ It does *NOT* delete `' + p.name + '`'"
             </select>
         </form>
         <br>
-        <input type='checkbox' v-model="pin_status" @click='pin_category(pin_status)'>
-        Pin
-        <span id="pin_status" style="margin-left:5px; color:gray"></span>
+        <input type='checkbox' v-model="pin_status" @click='pin_category(pin_status)'>Pin
 
     </div>
 </div>
@@ -271,13 +269,13 @@ It does *NOT* delete `' + p.name + '`'"
         <!-- Provide an Add-child form, floated to the right -->
         <div style="width:180px; float:right">
             <span style="font-style:italic; color:#666666">Add an <b>existing</b> Sub-category to &ldquo;{{category_name}}&rdquo;:</span><br>
-            <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_id}}' id='form_5'>
-                <input type='hidden' name='parentID' value='{{category_id}}'>
+            <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_uri}}' id='form_5'>
+                <input type='hidden' name='parentID' value='{{category_uri}}'>
                 <select id = 'menu_5' name = 'childID' style = 'width:180px'>
                     <option value='-1'>[Select sub-category]</option>
 
                     {% for c in all_categories %}
-                        {% if c['uri'] != category_id %}
+                        {% if c['uri'] != category_uri %}
                             <option value="{{c['uri']}}">{{c['name']}}</option>
                         {% endif %}
                     {% endfor %}
@@ -286,8 +284,8 @@ It does *NOT* delete `' + p.name + '`'"
             </form><br><br>
 
             <span style="font-style:italic; color:#666666"><b>OR</b> Create <b>new</b> Sub-category:</span>
-            <form action="doCategoryHandler2.php?op=addNode&cat={{category_id}}" method="POST" style="border:1px solid #DDD; padding: 2px">
-                <input type='hidden' name='parentID' value='{{category_id}}'>
+            <form action="doCategoryHandler2.php?op=addNode&cat={{category_uri}}" method="POST" style="border:1px solid #DDD; padding: 2px">
+                <input type='hidden' name='parentID' value='{{category_uri}}'>
                 Name <input type="text" name="name"><br>
                 Remarks <span style="color:gray">(optional)</span><input type="text" name="remarks"><br>
                 <input type="submit" value="Add">
@@ -309,7 +307,7 @@ It does *NOT* delete `' + p.name + '`'"
 
 
                 <!-- Icon to detach this category from one of its children -->
-                <img @click="sever_relationship({{category_id}} , s.uri , 'child')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                <img @click="sever_relationship({{category_uri}} , s.uri , 'child')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
                      class='clickable-icon' style="margin-left:8px"
                      v-bind:title="'SEVER the sub-category relationship between `{{category_name}}` and &ldquo;' + s.name + '&rdquo;\n\
 It does *NOT* delete `' + s.name + '`'"
@@ -325,13 +323,13 @@ It does *NOT* delete `' + s.name + '`'"
                 <br>
 
                 <!-- TODO: this form needs replacing -->
-                <form method='POST' action='doCategoryHandler2.php?op=switchChildNode&cat={{category_id}}' id='form_6' style='display:none'>
-                    <input type='hidden' name='parentID' value='{{category_id}}'>
+                <form method='POST' action='doCategoryHandler2.php?op=switchChildNode&cat={{category_uri}}' id='form_6' style='display:none'>
+                    <input type='hidden' name='parentID' value='{{category_uri}}'>
                     <input type='hidden' name='oldChildID' value='666'>
                     <select id = 'menu_6' name = 'newChildID' style = 'width:180px'>
                         <option value='-1'>[Select sub-category]</option>
                         {% for c in all_categories %}
-                            {% if c['uri'] != category_id %}
+                            {% if c['uri'] != category_uri %}
                                 <option value="{{c['uri']}}">{{c['name']}}</option>
                             {% endif %}
                         {% endfor %}
@@ -355,13 +353,12 @@ It does *NOT* delete `' + s.name + '`'"
 
 
 
-<br>
-
 <!-- Status info -->
-<span v-if="waiting" class="waiting">Performing the requested operation...</span>
-<span v-bind:class="{'error-message': error, 'status-message-success': !error }">[[status_message]]</span>
+<p style="font-size:16px">
+    <span v-if="waiting" class="waiting">Performing the requested operation...</span>
+    <span v-bind:class="{'error-message': error, 'status-message-success': !error }">[[status_message]]</span>
+</p>
 
-<br>
 
 <p style="background-color: yellow; margin-top:0; padding: 5px">
     <span style="font-size:18px;">IMPORTANT: still in Beta.  <i>A few functions aren't yet implemented.</i></span>
@@ -393,7 +390,7 @@ new Vue({
         overlay: false,             // To cover the main display with a message
 
         // The DATA HANDOVER from Flask to Vue
-        category_id: {{category_id}},
+        category_uri: {{category_uri}},
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
                                                            // Eg: [{uri: 544, name: 'Language', schema_code: 'cat'}]
         subcategories: {{subcategories | tojson}},         // List of sub-categories, each of which is an object
@@ -417,8 +414,8 @@ new Vue({
         pin_status: {{pin_status | tojson}},    // true if this Category is "pinned"; otherwise, false  (Note: tojson converts bools)
 
         waiting: false,             // Whether any server request is still pending
-        status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
-        error: false                // Whether the last server communication resulted in error
+        error: false,               // Whether the last server communication resulted in error
+        status_message: ""          // Message for user about status of last operation upon server response (NOT for "waiting" status)
     },
 
 
@@ -450,11 +447,11 @@ new Vue({
         add_parent_category()
         // Add a new parent category (specified by this.parent_to_add) to the current category
         {
-            console.log(`Attempting to make the just-selected Category ID ${this.parent_to_add} a parent of the current Category (ID ${this.category_id})`);
+            console.log(`Attempting to make the just-selected Category ID ${this.parent_to_add} a parent of the current Category (ID ${this.category_uri})`);
 
             let url_server = "/BA/api/add_relationship";    // TODO: switch to the more specialized /BA/api/add_subcategory_relationship
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
-            let post_obj = {from: this.category_id,
+            let post_obj = {from: this.category_uri,
                             to: this.parent_to_add,
                             rel_name: "BA_subcategory_of",
                             schema_code: "cat"};
@@ -535,7 +532,7 @@ new Vue({
 
         finish_sever_relationship(success, server_payload, error_message, custom_data)
         // Callback function to wrap up the action of sever_relationship() upon getting a response from the server
-        // custom_data is a 2-element array of the form [location, category_id]
+        // custom_data is a 2-element array of the form [location, category_uri]
         {
             console.log(`Finalizing the sever_relationship operation...  custom_data: ${custom_data}`);
             if (success)  {     // Server reported SUCCESS
@@ -609,7 +606,7 @@ new Vue({
             }
 
             let url_server = "/BA/api/update";
-            let post_obj = {uri: this.category_id,
+            let post_obj = {uri: this.category_uri,
                             schema_code: "cat",
                             name: this.category_name_current_data,
                             remarks: this.category_remarks_current_data};
@@ -652,10 +649,10 @@ new Vue({
 
 
 
-        delete_category(category_id)
+        delete_category(category_uri)
         // Delete the specified Category
         {
-            if (category_id == 1)  {
+            if (category_uri == 1)  {
                 alert("Cannot delete the root (top) category!");
                 return;
             }
@@ -666,7 +663,7 @@ new Vue({
                 return;
             }
 
-            const url_server = "/BA/api/delete_category/" + category_id;
+            const url_server = "/BA/api/delete_category/" + category_uri;
             console.log(`delete_category(): About to contact the server at ${url_server}`);
 
             // Initiate asynchronous contact with the server
@@ -706,11 +703,35 @@ new Vue({
             //console.log(`Calling pin_category().  'initial_status' is: ${initial_status}`);
 
             if (initial_status)
-                url_server = `/BA/api/pin_category/${this.category_id}/unset`;  // It was originally in the "set" status
+                url_server_api = `/BA/api/pin_category/${this.category_uri}/unset`;  // It was originally in the "set" status
             else
-                url_server = `/BA/api/pin_category/${this.category_id}/set`;
+                url_server_api = `/BA/api/pin_category/${this.category_uri}/set`;
 
-            console.log(url_server);
+            console.log(`About to contact the server at ${url_server_api}`);
+
+            this.waiting = true;        // Entering a waiting-for-server mode
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";   // Clear any message from the previous operation
+
+            // Initiate asynchronous contact with the server
+            ServerCommunication.contact_server(url_server_api,{callback_fn: this.finish_pin_category});
+        },
+
+        finish_pin_category(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of pin_category() upon getting a response from the server
+        {
+            console.log("Finalizing the finish_pin_category operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Operation completed`;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED operation: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
         }
 
     } // METHODS
