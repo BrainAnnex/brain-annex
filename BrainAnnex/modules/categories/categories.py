@@ -35,41 +35,42 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_category_info(cls, category_id) -> dict:
+    def get_category_info(cls, category_uri :str) -> dict:
         """
         Return the Name and Remarks attached to the given Category.  If not found, return None
 
+        :param category_uri:    A string with the URI of a Category node
         :return:    The Category's name (or a blank dictionary if not found)
                     EXAMPLE:  {"uri": 123, "name": "Astronomy", "remarks": "except cosmology"}
         """
         # Note: since the category_id is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
-        return NeoSchema.fetch_data_node(uri=category_id, labels="BA", properties={"schema_code": "cat"})
+        return NeoSchema.fetch_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
 
 
 
     @classmethod
-    def is_root_category(cls, category_id: int) -> bool:
+    def is_root_category(cls, category_uri :str) -> bool:
         """
         Return True if the given ID corresponds to the ROOT Category, or False otherwise
 
         TODO: maybe raise an Exception if the argument isn't a valid ID
-        :param category_id: An integer with the uri of a Category node
-        :return:            True if the given ID corresponds to the ROOT Category, or False otherwise
+        :param category_uri:    A string with the URI of a Category node
+        :return:                True if the given ID corresponds to the ROOT Category, or False otherwise
         """
-        # NOTE: historically, 1 has been used for the ROOT Category; however, now that uri is shared
+        # NOTE: historically, "1" has been used for the ROOT Category; however, now that uri is shared
         #       among all types of plugins, maybe a different approach would be better (such as an attribute in the node)
-        return True if category_id == 1 else False
+        return True if category_uri == "1" else False
 
 
 
     @classmethod
-    def count_subcategories(cls, category_id: int) -> int:
+    def count_subcategories(cls, category_id :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
         TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_id, class_name="Categories")
 
-        :param category_id: An integer with a value of the "uri" field
+        :param category_id: A string with a value of the "uri" field
                             that identifies a data node containing the desired Category
         :return:            The number of (direct) Subcategories of the given Category; possibly, zero
         """
@@ -81,18 +82,18 @@ class Categories:
 
 
     @classmethod
-    def count_parent_categories(cls, category_id: int) -> int:
+    def count_parent_categories(cls, category_uri: str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
         TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_id, class_name="Categories")
 
-        :param category_id: An integer with a value of the "uri" field
+        :param category_uri:A string with a value of the "uri" field
                             that identifies a data node containing the desired Category
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
         """
 
         match = cls.db.match(labels="BA",
-                            properties={"uri": category_id, "schema_code": "cat"})
+                             properties={"uri": category_uri, "schema_code": "cat"})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="OUT")
 
@@ -118,7 +119,7 @@ class Categories:
 
 
     @classmethod
-    def get_subcategories_alt(cls, category_id) -> [dict]:  # TODO: merge with get_subcategories()
+    def get_subcategories_alt(cls, category_id :str) -> [dict]:  # TODO: merge with get_subcategories()
         """
         Return all the (immediate) subcategories of the given category,
         as a list of dictionaries with keys 'id' and 'name' TODO: fix
@@ -147,7 +148,7 @@ class Categories:
 
 
     @classmethod
-    def get_parent_categories(cls, category_id) -> [dict]:
+    def get_parent_categories(cls, category_id :str) -> [dict]:
         """
         Return all the (direct) parent categories of the given category,
         as a list of dictionaries with all the keys of the Category Class
@@ -165,7 +166,7 @@ class Categories:
 
 
     @classmethod
-    def get_parent_categories_alt(cls, category_id) -> [dict]:  # TODO: merge with get_parent_categories()
+    def get_parent_categories_alt(cls, category_id :str) -> [dict]:  # TODO: merge with get_parent_categories()
         """
         Return all the (immediate) parent categories of the given category,
         as a list of dictionaries with all the keys of the Category Class
@@ -173,7 +174,7 @@ class Categories:
         TODO: fix inconsistency.  This function uses uri ; others use just id
 
         EXAMPLE:
-            [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
+            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'}, {'uri': '3', 'name': 'Hobbies'}]
 
         :param category_id:
         :return:            A list of dictionaries
@@ -195,16 +196,16 @@ class Categories:
         as a list of dictionaries with keys 'uri', 'name', 'pinned' and, optionally, 'remarks',
         sorted by name.
 
-        :param exclude_root:
-        :param include_remarks:
+        :param exclude_root:    If True, the root Category is omitted
+        :param include_remarks: If True, the 'remarks' property is included alongside all others
 
         :return:    A list of dictionaries.  EXAMPLE:
-                        [{'uri': 2, 'name': 'Work', 'remarks': 'Current or past'},
-                         {'uri': 3, 'name': 'Hobbies', pinned: True} ]
+                        [{'uri': '2', 'name': 'Work', 'remarks': 'Current or past'},
+                         {'uri': '3', 'name': 'Hobbies', pinned: True} ]
         """
         clause = ""
         if exclude_root:
-            clause = "WHERE cat.uri <> 1"
+            clause = "WHERE cat.uri <> '1'"     # TODO: this will eventually be done differently
 
         remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
 
@@ -275,7 +276,7 @@ class Categories:
 
 
     @classmethod
-    def create_parent_map(cls, category_id: int) -> dict:
+    def create_parent_map(cls, category_id :str) -> dict:
         """
         Consider the set comprising the given Category and all its ancestors (i.e. all its super-categories),
         up to a maximum hop length.
@@ -288,11 +289,11 @@ class Categories:
                             The keys are uri's of the given Category and any of its ancestors (super-categories),
                             up to a maximum hop length;
                             the values are lists of the uri's of the parent categories of the Category specified by the key
-                            EXAMPLES:       {123: [1]}                                  # The given category (123) is a child of the root (1)
-                                            {823: [709], 709: [544], 544: [1]}          # A simple 3-hop path from Category 823 to the root (1) :
+                            EXAMPLES:       {'123': ['1']}                                  # The given category (123) is a child of the root (1)
+                                            {'823': ['709'], '709': ['544'], '544': ['1']}          # A simple 3-hop path from Category 823 to the root (1) :
                                                                                         #   823 is subcategory of 709,
                                                                                         #   which is subcategory of 544, which is subcategory of the root
-                                            {814: [20, 30], 20: [1], 30: [79], 79: [1]} # Two paths from Category 814 to the root;
+                                            {'814': ['20', '30'], '20': ['1'], '30': ['79'], '79': ['1']} # Two paths from Category 814 to the root;
                                                                                         #   814 is subcategory of 20 and 30;
                                                                                         #   20 is an subcategory of the root,
                                                                                         #   while with 30 we have to go thru an extra hop
@@ -325,52 +326,52 @@ class Categories:
 
 
     @classmethod
-    def create_bread_crumbs(cls, category_ID) -> list:
+    def create_bread_crumbs(cls, category_uri :str) -> list:
         """
         Return a list of Category ID's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
-        :param category_ID: The uri of the Category whose "ancestry bread crumbs" we want to construct
-        :return:            A list of Category ID's together with token strings,
+        :param category_uri: A string with the URI of the Category whose "ancestry bread crumbs" we want to construct
+        :return:            A list of Category URI's together with token strings,
                             providing directives for the HTML structure of the bread crumbs
-                            EXAMPLE 1:  [1]
-                            EXAMPLE 2:  ['START_CONTAINER', [1, 'ARROW', 799, 'ARROW', 876], 'END_CONTAINER']
+                            EXAMPLE 1:  ['1']
+                            EXAMPLE 2:  ['START_CONTAINER', ['1', 'ARROW', '799', 'ARROW', '876'], 'END_CONTAINER']
                             EXAMPLE 3:
                                 [
                                     'START_CONTAINER',
                                     ['START_BLOCK',
-                                                    'START_LINE', [1, 'ARROW', 799, 'ARROW', 526], 'END_LINE', 'CLEAR_RIGHT',
-                                                    'START_LINE', [1, 'ARROW', 61], 'END_LINE',
-                                     'END_BLOCK', 'ARROW', 814],
+                                                    'START_LINE', ['1', 'ARROW', '799', 'ARROW', '526'], 'END_LINE', 'CLEAR_RIGHT',
+                                                    'START_LINE', ['1', 'ARROW', '61'], 'END_LINE',
+                                     'END_BLOCK', 'ARROW', '814'],
                                     'END_CONTAINER'
                                 ]
         """
-        if category_ID == 1:    # If it is the root
-            return [1]
+        if category_uri == "1":    # If it is the root
+            return ["1"]
 
         # If we get here, we're NOT at the root.
 
-        parents_map = cls.create_parent_map(category_ID)
+        parents_map = cls.create_parent_map(category_uri)
         #print("In create_bread_crumbs().  parents_map: ", parents_map)
 
         # Put together a block (to be turned into an HTML element by the front end) depicting all possible
         # breadcrumb paths from the ROOT to the current category
-        return ["START_CONTAINER", cls.recursive(category_ID, parents_map) ,"END_CONTAINER"]
+        return ["START_CONTAINER", cls.recursive(category_uri, parents_map) , "END_CONTAINER"]
 
 
 
     @classmethod
-    def recursive(cls, category_ID, parents_map :dict) -> list:
+    def recursive(cls, category_uri :str, parents_map :dict) -> list:
         """
 
-        :param category_ID:
+        :param category_uri:
         :param parents_map: the dict structure returned by create_parent_map()
         :return:
         """
-        if category_ID == 1:    # If it is the root.    TODO: this will eventually have to be managed differently
-            return [1]
+        if category_uri == "1":    # If it is the root.    TODO: this will eventually have to be managed differently
+            return ["1"]
 
-        parent_list = parents_map.get(category_ID, [])
+        parent_list = parents_map.get(category_uri, [])
 
         if len(parent_list) == 0:
             return []    # TODO: generate warning
@@ -378,7 +379,7 @@ class Categories:
             parent_id = parent_list[0]
             bc = cls.recursive(parent_id, parents_map)
             bc.append("ARROW")
-            bc.append(category_ID)
+            bc.append(category_uri)
             return bc
         else:                           # If multiple parents
             bc = ["START_BLOCK"]
@@ -391,7 +392,7 @@ class Categories:
 
             bc.append("END_BLOCK")
             bc.append("ARROW")
-            bc.append(category_ID)
+            bc.append(category_uri)
             return bc
 
 
@@ -431,7 +432,7 @@ class Categories:
 
 
     @classmethod
-    def add_subcategory(cls, data_dict :dict) -> int:
+    def add_subcategory(cls, data_dict :dict) -> str:
         """
         Add a new Subcategory to a given, already existing, Category
 
@@ -441,15 +442,15 @@ class Categories:
                                 subcategory_name                The name to give to the new Subcategory
                                 subcategory_remarks (optional)  A comment field for the new Subcategory
 
-        :return:                If successful, an integer with the auto-increment "uri" value of the node just created;
+        :return:                If successful, a string with the auto-increment "uri" value of the node just created;
                                 otherwise, an Exception is raised
         """
         # TODO: return a string instead of an integer
         # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
         #       a Category to have multiple "children" with the same name)
         category_id = data_dict.get("category_id")
-        if not category_id:
-            raise Exception(f"add_subcategory(): category_id is missing")
+        assert category_id is not None, "add_subcategory(): key `category_id` in argument `data_dict` is missing"
+        assert type(category_id) == str, "add_subcategory(): value of `category_id` in argument `data_dict` must be a string"
 
         subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
@@ -470,7 +471,8 @@ class Categories:
                                 assign_uri=True)
 
         new_data_point = NeoSchema.fetch_data_node(internal_id = new_internal_id)
-        assert new_data_point is not None, "add_subcategory(): failure to fetch data node for the newly created subcategory"
+        assert new_data_point is not None, \
+            "add_subcategory(): failure to fetch data node for the newly created subcategory"
 
         return new_data_point["uri"]
 
@@ -485,7 +487,6 @@ class Categories:
         :param uri: The uri identifying the desired Category
         :return:    None
         """
-
         category_id = uri
 
         if cls.is_root_category(category_id):
@@ -549,7 +550,7 @@ class Categories:
     """
 
     @classmethod
-    def add_relationship(cls, from_id: int, to_id :int,
+    def add_relationship(cls, from_id :str, to_id :str,
                         rel_name: str) -> None:
         """
         If any restriction would apply to adding the parent/child relationship between the specified categories,
@@ -561,8 +562,8 @@ class Categories:
 
         NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
 
-        :param from_id:     Integer with the uri of the subcategory node
-        :param to_id:       Integer with the uri of the parent-category node
+        :param from_id:     String with the uri of the subcategory node
+        :param to_id:       String with the uri of the parent-category node
         :param rel_name:    NOT USED
         :return:            None.  If the requested new relationship should not be created, raise an Exception
         """
@@ -577,9 +578,10 @@ class Categories:
 
 
     @classmethod
-    def remove_relationship(cls, from_id: int, to_id :int,
+    def remove_relationship(cls, from_id: str, to_id :str,
                             rel_name: str) -> None:
         """
+        TODO: rename possible_to_remove_relationship()
         If any restriction would apply to removing the parent/child relationship between the specified categories,
         raise an Exception.
 
@@ -588,7 +590,7 @@ class Categories:
 
         NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
 
-        :param from_id:     Integer with the uri of the subcategory node
+        :param from_id:     String with the uri of the subcategory node
         :param to_id:       NOT USED.  Integer with the uri of the parent-category node
         :param rel_name:    NOT USED
         :return:            None.  If the requested new relationship should not be deleted, raise an Exception
@@ -602,8 +604,10 @@ class Categories:
 
 
     @classmethod
-    def switch_parent_category_relationship(cls, child_id: int, old_parent_id: int, new_parent_id: int) -> None:
+    def switch_parent_category_relationship(cls, child_id :str, old_parent_id :str, new_parent_id :str) -> None:
         """
+        TODO: not yet implemented
+
         Switch a parent/child relationship between the specified categories.
         Take the child away from the old parent, and re-assign to the new one.
 
@@ -617,8 +621,10 @@ class Categories:
 
 
     @classmethod
-    def switch_subcategory_relationship(cls, parent_id: int, old_child_id: int, new_child_id: int) -> None:
+    def switch_subcategory_relationship(cls, parent_id :str, old_child_id :str, new_child_id :str) -> None:
         """
+        TODO: not yet implemented
+
         Switch a parent/child relationship between the specified categories.
         From the parent, take the old child away , and replace it with the new child.
 
@@ -656,7 +662,7 @@ class Categories:
 
 
     @classmethod
-    def is_pinned(cls, uri) -> bool:
+    def is_pinned(cls, uri :str) -> bool:
         """
         Return True if the given Category has a "pinned" status; otherwise, False
 
@@ -683,16 +689,16 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_content_items_by_category(cls, category_id = 1) -> [{}]:
+    def get_content_items_by_category(cls, category_id = "1") -> [{}]:
         """
         Return the records for all nodes linked to the Category node identified by its uri value
 
         :param category_id:
         :return:    A list of dictionaries
                     EXAMPLE:
-                    [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
-                     {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                     {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                    [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                     {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                     {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
                     ]
         """
 
@@ -733,7 +739,7 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def add_content_at_beginning(cls, category_id:int, item_class_name: str, item_properties: dict, new_uri=None) -> int:
+    def add_content_at_beginning(cls, category_id :str, item_class_name: str, item_properties: dict, new_uri=None) -> str:
         """
         Add a new Content Item, with the given properties and Class, to the beginning of the specified Category.
 
@@ -759,17 +765,16 @@ class Categories:
 
 
     @classmethod
-    def add_content_at_end(cls, category_id:int, item_class_name: str, item_properties: dict, new_uri=None) -> int:
+    def add_content_at_end(cls, category_id :str, item_class_name: str, item_properties: dict, new_uri=None) -> str:
         """
         Add a new Content Item, with the given properties and Class, to the end of the specified Category.
 
-        :param category_id:     The integer "uri" of the Category to which this new Content Media is to be attached
+        :param category_id:     The string "uri" of the Category to which this new Content Media is to be attached
                                 TODO: rename to "category_uri"
 
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
-        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                TODO: rename to "new_uri"
+        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
@@ -830,7 +835,7 @@ class Categories:
 
 
     @classmethod
-    def add_content_after_element(cls, category_id:int, item_class_name: str, item_properties: dict, insert_after: int, new_uri=None) -> int:
+    def add_content_after_element(cls, category_id :str, item_class_name: str, item_properties: dict, insert_after :str, new_uri=None) -> str:
         """
         Add a new Content Item, with the given properties and Class, inserted into the given Category after the specified Item
         (in the context of the positional order encoded in the relationship attribute "pos")
@@ -862,7 +867,7 @@ class Categories:
 
     '''                                  ~   SCHEMA-RELATED    ~                                      '''
 
-    def ________POSITIONING________(DIVIDER):
+    def ________SCHEMA_RELATED________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -915,7 +920,7 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def check_for_duplicates(cls, category_id) -> str:
+    def check_for_duplicates(cls, category_id :str) -> str:
         """
         Look for duplicates values in the "pos" attributes
         of the "BA_in_category" relationships ending in the specified Category node (specified by its uri)
@@ -959,15 +964,15 @@ class Categories:
 
 
     @classmethod
-    def reposition_content(cls, category_id: int, uri: int, move_after_n: int):
+    def reposition_content(cls, category_id :str, uri: int, move_after_n: int):
         """
         Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
 
         Note: there's no harm (though it's wasteful) to move an item to a final sequence position where it already is;
               its "pos" value will change
 
-        :param category_id:     An integer with the Category ID
-        :param uri:         An integer with the ID of the Content Item we're repositioning
+        :param category_id:     A string with the Category URI
+        :param uri:             A string with the URI of the Content Item we're repositioning
         :param move_after_n:    The index (counting from 1) of the item after which we want to position the item being moved
                                     Use n=0 to indicate "move before anything else"
         :return:
@@ -1036,7 +1041,7 @@ class Categories:
 
 
     @classmethod
-    def relocate_positions(cls, category_id: int, n_to_skip: int, pos_shift: int) -> int:
+    def relocate_positions(cls, category_id :str, n_to_skip: int, pos_shift: int) -> int:
         """
         Shift the values of the "pos" attributes on the "BA_in_category" relationships
         from the given Category node, by the given amount;
@@ -1182,13 +1187,13 @@ class Collections:
 
 
     @classmethod
-    def is_collection(cls, collection_id: int) -> bool:
+    def is_collection(cls, collection_id :str) -> bool:
         """
         Return True if the data node whose "uri" has the given value is a Collection,
         that is, if its schema is a Class that is an INSTANCE_OF the "Collection" Class
         TODO: maybe allow the scenario where there's a longer chain of "INSTANCE_OF" relationships
 
-        :param collection_id:   The uri of a data node
+        :param collection_id:   A string with the URI of a data node
         :return:                True if the given data node is a Collection, or False i
         """
         q = '''
@@ -1203,7 +1208,7 @@ class Collections:
 
 
     @classmethod
-    def collection_size(cls, collection_id: int, membership_rel_name: str, skip_check=False) -> int:
+    def collection_size(cls, collection_id :str, membership_rel_name: str, skip_check=False) -> int:
         """
         Return the number of elements in the given Collection (i.e. Data Items linked to it thru the specified relationship)
 
@@ -1230,8 +1235,10 @@ class Collections:
 
 
     @classmethod
-    def delete_collection(cls, collection_id: int) -> None:
+    def delete_collection(cls, collection_id :str) -> None:
         """
+        #TODO: implement
+
         Delete the specified Collection, provided that there are no Data Items linked to it.
         In case of error or failure, an Exception is raised.
 
@@ -1243,8 +1250,8 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_at_beginning(cls, collection_id: int, membership_rel_name: str, item_class_name: str, item_properties: dict,
-                                       new_uri=None) -> int:
+    def add_to_collection_at_beginning(cls, collection_id :str, membership_rel_name: str, item_class_name: str, item_properties: dict,
+                                       new_uri=None) -> str:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add it at the beginning of the specified Collection, linked by the specified relationship
@@ -1292,14 +1299,14 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_at_end(cls, collection_id: int, membership_rel_name: str, item_class_name: str, item_properties: dict,
-                                 new_uri=None) -> int:
+    def add_to_collection_at_end(cls, collection_id :str, membership_rel_name: str, item_class_name: str, item_properties: dict,
+                                 new_uri=None) -> str:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add it at the end of the specified Collection, linked by the specified relationship
 
         EXAMPLE:  new_uri = add_to_collection_at_end(collection_id=708, membership_rel_name="BA_in_category",
-                                                        item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
+                                                     item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
 
         TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
               which can lead to incorrect values of the "pos" relationship attributes.
@@ -1309,7 +1316,7 @@ class Collections:
         :param membership_rel_name:
         :param item_class_name:
         :param item_properties:
-        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_uri:             Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
@@ -1348,9 +1355,9 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_after_element(cls, collection_id: int, membership_rel_name: str,
-                                        item_class_name: str, item_properties: dict, insert_after: int,
-                                        new_uri=None) -> int:
+    def add_to_collection_after_element(cls, collection_id :str, membership_rel_name: str,
+                                        item_class_name: str, item_properties: dict, insert_after :str,
+                                        new_uri=None) -> str:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add to the specified Collection, linked by the specified relationship and inserted after the given collection Item
@@ -1453,7 +1460,7 @@ class Collections:
 
 
     @classmethod
-    def shift_down(cls, collection_id: int, membership_rel_name: str, first_to_move) -> int:
+    def shift_down(cls, collection_id :str, membership_rel_name :str, first_to_move :int) -> int:
         """
         Shift down the positions (values of the "pos" relationship attributes) by an arbitrary fixed amount,
         starting with nodes with the specified position value (and all greater values);

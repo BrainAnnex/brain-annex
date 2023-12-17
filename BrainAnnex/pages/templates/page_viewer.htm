@@ -8,7 +8,7 @@
         current_page
         header_title
 
-        category_id     An integer with the URI of a Category
+        category_id     A string with the URI of a Category
         category_name   The name of the above Category
         category_remarks
 
@@ -21,7 +21,7 @@
         parent_categories
         siblings_categories
 
-        bread_crumbs
+        bread_crumbs    A list with data from which to create UI "bread crumbs"
 
         records_types   A list of all the Classes that can be used for new Records
                             (i.e. classes that are INSTANCE_OF the "Records" class)
@@ -167,7 +167,7 @@
 
 <!-- Bread crumbs for this Category -->
 <vue-bread-crumbs
-    v-bind:category_id="category_id"
+    v-bind:category_uri="category_id"
     v-bind:bread_crumbs="bread_crumbs"
     v-bind:all_categories="all_categories"
 >

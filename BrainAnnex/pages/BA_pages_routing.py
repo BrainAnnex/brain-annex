@@ -121,7 +121,9 @@ class PagesRouting:
             #           'Headers': ['text']}
             #print("records_schema_data: ", records_schema_data)
 
-            bread_crumbs = Categories.create_bread_crumbs(category_uri)
+            bread_crumbs = Categories.create_bread_crumbs(category_uri) # A list with data from which to create UI "bread crumbs"
+            #print("bread_crumbs: ", bread_crumbs)
+            # EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
 
             # Fetch all the Content Items attached to this Category
             content_items = Categories.get_content_items_by_category(category_uri)

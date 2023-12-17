@@ -42,16 +42,16 @@ def test_get_all_categories(db):
     initialize_categories(db)
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-    assert result == [{'uri': 1, 'name': 'HOME', 'remarks': 'top level'}]
+    assert result == [{'uri': '1', 'name': 'HOME', 'remarks': 'top level'}]
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=False)
-    assert result == [{'uri': 1, 'name': 'HOME'}]
+    assert result == [{'uri': '1', 'name': 'HOME'}]
 
     result = Categories.get_all_categories(exclude_root=True, include_remarks=True)
     assert result == []
 
     # Add a new Category ("Languages")
-    language_uri = Categories.add_subcategory({"category_id": 1, "subcategory_name": "Languages",
+    language_uri = Categories.add_subcategory({"category_id": "1", "subcategory_name": "Languages",
                                 "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
@@ -77,7 +77,7 @@ def test_get_sibling_categories(db):
     assert result == []     # The root node has no siblings
 
     # Add a new Category ("Languages")
-    language_uri = Categories.add_subcategory({"category_id": 1, "subcategory_name": "Languages",
+    language_uri = Categories.add_subcategory({"category_id": "1", "subcategory_name": "Languages",
                                                    "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_sibling_categories(root_internal_id)

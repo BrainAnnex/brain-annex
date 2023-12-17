@@ -109,7 +109,7 @@ class DataManager:
 
         EXAMPLE of usage:
             try:
-                uri = cls.str_to_int(uri_str)
+                i = cls.str_to_int(i_str)
             except Exception as ex:
                 # Do something
 
@@ -117,6 +117,7 @@ class DataManager:
         :return:    The integer represented in the passed string, if applicable;
                         if not, an Exception is raised
         """
+        #TODO: no longer being used.  Perhaps eliminate
         try:
             i = int(s)
         except Exception:
@@ -368,17 +369,17 @@ class DataManager:
 
         :return: None
         """
-        from_id = cls.str_to_int(data_dict['from'])
-        to_id = cls.str_to_int(data_dict['to'])
+        from_id = data_dict['from']
+        to_id = data_dict['to']
         rel_name = data_dict['rel_name']
         schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
         if schema_code == "cat":        # TODO: take this part away
             Categories.add_relationship(from_id=from_id, to_id=to_id,
                                         rel_name=rel_name)       # Category-specific action
-
-        NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
-                                            rel_name=rel_name, id_type="uri")
+        else:
+            NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
+                                                rel_name=rel_name, id_type="uri")
 
 
 
@@ -398,8 +399,8 @@ class DataManager:
 
         :return: None
         """
-        from_id = cls.str_to_int(data_dict['from'])
-        to_id = cls.str_to_int(data_dict['to'])
+        from_id = data_dict['from']
+        to_id = data_dict['to']
         rel_name = data_dict['rel_name']
         schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
@@ -483,9 +484,7 @@ class DataManager:
                                     (e.g., if public_required is True and the item isn't public)
 
         """
-        uri_int = cls.str_to_int(uri)
-
-        properties = {"uri": uri_int, "schema_code": schema_code}
+        properties = {"uri": uri, "schema_code": schema_code}
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
@@ -522,9 +521,8 @@ class DataManager:
         """
         #TODO: (at least for large media) read the file in blocks
 
-        uri_int = cls.str_to_int(uri)
         #print("In get_binary_content(): uri = ", uri)
-        content_node = NeoSchema.fetch_data_node(uri = uri_int)
+        content_node = NeoSchema.fetch_data_node(uri = uri)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
@@ -558,12 +556,14 @@ class DataManager:
         :param request_data: A dictionary with 3 keys, "uri", "rel_name", "dir"
         :return:             A list of dictionaries with all the properties of the neighbor nodes
         """
-        uri = request_data["uri"]        # This must be an integer
+        uri = request_data["uri"]               # This must be a string
         rel_name = request_data["rel_name"]
-        dir = request_data["dir"]                # Must be either "IN or "OUT"
+        dir = request_data["dir"]               # Must be either "IN or "OUT"
 
-        assert dir in ["IN", "OUT"], f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
-        assert type(uri) == int, "get_records_by_link(): The value of the parameter `uri` must be an integer"
+        assert dir in ["IN", "OUT"], \
+            f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
+        assert type(uri) == str, \
+            "get_records_by_link(): The value of the parameter `uri` must be an integer"
 
         match = cls.db.match(labels="BA", key_name="uri", key_value=uri)
 
@@ -572,13 +572,13 @@ class DataManager:
 
 
     @classmethod
-    def get_link_summary(cls, uri: int, omit_names = None) -> dict:
+    def get_link_summary(cls, uri :str, omit_names = None) -> dict:
         """
         Return a dictionary structure identifying the names and counts of all
         inbound and outbound links to/from the given data node.
         TODO: move most of it to the "~ FOLLOW LINKS ~" section of NeoAccess
 
-        :param uri:     ID of a data node
+        :param uri:         String with the URI of a data node
         :param omit_names:  Optional list of relationship names to disregard
         :return:            A dictionary with the names and counts of inbound and outbound links.
                             Each inner list is a pair [name, count]
@@ -819,7 +819,7 @@ class DataManager:
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_uri = NeoSchema.next_available_datanode_id()
+        new_uri = NeoSchema.next_available_datanode_uri()
         print("New item will be assigned ID:", new_uri)
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations

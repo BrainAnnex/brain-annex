@@ -1060,7 +1060,7 @@ def test_add_data_point_with_links(db):
                                        })
     assert len(result) == 1
     record = result[0]
-    assert record['r']['uri'] == 1  # The first auto-increment value
+    assert record['r']['uri'] == "1"  # The first auto-increment value
 
 
     # Create a 2nd data point for a "result", linked to the existing "patient" data point;
@@ -1068,7 +1068,7 @@ def test_add_data_point_with_links(db):
     result2_neo_id = NeoSchema.add_data_node_with_links(class_name="result",
                                                         properties={"biomarker": "cholesterol", "value": 180.0},
                                                         links=[{"internal_id": patient_neo_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
-                                                        new_uri=9999)
+                                                        new_uri="my-uri")
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
         -[:HAS_RESULT]->(cr:CLASS {name: "result"})<-[:SCHEMA]-(r2 :result {biomarker: "cholesterol", value: 180.0})
@@ -1081,7 +1081,7 @@ def test_add_data_point_with_links(db):
     assert len(result) == 1
     print(result)
     record = result[0]
-    assert record['r2']['uri'] == 9999      # The specific "uri" that was passed
+    assert record['r2']['uri'] == "my-uri"      # The specific "uri" that was passed
 
 
 
@@ -1308,7 +1308,7 @@ def test_add_col_data_merge(db):
 
 
 
-def test_add_data_point_fast(db):
+def test_add_data_point_fast_OBSOLETE(db):
     db.empty_dbase()
 
     create_sample_schema_1()    # Schema with patient/result/doctor
@@ -1369,7 +1369,7 @@ def test_add_data_point_fast(db):
     assert len(result) == 1
     #print(result)
     record = result[0]
-    assert record['r']['uri'] == 1  # The first auto-increment value
+    assert record['r']['uri'] == "1"  # The first auto-increment value
 
 
     # Create a 2nd data point for a "result", linked to the existing "patient" data point;
@@ -1378,7 +1378,7 @@ def test_add_data_point_fast(db):
                                                             properties={"biomarker": "cholesterol", "value": 180.0},
                                                             connected_to_neo_id = patient_neo_id,
                                                             rel_name="HAS_RESULT", rel_dir="IN",
-                                                            new_uri=9999)
+                                                            new_uri="my=uri")
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145.50})-[:SCHEMA]->(cp:CLASS {name: "patient"})
         -[:HAS_RESULT]->(cr:CLASS {name: "result"})<-[:SCHEMA]-(r2 :result {biomarker: "cholesterol", value: 180.0})
@@ -1391,7 +1391,7 @@ def test_add_data_point_fast(db):
     assert len(result) == 1
     print(result)
     record = result[0]
-    assert record['r2']['uri'] == 9999      # The specific "uri" that was passed
+    assert record['r2']['uri'] == "my=uri"      # The specific "uri" that was passed
 
 
 
@@ -1732,7 +1732,7 @@ def test_class_of_data_point(db):
     NeoSchema.create_class("Extra")
     # Create a forbidden scenario with a data node having 2 Schema classes
     q = f'''
-        MATCH (n {{uri: {uri} }}), (c :CLASS {{name: 'Extra'}})
+        MATCH (n {{uri: '{uri}' }}), (c :CLASS {{name: 'Extra'}})
         MERGE (n)-[:SCHEMA]->(c)
         '''
     #db.debug_print(q, {}, "test")
@@ -1800,9 +1800,10 @@ def test_next_autoincrement(db):
 
 def test_next_available_datanode_id(db):
     db.empty_dbase()
-    assert NeoSchema.next_available_datanode_id() == 1
-    assert NeoSchema.next_available_datanode_id() == 2
-    assert NeoSchema.next_available_datanode_id() == 3
+    assert NeoSchema.next_available_datanode_uri() == "1"
+    assert NeoSchema.next_available_datanode_uri() == "2"
+    assert NeoSchema.next_available_datanode_uri() == "3"
+    assert NeoSchema.next_available_datanode_uri(prefix="i-") == "i-4"
 
 
 

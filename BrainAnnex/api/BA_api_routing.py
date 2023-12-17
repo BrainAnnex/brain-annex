@@ -94,35 +94,6 @@ class ApiRouting:
     ###############################################
 
     @classmethod
-    def str_to_int(cls, s :str) -> int:
-        """
-        TODO: phase out in favor of the same-named method in class "DataManager"
-
-        Helper function to give more friendly error messages in case non-integers are passed
-        in situations where integers are expected (for example, for id's).
-        Without this function, the user would see cryptic messages such as
-        "invalid literal for int() with base 10: 'q123'"
-
-        EXAMPLE:
-            try:
-                uri = cls.str_to_int(uri_str)
-            except Exception as ex:
-                # Do something
-
-        :param s:   A string that should represent an integer
-        :return:    The integer represented in the passed string, if applicable;
-                        if not, an Exception is raised
-        """
-        try:
-            i = int(s)
-        except Exception:
-            raise Exception(f"The passed parameter ({s}) is not an integer as expected")
-
-        return i
-
-
-
-    @classmethod
     def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
         """
 
@@ -795,7 +766,7 @@ class ApiRouting:
                                     }
             """
             try:
-                uri = cls.str_to_int(uri_str)
+                uri = uri_str
                 payload = DataManager.get_link_summary(uri, omit_names = ['BA_in_category'])
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
@@ -820,7 +791,7 @@ class ApiRouting:
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['uri', 'rel_name', 'dir'])
-                data_dict["uri"] = cls.str_to_int(data_dict["uri"])
+                data_dict["uri"] = data_dict["uri"]
                 payload = DataManager.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:

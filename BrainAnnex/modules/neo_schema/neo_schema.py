@@ -1606,7 +1606,7 @@ class NeoSchema:
         if assign_uri or new_uri:
             if not new_uri:
                 # TODO: phase out this branch
-                new_id = cls.next_available_datanode_id()           # Obtain (and reserve) the next auto-increment value
+                new_id = cls.next_available_datanode_uri()           # Obtain (and reserve) the next auto-increment value
                                                                     # in the "data_node" namespace
             else:
                 new_id = new_uri
@@ -1833,7 +1833,7 @@ class NeoSchema:
         # if requested, expand cypher_prop_dict accordingly
         if assign_uri or new_uri:
             if not new_uri:
-                new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
+                new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
             else:
                 new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
@@ -1944,7 +1944,7 @@ class NeoSchema:
         # if requested, expand cypher_prop_dict accordingly
         if assign_uri or new_uri:
             if not new_uri:
-                new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
+                new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
             else:
                 new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
@@ -1991,9 +1991,11 @@ class NeoSchema:
     def add_data_point_OLD(cls, class_name="", schema_id=None,
                            data_dict=None, labels=None,
                            connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                           new_uri=None, return_uri=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_node_with_links()
-                                                                            #       TO DITCH *AFTER* add_data_node_with_links() gets link validation!
+                           new_uri=None, return_uri=True) -> Union[int, str]:
         """
+        TODO: OBSOLETE.  Replace by add_data_node_with_links()
+              TO DITCH *AFTER* add_data_node_with_links() gets link validation!
+
         Add a new data node, of the Class specified by name or ID,
         with the given (possibly none) attributes and label(s),
         optionally linked to another DATA node, already existing.
@@ -2032,14 +2034,14 @@ class NeoSchema:
         :param rel_prop_key:    Str or None.  Ignored if rel_prop_value is missing
         :param rel_prop_value:  Str or None.  Ignored if rel_prop_key is missing
 
-        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-        :param return_uri:  Default to True.    TODO: change to False
+        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be a unique string)
+        :param return_uri:      Default to True.    TODO: change to False
                                 If True, the returned value is the auto-increment "uri" value of the node just created;
                                     otherwise, it returns its Neo4j ID
 
-        :return:                If successful, an integer with either the auto-increment "uri" value or the Neo4j ID
-                                    of the node just created (based on the flag "return_uri");
-                                    otherwise, an Exception is raised
+        :return:                EITHER a string with either the auto-increment "uri" value
+                                OR or the internal database ID
+                                of the node just created (based on the flag "return_uri")
         """
         #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
 
@@ -2069,7 +2071,7 @@ class NeoSchema:
         # expand cypher_props_dict accordingly
         # TODO: make this part optional
         if not new_uri:
-            new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
+            new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
         else:
             new_id = new_uri
         #print("New ID assigned to new data node: ", new_id)
@@ -2331,7 +2333,7 @@ class NeoSchema:
             raise Exception(f"The given data node ALREADY has a SCHEMA relationship")
 
         if not new_uri:
-            new_uri = cls.next_available_datanode_id()     # Generate, if not already provided
+            new_uri = cls.next_available_datanode_uri()     # Generate, if not already provided
 
         cls.debug_print("register_existing_data_node(). New uri to be assigned to the data node: ", new_uri)
 
@@ -2382,9 +2384,9 @@ class NeoSchema:
         nothing gets created (and an Exception is raised)
 
         :param from_id:     The ID of the data node at which the new relationship is to originate;
-                                this is understood be the Neo4j ID, unless an id_type is specified
+                                this is understood be the Neo4j ID, unless an id_type argument is passed
         :param to_id:       The ID of the data node at which the new relationship is to end;
-                                this is understood be the Neo4j ID, unless an id_type is specified
+                                this is understood be the Neo4j ID, unless an id_type argument is passed
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
         :param labels_from: (OPTIONAL) Labels on the 1st data node
@@ -3095,7 +3097,7 @@ class NeoSchema:
         and an attribute indicating the desired namespace (group);
         if no such node exists (for example, after a new installation), it gets created, and 1 is returned.
 
-        Note that the returned number (or sequence of numbers, if advance > 1)
+        Note that the returned number (or last of a sequence of numbers, if advance > 1)
         is de-facto "permanently reserved" on behalf of the calling function,
         and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
 
@@ -3133,24 +3135,28 @@ class NeoSchema:
                                properties={"namespace": namespace, "next_count": 1+advance})
             return 1       # Start a new count for this namespace
         else:
-            return next_count-advance
+            return next_count - advance
 
 
 
     @classmethod
-    def next_available_datanode_id(cls) -> int:
+    def next_available_datanode_uri(cls, prefix="") -> str:
         """
-        Reserve and return the next available auto-increment ID,
+        Reserve and return a URI based on the next available auto-increment ID,
         in the separately-maintained group (i.e. namespace) called "data_node".
-        This value (currently often referred to as "uri", and not to be confused
-        with the internal ID assigned by Neo4j to each node),
-        is meant as a permanent primary key, on which a URI could be based.
+        This value (not to be confused with the internal database ID assigned to each node),
+        is meant as a permanent primary key.
 
-        For unique ID's to use on schema nodes, use next_available_schema_id() instead
+        For unique ID's to use on Schema nodes, use next_available_schema_id() instead
 
-        :return:    A unique auto-increment integer used for Data nodes
+        :param prefix:  (OPTIONAL) String to prefix to the auto-increment number
+        :return:        A unique auto-increment integer used for Data nodes
         """
-        return cls.next_autoincrement("data_node")
+        n = cls.next_autoincrement("data_node")
+        uri = f"{prefix}{n}"
+
+        return uri
+
 
 
 
