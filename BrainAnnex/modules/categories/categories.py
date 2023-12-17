@@ -1,5 +1,4 @@
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from typing import Union
 
 # 2 classes: "Categories" and  "Collections".  TODO: separate
 
@@ -100,19 +99,19 @@ class Categories:
 
 
     @classmethod
-    def get_subcategories(cls, category_id: int) -> [dict]:
+    def get_subcategories(cls, category_uri :str) -> [dict]:
         """
         Return all the (direct) Subcategories of the given category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
             [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
-        :param category_id: An integer with a value of the "uri" field
+        :param category_uri: A string with a value of the "uri" field
                                     that identifies a data node containing the desired Category
         :return:            A list of dictionaries
         """
         match = cls.db.match(labels="BA",
-                            properties={"uri": category_id, "schema_code": "cat"})
+                             properties={"uri": category_uri, "schema_code": "cat"})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
                                        neighbor_labels="BA")
@@ -452,11 +451,6 @@ class Categories:
         if not category_id:
             raise Exception(f"add_subcategory(): category_id is missing")
 
-        try:
-            category_id = int(category_id)      # TODO: phase out
-        except Exception as ex:
-            raise Exception(f"add_subcategory(): category_id is not an integer (value passed {category_id}). {ex}")
-
         subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
             raise Exception(f"add_subcategory(): subcategory_name is missing")
@@ -492,7 +486,7 @@ class Categories:
         :return:    None
         """
 
-        category_id = int(uri)      # TODO: eventually switch to using strings
+        category_id = uri
 
         if cls.is_root_category(category_id):
             raise Exception("Cannot delete the Root node")
@@ -531,13 +525,9 @@ class Categories:
         :return:            None.  If the requested new relationship could not be created,
                                 raise an Exception
         """
-        # TODO: verify that the category ID's are legit
 
         subcategory_id = data_dict["sub"]
-        subcategory_id = int(subcategory_id)    #TODO: phase out
-
         category_id = data_dict["cat"]
-        category_id = int(category_id)          #TODO: phase out
 
 
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
@@ -655,9 +645,9 @@ class Categories:
         #       Maybe first locate the data node by multiple criteria
 
         if op == "set":
-            number_set = NeoSchema.update_data_node(data_node=int(uri), set_dict={"pinned": True}, force_int_uri=True)
+            number_set = NeoSchema.update_data_node(data_node=uri, set_dict={"pinned": True})
         elif op == "unset":
-            number_set = NeoSchema.update_data_node(data_node=int(uri), set_dict={"pinned": False}, force_int_uri=True)
+            number_set = NeoSchema.update_data_node(data_node=uri, set_dict={"pinned": False})
         else:
             raise Exception("pin_category(): the argument `op` must be equal to either 'set' or 'unset'")
 
@@ -789,7 +779,6 @@ class Categories:
             # then auto-generate it (for now an integer)
             new_uri = NeoSchema.generate_uri(prefix="", namespace="data_node")  # Returns a string
 
-        new_uri = int(new_uri)
 
         new_internal_id = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
                                                      extra_labels="BA", assign_uri=False, new_uri=new_uri,
@@ -878,13 +867,13 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_items_schema_data(cls, category_id: int) -> dict:
+    def get_items_schema_data(cls, category_uri :str) -> dict:
         """
         Locate all the Classes used by Content Items attached to the given Category,
         and return a dictionary with the Properties (in Schema order) of each
 
         TODO: unit test
-        :param category_id: An integer identifying the desired Category
+        :param category_uri: An integer identifying the desired Category
 
         :return:            A dictionary whose keys are Class names (of Content Items attached to the given Category),
                             and whose values are the Properties (in declared Schema order) of those Classes.
@@ -900,7 +889,7 @@ class Categories:
             RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
             '''
 
-        class_list = cls.db.query(q, data_binding={"category_id": category_id})
+        class_list = cls.db.query(q, data_binding={"category_id": category_uri})
         # EXAMPLE: [ {"class_name": "French Vocabulary" , "schema_id": 4},
         #            {"class_name": "Site Link" , "schema_id": 63}]
 
@@ -1105,21 +1094,6 @@ class Categories:
         assert uri_1 != uri_2, \
             f"Attempt to swap a Content Item (URI `{uri_1}`) with itself!"
 
-        try:
-            uri_1 = int(uri_1)      # TODO: later eliminate when switching to string URI's
-        except Exception:
-            raise Exception(f"The first Content Item URI (`{uri_1}`) is missing or not an integer")
-
-        try:
-            uri_2 = int(uri_2)      # TODO: later eliminate when switching to string URI's
-        except Exception:
-            raise Exception(f"The second Content Item URI (`{uri_2}`) is missing or not an integer")
-
-        try:
-            cat_id = int(cat_id)    # TODO: later eliminate when switching to string URI's
-        except Exception:
-            raise Exception(f"The Category ID ({cat_id}) is missing or not an integer")
-
 
         # Look for a Category node (c) that is connected to 2 Content Items (n1 and n2)
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
@@ -1166,8 +1140,13 @@ class Categories:
     #       to be combined with what's currently in BA_pages_routing.py and in BA_pages_request_handler.py
 
     @classmethod
-    def viewer_handler(cls, category_id: int):
-        category_internal_id = NeoSchema.get_data_node_internal_id(uri = category_id)
+    def viewer_handler(cls, category_uri :str):
+        """
+
+        :param category_uri:
+        :return:
+        """
+        category_internal_id = NeoSchema.get_data_node_internal_id(uri = category_uri)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 
         return siblings_categories

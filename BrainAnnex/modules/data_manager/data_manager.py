@@ -647,10 +647,8 @@ class DataManager:
         schema_code = post_data.get("schema_code")   # If key not present, the value will be None
         #print("Item Type: ", schema_code)
 
-        try:
-            uri = int(post_data.get("uri"))
-        except Exception as ex:
-            raise Exception(f"uri is missing or not an integer. {ex}")
+        uri = post_data.get("uri")
+        assert uri, "update_content_item(): uri is missing"
 
         #print("Item Type: ", uri)
 
@@ -708,10 +706,7 @@ class DataManager:
         """
         #print(f"In delete_content_item(). Attempting to delete URI `{uri}` of type `{schema_code}`")
 
-        try:
-            uri = int(uri)
-        except Exception as ex:
-            raise Exception(f"URI is missing or not an integer. {ex}")
+        assert uri, "delete_content_item(): argument `uri` is missing"
 
 
         # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
@@ -790,7 +785,6 @@ class DataManager:
         category_id = post_data.get("category_id")  # If the key isn't present, the value will be None
         if not category_id:
             raise Exception("Missing Category ID")
-        category_id = int(category_id)      # Correct the value, to make it an integer
         del post_data["category_id"]        # Remove this entry from the dictionary
 
         # Positioning within the Category

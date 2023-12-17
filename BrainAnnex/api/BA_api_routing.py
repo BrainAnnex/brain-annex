@@ -94,7 +94,7 @@ class ApiRouting:
     ###############################################
 
     @classmethod
-    def str_to_int(cls, s: str) -> int:
+    def str_to_int(cls, s :str) -> int:
         """
         TODO: phase out in favor of the same-named method in class "DataManager"
 
@@ -454,20 +454,20 @@ class ApiRouting:
         @bp.route('/get_properties_by_uri/<uri>')
         def get_properties_by_uri(uri):
             """
-            Get all properties of a DATA node specified by uri
+            Get all properties of a DATA node specified by its URI
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_properties_by_uri/123
 
-            :param uri:
-            :return:            A JSON object with a list of the Properties of the specified Class
-                                EXAMPLE:
+            :param uri: A string uniquely identifying a data node
+            :return:    A JSON object with a list of the Properties of the specified Class
+                            EXAMPLE:
                                     [
                                       "Notes",
                                       "English",
                                       "French"
                                     ]
             """
-            prop_list = NeoSchema.all_properties("BA", "uri", int(uri))
+            prop_list = NeoSchema.all_properties("BA", "uri", uri)
             response = {"status": "ok", "payload": prop_list}
             # TODO: handle error scenarios
 
@@ -1157,7 +1157,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/reposition/60/576/4
             """
             try:
-                Categories.reposition_content(category_id=int(category_id), uri=int(uri), move_after_n=int(move_after_n))
+                Categories.reposition_content(category_id=category_id, uri=uri, move_after_n=int(move_after_n))
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
                 err_details = f"Unable to reposition the Content Item.  {exceptions.exception_helper(ex)}"
@@ -1491,7 +1491,7 @@ class ApiRouting:
                 return make_response(err_status, 500)
         
         
-            category_id = int(post_data["category_id"])
+            category_uri = post_data["category_id"]
 
 
             # TODO: turn into a call to a plugin-provided method, prior to database add
@@ -1515,7 +1515,7 @@ class ApiRouting:
             # Update the database (for now, the media is added AT THE END of the Category page)
             # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
             try:
-                new_uri = Categories.add_content_at_end(category_id=category_id,
+                new_uri = Categories.add_content_at_end(category_id=category_uri,
                                                             item_class_name=class_name, item_properties=properties)
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation

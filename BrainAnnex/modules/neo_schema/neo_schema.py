@@ -289,10 +289,10 @@ class NeoSchema:
     @classmethod
     def class_neo_id_exists(cls, neo_id: int) -> bool:
         """
-        Return True if a Class by the given internal ID ID already exists, or False otherwise
+        Return True if a Class by the given internal database ID already exists, or False otherwise
 
-        :param neo_id:
-        :return:
+        :param neo_id:  Integer with internal database ID
+        :return:        A boolean indicating whether the specified Class exists
         """
         cls.db.assert_valid_internal_id(neo_id)
 
@@ -792,7 +792,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_relationships(cls, schema_id:int, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
+    def get_class_relationships(cls, schema_id :int, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
         """
         Fetch and return the names of all the relationship (both inbound and outbound)
         attached to the given Class.
@@ -846,7 +846,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_outbound_data(cls, class_neo_id:int, omit_instance=False) -> dict:
+    def get_class_outbound_data(cls, class_neo_id :int, omit_instance=False) -> dict:
         """
         Efficient all-at-once query to fetch and return the names of all the outbound relationship
         attached to the given Class, as well as the names of the other Classes on the other side of those links.
@@ -1312,13 +1312,13 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node_internal_id(cls, uri: int) -> int:
+    def get_data_node_internal_id(cls, uri :str) -> int:
         """
         Returns the internal database ID of the given data node,
         specified by its value of the uri attribute
 
-        :param uri: Integer to identify a data node by the value of its uri attribute
-        :return:        The internal database ID of the specified data node
+        :param uri: A string to identify a data node by the value of its "uri" attribute
+        :return:    The internal database ID of the specified data node
         """
         match = cls.db.match(key_name="uri", key_value=uri)
         result = cls.db.get_nodes(match, return_internal_id=True)
@@ -2160,7 +2160,7 @@ class NeoSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True, force_int_uri=False) -> int:
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
@@ -2186,9 +2186,6 @@ class NeoSchema:
             where_clause =  f'WHERE n.uri = "{data_node}"'
         else:
             raise Exception("update_data_node(): the argument `data_node` must be an integer or a string")
-
-        if force_int_uri:
-            where_clause =  f'WHERE n.uri = {data_node}'  # TODO: ditch after the switch to string URI's
 
 
         data_binding = {}
@@ -2267,7 +2264,7 @@ class NeoSchema:
 
 
     @classmethod
-    def delete_data_point(cls, uri: int, labels=None) -> int:
+    def delete_data_point(cls, uri: str, labels=None) -> int:
         """
         Delete the given data point.  TODO: obsolete in favor of delete_data_node()
 
@@ -2438,7 +2435,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_relationship(cls, from_id:int, to_id: int, rel_name: str, rel_props = None) -> None:
+    def add_data_relationship(cls, from_id :int, to_id :int, rel_name :str, rel_props = None) -> None:
         """
         Simpler (and possibly faster) version of add_data_relationship()
 
@@ -2491,17 +2488,17 @@ class NeoSchema:
 
 
     @classmethod
-    def remove_data_relationship(cls, from_uri: int, to_uri: int, rel_name: str, labels=None) -> None:
+    def remove_data_relationship(cls, from_uri :str, to_uri :str, rel_name :str, labels=None) -> None:
         """
-        Drop the relationship with the given name, from one to the other of the 2 given data nodes.
+        Drop the relationship with the given name, from one to the other of the 2 given DATA nodes.
         Note: the data nodes are left untouched.
         If the specified relationship didn't get deleted, raise an Exception
 
         TODO: first verify that the relationship is optional in the schema???
         TODO: migrate from "uri" values to also internal database ID's, as done in class_of_data_node()
 
-        :param from_uri:The "uri" value of the data node at which the relationship originates
-        :param to_uri:  The "uri" value of the data node at which the relationship ends
+        :param from_uri:    String with the "uri" value of the data node at which the relationship originates
+        :param to_uri:      String with the "uri" value of the data node at which the relationship ends
         :param rel_name:    The name of the relationship to delete
         :param labels:      OPTIONAL (generally, redundant).  Labels required to be on both nodes
 
