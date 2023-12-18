@@ -39,11 +39,11 @@ class Categories:
         """
         Return the Name and Remarks attached to the given Category.  If not found, return None
 
-        :param category_uri:    A string with the URI of a Category node
-        :return:    The Category's name (or a blank dictionary if not found)
-                    EXAMPLE:  {"uri": 123, "name": "Astronomy", "remarks": "except cosmology"}
+        :param category_uri:A string identifying the desired Category
+        :return:            The Category's name (or a blank dictionary if not found)
+                                 EXAMPLE:  {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
         """
-        # Note: since the category_id is a primary key,
+        # Note: since the category_uri is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
         return NeoSchema.fetch_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
 
@@ -54,10 +54,12 @@ class Categories:
         """
         Return True if the given ID corresponds to the ROOT Category, or False otherwise
 
-        TODO: maybe raise an Exception if the argument isn't a valid ID
-        :param category_uri:    A string with the URI of a Category node
+        :param category_uri:    A string identifying the desired Category
         :return:                True if the given ID corresponds to the ROOT Category, or False otherwise
         """
+        assert NeoSchema.is_valid_uri(category_uri), \
+            "is_root_category(): the argument `category_uri` is not a valid URI string"
+
         # NOTE: historically, "1" has been used for the ROOT Category; however, now that uri is shared
         #       among all types of plugins, maybe a different approach would be better (such as an attribute in the node)
         return True if category_uri == "1" else False
@@ -65,30 +67,28 @@ class Categories:
 
 
     @classmethod
-    def count_subcategories(cls, category_id :str) -> int:
+    def count_subcategories(cls, category_uri :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_id, class_name="Categories")
+        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Categories")
 
-        :param category_id: A string with a value of the "uri" field
-                            that identifies a data node containing the desired Category
+        :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) Subcategories of the given Category; possibly, zero
         """
 
         match = cls.db.match(labels="BA",
-                            properties={"uri": category_id, "schema_code": "cat"})
+                             properties={"uri": category_uri, "schema_code": "cat"})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="IN")
 
 
     @classmethod
-    def count_parent_categories(cls, category_uri: str) -> int:
+    def count_parent_categories(cls, category_uri :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_id, class_name="Categories")
+        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Categories")
 
-        :param category_uri:A string with a value of the "uri" field
-                            that identifies a data node containing the desired Category
+        :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
         """
 
@@ -107,8 +107,7 @@ class Categories:
         EXAMPLE:
             [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
-        :param category_uri: A string with a value of the "uri" field
-                                    that identifies a data node containing the desired Category
+        :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
         """
         match = cls.db.match(labels="BA",
@@ -119,7 +118,7 @@ class Categories:
 
 
     @classmethod
-    def get_subcategories_alt(cls, category_id :str) -> [dict]:  # TODO: merge with get_subcategories()
+    def get_subcategories_alt(cls, category_uri :str) -> [dict]:  # TODO: merge with get_subcategories()
         """
         Return all the (immediate) subcategories of the given category,
         as a list of dictionaries with keys 'id' and 'name' TODO: fix
@@ -127,14 +126,14 @@ class Categories:
             OLD -> [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
             [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
-        :param category_id:
-        :return:    A list of dictionaries
+        :param category_uri:A string identifying the desired Category
+        :return:            A list of dictionaries
         """
         q =  '''
              MATCH (sub:BA {schema_code:"cat"})-[BA_subcategory_of]->(c:BA {schema_code:"cat", uri:$category_id})
              RETURN sub.uri AS id, sub.name AS name
              '''
-        result = cls.db.query(q, {"category_id": category_id})
+        result = cls.db.query(q, {"category_id": category_uri})
 
         '''
         new = cls.db.follow_links(labels="BA", key_name="uri", key_value=category_id,
@@ -148,25 +147,25 @@ class Categories:
 
 
     @classmethod
-    def get_parent_categories(cls, category_id :str) -> [dict]:
+    def get_parent_categories(cls, category_uri :str) -> [dict]:
         """
         Return all the (direct) parent categories of the given category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
             [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
 
-        :param category_id:
+        :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
         """
         match = cls.db.match(labels="BA",
-                             properties={"uri": category_id, "schema_code": "cat"})
+                             properties={"uri": category_uri, "schema_code": "cat"})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                    neighbor_labels="BA")
 
 
     @classmethod
-    def get_parent_categories_alt(cls, category_id :str) -> [dict]:  # TODO: merge with get_parent_categories()
+    def get_parent_categories_alt(cls, category_uri :str) -> [dict]:  # TODO: merge with get_parent_categories()
         """
         Return all the (immediate) parent categories of the given category,
         as a list of dictionaries with all the keys of the Category Class
@@ -176,11 +175,11 @@ class Categories:
         EXAMPLE:
             [{'uri': '2', 'name': 'Work', remarks: 'outside employment'}, {'uri': '3', 'name': 'Hobbies'}]
 
-        :param category_id:
+        :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
         """
         match = cls.db.match(labels="BA",
-                             properties={"uri": category_id, "schema_code": "cat"})
+                             properties={"uri": category_uri, "schema_code": "cat"})
 
         result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                      neighbor_labels="BA")
@@ -276,7 +275,7 @@ class Categories:
 
 
     @classmethod
-    def create_parent_map(cls, category_id :str) -> dict:
+    def create_parent_map(cls, category_uri :str) -> dict:
         """
         Consider the set comprising the given Category and all its ancestors (i.e. all its super-categories),
         up to a maximum hop length.
@@ -284,7 +283,7 @@ class Categories:
         Create and return a dictionary that maps each of the uri in that set of Categories,
         to a list of the uri's of its parent Categories.
 
-        :param category_id: The uri of the Category of interest
+        :param category_uri:A string identifying the desired Category
         :return:            A dictionary mapping integers into lists of integers.
                             The keys are uri's of the given Category and any of its ancestors (super-categories),
                             up to a maximum hop length;
@@ -309,7 +308,7 @@ class Categories:
             WITH c, collect(DISTINCT p.uri) AS all_parents
             RETURN c.uri AS uri, all_parents
             '''
-        result = cls.db.query(q, {"category_id": category_id})      # A list of dictionaries
+        result = cls.db.query(q, {"category_id": category_uri})      # A list of dictionaries
         # EXAMPLE:  [{'uri': 823, 'all_parents': [709]},
         #            {'uri': 709, 'all_parents': [544]},
         #            {'uri': 544, 'all_parents': [1]}]
@@ -331,7 +330,7 @@ class Categories:
         Return a list of Category ID's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
-        :param category_uri: A string with the URI of the Category whose "ancestry bread crumbs" we want to construct
+        :param category_uri:A string with the URI of the Category whose "ancestry bread crumbs" we want to construct
         :return:            A list of Category URI's together with token strings,
                             providing directives for the HTML structure of the bread crumbs
                             EXAMPLE 1:  ['1']
@@ -364,12 +363,12 @@ class Categories:
     def recursive(cls, category_uri :str, parents_map :dict) -> list:
         """
 
-        :param category_uri:
-        :param parents_map: the dict structure returned by create_parent_map()
+        :param category_uri:A string identifying the desired Category
+        :param parents_map: The dict structure returned by create_parent_map()
         :return:
         """
-        if category_uri == "1":    # If it is the root.    TODO: this will eventually have to be managed differently
-            return ["1"]
+        if cls.is_root_category(category_uri):
+            return ["1"]    # TODO: this will eventually have to be managed differently
 
         parent_list = parents_map.get(category_uri, [])
 
@@ -448,9 +447,10 @@ class Categories:
         # TODO: return a string instead of an integer
         # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
         #       a Category to have multiple "children" with the same name)
-        category_id = data_dict.get("category_id")
-        assert category_id is not None, "add_subcategory(): key `category_id` in argument `data_dict` is missing"
-        assert type(category_id) == str, "add_subcategory(): value of `category_id` in argument `data_dict` must be a string"
+        category_uri = data_dict.get("category_id")
+        assert NeoSchema.is_valid_uri(category_uri), "invalid category uri"
+        assert category_uri is not None, "add_subcategory(): key `category_id` in argument `data_dict` is missing"
+        assert type(category_uri) == str, "add_subcategory(): value of `category_id` in argument `data_dict` must be a string"
 
         subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
@@ -462,7 +462,7 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_id, key_name="uri")
+        parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_uri, key_name="uri")
 
         new_internal_id = NeoSchema.add_data_node_with_links(
                                 class_name = "Categories",
@@ -696,11 +696,12 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_content_items_by_category(cls, category_id = "1") -> [{}]:
+    def get_content_items_by_category(cls, category_uri = "1") -> [{}]:
         """
-        Return the records for all nodes linked to the Category node identified by its uri value
+        Return the records for all nodes linked
+        to the Category node identified by its uri value (by default, the ROOT Category)
 
-        :param category_id:
+        :param category_uri:A string identifying the desired Category
         :return:    A list of dictionaries
                     EXAMPLE:
                     [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
@@ -717,7 +718,7 @@ class Categories:
             ORDER BY r.pos
             """
 
-        result = cls.db.query(cypher, {"category_id": category_id})
+        result = cls.db.query(cypher, {"category_id": category_uri})
         #print(result)
 
 
@@ -746,7 +747,7 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def add_content_at_beginning(cls, category_id :str, item_class_name: str, item_properties: dict, new_uri=None) -> str:
+    def add_content_at_beginning(cls, category_uri :str, item_class_name: str, item_properties: dict, new_uri=None) -> str:
         """
         Add a new Content Item, with the given properties and Class, to the beginning of the specified Category.
 
@@ -754,17 +755,14 @@ class Categories:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param category_id:     The integer "uri" of the Category to which this new Content Media is to be attached
-                                TODO: rename to "category_uri"
-
+        :param category_uri:    The string "uri" of the Category to which this new Content Media is to be attached
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
-        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                TODO: rename to "new_uri"
+        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
-        new_uri = Collections.add_to_collection_at_beginning(collection_uri=category_id, membership_rel_name="BA_in_category",
+        new_uri = Collections.add_to_collection_at_beginning(collection_uri=category_uri, membership_rel_name="BA_in_category",
                                                              item_class_name=item_class_name, item_properties=item_properties,
                                                              new_uri=new_uri)
         return new_uri
@@ -772,13 +770,11 @@ class Categories:
 
 
     @classmethod
-    def add_content_at_end(cls, category_id :str, item_class_name: str, item_properties: dict, new_uri=None) -> str:
+    def add_content_at_end(cls, category_uri :str, item_class_name: str, item_properties: dict, new_uri=None) -> str:
         """
         Add a new Content Item, with the given properties and Class, to the end of the specified Category.
 
-        :param category_id:     The string "uri" of the Category to which this new Content Media is to be attached
-                                TODO: rename to "category_uri"
-
+        :param category_uri:    The string "uri" of the Category to which this new Content Media is to be attached
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
@@ -818,7 +814,7 @@ class Categories:
         #TODO: replace 20 with cls.DELTA_POS
         #TODO: turn into a Collection-wide operation
 
-        status = cls.db.update_query(q, data_binding={"category_id": category_id, "new_uri": new_uri})
+        status = cls.db.update_query(q, data_binding={"category_id": category_uri, "new_uri": new_uri})
         print("add_content_at_end(): status is ", status)
         # status should be contain {'relationships_created': 1, 'properties_set': 1}
         assert status.get('relationships_created') == 1, \
@@ -883,7 +879,7 @@ class Categories:
         and return a dictionary with the Properties (in Schema order) of each
 
         TODO: unit test
-        :param category_uri: An integer identifying the desired Category
+        :param category_uri:A string identifying the desired Category
 
         :return:            A dictionary whose keys are Class names (of Content Items attached to the given Category),
                             and whose values are the Properties (in declared Schema order) of those Classes.
@@ -925,12 +921,12 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def check_for_duplicates(cls, category_id :str) -> str:
+    def check_for_duplicates(cls, category_uri :str) -> str:
         """
         Look for duplicates values in the "pos" attributes
         of the "BA_in_category" relationships ending in the specified Category node (specified by its uri)
 
-        :param category_id:
+        :param category_uri:A string identifying the desired Category
         :return:            In case of duplicates, return a text with an explanation;
                             if no duplicates, return an empty string
         """
@@ -940,7 +936,7 @@ class Categories:
             RETURN r1.pos AS pos, i1.uri AS item1 ,i2.uri AS item2
             LIMIT 1
             '''
-        data_binding = {"uri": category_id}
+        data_binding = {"uri": category_uri}
         duplicates = cls.db.query(q, data_binding)
         if duplicates == []:
             return ""
@@ -969,21 +965,21 @@ class Categories:
 
 
     @classmethod
-    def reposition_content(cls, category_id :str, uri: int, move_after_n: int):
+    def reposition_content(cls, category_uri :str, uri: str, move_after_n: int):
         """
         Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
 
         Note: there's no harm (though it's wasteful) to move an item to a final sequence position where it already is;
               its "pos" value will change
 
-        :param category_id:     A string with the Category URI
+        :param category_uri:    A string identifying the desired Category
         :param uri:             A string with the URI of the Content Item we're repositioning
         :param move_after_n:    The index (counting from 1) of the item after which we want to position the item being moved
                                     Use n=0 to indicate "move before anything else"
         :return:
         """
-        assert type(category_id) == str, "ERROR: argument 'category_id' is not a string"
-        assert type(uri) == str, "ERROR: argument 'uri' is not a string"
+        assert NeoSchema.is_valid_uri(category_uri), "ERROR: argument 'category_uri' is invalid"
+        assert NeoSchema.is_valid_uri(uri), "ERROR: argument 'uri' is not a valid string"
         assert type(move_after_n) == int, "ERROR: argument 'move_after_n' is not an integer"
         assert move_after_n >= 0, "ERROR: argument 'move_after_n' cannot be negative"
 
@@ -998,13 +994,13 @@ class Categories:
             RETURN POS_LIST
             '''
 
-        result = cls.db.query(q, {"category_id": category_id})  # If nothing found, this will be [{'POS_LIST': []}]
+        result = cls.db.query(q, {"category_id": category_uri})  # If nothing found, this will be [{'POS_LIST': []}]
         pos_list = result[0].get("POS_LIST")    # A subset of the first sorted "pos" values
         print("pos_list: ", pos_list)
 
         if pos_list == []:
             # The Category is empty (or doesn't exist)
-            raise Exception(f"Category (id {category_id}) not found, or empty")
+            raise Exception(f"Category (id {category_uri}) not found, or empty")
 
         if move_after_n == 0:
             # Move to top
@@ -1023,7 +1019,7 @@ class Categories:
             if pos_below == pos_above + 1:
                 # There's no room; shift everything that is past that position, by a count of DELTA_POS
                 print(f"********* RELOCATING ITEMS (skipping the first {move_after_n}) ***********")
-                cls.relocate_positions(category_id, n_to_skip=move_after_n, pos_shift=cls.DELTA_POS)
+                cls.relocate_positions(category_uri, n_to_skip=move_after_n, pos_shift=cls.DELTA_POS)
                 new_pos = pos_above + int(cls.DELTA_POS/2)			# This will be now be the empty halfway point
             else:
                 new_pos = int((pos_above + pos_below) / 2)		# Take the halfway point, rounded down
@@ -1037,16 +1033,16 @@ class Categories:
 
         print("q: ", q)
 
-        result = cls.db.update_query(q, {"category_id": category_id, "uri": uri})
+        result = cls.db.update_query(q, {"category_id": category_uri, "uri": uri})
         number_props_set = result.get('properties_set')
         print("number_props_set: ", number_props_set)
         if number_props_set != 1:
-            raise Exception(f"Content Item (id {uri}) not found in Category (id {category_id}), or could not be moved")
+            raise Exception(f"Content Item (id {uri}) not found in Category (id {category_uri}), or could not be moved")
 
 
 
     @classmethod
-    def relocate_positions(cls, category_id :str, n_to_skip: int, pos_shift: int) -> int:
+    def relocate_positions(cls, category_uri :str, n_to_skip: int, pos_shift: int) -> int:
         """
         Shift the values of the "pos" attributes on the "BA_in_category" relationships
         from the given Category node, by the given amount;
@@ -1058,20 +1054,20 @@ class Categories:
         2:   84
         3:   91
 
-        then relocate_positions(category_id, n_to_skip=1, pos_shift=100) will result in:
+        then relocate_positions(category_uri, n_to_skip=1, pos_shift=100) will result in:
             pos
         1:   45     <- got skipped
         2:  184
         3:  191
 
-        :param category_id: An integer with the Category ID
+        :param category_uri:A string identifying the desired Category
         :param n_to_skip:   The number of relationships (after sorting them by "pos") NOT to re-position
                                 Must be an integer >= 1 (it'd be pointless to shift everything!)
         :param pos_shift:   The increment by which to shift the values of the "pos" attributes on the relationships
 
         :return:            The number of repositionings performed
         """
-        assert type(category_id) == str, "ERROR: argument 'category_id' is not a string"
+        assert NeoSchema.is_valid_uri(category_uri), "ERROR: argument 'category_uri' is not a valid string"
         assert type(n_to_skip) == int, "ERROR: argument 'n_to_skip' is not an integer"
         assert type(pos_shift) == int, "ERROR: argument 'pos_shift' is not an integer"
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
@@ -1084,7 +1080,7 @@ class Categories:
             SET r.pos = r.pos + {pos_shift}
             '''
 
-        result = cls.db.update_query(q, {"category_id": category_id})
+        result = cls.db.update_query(q, {"category_id": category_uri})
         return result.get('properties_set')
 
 
@@ -1153,7 +1149,7 @@ class Categories:
     def viewer_handler(cls, category_uri :str):
         """
 
-        :param category_uri:
+        :param category_uri:A string identifying the desired Category
         :return:
         """
         category_internal_id = NeoSchema.get_data_node_internal_id(uri = category_uri)

@@ -1128,7 +1128,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/reposition/60/576/4
             """
             try:
-                Categories.reposition_content(category_id=category_id, uri=uri, move_after_n=int(move_after_n))
+                Categories.reposition_content(category_uri=category_id, uri=uri, move_after_n=int(move_after_n))
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
                 err_details = f"Unable to reposition the Content Item.  {exceptions.exception_helper(ex)}"
@@ -1486,8 +1486,8 @@ class ApiRouting:
             # Update the database (for now, the media is added AT THE END of the Category page)
             # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
             try:
-                new_uri = Categories.add_content_at_end(category_id=category_uri,
-                                                            item_class_name=class_name, item_properties=properties)
+                new_uri = Categories.add_content_at_end(category_uri=category_uri,
+                                                        item_class_name=class_name, item_properties=properties)
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Documents":

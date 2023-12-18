@@ -843,13 +843,13 @@ class DataManager:
 
         # Create the new node and required relationships
         if insert_after == "TOP":
-            Categories.add_content_at_beginning(category_id=category_id,
+            Categories.add_content_at_beginning(category_uri=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         elif insert_after == "BOTTOM":
-            Categories.add_content_at_end(category_id=category_id,
-                                                item_class_name=class_name, item_properties=post_data,
-                                                new_uri=new_uri)
+            Categories.add_content_at_end(category_uri=category_id,
+                                          item_class_name=class_name, item_properties=post_data,
+                                          new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
@@ -872,11 +872,11 @@ class DataManager:
         #       Meant to take over the final parts of BA_Api_Routing.upload_media() and DataManager.new_content_item_in_category()
         # Create the new node and required relationships
         if insert_after == "TOP":
-            Categories.add_content_at_beginning(category_id=category_id,
+            Categories.add_content_at_beginning(category_uri=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         elif insert_after == "BOTTOM":
-            Categories.add_content_at_end(category_id=category_id,
+            Categories.add_content_at_end(category_uri=category_id,
                                           item_class_name=class_name, item_properties=post_data,
                                           new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
