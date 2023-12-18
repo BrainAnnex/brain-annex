@@ -374,12 +374,13 @@ class DataManager:
         rel_name = data_dict['rel_name']
         schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
-        if schema_code == "cat":        # TODO: take this part away
-            Categories.add_relationship(from_id=from_id, to_id=to_id,
-                                        rel_name=rel_name)       # Category-specific action
-        else:
-            NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
-                                                rel_name=rel_name, id_type="uri")
+        if schema_code == "cat":        # TODO: take this part away?
+            Categories.add_relationship_before(from_id=from_id, to_id=to_id,
+                                               rel_name=rel_name)       # Category-specific action
+
+        # The adding of the relationship is done here
+        NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
+                                            rel_name=rel_name, id_type="uri")
 
 
 
@@ -405,8 +406,8 @@ class DataManager:
         schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
         if schema_code == "cat":
-            Categories.remove_relationship(from_id=from_id, to_id=to_id,
-                                           rel_name=rel_name)       # Category-specific action
+            Categories.remove_relationship_before(from_id=from_id, to_id=to_id,
+                                                  rel_name=rel_name)       # Category-specific action
 
         NeoSchema.remove_data_relationship(from_uri=from_id, to_uri=to_id,
                                            rel_name=rel_name, labels="BA")
@@ -634,7 +635,7 @@ class DataManager:
         In case of error, an Exception is raised
 
         NOTE: the "schema_code" field is currently required, but it's redundant.  Only
-              used as a safety mechanism against incorrect values of uri
+              used as a safety mechanism against incorrect values of the URI
 
         TODO: if any (non-special?) field is blank, drop it altogether from the node;
               maybe add this capability to set_fields()
@@ -654,9 +655,6 @@ class DataManager:
 
 
         data_binding = post_data
-
-        if uri < 0:     # Validate uri      # TODO: ditch after switching to string URI's
-            raise Exception(f"Bad uri: {uri}")
 
 
         set_dict = {}       # Dictionary of field values to set
@@ -753,9 +751,10 @@ class DataManager:
 
 
     @classmethod
-    def new_content_item_in_category(cls, post_data: dict) -> int:
+    def new_content_item_in_category(cls, post_data: dict) -> str:
         """
-        Create a new Content Item attached to a particular Category
+        Create a new Content Item attached to a particular Category,
+        at a specified position on the Category page
 
         :param post_data:   A dict containing the following keys
             - "category_id"  (for the linking to a Category)
@@ -764,11 +763,11 @@ class DataManager:
                     * schema_id (Optional)
                     * class_name (Required only for Class Items of type "record")
 
-            - insert_after        Either an URI (int) of an existing Content Item attached to this Category,
+            - insert_after        Either a URI of an existing Content Item attached to this Category,
                                   or one of the special values "TOP" or "BOTTOM"
             - *PLUS* all applicable plugin-specific fields (all the key/values for the new Content Item)
 
-        :return:    The uri of the newly-created node
+        :return:    The URI of the newly-created node.
                     In case of error, an Exception is raised
         """
 
@@ -852,14 +851,9 @@ class DataManager:
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
-            try:
-                insert_after = int(insert_after)
-            except Exception:
-                raise Exception(f"`insert_after` must be an integer, unless it's 'TOP' or 'BOTTOM'. Value passed: `{insert_after}`")
-
-            Categories.add_content_after_element(category_id=category_id,
-                                             item_class_name=class_name, item_properties=post_data,
-                                             insert_after=insert_after, new_uri=new_uri)
+            Categories.add_content_after_element(category_uri=category_id,
+                                                 item_class_name=class_name, item_properties=post_data,
+                                                 insert_after=insert_after, new_uri=new_uri)
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
@@ -872,7 +866,7 @@ class DataManager:
 
 
     @classmethod
-    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :int, new_uri, class_name,
+    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :str, new_uri, class_name,
                                                 post_data, original_post_data):
         # TODO: NOT YET IN USE
         #       Meant to take over the final parts of BA_Api_Routing.upload_media() and DataManager.new_content_item_in_category()
@@ -886,12 +880,7 @@ class DataManager:
                                           item_class_name=class_name, item_properties=post_data,
                                           new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
-            try:
-                insert_after = int(insert_after)
-            except Exception:
-                raise Exception(f"`insert_after` must be an integer, unless it's 'TOP' or 'BOTTOM'. Value passed: `{insert_after}`")
-
-            Categories.add_content_after_element(category_id=category_id,
+            Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
                                                  insert_after=insert_after, new_uri=new_uri)
 

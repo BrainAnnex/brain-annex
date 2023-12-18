@@ -550,11 +550,15 @@ class Categories:
     """
 
     @classmethod
-    def add_relationship(cls, from_id :str, to_id :str,
-                        rel_name: str) -> None:
+    def add_relationship_before(cls, from_id :str, to_id :str,
+                                rel_name :str) -> None:
         """
+        A handler to be invoked by the core module before a relationship involving Categories is called.
+
         If any restriction would apply to adding the parent/child relationship between the specified categories,
         raise an Exception.
+
+        IMPORTANT: NO RELATIONSHIP IS ACTUALLY ADDED
 
         The restriction are:
             1) the subcategory node cannot be the Root Category
@@ -572,18 +576,21 @@ class Categories:
             raise Exception("Cannot add the relationship because the Root Category cannot be made a subcategory of something else")
 
         # If the parent and the child are the same, raise an Exception
-        if from_id == to_id:
-            raise Exception("Cannot add a relationship from a Category to itself")
+        assert from_id != to_id, \
+            "Cannot add a relationship from a Category to itself"
 
 
 
     @classmethod
-    def remove_relationship(cls, from_id: str, to_id :str,
-                            rel_name: str) -> None:
+    def remove_relationship_before(cls, from_id: str, to_id :str,
+                                   rel_name: str) -> None:
         """
-        TODO: rename possible_to_remove_relationship()
+        A handler to be invoked by the core module before a relationship involving Categories is called.
+
         If any restriction would apply to removing the parent/child relationship between the specified categories,
         raise an Exception.
+
+        IMPORTANT: NO RELATIONSHIP IS ACTUALLY REMOVED
 
         The restriction is:
             *) the subcategory node cannot become orphaned as a result of the deletion
@@ -757,9 +764,9 @@ class Categories:
 
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
-        new_uri = Collections.add_to_collection_at_beginning(collection_id=category_id, membership_rel_name="BA_in_category",
-                                                                 item_class_name=item_class_name, item_properties=item_properties,
-                                                                 new_uri=new_uri)
+        new_uri = Collections.add_to_collection_at_beginning(collection_uri=category_id, membership_rel_name="BA_in_category",
+                                                             item_class_name=item_class_name, item_properties=item_properties,
+                                                             new_uri=new_uri)
         return new_uri
 
 
@@ -835,7 +842,7 @@ class Categories:
 
 
     @classmethod
-    def add_content_after_element(cls, category_id :str, item_class_name: str, item_properties: dict, insert_after :str, new_uri=None) -> str:
+    def add_content_after_element(cls, category_uri :str, item_class_name: str, item_properties: dict, insert_after :str, new_uri=None) -> str:
         """
         Add a new Content Item, with the given properties and Class, inserted into the given Category after the specified Item
         (in the context of the positional order encoded in the relationship attribute "pos")
@@ -844,9 +851,7 @@ class Categories:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param category_id:     The integer "uri" of the Category to which this new Content Media is to be attached
-                                TODO: rename to "category_uri"
-
+        :param category_uri:    The string "uri" of the Category to which this new Content Media is to be attached
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param insert_after:    The URI of the element after which we want to insert
@@ -854,10 +859,10 @@ class Categories:
 
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
-        new_uri = Collections.add_to_collection_after_element(collection_id=category_id, membership_rel_name="BA_in_category",
-                                                                  item_class_name=item_class_name, item_properties=item_properties,
-                                                                  insert_after=insert_after,
-                                                                  new_uri=new_uri)
+        new_uri = Collections.add_to_collection_after_element(collection_uri=category_uri, membership_rel_name="BA_in_category",
+                                                              item_class_name=item_class_name, item_properties=item_properties,
+                                                              insert_after=insert_after,
+                                                              new_uri=new_uri)
         return new_uri
 
 
@@ -977,8 +982,8 @@ class Categories:
                                     Use n=0 to indicate "move before anything else"
         :return:
         """
-        assert type(category_id) == int, "ERROR: argument 'category_id' is not an integer"
-        assert type(uri) == int, "ERROR: argument 'uri' is not an integer"
+        assert type(category_id) == str, "ERROR: argument 'category_id' is not a string"
+        assert type(uri) == str, "ERROR: argument 'uri' is not a string"
         assert type(move_after_n) == int, "ERROR: argument 'move_after_n' is not an integer"
         assert move_after_n >= 0, "ERROR: argument 'move_after_n' cannot be negative"
 
@@ -1066,7 +1071,7 @@ class Categories:
 
         :return:            The number of repositionings performed
         """
-        assert type(category_id) == int, "ERROR: argument 'category_id' is not an integer"
+        assert type(category_id) == str, "ERROR: argument 'category_id' is not a string"
         assert type(n_to_skip) == int, "ERROR: argument 'n_to_skip' is not an integer"
         assert type(pos_shift) == int, "ERROR: argument 'pos_shift' is not an integer"
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
@@ -1235,14 +1240,14 @@ class Collections:
 
 
     @classmethod
-    def delete_collection(cls, collection_id :str) -> None:
+    def delete_collection_NOT_IMPLEMENTED(cls, collection_uri :str) -> None:
         """
         #TODO: implement
 
         Delete the specified Collection, provided that there are no Data Items linked to it.
         In case of error or failure, an Exception is raised.
 
-        :param collection_id:   The "uri" integer value identifying the desired Collection
+        :param collection_uri:  The "uri" string value identifying the desired Collection
         :return:                None
         """
         pass
@@ -1250,7 +1255,7 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_at_beginning(cls, collection_id :str, membership_rel_name: str, item_class_name: str, item_properties: dict,
+    def add_to_collection_at_beginning(cls, collection_uri :str, membership_rel_name: str, item_class_name: str, item_properties: dict,
                                        new_uri=None) -> str:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
@@ -1266,7 +1271,7 @@ class Collections:
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
-        assert type(collection_id) == int, "The argument `collection_id` MUST be an integer"
+        assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
@@ -1276,7 +1281,7 @@ class Collections:
             MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{uri: $collection_id}}) 
             RETURN min(r.pos) AS min_pos
             '''
-        data_binding = {"collection_id": collection_id}
+        data_binding = {"collection_id": collection_uri}
 
         min_pos = cls.db.query(q, data_binding, single_cell="min_pos")  # This will be None if the Collection has no elements
 
@@ -1290,7 +1295,7 @@ class Collections:
         return NeoSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=data_binding,
                                             labels=["BA", item_class_name],
-                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            connected_to_id=collection_uri, connected_to_labels="BA",
                                             rel_name=membership_rel_name,
                                             rel_prop_key="pos", rel_prop_value=pos,
                                             new_uri=new_uri
@@ -1299,7 +1304,7 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_at_end(cls, collection_id :str, membership_rel_name: str, item_class_name: str, item_properties: dict,
+    def add_to_collection_at_end(cls, collection_uri :str, membership_rel_name: str, item_class_name: str, item_properties: dict,
                                  new_uri=None) -> str:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
@@ -1312,7 +1317,7 @@ class Collections:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param collection_id:       The uri of a data node whose schema is an instance of the Class "Collections"
+        :param collection_uri:      The uri of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name:
         :param item_class_name:
         :param item_properties:
@@ -1320,7 +1325,7 @@ class Collections:
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
-        assert type(collection_id) == int, "The argument `collection_id` MUST be an integer"
+        assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
@@ -1330,7 +1335,7 @@ class Collections:
             MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{uri: $collection_id}}) 
             RETURN max(r.pos) AS max_pos
             '''
-        data_binding = {"collection_id": collection_id}
+        data_binding = {"collection_id": collection_uri}
 
         max_pos = cls.db.query(q, data_binding, single_cell="max_pos")  # This will be None if the Collection has no elements
 
@@ -1346,7 +1351,7 @@ class Collections:
         return NeoSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=data_binding,
                                             labels=["BA", item_class_name],
-                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            connected_to_id=collection_uri, connected_to_labels="BA",
                                             rel_name=membership_rel_name,
                                             rel_prop_key="pos", rel_prop_value=pos,
                                             new_uri=new_uri
@@ -1355,7 +1360,7 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_after_element(cls, collection_id :str, membership_rel_name: str,
+    def add_to_collection_after_element(cls, collection_uri :str, membership_rel_name: str,
                                         item_class_name: str, item_properties: dict, insert_after :str,
                                         new_uri=None) -> str:
         """
@@ -1367,7 +1372,7 @@ class Collections:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param collection_id:       The uri of a data node whose schema is an instance of the Class "Collections"
+        :param collection_uri:      The uri of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply
         :param item_class_name:     Name of the Class for the newly-created node
         :param item_properties:     Dictionary with the properties of the newly-created node
@@ -1376,13 +1381,11 @@ class Collections:
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
-        assert type(collection_id) == int, "The argument `collection_id` MUST be an integer"
+        assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
-        assert type(insert_after) == int, "The argument `insert_after` MUST be an integer"
-        if new_uri:
-            assert type(new_uri) == int, f"The argument `new_uri`, when provided, MUST be an integer (it was `{new_uri}`)"
+        assert type(insert_after) == str, "The argument `insert_after` MUST be a string"
 
         q = f'''
         MATCH (n_before :BA {{uri: $insert_after}})-[r_before :{membership_rel_name}] 
@@ -1402,7 +1405,7 @@ class Collections:
         LIMIT 1
         '''
 
-        data_binding = {"collection_id": collection_id, "insert_after": insert_after}
+        data_binding = {"collection_id": collection_uri, "insert_after": insert_after}
 
         # ALTERNATE WAY OF PHRASING THE QUERY:
         '''
@@ -1424,7 +1427,7 @@ class Collections:
                 raise Exception(f"There is no node with the `uri` value ({insert_after}) passed by `insert_after`")
 
             print("It's case of insert AT THE END")
-            return cls.add_to_collection_at_end(collection_id, membership_rel_name, item_class_name, item_properties,new_uri=new_uri)
+            return cls.add_to_collection_at_end(collection_uri, membership_rel_name, item_class_name, item_properties, new_uri=new_uri)
 
 
         pos_before = result["pos_before"]
@@ -1433,7 +1436,7 @@ class Collections:
         if pos_after == pos_before + 1:
             # There's no room; shift everything that is past that position, by a count of DELTA_POS
             print(f"********* SHIFTING DOWN ITEMS whose `pos` value is {pos_after} and above  ***********")
-            cls.shift_down(collection_id=collection_id, membership_rel_name=membership_rel_name, first_to_move=pos_after)
+            cls.shift_down(collection_id=collection_uri, membership_rel_name=membership_rel_name, first_to_move=pos_after)
             new_pos = pos_before + int(cls.DELTA_POS/2)			# This will be now be the empty halfway point
         else:
             new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
@@ -1442,7 +1445,7 @@ class Collections:
         return NeoSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=item_properties,
                                             labels=["BA", item_class_name],
-                                            connected_to_id=collection_id, connected_to_labels="BA",
+                                            connected_to_id=collection_uri, connected_to_labels="BA",
                                             rel_name=membership_rel_name,
                                             rel_prop_key="pos", rel_prop_value=new_pos,
                                             new_uri=new_uri

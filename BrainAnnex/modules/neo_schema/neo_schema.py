@@ -144,9 +144,11 @@ class NeoSchema:
 
 
     #####################################################################################################
-    #                                                                                                   #
-    #                                   ~ CLASS-related  ~                                              #
-    #                                                                                                   #
+
+    '''                                     ~   CLASS-related   ~                                     '''
+
+    def ________CLASS_related________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
     @classmethod
@@ -330,14 +332,14 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_name(cls, schema_id: int) -> str:
+    def get_class_name(cls, schema_id :int) -> str:
         """
         Returns the name of the class with the given Schema ID, or "" if not found
 
         :param schema_id:   An integer with the unique ID of the desired class
         :return:            The name of the class with the given Schema ID, or "" if not found
         """
-        assert type(schema_id) == int, "The schema id MUST be an integer"
+        assert type(schema_id) == int, "get_class_name(): The schema id MUST be an integer"
 
         match = cls.db.match(labels="CLASS", key_name="schema_id", key_value=schema_id)
         result = cls.db.get_nodes(match, single_cell="name")
@@ -2309,7 +2311,8 @@ class NeoSchema:
         if not existing_neo_id:
             raise Exception("Missing argument: existing_neo_id")
 
-        assert type(existing_neo_id) == int, "The argument `existing_neo_id` MUST be an integer"
+        assert type(existing_neo_id) == int, \
+            "register_existing_data_node(): The argument `existing_neo_id` MUST be an integer"  # TODO: use validity checker
 
         # Make sure that at least either class_name or schema_id is present
         if (not class_name) and (not schema_id):
@@ -2526,7 +2529,7 @@ class NeoSchema:
 
         IMPORTANT: this function cannot be used to remove relationship involving any Schema node
 
-        :param node_id:     The internal database ID or name of the data node of interest
+        :param node_id:     The internal database ID (integer) or name (string) of the data node of interest
         :param rel_name:    The name of the relationship(s) to delete
         :param rel_dir:     Either 'IN', 'OUT', or 'BOTH'
         :param labels:      [OPTIONAL]
@@ -3069,6 +3072,21 @@ class NeoSchema:
     def ________URI________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
+    @classmethod
+    def is_valid_uri(cls, uri :str) -> bool:
+        """
+        Return True if the passed uri is valid; otherwise, return False
+
+        :param uri:
+        :return:
+        """
+        if type(uri) == str and uri != "":
+            return True
+
+        return False
+
+
 
     @classmethod
     def generate_uri(cls, prefix, namespace, suffix="") -> str:

@@ -9,12 +9,12 @@ class Notes:
     """
 
     @classmethod
-    def delete_content_before(cls, uri: int) -> None:
+    def delete_content_before(cls, uri :str) -> None:
         """
         Invoked just prior to deleting the data node
 
-        :param uri: An integer with the URI ("item ID") of the Content Item
-        :return:        None.  If index isn't found, an Exception is raised
+        :param uri: A string with the URI ("item ID") of the Content Item
+        :return:    None.  If index isn't found, an Exception is raised
         """
         #print(f"***** DELETING INDEXING for item {uri}")
         content_id = NeoSchema.get_data_node_internal_id(uri=uri)
@@ -23,13 +23,13 @@ class Notes:
 
 
     @classmethod
-    def delete_content_successful(cls, uri: int) -> None:
+    def delete_content_successful(cls, uri :str) -> None:
         pass    # No action needed
 
 
 
     @classmethod
-    def add_content(cls, uri: int, data_binding: dict) -> dict:
+    def add_content(cls, uri :str, data_binding: dict) -> dict:
         """
         Special handling for Notes (ought to be specified in its Schema):
                the "body" value is to be stored in a file named "notes-ID.htm", where ID is the uri,
@@ -37,7 +37,7 @@ class Notes:
                        basename: "notes-ID"
                        suffix: "htm"
 
-        :param uri:     An integer with the URI of the Content Item
+        :param uri:         A string with the URI of the Content Item
         :param data_binding:
         :return:            The altered data_binding dictionary.  In case of error, an Exception is raised.
         """
@@ -99,12 +99,12 @@ class Notes:
 
 
     @classmethod
-    def new_content_item_successful(cls, uri: int, pars: dict) -> None:
+    def new_content_item_successful(cls, uri :str, pars: dict) -> None:
         """
         Invoked after a new Content Item of this type gets successfully added
 
-        :param uri: An integer with the URI of the Content Item
-        :param pars:     Dict with the various properties of this Content Item
+        :param uri:     A string with the URI of the Content Item
+        :param pars:    Dict with the various properties of this Content Item
         :return:        None
         """
         body = pars.get("body")
@@ -117,7 +117,7 @@ class Notes:
 
 
     @classmethod
-    def update_content_item_successful(cls, uri: int, pars: dict) -> None:
+    def update_content_item_successful(cls, uri :str, pars: dict) -> None:
         """
         Invoked after a Content Item of this type gets successfully updated
 

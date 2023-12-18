@@ -92,7 +92,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 let my_var = "some value";  // Optional parameter, if needed
                 let post_obj = {my_var: my_var};
 
-                console.log(`About to contact the server at ${url_server_api}.  POST object:`);
+                console.log(`About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
 
                 this.waiting = true;        // Entering a waiting-for-server mode
