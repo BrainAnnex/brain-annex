@@ -1,5 +1,3 @@
-# Classes "DataManager" and "DocumentationGenerator"    # TODO: separate
-
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
@@ -13,11 +11,13 @@ import os
 from flask import request, current_app  # TODO: phase out (?)
 from typing import Union
 import shutil
+import requests
+import html
 from datetime import datetime
 
 
 """
-    MIT License.  Copyright (c) 2021-2023 Julian A. West
+    MIT License.  Copyright (c) 2021-2023 Julian A. West     BrainAnnex.org
 """
 
 
@@ -65,7 +65,8 @@ class DataManager:
     @classmethod
     def add_new_label(cls, label: str) -> int:
         """
-        Create a new blank node with the specified label
+        Create a new blank node with the specified label.
+        Mostly used for testing.
 
         :return:    The internal database ID of the new node
         """
@@ -75,8 +76,13 @@ class DataManager:
 
 
 
+    #####################################################################################################
 
-    #######################     GENERAL UTILITIES       #######################
+    '''                                      ~   UTILITIES   ~                                        '''
+
+    def ________UTILITIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def to_int_if_possible(cls, s: str) -> Union[int, str, None]:
@@ -90,6 +96,34 @@ class DataManager:
             return int(s)
         except ValueError:
             return s
+
+
+
+    @classmethod
+    def str_to_int(cls, s: str) -> int:
+        """
+        Helper function to give more friendly error messages in case non-integers are passed
+        in situations where integers are expected.
+        Without this function, the user would see cryptic messages such as
+        "invalid literal for int() with base 10: 'q123'"
+
+        EXAMPLE of usage:
+            try:
+                i = cls.str_to_int(i_str)
+            except Exception as ex:
+                # Do something
+
+        :param s:   A string that should represent an integer
+        :return:    The integer represented in the passed string, if applicable;
+                        if not, an Exception is raised
+        """
+        #TODO: no longer being used.  Perhaps eliminate
+        try:
+            i = int(s)
+        except Exception:
+            raise Exception(f"The passed parameter ({s}) is not an integer as expected")
+
+        return i
 
 
 
@@ -127,9 +161,15 @@ class DataManager:
 
 
 
-    #######################     SCHEMA-RELATED       #######################
-    # TODO: possibly move to separate class
 
+    #####################################################################################################
+
+    '''                                    ~   SCHEMA-RELATED   ~                                     '''
+
+    def ________SCHEMA_RELATED________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+    # TODO: possibly move to separate class
 
     @classmethod
     def all_schema_classes(cls) -> [str]:
@@ -232,18 +272,16 @@ class DataManager:
         """
         from_class_name = class_specs["from_class_name"]
         from_class_name = from_class_name.strip()
-        print("from_class_name: ", from_class_name)
+        #print("from_class_name: ", from_class_name)
 
         to_class_name = class_specs["to_class_name"]
         to_class_name = to_class_name.strip()
-        print("to_class_name: ", to_class_name)
+        #print("to_class_name: ", to_class_name)
 
         rel_name = class_specs["rel_name"]
         rel_name = rel_name.strip()
-        print("rel_name: ", rel_name)
+        #print("rel_name: ", rel_name)
 
-        #from_class_id = NeoSchema.get_class_id(from_class_name)
-        #to_class_id = NeoSchema.get_class_id(to_class_name)
         NeoSchema.create_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
 
 
@@ -299,15 +337,15 @@ class DataManager:
         """
         from_class_name = class_specs["from_class_name"]
         from_class_name = from_class_name.strip()
-        print("from_class_name: ", from_class_name)
+        #print("from_class_name: ", from_class_name)
 
         to_class_name = class_specs["to_class_name"]
         to_class_name = to_class_name.strip()
-        print("to_class_name: ", to_class_name)
+        #print("to_class_name: ", to_class_name)
 
         rel_name = class_specs["rel_name"]
         rel_name = rel_name.strip()
-        print("rel_name: ", rel_name)
+        #print("rel_name: ", rel_name)
 
         # Delete the relationship(s)
         NeoSchema.delete_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
@@ -316,6 +354,65 @@ class DataManager:
 
 
     #######################     RECORDS-RELATED       #######################
+
+    @classmethod
+    def add_data_relationship_handler(cls, data_dict: dict) -> None:
+        """
+        Add the specified relationship (edge) between data nodes.
+        In case of error, an Exception is raised.
+
+        :param data_dict: A dictionary with the following
+                from                    The uri of the node from which the relationship originates
+                to                      The uri of the node into which the relationship takes
+                rel_name                The name of the relationship to add
+                schema_code (optional)  If passed, the appropriate plugin gets invoked
+
+        :return: None
+        """
+        from_id = data_dict['from']
+        to_id = data_dict['to']
+        rel_name = data_dict['rel_name']
+        schema_code = data_dict.get('schema_code')         # Tolerant of missing values
+
+        if schema_code == "cat":        # TODO: take this part away?
+            Categories.add_relationship_before(from_id=from_id, to_id=to_id,
+                                               rel_name=rel_name)       # Category-specific action
+
+        # The adding of the relationship is done here
+        NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
+                                            rel_name=rel_name, id_type="uri")
+
+
+
+
+    @classmethod
+    def remove_data_relationship_handler(cls, data_dict: dict) -> None:
+        """
+        Remove the specified relationship (edge) between data nodes.
+        In case of error, an Exception is raised.
+
+        :param data_dict: A dictionary with the following
+                DICTIONARY KEYS:
+                    from                    The uri of the node from which the relationship originates
+                    to                      The uri of the node into which the relationship takes
+                    rel_name                The name of the relationship to remove
+                    schema_code (optional)  If passed, the appropriate plugin gets invoked
+
+        :return: None
+        """
+        from_id = data_dict['from']
+        to_id = data_dict['to']
+        rel_name = data_dict['rel_name']
+        schema_code = data_dict.get('schema_code')         # Tolerant of missing values
+
+        if schema_code == "cat":
+            Categories.remove_relationship_before(from_id=from_id, to_id=to_id,
+                                                  rel_name=rel_name)       # Category-specific action
+
+        NeoSchema.remove_data_relationship(from_uri=from_id, to_uri=to_id,
+                                           rel_name=rel_name, labels="BA")
+
+
 
     @classmethod
     def get_leaf_records(cls) -> [str]:
@@ -373,16 +470,15 @@ class DataManager:
     #######################     CONTENT-ITEM RELATED      #######################
 
     @classmethod
-    def get_text_media_content(cls, uri: int, schema_code, public_required = False) -> str:
+    def get_text_media_content(cls, uri :str, schema_code, public_required = False) -> str:
         """
         Fetch and return the contents of a media item stored on a local file,
         optionally requiring it to be marked as "public".
         In case of error, raise an Exception
 
-        :param uri:         An integer identifying the desired Content Item, which ought to be text media
+        :param uri:             A string identifying the desired Content Item, which ought to be text media
         :param schema_code:     TODO: maybe phase out
         :param public_required: If True, the Content Item is returned only if has an the attribute "public: true"
-                                    TODO: unclear if actually useful
 
         :return:                A string with the HTML text of the requested note;
                                     or an Exception in case of failure
@@ -397,7 +493,7 @@ class DataManager:
         content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
         if content_node is None:    # Metadata not found
-            raise Exception(f"The metadata for the Content Item (id {uri}) wasn't found, or the items is not publicly accessible")
+            raise Exception(f"The metadata for the Content Item (uri: `{uri}`) wasn't found, or the items is not publicly accessible")
 
         basename = content_node['basename']
         suffix = content_node['suffix']
@@ -409,22 +505,23 @@ class DataManager:
             file_contents = MediaManager.get_from_text_file(folder, filename, encoding="utf8")
             return file_contents
         except Exception as ex:
-            return f"I/O failure while reading in contents of item {uri}. {ex}"     # File I/O failed
+            return f"I/O failure while reading in contents of Item with URI `{uri}`. {ex}"     # File I/O failed
 
 
 
     @classmethod
-    def get_binary_content(cls, uri: int, th) -> (str, bytes):
+    def get_binary_content(cls, uri :str, th) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored on a local file.
         In case of error, raise an Exception
 
-        :param uri: Integer identifier for a media item     TODO: use strings
-        :param th:      If not None, then the thumbnail version is returned (only
-                            applicable to images)
-        :return:        The binary data
-
+        :param uri: String identifier for a media item
+        :param th:  If not None, then the thumbnail version is returned (only
+                        applicable to images)
+        :return:    The binary data
         """
+        #TODO: (at least for large media) read the file in blocks
+
         #print("In get_binary_content(): uri = ", uri)
         content_node = NeoSchema.fetch_data_node(uri = uri)
         #print("content_node:", content_node)
@@ -460,12 +557,14 @@ class DataManager:
         :param request_data: A dictionary with 3 keys, "uri", "rel_name", "dir"
         :return:             A list of dictionaries with all the properties of the neighbor nodes
         """
-        uri = request_data["uri"]        # This must be an integer
+        uri = request_data["uri"]               # This must be a string
         rel_name = request_data["rel_name"]
-        dir = request_data["dir"]                # Must be either "IN or "OUT"
+        dir = request_data["dir"]               # Must be either "IN or "OUT"
 
-        assert dir in ["IN", "OUT"], f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
-        assert type(uri) == int, "get_records_by_link(): The value of the parameter `uri` must be an integer"
+        assert dir in ["IN", "OUT"], \
+            f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
+        assert type(uri) == str, \
+            "get_records_by_link(): The value of the parameter `uri` must be an integer"
 
         match = cls.db.match(labels="BA", key_name="uri", key_value=uri)
 
@@ -474,13 +573,13 @@ class DataManager:
 
 
     @classmethod
-    def get_link_summary(cls, uri: int, omit_names = None) -> dict:
+    def get_link_summary(cls, uri :str, omit_names = None) -> dict:
         """
         Return a dictionary structure identifying the names and counts of all
         inbound and outbound links to/from the given data node.
         TODO: move most of it to the "~ FOLLOW LINKS ~" section of NeoAccess
 
-        :param uri:     ID of a data node
+        :param uri:         String with the URI of a data node
         :param omit_names:  Optional list of relationship names to disregard
         :return:            A dictionary with the names and counts of inbound and outbound links.
                             Each inner list is a pair [name, count]
@@ -536,35 +635,26 @@ class DataManager:
         In case of error, an Exception is raised
 
         NOTE: the "schema_code" field is currently required, but it's redundant.  Only
-              used as a safety mechanism against incorrect values of uri
+              used as a safety mechanism against incorrect values of the URI
 
         TODO: if any (non-special?) field is blank, drop it altogether from the node;
               maybe add this capability to set_fields()
 
         :return:    None.  In case of error, an Exception is raised
         """
-        print("In update_content_item(). POST dict: ", post_data)
+        #print("In update_content_item(). POST dict: ", post_data)
 
         # Validate the data
         schema_code = post_data.get("schema_code")   # If key not present, the value will be None
-        print("Item Type: ", schema_code)
+        #print("Item Type: ", schema_code)
 
-        try:
-            uri = int(post_data.get("uri"))
-        except Exception as ex:
-            raise Exception(f"uri is missing or not an integer. {ex}")
+        uri = post_data.get("uri")
+        assert uri, "update_content_item(): uri is missing"
 
-        print("Item Type: ", uri)
+        #print("Item Type: ", uri)
 
-        #print("All Item Data: ")
-        #print("-----------")
-        #for k, v in post_data.items():
-            #print(k , " -> " , v)
 
         data_binding = post_data
-
-        if uri < 0:     # Validate uri
-            raise Exception(f"Bad uri: {uri}")
 
 
         set_dict = {}       # Dictionary of field values to set
@@ -572,14 +662,22 @@ class DataManager:
             if k not in ("schema_code", "uri"):    # Exclude some special keys
                 set_dict[k] = v
 
+
+        # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
+        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
+        records = cls.db.get_nodes(match)
+        assert records != [], f"update_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
+
+
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
         #       TODO: try to infer them from the Schema
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
+
         if schema_code == "n":
             set_dict = Notes.update_content(data_binding, set_dict)
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to uri's
+        internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to string uri's
         number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
 
         if schema_code == "n":
@@ -600,19 +698,22 @@ class DataManager:
         Note that schema_code is redundant.
         In case of error, an Exception is raised
 
-        :param uri:     String version of the unique ID
+        :param uri:         String version of the unique ID
         :param schema_code: Redundant
         :return:            None.  In case of error, an Exception is raised
         """
-        print(f"In delete_content_item(). Attempting to delete uri {uri} of type `{schema_code}`")
+        #print(f"In delete_content_item(). Attempting to delete URI `{uri}` of type `{schema_code}`")
 
-        try:
-            uri = int(uri)
-        except Exception as ex:
-            raise Exception(f"uri is missing or not an integer. {ex}")
+        assert uri, "delete_content_item(): argument `uri` is missing"
 
 
-        # PLUGIN-SPECIFIC OPERATIONS that perform filesystem operations
+        # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
+        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
+        records = cls.db.get_nodes(match)
+        assert records != [], f"delete_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
+
+
+        # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
         #       (TODO: try to infer that from the Schema)
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
@@ -630,13 +731,15 @@ class DataManager:
         if schema_code == "n":
             Notes.delete_content_before(uri)
 
-        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
-        number_deleted = cls.db.delete_nodes(match)
+
+        # Perform the actual deletion of the Content Item node
+        number_deleted = cls.db.delete_nodes(match)     # TODO: switch to using the Schema layer
+
 
         if number_deleted == 1:
             if schema_code == "n":
                 # Extra processing for the "Notes" plugin
-                Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the system
+                Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the general system
 
             return       # Successful termination, with 1 Content Item deleted, as expected
 
@@ -648,10 +751,10 @@ class DataManager:
 
 
     @classmethod
-    def new_content_item_in_category(cls, post_data: dict) -> int:
+    def new_content_item_in_category(cls, post_data: dict) -> str:
         """
-        Create a new Content Item attached to a particular Category
-        # TODO: possibly generalize from "Category" to "Collection"
+        Create a new Content Item attached to a particular Category,
+        at a specified position on the Category page
 
         :param post_data:   A dict containing the following keys
             - "category_id"  (for the linking to a Category)
@@ -660,10 +763,11 @@ class DataManager:
                     * schema_id (Optional)
                     * class_name (Required only for Class Items of type "record")
 
-            - insert_after        Either an uri (int), or one of the special values "TOP" or "BOTTOM"
-            - PLUS all applicable plugin-specific fields (all the key/values for the new Content Item)
+            - insert_after        Either a URI of an existing Content Item attached to this Category,
+                                  or one of the special values "TOP" or "BOTTOM"
+            - *PLUS* all applicable plugin-specific fields (all the key/values for the new Content Item)
 
-        :return:    The uri of the newly-created node
+        :return:    The URI of the newly-created node.
                     In case of error, an Exception is raised
         """
 
@@ -672,17 +776,20 @@ class DataManager:
 
         # Validate the data, and extract some special attributes, while also paring down the post_data dictionary
 
+        # TODO: give better error messages; for example, if the requested Category doesn't exist
+
+        # TODO: possibly generalize from "Category" to "Collection"
+
         # Category-related data
         category_id = post_data.get("category_id")  # If the key isn't present, the value will be None
         if not category_id:
             raise Exception("Missing Category ID")
-        category_id = int(category_id)      # Correct the value, to make it an integer
         del post_data["category_id"]        # Remove this entry from the dictionary
 
         # Positioning within the Category
         insert_after = post_data.get("insert_after")
         if not insert_after:
-            raise Exception("Missing insert_after (ID of Item to insert the new one after)")
+            raise Exception("Missing insert_after (URI of Item to insert the new one after)")
         del post_data["insert_after"]
 
         # Schema-related data
@@ -711,7 +818,7 @@ class DataManager:
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_uri = NeoSchema.next_available_datanode_id()
+        new_uri = NeoSchema.next_available_datanode_uri()
         print("New item will be assigned ID:", new_uri)
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
@@ -736,22 +843,17 @@ class DataManager:
 
         # Create the new node and required relationships
         if insert_after == "TOP":
-            Categories.add_content_at_beginning(category_id=category_id,
+            Categories.add_content_at_beginning(category_uri=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         elif insert_after == "BOTTOM":
-            Categories.add_content_at_end(category_id=category_id,
-                                                item_class_name=class_name, item_properties=post_data,
-                                                new_uri=new_uri)
+            Categories.add_content_at_end(category_uri=category_id,
+                                          item_class_name=class_name, item_properties=post_data,
+                                          new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
-            try:
-                insert_after = int(insert_after)
-            except Exception:
-                raise Exception(f"`insert_after` must be an integer, unless it's 'TOP' or 'BOTTOM'. Value passed: `{insert_after}`")
-
-            Categories.add_content_after_element(category_id=category_id,
-                                             item_class_name=class_name, item_properties=post_data,
-                                             insert_after=insert_after, new_uri=new_uri)
+            Categories.add_content_after_element(category_uri=category_id,
+                                                 item_class_name=class_name, item_properties=post_data,
+                                                 insert_after=insert_after, new_uri=new_uri)
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
@@ -764,26 +866,21 @@ class DataManager:
 
 
     @classmethod
-    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :int, new_uri, class_name,
+    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :str, new_uri, class_name,
                                                 post_data, original_post_data):
         # TODO: NOT YET IN USE
         #       Meant to take over the final parts of BA_Api_Routing.upload_media() and DataManager.new_content_item_in_category()
         # Create the new node and required relationships
         if insert_after == "TOP":
-            Categories.add_content_at_beginning(category_id=category_id,
+            Categories.add_content_at_beginning(category_uri=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         elif insert_after == "BOTTOM":
-            Categories.add_content_at_end(category_id=category_id,
+            Categories.add_content_at_end(category_uri=category_id,
                                           item_class_name=class_name, item_properties=post_data,
                                           new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
-            try:
-                insert_after = int(insert_after)
-            except Exception:
-                raise Exception(f"`insert_after` must be an integer, unless it's 'TOP' or 'BOTTOM'. Value passed: `{insert_after}`")
-
-            Categories.add_content_after_element(category_id=category_id,
+            Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
                                                  insert_after=insert_after, new_uri=new_uri)
 
@@ -792,7 +889,7 @@ class DataManager:
         if class_name == "Notes":
             Notes.new_content_item_successful(new_uri, original_post_data)
         elif class_name == "Documents":
-            Documents.new_content_item_successful(new_uri, original_post_data)
+            Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
 
 
 
@@ -816,7 +913,6 @@ class DataManager:
             return None
 
         return record
-
 
 
 
@@ -888,6 +984,57 @@ class DataManager:
 
 
 
+    @classmethod
+    def extract_website_title(cls, url :str) -> str:
+        """
+        Retrieve the Title of a remote webpage, given its URL
+
+        :param url: URL of the website whose title we want to fetch.
+                        EXAMPLE:  "https://brainannex.org"
+        :return:    The "Title" of the website.
+                        In case unable to locate the web page, or unable to extract its Title,
+                        raise an Exception
+        """
+        response = requests.get(url, allow_redirects=True)
+
+        if response.status_code == 200:     # Normal response code from remote website
+            #print(response.text[:800])     # Show the early part of the file
+
+            # Use regular expressions to find the title tag
+            title_match = re.search(r'<title.*?>(.*?)</title>', response.text, re.IGNORECASE)
+            #    .    means "any single character, except line breaks"
+            #    *?   means "0 or more times (non-greedy)"
+            #    ()   means "capture group"
+
+            # TODO: some websites contain alternate way to express titles, such as:
+            #       <meta data-react-helmet="true" name="title" content="THE REAL PAGE TITLE">
+
+            if title_match:
+                title = title_match.group(1)            # The 1st capture group
+                unescaped_title = html.unescape(title)  # Turn HTML entities into characters;
+                                                        # e.g. "&ndash;" into "-"
+                print(unescaped_title)
+                return unescaped_title
+            else:
+                err_status = f"Unable to extract title from website at {url}"
+                raise Exception(err_status)     # Found the web page, but couldn't extract its title
+
+            '''
+            # Alternate approach using BeautifulSoup (untested):
+            
+                from bs4 import BeautifulSoup
+                # Parse the HTML content
+                soup = BeautifulSoup(response.text, 'html.parser')                  
+                # Extract the title element and its text
+                title = soup.title.string if soup.title else 'No Title Found
+            '''
+
+        else:   # Response status other that 200
+            err_status =  f'Remote page ({url}) returned failure code {response.status_code}'
+            raise Exception(err_status)         # Problems with locating the web page
+
+
+
 
 
     #####################################################################################################
@@ -938,9 +1085,14 @@ class DataManager:
 
 
 
-    ############################################################
-    #                       IMPORT-EXPORT                      #
-    ############################################################
+
+    #####################################################################################################
+
+    '''                                  ~   IMPORT-EXPORT   ~                                        '''
+
+    def ________IMPORT_EXPORT________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def export_full_dbase(cls):
@@ -1057,6 +1209,7 @@ class DataManager:
 
         :return:    None
         """
+        #print("do_stop_data_intake(): stopping the data intake")
         cls.ongoing_data_intake = False
 
 
@@ -1334,7 +1487,7 @@ class DataManager:
 
         '''
         # Test for LinkedIn connections:
-        #pattern_1 = R"\n([a-zA-Z.'\- ,()]+)@@@\n"   # Full name
+        pattern_1 = R"\n([a-zA-Z.'\- ,()]+)@@@\n"   # Full name
         pattern_1 = R"\n(.+)@@@\n"                  # Full name
         pattern_2 = ".+ profile\n"                  # Throwaway line
         pattern_3 = "---1st1st degree connection\n" # Throwaway line
@@ -1345,7 +1498,14 @@ class DataManager:
 
 
 
-    #######################     LOGGING-RELATED       #######################
+
+    #####################################################################################################
+
+    '''                                        ~   LOGGING   ~                                        '''
+
+    def ________LOGGING________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def init_logfile(cls) -> None:
@@ -1385,269 +1545,3 @@ class DataManager:
         except Exception as ex:
             # To deal with situation where the log file got deleted/moved by user, but we're still attempting to use the old handle
             cls.init_logfile()
-
-
-
-
-#############################################################################################################################
-
-class DocumentationGenerator:
-    """
-    # TODO: move to a separate file
-
-    To generate an HTML for a documentation page, from a python file
-    (for best results, a file following some styling conventions as done in the BrainAnnex project)
-    """
-
-    @classmethod
-    def import_python_file(cls, basename, full_filename) -> str:
-        """
-        Parse a python file (with a few conventions) and generate HTML to create a documentation page
-
-        :param basename:        EXAMPLE: "my_file_being_uploaded.txt"
-        :param full_filename:   EXAMPLE: "D:/tmp/my_file_being_uploaded.txt"
-        :return:                HTML code to populate a documentation page
-        """
-        # Read in the python file
-        n_chars_to_show = 400
-        try:
-            with open(full_filename, 'r') as fh:
-                file_contents = fh.read()
-                print(f"\n--- First {n_chars_to_show} bytes of uploaded file:\n{file_contents[:n_chars_to_show]}")
-        except Exception:
-            return f"import_python_file(): File I/O failed (on uploaded file {full_filename})"
-
-
-        pattern = cls.define_pattern()      # String that will be used for REGEX parsing
-        print("Pattern used for the matches: ", pattern)
-
-        all_matches = re.findall(pattern, file_contents, re.DOTALL)
-        # It returns (possibly-empty) list of tuples
-        # OR a list of strings (if there's only 1 capture group in pattern)
-        print(f"\n-- {len(all_matches)} MATCHES --")
-        for m in all_matches:
-            abridged_match = []
-            for el in m:
-                abridged_match.append(el[:60])
-            print(f"match: {abridged_match}")
-
-
-        if all_matches:     # If the list is not empty, i.e. if matches were found
-            #print(f"{len(all_matches)} MATCH(ES) found")
-            # Produce a simple table to present the various matches that were found
-            scan_results = "<table border='1' style='border-collapse: collapse'>"
-            for match_instance in all_matches:   # Consider each match in turn
-                #print("Overall Single Match: " , match_instance) # This would normally be a tuple of capture groups
-                # (which we previously turned to list, with 2 field added)
-                scan_results += "<tr>"
-                for item in match_instance:
-                    scan_results += f"<td>{item}</td>"
-                scan_results += "</tr>"
-
-            scan_results += f"</table>"
-        else:
-            print("NO MATCHES found")
-            return f"File `{basename}` uploaded successfully, but <b>NO MATCHES</b> found"
-
-
-        # Put together the parsing data as a Pandas dataframe
-        column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
-        df = pd.DataFrame(all_matches, columns = column_names)
-        print(df.count())
-        '''
-        print(df.head(10))
-        print("...")
-        print(df.tail(10))
-        '''
-
-        # Produce HTML code to documented the python file from its parsing data
-        htm = cls.generate_documentation(df)
-
-        safe_htm = htm.replace("<", "&lt;").replace(">", "&gt;")
-
-        # TODO:  < and >  in code comments are still not sufficiently protected
-
-        return f"File `{basename}` uploaded successfully.  <b>{len(all_matches)} MATCH(ES)</b> found.  Nothing added to database.  " \
-               f"Scan results:<br><br>{scan_results}<br><br>" \
-               f"<b>HTML:</b><br><br><pre>{safe_htm}</pre>"
-
-
-
-    @classmethod
-    def define_pattern(cls) -> str:
-        """
-        THIS PARTICULAR PATTERN IS FOR THE CREATION OF DOCUMENTATION FROM PYTHON FILES
-
-        The python files has some expectations about their formatting; for example, as used in neo_schema.py
-
-        Define a REGEX pattern for parsing of data files, for use in import_datafile()
-
-        The pattern is expected to be used in a re.findall() that uses re.DOTALL as the last argument
-
-        :return:    A string with a REGEX pattern
-        """
-        # The R before the string escapes all characters ("raw strings" aka "verbatim strings")
-
-        '''
-        PART A - Python Class Methods
-        '''
-
-        pattern_1 = R'def\s+([a-zA-Z_][a-zA-Z0-9_]*)'   # Match and capture the method name:
-                                                        #   "def" followed by 1 or more blanks, followed by
-                                                        #   (one letter or underscore, followed by any number of letters, numbers or underscores)
-
-        pattern_2 = R'\((.*?)\)'                        # Match and capture (non-greedy) everything inside the round parentheses after method name
-
-        #pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:'
-        #pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:(?:\s*#.*?\n)?'
-        pattern_3 = R'(?:\s*->\s*(.*?)\s*)?:.*?\n'              # Match and capture (non-greedy) the method's return type - which may or may not be present
-                                                                # Advance (there might be blanks and/or optional comments) until the end of the line
-        '''
-            (?:                 Start of NON-capturing grouping
-                \s*                 0+ blanks
-                ->                  Literal "->"
-                \s*                 0+ blanks
-                (                   Start of capture group
-                    +*?                 Any single character, 1 or more times (non-greedy)
-                )                   End of capture group
-                \s*                 0+ blanks
-            )                   End of non-capturing grouping
-            ?                   Make the preceding group optional
-            :                   Literal ":"
-            .*?                 Any single character, 0 or more times (non-greedy)
-            \n                  End of line           
-        '''
-
-
-        pattern_4 = R'(?:\s+"""(.*?)""")?'          # Match and capture (non-greedy) everything within the following pair of """
-        '''
-            (?:                 Start of NON-capturing grouping
-                \s+                 1+ blanks
-                """                 Literal triple double quotes
-                (                   Start of capture group
-                    .*?                 Any single character, 0 or more times (non-greedy)
-                                        Note: newlines also matched because the calling functions uses re.DOTALL
-                                              as the 3rd argument in re.findall()
-                )                   End of capture group
-                """                 Literal triple double quotes
-            )                   End of non-capturing grouping
-            ?                   Make the preceding group optional
-        '''
-
-
-        pattern_A = pattern_1 + pattern_2 + pattern_3 + pattern_4
-
-
-        '''
-        PART B - Python Class Names
-        '''
-        # Match and capture a python class name
-        #       EXAMPLE 1:  "class NeoAccessCore:"
-        #       EXAMPLE 2:  "class NeoAccess(NeoAccessCore):"
-        pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)(?:\([a-zA-Z][a-zA-Z0-9_]*\))?\s*:'
-        '''
-            class               Literal "class"
-            \s+                 1+ blanks
-            (                   Capture start
-                [a-zA-Z]            letter
-                [a-zA-Z0-9_]*       0+ alphanumeric or underscore
-            )                   Capture end
-            (?:                 Start of NON-capturing grouping
-                \(                  Literal "("
-                [a-zA-Z]            letter
-                [a-zA-Z0-9_]*       0+ alphanumeric or underscore  
-                \)                  Literal ")"    
-            )                   End of non-capturing grouping
-            ?                   Make the preceding group optional
-            \s*                 0+ blanks
-            :                   Literal ":"
-        '''
-
-        pattern_2 = R'.+?"""(.*?)"""'               # Match and capture (non-greedy) everything within the following pair of """
-        #   The .+? at the beginning = 1 or more characters (non-greedy).  Note: that required character is the preceding newline
-        pattern_B = pattern_1 + pattern_2
-
-
-        pattern = f"(?:{pattern_A})|(?:{pattern_B})"    # Deal with alternations.  Note: "?:" means that the parentheses are NOT a capture group
-
-        return pattern
-
-
-
-    @classmethod
-    def generate_documentation(cls, df :pd.DataFrame) -> str:
-        """
-        Print out, and return as a string, the HTML code to create a documentation page,
-        from a Pandas data frame containing the data about the various elements
-        of the python file.
-        TODO: probably switch to a Flask template
-
-        Note: the HTML code also contains references to some CSS classes for styling.
-
-        :param df:  A Pandas data frame, with the following columns:
-                        class_name, class_description, method_name, args, return_value, comments
-        :return:    A string with HTML code
-        """
-
-        summary = ""    # Links to Classes and methods  (TODO: to be expanded to also cover sections)
-        htm = ""
-        python_class_name = ""
-
-        for ind in df.index:    # EXAMPLE of df.index: RangeIndex(start=0, stop=11, step=1)
-            # For each row in the Pandas data frame
-
-            if df['class_name'][ind]:                   # Start documenting a new pythons class
-                python_class_name = df['class_name'][ind]
-                python_class_description = df['class_description'][ind]
-
-                summary += f"<br><hr><br><a href='#{python_class_name}' style='font-weight:bold; font-size:18px'>Class {python_class_name}</a><br><br>\n"
-
-                htm += "<br><br><hr>"
-                htm += f"<a name='{python_class_name}'></a>\n"
-                htm += f"<h1 class='class-name'>Class {python_class_name}</h1>\n"
-                htm += f"<pre>{python_class_description}</pre>\n\n\n"
-
-            elif "____" in df['method_name'][ind]:      # A BrainAnnex styling convention to indicate a new section
-                section_name = df['method_name'][ind]
-                clean_name = section_name.replace("_", " ").strip()
-
-                summary += f"    <span style='margin-left:25px'>{clean_name}:</span><br>\n"
-                htm += f"<br><h2 class='section-header'>{clean_name}</h2>\n\n"
-
-            else:           # Document an individual class method
-                method_name = df['method_name'][ind]
-                anchor_name = f"{python_class_name}_{method_name}"   # Needed because some method names (such as __init__) may appear in multiple classes
-                                                                     # EXAMPLE:  "NeoAccess_query"
-
-                summary += f"<a href='#{anchor_name}' style='margin-left:50px'>{method_name}</a><br>\n"
-
-                htm += f"<a name='{anchor_name}'></a>\n"
-                htm += "<table class='cd-main'>\n"
-                htm += "<tr><th>name</th><th>arguments</th><th>returns</th></tr>\n"
-
-                htm += "<tr>"
-                #print(df["method_name"][ind], df["args"][ind], df["comments"][ind])
-                htm += f"<td class='cd-fun-name'>{df['method_name'][ind]}</td>"
-                htm += f"<td>{df['args'][ind]}</td>"
-                htm += f"<td>{df['return_value'][ind]}</td>"
-
-                htm += "</tr>\n"
-
-                htm += "<tr>"
-                htm += "<td colspan=3 class='cd-description'>\n"
-                htm += f"<pre>{df['comments'][ind]}</pre>\n"
-                htm += "</td>\n"
-                htm += "</tr>\n"
-                htm += "</table>\n\n\n"
-
-
-        summary += "<br>\n\n"
-
-        '''
-        print("###################################################################################")
-        print(summary)
-        print(htm)
-        print("###################################################################################")
-        '''
-
-        return summary + htm

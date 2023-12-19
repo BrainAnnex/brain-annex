@@ -375,7 +375,7 @@ Vue.component('vue-plugin-sl',
             {
                 console.log(`Retrieving title of webpage ${url}`);
 
-                let url_server = `/BA/api/simple/fetch-remote-title?url=${url}`;
+                let url_server = `/BA/api/fetch-remote-title?url=${url}`;
                 console.log(`About to contact the server at ${url_server}`);
 
                 ServerCommunication.contact_server(url_server,  {callback_fn: this.finish_get_webpage_title});
@@ -433,7 +433,7 @@ Vue.component('vue-plugin-sl',
                     // EXAMPLE of post_obj for a NEW record:
                     //          "schema_code=r&category_id=12&class_name=German%20Vocabulary&insert_after=123&German=Liebe"
 
-                    url_server_api = `/BA/api/simple/add_item_to_category`;   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {
                     // Update an EXISTING record
@@ -447,7 +447,7 @@ Vue.component('vue-plugin-sl',
                     }
                     // EXAMPLE of post_obj for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
-                    url_server_api = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/update`;   // URL to communicate with the server's endpoint
                 }
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -459,8 +459,7 @@ Vue.component('vue-plugin-sl',
 
                 // Initiate asynchronous contact with the server, using POST data
                 ServerCommunication.contact_server(url_server_api,
-                            {payload_type: "TEXT",
-                             post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_save});
             }, // save
 

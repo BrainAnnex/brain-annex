@@ -77,9 +77,9 @@ class PagesRouting:
         ##################  START OF ROUTING DEFINITIONS  ##################
 
         @bp.route('/viewer')
-        @bp.route('/viewer/<category_id>')
+        @bp.route('/viewer/<category_uri>')
         @login_required
-        def category_page_viewer(category_id=1) -> str:
+        def category_page_viewer(category_uri="1") -> str:
             """
             General viewer/editor for the Content Items attached to the specified Category
             # EXAMPLES of invocation:
@@ -88,19 +88,18 @@ class PagesRouting:
             """
 
             template = "page_viewer.htm"
-            category_id = int(category_id)  # TODO: return a good error message (a special page) if it's not an integer
 
             # Get the Name and Remarks attached to the given Category
-            category_info = Categories.get_category_info(category_id)
-            # EXAMPLE : [{'id': 3, 'name': 'Hobbies', 'remarks': 'excluding sports'}]
+            category_info = Categories.get_category_info(category_uri)
+            # EXAMPLE : [{'id': '3', 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
             if not category_info:   # If page wasn't found
                 # TODO: add a special page to show the error messages
-                if category_id == 1:    # The home category doesn't exist yet; maybe the Schema hasn't been imported
+                if category_uri == "1":    # The home category doesn't exist yet; maybe the Schema hasn't been imported
                     return f"<b>No Home Category found!</b> Maybe the Schema hasn't been imported yet? " \
                            f"<a href='/BA/pages/admin'>Go to the Admin page</a>"
                 else:                   # Requesting a (non-home) Category that doesn't exist
-                    return f"<b>No such Category ID ({category_id}) exists!</b> Maybe that category got deleted? " \
+                    return f"<b>No such Category ID ({category_uri}) exists!</b> Maybe that category got deleted? " \
                            f"<a href='/BA/pages/viewer/1'>Go to top (HOME) category</a>"
 
             # TODO: catch errors, and provide a graceful error page
@@ -108,36 +107,36 @@ class PagesRouting:
             category_name = category_info.get("name", "[No name]")
             category_remarks = category_info.get("remarks", "")
 
-            parent_categories = Categories.get_parent_categories_alt(category_id)
-            subcategories = Categories.get_subcategories_alt(category_id)
-            all_categories = Categories.get_all_categories_alt(exclude_root=False) # TODO: switch to Categories.get_all_categories(), below
-            #all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)   # TODO: when switching to this,
-                                                                                                        #  change pages to use "uri" instead of "id"
+            parent_categories = Categories.get_parent_categories_alt(category_uri)
+            subcategories = Categories.get_subcategories_alt(category_uri)
+            all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)
 
-            siblings_categories = Categories.viewer_handler(category_id)
+            siblings_categories = Categories.viewer_handler(category_uri)
 
             records_types = DataManager.get_leaf_records()
-            #records_schema_data = DataManager.get_records_schema_data(category_id)  # TODO: *** TEST
-            records_schema_data = Categories.get_items_schema_data(category_id)     # TODO: *** TEST
+            #records_schema_data = DataManager.get_records_schema_data(category_uri)  # TODO: *** TEST
+            records_schema_data = Categories.get_items_schema_data(category_uri)      # TODO: *** TEST
             # EXAMPLE: {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
             #           'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
             #           'Headers': ['text']}
             #print("records_schema_data: ", records_schema_data)
 
-            bread_crumbs = Categories.create_bread_crumbs(category_id)
+            bread_crumbs = Categories.create_bread_crumbs(category_uri) # A list with data from which to create UI "bread crumbs"
+            #print("bread_crumbs: ", bread_crumbs)
+            # EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
 
             # Fetch all the Content Items attached to this Category
-            content_items = Categories.get_content_items_by_category(category_id)
+            content_items = Categories.get_content_items_by_category(category_uri)
             #   List of dictionaries.  EXAMPLE:
             #       [
-            #           {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-            #           {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+            #           {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+            #           {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
             #       ]
 
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages, header_title=category_name,
                                    content_items=content_items,
-                                   category_id=category_id, category_name=category_name, category_remarks=category_remarks,
+                                   category_id=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    all_categories=all_categories,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    siblings_categories=siblings_categories,
@@ -158,22 +157,22 @@ class PagesRouting:
 
 
 
-        @bp.route('/md-file/<category_id>')
-        def md_file(category_id) -> str:
+        @bp.route('/md-file/<category_uri>')
+        def md_file(category_uri) -> str:
             """
             Generate the .MD file version of the Content Items attached to the specified Category
             EXAMPLE invocation: http://localhost:5000/BA/pages/md-file/3
             """
             template = "md_file_generator.htm"
 
-            content_items = Categories.get_content_items_by_category(category_id=int(category_id))
+            content_items = Categories.get_content_items_by_category(category_uri=category_uri)
 
             return render_template(template, content_items=content_items)
 
 
 
-        @bp.route('/static-web/<category_id>')
-        def static_web(category_id) -> str:
+        @bp.route('/static-web/<category_uri>')
+        def static_web(category_uri) -> str:
             """
             Generate the static-webpage version of the Content Items attached to the specified Category
             EXAMPLE invocation: http://localhost:5000/BA/pages/static-web/3
@@ -181,20 +180,18 @@ class PagesRouting:
 
             template = "viewer_static.htm"
 
-            category_id = int(category_id)
-
             # Fetch all the Content Items attached to the given Category
-            content_items = Categories.get_content_items_by_category(category_id)
+            content_items = Categories.get_content_items_by_category(category_uri)
 
-            category_info = Categories.get_category_info(category_id)
+            category_info = Categories.get_category_info(category_uri)
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")
             category_remarks = category_info.get("remarks", "")
-            subcategories = Categories.get_subcategories_alt(category_id)
+            subcategories = Categories.get_subcategories_alt(category_uri)
                             # EXAMPLE: [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
 
             return render_template(template,
                                    content_items=content_items,
-                                   category_id=category_id, category_name=category_name,
+                                   category_id=category_uri, category_name=category_name,
                                    subcategories=subcategories)
 
 
@@ -254,30 +251,31 @@ class PagesRouting:
 
         #############################   CATEGORY-RELATED   #############################
 
-        @bp.route('/category_manager/<category_id>')
+        @bp.route('/category_manager/<category_uri>')
         @login_required
-        def category_manager(category_id) -> str:
+        def category_manager(category_uri :str) -> str:
             """
             Generate a page for administration of the Categories
             EXAMPLE invocation: http://localhost:5000/BA/pages/category_manager
             """
 
             template = "category_manager.htm"
-            category_id = int(category_id)
 
-            category_info = Categories.get_category_info(category_id)
+            category_info = Categories.get_category_info(category_uri)
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")
             category_remarks = category_info.get("remarks", "")
 
-            # EXAMPLE of the various categories listings, below: [{'uri': 2, 'name': 'Work'}, {'uri': 3, 'name': 'Hobbies'}]
-            subcategories = Categories.get_subcategories(category_id)
+            # EXAMPLE of the various categories listings, below:
+            #               [{'uri': 2, 'name': 'Work'}, {'uri': 3, 'name': 'Hobbies'}]
+            subcategories = Categories.get_subcategories(category_uri)
             all_categories = Categories.get_all_categories(exclude_root=False)
-            parent_categories = Categories.get_parent_categories(category_id)
+            parent_categories = Categories.get_parent_categories(category_uri)
+            pin_status = Categories.is_pinned(category_uri)
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
-                                   category_id=category_id, category_name=category_name, category_remarks=category_remarks,
+                                   category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
-                                   all_categories=all_categories)
+                                   all_categories=all_categories, pin_status=pin_status)
 
 
 

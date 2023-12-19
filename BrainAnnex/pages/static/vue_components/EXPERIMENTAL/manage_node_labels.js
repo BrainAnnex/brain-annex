@@ -39,7 +39,7 @@ Vue.component('vue-show-node-labels',
                 // Prepare a URL to communicate with the server's endpoint
                 url_server = "/api/retrieve_labels";
 
-                ServerCommunication.contact_server(url_server, {payload_type: "JSON", callback_fn: this.finish_refresh});
+                ServerCommunication.contact_server(url_server, {callback_fn: this.finish_refresh});
             }, // refresh
 
 
@@ -180,7 +180,7 @@ Vue.component('vue-pulldown-menu',
                 // Prepare a URL to communicate with the server's endpoint
                 url_server = "/api/retrieve_labels";
 
-                ServerCommunication.contact_server(url_server, {payload_type: "JSON", callback_fn: this.finish_refresh});
+                ServerCommunication.contact_server(url_server, {callback_fn: this.finish_refresh});
             }, //  refresh
 
 

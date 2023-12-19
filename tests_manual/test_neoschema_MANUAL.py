@@ -218,7 +218,7 @@ def test_next_available_id(db):
 
 
 def test_next_available_datapoint_id(db):
-    print(NeoSchema.next_available_datanode_id())
+    print(NeoSchema.next_available_datanode_uri())
 
 
 

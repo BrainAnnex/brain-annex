@@ -64,29 +64,29 @@ def test_bread_crumbs(db):
 
 
 def test_add_content_at_end(db):
-    new_uri = Categories.add_content_at_end(category_id=708,
-                                                item_class_name="Headers",
-                                                item_properties={"text": "This is a New Caption, added at the end"})
+    new_uri = Categories.add_content_at_end(category_uri=708,
+                                            item_class_name="Headers",
+                                            item_properties={"text": "This is a New Caption, added at the end"})
     print("new_uri:", new_uri)
 
 
 def test_add_content_at_beginning(db):
-    new_uri = Categories.add_content_at_beginning(category_id=708,
-                                                item_class_name="Headers",
-                                                item_properties={"text": "This is a New Caption, added before anything else"})
+    new_uri = Categories.add_content_at_beginning(category_uri=708,
+                                                  item_class_name="Headers",
+                                                  item_properties={"text": "This is a New Caption, added before anything else"})
     print("new_uri:", new_uri)
 
 
 def test_add_content_after_element(db):
     new_uri = \
-        Categories.add_content_after_element(category_id=708,
-                                                item_class_name="Headers", item_properties={"text": "Caption 4, inserted 'after element'"},
-                                                insert_after=729)
+        Categories.add_content_after_element(category_uri=708,
+                                             item_class_name="Headers", item_properties={"text": "Caption 4, inserted 'after element'"},
+                                             insert_after=729)
     print("new_uri: ", new_uri)
 
 
 def test_delete_category(db):
-    Categories.delete_category(category_id=796)
+    Categories.delete_category(uri="796")
 
 
 def test_add_subcategory_relationship(db):
@@ -94,7 +94,7 @@ def test_add_subcategory_relationship(db):
 
 
 def test_check_for_duplicates(db):
-    result = Categories.check_for_duplicates(category_id=985)  # 814
+    result = Categories.check_for_duplicates(category_uri=985)  # 814
     print(result)
     assert result == ""
 

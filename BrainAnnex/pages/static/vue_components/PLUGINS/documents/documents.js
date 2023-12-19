@@ -62,7 +62,7 @@ Vue.component('vue-plugin-d',
             document_url(item_data)
             // Return the URL of the full documents
             {
-                return '/BA/api/simple/serve_media/' + item_data.uri;           // Invoke the file server
+                return '/BA/api/serve_media/' + item_data.uri;           // Invoke the file server
              },
 
 

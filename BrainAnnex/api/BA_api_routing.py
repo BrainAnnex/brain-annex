@@ -1,31 +1,28 @@
 """
-    API endpoint
+    Web API endpoint
     MIT License.  Copyright (c) 2021-2023 Julian A. West
 """
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from flask_login import login_required
 from BrainAnnex.modules.data_manager.data_manager import DataManager
-from BrainAnnex.modules.data_manager.data_manager import DocumentationGenerator
+from BrainAnnex.modules.data_manager.documentation_generator import DocumentationGenerator
+from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.documents import Documents
-from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
 import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
-import requests
-import re                   # REGEX
 import shutil
 import os
-import html
-#from time import sleep     # For tests of delays in asynchronous fetching
+#from time import sleep     # For tests of delays in asynchronous fetching.  E.g. sleep(3) for 3 secs
 
 
 
 class ApiRouting:
     """
     Setup, routing and endpoints for all the web pages served by this module.
-    Note that this class does not directly interact with the Neo4j database.
+    Note that this class does not directly interact with the database.
 
     SECTIONS:
         - UTILITY methods
@@ -55,22 +52,10 @@ class ApiRouting:
     debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
                                         #       (currently, in very limited use)
 
-    #######################################################################################################################
-    #                                                                                                                     #
-    #   ERROR_PREFIX and SUCCESS_PREFIX:                                                                                  #
-    #   used for "simple" subset of the API, with endpoints that return PLAIN text (rather than JSON or something else)   #
-    #                                                                                                                     #
-    #######################################################################################################################
 
-    ERROR_PREFIX = "-"      # Prefix used in the "simple API" protocol to indicate an error in the response value;
-                            #       the remainder of the response string will the be understood to be the error message
 
-    SUCCESS_PREFIX = "+"    # Prefix used in the "simple API" protocol to indicate a successful operation;
-                            #       the remainder of the response string will the be understood to be the optional data payload
-                            #       (such as a status message)
-
-    # NOTE: To test POST-based API access points, on the Linux shell or Windows PowerShell issue commands such as:
-    #            curl http://localhost:5000/BA/api/simple/add_item_to_category -d "schema_id=1&category_id=60"
+    # NOTE: To test POST-based web APIs, on the Linux shell or Windows PowerShell issue commands such as:
+    #            curl http://localhost:5000/BA/api/add_item_to_category -d "schema_id=1&category_id=60"
 
 
 
@@ -109,37 +94,26 @@ class ApiRouting:
     ###############################################
 
     @classmethod
-    def str_to_int(cls, s: str) -> int:
+    def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
         """
-        Helper function to give more friendly error messages in case non-integers are passed
-        in situations where integers are expected (for example, for id's).
-        Without this function, the user would see cryptic messages such as
-        "invalid literal for int() with base 10: 'q123'"
 
-        EXAMPLE:
-            try:
-                uri = cls.str_to_int(uri_str)
-            except Exception as ex:
-                # Do something
-
-        :param s:   A string that should represent an integer
-        :return:    The integer represented in the passed string, if applicable;
-                        if not, an Exception is raised
+        :param get_data:
+        :param required_par_list:
+        :return:
         """
-        try:
-            i = int(s)
-        except Exception:
-            raise Exception(f"The passed parameter ({s}) is not an integer as expected")
+        data_dict = get_data.to_dict(flat=True)     # WARNING: if multiple identical keys occur,
+                                                    #          the values associated to the later keys will be discarded
+        if required_par_list:
+            for par in required_par_list:
+                assert par in data_dict, f"The expected parameter `{par}` is missing from the GET request (i.e. from the query string)"
 
-        return i
+        return data_dict
 
 
 
     @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
         """
-        TODO: maybe the parameter validation doesn't belong to this API module, which ought to remain thin
-
         Convert into a Python dictionary the given POST data
         (expressed as an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
         while enforcing the optional given list of parameters that must be present.
@@ -149,11 +123,6 @@ class ApiRouting:
                 post_data = request.form
                 post_pars = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
 
-        TODO: maybe optionally pass a list of pars that must be int, and handle conversion and errors
-              Example - int_pars = ['uri']
-
-        TODO: merge with UploadHelper.get_form_data()
-
         :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
                                     that can contain multiple values for the same key.
                                     EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
@@ -161,6 +130,15 @@ class ApiRouting:
         :param required_par_list:   A list or tuple.  EXAMPLE: ['uri', 'rel_name']
         :return:                    A dict populated with the POST data
         """
+        #TODO: instead of accepting "post_data" as argument,
+        #      extract it here, with a:  post_data = request.form  (and optional call to show_post_data)
+
+        #TODO:  maybe optionally pass a list of pars that must be int, and handle conversion and errors;
+        #       but maybe the parameter validation doesn't belong to this API module, which ought to remain thin
+        #       Example - int_pars = ['uri']
+
+        #TODO: merge with UploadHelper.get_form_data()
+
         data_dict = post_data.to_dict(flat=True)    # WARNING: if multiple identical keys occur,
                                                     #          the values associated to the later keys will be discarded
 
@@ -188,7 +166,7 @@ class ApiRouting:
                 cls.show_post_data(post_data, "name_of_calling_functions")
 
         :param post_data:   An ImmutableMultiDict, as for example returned by request.form
-        :param method_name: (Optional) Name of invoking function
+        :param method_name: (Optional) Name of the invoking function
         :return:            None
         """
         if method_name:
@@ -290,7 +268,7 @@ class ApiRouting:
                     except Exception as ex:
                         response = {"status": "error", "error_message": str(ex)}
 
-            print(f"get_properties_by_class_name() is returning: `{response}`")
+            #print(f"get_properties_by_class_name() is returning: `{response}`")
 
             return jsonify(response)   # This function also takes care of the Content-Type header
 
@@ -419,7 +397,7 @@ class ApiRouting:
 
 
         @bp.route('/get_record_classes')
-        def get_record_classes() -> str:
+        def get_record_classes():
             """
             Get all Classes that are, directly or indirectly, INSTANCE_OF the Class "Records",
             as long as they are leaf nodes (with no other Class that is an INSTANCE_OF them.)
@@ -447,20 +425,20 @@ class ApiRouting:
         @bp.route('/get_properties_by_uri/<uri>')
         def get_properties_by_uri(uri):
             """
-            Get all properties of a DATA node specified by uri
+            Get all properties of a DATA node specified by its URI
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_properties_by_uri/123
 
-            :param uri:
-            :return:            A JSON object with a list of the Properties of the specified Class
-                                EXAMPLE:
+            :param uri: A string uniquely identifying a data node
+            :return:    A JSON object with a list of the Properties of the specified Class
+                            EXAMPLE:
                                     [
                                       "Notes",
                                       "English",
                                       "French"
                                     ]
             """
-            prop_list = NeoSchema.all_properties("BA", "uri", int(uri))
+            prop_list = NeoSchema.all_properties("BA", "uri", uri)
             response = {"status": "ok", "payload": prop_list}
             # TODO: handle error scenarios
 
@@ -469,26 +447,30 @@ class ApiRouting:
 
 
 
-        #------------------------------------------------------#
-        #        SCHEMA-related (creating/editing/deleting)    #
-        #------------------------------------------------------#
+        #####################################################################################################
 
-        @bp.route('/simple/create_new_schema_class', methods=['POST'])
+        '''                   ~   SCHEMA_RELATED (creating/editing/deleting)  ~                           '''
+
+        def ________SCHEMA_RELATED________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
+        @bp.route('/create_new_schema_class', methods=['POST'])
         @login_required
-        def create_new_schema_class() -> str:
+        def create_new_schema_class():
             """
             Create a new Schema Class, possibly linked to another existing class,
             and also - typically but optionally - with the special "INSTANCE_OF" link
             to an existing Class (often, the "Records" Class)
 
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                curl http://localhost:5000/BA/api/create_new_schema_class -d
                     "new_class_name=my%20new%20class&properties_list=A,B,C,&instance_of=Records"
 
-                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                curl http://localhost:5000/BA/api/create_new_schema_class -d
                     "new_class_name=Greek&properties_list=Greek,&instance_of=Foreign%20Vocabulary"
 
-                curl http://localhost:5000/BA/api/simple/create_new_schema_class -d
+                curl http://localhost:5000/BA/api/create_new_schema_class -d
                     "new_class_name=Entrees&properties_list=name,price,&instance_of=Records&linked_to=Restaurants&rel_name=served_at&rel_dir=OUT"
 
             POST FIELDS:
@@ -504,33 +486,68 @@ class ApiRouting:
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
-            cls.show_post_data(post_data, "create_new_schema_class")
+            #cls.show_post_data(post_data, "create_new_schema_class")
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["new_class_name"])
                 DataManager.new_schema_class(class_specs)
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
-                err_status = f"Unable to create a new Schema Class. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to create a new Schema Class.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # Failure
 
-            #print(f"create_new_schema_class() is returning: `{return_value}`")
+            #print(f"create_new_schema_class() is returning: `{err_details}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
-        @bp.route('/simple/schema_add_property_to_class', methods=['POST'])
+
+        @bp.route('/delete_class', methods=['POST'])
         @login_required
-        def schema_add_property_to_class() -> str:
+        def delete_class():
             """
-            Add a new Property to an existing Classes
+            Delete a Class specified by its name.
+            All its Properties will also get deleted alongside.
+            The operation will fail if the Class doesn't exist,
+            or if data nodes attached to that Class are present (those need to be deleted first)
+
+            POST FIELDS:
+                class_name
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/delete_class -d
+                        "class_name=some_class_1"
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict object
+            #cls.show_post_data(post_data, "delete_class")
+
+            try:
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=["class_name"])
+                NeoSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
+                response_data = {"status": "ok"}                                    # Success
+            except Exception as ex:
+                err_details = f"Unable to delete the class.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # Failure
+
+            #print(f"delete_class() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/schema_add_property_to_class', methods=['POST'])
+        @login_required
+        def schema_add_property_to_class():
+            """
+            Add a new Property to an existing Class, identified by its name
 
             POST FIELDS:
                 prop_name
                 class_name
 
             EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/schema_add_property_to_class -d
+                curl http://localhost:5000/BA/api/schema_add_property_to_class -d
                         "prop_name=gender&class_name=patient"
             """
             # Extract the POST values
@@ -540,21 +557,20 @@ class ApiRouting:
             try:
                 class_specs = cls.extract_post_pars(post_data)
                 DataManager.schema_add_property_to_class_handler(class_specs)
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
-                err_status = f"Unable to add the new property. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to add the new property.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Failure
 
             #print(f"schema_add_property_to_class() is returning: `{return_value}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
-
-        @bp.route('/simple/add_schema_relationship', methods=['POST'])
+        @bp.route('/add_schema_relationship', methods=['POST'])
         @login_required
-        def add_schema_relationship() -> str:
+        def add_schema_relationship():
             """
             Add a relationship with the specified name between 2 existing Classes
 
@@ -564,30 +580,30 @@ class ApiRouting:
                 rel_name
 
             EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/add_schema_relationship -d
+                curl http://localhost:5000/BA/api/add_schema_relationship -d
                         "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
             """
             # Extract the POST values
             post_data = request.form     # An ImmutableMultiDict object
-            cls.show_post_data(post_data, "add_schema_relationship")
+            #cls.show_post_data(post_data, "add_schema_relationship")
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
                 DataManager.add_schema_relationship_handler(class_specs)
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                     # Success
             except Exception as ex:
-                err_status = f"Unable to add a new relationship. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to add a new relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # Failure
 
-            print(f"add_schema_relationship() is returning: `{return_value}`")
+            #print(f"add_schema_relationship() is returning: `{response_data}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
-        @bp.route('/simple/delete_schema_relationship', methods=['POST'])
+        @bp.route('/delete_schema_relationship', methods=['POST'])
         @login_required
-        def delete_schema_relationship() -> str:
+        def delete_schema_relationship():
             """
             Delete the relationship with the specified name between 2 existing Classes
             POST FIELDS:
@@ -596,183 +612,135 @@ class ApiRouting:
                 rel_name
 
             EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/delete_schema_relationship -d
+                curl http://localhost:5000/BA/api/delete_schema_relationship -d
                         "from_class_name=some_class_1&to_class_name=some_class_2&rel_name=CONNECTED_TO"
             """
             # Extract the POST values
             post_data = request.form     # An ImmutableMultiDict object
-            cls.show_post_data(post_data, "delete_schema_relationship")
+            #cls.show_post_data(post_data, "delete_schema_relationship")
 
             try:
                 class_specs = cls.extract_post_pars(post_data, required_par_list=["from_class_name", "to_class_name", "rel_name"])
                 DataManager.delete_schema_relationship_handler(class_specs)
-                return_value = cls.SUCCESS_PREFIX               # Success
+                response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
-                err_status = f"Unable to delete the relationship. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to delete the relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Failure
 
-            if cls.debug:
-                print(f"delete_schema_relationship() is returning: `{return_value}`")
+            #print(f"delete_schema_relationship() is returning: `{response_data}`")
 
-            return return_value
-
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
-        @bp.route('/simple/delete_class', methods=['POST'])
+
+
+        #####################################################################################################
+
+        '''                              ~   VIEWING CONTENT ITEMS   ~                                    '''
+
+        def ________VIEWING_CONTENT_ITEMS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
+        @bp.route('/get_text_media/<uri>')
         @login_required
-        def delete_class() -> str:
+        def get_text_media(uri):
             """
-            Delete the specified Class.
-            The operation will fail if the Class doesn't exist,
-            or if data nodes attached to that Class are present (those need to be deleted first)
+            Retrieve and return the contents of a TEXT media item (for now, just "Notes")
 
-            POST FIELDS:
-                class_name
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_text_media/123
 
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/simple/delete_class -d
-                        "class_name=some_class_1"
+            :param uri: The URI of a data node representing a text media Item (such as a "Note")
+            :return:    A Flask Response response object containing a JSON string
+                            with the contents of the specified text media Item
+                            EXAMPLE of successful response data:
+                                {
+                                    "status": "ok",
+                                    "payload": "I'm the contents of the text media file"
+                                }
+                            In case the text media isn't found, a normal response status (200) is still sent,
+                            but the JSON in the payload with provide "status": "error",
+                            and an "error_message" key with details
             """
-            # Extract the POST values
-            post_data = request.form     # An ImmutableMultiDict object
-            cls.show_post_data(post_data, "delete_class")
-
             try:
-                pars_dict = cls.extract_post_pars(post_data, required_par_list=["class_name"])
-                NeoSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
-                return_value = cls.SUCCESS_PREFIX               # Success
-            except Exception as ex:
-                # TODO: in case of failure, investigate further the problem
-                #       (e.g. no class by that name vs. class has data points still attached to it)
-                #       and give a more specific error message
-                err_status = f"Unable to delete the class. {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
-
-            #if cls.debug:
-            print(f"delete_class() is returning: `{return_value}`")
-
-            return return_value
-
-
-
-
-        #---------------------------------------------#
-        #            CONTENT-ITEM MANAGEMENT          #
-        #---------------------------------------------#
-
-
-        ################   VIEWING CONTENT ITEMS   ################
-
-        @bp.route('/simple/get_media/<uri_str>')
-        @login_required
-        def get_media(uri_str) -> str:
-            """
-            Retrieve and return the contents of a text media item (for now, just "notes"),
-            including the request status
-        
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/get_media/123
-            """
-            #sleep(1)    # For debugging
-
-            try:
-                uri = int(uri_str)
                 payload = DataManager.get_text_media_content(uri, "n")
-                response = cls.SUCCESS_PREFIX + payload
+                #print(f"get_text_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
+                response_data = {"status": "ok", "payload": payload}                     # Successful termination
             except Exception as ex:
-                err_details = f"Unable to retrieve the requested note: {ex}"
-                print(f"get_media() encountered the following error: {err_details}")
-                response = cls.ERROR_PREFIX + err_details
+                err_details = f"Unable to retrieve the requested Media Item.  {exceptions.exception_helper(ex)}"
+                #print(f"get_text_media() encountered the following error: {err_details}")
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
 
-                #print(f"get_media() is returning the following text [first 30 chars]: `{response[:30]}`")
-        
-            return response
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
-        @bp.route('/simple/remote_access_note/<uri_str>')
-        def remote_access_note(uri_str) -> str:     # NO LOGIN REQUIRED
+        @bp.route('/remote_access_note/<uri>')
+        def remote_access_note(uri):     # NO LOGIN REQUIRED
             """
-            Similar to get_media(), but:
+            Similar to get_text_media(), but:
                 1) no login required
-                2) specifically for notes
-                3) it only serves items marked as "public"
+                2) specifically for Notes
+                3) it only serves items that are marked as "public" in the database
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/remote_access_note/123
+            EXAMPLE invocation: http://localhost:5000/BA/api/remote_access_note/123
             """
-
             try:
-                uri = int(uri_str)
                 payload = DataManager.get_text_media_content(uri, "n", public_required=True)
-
-                text_response = cls.SUCCESS_PREFIX + payload
-                response = make_response(text_response)
+                #print(f"remote_access_note() is returning the following text [first 30 chars]: `{payload[:30]}`")
+                response_data = {"status": "ok", "payload": payload}    # Successful
+                response = jsonify(response_data)
                 response.headers['Access-Control-Allow-Origin'] = '*'   # This will send the header line: "Access-Control-Allow-Origin: *"
                                                                         # without it, web clients on other domains won't be able to use the payload!
                                                                         # An alternative to '*' would be a site name, such as  'https://foo.example'
 
             except Exception as ex:
-                err_details = f"Unable to retrieve the requested note: {ex}"
-                print(f"remote_access_note() encountered the following error: {err_details}")
-                response = cls.ERROR_PREFIX + err_details
-
-            #print(f"remote_access_note() is returning the following text [first 30 chars]: `{response[:30]}`")
+                err_details = f"Unable to retrieve the requested note.  {exceptions.exception_helper(ex)}"
+                #print(f"remote_access_note() encountered the following error: {err_details}")
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+                response = jsonify(response_data)
 
             return response
 
 
 
-        @bp.route('/simple/serve_media/<uri>')
-        @bp.route('/simple/serve_media/<uri>/<th>')
+        @bp.route('/serve_media/<uri>')
+        @bp.route('/serve_media/<uri>/<th>')
         @login_required
         def serve_media(uri, th=None):
             """
-            Retrieve and return the contents of a data media item (for now, just images or documents.)
+            Retrieve and return the contents of a data media item (for now, just Images or Documents.)
             If ANY value is specified for the argument "th", then the thumbnail version is returned (only
                 applicable to images)
 
-            TODO: (at least for large media) read the file in blocks.
+            EXAMPLE invocation: http://localhost:5000/BA/api/serve_media/1234
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/serve_media/1234
+            :param uri: The URI of a data node representing a media Item (such as an "Image" or "Document")
+            :param th:  Only applicable to Images.  If not None, then the thumbnail version is returned
+            :return:    A Flask Response object containing the data for the requested media,
+                            with a header setting the MIME type appropriate for the media format
+                        In case the media isn't found, a 404 response status is sent,
+                            together with an error message
             """
-            mime_mapping = {'jpg': 'image/jpeg',
-                            'png': 'image/png',
-                            'gif': 'image/gif',
-                            'bmp': 'image/bmp',
-                            'svg': 'image/svg+xml',
-
-                            'txt': 'text/plain',
-                            'pdf': 'application/pdf',
-                            'docx': 'application/msword',
-                            'doc': 'application/msword',
-                            'xlsx': 'application/vnd.ms-excel',
-                            'xls': 'application/vnd.ms-excel',
-
-                            'ppt' : 'application/vnd.ms-powerpoint',
-                            'pptx' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-
-                            'zip': 'application/zip'
-                            }   # TODO: add more MIME types, when more plugins are introduced, and move to DataManager
-
-            default_mime = 'application/save'   # TODO: not sure if this is the best default. Test!
-
             try:
-                (suffix, content) = DataManager.get_binary_content(int(uri), th)
+                (suffix, content) = DataManager.get_binary_content(uri, th)
                 response = make_response(content)
                 # Set the MIME type
-                mime_type = mime_mapping.get(suffix.lower(), default_mime)
+                mime_type = MediaManager.get_mime_type(suffix)
                 response.headers['Content-Type'] = mime_type
-                #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  Serving with MIME type `{mime_type}`")
+                #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  "
+                #      f"Serving with MIME type `{mime_type}`")
             except Exception as ex:
-                err_details = f"Unable to retrieve Content Item with URI `{uri}`. {exceptions.exception_helper(ex)}"
-                print(f"serve_media() encountered the following error: {err_details}")
-                response = make_response(err_details, 404)  # TODO: make sure that 404 works well, vs. the 500 previously used
+                err_details = f"Unable to retrieve Media Item with URI `{uri}`. {exceptions.exception_helper(ex)}"
+                #print(f"serve_media() encountered the following error: {err_details}")
+                response = make_response(err_details, 404)
 
             return response
 
 
 
         @bp.route('/get_link_summary/<uri_str>')
-        def get_link_summary_api(uri_str) -> str:
+        def get_link_summary_api(uri_str):
             """
             Return a JSON structure identifying the names and counts of all
             inbound and outbound links to/from the given data node.
@@ -782,7 +750,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/get_link_summary/47
 
             :param uri_str: ID of a data node
-            :return:            A JSON object with the names and counts of inbound and outbound links
+            :return:            A JSON string with the names and counts of inbound and outbound links
                                 EXAMPLE:
                                     {
                                         "status": "ok",
@@ -798,7 +766,7 @@ class ApiRouting:
                                     }
             """
             try:
-                uri = cls.str_to_int(uri_str)
+                uri = uri_str
                 payload = DataManager.get_link_summary(uri, omit_names = ['BA_in_category'])
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
@@ -809,7 +777,7 @@ class ApiRouting:
 
 
         @bp.route('/get_records_by_link', methods=['POST'])
-        def get_records_by_link_api() -> str:
+        def get_records_by_link_api():
             """
             Locate and return the data of the nodes linked to the one specified by uri,
             by the relationship named by rel_name, in the direction specified by dir
@@ -819,11 +787,11 @@ class ApiRouting:
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
-            cls.show_post_data(post_data)
+            #cls.show_post_data(post_data)
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['uri', 'rel_name', 'dir'])
-                data_dict["uri"] = cls.str_to_int(data_dict["uri"])
+                data_dict["uri"] = data_dict["uri"]
                 payload = DataManager.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
@@ -834,54 +802,87 @@ class ApiRouting:
 
 
 
-        ################   MODIFYING EXISTING CONTENT ITEMS   ################
+        #####################################################################################################
 
-        @bp.route('/simple/update', methods=['POST'])
+        '''                              ~   MODIFYING EXISTING CONTENT ITEMS   ~                         '''
+
+        def ________MODIFYING_CONTENT_ITEMS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
+        @bp.route('/update', methods=['POST'])
         @login_required
-        def update() -> str:
+        def update():
             """
             Update an existing Content Item.
-            NOTE: the "schema_code" field is currently required, but it's redundant.  Only
-                  used as a safety mechanism against incorrect values of uri
+            NOTE: the "schema_code" field in the POST data is currently required, but it's redundant.  Only
+                  used as a safety mechanism against incorrect values of their uri
 
             EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/simple/update -d "uri=11&schema_code=h&text=my_header"
-                curl http://localhost:5000/BA/api/simple/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
+                curl http://localhost:5000/BA/api/update -d "uri=11&schema_code=h&text=my_header"
+                curl http://localhost:5000/BA/api/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
             """
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('schema_code', 'r')])
-            cls.show_post_data(post_data, "update")
+            #cls.show_post_data(post_data, "update")
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['uri'])
                 DataManager.update_content_item(data_dict)
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
+                err_details = f"Unable to update the requested Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
         
-            print(f"update() is returning: `{return_value}`")
-        
-            return return_value
-        
-        
-        
-        @bp.route('/simple/delete/<uri>/<schema_code>')
+            #print(f"update() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/pin_category/<uri>/<op>')
         @login_required
-        def delete(uri, schema_code) -> str:
+        def pin_category(uri, op):
+            """
+            Set or unset the "pinned" property of the specified Category
+
+            EXAMPLE invocations: http://localhost:5000/BA/api/pin_category/123/set
+                                 http://localhost:5000/BA/api/pin_category/123/unset
+
+            :param uri: The URI of a data node representing a Category
+            :param op:  Either "set" or "unset"
+            """
+            try:
+                Categories.pin_category(uri=uri, op=op)
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to change the 'pinned' status of the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/delete/<uri>/<schema_code>')
+        @login_required
+        def delete(uri, schema_code):
             """
             Delete the specified Content Item.
-            Note that schema_code is redundant.
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete/46/n
+            Note that schema_code is redundant.  Only used
+            as a safety mechanism against incorrect values of their uri
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/n
             """
             try:
                 DataManager.delete_content_item(uri, schema_code)
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                response_data = {"status": "ok"}              # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + str(ex)      # In case of errors
+                err_details = f"Unable to delete the requested Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
 
-            print(f"delete() is returning: `{return_value}`")
-        
-            return return_value
+            #print(f"delete() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
@@ -890,321 +891,331 @@ class ApiRouting:
         #         CATEGORY-RELATED  (incl. adding new Content Items)      #
         #-----------------------------------------------------------------#
         
-        @bp.route('/simple/add_item_to_category', methods=['POST'])
+        @bp.route('/add_item_to_category', methods=['POST'])
         @login_required
-        def add_item_to_category() -> str:
+        def add_item_to_category():
             """
             Create a new Content Item attached to a particular Category,
             at a particular location in the "collection" (page)
 
             EXAMPLE invocation:
-            curl http://localhost:5000/BA/api/simple/add_item_to_category
+            curl http://localhost:5000/BA/api/add_item_to_category
                             -d "category_id=708&insert_after=711&schema_code=h&text=New Header"
         
             POST FIELDS:
-                category_id         Integer identifying the Category to which attach the new Content Item
+                category_id         URI identifying the Category to which attach the new Content Item
                 schema_code         A string to identify the Schema that the new Content Item belongs to
-                insert_after        Either an uri (int), or one of the special values "TOP" or "BOTTOM"
-                PLUS any applicable plugin-specific fields
+                insert_after        Either an URI of an existing Content Item attached to this Category,
+                                    or one of the special values "TOP" or "BOTTOM"
+                *PLUS* any applicable plugin-specific fields
             """
             # Extract the POST values
             post_data = request.form
             # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('insert_after', '5'), ('text', 'My Header')])
-            cls.show_post_data(post_data, "add_item_to_category")
+            #cls.show_post_data(post_data, "add_item_to_category")
         
             # Create a new Content Item with the POST data
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
-                new_id = DataManager.new_content_item_in_category(pars_dict)
-                return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
+                payload = DataManager.new_content_item_in_category(pars_dict)        # Include the newly-added ID as a payload
+                response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
-        
-            print(f"add_item_to_category() is returning: `{return_value}`")
-        
-            return return_value
-        
-        
-        
-        @bp.route('/simple/add_subcategory', methods=['POST'])
+                err_details = f"Unable to add the requested Content Item to the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+
+            #print(f"add_item_to_category() is returning: `{err_details}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/delete_category/<uri>')
         @login_required
-        def add_subcategory() -> str:
+        def delete_category(uri):
+            """
+            Delete the specified Category, provided that there are no Content Items linked to it.
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/delete_category/123
+
+            :param uri: The URI of a data node representing a Category
+            """
+            try:
+                Categories.delete_category(uri)
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to delete the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+
+            return jsonify(response_data)       # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/add_subcategory', methods=['POST'])
+        @login_required
+        def add_subcategory():
             """
             Add a new Subcategory to a given Category
-            (if the Subcategory already exists, use add_subcategory_relationship instead)
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_subcategory
+            (if the Subcategory to link up to already exists, use add_subcategory_relationship instead)
+
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/add_subcategory -d
+                            "category_id=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
         
             POST FIELDS:
-                category_id                     To identify the Category to which to add the new Subcategory
+                category_id                     URI to identify the Category to which to add the new Subcategory
                 subcategory_name                The name to give to the new Subcategory
                 subcategory_remarks (optional)  A comment field for the new Subcategory
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('category_id', '12'), ('subcategory_name', 'Astronomy')])
 
-            # Create a new Subcategory to a given Category, using the POST data
             try:
-                #post_pars = cls.extract_post_pars(post_data, ["category_id", "subcategory_name"])
-                new_id = Categories.add_subcategory(dict(post_data))
-                return_value = cls.SUCCESS_PREFIX + str(new_id)     # Include the newly-added ID as a payload
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'subcategory_name'])
+                payload = Categories.add_subcategory(data_dict)     # Include the newly-added ID as a payload
+                response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
+                err_details = f"Unable to add the requested Subcategory.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
         
-            print(f"add_subcategory() is returning: `{return_value}`")
+            #print(f"add_subcategory() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
         
-            return return_value
+
         
-        
-        
-        @bp.route('/simple/delete_category/<category_id>')
+        @bp.route('/add_subcategory_relationship')
         @login_required
-        def delete_category(category_id) -> str:
-            """
-            Delete the specified Category, provided that there are no Content Items linked to it
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/delete_category/123
-            """
-            try:
-                Categories.delete_category(int(category_id))
-                return_value = cls.SUCCESS_PREFIX
-            except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
-        
-            print(f"delete_category() is returning: `{return_value}`")
-        
-            return return_value
-        
-        
-        
-        @bp.route('/simple/add_subcategory_relationship')
-        # TODO: phase out in favor of the more general /simple/add_relationship
-        @login_required
-        def add_subcategory_relationship() -> str:
+        def add_subcategory_relationship():
             """
             Create a subcategory relationship between 2 existing Categories.
-            (To add a new subcategory, use add_subcategory instead)
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_subcategory_relationship?sub=12&cat=1
+            (To add a new subcategory to an existing Category, use /add_subcategory instead)
+
+            Notice that this is a more specialized form of the more general /add_relationship
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/add_subcategory_relationship?sub=12&cat=1
+
+            QUERY-STRINGS FIELDS:
+                sub         URI to identify an existing Category node that is to be made a sub-category of another one
+                cat         URI to identify an existing Category node that is to be made the parent of the other Category
             """
+            # TODO: not in current use
+
+            # Extract the GET values
+            get_data = request.args     # Example: ImmutableMultiDict([('sub', '12'), ('cat', '555')])
+
             try:
-                subcategory_id: int = request.args.get("sub", type = int)
-                category_id: int = request.args.get("cat", type = int)
-                if subcategory_id is None:
-                    raise Exception("Missing value for parameter `sub`")
-                if category_id is None:
-                    raise Exception("Missing value for parameter `cat`")
-        
-                Categories.add_subcategory_relationship(subcategory_id=subcategory_id, category_id=category_id)
-                return_value = cls.SUCCESS_PREFIX
+                #print(get_data)
+                data_dict = cls.extract_get_pars(get_data, required_par_list=['sub', 'cat'])
+                Categories.add_subcategory_relationship(data_dict)
+                response_data = {"status": "ok"}
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)
+                err_details = f"Unable to add the requested relationship to the specified subcategory.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
         
-            print(f"add_subcategory_relationship() is returning: `{return_value}`")
-        
-            return return_value
+            #print(f"add_subcategory_relationship() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
-        @bp.route('/simple/remove_relationship', methods=['POST'])
+        @bp.route('/add_relationship', methods=['POST'])
         @login_required
-        def remove_relationship() -> str:
+        def add_relationship():
             """
-            Remove the specified relationship (edge)
+            Add the specified relationship (edge) between data nodes
+
+            POST FIELDS:
+                from                    The URI of the node from which the relationship originates
+                to                      The URI of the node into which the relationship takes
+                rel_name                The name of the relationship to add
+                schema_code (optional)  If passed, the appropriate plugin gets invoked
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/add_relationship -d
+                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
+            """
+            # TODO: maybe merge with the schema endpoint /add_schema_relationship
+
+            # Extract the POST values
+            post_data = request.form
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            #cls.show_post_data(post_data, "add_relationship")
+
+            try:
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                DataManager.add_data_relationship_handler(data_dict)
+                response_data = {"status": "ok"}                                    # If no errors
+            except Exception as ex:
+                err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # In case of errors
+
+            #print(f"add_relationship() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/remove_relationship', methods=['POST'])
+        @login_required
+        def remove_relationship():
+            """
+            Remove the specified relationship (edge) between data nodes
 
             POST FIELDS:
                 from                    The uri of the node from which the relationship originates
                 to                      The uri of the node into which the relationship takes
                 rel_name                The name of the relationship to remove
                 schema_code (optional)  If passed, the appropriate plugin gets invoked
-            :return:
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/remove_relationship -d
+                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
             """
+            # TODO: maybe merge with the schema endpoint /remove_schema_relationship
+
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            cls.show_post_data(post_data)
+            #cls.show_post_data(post_data, "remove_relationship")
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                from_id = cls.str_to_int(data_dict['from'])
-                to_id = cls.str_to_int(data_dict['to'])
-                rel_name = data_dict['rel_name']
-                schema_code = data_dict.get('schema_code')         # Tolerant of missing values
-
-                if schema_code == "cat":
-                    Categories.remove_relationship(from_id=from_id, to_id=to_id,
-                                                   rel_name=rel_name)       # Category-specific action
-
-                NeoSchema.remove_data_relationship(from_uri=from_id, to_uri=to_id,
-                                                   rel_name=rel_name, labels="BA")
-
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                DataManager.remove_data_relationship_handler(data_dict)
+                response_data = {"status": "ok"}                                     # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
+                err_details = f"Unable to remove the requested data relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # In case of errors
 
-            print(f"remove_relationship() is returning: `{return_value}`")
+            #print(f"remove_relationship() is returning: `{response_data}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
-
-        @bp.route('/simple/add_relationship', methods=['POST'])
-        @login_required
-        def add_relationship() -> str:
-            """
-            Add the specified relationship (edge)
-
-            POST FIELDS:
-                from                    The uri of the node from which the relationship originates
-                to                      The uri of the node into which the relationship takes
-                rel_name                The name of the relationship to add
-                schema_code (optional)  If passed, the appropriate plugin gets invoked
-            :return:
-            """
-            # Extract the POST values
-            post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            cls.show_post_data(post_data)
-
-            try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                from_id = cls.str_to_int(data_dict['from'])
-                to_id = cls.str_to_int(data_dict['to'])
-                rel_name = data_dict['rel_name']
-                schema_code = data_dict.get('schema_code')         # Tolerant of missing values
-
-                if schema_code == "cat":
-                    Categories.add_relationship(from_id=from_id, to_id=to_id,
-                                                rel_name=rel_name)       # Category-specific action
-
-                NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
-                                                    rel_name=rel_name, id_type="uri")
-
-                return_value = cls.SUCCESS_PREFIX              # If no errors
-            except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
-
-            print(f"add_relationship() is returning: `{return_value}`")
-
-            return return_value
 
 
 
         #############    POSITIONING WITHIN CATEGORIES    #############
         
-        @bp.route('/simple/swap/<uri_1>/<uri_2>/<cat_id>')
+        @bp.route('/swap/<uri_1>/<uri_2>/<cat_id>')
         @login_required
-        def swap(uri_1, uri_2, cat_id) -> str:
+        def swap(uri_1, uri_2, cat_id):
             """
             Swap the positions of the specified Content Items within the given Category.
         
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/swap/23/45/2
-            """
-            err_status:str = Categories.swap_content_items(uri_1, uri_2, cat_id)
-        
-            if err_status == "":    # If no errors
-                return_value = cls.SUCCESS_PREFIX
-            else:                   # If errors
-                return_value = cls.ERROR_PREFIX + err_status
-        
-            print(f"swap() is returning: `{return_value}`")
-        
-            return return_value
-        
-        
-        
-        @bp.route('/simple/reposition/<category_id>/<uri>/<move_after_n>')
-        @login_required
-        def reposition(category_id, uri, move_after_n) -> str:
-            """
-            Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
-            TODO: switch to an after-item version?
-        
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/reposition/60/576/4
+            EXAMPLE invocation: http://localhost:5000/BA/api/swap/23/45/2
             """
             try:
-                Categories.reposition_content(category_id=int(category_id), uri=int(uri), move_after_n=int(move_after_n))
-                return_value = cls.SUCCESS_PREFIX               # Success
+                Categories.swap_content_items(uri_1, uri_2, cat_id)
+                response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
-                err_status = f"UNABLE TO REPOSITION ELEMENT: {ex}"
-                return_value = cls.ERROR_PREFIX + err_status    # Failure
+                err_details = f"Unable to swap the requested Content Items.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            #print(f"swap() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
         
-            print(f"reposition() is returning: `{return_value}`")
         
-            return return_value
+        
+        @bp.route('/reposition/<category_id>/<uri>/<move_after_n>')
+        @login_required
+        def reposition(category_id, uri, move_after_n):
+            """
+            Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
+            Note: moving after the 0-th item means to move to the very top
+            TODO: switch to an after-item version?
+        
+            EXAMPLE invocation: http://localhost:5000/BA/api/reposition/60/576/4
+            """
+            try:
+                Categories.reposition_content(category_uri=category_id, uri=uri, move_after_n=int(move_after_n))
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to reposition the Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+        
+            #print(f"reposition() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
-        #---------------------------------------------#
-        #                     UTILS                   #
-        #---------------------------------------------#
+        @bp.route('/add_label/<new_label>')
+        @login_required
+        def add_label(new_label):
+            """
+            Add a new blank node with the specified label.
+            Return the internal database ID of the new node.
+            Mostly used for testing.
 
-        @bp.route('/simple/fetch-remote-title')
+            EXAMPLE invocation: http://localhost:5000/BA/api/add_label/Customer
+
+            :param new_label:   String with the name of a Graph-Database label
+            :return:            A Flask Response response object containing
+                                    the internal database ID of the new node
+            """
+            try:
+                internal_id = DataManager.add_new_label(new_label)
+                response_data = {"status": "ok", "payload": internal_id}            # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to create a new database node with the given label: `{new_label}`. " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+
+
+        #####################################################################################################
+
+        '''                                          ~   UTILS   ~                                        '''
+
+        def ________UTILS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
+        @bp.route('/fetch-remote-title')
         def fetch_remote_title():
             """
             Retrieve the Title of a remote webpage, given its URL
 
             EXAMPLE invocation:
-                http://localhost:5000/BA/api/simple/fetch-remote-title?url=https://brainannex.org
+                http://localhost:5000/BA/api/fetch-remote-title?url=https://brainannex.org
 
-            :return:    A string with the title of the page specified by the "url" query string, or an error message,
-                            with a "+" or "-" prefix (for success/failure)
-                            Any HTML entities in the title are turned into characters; e.g. "&ndash;" becomes "-"
+            :return:    A Flask Response response object containing a JSON string
+                            with the contents of the title of the page specified by the "url" query string,
+                            or an error message in case the fetching webpage fails or its title cannot be extracted.
+                            Note: any HTML entities in the title are turned into characters; e.g. "&ndash;" becomes "-"
             """
-            remote_url = request.args.get('url')
+            remote_url = request.args.get('url')    # Extract the value of the "url" value from the query string
             #print(f"Attempting to retrieve remove web page {remote_url}")
 
             try:
-                response = requests.get(remote_url)
-
-                if response.status_code == 200:
-                    #print(response.text[:800])     # Show the early part of the file
-
-                    # Use regular expressions to find the title tag
-                    title_match = re.search(r'<title.*?>(.*?)</title>', response.text, re.IGNORECASE)
-                    #    .    means "any single character, except line breaks"
-                    #    *?   means "0 or more times (non-greedy)"
-                    #    ()   means "capture group"
-
-                    # Note: some websites contain alternate way to express titles, such as:
-                    # <meta data-react-helmet="true" name="title" content="THE REAL PAGE TITLE">
-
-                    if title_match:
-                        title = title_match.group(1)            # The 1st capture group
-                        unescaped_title = html.unescape(title)  # Turn HTML entities into characters;
-                                                                # e.g. "&ndash;" into "-"
-                        print(unescaped_title)
-                        return_value = cls.SUCCESS_PREFIX + unescaped_title     # Success
-                    else:
-                        err_status = f"Unable to extract title from {remote_url}"
-                        return_value = cls.ERROR_PREFIX + err_status            # Failure
-
-                    '''
-                    # Alternate approach using BeautifulSoup (untested):
-                    
-                        from bs4 import BeautifulSoup
-                        # Parse the HTML content
-                        soup = BeautifulSoup(response.text, 'html.parser')                  
-                        # Extract the title element and its text
-                        title = soup.title.string if soup.title else 'No Title Found
-                    '''
-
-                else:   # Response status other that 200
-                    err_status =  f'Remote page ({remote_url}) returned failure code {response.status_code}'
-                    return_value = cls.ERROR_PREFIX + err_status                # Failure
+                title = DataManager.extract_website_title(remote_url)
+                response_data = {"status": "ok", "payload": title}                  # Successful termination
 
             except Exception as ex:
-                err_status =  f'Error in fetching the remote page. {ex})'
-                return_value = cls.ERROR_PREFIX + err_status                    # Failure
+                err_details =  f"Error in fetching the remote page.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
 
-            return return_value
-
-
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
-        #---------------------------------------------#
-        #                   FILTERS                   #
-        #---------------------------------------------#
-        
+
+
+        #####################################################################################################
+
+        '''                                        ~   FILTERS   ~                                        '''
+
+        def ________FILTERS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
         @bp.route('/get-filtered-json', methods=['POST'])
         @login_required
-        def get_filtered_JSON() -> str:     # *** NOT IN CURRENT USE; see get_filtered() ***
+        def get_filtered_JSON():     # *** NOT IN CURRENT USE; see get_filtered() ***
             """
             Note: a form-data version is also available
         
@@ -1240,7 +1251,7 @@ class ApiRouting:
         
         @bp.route('/get_filtered', methods=['POST'])
         @login_required
-        def get_filtered() -> str:
+        def get_filtered():
             """
             Note: a JSON version is also available
         
@@ -1272,13 +1283,17 @@ class ApiRouting:
 
 
 
-        #---------------------------------------------#
-        #       IMPORT-EXPORT  (upload/download)      #
-        #---------------------------------------------#
+        #####################################################################################################
+
+        '''                          ~   IMPORT/EXPORT (incl. Upload/Download)   ~                        '''
+
+        def ________IMPORT_EXPORT________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
 
         @bp.route('/import_json_file', methods=['POST'])
         @login_required
-        def import_json_file() -> str:
+        def import_json_file():
             """
             Upload and import of a data file in JSON format
             Invoke with the URL: http://localhost:5000/BA/api/import_json_file
@@ -1303,28 +1318,28 @@ class ApiRouting:
 
 
 
-        @bp.route('/simple/stop_data_intake')
+        @bp.route('/stop_data_intake')
         @login_required
-        def stop_data_intake() -> str:
+        def stop_data_intake():
             """
-            Invoke with the URL: http://localhost:5000/BA/api/simple/stop_data_intake
-            :return:
+            Invoke with the URL: http://localhost:5000/BA/api/stop_data_intake
             """
             try:
                 DataManager.do_stop_data_intake()
-                return_value = cls.SUCCESS_PREFIX              # If no errors
+                response_data = {"status": "ok"}              # If no errors
             except Exception as ex:
-                return_value = cls.ERROR_PREFIX + exceptions.exception_helper(ex)   # In case of errors
+                err_details = f"Unable to stop the data-intake process.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
 
-            print(f"stop_data_intake() is returning: `{return_value}`")
+            #print(f"stop_data_intake() is returning: `{err_details}`")
 
-            return return_value
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
         @bp.route('/bulk_import', methods=['POST'])
         @login_required
-        def bulk_import() -> str:
+        def bulk_import():
             """
             Bulk import (for now of JSON files)
 
@@ -1375,7 +1390,7 @@ class ApiRouting:
         
             return_url = request.form["return_url"] # This originates from the HTML form :
             #    <input type="hidden" name="return_url" value="my_return_url">
-            print("return_url: ", return_url)
+            #print("return_url: ", return_url)
         
             status = DataManager.upload_import_json(verbose=False, return_url=return_url)
             return status
@@ -1447,7 +1462,7 @@ class ApiRouting:
                 return make_response(err_status, 500)
         
         
-            category_id = int(post_data["category_id"])
+            category_uri = post_data["category_id"]
 
 
             # TODO: turn into a call to a plugin-provided method, prior to database add
@@ -1471,8 +1486,8 @@ class ApiRouting:
             # Update the database (for now, the media is added AT THE END of the Category page)
             # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
             try:
-                new_uri = Categories.add_content_at_end(category_id=category_id,
-                                                            item_class_name=class_name, item_properties=properties)
+                new_uri = Categories.add_content_at_end(category_uri=category_uri,
+                                                        item_class_name=class_name, item_properties=properties)
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Documents":
@@ -1565,11 +1580,11 @@ class ApiRouting:
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         
-            print("In import_datafile(): ", (tmp_filename_for_upload, full_filename, original_name))
+            #print("In import_datafile(): ", (tmp_filename_for_upload, full_filename, original_name))
         
             return_url = request.form["return_url"] # This originates from the HTML form - namely the line:
                                                     #    <input type="hidden" name="return_url" value="my_return_url">
-            print("return_url: ", return_url)
+            #print("return_url: ", return_url)
 
             #status_msg = "Testing"
             status_msg = DataManager.import_datafile(tmp_filename_for_upload, full_filename, test_only=True)
@@ -1621,14 +1636,13 @@ class ApiRouting:
             #    <input type="hidden" name="return_url" value="my_return_url">
             #print("return_url: ", return_url)
 
-            #status_msg = "Testing"
-            status_msg = DocumentationGenerator.import_python_file(tmp_filename_for_upload, full_filename)
+            status_msg = "<a href='{return_url}' style='margin-left:10px; font-weight:bold'>GO BACK</a><br><br>"
+            status_msg += DocumentationGenerator.import_python_file(tmp_filename_for_upload, full_filename)
 
             # Provide a return link
-            status_msg += f" <a href='{return_url}' style='margin-left:50px'>GO BACK</a><br><br>"
+            status_msg += f" <a href='{return_url}' style='margin-left:10px; font-weight:bold'>GO BACK</a><br><br>"
 
             return status_msg
-
 
 
 
@@ -1655,7 +1669,7 @@ class ApiRouting:
                 else:
                     return f"Unknown requested type of download: {download_type}"
             except Exception as ex:
-                    response = exceptions.exception_helper(ex, safe_html=True)
+                    response = exceptions.exception_helper(ex)
                     error_page_body = f'''<b>Unable to perform download</b>. <br>
                                           This is typically due to the 'APOC' library not being installed on Neo4j,
                                           unless the error message below indicates something else. 
@@ -1674,31 +1688,6 @@ class ApiRouting:
             response.headers['Content-Type'] = 'application/save'
             response.headers['Content-Disposition'] = f'attachment; filename=\"{export_filename}\"'
             return response
-
-
-
-
-        #---------------------------------------------#
-        #                EXPERIMENTAL                 #
-        #---------------------------------------------#
-        
-        @bp.route('/simple/add_label/<new_label>')
-        @login_required
-        def add_label(new_label) -> str:
-            """
-            Add a new blank node with the specified label.
-            As a payload, return the internal ID of the new node
-
-            EXAMPLE invocation: http://localhost:5000/BA/api/simple/add_label/Customer
-            """
-            try:
-                internal_id = DataManager.add_new_label(new_label)
-                return_value = cls.SUCCESS_PREFIX + str(internal_id)    # Success
-            except Exception as ex:
-                err_status = f"Unable to create a new node with the given label (new_label). {ex}"
-                return_value = cls.ERROR_PREFIX + err_status            # Failure
-
-            return return_value
 
 
         ##################  END OF ROUTING DEFINITIONS  ##################

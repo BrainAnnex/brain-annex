@@ -108,12 +108,12 @@ Vue.component('vue-plugin-h',
                      const insert_after = this.item_data.insert_after;      // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                      post_body += "&insert_after=" + insert_after;
 
-                     url_server = `/BA/api/simple/add_item_to_category`;    // URL to communicate with the server's endpoint
+                     url_server = `/BA/api/add_item_to_category`;    // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING header
                     post_body += "&uri=" + this.item_data.uri;
 
-                    url_server = `/BA/api/simple/update`;                   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/update`;                   // URL to communicate with the server's endpoint
                 }
 
                 // Go over each field.  TODO: generalize
@@ -129,7 +129,8 @@ Vue.component('vue-plugin-h',
                 this.error = false;       // Clear any error from the previous operation
 
                 console.log("In 'vue-plugin-h', save().  post_body: ", post_body);
-                ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
+                ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_save});
+                //ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
             }, // save
 
 

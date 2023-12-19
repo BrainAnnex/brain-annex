@@ -236,7 +236,7 @@ Vue.component('vue-schema-editor',
 
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/schema_add_property_to_class";
+                let url_server = "/BA/api/schema_add_property_to_class";
                 let post_obj = {prop_name: add_prop_name.trim(),
                                 class_name: class_to_add_prop_to
                                };
@@ -292,7 +292,7 @@ Vue.component('vue-schema-editor',
                 }
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/delete_class";
+                let url_server = "/BA/api/delete_class";
                 let post_obj = {class_name: this.del_class_name
                                };
 
@@ -352,7 +352,7 @@ Vue.component('vue-schema-editor',
                 }
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/delete_schema_relationship";
+                let url_server = "/BA/api/delete_schema_relationship";
                 let post_obj = {from_class_name: this.del_linked_from,
                                 to_class_name: this.del_linked_to,
                                 rel_name: this.del_rel_name
@@ -417,7 +417,7 @@ Vue.component('vue-schema-editor',
 
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/add_schema_relationship";
+                let url_server = "/BA/api/add_schema_relationship";
                 let post_obj = {from_class_name: this.add_linked_from,
                                 to_class_name: this.add_linked_to,
                                 rel_name: this.add_rel_name

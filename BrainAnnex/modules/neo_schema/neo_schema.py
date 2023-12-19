@@ -144,9 +144,11 @@ class NeoSchema:
 
 
     #####################################################################################################
-    #                                                                                                   #
-    #                                   ~ CLASS-related  ~                                              #
-    #                                                                                                   #
+
+    '''                                     ~   CLASS-related   ~                                     '''
+
+    def ________CLASS_related________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
     @classmethod
@@ -154,8 +156,8 @@ class NeoSchema:
         """
         Raise an Exception if the passed argument is not a valid Class name
 
-        :param class_name:
-        :return:
+        :param class_name:  A string with the name of a Schema Class
+        :return:            None
         """
         assert type(class_name) == str, \
             f"NeoSchema.assert_valid_class_name(): The class name ({class_name}) must be a string (instead, it's of type {type(class_name)})"
@@ -289,10 +291,10 @@ class NeoSchema:
     @classmethod
     def class_neo_id_exists(cls, neo_id: int) -> bool:
         """
-        Return True if a Class by the given internal ID ID already exists, or False otherwise
+        Return True if a Class by the given internal database ID already exists, or False otherwise
 
-        :param neo_id:
-        :return:
+        :param neo_id:  Integer with internal database ID
+        :return:        A boolean indicating whether the specified Class exists
         """
         cls.db.assert_valid_internal_id(neo_id)
 
@@ -330,14 +332,14 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_name(cls, schema_id: int) -> str:
+    def get_class_name(cls, schema_id :int) -> str:
         """
         Returns the name of the class with the given Schema ID, or "" if not found
 
         :param schema_id:   An integer with the unique ID of the desired class
         :return:            The name of the class with the given Schema ID, or "" if not found
         """
-        assert type(schema_id) == int, "The schema id MUST be an integer"
+        assert type(schema_id) == int, "get_class_name(): The schema id MUST be an integer"
 
         match = cls.db.match(labels="CLASS", key_name="schema_id", key_value=schema_id)
         result = cls.db.get_nodes(match, single_cell="name")
@@ -425,6 +427,10 @@ class NeoSchema:
                                      then data nodes may be left without a Schema
         :return:            None.  In case of no node deletion, an Exception is raised
         """
+        # TODO: in case of failure, investigate further the problem
+        #       (e.g. no class by that name vs. class has data points still attached to it)
+        #       and give a more specific error message
+
         if safe_delete:     # A clause is added in this branch: "WHERE NOT EXISTS (()-[:SCHEMA]->(c))"
             q = '''
             MATCH (c :CLASS {name: $name})
@@ -541,9 +547,6 @@ class NeoSchema:
               as long as the relationships differ in their attributes
               (but this method doesn't allow setting properties on the new relationship)
 
-        TODO: add a method that reports on all existing relationships among Classes?
-        TODO: allow properties on the relationship
-
         :param from_class:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name.
                                 Used to identify the node from which the new relationship originates.
@@ -554,6 +557,10 @@ class NeoSchema:
                                 (blanks allowed)
         :return:            None
         """
+        #TODO: add a method that reports on all existing relationships among Classes?
+        #TODO: allow properties on the relationship
+        #TODO: provide more feedback in case of failure
+
         # Validate the arguments
         assert rel_name, "create_class_relationship(): A name must be provided for the new relationship"
         cls.assert_valid_class_identifier(from_class)
@@ -644,6 +651,8 @@ class NeoSchema:
         :return:            The number of relationships deleted.
                             In case of error, or if no relationship was found, an Exception is raised
         """
+        #TODO: provide more feedback in case of failure
+
         assert from_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'from_class' argument"
         assert to_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'to_class' argument"
         assert rel_name, "NeoSchema.delete_class_relationship(): A name must be provided for the relationship to delete"
@@ -785,7 +794,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_relationships(cls, schema_id:int, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
+    def get_class_relationships(cls, schema_id :int, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
         """
         Fetch and return the names of all the relationship (both inbound and outbound)
         attached to the given Class.
@@ -839,7 +848,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_outbound_data(cls, class_neo_id:int, omit_instance=False) -> dict:
+    def get_class_outbound_data(cls, class_neo_id :int, omit_instance=False) -> dict:
         """
         Efficient all-at-once query to fetch and return the names of all the outbound relationship
         attached to the given Class, as well as the names of the other Classes on the other side of those links.
@@ -1305,13 +1314,13 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node_internal_id(cls, uri: int) -> int:
+    def get_data_node_internal_id(cls, uri :str) -> int:
         """
         Returns the internal database ID of the given data node,
         specified by its value of the uri attribute
 
-        :param uri: Integer to identify a data node by the value of its uri attribute
-        :return:        The internal database ID of the specified data node
+        :param uri: A string to identify a data node by the value of its "uri" attribute
+        :return:    The internal database ID of the specified data node
         """
         match = cls.db.match(key_name="uri", key_value=uri)
         result = cls.db.get_nodes(match, return_internal_id=True)
@@ -1352,7 +1361,7 @@ class NeoSchema:
 
         See also locate_node()
 
-        :param uri:     The "uri" field to uniquely identify the data node
+        :param uri:         The "uri" field to uniquely identify the data node
         :param internal_id: OPTIONAL alternate way to specify the data node;
                                 if present, it takes priority
         :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
@@ -1360,6 +1369,7 @@ class NeoSchema:
 
         :return:            A dictionary with all the key/value pairs, if found; or None if not
         """
+        # TODO: add function that only returns a specified single Property, or specified list of Properties
         if internal_id is None:
             assert uri is not None, \
                 "NeoSchema.fetch_data_node(): arguments `uri` and `internal_id` cannot both be None"
@@ -1381,7 +1391,7 @@ class NeoSchema:
         Return the "match" structure to later use to locate a node identified
         either by its internal database ID (default), or by a primary key (with optional label.)
 
-        No database operation is actually performed.
+        NOTE: No database operation is actually performed.
 
         :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
         :param id_type: For example, "uri";
@@ -1598,7 +1608,7 @@ class NeoSchema:
         if assign_uri or new_uri:
             if not new_uri:
                 # TODO: phase out this branch
-                new_id = cls.next_available_datanode_id()           # Obtain (and reserve) the next auto-increment value
+                new_id = cls.next_available_datanode_uri()           # Obtain (and reserve) the next auto-increment value
                                                                     # in the "data_node" namespace
             else:
                 new_id = new_uri
@@ -1825,7 +1835,7 @@ class NeoSchema:
         # if requested, expand cypher_prop_dict accordingly
         if assign_uri or new_uri:
             if not new_uri:
-                new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
+                new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
             else:
                 new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
@@ -1936,7 +1946,7 @@ class NeoSchema:
         # if requested, expand cypher_prop_dict accordingly
         if assign_uri or new_uri:
             if not new_uri:
-                new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
+                new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
             else:
                 new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
@@ -1983,9 +1993,11 @@ class NeoSchema:
     def add_data_point_OLD(cls, class_name="", schema_id=None,
                            data_dict=None, labels=None,
                            connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                           new_uri=None, return_uri=True) -> int:   # TODO: OBSOLETE.  Replace by add_data_node_with_links()
-                                                                            #       TO DITCH *AFTER* add_data_node_with_links() gets link validation!
+                           new_uri=None, return_uri=True) -> Union[int, str]:
         """
+        TODO: OBSOLETE.  Replace by add_data_node_with_links()
+              TO DITCH *AFTER* add_data_node_with_links() gets link validation!
+
         Add a new data node, of the Class specified by name or ID,
         with the given (possibly none) attributes and label(s),
         optionally linked to another DATA node, already existing.
@@ -2024,14 +2036,14 @@ class NeoSchema:
         :param rel_prop_key:    Str or None.  Ignored if rel_prop_value is missing
         :param rel_prop_value:  Str or None.  Ignored if rel_prop_key is missing
 
-        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-        :param return_uri:  Default to True.    TODO: change to False
+        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be a unique string)
+        :param return_uri:      Default to True.    TODO: change to False
                                 If True, the returned value is the auto-increment "uri" value of the node just created;
                                     otherwise, it returns its Neo4j ID
 
-        :return:                If successful, an integer with either the auto-increment "uri" value or the Neo4j ID
-                                    of the node just created (based on the flag "return_uri");
-                                    otherwise, an Exception is raised
+        :return:                EITHER a string with either the auto-increment "uri" value
+                                OR or the internal database ID
+                                of the node just created (based on the flag "return_uri")
         """
         #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
 
@@ -2061,7 +2073,7 @@ class NeoSchema:
         # expand cypher_props_dict accordingly
         # TODO: make this part optional
         if not new_uri:
-            new_id = cls.next_available_datanode_id()      # Obtain (and reserve) the next auto-increment value
+            new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
         else:
             new_id = new_uri
         #print("New ID assigned to new data node: ", new_id)
@@ -2152,13 +2164,13 @@ class NeoSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node :Union[int, str], set_dict :dict , drop_blanks = True) -> int:
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
         :param data_node:   Either an integer with the internal database ID, or a string with a URI value
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
-                                (note: blanks ARE allowed in the keys)
+                                (note: blanks ARE allowed within the keys)
         :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
         :return:            The number of properties set or removed;
@@ -2167,6 +2179,7 @@ class NeoSchema:
                                            identical to the old value!
         """
         #TODO: check whether the Schema allows the added/dropped fields, if applicable
+        #      Compare the keys of set_dict against the Properties of the Class of the Data Node
 
         if set_dict == {}:
             return 0            # Nothing to do!
@@ -2176,7 +2189,7 @@ class NeoSchema:
         elif type(data_node) == str:
             where_clause =  f'WHERE n.uri = "{data_node}"'
         else:
-            raise Exception("update_data_node(): argument `data_node` must be an integer or a string")
+            raise Exception("update_data_node(): the argument `data_node` must be an integer or a string")
 
 
         data_binding = {}
@@ -2208,7 +2221,7 @@ class NeoSchema:
             {remove_clause}            
             '''
 
-        #cls.db.debug_query_print(q, data_binding, force_output=True)
+        #cls.db.debug_query_print(q, data_binding)
 
         stats = cls.db.update_query(q, data_binding)
         #print(stats)
@@ -2255,7 +2268,7 @@ class NeoSchema:
 
 
     @classmethod
-    def delete_data_point(cls, uri: int, labels=None) -> int:
+    def delete_data_point(cls, uri: str, labels=None) -> int:
         """
         Delete the given data point.  TODO: obsolete in favor of delete_data_node()
 
@@ -2298,7 +2311,8 @@ class NeoSchema:
         if not existing_neo_id:
             raise Exception("Missing argument: existing_neo_id")
 
-        assert type(existing_neo_id) == int, "The argument `existing_neo_id` MUST be an integer"
+        assert type(existing_neo_id) == int, \
+            "register_existing_data_node(): The argument `existing_neo_id` MUST be an integer"  # TODO: use validity checker
 
         # Make sure that at least either class_name or schema_id is present
         if (not class_name) and (not schema_id):
@@ -2322,7 +2336,7 @@ class NeoSchema:
             raise Exception(f"The given data node ALREADY has a SCHEMA relationship")
 
         if not new_uri:
-            new_uri = cls.next_available_datanode_id()     # Generate, if not already provided
+            new_uri = cls.next_available_datanode_uri()     # Generate, if not already provided
 
         cls.debug_print("register_existing_data_node(). New uri to be assigned to the data node: ", new_uri)
 
@@ -2373,9 +2387,9 @@ class NeoSchema:
         nothing gets created (and an Exception is raised)
 
         :param from_id:     The ID of the data node at which the new relationship is to originate;
-                                this is understood be the Neo4j ID, unless an id_type is specified
+                                this is understood be the Neo4j ID, unless an id_type argument is passed
         :param to_id:       The ID of the data node at which the new relationship is to end;
-                                this is understood be the Neo4j ID, unless an id_type is specified
+                                this is understood be the Neo4j ID, unless an id_type argument is passed
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
         :param labels_from: (OPTIONAL) Labels on the 1st data node
@@ -2426,7 +2440,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_relationship(cls, from_id:int, to_id: int, rel_name: str, rel_props = None) -> None:
+    def add_data_relationship(cls, from_id :int, to_id :int, rel_name :str, rel_props = None) -> None:
         """
         Simpler (and possibly faster) version of add_data_relationship()
 
@@ -2479,17 +2493,17 @@ class NeoSchema:
 
 
     @classmethod
-    def remove_data_relationship(cls, from_uri: int, to_uri: int, rel_name: str, labels=None) -> None:
+    def remove_data_relationship(cls, from_uri :str, to_uri :str, rel_name :str, labels=None) -> None:
         """
-        Drop the relationship with the given name, from one to the other of the 2 given data nodes.
+        Drop the relationship with the given name, from one to the other of the 2 given DATA nodes.
         Note: the data nodes are left untouched.
         If the specified relationship didn't get deleted, raise an Exception
 
         TODO: first verify that the relationship is optional in the schema???
         TODO: migrate from "uri" values to also internal database ID's, as done in class_of_data_node()
 
-        :param from_uri:The "uri" value of the data node at which the relationship originates
-        :param to_uri:  The "uri" value of the data node at which the relationship ends
+        :param from_uri:    String with the "uri" value of the data node at which the relationship originates
+        :param to_uri:      String with the "uri" value of the data node at which the relationship ends
         :param rel_name:    The name of the relationship to delete
         :param labels:      OPTIONAL (generally, redundant).  Labels required to be on both nodes
 
@@ -2515,7 +2529,7 @@ class NeoSchema:
 
         IMPORTANT: this function cannot be used to remove relationship involving any Schema node
 
-        :param node_id:     The internal database ID or name of the data node of interest
+        :param node_id:     The internal database ID (integer) or name (string) of the data node of interest
         :param rel_name:    The name of the relationship(s) to delete
         :param rel_dir:     Either 'IN', 'OUT', or 'BOTH'
         :param labels:      [OPTIONAL]
@@ -3060,6 +3074,21 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
+    def is_valid_uri(cls, uri :str) -> bool:
+        """
+        Return True if the passed uri is valid; otherwise, return False
+
+        :param uri:
+        :return:
+        """
+        if type(uri) == str and uri != "":
+            return True
+
+        return False
+
+
+
+    @classmethod
     def generate_uri(cls, prefix, namespace, suffix="") -> str:
         """
         Generate a URI (or fragment thereof, aka "token"),
@@ -3086,7 +3115,7 @@ class NeoSchema:
         and an attribute indicating the desired namespace (group);
         if no such node exists (for example, after a new installation), it gets created, and 1 is returned.
 
-        Note that the returned number (or sequence of numbers, if advance > 1)
+        Note that the returned number (or last of a sequence of numbers, if advance > 1)
         is de-facto "permanently reserved" on behalf of the calling function,
         and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
 
@@ -3124,24 +3153,28 @@ class NeoSchema:
                                properties={"namespace": namespace, "next_count": 1+advance})
             return 1       # Start a new count for this namespace
         else:
-            return next_count-advance
+            return next_count - advance
 
 
 
     @classmethod
-    def next_available_datanode_id(cls) -> int:
+    def next_available_datanode_uri(cls, prefix="") -> str:
         """
-        Reserve and return the next available auto-increment ID,
+        Reserve and return a URI based on the next available auto-increment ID,
         in the separately-maintained group (i.e. namespace) called "data_node".
-        This value (currently often referred to as "uri", and not to be confused
-        with the internal ID assigned by Neo4j to each node),
-        is meant as a permanent primary key, on which a URI could be based.
+        This value (not to be confused with the internal database ID assigned to each node),
+        is meant as a permanent primary key.
 
-        For unique ID's to use on schema nodes, use next_available_schema_id() instead
+        For unique ID's to use on Schema nodes, use next_available_schema_id() instead
 
-        :return:    A unique auto-increment integer used for Data nodes
+        :param prefix:  (OPTIONAL) String to prefix to the auto-increment number
+        :return:        A unique auto-increment integer used for Data nodes
         """
-        return cls.next_autoincrement("data_node")
+        n = cls.next_autoincrement("data_node")
+        uri = f"{prefix}{n}"
+
+        return uri
+
 
 
 

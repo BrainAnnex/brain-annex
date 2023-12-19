@@ -7,9 +7,9 @@ Vue.component('vue-plugin-r',
         /*  item_data:  An object with the relevant data about this Record item
 
                         EXAMPLE: {class_name:"German Vocabulary",
-                                  "uri":52, "pos":10, "schema_code":"r",
+                                  "uri":"52", "pos":10, "schema_code":"r",
                                   "German":"Tier", "English":"animal"}
-                                 (if uri is is negative, it means that it's a newly-created header,
+                                 (if uri is a negative number, it means that it's a newly-created header,
                                   not yet registered with the server)
 
             allow_editing:  A boolean indicating whether in editing mode
@@ -320,8 +320,7 @@ Vue.component('vue-plugin-r',
                 console.log(post_obj);
 
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "JSON",
-                             post_obj: post_obj,
+                            {post_obj: post_obj,
                              callback_fn: this.finish_get_linked_records_from_server,
                              custom_data: [rel_name, dir]});
             },
@@ -364,7 +363,7 @@ Vue.component('vue-plugin-r',
                 console.log(`About to contact the server at ${url_server}`);
                 this.waiting_for_links = true;
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "JSON", callback_fn: this.finish_get_link_summary_from_server});
+                            {callback_fn: this.finish_get_link_summary_from_server});
             },
 
             finish_get_link_summary_from_server(success, server_payload, error_message)
@@ -411,7 +410,7 @@ Vue.component('vue-plugin-r',
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
                 ServerCommunication.contact_server(url_server,
-                            {payload_type: "JSON", post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
+                            {post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
 
                 return true;
             },
@@ -449,7 +448,7 @@ Vue.component('vue-plugin-r',
                         /* Only add fields not already present
                          */
                         if (!(field_name in this.current_data))  {
-                            console.log("    Adding missing field: ", field_name);
+                            //console.log("    Adding missing field: ", field_name);
                             new_current_data[field_name] = "";
                         }
                     }
@@ -549,7 +548,7 @@ Vue.component('vue-plugin-r',
                     // EXAMPLE of post_body for a NEW record:
                     //          "schema_code=r&category_id=12&class_name=German%20Vocabulary&insert_after=123&German=Liebe"
 
-                    url_server = `/BA/api/simple/add_item_to_category`;   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {
                     // Update an EXISTING record
@@ -563,7 +562,7 @@ Vue.component('vue-plugin-r',
                     }
                     // EXAMPLE of post_body for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
-                    url_server = `/BA/api/simple/update`;   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/update`;   // URL to communicate with the server's endpoint
                 }
 
 
@@ -571,7 +570,7 @@ Vue.component('vue-plugin-r',
                 this.error_indicator = false;   // Clear possible past message
 
                 console.log("In 'vue-plugin-r', save().  post_body: ", post_body);
-                ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
+                ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_save});
             }, // save
 
 
@@ -589,11 +588,11 @@ Vue.component('vue-plugin-r',
                         if (this.current_data[field] != "")
                             console.log("Field still needed because non-empty: ", field);
                         else if (field in this.original_data)  {
-                            console.log("Field blank but was in original data [deleted anyway]: ", field);
+                            //console.log("Field blank but was in original data [deleted anyway]: ", field);
                             delete this.current_data[field];     // Zap b/c blank,
                         }
                         else {
-                            console.log("Eliminating field no longer in need to display: ", field);
+                            //console.log("Eliminating field no longer in need to display: ", field);
                             delete this.current_data[field];    // Zap b/c blank [NO LONGER DONE:, and not present before edit]
                         }
                     }

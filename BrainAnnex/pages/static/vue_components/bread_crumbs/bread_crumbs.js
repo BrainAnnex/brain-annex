@@ -1,12 +1,13 @@
-/*  MIT License.  Copyright (c) 2023 Julian A. West
+/*  To provide a "bread crumbs" navigation strip at the top of category-viewer pages
  */
 
 Vue.component('vue-bread-crumbs',
     {
-        props: ['category_id', 'bread_crumbs', 'all_categories'],
-        /*  category_id:
-            bread_crumbs:
-            all_categories:
+        props: ['category_uri', 'bread_crumbs', 'all_categories'],
+        /*  category_uri:       EXAMPLE: "123"
+            bread_crumbs:       EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
+            all_categories:     EXAMPLE: [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"},
+                                          {"uri": "523", "name": "work", 'pinned': True}]
          */
 
         template: `
@@ -36,6 +37,7 @@ Vue.component('vue-bread-crumbs',
                     //console.log(typeof item);
                     if ((typeof item) == "string")  {
                         //console.log("Processing a string");
+                        // First, consider whether the item is a special token
                         if (item == "START_CONTAINER")
                             bread_crumbs_str += "<div class='br_container'>";
                         else if (item == "END_CONTAINER")
@@ -52,17 +54,14 @@ Vue.component('vue-bread-crumbs',
                             bread_crumbs_str += "<div style='clear:right'></div>";
                         else if (item == "ARROW")
                             bread_crumbs_str += " &raquo; ";
-                        else
-                            bread_crumbs_str += " [UNKNOWN BREAD CRUMB ELEMENT - try refreshing page!] ";
-                    }
-                    else if ((typeof item) == "number")  {
-                        //console.log("Processing a number");
-                        if (item == this.category_id)
+                        // If we get thus far, the item is regarded to be a Category URI
+                        // NOTE: in principle, there's a risk that a URI could be equal to one of the tokens...
+                        else if (item == this.category_uri)
                             bread_crumbs_str += `<span class='br_nav'>${this.category_map[item][0]}</span>`;
                         else
                             bread_crumbs_str += `<span class='br_nav'><a href='${item}' title='${this.category_map[item][1]}'>${this.category_map[item][0]}</a></span>`;
                     }
-                    else
+                    else   // If it's a list, we'll end up here
                         bread_crumbs_str += this.generate_breadcrumbs_html(item);      // Recursive call
                 }
 
@@ -74,7 +73,7 @@ Vue.component('vue-bread-crumbs',
 
             create_category_map()
             // TODO: this seems overkill for just the bread crumbs, but may come in handy for multiple uses if moved to the Vue root
-            /*  Create and return an object to map Category ID's to the pairs [Category name, remarks]
+            /*  Create and return an object to map Category URI's to the pairs [Category name, remarks]
                 EXAMPLE:  {
                                 "1": ["HOME", "ROOT NODE"],
                                 "123": ["Work", ""]
@@ -85,7 +84,7 @@ Vue.component('vue-bread-crumbs',
                 let category_map = {}
                 for (let i in this.all_categories) {   // Note:  i will be an integer, not an array element!
                     let category_data = this.all_categories[i];
-                    let key_int = category_data.id;
+                    let key_int = category_data.uri;
                     let key_str = key_int.toString();
 
                     if ('remarks' in category_data)

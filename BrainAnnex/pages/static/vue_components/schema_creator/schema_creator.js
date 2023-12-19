@@ -154,7 +154,7 @@ Vue.component('vue-schema-creator',
                 }
 
                 // Send the request to the server, using a POST
-                let url_server = "/BA/api/simple/create_new_schema_class";
+                let url_server = "/BA/api/create_new_schema_class";
                 let post_obj = {new_class_name: this.new_class_name,
                                 properties_list: properties_list
                                };
