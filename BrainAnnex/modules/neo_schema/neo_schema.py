@@ -1,6 +1,10 @@
 from typing import Union, List
 from neoaccess.cypher_utils import CypherUtils, CypherMatch
 import json
+import math
+from datetime import datetime
+from neo4j.time import DateTime     # TODO: move to NeoAccess
+import pandas as pd
 
 
 class NeoSchema:
@@ -245,7 +249,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_id(cls, class_name: str, namespace=None) -> int:
+    def get_class_id(cls, class_name :str, namespace=None) -> int:
         """
         Returns the Schema ID of the Class with the given name, or -1 if not found
         TODO: unique Class names are assumed.  Perhaps add an optional "namespace" attribute, to use in case
@@ -716,6 +720,15 @@ class NeoSchema:
                                 if found in the from -> to direction (blanks allowed in name)
         :return:
         """
+        #TODO: major shortcoming - it doesn't make allowance for INSTANCE_OF intermediary Classes
+        '''
+        # DO a variation of the following instead:
+        '''
+        q = f'''
+        MATCH p=(:CLASS {{name: $from_class}})-[:INSTANCE_OF*0..]->
+            (:CLASS)-[:{rel_name}]->(:CLASS)
+            -[:INSTANCE_OF*0..]->(:CLASS {{name: $to_class}}) RETURN  p       
+        '''
         # Define the criteria to identify the given Class nodes
         match_from = cls.db.match(labels="CLASS", key_name="name", key_value=from_class, dummy_node_name="from")
         match_to = cls.db.match(labels="CLASS", key_name="name", key_value=to_class, dummy_node_name="to")
@@ -904,7 +917,7 @@ class NeoSchema:
 
     '''                                ~   PROPERTIES-RELATED   ~                                     '''
 
-    def ________PROPERTIES_RELATED________(DIVIDER):
+    def ________CLASS_PROPERTIES________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -970,7 +983,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_properties(cls, schema_id: int, include_ancestors=False, sort_by_path_len=False) -> list:
+    def get_class_properties(cls, class_node :Union[int, str], include_ancestors=False, sort_by_path_len=False) -> list:
         """
         TODO: maybe phase out in favor of get_class_properties_fast()
 
@@ -979,19 +992,27 @@ class NeoSchema:
         if include_ancestors is True),
         sorted by the schema-specified position (or, optionally, by path length)
 
-        :param schema_id:           Integer with the ID of a Class node
+        :param class_node:          Either an integer with the internal database ID of an existing Class node,
+                                        or a string with its name
         :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
-                                    to the given one by means of a chain of outbound "INSTANCE_OF" relationships
-                                    Note: the sorting by relationship index won't mean much if ancestral nodes are included,
-                                          with their own indexing of relationships; if order matters in those cases, use the
-                                          "sort_by_path_len" argument, below
+                                        to the given one by means of a chain of outbound "INSTANCE_OF" relationships
+                                        Note: the sorting by relationship index won't mean much if ancestral nodes are included,
+                                              with their own indexing of relationships; if order matters in those cases, use the
+                                              "sort_by_path_len" argument, below
         :param sort_by_path_len:    Only applicable if include_ancestors is True.
-                                    If provided, it must be either "ASC" or "DESC", and it will sort the results by path length
-                                    (either ascending or descending), before sorting by the schema-specified position for each Class.
-                                    Note: with "ASC", the immediate Properties of the given Class will be listed first
+                                        If provided, it must be either "ASC" or "DESC", and it will sort the results by path length
+                                        (either ascending or descending), before sorting by the schema-specified position for each Class.
+                                        Note: with "ASC", the immediate Properties of the given Class will be listed first
 
         :return:                    A list of the Properties of the specified Class (including indirectly, if include_ancestors is True)
         """
+        if type(class_node) == str:
+            schema_id = cls.get_class_id(class_name=class_node)
+        elif type(class_node) == int:
+            schema_id = class_node
+        else:
+            raise Exception("get_class_properties(): argument `class_node` must be either a string or an integer")
+
         if include_ancestors:
             # Follow zero or more outbound "INSTANCE_OF" relationships from the given Class node;
             #   "zero" relationships means the original node itself (handy in situations when there are no such relationships)
@@ -1132,7 +1153,9 @@ class NeoSchema:
 
         :param name:            String with name to assign to the new class
         :param property_list:   List of strings with the names of the Properties, in their default order (if that matters)
-        :param code:            Optional string indicative of the software handler for this Class and its subclasses
+        :param code:            Optional string indicative of the software handler for this Class and its subclasses.
+                                    TODO: deprecate
+
         :param strict:          If True, the Class will be of the "S" (Strict) type;
                                     otherwise, it'll be of the "L" (Lenient) type
 
@@ -1147,6 +1170,10 @@ class NeoSchema:
         """
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
         #       adding a new Class and then leaving it without properties or links, in case of mid-operation error
+
+        # TODO: merge with create_class()
+
+        # TODO: add argument 'extra_labels'
 
         if class_to_link_to:
             assert link_name, \
@@ -1337,11 +1364,11 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node_id(cls, key_value, key_name="uri") -> int:
+    def get_data_node_id(cls, key_value :str, key_name="uri") -> int:
         """
-        Get the internal database ID of a data node given some other primary key
+        Get the internal database ID of a data node, given some other primary key
 
-        :return:   An integer with the Neo4j ID of the data node
+        :return:   An integer with the internal database ID of the data node
         """
 
         match = cls.db.match(key_name=key_name, key_value=key_value)
@@ -1511,14 +1538,12 @@ class NeoSchema:
 
 
     @classmethod
-    def create_data_node(cls, class_node: Union[int, str], properties = None, extra_labels = None,
+    def create_data_node(cls, class_node :Union[int, str], properties = None, extra_labels = None,
                          assign_uri=False, new_uri=None, silently_drop=False) -> int:
         """
-        A newer version of the deprecated add_data_point_OLD()
-
         Create a new data node, of the type indicated by specified Class,
-        with the given (possibly none) attributes and label(s);
-        if no labels are given, the name of the Class is used as a label.
+        with the given (possibly none) properties and extra label(s);
+        the name of the Class is always used as a label.
 
         The new data node, if successfully created, will optionally be assigned
         a passed URI value, or a unique auto-gen value, for its field uri.
@@ -1529,13 +1554,15 @@ class NeoSchema:
         use add_data_node_with_links() instead
 
         Note: the responsibility for picking a URI belongs to the calling function
-              (which will typically make use of a namespace)   TODO: finish the rollout of this approach
+              (which will typically make use of a namespace)
+
+        Not: if creating multiple data nodes at once, one might use import_pandas_nodes()
 
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
-        :param properties:  (Optional) Dictionary with the properties of the new data node.
+        :param properties:  (OPTIONAL) Dictionary with the properties of the new data node.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param extra_labels:(Optional) String, or list/tuple of strings, with label(s) to assign to the new data node,
+        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
 
         :param assign_uri:  (DEPRECATED) If True, the new node is given an extra attribute named "uri",
@@ -1554,10 +1581,20 @@ class NeoSchema:
 
         :return:            The internal database ID of the new data node just created
         """
+        # TODO: consider allowing creation of multiple nodes from one call
+
+        # Do various validations
         cls.assert_valid_class_identifier(class_node)
 
+        assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
+            "NeoSchema.create_data_node(): argument `extra_labels`, if passed, must be a string, or list/tuple of strings"
 
-        # TODO: simplify not having to lug around both name and internal ID
+        if properties:
+            assert type(properties) == dict, \
+                "NeoSchema.create_data_node(): The `properties` argument, if provided, MUST be a dictionary"
+
+
+        # Obtain both the Class name and its internal database ID
         if type(class_node) == str:
             class_name = class_node
             class_internal_id = cls.get_class_internal_id(class_node)
@@ -1566,15 +1603,7 @@ class NeoSchema:
             class_internal_id = class_node
 
 
-        # Verify whether all properties are allowed, and possibly trim them down
-        properties = cls.allowable_props(class_internal_id=class_internal_id, requested_props=properties,
-                                         silently_drop=silently_drop)
-
-
-        assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
-            "create_data_node(): argument `extra_labels`, if passed, must be a string, or list/tuple of strings"
-
-        labels = class_name     # By default, use the Class name
+        labels = class_name     # By default, use the Class name as a label
 
         if type(extra_labels) == str and extra_labels.strip() != class_name:
             labels = [extra_labels, class_name]
@@ -1586,17 +1615,20 @@ class NeoSchema:
                 labels += [class_name]
 
 
-        if properties is None:
-            properties = {}
-
-        assert type(properties) == dict, \
-            "NeoSchema.add_data_node(): The `properties` argument, if provided, MUST be a dictionary"
-
-
         # Make sure that the Class accepts Data Nodes
         if not cls.allows_data_nodes(class_neo_id=class_internal_id):
-            raise Exception(f"NeoSchema.add_data_node(): "
+            raise Exception(f"NeoSchema.create_data_node(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+
+        # Verify whether all properties are allowed, and possibly trim them down
+        properties = cls.allowable_props(class_internal_id=class_internal_id, requested_props=properties,
+                                         silently_drop=silently_drop)
+
+
+        # Prepare the properties to add
+        if properties is None:
+            properties = {}
 
         properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
                                                 silently_drop=silently_drop)
@@ -1608,8 +1640,8 @@ class NeoSchema:
         if assign_uri or new_uri:
             if not new_uri:
                 # TODO: phase out this branch
-                new_id = cls.next_available_datanode_uri()           # Obtain (and reserve) the next auto-increment value
-                                                                    # in the "data_node" namespace
+                new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
+                                                                # in the "data_node" namespace
             else:
                 new_id = new_uri
 
@@ -1625,6 +1657,33 @@ class NeoSchema:
             #       where 123 is the next auto-assigned uri
 
 
+        new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
+                                                       labels=labels, properties_to_set=properties_to_set)
+
+        return new_internal_id
+
+
+
+    @classmethod
+    def _create_data_node_helper(cls, class_internal_id :int,
+                                 labels=None, properties_to_set=None) -> int:
+        """
+        Helper function.
+        IMPORTANT: all validations/schema checks are assumed to have been performed by the caller functions.
+
+        Create a new data node, of the type indicated by specified Class,
+        with the given (possibly none) properties and extra label(s);
+        the name of the Class is always used as a label.
+
+        :param class_internal_id:   The internal database ID of the above class
+        :param labels:              String, or list/tuple of strings, with label(s)
+                                        to assign to the new data node,
+                                        (note: the Class name is expected to be among them)
+        :param properties_to_set:   (OPTIONAL) Dictionary with the properties of the new data node.
+                                        EXAMPLE: {"make": "Toyota", "color": "white"}
+
+        :return:                    The internal database ID of the new data node just created
+        """
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
         #   to define the new node to be created
@@ -1643,9 +1702,246 @@ class NeoSchema:
             RETURN id(dn) AS internal_id
             '''
 
-        neo_id = cls.db.query(q, data_binding, single_cell="internal_id")
+        # TODO: consider switching to update_query(), for more insight
+        internal_id = cls.db.query(q, data_binding, single_cell="internal_id")
 
-        return neo_id
+        return internal_id
+
+
+
+    @classmethod
+    def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
+                            datetime_cols=None, extra_labels=None, schema_code=None) -> [int]:
+        """
+        Import a group of entities, from the rows of a Pandas dataframe, as data nodes in the database.
+
+        NaN's and empty strings are dropped - and never make it into the database
+
+        :param df:          A Pandas Data Frame with the data to import;
+                                each row represents a record - to be turned into a graph-database node.
+                                Each column represents a Property of the data node, and it must have been
+                                previously declared in the Schema
+        :param class_node:  Either an integer with the internal database ID of an existing Class node,
+                                or a string with its name
+        :param datetime_cols: (OPTIONAL) String, or list/tuple of strings, of column name(s)
+                                that contain datetime string of the form '2015-08-15 01:02:03'
+        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new data node,
+                                IN ADDITION TO the Class name (which is always used as label)
+        :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
+                                to a "schema_code" property for each new data node created
+
+        :return:            A list of the internal database ID's of the newly-created data nodes
+        """
+        # TODO: consider a partial merger with create_data_node()
+
+        # Do various validations
+        cls.assert_valid_class_identifier(class_node)
+
+        assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
+            "NeoSchema.import_pandas_nodes(): argument `extra_labels`, if passed, must be a string, or list/tuple of strings"
+
+
+        # Obtain both the Class name and its internal database ID
+        if type(class_node) == str:
+            class_name = class_node
+            class_internal_id = cls.get_class_internal_id(class_node)
+        else:
+            class_name = cls.get_class_name_by_neo_id(class_node)
+            class_internal_id = class_node
+
+
+        # Make sure that the Class accepts Data Nodes
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+            raise Exception(f"NeoSchema.import_pandas_nodes(): "
+                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+
+        labels = class_name     # By default, use the Class name as a label
+
+        if type(extra_labels) == str and extra_labels.strip() != class_name:
+            labels = [extra_labels, class_name]
+
+        elif isinstance(extra_labels, (list, tuple)):
+            # If we get thus far, labels is a list or tuple
+            labels = list(extra_labels)
+            if class_name not in extra_labels:
+                labels += [class_name]
+
+        if type(datetime_cols) == str:
+            datetime_cols = [datetime_cols]
+        elif datetime_cols is None:
+            datetime_cols = []
+
+
+        # Make sure that the Class accepts Data Nodes
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+            raise Exception(f"NeoSchema.import_pandas_nodes(): "
+                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+
+        # Verify whether all properties are allowed
+        # TODO: consider using allowable_props()
+        cols = list(df.columns)     # List of column names in the Pandas Data Frame
+        class_properties = cls.get_class_properties(class_node=class_node, include_ancestors=True)
+
+        assert set(cols) <= set(class_properties), \
+            f"import_pandas(): attempting to import Pandas dataframe columns " \
+            f"not declared in the Schema:  {set(cols) - set(class_properties)}"
+
+
+        # Prepare the properties to add
+
+        recordset = df.to_dict('records')   # Turn the Pandas dataframe into a list of dicts
+        #print(recordset)
+
+        internal_id_list = []
+        for d in recordset:     # d is a dictionary
+            d_scrubbed = cls._scrub_dict(d)     # Zap NaN's, blank strings, leading/trailing spaces
+
+            for dt_col in datetime_cols:
+                if dt_col in d_scrubbed:
+                    dt_str = d_scrubbed[dt_col]     # EXAMPLE: '2015-08-15 01:02:03'
+                    dt_python = datetime.fromisoformat(dt_str)  # As a python "datetime" object
+                                                                # EXAMPLE: datetime.datetime(2015, 8, 15, 1, 2, 3)
+                    dt_neo = DateTime.from_native(dt_python)    # In Neo4j format; TODO: let NeoAccess handle this
+                                                                # EXAMPLE: neo4j.time.DateTime(2015, 8, 15, 1, 2, 3, 0)
+                    d_scrubbed[dt_col] = dt_neo     # Replace the original string value
+
+            if schema_code:
+                d_scrubbed["schema_code"] = schema_code      # Add a legacy element, perhaps to be discontinued
+
+            #print(d_scrubbed)
+            new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
+                                                           labels=labels, properties_to_set=d_scrubbed)
+            #print("new_internal_id", new_internal_id)
+            internal_id_list.append(new_internal_id)
+
+        return internal_id_list
+
+
+
+    @classmethod
+    def _scrub_dict(cls, d :dict) -> dict:
+        """
+        Helper function to clean up data during imports.
+
+        Given a dictionary, assemble and return a new dict where string values are trimmed of
+        any leading or trailing blanks.
+        Entries whose values are blank or NaN get omitted from the new dictionary being returned.
+
+        EXAMPLE:    {"a": 1, "b": 3.5, "c": float("nan"), "d": "some value", "e": "   needs  cleaning!    ",
+                     "f": "", "g": "            "}
+                gets simplified to:
+                    {"a": 1, "b": 3.5, "d": "some value", "e": "needs  cleaning!"  }
+
+        :param d:   A python dictionary
+        :return:
+        """
+        scrubbed_d = {}
+        for k,v in d.items():   # Loop over all key/value pairs in the dictionary
+            if type(v) == str:
+                v = v.strip()       # Zap all leading and trailing blanks
+                if v == "":
+                    continue        # Blank string values get omitted
+
+            elif type(v) == float and math.isnan(v):
+                continue            # NaN's get omitted
+
+            scrubbed_d[k] = v
+
+        return scrubbed_d
+
+
+
+
+    @classmethod
+    def import_pandas_links(cls, df :pd.DataFrame, class_from :str, class_to :str,
+                            col_from :str, col_to :str,
+                            link_name :str,
+                            col_link_props=None, name_map=None, skip_errors = False) -> [int]:
+        """
+        Import a group of relationships between existing database Data Nodes,
+        from the rows of a Pandas dataframe, as database links between the existing Data Nodes
+
+        :param df:          A Pandas Data Frame with the data RELATIONSHIP to import
+        :param class_from:  Name of the Class of the data nodes from which the relationship starts
+        :param class_to:    Name of the Class of the data nodes from which the relationship ends
+        :param col_from:    Name of the Data Frame column specifying the data nodes from which the relationship starts
+        :param col_to:      Name of the Data Frame column specifying the data nodes from which the relationship starts
+        :param link_name:   Name of the new relationship being created
+        :param col_link_props:    (OPTIONAL) Name of a property to assign to the relations,
+                                as well as name of the Data Frame column containing the values
+        :param name_map:    (OPTIONAL) Dict with mapping from Pandas column names
+                                to Property names in the data nodes in the database
+        :param skip_errors: (OPTIONAL) If True, the import continues even in the presence of errors;
+                                default is False
+        :return:            A list of of the internal database ID's of the created links
+        """
+        # TODO: verify that the requested relationship between the Classes is registered in the Schema
+
+        if col_from in name_map:
+            key_from = name_map[col_from]
+        else:
+            key_from = col_from
+
+        if col_to in name_map:
+            key_to = name_map[col_to]
+        else:
+            key_to = col_to
+
+        if col_link_props in name_map:
+            link_prop = name_map[col_link_props]
+        else:
+            link_prop = col_link_props
+
+
+        recordset = df.to_dict('records')   # Turn the Pandas dataframe into a list of dicts
+
+        links_imported = []
+        for d in recordset:     # d is a dictionary
+            # Prepare a Cypher query to link up the 2 nodes
+            q = f'''
+                MATCH (from_node {{{key_from}: $value_from}}), (to_node {{{key_to}: $value_to}})
+                MERGE (from_node)-[r:`{link_name}` {{{link_prop}: $rel_prop_value}}]->(to_node)
+                RETURN id(r) AS link_id
+                '''
+
+            data_dict = {"value_from": d[col_from], "value_to": d[col_to], "rel_prop_value": d[link_prop]}
+            #cls.db.debug_query_print(q, data_dict)
+            result = cls.db.update_query(q, data_dict)
+            #print(result)
+
+            '''
+            if not skip_errors:
+                assert result.get('relationships_created') == 1, \
+                    f"import_pandas_links(): failed to create a new relationship for Pandas row: {d}"
+
+                if link_prop:
+                    assert result.get('properties_set') == 1, \
+                        f"import_pandas_links(): failed to set the property value for the new relationship for Pandas row: {d}"
+            '''
+
+            if result.get('relationships_created') == 1:    # If a new link was created
+                returned_data = result.get('returned_data')
+                #if returned_data:
+                links_imported.append(returned_data[0]["link_id"])
+                if result.get('properties_set') != 1:
+                    error_msg = f"import_pandas_links(): failed to set the property value for the new relationship for Pandas row: {d}"
+                    if skip_errors:
+                        print(error_msg)
+                    else:
+                        raise Exception(error_msg)
+            else:                                           # If no link was created
+                error_msg = f"import_pandas_links(): failed to create a new relationship for Pandas row: {d}"
+                if skip_errors:
+                    print(error_msg)
+                else:
+                    raise Exception(error_msg)
+
+
+        return links_imported
+
+
 
 
 
@@ -1653,7 +1949,7 @@ class NeoSchema:
     def add_data_node_merge(cls, class_internal_id, properties = None, labels = None, silently_drop=False,
                             schema_cache=None) -> (int, bool):
         """
-        Similar to add_data_point_new(), but a new data node gets created only if
+        A new data node gets created only if
         there's no other data node with the same labels and allowed properties
 
         :param class_internal_id:   The internal database ID of the Class node for the data node
@@ -2387,20 +2683,20 @@ class NeoSchema:
         nothing gets created (and an Exception is raised)
 
         :param from_id:     The ID of the data node at which the new relationship is to originate;
-                                this is understood be the Neo4j ID, unless an id_type argument is passed
+                                this is understood be the internal database ID, unless an 'id_type' argument is passed
         :param to_id:       The ID of the data node at which the new relationship is to end;
-                                this is understood be the Neo4j ID, unless an id_type argument is passed
+                                this is understood be the internal database ID, unless an 'id_type' argument is passed
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
         :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
         :param labels_from: (OPTIONAL) Labels on the 1st data node
         :param labels_to:   (OPTIONAL) Labels on the 2nd data node
         :param id_type:     For example, "uri";
-                            if not specified, all the node ID's are assumed to be Neo4j ID's
+                            if not specified, all the node ID's are assumed to be internal database ID's
 
         :return:            None.  If the specified relationship didn't get created (for example,
                             in case the the new relationship doesn't exist in the Schema), raise an Exception
         """
-        assert rel_name, f"add_data_relationship(): no name was provided for the new relationship"
+        assert rel_name, f"add_data_relationship_OLD(): no name was provided for the new relationship"
 
         # Create "CypherMatch" objects later used to locate the two data node
         from_match = NeoSchema.locate_node(node_id=from_id, id_type=id_type, labels=labels_from, dummy_node_name="from")
@@ -2433,7 +2729,7 @@ class NeoSchema:
             class_to = cls.class_of_data_node(node_id=to_id, id_type=id_type, labels=labels_to)
 
             #TODO: maybe double-check that the following reported problem is indeed what caused the failure <-- INDEED, DO THAT!
-            raise Exception(f"add_data_relationship(): cannot add the relationship `{rel_name}` between the data nodes, "
+            raise Exception(f"add_data_relationship_OLD(): cannot add the relationship `{rel_name}` between the data nodes, "
                             f"because no such relationship exists from Class `{class_from}` to Class `{class_to}`. "
                             f"The Schema needs to be modified first")
 
@@ -2442,18 +2738,20 @@ class NeoSchema:
     @classmethod
     def add_data_relationship(cls, from_id :int, to_id :int, rel_name :str, rel_props = None) -> None:
         """
-        Simpler (and possibly faster) version of add_data_relationship()
+        Simpler (and possibly faster) version of add_data_relationship_OLD()
 
         Add a new relationship with the given name, from one to the other of the 2 given data nodes,
         identified by their Neo4j ID's.
+
         The requested new relationship MUST be present in the Schema, or an Exception will be raised.
+        TODO: also ought to allow intermediate "INSTANCE_OF" hops
 
         Note that if a relationship with the same name already exists between the data nodes exists,
         nothing gets created (and an Exception is raised)
 
-        :param from_id: The Neo4j ID of the data node at which the new relationship is to originate
+        :param from_id: The internal database ID of the data node at which the new relationship is to originate
                                 TODO: also allow primary keys, as done in class_of_data_node()
-        :param to_id:   The Neo4j ID of the data node at which the new relationship is to end
+        :param to_id:   The internal database ID of the data node at which the new relationship is to end
                                 TODO: also allow primary keys, as done in class_of_data_node()
         :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
                                 IMPORTANT: it MUST match an existing relationship in the Schema,
