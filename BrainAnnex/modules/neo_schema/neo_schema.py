@@ -1711,7 +1711,8 @@ class NeoSchema:
 
     @classmethod
     def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
-                            datetime_cols=None, extra_labels=None, schema_code=None) -> [int]:
+                            datetime_cols=None, int_cols=None,
+                            extra_labels=None, schema_code=None) -> [int]:
         """
         Import a group of entities, from the rows of a Pandas dataframe, as data nodes in the database.
 
@@ -1724,7 +1725,12 @@ class NeoSchema:
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
         :param datetime_cols: (OPTIONAL) String, or list/tuple of strings, of column name(s)
-                                that contain datetime string of the form '2015-08-15 01:02:03'
+                                that contain datetime strings such as '2015-08-15 01:02:03'
+                                (compatible with the python "datetime" format)
+        :param int_cols:    (OPTIONAL) String, or list/tuple of strings, of column name(s)
+                                that contain integers, or that are to be converted to integers
+                                (typically necessary because numeric Pandas columns with NaN's
+                                 are automatically turned into floats)
         :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
         :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
@@ -1733,6 +1739,7 @@ class NeoSchema:
         :return:            A list of the internal database ID's of the newly-created data nodes
         """
         # TODO: consider a partial merger with create_data_node()
+        # TODO: offer the option to print a status update every 100 imports (or user-specified count)
 
         # Do various validations
         cls.assert_valid_class_identifier(class_node)
@@ -1772,6 +1779,11 @@ class NeoSchema:
         elif datetime_cols is None:
             datetime_cols = []
 
+        if type(int_cols) == str:
+            int_cols = [int_cols]
+        elif int_cols is None:
+            int_cols = []
+
 
         # Make sure that the Class accepts Data Nodes
         if not cls.allows_data_nodes(class_neo_id=class_internal_id):
@@ -1806,6 +1818,13 @@ class NeoSchema:
                     dt_neo = DateTime.from_native(dt_python)    # In Neo4j format; TODO: let NeoAccess handle this
                                                                 # EXAMPLE: neo4j.time.DateTime(2015, 8, 15, 1, 2, 3, 0)
                     d_scrubbed[dt_col] = dt_neo     # Replace the original string value
+
+            for col in int_cols:
+                if col in d_scrubbed:
+                    val = d_scrubbed[col]           # This might be a float
+                    val_int = int(val)
+                    d_scrubbed[col] = val_int       # Replace the original value
+
 
             if schema_code:
                 d_scrubbed["schema_code"] = schema_code      # Add a legacy element, perhaps to be discontinued
@@ -1878,6 +1897,15 @@ class NeoSchema:
         :return:            A list of of the internal database ID's of the created links
         """
         # TODO: verify that the requested relationship between the Classes is registered in the Schema
+        # TODO: offer the option to print a status update every 100 imports (or user-specified count)
+
+        cols = list(df.columns)     # List of column names in the Pandas Data Frame
+        assert col_from in cols, \
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` requested in the argument 'col_from'"
+
+        assert col_to in cols, \
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` requested in the argument 'col_to'"
+
 
         if col_from in name_map:
             key_from = name_map[col_from]
@@ -1910,16 +1938,6 @@ class NeoSchema:
             #cls.db.debug_query_print(q, data_dict)
             result = cls.db.update_query(q, data_dict)
             #print(result)
-
-            '''
-            if not skip_errors:
-                assert result.get('relationships_created') == 1, \
-                    f"import_pandas_links(): failed to create a new relationship for Pandas row: {d}"
-
-                if link_prop:
-                    assert result.get('properties_set') == 1, \
-                        f"import_pandas_links(): failed to set the property value for the new relationship for Pandas row: {d}"
-            '''
 
             if result.get('relationships_created') == 1:    # If a new link was created
                 returned_data = result.get('returned_data')

@@ -1,5 +1,11 @@
+"""
+2 classes:  MediaManager and ImageProcessing
+"""
+
+
 import os
 import BrainAnnex.modules.utilities.exceptions as exceptions
+from PIL import Image
 
 
 class MediaManager:
@@ -97,7 +103,7 @@ class MediaManager:
 
         :param path:        String that must include a final "/", containing the full path of the file
                                 EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
-        :param filename:    EXCLUSIVE of path
+        :param filename:    EXCLUSIVE of path.  EXAMPLE: "my pic.jpg"
         :return:            The contents of the binary file
         """
         full_file_name = path + filename
@@ -239,3 +245,153 @@ class MediaManager:
                 orphans.append(filename)
 
         return orphans
+
+
+
+
+
+##########################################    IMAGES    ######################################################
+
+class ImageProcessing:
+    """
+    Utility class for managing images, especially in the context of uploads.
+
+    SIDE NOTE: The "th" format from the Classic BrainAnnex, is:
+    "default (largish) thumbs - 3 fit in a row" : width sized to 300
+
+    formats =
+    {
+        "th": { "description": "default (largish) thumbs - 3 fit in a row",
+                "size": 300,
+                "affected": "w"
+        }
+    }
+    """
+
+    @classmethod
+    def save_thumbnail(cls, src_folder: str, filename: str, save_to_folder: str,
+                       src_width: int, src_height: int) -> None:
+        """
+        Make a thumbnail of the specified image, and save it in a file.
+        The "th" thumbnail format is being followed.
+
+        :param src_folder:      Full path of folder with the file to resize.  It MUST end with "/"
+                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
+        :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
+        :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
+                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/"
+        :param src_width:       Pixel width of the original image
+        :param src_height:      Pixel height of the original image
+        :return:                None.  In case of error, an Exception is raised
+        """
+        cls.scale_down_horiz(src_folder, filename, save_to_folder, src_width, src_height, target_width=300)
+
+
+
+    @classmethod
+    def scale_down_horiz(cls, src_folder: str, filename: str, save_to_folder: str,
+                         src_width: int, src_height: int, target_width: int) -> None:
+        """
+        Resize an image to the target WIDTH, and save it in a file.
+
+        :param src_folder:      Full path of folder with the file to resize.  It MUST end with "/"
+                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
+        :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
+        :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
+                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/"
+        :param src_width:       Pixel width of the original image
+        :param src_height:      Pixel height of the original image
+        :param target_width:    Desired pixel width of the resized image
+        :return:                None.  In case of error, an Exception is raised
+        """
+        image = Image.open(src_folder + filename)
+
+        resized_full_name = save_to_folder + filename
+
+        if target_width >= src_width:   # Don't transform the image; just save it as it is
+            image.save(resized_full_name)
+        else:
+            scaling_ratio = src_width / target_width    # This will be > 1 (indicative of reduction)
+            print("scaling_ratio: ", scaling_ratio)
+            target_height = int(src_height / scaling_ratio)
+            new_image = image.resize((target_width, target_height))
+            new_image.save(resized_full_name)
+
+
+
+    @classmethod
+    def get_image_size(cls, source_full_name) -> (int, int):
+        """
+        Return the size of the given image.
+
+        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/my image.jpg"
+        :return:                    The pair (width, height) with the image dimensions in pixels.  In case of error, an Exception is raised
+        """
+        image = Image.open(source_full_name)
+
+        return image.size   # EXAMPLE: (1920, 1280)
+
+
+
+
+    @classmethod
+    def process_uploaded_image(cls, filename: str, fullname: str, media_folder: str) -> dict:
+        """
+        Obtain the size of the image, resize it to a thumbnail,
+        save the thumbnail in the "resized/" subfolder of the specified media folder,
+        and return a dictionary of properties that will go in the database
+
+        :param filename:    EXAMPLE: "my image.jpg"
+        :param fullname:    EXAMPLE (on Windows):  "D:/Docs/media/my image.jpg"
+        :param media_folder: Name of the folder (including the final "/") where the media files are located.
+                             The resized version will go in a "resized" subfolder of it.
+                             EXAMPLE (on Windows):  "D:/Docs/media/
+
+        :return:            A dictionary of properties that will go in the database, containing
+                                the following keys: "caption", "basename", "suffix", "width", "height"
+        """
+        (width, height) = ImageProcessing.get_image_size(fullname)  # Extract the dimensions of the uploaded image
+
+        # Create and save a thumbnail version
+        ImageProcessing.save_thumbnail(src_folder = media_folder,
+                                       filename = filename,
+                                       save_to_folder = media_folder+"resized/",
+                                       src_width=width, src_height=height)
+
+
+        (basename, suffix) = os.path.splitext(filename)     # EXAMPLE: "test.jpg" becomes ("test", ".jpg")
+        suffix = suffix[1:]     # Drop the first character (the ".")  EXAMPLE: "jpg"
+
+        # Create a dictionary of properties that will go in the database
+        properties = {"caption": basename,
+                      "basename": basename, "suffix": suffix,
+                      "width": width, "height": height}
+
+        print(f"Uploaded image has width : {width} | height: {height}.  Thumbnail successfully created and stored")
+
+        return properties
+
+
+
+
+    @classmethod
+    def describe_image(cls, source_full_name) -> None:
+        """
+        Print out some info about the given image.
+
+        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/media/resized/my image.jpg"
+        :return:                    None.  In case of error, an Exception is raised
+        """
+        image = Image.open(source_full_name)
+
+        # The file format
+        print(image.format) # EXAMPLE: "JPEG" or "PNG"
+
+        # The pixel format used by the image
+        print(image.mode)   # Typical values are "RGB", "RGBA", "1", "L", "CMYK"
+
+        # Image size, in pixels, as a 2-tuple (width, height)
+        print(image.size)   # EXAMPLE: (1920, 1280)
+
+        # Color palette table, if any
+        print(image.palette) # EXAMPLE: None

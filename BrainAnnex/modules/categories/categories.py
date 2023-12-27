@@ -730,6 +730,12 @@ class Categories:
             #       attributes named "pos" or "class_name"!
             item_record["pos"] = elem["pos"]                # Inject into the record a positional value
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
+            if "date_created" in item_record:
+                del item_record["date_created"] # Datetime objects aren't serializable and lead to Flask errors
+                                                # TODO: let NeoAccess handle the conversion to string
+                                                # TODO: utilize a "type" attribute in the Schema Property node,
+                                                #       to inform of the "datetime" data type
+
             content_item_list.append(item_record)
 
         #print(content_item_list)

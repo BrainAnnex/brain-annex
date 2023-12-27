@@ -3,7 +3,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
 from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
-from BrainAnnex.modules.media_manager.media_manager import MediaManager
+from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
 import re                               # For REGEX
 import pandas as pd
@@ -517,10 +517,13 @@ class DataManager:
 
         :param uri: String identifier for a media item
         :param th:  If not None, then the thumbnail version is returned (only
-                        applicable to images)
+                        applicable to images).  If not found, but the full-size image
+                        is present, create and save a thumbnail file, prior to
+                        returning the contents of the newly-created file
         :return:    The binary data
         """
-        #TODO: (at least for large media) read the file in blocks
+        # TODO: (at least for large media) read the file in blocks
+        # TODO: move to MediaManager class
 
         #print("In get_binary_content(): uri = ", uri)
         content_node = NeoSchema.fetch_data_node(uri = uri)
@@ -530,21 +533,69 @@ class DataManager:
 
         basename = content_node['basename']
         suffix = content_node['suffix']
-        filename = f"{basename}.{suffix}"
+        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
 
         if th:
             thumb = True
         else:
             thumb = False
 
-        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)  # Includes the final "/"
+        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
+        # Includes the final "/"
+        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
 
         try:
-            file_contents = MediaManager.get_from_binary_file(folder, filename)
+            file_contents = MediaManager.get_from_binary_file(path=folder, filename=filename)
             return (suffix, file_contents)
+
         except Exception as ex:
             # File I/O failed
-            raise Exception(f"Reading of data file for Content Item {uri} failed: {ex}")
+            error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
+            print(error_msg)
+            if not thumb:
+                raise Exception(error_msg)
+            else:
+                # We looked for a thumbnail version, and didn't find it
+                print("    Trying to use the full-size image instead of its thumb version...")
+
+                # Attempt to resize the full-sized version, and save the new thumbnail file
+                try:
+                    # Get the folder for the full-size images
+                    images_folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'],
+                                                                  thumb=None)
+                    source_full_name = images_folder + filename
+                    print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
+
+                    # Full-size version was found; obtain its dimensions
+                    width, height = ImageProcessing.get_image_size(source_full_name)
+                    # Create a thumbnail version
+                    thumb_folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'],
+                                                                 thumb=thumb)
+                    # Carry out the resizing, and save the thumbnail file
+                    print("    Attempting to create a thumbnail version of it")
+                    #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
+                    #      f"src_width={width} | src_height={height}")
+                    ImageProcessing.save_thumbnail(src_folder=images_folder, filename=filename, save_to_folder=thumb_folder,
+                                                   src_width=width, src_height=height)
+                    # Get the contents of the newly-created thumbnail file
+                    file_contents = MediaManager.get_from_binary_file(path=folder, filename=filename)
+                    return (suffix, file_contents)
+
+                except Exception as ex:
+                    # Failed to resize the file, or to read in the resized file
+                    error_msg = f"    Unable resize the image ({filename}), or to read the resized file. {ex}\n" \
+                                f"    Attempting to return the full-sized file instead"
+                    print(error_msg)
+
+                    # One last attempt: try to read in and return the full-sized version
+                    try:
+                        file_contents = MediaManager.get_from_binary_file(path=images_folder, filename=filename)
+                        return (suffix, file_contents)
+                    except Exception as ex:
+                        # File I/O failed
+                        error_msg = f"Unable to load the full-size version of image, either. {ex}"
+                        print(error_msg)
+                        raise Exception(error_msg)
 
 
 

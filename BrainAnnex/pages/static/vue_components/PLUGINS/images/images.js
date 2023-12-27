@@ -17,7 +17,7 @@ Vue.component('vue-plugin-i',
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
             <a class='i-image-link' v-bind:href="image_url(item_data)" target="_blank">
-                <img v-bind:src="image_url_thumb(item_data)">
+                <img v-bind:src="image_url_thumb(item_data)" width=300>
             </a>
             <template v-if="'caption' in item_data"><br><span class='i-caption'>{{item_data.caption}}</span></template>
 
