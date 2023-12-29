@@ -18,6 +18,7 @@ class FullTextIndexing:
 
     # The "db" class properties gets set by InitializeBrainAnnex.set_dbase()
     db = None           # Object of class "NeoAccess".  MUST be set before using this class!
+                        # TODO: add a method set_database(), as done for NeoSchema
 
 
     TAG_RE = re.compile(r'<[^>]+>')         # Use regex to strip off all HTML
@@ -25,7 +26,7 @@ class FullTextIndexing:
     # List of common English words to skip from indexing (stopword list)
     # See https://github.com/Alir3z4/stop-words
     # TODO: allow over-ride in config file
-    # Note: 2-letter words could be dropped because those don't get indexed
+    # Note: 2-letter words are redundant from the list below, because those don't get indexed
     COMMON_WORDS = ['and', 'or', 'either', 'nor', 'neither',
                     'the', 'an', 'with', 'without', 'within',
                     'in', 'out', 'on', 'off', 'at', 'of', 'from', 'to', 'into', 'not', 'but', 'by', 'upon',
@@ -46,7 +47,7 @@ class FullTextIndexing:
                     'get', 'gets', 'got', 'give', 'gives', 'gave', 'giving',
                     'take', 'takes', 'took', 'taking', 'put', 'bring', 'brings', 'bringing',
                     'see', 'sees', 'given', 'end', 'start', 'starts', 'starting',
-                    'ask', 'asks', 'answer', 'answers',
+                    'ask', 'asks', 'answer', 'answers', 'question', 'questions',
                     'when', 'where', 'which', 'who', 'why', 'what',
                     'no', 'non', 'not', 'yes', 'maybe', 'ok', 'oh',
                     'ie', 'i.e', 'eg', 'e.g',
@@ -94,14 +95,16 @@ class FullTextIndexing:
                     'com', 'org', 'www', 'http', 'https',
                     'one', 'ones', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
                     'first', 'second', 'third', 'last',
+                    'iii',
                     'include', 'including', 'incl', 'except', 'sure', 'according', 'accordingly',
                     'example', 'examples', 'define', 'defined',
                     'basically', 'essentially', 'finally',
-                    'called', 'named', 'consider', 'considering', 'however', 'especially', 'etc',
+                    'called', 'named', 'name', 'consider', 'considering', 'however', 'especially', 'etc',
                     'happen', 'happens', 'happening', 'continue', 'continues', 'continuing',
                     'change', 'changes', 'changing', 'changed',
                     'small', 'smaller', 'smallest', 'little', 'brief', 'briefly',
                     'big', 'bigger', 'biggest', 'large', 'larger', 'largest',
+                    'great', 'greater', 'greatest',
                     'low', 'lower', 'lowest', 'high', 'higher', 'highest', 'limited',
                     'increase', 'increased', 'decrease', 'decreased', 'vary', 'varies', 'varying',
                     'consist', 'consists', 'consisting', 'result', 'results', 'resulting',
@@ -121,7 +124,7 @@ class FullTextIndexing:
     @classmethod
     def split_into_words(cls, text: str, to_lower_case=True, drop_html=True) -> [str]:
         """
-        Lower-level function to index text that may contain HTML.
+        Lower-level function used in the larger context of indexing text that may contain HTML.
 
         Given a string, optionally zap HTML tags, HTML entities (such as &ndash;)
         then ditch punctuation from the given text;
@@ -138,7 +141,6 @@ class FullTextIndexing:
 
         Note about numbers:  * negative signs are lost  * numbers with decimals will get split into two parts
         TODO: maybe eliminate the decimal numbers while leaving the integers alone, to allow indexing of (some) integer numbers such as dates
-        TODO: consider treating underscores as blanks (maybe optionally?)
 
         :param text:            A string with the text to parse
         :param to_lower_case:   If True, all text is converted to lower case
@@ -170,18 +172,24 @@ class FullTextIndexing:
     @classmethod
     def extract_unique_good_words(cls, text :str, drop_html=True) -> Set[str]:
         """
-        Higher-level function to index text that may contain HTML.
+        Higher-level function to prepare text for indexing;
+        use the drop_html flag if the text contains HTML.
 
-        From the given text, zap HTML, HTML entities (such as &ndash;) and punctuation;
-        then, turn into lower case, and break up into individual words.
+        From the given text, it returns the set of "acceptable", unique words.
+        It does the following:
 
-        Next, eliminate "words" that match at least one of these EXCLUSION test:
-            * are 1 or characters long
-            * are numbers
-            * contain a digit anywhere (e.g. "50m" or "test2")
-            * are in a list of common words
+            1) zap punctuation
+            2) if requested, HTML, HTML entities (such as &ndash;);
+            3) turn into lower case
+            4) break up into individual words
+            5) strip off leading/trailing underscores
+            6) eliminate "words" that match at least one of these EXCLUSION test:
+                * are 1 or 2 characters long
+                * are numbers
+                * contain a digit anywhere (e.g. "50m" or "test2")
+                * are in a list of common words
 
-        Finally, eliminate duplicates, and return the set of acceptable, unique words.
+            7) eliminate duplicates
 
         Note: no stemming or other grammatical analysis is done.
 
@@ -203,7 +211,7 @@ class FullTextIndexing:
         split_text = cls.split_into_words(text, to_lower_case=True, drop_html=drop_html)
         #print("The split text is : ", split_text)
 
-        # Eliminate "words" that are 1 character long, or that are numbers,
+        # Eliminate "words" that are 1 or 2 characters long, or that are numbers,
         # or that are in a list of common words.  Don't include duplicates
         word_set = set()    # Empty set
 
@@ -211,6 +219,7 @@ class FullTextIndexing:
         pattern = r"\d"
 
         for word in split_text:
+            word = word.strip("_")
             if len(word) > 2 \
                     and not word.isnumeric() \
                     and word not in cls.COMMON_WORDS \
@@ -248,6 +257,7 @@ class FullTextIndexing:
                                             if not passed, it gets looked up
         :return:                None
         """
+        # TODO: allow passing a Class name other than the hardwired "Content Item"
 
         if content_item_class_id is None:     # Look it up, if not passed
             if NeoSchema.class_name_exists("Content Item"):
@@ -266,30 +276,36 @@ class FullTextIndexing:
 
 
     @classmethod
-    def new_indexing(cls, content_uri :int, unique_words :Set[str], to_lower_case=True) -> None:
+    def new_indexing(cls, internal_id :int, unique_words :Set[str], to_lower_case=True) -> None:
         """
-        Used to create a new index, linking the given list of unique words
-        to the specified data node that represents a "Content Item".
-        
-        Create a data node of type "Indexer",
-        with inbound relationships named "occurs" from "Word" data nodes (pre-existing or newly-created)
-        for all the words in the given list.
-        Also, create a relationship named "has_index" from an existing "Content Item" data node to the new "Indexer" node.
-        TODO: consider combining new_indexing() and update_indexing()
+        Used to create a new index in the database
+        for the (single) specified data node that represents a "Content Item".
+        The indexing will link that Content Item to the given list of unique words.
 
-        :param content_uri: The internal database ID of an existing data node that represents a "Content Item"
-        :param unique_words:    A list of strings containing unique words
+        Details:
+        1) Create a data node of type "Indexer",
+            with inbound relationships named "occurs" from "Word" data nodes
+            (pre-existing or newly-created as needed)
+            for all the words in the given list
+        2) create a relationship named "has_index" from an existing "Content Item" data node
+            to the new "Indexer" node
+
+        :param internal_id:  The internal database ID of an existing data node
+                                    that represents a "Content Item"
+        :param unique_words:    A list of strings containing unique words "worthy" of indexing
                                     - for example as returned by extract_unique_good_words()
         :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
         """
-        indexer_id = cls.get_indexer_node_id(content_uri)
-        assert indexer_id is None, \
-            f"new_indexing(): an index ALREADY exists for the given Content Item node (internal id {content_uri})"
+        # TODO: consider combining new_indexing() and update_indexing()
 
-        # Create a data node of type "Indexer", and link it up to the passed Content Item
+        indexer_id = cls.get_indexer_node_id(internal_id)
+        assert indexer_id is None, \
+            f"new_indexing(): an index ALREADY exists for the given Content Item node (internal id {internal_id})"
+
+        # Create a data node of type "Indexer", and link it up to the passed Content Item data node
         indexer_id = NeoSchema.add_data_node_with_links(class_name ="Indexer",
-                                                        links =[{"internal_id": content_uri, "rel_name": "has_index",
+                                                        links =[{"internal_id": internal_id, "rel_name": "has_index",
                                                                   "rel_dir": "IN"}])
 
         cls.populate_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
@@ -306,12 +322,13 @@ class FullTextIndexing:
         :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
         """
+        # TODO: very slow; make faster!  Maybe combine the creation and linking to the Word nodes
+
         if to_lower_case:
             unique_words = list(map(str.lower, unique_words))
         else:
             unique_words = list(unique_words)
 
-        # TODO: make more efficient; maybe combine the creation and linking to the Word nodes
 
         # Locate (if already present), or create, a "Word" data node for each word in the list unique_words
         class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
@@ -319,11 +336,13 @@ class FullTextIndexing:
                                                  property_name="name", value_list=unique_words)
         #print("result: ", result)      # A dict with 2 keys: 'old_nodes' and 'new_nodes'
 
-        word_node_list = result['old_nodes'] + result['new_nodes']      # Join the 2 lists
+        word_node_list = result['old_nodes'] + result['new_nodes']  # Join the 2 lists
+                                                                    # This is a combined list of internal database ID's
 
         # Link all the "Word" nodes (located or created above) to the "Indexer" node,
         # with an "occurs" outbound relationship
         # (in the future, to also perhaps store a count property)
+        # TODO: create a function to link a single Data Node to multiple other Data Nodes at once
         for word_node_id in word_node_list:
             NeoSchema.add_data_relationship(from_id=word_node_id, to_id=indexer_id, rel_name="occurs")
 
@@ -363,13 +382,13 @@ class FullTextIndexing:
 
 
     @classmethod
-    def get_indexer_node_id(cls, content_uri :int) -> Union[int, None]:
+    def get_indexer_node_id(cls, internal_id :int) -> Union[int, None]:
         """
         Retrieve and return the internal database ID of the "Indexer" data node
         associated to the given Content Item data node.
         If not found, None is returned
 
-        :param content_uri: The internal database ID of an existing data node
+        :param internal_id: The internal database ID of an existing data node
                                     (either of Class "Content Item", or of a Class that is ultimately
                                     an INSTANCE_OF a "Content Item" Class)
         :return:                The internal database ID of the corresponding "Indexer" data node.
@@ -382,7 +401,7 @@ class FullTextIndexing:
             RETURN id(i) AS indexer_id
             '''
 
-        return cls.db.query(q, data_binding={"content_uri": content_uri},
+        return cls.db.query(q, data_binding={"content_uri": internal_id},
                             single_cell="indexer_id")       # Note: will be None if no record found
 
 
@@ -407,20 +426,22 @@ class FullTextIndexing:
 
 
     @classmethod
-    def count_indexed_words(cls, content_uri :int) -> int:
+    def count_indexed_words(cls, internal_id :int) -> int:
         """
         Determine and return the number of words attached to the index
-        of the given Content Item data node
+        of the given data node (typically of a Class representing "Content Item" ,
+        or instance thereof, such as "Document" or "Note")
 
-        :param content_uri: The internal database ID of an existing "Content Item" data node
-        :return:                The number of indexed words associated to the above node
+        :param internal_id: The internal database ID of an existing "Content Item" data node
+        :return:            The number of indexed words associated to the above node
         """
         q = '''
-            MATCH (wc:CLASS {name:"Word"})<-[:SCHEMA]-(w:Word)-[:occurs]->(i:Indexer)<-[:has_index]
-            -(ci:`Content Item`) WHERE id(ci)=$content_uri 
+            MATCH (wc :CLASS {name:"Word"})<-[:SCHEMA]-
+            (w :Word)-[:occurs]->(i :Indexer)<-[:has_index]-(ci) 
+            WHERE id(ci)=$internal_id
             RETURN count(w) AS word_count
             '''
-        return cls.db.query(q, data_binding={"content_uri": content_uri}, single_cell="word_count")
+        return cls.db.query(q, data_binding={"internal_id": internal_id}, single_cell="word_count")
 
 
 
@@ -520,7 +541,7 @@ class FullTextIndexing:
             #print(file_contents)
             word_list = FullTextIndexing.extract_unique_good_words(file_contents)
             print(word_list)
-            FullTextIndexing.new_indexing(content_uri = node_int_id, unique_words = word_list)
+            FullTextIndexing.new_indexing(internal_id= node_int_id, unique_words = word_list)
             i += 1
 
 

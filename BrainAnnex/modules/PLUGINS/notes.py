@@ -112,7 +112,7 @@ class Notes:
         unique_words = FullTextIndexing.extract_unique_good_words(body)
         content_id = NeoSchema.get_data_node_internal_id(uri=uri)
         print(f"new_content_item_successful(): CREATING INDEXING for item {uri}. Words: {unique_words}")
-        FullTextIndexing.new_indexing(content_uri=content_id, unique_words=unique_words)
+        FullTextIndexing.new_indexing(internal_id=content_id, unique_words=unique_words)
 
 
 

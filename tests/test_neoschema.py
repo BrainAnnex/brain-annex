@@ -143,29 +143,29 @@ def test_class_name_exists(db):
 def test_get_class_name(db):
     db.empty_dbase()
     _ , class_A_id = NeoSchema.create_class("A")
-    assert NeoSchema.get_class_name(class_A_id) == "A"
+    assert NeoSchema.get_class_name_by_schema_id(class_A_id) == "A"
 
     _ , class_B_id = NeoSchema.create_class("B")
-    assert NeoSchema.get_class_name(class_A_id) == "A"
-    assert NeoSchema.get_class_name(class_B_id) == "B"
+    assert NeoSchema.get_class_name_by_schema_id(class_A_id) == "A"
+    assert NeoSchema.get_class_name_by_schema_id(class_B_id) == "B"
 
-    assert NeoSchema.get_class_name(2345) == ""
-    assert NeoSchema.get_class_name(-1) == ""
+    assert NeoSchema.get_class_name_by_schema_id(2345) == ""
+    assert NeoSchema.get_class_name_by_schema_id(-1) == ""
 
 
 def test_get_class_name_by_neo_id(db):
     db.empty_dbase()
     class_A_neoid , _ = NeoSchema.create_class("A")
-    assert NeoSchema.get_class_name_by_neo_id(class_A_neoid) == "A"
+    assert NeoSchema.get_class_name(class_A_neoid) == "A"
 
     class_B_neoid , _ = NeoSchema.create_class("B")
-    assert NeoSchema.get_class_name_by_neo_id(class_A_neoid) == "A"
-    assert NeoSchema.get_class_name_by_neo_id(class_B_neoid) == "B"
+    assert NeoSchema.get_class_name(class_A_neoid) == "A"
+    assert NeoSchema.get_class_name(class_B_neoid) == "B"
 
     with pytest.raises(Exception):
-        NeoSchema.get_class_name_by_neo_id(2345)                    # No such Class exists
-        NeoSchema.get_class_name_by_neo_id(-1)                      # Invalid id
-        NeoSchema.get_class_name_by_neo_id("I'm not an integer!")   # Invalid id
+        NeoSchema.get_class_name(2345)                    # No such Class exists
+        NeoSchema.get_class_name(-1)                      # Invalid id
+        NeoSchema.get_class_name("I'm not an integer!")   # Invalid id
 
 
 
@@ -254,9 +254,69 @@ def test_rename_class_rel(db):
 
 
 
+def test_class_relationship_exists(db):
+    db.empty_dbase()
+    NeoSchema.create_class("A")
+    NeoSchema.create_class("B")
+
+    with pytest.raises(Exception):
+        NeoSchema.class_relationship_exists(from_class="", to_class="B", rel_name="whatever name")
+
+    with pytest.raises(Exception):
+        NeoSchema.class_relationship_exists(from_class="A", to_class="", rel_name="whatever name")
+
+    with pytest.raises(Exception):
+        NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="")
+
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="owns")
+
+    NeoSchema.create_class_relationship(from_class="A", to_class="B", rel_name="owns")
+
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="owns")
+
+    assert not NeoSchema.class_relationship_exists(from_class="B", to_class="A", rel_name="owns")   # Reverse direction
+
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="sells")  # Different link
+
+    NeoSchema.create_class("SA")
+    NeoSchema.create_class_relationship(from_class="A", to_class="SA", rel_name="INSTANCE_OF")
+    NeoSchema.create_class_relationship(from_class="SA", to_class="B", rel_name="sells")
+
+    # A "sells" relationship now exists (indirectly) from "A" to "B" because "A" was made an instance of "SA"
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="sells")
+
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="builds")
+
+    NeoSchema.create_class("SSA")
+    NeoSchema.create_class_relationship(from_class="SA", to_class="SSA", rel_name="INSTANCE_OF")
+    NeoSchema.create_class_relationship(from_class="SSA", to_class="B", rel_name="builds")
+
+    # A "builds" relationship now exists (indirectly) from "A" to "B" because we can go thru "SSA"
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="builds")
+
+
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="does business with")
+
+    NeoSchema.create_class("SB")
+    NeoSchema.create_class_relationship(from_class="B", to_class="SB", rel_name="INSTANCE_OF")
+    NeoSchema.create_class_relationship(from_class="SSA", to_class="SB", rel_name="does business with")
+
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="does business with")
+
+
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="loans out")
+    NeoSchema.create_class_relationship(from_class="A", to_class="B", rel_name="loans out", use_link_node=True)
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="loans out")
+
+    assert not NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="friends with")
+    NeoSchema.create_class_relationship(from_class="SA", to_class="SB", rel_name="friends with", use_link_node=True)
+    assert NeoSchema.class_relationship_exists(from_class="A", to_class="B", rel_name="friends with")
+
+
+
 def test_delete_class_relationship(db):
     db.empty_dbase()
-    _ , class_A_id = NeoSchema.create_class("A")    # The returned value is the "Schema ID"
+    _ , class_A_id = NeoSchema.create_class("A")
     _ , class_B_id = NeoSchema.create_class("B")
 
     with pytest.raises(Exception):
@@ -1559,7 +1619,69 @@ def test_delete_data_point(db):
 
     NeoSchema.delete_data_node(node_id=doctor_data_id, labels=["employee", "doctor"])
     doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_id)
-    assert doctor is None   # The doctor got deleted
+    assert doctor is None       # The doctor got deleted
+
+
+
+def test_add_data_relationship_hub(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties("City", property_list=["name"])
+    NeoSchema.create_class_with_properties("State", property_list=["name"])
+
+    # Set up the Data Nodes (2 cities and a state)
+    berkeley = NeoSchema.create_data_node(class_node="City", properties = {"name": "Berkeley"})
+    san_diego = NeoSchema.create_data_node(class_node="City", properties = {"name": "San Diego"})
+    california = NeoSchema.create_data_node(class_node="State", properties = {"name": "California"})
+
+    with pytest.raises(Exception):
+        # Trying to create a data relationship not yet declared in the Schema
+        NeoSchema.add_data_relationship_hub(center_id=california, periphery_ids=[berkeley, san_diego], periphery_class="City",
+                                            rel_name="LOCATED_IN", rel_dir="IN")
+
+    # Declare the "LOCATED_IN" relationship in the Schema
+    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="LOCATED_IN")
+
+    number_rels = NeoSchema.add_data_relationship_hub(center_id=california, periphery_ids=[berkeley, san_diego], periphery_class="City",
+                                                      rel_name="LOCATED_IN", rel_dir="IN")
+    assert number_rels == 2
+
+    # Verify that the "hub" (with 2 cities "LOCATED_IN" the state) is present
+    q = '''
+        MATCH p=(:City {name: "San Diego"})-[:LOCATED_IN]->
+                (:State {name: "California"})
+                <-[:LOCATED_IN]-(:City {name: "Berkeley"})
+        RETURN COUNT(p) AS number_paths
+        '''
+    assert db.query(q, single_cell="number_paths") == 1
+
+
+    # Add more Data Nodes
+    nevada = NeoSchema.create_data_node(class_node="State", properties = {"name": "Nevada"})
+    oregon = NeoSchema.create_data_node(class_node="State", properties = {"name": "Oregon"})
+
+    with pytest.raises(Exception):
+        # Trying to create a data relationship not yet declared in the Schema
+        NeoSchema.add_data_relationship_hub(center_id=california, periphery_ids=[nevada, oregon], periphery_class="State",
+                                            rel_name="BORDERS_WITH", rel_dir="OUT")
+
+    # Declare the "BORDERS_WITH" relationship in the Schema
+    NeoSchema.create_class_relationship(from_class="State", to_class="State", rel_name="BORDERS_WITH")
+
+    number_rels = NeoSchema.add_data_relationship_hub(center_id=california,
+                                                    periphery_ids=[nevada, oregon], periphery_class="State",
+                                                    rel_name="BORDERS_WITH", rel_dir="OUT")
+    assert number_rels == 2
+
+    # Verify that the "hub" with the 3 states is present
+    q = '''
+        MATCH p=(:State {name: "Nevada"})<-[:BORDERS_WITH]-
+        (:State {name: "California"})
+        -[:BORDERS_WITH]->(:State {name: "Oregon"})
+        RETURN COUNT(p) AS number_paths
+    '''
+    assert db.query(q, single_cell="number_paths") == 1
 
 
 
@@ -1647,7 +1769,7 @@ def test_add_data_relationship(db):
 
 
 
-def test_add_data_relationship_fast(db):
+def test_add_data_relationship_2(db):
     db.empty_dbase()
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=123, to_id=456, rel_name="junk")  # No such nodes exist

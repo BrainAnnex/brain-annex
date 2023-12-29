@@ -864,7 +864,7 @@ class DataManager:
             del post_data["class_name"]
         else:
             # If not provided, look it up from the schema_id
-            class_name = NeoSchema.get_class_name(schema_id)
+            class_name = NeoSchema.get_class_name_by_schema_id(schema_id)
             print(f"class_name looked up as: `{class_name}`")
 
 

@@ -53,6 +53,8 @@ class MediaManager:
                                 "D:/media/images/resized/"
         """
         folder = cls.MEDIA_FOLDER    # Includes the final "/"
+        assert folder is not None, \
+            "lookup_file_path(): MEDIA_FOLDER must be set first"
 
         if class_name is not None:
             folder += f"{class_name.lower()}/"

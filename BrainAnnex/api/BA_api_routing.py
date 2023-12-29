@@ -1403,7 +1403,7 @@ class ApiRouting:
             """
             Upload new media Content, to the (currently hardwired) media folder, and attach it to the Category
             specified in the POST variable "category_id"
-            TODO: media is currently added in a fixed position to the END of the Category page
+            TODO: media is currently added in a fixed position at the END of the Category page
         
             USAGE EXAMPLE:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload_media">
@@ -1440,6 +1440,7 @@ class ApiRouting:
         
 
             # Map the MIME type of the uploaded file into a schema_code
+            # TODO: maybe store the MIME type in the database?
             if mime_type.split('/')[0] == "image":  # For example, 'image/jpeg', 'image/png', etc.
                 class_name = "Images"
             else:

@@ -17,7 +17,7 @@ class Documents:
         Invoked just prior to deleting the data node
 
         :param uri: An integer with the URI ("item ID") of the Content Item
-        :return:        None.  If index isn't found, an Exception is raised
+        :return:    None.  If index isn't found, an Exception is raised
         """
         pass
 
@@ -33,7 +33,7 @@ class Documents:
     def add_content(cls, uri: int, data_binding: dict) -> dict:
         """
 
-        :param uri:     An integer with the URI of the Content Item
+        :param uri:         An integer with the URI of the Content Item
         :param data_binding:
         :return:            The altered data_binding dictionary.  In case of error, an Exception is raised.
         """
@@ -50,6 +50,7 @@ class Documents:
         """
 
         return {}
+
 
 
     @classmethod
@@ -69,7 +70,11 @@ class Documents:
             body = page.get_text(flags = fitz.TEXT_PRESERVE_WHITESPACE | fitz.TEXT_MEDIABOX_CLIP | fitz.TEXT_DEHYPHENATE)
             # TEXT_DEHYPHENATE re-forms any word that was split at the end of the line by hyphenation; not clear if the other flags are needed
             new_unique_words = FullTextIndexing.extract_unique_good_words(body)
-            print(f"    Page {p_number} - PyMuPDF found {len(new_unique_words)} unique words: {new_unique_words}")
+            n_words = len(new_unique_words)
+            if n_words < 10:    # Give a more verbose feedback
+                print(f"    Page {p_number} - PyMuPDF found {n_words} unique words: {new_unique_words}")
+            else:               # Give abridged feedback
+                print(f"    Page {p_number} - PyMuPDF found {n_words} unique words; first few: {list(new_unique_words)[:10]}")
 
             unique_words = unique_words.union(new_unique_words)
             #print(f"--------------- unique_words_alt (size {len(unique_words_alt)}): ", unique_words_alt)
@@ -79,32 +84,29 @@ class Documents:
 
 
     @classmethod
-    def new_content_item_successful(cls, uri: int, pars: dict, mime_type: str) -> None:
+    def new_content_item_successful(cls, uri :str, pars :dict, mime_type :str) -> None:
         """
-        Invoked after a new Content Item of this type gets successfully added
+        Invoked after a new Content Item of this type gets successfully added to the database
 
-        :param uri:     An integer with the URI of the Content Item
+        :param uri:         A string with the URI of the Content Item
         :param pars:        Dict with the various properties of this Content Item
-        :param mime_type:   Standardize string representing the type of the document
+                                For Documents, "basename" and "suffix" keys are expected
+        :param mime_type:   Standardized string representing the type of the document
                                 EXAMPLES: 'text/plain', 'application/pdf'
         :return:            None
         """
         filename = pars["basename"] + "." + pars["suffix"]  # EXAMPLE: "my_file.txt"
-        path = MediaManager.lookup_file_path(class_name="Documents")
+        path = MediaManager.lookup_file_path(class_name="Documents")    # Incl. the final "/"
 
-        # Obtain the body of the document
+        # Extract the individual words "worthy" of being indexed in the document
         if mime_type == "text/plain":
             body = MediaManager.get_from_text_file(path, filename=filename)
             unique_words = FullTextIndexing.extract_unique_good_words(body)
 
         elif mime_type == "application/pdf":    # TODO: also include EPUB
-            # TODO: this ought to be done in a separate thread
+            # TODO: this ought to be done in a separate execution thread
             full_file_name = path + filename
-
             unique_words = cls.parse_pdf(full_file_name)
-
-            #print(f"\n  Found {len(unique_words)} unique words : {unique_words}\n")
-
             #TODO: also store in database the doc.page_count and non-trivial values in doc.metadata
 
         else:
@@ -113,15 +115,17 @@ class Documents:
 
 
         n_words = len(unique_words)
-        if n_words < 10:
-            print(f"new_content_item_successful(): CREATING INDEXING for item {uri}.  Found {n_words} unique words: {unique_words}")
-        else:
-            print(f"new_content_item_successful(): CREATING INDEXING for item {uri}.  Found {n_words} unique words; first few: {list(unique_words)[:10]}")
+        if n_words < 10:    # Give a more verbose feedback
+            print(f"new_content_item_successful(): CREATING INDEXING for document `{uri}`.  "
+                  f"Found {n_words} unique words: {unique_words}")
+        else:               # Give abridged feedback
+            print(f"new_content_item_successful(): CREATING INDEXING for document `{uri}`.  "
+                  f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")
 
 
-        # Carry out the actual indexing
+        # Carry out the actual indexing in the database
         content_id = NeoSchema.get_data_node_internal_id(uri=uri)
-        FullTextIndexing.new_indexing(content_uri=content_id, unique_words=unique_words)
+        FullTextIndexing.new_indexing(internal_id=content_id, unique_words=unique_words)
         print("Documents.new_content_item_successful(): Completed the indexing")
 
 
@@ -132,7 +136,7 @@ class Documents:
         Invoked after a Content Item of this type gets successfully updated
 
         :param uri: An integer with the URI of the Content Item
-        :param pars:
-        :return:        None
+        :param pars:Dict with the various properties of this Content Item
+        :return:    None
         """
         pass    # Nothing to do
