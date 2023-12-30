@@ -170,7 +170,7 @@ def test_new_indexing(db):
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
     assert NeoSchema.count_data_nodes_of_class(class_id="Content Item") == 1
 
-    assert FullTextIndexing.count_indexed_words(content_id) == 3
+    assert FullTextIndexing.number_of_indexed_words(content_id) == 3
 
     q = '''
         MATCH (w:Word)-[:SCHEMA]->(wc:CLASS {name: "Word"})-[:occurs]->(ic:CLASS {name:"Indexer"})
@@ -193,7 +193,7 @@ def test_new_indexing(db):
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 2
     assert NeoSchema.count_data_nodes_of_class(class_id="Content Item") == 2
 
-    assert FullTextIndexing.count_indexed_words(content_id) == 2
+    assert FullTextIndexing.number_of_indexed_words(content_id) == 2
 
     q = '''
         MATCH (ci_cl:CLASS {name:"Content Item"})-[:has_index]->(CLASS {name:"Indexer"})
@@ -221,7 +221,7 @@ def test_update_indexing(db):
     # Index some words to or Content Item
     FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"lab", "research", "R/D"})
 
-    assert FullTextIndexing.count_indexed_words(content_id) == 3
+    assert FullTextIndexing.number_of_indexed_words(content_id) == 3
     assert NeoSchema.count_data_nodes_of_class("Word") == 3
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
 
@@ -231,7 +231,7 @@ def test_update_indexing(db):
     # Now, change the indexing (of that same Content Item) to a new set of words
     FullTextIndexing.update_indexing(content_uri=content_id, unique_words={"closed", "renovation"})
 
-    assert FullTextIndexing.count_indexed_words(content_id) == 2
+    assert FullTextIndexing.number_of_indexed_words(content_id) == 2
     assert NeoSchema.count_data_nodes_of_class("Word") == 5
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
 
@@ -249,7 +249,7 @@ def test_update_indexing(db):
     # partially overlapping with existing Word nodes
     FullTextIndexing.update_indexing(content_uri=content_id, unique_words={"research", "neuroscience"})
 
-    assert FullTextIndexing.count_indexed_words(content_id) == 2
+    assert FullTextIndexing.number_of_indexed_words(content_id) == 2
     assert NeoSchema.count_data_nodes_of_class("Word") == 6
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
 
@@ -275,7 +275,7 @@ def test_remove_indexing(db):
     # Index some words to our "Content Item"
     FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"lab", "research", "R/D"})
 
-    assert FullTextIndexing.count_indexed_words(content_id) == 3
+    assert FullTextIndexing.number_of_indexed_words(content_id) == 3
     assert NeoSchema.count_data_nodes_of_class("Word") == 3
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
 
@@ -285,7 +285,7 @@ def test_remove_indexing(db):
     # Now remove the indexing for our "Content Item" node
     FullTextIndexing.remove_indexing(content_id)
 
-    assert FullTextIndexing.count_indexed_words(content_id) == 0
+    assert FullTextIndexing.number_of_indexed_words(content_id) == 0
     assert NeoSchema.count_data_nodes_of_class("Word") == 3             # The words are still there
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 0 # The Indexer node is gone
 

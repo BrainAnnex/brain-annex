@@ -160,7 +160,7 @@ class NeoSchema:
         """
         Raise an Exception if the passed argument is not a valid Class name
 
-        :param class_name:  A string with the name of a Schema Class
+        :param class_name:  A string with the putative name of a Schema Class
         :return:            None
         """
         assert type(class_name) == str, \
@@ -169,6 +169,20 @@ class NeoSchema:
 
         assert class_name != "", \
             "NeoSchema.assert_valid_class_name(): Class name cannot be an empty string"
+
+
+    @classmethod
+    def is_valid_class_name(cls, class_name: str) -> bool:
+        """
+        Return True if the passed argument is a valid Class name, or False otherwise
+
+        :param class_name:  A string with the putative name of a Schema Class
+        :return:            None
+        """
+        if type(class_name) == str and class_name != "":
+            return True
+        else:
+            return False
 
 
 
@@ -1153,7 +1167,7 @@ class NeoSchema:
 
         :param class_node:      Either an integer with the internal database ID of an existing Class node,
                                     (or a string with its name - TODO: add support for this option)
-        :param class_id:        Integer with the schema_id of the Class to which attach the given Properties
+        :param class_id:        (OPTIONAL) Integer with the schema_id of the Class to which attach the given Properties
                                 TODO: remove
 
         :param property_list:   A list of strings with the names of the properties, in the desired order.
@@ -1972,6 +1986,9 @@ class NeoSchema:
                 print(f"    imported {len(internal_id_list)} so far")
         # END for
 
+        if report_frequency:
+            print(f"    FINISHED importing a total of {len(internal_id_list)} records")
+
         return internal_id_list
 
 
@@ -2099,6 +2116,9 @@ class NeoSchema:
                 print(f"    imported {len(links_imported)} so far")
         # END for
 
+        if report_frequency:
+            print(f"    FINISHED importing a total of {len(links_imported)} links")
+
         return links_imported
 
 
@@ -2123,8 +2143,10 @@ class NeoSchema:
                                         1) The internal database ID of either an existing data node or of a new one just created
                                         2) True if a new data node was created, or False if not (i.e. an existing one was found)
         """
+        # TODO: OBSOLETE, in favor of add_data_node_merge_NEW()
+
         if schema_cache is None:
-            schema_cache = SchemaCache()
+            schema_cache = SchemaCache()    # Note: not too useful; only lightly used in this function
 
         class_attrs = schema_cache.get_cached_class_data(class_internal_id, request="class_attributes")
         class_name = class_attrs["name"]
@@ -2167,12 +2189,132 @@ class NeoSchema:
 
 
     @classmethod
+    def add_data_node_merge_NEW(cls, class_name :str, properties :dict) -> (int, bool):
+        """
+        A new Data Node gets created only if
+        there's no other Data Node with the same properties,
+        and attached to the given Class.
+
+        An Exception is raised if any of the requested properties is not registered with the given Schema Class,
+        or if that Class doesn't accept Data Nodes.
+
+        :param class_name:  The Class node for the Data Node to locate, or create if not found
+        :param properties:  A dictionary with the properties to look up the Data Node by,
+                                or to give to a new one if an existing one wasn't found.
+                                EXAMPLE: {"make": "Toyota", "color": "white"}
+
+        :return:            A pair with:
+                                1) The internal database ID of either an existing Data Node or of a new one just created
+                                2) True if a new Data Node was created, or False if not (i.e. an existing one was found)
+        """
+        # TODO: maybe return a dict with 2 keys: "internal_id" and "created" ? (like done by NeoAccess)
+
+        assert (type(properties) == dict) and (properties != {}), \
+            "NeoSchema.add_data_node_merge(): the `properties` argument MUST be a dictionary, and cannot be empty"
+
+        class_internal_id = cls.get_class_internal_id(class_name)
+
+        # Make sure that the Class accepts Data Nodes
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+            raise Exception(f"NeoSchema.add_data_node_merge(): "
+                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+        # Generate an Exception if any of the requested properties is not registered with the Schema Class
+        cls.allowable_props(class_internal_id=class_internal_id, requested_props=properties,
+                            silently_drop=False)
+
+
+        # From the dictionary of attribute names/values,
+        #       create a part of a Cypher query, with its accompanying data dictionary
+        (attributes_str, data_dictionary) = CypherUtils.dict_to_cypher(properties)
+        # EXAMPLE - if properties is {'cost': 65.99, 'item description': 'the "red" button'} then:
+        #       attributes_str = '{`cost`: $par_1, `item description`: $par_2}'
+        #       data_dictionary = {'par_1': 65.99, 'par_2': 'the "red" button'}
+
+        q = f'''
+            MATCH (cl :CLASS)
+            WHERE id(cl) = {class_internal_id}
+            MERGE (n :`{class_name}` {attributes_str})-[:SCHEMA]->(cl)           
+            RETURN id(n) AS internal_id
+            '''
+
+        result = cls.db.update_query(q, data_dictionary)
+
+        internal_id = result["returned_data"][0]["internal_id"]     # The internal database ID
+                                                                    # of the node found or just created
+
+        if result.get("nodes_created") == 1:
+            return  (internal_id, True)         # A new node was created
+        else:
+            return  (internal_id, False)        # An existing node was found
+
+
+
+    @classmethod
+    def add_data_column_merge_NEW(cls, class_name :str, property_name: str, value_list: list) -> dict:
+        """     # TODO: test!
+        Add a data column (i.e. a set of single-property data nodes).
+        Individual nodes are created only if there's no other data node with the same property/value
+
+        :param class_name:      The Class node for the Data Node to locate, or create if not found
+        :param property_name:   The name of the data column (i.e. the name of the data field)
+        :param value_list:      A list of values that make up the the data column
+        :return:                A dictionary with 2 keys - "new_nodes" and "old_nodes";
+                                    their values are the respective numbers of nodes (created vs. found)
+        """
+        assert (type(property_name) == dict) and (property_name != {}), \
+            "NeoSchema.add_data_node_merge(): the `property_name` argument MUST be a dictionary, and cannot be empty"
+
+        class_internal_id = cls.get_class_internal_id(class_name)
+
+        # Make sure that the Class accepts Data Nodes
+        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+            raise Exception(f"NeoSchema.add_data_node_merge(): "
+                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+        # Generate an Exception if any of the requested properties is not registered with the Schema Class
+        cls.allowable_props(class_internal_id=class_internal_id, requested_props={property_name : 0},
+                            silently_drop=False)    # TODO: get rid of hack that requires a value for the property
+
+
+        new_id_list = []
+        existing_id_list = []
+        for value in value_list:
+            properties = {property_name : value}
+            # From the dictionary of attribute names/values,
+            #       create a part of a Cypher query, with its accompanying data dictionary
+            (attributes_str, data_dictionary) = CypherUtils.dict_to_cypher(properties)
+            # EXAMPLE - if properties is {'cost': 65.99, 'item description': 'the "red" button'} then:
+            #       attributes_str = '{`cost`: $par_1, `item description`: $par_2}'
+            #       data_dictionary = {'par_1': 65.99, 'par_2': 'the "red" button'}
+
+            q = f'''
+                MATCH (cl :CLASS)
+                WHERE id(cl) = {class_internal_id}
+                MERGE (n :`{class_name}` {attributes_str})-[:SCHEMA]->(cl)           
+                RETURN id(n) AS internal_id
+                '''
+
+            result = cls.db.update_query(q, data_dictionary)
+
+            internal_id = result["returned_data"][0]["internal_id"]     # The internal database ID
+                                                                        # of the node found or just created
+            if result.get("nodes_created") == 1:
+                new_id_list.append(internal_id)         # A new node was created
+            else:
+                existing_id_list.append(internal_id)    # An existing node was found
+        # END for
+
+        return {"new_nodes": new_id_list, "old_nodes": existing_id_list}
+        # TODO: rename "old_nodes" to "present_nodes" (or "existing_nodes", or "found_nodes")
+
+
+
+    @classmethod
     def add_data_column_merge(cls, class_internal_id: int, property_name: str, value_list: list) -> dict:
         """
         Add a data column (i.e. a set of single-property data nodes).
         Individual nodes are created only if there's no other data node with the same property/value
-
-        TODO: this is a simple approach; introduce a more efficient one, possibly using APOC
 
         :param class_internal_id:   The internal database ID of the Class node for the data nodes
         :param property_name:       The name of the data column
@@ -2180,6 +2322,8 @@ class NeoSchema:
         :return:                    A dictionary with 2 keys - "new_nodes" and "old_nodes"
                                         TODO: rename "old_nodes" to "present_nodes" (or "existing_nodes")
         """
+        # TODO: this is a simple, inefficient approach that bottlenecks the creation of Word Indices;
+        #       introduce a more efficient one, possibly using APOC
         assert type(property_name) == str, \
             f"NeoSchema.add_col_data_merge(): argument `property_name` must be a string; " \
             f"value passed was of type {type(property_name)}"
@@ -2913,8 +3057,8 @@ class NeoSchema:
         :param periphery_class: The name of the common Class to which all the Data Nodes
                                     specified in periphery_ids belong to
         :param rel_name:        A string with the name to give to all the newly-created relationships
-        :param rel_dir:         Either "IN" or "OUT",
-                                    from the "center" node to each of the "periphery" nodes
+        :param rel_dir:         Either "IN" (towards the "center" node)
+                                    or "OUT" (away from it, towards the "periphery" nodes)
 
         :return:                The number of relationships created
         """
