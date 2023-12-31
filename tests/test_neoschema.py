@@ -1149,202 +1149,29 @@ def test_add_data_node_merge(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge(class_internal_id=123)     # No such class exists
+        NeoSchema.add_data_node_merge(class_name="I_dont_exist",
+                                      properties={"junk": 123})     # No such class exists
 
     class_internal_id , _ = NeoSchema.create_class("No data nodes allowed", no_datanodes = True)
     with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge(class_internal_id=class_internal_id)   # The Class doesn't allow data nodes
-
-    class_internal_id , class_schema_id = NeoSchema.create_class("Car", strict=True)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
-
-
-    # Successfully adding the first data point
-    new_datanode_id, _ = NeoSchema.add_data_node_merge(class_internal_id=class_internal_id)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1
-
-    # Locate the data point just added
-    q = f'''
-    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
-    WHERE id(n) = {new_datanode_id}
-    RETURN n
-    '''
-    result = db.query_extended(q)
-    assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
-
-
-    with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                      properties={"color": "No properties allowed"},
-                                      silently_drop=False)   # Trying to set a non-allowed property
-
-
-    # The merging will use the already-existing data point, since we're only getting data nodes with no properties
-    new_datanode_id, _ = NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                                       properties={"color": "No properties allowed"},
-                                                       silently_drop=True)
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1     # STILL at 1 datapoint
-
-    # Locate the data point just added
-    q = f'''
-    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
-    WHERE id(n) = {new_datanode_id}
-    RETURN n
-    '''
-    result = db.query_extended(q)
-    assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car']}]]   # No other properties were set
-
-
-    # Successfully adding a new (2nd) data point
-    NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["color"]) # Expand the allow class properties
-
-    new_datanode_id, _ = NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                                       properties={"color": "white"})
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 2
-
-    # Locate the data point just added
-    q = f'''
-    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
-    WHERE id(n) = {new_datanode_id}
-    RETURN n
-    '''
-    result = db.query_extended(q)
-    assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'white'}]]   # This time the properties got set
-
-
-    # Again expand the allowed class properties
-    NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["year"])
-
-    with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                      properties={"color": "white", "make": "Toyota"},
-                                      silently_drop=False)   # Trying to set a non-allowed property
-
-
-    # Successfully adding a 3rd data point
-    new_datanode_id, _ = NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                                       properties={"color": "red", "make": "VW"},
-                                                       silently_drop=True)
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
-
-    # Locate the data point just added
-    q = f'''
-    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
-    WHERE id(n) = {new_datanode_id}
-    RETURN n
-    '''
-    result = db.query_extended(q)
-    assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red'}]]   # The "color" got set, while the "make" got dropped
-
-
-    # Successfully adding a 4th data point
-    new_datanode_id, _ = NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                                       properties={"color": "red", "make": "Fiat", "year": 2000},
-                                                       silently_drop=True)
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
-
-    # Locate the data point just added
-    q = f'''
-    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
-    WHERE id(n) = {new_datanode_id}
-    RETURN n
-    '''
-    result = db.query_extended(q)
-    assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red', 'year': 2000}]]
-    # The "color" and "year" got set, while the "make" got dropped.  We can have 2 red cars because they differ in the other attributes
-
-
-    # Nothing gets added now, because a "red, 2000" car already exists
-    NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                  properties={"color": "red", "year": 2000},
-                                  silently_drop=False)
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4     # UNCHANGED
-
-
-    # Likewise, nothing gets added now, because a "red" car already exists (the "mileage" field isn't in the Schema and gets dropped)
-    NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                  properties={"color": "red", "mileage": 12000},
-                                  silently_drop=True)
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4     # UNCHANGED
-
-
-    # By contrast, a new data node gets added now, because the "mileage" field will now be kept, and there's no "red car with 12,000 miles"
-    NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["mileage"])
-    new_datanode_id, _ = NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                                       properties={"color": "red", "mileage": 12000},
-                                                       silently_drop=True)
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 5     # Increased
-
-    # Locate the data point just added
-    q = f'''
-    MATCH (n :Car)-[:SCHEMA]->(cl :CLASS) 
-    WHERE id(n) = {new_datanode_id}
-    RETURN n
-    '''
-    result = db.query_extended(q)
-    assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], 'color': 'red', 'mileage': 12000}]]
-    # All properties got set
-
-
-    # Now, set up an irregular scenario where there's a database node that will match the attributes and labels
-    # of a data node to add, but is not itself a data node (it lacks a SCHEMA relationship to its Class)
-    db.create_node(labels="Car", properties={"color": "yellow"})
-    with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                      properties={"color": "yellow"},
-                                      silently_drop=True)
-
-    # By contrast, the presence of a database node with same attributes, but different labels,
-    # will not be considered a match
-    db.create_node(labels="Boat", properties={"color": "purple"})
-    NeoSchema.add_data_node_merge(class_internal_id=class_internal_id,
-                                  properties={"color": "purple"},
-                                  silently_drop=True)
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6     # Increased
-
-
-
-def test_add_data_node_merge_NEW(db):
-    db.empty_dbase()
-
-    with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge_NEW(class_name="I_dont_exist",
-                                         properties={"junk": 123})     # No such class exists
-
-    class_internal_id , _ = NeoSchema.create_class("No data nodes allowed", no_datanodes = True)
-    with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge_NEW(class_name="No data nodes allowed",
-                                          properties={"junk": 123})   # The Class doesn't allow data nodes
+        NeoSchema.add_data_node_merge(class_name="No data nodes allowed",
+                                      properties={"junk": 123})   # The Class doesn't allow data nodes
 
     class_internal_id , class_schema_id = NeoSchema.create_class("Car", strict=True)
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge_NEW(class_name="Car", properties={})  # Properties are required
+        NeoSchema.add_data_node_merge(class_name="Car", properties={})  # Properties are required
 
     with pytest.raises(Exception):
         # "color" is not a registered property of the Class "Car"
-        NeoSchema.add_data_node_merge_NEW(class_name="Car", properties={"color": "white"})
+        NeoSchema.add_data_node_merge(class_name="Car", properties={"color": "white"})
 
     NeoSchema.add_properties_to_class(class_node = class_internal_id, property_list = ["color"])
 
 
     # Successfully adding the first data point
-    new_datanode_id, status = NeoSchema.add_data_node_merge_NEW(class_name="Car", properties={"color": "white"})
+    new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car", properties={"color": "white"})
     assert status == True    # A new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1
 
@@ -1360,12 +1187,12 @@ def test_add_data_node_merge_NEW(db):
 
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge_NEW(class_name="Car",
+        NeoSchema.add_data_node_merge(class_name="Car",
                                       properties={"make": "A property not currently allowed"})   # Trying to set a non-allowed property
 
 
     # The merging will use the already-existing data point, since the properties match up
-    new_datanode_id, status = NeoSchema.add_data_node_merge_NEW(class_name="Car", properties={"color": "white"})
+    new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car", properties={"color": "white"})
     assert status == False    # No new node was created
 
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1     # STILL at 1 datapoint
@@ -1382,8 +1209,8 @@ def test_add_data_node_merge_NEW(db):
 
 
     # Successfully adding a new (2nd) data point
-    new_datanode_id, status = NeoSchema.add_data_node_merge_NEW(class_name="Car",
-                                                       properties={"color": "red"})
+    new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
+                                                            properties={"color": "red"})
     assert status == True    # A new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 2
 
@@ -1402,12 +1229,12 @@ def test_add_data_node_merge_NEW(db):
     NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["year"])
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_node_merge_NEW(class_name="Car",
+        NeoSchema.add_data_node_merge(class_name="Car",
                                       properties={"color": "white", "make": "Toyota"})   # Trying to set a non-allowed property
 
     # Successfully adding a 3rd data point
-    new_datanode_id, status = NeoSchema.add_data_node_merge_NEW(class_name="Car",
-                                                       properties={"color": "blue", "year": 2023})
+    new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
+                                                            properties={"color": "blue", "year": 2023})
     assert status == True    # A new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
 
@@ -1423,8 +1250,8 @@ def test_add_data_node_merge_NEW(db):
 
 
     # Successfully adding a 4th data point
-    new_datanode_id, status = NeoSchema.add_data_node_merge_NEW(class_name="Car",
-                                                       properties={"color": "blue", "year": 2000})
+    new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
+                                                            properties={"color": "blue", "year": 2000})
     assert status == True    # A new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
 
@@ -1441,22 +1268,22 @@ def test_add_data_node_merge_NEW(db):
 
 
     # Nothing gets added now, because a "blue, 2000" car already exists
-    _ , status = NeoSchema.add_data_node_merge_NEW(class_name="Car",
-                                                properties={"color": "blue", "year": 2000})
+    _ , status = NeoSchema.add_data_node_merge(class_name="Car",
+                                               properties={"color": "blue", "year": 2000})
     assert status == False    # No new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4     # UNCHANGED
 
 
     # Likewise, nothing gets added now, because a "red" car already exists
-    _ , status = NeoSchema.add_data_node_merge_NEW(class_name="Car",
-                                                    properties={"color": "red"})
+    _ , status = NeoSchema.add_data_node_merge(class_name="Car",
+                                               properties={"color": "red"})
     assert status == False    # No new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4     # UNCHANGED
 
 
     # By contrast, a new data node gets added now, because the "mileage" field will now be kept, and there's no "red car from 1999"
-    new_datanode_id, status = NeoSchema.add_data_node_merge_NEW(class_name="Car",
-                                                       properties={"color": "red", "year": 1999})
+    new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
+                                                            properties={"color": "red", "year": 1999})
     assert status == True    # A new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 5     # Increased
 
@@ -1472,16 +1299,16 @@ def test_add_data_node_merge_NEW(db):
 
 
     # Attempting to re-add the "red, 1999" car will have no effect...
-    _ , status = NeoSchema.add_data_node_merge_NEW(class_name="Car",
-                                                   properties={"color": "red", "year": 1999})
+    _ , status = NeoSchema.add_data_node_merge(class_name="Car",
+                                               properties={"color": "red", "year": 1999})
     assert status == False    # No new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 5     # UNCHANGED
 
 
     NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["make"])
     # ... but there's no car "red, 1999, Toyota"
-    new_datanode_id, status = NeoSchema.add_data_node_merge_NEW(class_name="Car",
-                                                                properties={"color": "red", "year": 1999, "make": "Toyota"})
+    new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
+                                                            properties={"color": "red", "year": 1999, "make": "Toyota"})
     assert status == True    # A new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6     # Increased
 
@@ -1501,17 +1328,18 @@ def test_add_data_node_merge_NEW(db):
     # This node will be ignored by the Schema layer, because it's not managed by it - and we can add just fine
     # a Data Node for a "yellow car"
     db.create_node(labels="Car", properties={"color": "yellow"})
-    _, status = NeoSchema.add_data_node_merge_NEW(class_name="Car", properties={"color": "yellow"})
+    _, status = NeoSchema.add_data_node_merge(class_name="Car", properties={"color": "yellow"})
     assert status == True    # A new node was created
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 7     # Increased
 
 
 
-def test_add_col_data_merge(db):
-    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+def test_add_data_column_merge(db):
+    db.empty_dbase()
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_column_merge(class_internal_id=123, property_name="color", value_list=["white"])     # No such class exists
+        # No such class exists
+        NeoSchema.add_data_column_merge(class_name="Car", property_name="color", value_list=["white"])
 
     class_internal_id , class_schema_id = NeoSchema.create_class_with_properties("Car",
                                                                                  property_list=["color", "year"],
@@ -1519,20 +1347,31 @@ def test_add_col_data_merge(db):
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_column_merge(class_internal_id=class_internal_id, property_name=123, value_list=["white"])  # property_name isn't a string
-        NeoSchema.add_data_column_merge(class_internal_id=class_internal_id, property_name="color", value_list="white")  # value_list isn't a list
+        NeoSchema.add_data_column_merge(class_name="Car", property_name=123, value_list=["white"])      # property_name isn't a string
 
+    with pytest.raises(Exception):
+        NeoSchema.add_data_column_merge(class_name="Car", property_name="color", value_list="white")    # value_list isn't a list
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_column_merge(class_name="Car", property_name="color", value_list=[])    # value_list is empty
+
+
+    # Expand the Schema
+    result = NeoSchema.add_data_column_merge(class_name="Car",
+                                             property_name="color", value_list=["red", "white", "blue"])
+
+    with pytest.raises(Exception):
+        NeoSchema.add_data_column_merge(class_name="Car",
+                                        property_name="UNKNOWN", value_list=[1, 2])     # Property not in Schema Class
 
     # Successfully add 3 data points
-    result = NeoSchema.add_data_column_merge(class_internal_id=class_internal_id,
-                                             property_name="color", value_list=["red", "white", "blue"])
     assert len(result["new_nodes"]) == 3
     assert len(result["old_nodes"]) == 0
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
 
 
     # Only 1 of the following 3 data points isn't already in the database
-    result = NeoSchema.add_data_column_merge(class_internal_id=class_internal_id,
+    result = NeoSchema.add_data_column_merge(class_name="Car",
                                              property_name="color", value_list=["red", "green", "blue"])
     assert len(result["new_nodes"]) == 1
     assert len(result["old_nodes"]) == 2
@@ -1544,16 +1383,11 @@ def test_add_col_data_merge(db):
 
 
     # Successfully add the 2 distinct data points, from the 3 below, using a different field
-    result = NeoSchema.add_data_column_merge(class_internal_id=class_internal_id,
+    result = NeoSchema.add_data_column_merge(class_name="Car",
                                              property_name="year", value_list=[2003, 2022, 2022])
     assert len(result["new_nodes"]) == 2
     assert len(result["old_nodes"]) == 1
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6
-
-
-    with pytest.raises(Exception):
-        NeoSchema.add_data_column_merge(class_internal_id=class_internal_id,
-                                        property_name="UNKNOWN", value_list=[1, 2])     # Property not in Schema Class
 
 
 

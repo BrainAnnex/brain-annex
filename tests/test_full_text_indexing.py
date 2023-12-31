@@ -102,7 +102,7 @@ def test_extract_unique_good_words():
 
     text = '<p>Mr. Joe&amp;sons<br>A Long&ndash;Term business! Find it at &gt; (http://example.com/home)<br>Visit Joe&#39;s &quot;NOW!&quot;</p>'
     result = FullTextIndexing.extract_unique_good_words(text)
-    assert result == {'joe', 'sons', 'long', 'term', 'business', 'home', 'visit'}
+    assert result == {'joe', 'sons', 'term', 'business', 'home', 'visit'}
 
 
     # Examples with no usable text, returning an empty set

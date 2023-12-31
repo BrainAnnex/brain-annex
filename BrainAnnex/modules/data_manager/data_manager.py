@@ -996,7 +996,7 @@ class DataManager:
         #   ]
 
         for node in result:
-            internal_id = node["internal_id"]
+            internal_id = node["internal_id"]   # Ignore the PyCharm's complain about the data type!
             #print("\n\n--- internal_id: ", internal_id)
 
 
@@ -1007,6 +1007,10 @@ class DataManager:
             #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)
             node["internal_links"] = neighbor_props
+
+            if "date_created" in node:
+                del node["date_created"]    # Datetime objects aren't serializable and lead to Flask errors
+                                            # TODO: go beyond this ad-hoc fix!
 
             '''
             #TODO: consider the following generalized approach

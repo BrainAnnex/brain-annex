@@ -2124,72 +2124,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_node_merge(cls, class_internal_id, properties = None, labels = None, silently_drop=False,
-                            schema_cache=None) -> (int, bool):
-        """
-        A new data node gets created only if
-        there's no other data node with the same labels and allowed properties
-
-        :param class_internal_id:   The internal database ID of the Class node for the data node
-        :param properties:          An optional dictionary with the properties of the new data node.
-                                        EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param labels:              OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
-                                        if not specified, the Class name is used
-        :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped;
-                                        otherwise, an Exception is raised if any property isn't allowed
-        :param schema_cache:        (OPTIONAL) "SchemaCache" object
-
-        :return:                    A pair with:
-                                        1) The internal database ID of either an existing data node or of a new one just created
-                                        2) True if a new data node was created, or False if not (i.e. an existing one was found)
-        """
-        # TODO: OBSOLETE, in favor of add_data_node_merge_NEW()
-
-        if schema_cache is None:
-            schema_cache = SchemaCache()    # Note: not too useful; only lightly used in this function
-
-        class_attrs = schema_cache.get_cached_class_data(class_internal_id, request="class_attributes")
-        class_name = class_attrs["name"]
-
-        if labels is None:
-            # If not specified, use the Class name
-            labels = class_name
-
-        if properties is None:
-            properties = {}
-
-        assert type(properties) == dict, \
-            "NeoSchema.add_data_node_merge(): the `properties` argument, if provided, MUST be a dictionary"
-
-        # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id, schema_cache=schema_cache):
-            raise Exception(f"NeoSchema.add_data_node_merge(): "
-                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
-
-        properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
-                                                silently_drop=silently_drop, schema_cache=schema_cache)
-
-        # TODO: for efficiency, the merge_node and linking ought to be done in a single step
-        result = cls.db.merge_node(labels=labels, properties=properties_to_set)
-        datanode_neo_id = result["internal_id"]
-
-        if result["created"]:
-            # If a new data node was created, it must be linked to its Class node
-            cls.db.add_links_fast(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA")
-        else:
-            # Verify that is already has a SCHEMA link to its Class node
-            if not cls.db.links_exist(match_from=datanode_neo_id, match_to=class_internal_id, rel_name="SCHEMA"):
-                # This is an irregular situation where there's a match, but not to a legit data node
-                raise Exception(f"NeoSchema.add_data_node_merge(): "
-                                f"a node matching in attributes and labels already exists (internal ID {datanode_neo_id}), "
-                                f"but it's NOT linked to its Schema Class (internal ID {class_internal_id})")
-
-        return datanode_neo_id, result["created"]
-
-
-
-    @classmethod
-    def add_data_node_merge_NEW(cls, class_name :str, properties :dict) -> (int, bool):
+    def add_data_node_merge(cls, class_name :str, properties :dict) -> (int, bool):
         """
         A new Data Node gets created only if
         there's no other Data Node with the same properties,
@@ -2251,8 +2186,8 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_column_merge_NEW(cls, class_name :str, property_name: str, value_list: list) -> dict:
-        """     # TODO: test!
+    def add_data_column_merge(cls, class_name :str, property_name: str, value_list: list) -> dict:
+        """
         Add a data column (i.e. a set of single-property data nodes).
         Individual nodes are created only if there's no other data node with the same property/value
 
@@ -2262,14 +2197,17 @@ class NeoSchema:
         :return:                A dictionary with 2 keys - "new_nodes" and "old_nodes";
                                     their values are the respective numbers of nodes (created vs. found)
         """
-        assert (type(property_name) == dict) and (property_name != {}), \
-            "NeoSchema.add_data_node_merge(): the `property_name` argument MUST be a dictionary, and cannot be empty"
+        assert (type(property_name) == str) and (property_name != ""), \
+            "NeoSchema.add_data_column_merge(): the `property_name` argument MUST be a string, and cannot be empty"
+
+        assert (type(value_list) == list) and (value_list != []), \
+            "NeoSchema.add_data_column_merge(): the `value_list` argument MUST be a list, and cannot be empty"
 
         class_internal_id = cls.get_class_internal_id(class_name)
 
         # Make sure that the Class accepts Data Nodes
         if not cls.allows_data_nodes(class_neo_id=class_internal_id):
-            raise Exception(f"NeoSchema.add_data_node_merge(): "
+            raise Exception(f"NeoSchema.add_data_column_merge(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
         # Generate an Exception if any of the requested properties is not registered with the Schema Class
@@ -2307,46 +2245,6 @@ class NeoSchema:
 
         return {"new_nodes": new_id_list, "old_nodes": existing_id_list}
         # TODO: rename "old_nodes" to "present_nodes" (or "existing_nodes", or "found_nodes")
-
-
-
-    @classmethod
-    def add_data_column_merge(cls, class_internal_id: int, property_name: str, value_list: list) -> dict:
-        """
-        Add a data column (i.e. a set of single-property data nodes).
-        Individual nodes are created only if there's no other data node with the same property/value
-
-        :param class_internal_id:   The internal database ID of the Class node for the data nodes
-        :param property_name:       The name of the data column
-        :param value_list:          The data column as a list
-        :return:                    A dictionary with 2 keys - "new_nodes" and "old_nodes"
-                                        TODO: rename "old_nodes" to "present_nodes" (or "existing_nodes")
-        """
-        # TODO: this is a simple, inefficient approach that bottlenecks the creation of Word Indices;
-        #       introduce a more efficient one, possibly using APOC
-        assert type(property_name) == str, \
-            f"NeoSchema.add_col_data_merge(): argument `property_name` must be a string; " \
-            f"value passed was of type {type(property_name)}"
-
-        assert type(value_list) == list, \
-            f"NeoSchema.add_col_data_merge(): argument `value_list` must be a list; " \
-            f"value passed was of type {type(value_list)}"
-
-        schema_cache = SchemaCache()
-
-        new_id_list = []
-        existing_id_list = []
-        for value in value_list:
-            new_id, created = cls.add_data_node_merge(class_internal_id,
-                                                      properties={property_name: value},
-                                                      schema_cache=schema_cache,
-                                                      silently_drop=False)
-            if created:
-                new_id_list.append(new_id)
-            else:
-                existing_id_list.append(new_id)
-
-        return {"new_nodes": new_id_list, "old_nodes": existing_id_list}
 
 
 

@@ -338,9 +338,9 @@ class FullTextIndexing:
 
 
         # Locate (if already present), or create, a "Word" data node for each word in the list unique_words
-        class_db_id = NeoSchema.get_class_internal_id(class_name="Word")
-        result = NeoSchema.add_data_column_merge(class_internal_id=class_db_id,
+        result = NeoSchema.add_data_column_merge(class_name="Word",
                                                  property_name="name", value_list=unique_words)
+
         print("Completed the add_data_column_merge")
         #print("result: ", result)      # A dict with 2 keys: 'old_nodes' and 'new_nodes'
 
