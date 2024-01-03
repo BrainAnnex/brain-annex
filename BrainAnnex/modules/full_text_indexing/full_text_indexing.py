@@ -1,6 +1,7 @@
 import re
 import html
 from typing import Union, List, Set
+from neoaccess.cypher_utils import CypherUtils
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 
 
@@ -42,7 +43,7 @@ class FullTextIndexing:
                     'can', 'cannot', 'could', 'might', 'may', 'do', 'does', 'doesn', 'did', 'didn', 'done', 'doing',
                     'make', 'made', 'making',
                     'have', 'haven', 'has', 'had', 'hadn', 'having',
-                    'must', 'need', 'needs', 'seem', 'seems', 'seemed', 'want', 'wants', 'should', 'shouldn',
+                    'must', 'need', 'needs', 'seem', 'seems', 'seemed', 'want', 'wants', 'should', 'shouldn', 'ought',
                     'will', 'would', 'shall',
                     'get', 'gets', 'got', 'give', 'gives', 'gave', 'giving',
                     'take', 'takes', 'took', 'taking', 'put', 'bring', 'brings', 'bringing',
@@ -59,9 +60,9 @@ class FullTextIndexing:
                     'now', 'currently', 'late', 'early', 'soon', 'later', 'earlier', 'already',
                     'after', 'before', 'prior', 'yet', 'whenever', 'while', 'during', 'ever',
                     'follow', 'follows', 'following', 'along',
-                    'never', 'seldom', 'occasionally', 'sometimes',
+                    'never', 'seldom', 'rarely', 'occasionally', 'sometimes',
                     'often', 'always', 'usually', 'eventually', 'typical', 'typically', 'everyday',
-                    'almost', 'quite',
+                    'almost', 'quite', 'nearly',
                     'frequent', 'ubiquitous', 'usual', 'common', 'commonly',
                     'remarkable', 'impressive',
                     'really', 'approximately',
@@ -69,17 +70,17 @@ class FullTextIndexing:
                     'old', 'older', 'new', 'newer', 'recent', 'recently',
                     'begin', 'began', 'start', 'starting', 'started',
                     'in', 'out', 'here', 'there',
-                    'instead', 'alternative', 'alternatively', 'case', 'cases', 'extent',
+                    'instead', 'alternative', 'alternatively', 'otherwise', 'case', 'cases', 'extent',
                     'up', 'down', 'over', 'above', 'under', 'below', 'between', 'among', 'wherever',
                     'next', 'previous', 'other', 'others', 'another', 'thing', 'things',
                     'like', 'as', 'aka', 'akin', 'such', 'fairly', 'actual', 'actually',
                     'likewise', 'similar', 'similarly',
                     'simple', 'simpler', 'simplest', 'simply',
-                    'each', 'any', 'all', 'everyone', 'anyone', 'anybody', 'anything', 'something', 'someone', 'some',
+                    'each', 'per', 'any', 'all', 'everyone', 'anyone', 'anybody', 'anything', 'something', 'someone', 'some',
                     'more', 'most', 'mostly', 'additional', 'extra',
                     'less', 'least', 'than', 'enough', 'only', 'further',
                     'everything', 'nothing',
-                    'few', 'fewer', 'many', 'multiple', 'much', 'same', 'different', 'equal',
+                    'few', 'fewer', 'many', 'multiple', 'several', 'much', 'same', 'equal', 'different', 'unlike',
                     'full', 'empty', 'lot', 'very', 'around', 'vary', 'varying',
                     'complete', 'incomplete', 'thorough', 'thoroughly',
                     'approximately', 'approx', 'somewhat', 'certain', 'uncertain',
@@ -117,8 +118,8 @@ class FullTextIndexing:
                     'obvious', 'obviously', 'clearly',
                     'show', 'shows', 'showing', 'find', 'finds', 'found', 'finding', 'findings', 'respectively',
                     'still', 'size', 'pre', 'inc', 'comfortably', 'look', 'approach',
-                    'exact', 'exactly', 'likely', 'probable', 'probably', 'avg', 'total',
-                    'require', 'requires', 'requiring']
+                    'exact', 'exactly', 'likely', 'probable', 'probably', 'avg', 'total', 'misc',
+                    'require', 'requires', 'requiring', 'quick', 'quickly', 'rather']
 
 
     # TODO: allow user-specific words, from a configuration file.  For example, for German: ich, du, er, sie, wir, ihr
@@ -290,6 +291,8 @@ class FullTextIndexing:
         for the (single) specified data node that represents a "Content Item".
         The indexing will link that Content Item to the given list of unique words.
 
+        An Exception is raised if the "Indexer" node already exists
+
         Details:
         1) Create a data node of type "Indexer",
             with inbound relationships named "occurs" from "Word" data nodes
@@ -299,7 +302,7 @@ class FullTextIndexing:
             to the new "Indexer" node
 
         :param internal_id:  The internal database ID of an existing data node
-                                    that represents a "Content Item"
+                                    that represents a "Content Item" (not necessarily with that Schema name)
         :param unique_words:    A list of strings containing unique words "worthy" of indexing
                                     - for example as returned by extract_unique_good_words()
         :param to_lower_case:   If True, all text is converted to lower case
@@ -316,21 +319,25 @@ class FullTextIndexing:
                                                         links =[{"internal_id": internal_id, "rel_name": "has_index",
                                                                   "rel_dir": "IN"}])
 
-        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
+        cls.add_words_to_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
 
 
 
     @classmethod
-    def populate_index(cls, indexer_id :int, unique_words :Set[str], to_lower_case :bool) -> None:
+    def add_words_to_index_OBSOLETE(cls, indexer_id :int, unique_words :Set[str], to_lower_case :bool) -> None:
         """
+        Add to the database "Word" nodes for all the given words, unless already present.
+        Then link all the "Word" nodes, both the found and the newly-created ones,
+        to the passed "Indexer" node with "occurs" relationships
 
-        :param indexer_id:      Internal database ID of a data node used to hold all the "occurs" relationships
+        :param indexer_id:      Internal database ID of an "Indexer" data node
+                                    used to hold all the "occurs" relationships
                                     to the various Word nodes
         :param unique_words:    Set of strings, with unique words for the index
         :param to_lower_case:   If True, all text is converted to lower case
         :return:                None
         """
-
+        # TODO: drop this function - obsoleted by the far faster add_words_to_index()
         if to_lower_case:
             unique_words = list(map(str.lower, unique_words))
         else:
@@ -353,6 +360,84 @@ class FullTextIndexing:
         NeoSchema.add_data_relationship_hub(center_id=indexer_id, periphery_ids=word_node_list,
                                             periphery_class="Word",
                                             rel_name="occurs", rel_dir="IN")
+
+
+
+    @classmethod
+    def add_words_to_index(cls, indexer_id :int, unique_words :Set[str], to_lower_case=True) -> int:
+        """
+        Add to the database "Word" nodes for all the given words, unless already present.
+        Then link all the "Word" nodes, both the found and the newly-created ones,
+        to the passed "Indexer" node with an "occurs" relationships
+
+        :param indexer_id:      Internal database ID of an existing "Indexer" data node
+                                    used to hold all the "occurs" relationships
+                                    to the various Word nodes.
+                                    If not present, an Exception gets raised.
+        :param unique_words:    Set of strings, with unique words for the index
+        :param to_lower_case:   If True, all text is converted to lower case
+        :return:                The number of new "Word" Data Notes that were created
+        """
+        # Validate indexer_id
+        CypherUtils.assert_valid_internal_id(indexer_id)
+        q = '''
+            MATCH (i :Indexer)-[:SCHEMA]->(:CLASS {name: "Indexer"})
+            WHERE id(i) = $indexer_id 
+            RETURN count(i) AS number_of_nodes
+            '''
+        result = cls.db.query(q, data_binding={"indexer_id": indexer_id},
+                              single_cell="number_of_nodes")
+        assert result > 0, \
+            f"add_words_to_index(): there's no Indexer node with internal ID {indexer_id}"
+
+
+        if to_lower_case:
+            unique_words = list(map(str.lower, unique_words))
+        else:
+            unique_words = list(unique_words)
+
+        # The following query locates (or creates if not found) a "Word" data node
+        # for each word in the list unique_words,
+        # and then (as needed) it links it up to the "Indexer" node (ind), with an "occurs" relationship,
+        # and to the "Class" node named "Word" (wcl), with a "SCHEMA" relationship.
+        # Note: any already-existing "Word" data node ALREADY possess a link to the common Class node;
+        #       hence, the line   "MERGE (w :`Word` {name : word})-[:SCHEMA]->(wcl)"
+        q = '''
+            MATCH (ind :`Indexer`), (wcl :`CLASS` {name: "Word"})
+            WHERE id(ind) = $indexer_id
+            WITH ind, wcl
+            UNWIND $word_list AS word
+            MERGE (w :`Word` {name : word})-[:SCHEMA]->(wcl)
+            MERGE (ind)<-[:occurs]-(w)
+            '''
+
+        data_binding = {"indexer_id": indexer_id, "word_list": unique_words}
+        result = cls.db.update_query(q, data_binding)
+        #print(result)
+        # EXAMPLE of result:
+        #   {'labels_added': 3, '_contains_updates': True, 'relationships_created': 6, 'nodes_created': 3, 'properties_set': 3, 'returned_data': []}
+        number_word_nodes_added = result.get('nodes_created', 0)
+        number_word_nodes_found = len(unique_words) - number_word_nodes_added
+
+        assert result.get('labels_added', 0) == number_word_nodes_added, \
+            "add_words_to_index(): internal consistency error; " \
+            "the number of labels created should have equaled the number of nodes created"
+
+        assert result.get('properties_set', 0) == number_word_nodes_added, \
+            "add_words_to_index(): internal consistency error; " \
+            "the number of properties being set should have equaled the number of nodes created"
+
+        # To determine a lower and upper bound on the the number of relationships added,
+        # consider that ech newly-create Word data node adds 2 relationships (to the "Word" Class and to the "Indexer" node);
+        # by contrast, each found node only adds at most 1 relationship (to the "Indexer" node)
+        lb = 2 * number_word_nodes_added
+        ub =  lb + + number_word_nodes_found
+        assert lb <= result.get('relationships_created', 0) <= ub, \
+            f"add_words_to_index(): internal consistency error; " \
+            f"the number of relationships_created should have been between {lb} and {ub}, inclusive; " \
+            f"instead of result.get('relationships_created', 0)"
+
+        return number_word_nodes_added
 
 
 
@@ -385,7 +470,7 @@ class FullTextIndexing:
         # i.e. give a "clean slate" to the "Indexer" data node
         NeoSchema.remove_multiple_data_relationships(node_id=indexer_id, rel_name="occurs", rel_dir="IN", labels="Word")
 
-        cls.populate_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
+        cls.add_words_to_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
 
 
 
@@ -581,7 +666,9 @@ class FullTextIndexing:
 
         :param word:    A string, typically containing a word or word fragment;
                             case is ignored, and so are leading/trailing blanks
-        :param all_properties:
+        :param all_properties:  If True, the properties of the located nodes are returned
+                                alongside their internal database ID's.
+                                Default is False: only return the internal database ID's
         :return:        If all_properties is False,
                             a (possibly empty) list of the internal database ID's
                             of all the found nodes

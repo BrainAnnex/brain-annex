@@ -822,6 +822,8 @@ class ApiRouting:
                 curl http://localhost:5000/BA/api/update -d "uri=11&schema_code=h&text=my_header"
                 curl http://localhost:5000/BA/api/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
             """
+            #TODO: maybe pass the Class name instead of the "schema_code", as a redundant field
+
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('schema_code', 'r')])
             #cls.show_post_data(post_data, "update")

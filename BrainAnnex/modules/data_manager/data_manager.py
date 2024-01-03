@@ -687,12 +687,13 @@ class DataManager:
 
         NOTE: the "schema_code" field is currently required, but it's redundant.  Only
               used as a safety mechanism against incorrect values of the URI
-
-        TODO: if any (non-special?) field is blank, drop it altogether from the node;
-              maybe add this capability to set_fields()
+              (TODO: maybe ditch, or use the Class name instead)
 
         :return:    None.  In case of error, an Exception is raised
         """
+        #TODO: if any (non-special?) field is blank, drop it altogether from the node;
+        #      maybe add this capability to set_fields()
+
         #print("In update_content_item(). POST dict: ", post_data)
 
         # Validate the data
@@ -700,7 +701,7 @@ class DataManager:
         #print("Item Type: ", schema_code)
 
         uri = post_data.get("uri")
-        assert uri, "update_content_item(): uri is missing"
+        assert uri, "update_content_item(): a value for `uri` is missing from the POST data"
 
         #print("Item Type: ", uri)
 
@@ -714,7 +715,9 @@ class DataManager:
                 set_dict[k] = v
 
 
-        # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
+        # First, make sure that the requested Content Item exists.
+        # TODO: get assistance from Schema layer.  Try:
+        #       assert NeoSchema.data_node_exists(data_node=uri), f"update_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'
         match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
         records = cls.db.get_nodes(match)
         assert records != [], f"update_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
@@ -724,17 +727,29 @@ class DataManager:
         #       TODO: try to infer them from the Schema
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
 
+        # TODO: instead of passing along in the POST request things like `basename` and `suffix`
+        #       (which place a burden on the front end),
+        #       get them from the database, and just pass all the node attributes to the plugin-specific modules
+        #       Try:
+        #           db_data = NeoSchema.fetch_data_node(uri=uri)
+        #           Then pass db_data as a parameter to the plugin-specific modules
+
+
         if schema_code == "n":
-            set_dict = Notes.update_content(data_binding, set_dict)
+            if data_binding.get("basename") == "undefined":
+                raise Exception("update_content_item(): attempting "
+                                "to pass a `basename` attribute to the value 'undefined'")
+            set_dict = Notes.before_update_content(data_binding, set_dict)
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to string uri's
-        number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
+        #internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to string uri's
+        #number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
+        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=set_dict, drop_blanks=True)
 
         if schema_code == "n":
             Notes.update_content_item_successful(uri, original_post_data)
 
-        # If the update was NOT for a "note" (in which case it might only be about the note than its metadata)
+        # If the update was NOT for a "note" (in which case it might only be about the note's body than its metadata)
         # verify that some fields indeed got changed
         if schema_code != "n" and number_updated == 0:
             raise Exception("No update performed")
@@ -891,6 +906,9 @@ class DataManager:
         #       only the attributes that will go into the new node are still present.
         #       Some attributes may have been added by a plugin-specific module
 
+        if post_data.get("basename") == "undefined":    # TODO: maybe extend to ALL fields being set!
+            raise Exception("new_content_item_in_category(): attempting "
+                            "to set a `basename` attribute to the value 'undefined'")
 
         # Create the new node and required relationships
         if insert_after == "TOP":

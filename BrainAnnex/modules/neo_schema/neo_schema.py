@@ -1484,6 +1484,45 @@ class NeoSchema:
 
 
     @classmethod
+    def data_node_exists(cls, data_node: Union[int, str]) -> bool:
+        """
+        Return True if the specified Data Node exists, or False otherwise.
+
+        :param data_node:   Either an integer (representing an internal database ID),
+                                or a string (representing the value of the "uri" field)
+        :return:            True if the specified Data Node exists, or False otherwise
+        """
+        # Prepare the clause part of a Cypher query
+        if type(data_node) == int:
+            clause = "WHERE id(dn) = $data_node"
+        elif type(data_node) == str:
+            clause = "WHERE dn.uri = $data_node"
+
+        else:
+            raise Exception(f"data_node_exists(): "
+                            f"argument `data_node` must be an integer or a string; "
+                            f"instead, it is {type(data_node)}")
+
+        # Prepare a Cypher query to locate the number of the data nodes
+        q = f'''
+            MATCH (:CLASS)<-[:SCHEMA]-(dn) 
+            {clause} 
+            RETURN COUNT(dn) AS number_found
+            '''
+
+        number_found = cls.db.query(q, {"data_node" : data_node}, single_cell="number_found")
+
+        if number_found == 0:
+            return False
+        elif number_found == 1:
+            return True
+        else:
+            raise Exception(f"data_node_exists(): more than 1 node was found "
+                            f"with the same URI ({data_node}), which ought to be unique")
+
+
+
+    @classmethod
     def fetch_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data node
@@ -2213,7 +2252,6 @@ class NeoSchema:
         # Generate an Exception if any of the requested properties is not registered with the Schema Class
         cls.allowable_props(class_internal_id=class_internal_id, requested_props={property_name : 0},
                             silently_drop=False)    # TODO: get rid of hack that requires a value for the property
-
 
         new_id_list = []
         existing_id_list = []
