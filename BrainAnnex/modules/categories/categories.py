@@ -730,6 +730,12 @@ class Categories:
             #       attributes named "pos" or "class_name"!
             item_record["pos"] = elem["pos"]                # Inject into the record a positional value
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
+            if "date_created" in item_record:
+                del item_record["date_created"] # Datetime objects aren't serializable and lead to Flask errors
+                                                # TODO: let NeoAccess handle the conversion to string
+                                                # TODO: utilize a "type" attribute in the Schema Property node,
+                                                #       to inform of the "datetime" data type
+
             content_item_list.append(item_record)
 
         #print(content_item_list)
@@ -903,7 +909,7 @@ class Categories:
         # Now extract all the Property fields, in the schema-stored order, of the above Classes
         records_schema_data = {}
         for cl in class_list:
-            prop_list = NeoSchema.get_class_properties(schema_id=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
+            prop_list = NeoSchema.get_class_properties(class_node=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
             class_name = cl["class_name"]
             records_schema_data[class_name] = prop_list
 

@@ -336,6 +336,9 @@ Vue.component('vue-plugin-n',
                     post_obj.uri = noteID;
                     post_obj.body = newBody;
                     post_obj.title = this.current_data['title'];
+                    post_obj.basename = this.current_data['basename'];
+                    if (post_obj.basename === undefined)
+                        alert("Attempting to call /BA/api/update with an undefined basename!");
 
                     var url_server = "/BA/api/update";
                 }
@@ -374,9 +377,16 @@ Vue.component('vue-plugin-n',
                     this.status_message = "Successful edit";
                     this.error = false;
 
-                    // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.uri == -1)
+                    console.log(`--- URI is: ${this.item_data.uri}`);
+
+                    // If this was a new item (with the temporary ID of -1),
+                    // update its URI (in this Vue component) with the value assigned by the server;
+                    // also, update its basename accordingly
+                    if (this.item_data.uri == -1)  {
                         this.current_data.uri = server_payload;
+                        console.log(`updating front-end value of 'basename' to 'notes-${server_payload}'`);
+                        this.current_data.basename = `notes-${server_payload}`; // TODO: change this convention
+                    }
 
                     // Inform the parent component of the new state of the data
                     console.log("Notes component sending `updated-item` signal to its parent");

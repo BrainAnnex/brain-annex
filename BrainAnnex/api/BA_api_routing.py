@@ -7,11 +7,11 @@ from flask import Blueprint, jsonify, request, current_app, make_response  # The
 from flask_login import login_required
 from BrainAnnex.modules.data_manager.data_manager import DataManager
 from BrainAnnex.modules.data_manager.documentation_generator import DocumentationGenerator
-from BrainAnnex.modules.media_manager.media_manager import MediaManager
+from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.documents import Documents
-from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper, ImageProcessing
+from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
@@ -822,6 +822,8 @@ class ApiRouting:
                 curl http://localhost:5000/BA/api/update -d "uri=11&schema_code=h&text=my_header"
                 curl http://localhost:5000/BA/api/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
             """
+            #TODO: maybe pass the Class name instead of the "schema_code", as a redundant field
+
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('schema_code', 'r')])
             #cls.show_post_data(post_data, "update")
@@ -1403,7 +1405,7 @@ class ApiRouting:
             """
             Upload new media Content, to the (currently hardwired) media folder, and attach it to the Category
             specified in the POST variable "category_id"
-            TODO: media is currently added in a fixed position to the END of the Category page
+            TODO: media is currently added in a fixed position at the END of the Category page
         
             USAGE EXAMPLE:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload_media">
@@ -1440,6 +1442,7 @@ class ApiRouting:
         
 
             # Map the MIME type of the uploaded file into a schema_code
+            # TODO: maybe store the MIME type in the database?
             if mime_type.split('/')[0] == "image":  # For example, 'image/jpeg', 'image/png', etc.
                 class_name = "Images"
             else:

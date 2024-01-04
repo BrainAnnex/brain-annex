@@ -125,6 +125,7 @@ class PagesRouting:
             #print("bread_crumbs: ", bread_crumbs)
             # EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
 
+
             # Fetch all the Content Items attached to this Category
             content_items = Categories.get_content_items_by_category(category_uri)
             #   List of dictionaries.  EXAMPLE:
@@ -148,9 +149,10 @@ class PagesRouting:
 
         @bp.route('/filter')
         def filter_page() -> str:
+            """
             # General filter page, in early stage
             # EXAMPLE invocation: http://localhost:5000/BA/pages/filter
-
+            """
             template = "filter.htm"
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages)

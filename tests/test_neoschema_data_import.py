@@ -21,6 +21,21 @@ def db():
 
 
 
+def test__scrub_dict():
+    d = {"a": 1,
+         "b": 3.5, "c": float("nan"),
+         "d": "some value", "e": "   needs  cleaning!    ",
+         "f": "", "g": "            ",
+         "h": (1, 2)}
+
+    result = NeoSchema._scrub_dict(d)
+    assert result == {"a": 1,
+                      "b": 3.5,
+                      "d": "some value", "e": "needs  cleaning!",
+                      "h": (1, 2)}
+
+
+
 def test_create_tree_from_dict_1(db):
     db.empty_dbase()
 

@@ -3,7 +3,7 @@ from BrainAnnex.modules.categories.categories import Categories
 from BrainAnnex.modules.PLUGINS.notes import Notes
 from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
-from BrainAnnex.modules.media_manager.media_manager import MediaManager
+from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
 import re                               # For REGEX
 import pandas as pd
@@ -458,7 +458,7 @@ class DataManager:
         # Now extract all the Property fields, in the schema-stored order, of the above Classes
         records_schema_data = {}
         for cl in class_list:
-            prop_list = NeoSchema.get_class_properties(schema_id=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
+            prop_list = NeoSchema.get_class_properties(class_node=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
             class_name = cl["class_name"]
             records_schema_data[class_name] = prop_list
 
@@ -517,10 +517,13 @@ class DataManager:
 
         :param uri: String identifier for a media item
         :param th:  If not None, then the thumbnail version is returned (only
-                        applicable to images)
+                        applicable to images).  If not found, but the full-size image
+                        is present, create and save a thumbnail file, prior to
+                        returning the contents of the newly-created file
         :return:    The binary data
         """
-        #TODO: (at least for large media) read the file in blocks
+        # TODO: (at least for large media) read the file in blocks
+        # TODO: move to MediaManager class
 
         #print("In get_binary_content(): uri = ", uri)
         content_node = NeoSchema.fetch_data_node(uri = uri)
@@ -530,21 +533,69 @@ class DataManager:
 
         basename = content_node['basename']
         suffix = content_node['suffix']
-        filename = f"{basename}.{suffix}"
+        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
 
         if th:
             thumb = True
         else:
             thumb = False
 
-        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)  # Includes the final "/"
+        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
+        # Includes the final "/"
+        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
 
         try:
-            file_contents = MediaManager.get_from_binary_file(folder, filename)
+            file_contents = MediaManager.get_from_binary_file(path=folder, filename=filename)
             return (suffix, file_contents)
+
         except Exception as ex:
             # File I/O failed
-            raise Exception(f"Reading of data file for Content Item {uri} failed: {ex}")
+            error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
+            print(error_msg)
+            if not thumb:
+                raise Exception(error_msg)
+            else:
+                # We looked for a thumbnail version, and didn't find it
+                print("    Trying to use the full-size image instead of its thumb version...")
+
+                # Attempt to resize the full-sized version, and save the new thumbnail file
+                try:
+                    # Get the folder for the full-size images
+                    images_folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'],
+                                                                  thumb=None)
+                    source_full_name = images_folder + filename
+                    print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
+
+                    # Full-size version was found; obtain its dimensions
+                    width, height = ImageProcessing.get_image_size(source_full_name)
+                    # Create a thumbnail version
+                    thumb_folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'],
+                                                                 thumb=thumb)
+                    # Carry out the resizing, and save the thumbnail file
+                    print("    Attempting to create a thumbnail version of it")
+                    #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
+                    #      f"src_width={width} | src_height={height}")
+                    ImageProcessing.save_thumbnail(src_folder=images_folder, filename=filename, save_to_folder=thumb_folder,
+                                                   src_width=width, src_height=height)
+                    # Get the contents of the newly-created thumbnail file
+                    file_contents = MediaManager.get_from_binary_file(path=folder, filename=filename)
+                    return (suffix, file_contents)
+
+                except Exception as ex:
+                    # Failed to resize the file, or to read in the resized file
+                    error_msg = f"    Unable resize the image ({filename}), or to read the resized file. {ex}\n" \
+                                f"    Attempting to return the full-sized file instead"
+                    print(error_msg)
+
+                    # One last attempt: try to read in and return the full-sized version
+                    try:
+                        file_contents = MediaManager.get_from_binary_file(path=images_folder, filename=filename)
+                        return (suffix, file_contents)
+                    except Exception as ex:
+                        # File I/O failed
+                        error_msg = f"Unable to load the full-size version of image, either. {ex}"
+                        print(error_msg)
+                        raise Exception(error_msg)
 
 
 
@@ -636,12 +687,13 @@ class DataManager:
 
         NOTE: the "schema_code" field is currently required, but it's redundant.  Only
               used as a safety mechanism against incorrect values of the URI
-
-        TODO: if any (non-special?) field is blank, drop it altogether from the node;
-              maybe add this capability to set_fields()
+              (TODO: maybe ditch, or use the Class name instead)
 
         :return:    None.  In case of error, an Exception is raised
         """
+        #TODO: if any (non-special?) field is blank, drop it altogether from the node;
+        #      maybe add this capability to set_fields()
+
         #print("In update_content_item(). POST dict: ", post_data)
 
         # Validate the data
@@ -649,7 +701,7 @@ class DataManager:
         #print("Item Type: ", schema_code)
 
         uri = post_data.get("uri")
-        assert uri, "update_content_item(): uri is missing"
+        assert uri, "update_content_item(): a value for `uri` is missing from the POST data"
 
         #print("Item Type: ", uri)
 
@@ -663,7 +715,9 @@ class DataManager:
                 set_dict[k] = v
 
 
-        # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
+        # First, make sure that the requested Content Item exists.
+        # TODO: get assistance from Schema layer.  Try:
+        #       assert NeoSchema.data_node_exists(data_node=uri), f"update_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'
         match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
         records = cls.db.get_nodes(match)
         assert records != [], f"update_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
@@ -673,17 +727,29 @@ class DataManager:
         #       TODO: try to infer them from the Schema
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
 
+        # TODO: instead of passing along in the POST request things like `basename` and `suffix`
+        #       (which place a burden on the front end),
+        #       get them from the database, and just pass all the node attributes to the plugin-specific modules
+        #       Try:
+        #           db_data = NeoSchema.fetch_data_node(uri=uri)
+        #           Then pass db_data as a parameter to the plugin-specific modules
+
+
         if schema_code == "n":
-            set_dict = Notes.update_content(data_binding, set_dict)
+            if data_binding.get("basename") == "undefined":
+                raise Exception("update_content_item(): attempting "
+                                "to pass a `basename` attribute to the value 'undefined'")
+            set_dict = Notes.before_update_content(data_binding, set_dict)
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to string uri's
-        number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
+        #internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to string uri's
+        #number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
+        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=set_dict, drop_blanks=True)
 
         if schema_code == "n":
             Notes.update_content_item_successful(uri, original_post_data)
 
-        # If the update was NOT for a "note" (in which case it might only be about the note than its metadata)
+        # If the update was NOT for a "note" (in which case it might only be about the note's body than its metadata)
         # verify that some fields indeed got changed
         if schema_code != "n" and number_updated == 0:
             raise Exception("No update performed")
@@ -813,7 +879,7 @@ class DataManager:
             del post_data["class_name"]
         else:
             # If not provided, look it up from the schema_id
-            class_name = NeoSchema.get_class_name(schema_id)
+            class_name = NeoSchema.get_class_name_by_schema_id(schema_id)
             print(f"class_name looked up as: `{class_name}`")
 
 
@@ -840,6 +906,9 @@ class DataManager:
         #       only the attributes that will go into the new node are still present.
         #       Some attributes may have been added by a plugin-specific module
 
+        if post_data.get("basename") == "undefined":    # TODO: maybe extend to ALL fields being set!
+            raise Exception("new_content_item_in_category(): attempting "
+                            "to set a `basename` attribute to the value 'undefined'")
 
         # Create the new node and required relationships
         if insert_after == "TOP":
@@ -945,7 +1014,7 @@ class DataManager:
         #   ]
 
         for node in result:
-            internal_id = node["internal_id"]
+            internal_id = node["internal_id"]   # Ignore the PyCharm's complain about the data type!
             #print("\n\n--- internal_id: ", internal_id)
 
 
@@ -956,6 +1025,10 @@ class DataManager:
             #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)
             node["internal_links"] = neighbor_props
+
+            if "date_created" in node:
+                del node["date_created"]    # Datetime objects aren't serializable and lead to Flask errors
+                                            # TODO: go beyond this ad-hoc fix!
 
             '''
             #TODO: consider the following generalized approach
