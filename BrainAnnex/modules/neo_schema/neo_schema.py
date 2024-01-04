@@ -2066,7 +2066,7 @@ class NeoSchema:
 
 
     @classmethod
-    def import_pandas_links(cls, df :pd.DataFrame, class_from :str, class_to :str,
+    def import_pandas_links(cls, df :pd.DataFrame,
                             col_from :str, col_to :str,
                             link_name :str,
                             col_link_props=None, name_map=None,
@@ -2076,12 +2076,10 @@ class NeoSchema:
         from the rows of a Pandas dataframe, as database links between the existing Data Nodes
 
         :param df:          A Pandas Data Frame with the data RELATIONSHIP to import
-        :param class_from:  Name of the Class of the data nodes from which the relationship starts
-        :param class_to:    Name of the Class of the data nodes from which the relationship ends
         :param col_from:    Name of the Data Frame column specifying the data nodes from which the relationship starts
         :param col_to:      Name of the Data Frame column specifying the data nodes from which the relationship starts
         :param link_name:   Name of the new relationship being created
-        :param col_link_props:    (OPTIONAL) Name of a property to assign to the relations,
+        :param col_link_props: (OPTIONAL) Name of a property to assign to the relations,
                                 as well as name of the Data Frame column containing the values
         :param name_map:    (OPTIONAL) Dict with mapping from Pandas column names
                                 to Property names in the data nodes in the database
@@ -2100,18 +2098,17 @@ class NeoSchema:
         assert col_to in cols, \
             f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` requested in the argument 'col_to'"
 
-
-        if col_from in name_map:
+        if name_map and col_from in name_map:
             key_from = name_map[col_from]
         else:
             key_from = col_from
 
-        if col_to in name_map:
+        if name_map and col_to in name_map:
             key_to = name_map[col_to]
         else:
             key_to = col_to
 
-        if col_link_props in name_map:
+        if name_map and col_link_props in name_map:
             link_prop = name_map[col_link_props]
         else:
             link_prop = col_link_props
@@ -2123,22 +2120,32 @@ class NeoSchema:
         links_imported = []
         for d in recordset:     # d is a dictionary
             # Prepare a Cypher query to link up the 2 nodes
-            q = f'''
-                MATCH (from_node {{{key_from}: $value_from}}), (to_node {{{key_to}: $value_to}})
-                MERGE (from_node)-[r:`{link_name}` {{{link_prop}: $rel_prop_value}}]->(to_node)
-                RETURN id(r) AS link_id
-                '''
+            if link_prop:
+                q = f'''
+                    MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
+                    MERGE (from_node)-[r:`{link_name}` {{{link_prop}: $rel_prop_value}}]->(to_node)
+                    RETURN id(r) AS link_id
+                    '''
 
-            data_dict = {"value_from": d[col_from], "value_to": d[col_to], "rel_prop_value": d[link_prop]}
+                data_dict = {"value_from": d[col_from], "value_to": d[col_to], "rel_prop_value": d[link_prop]}
+            else:
+                q = f'''
+                    MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
+                    MERGE (from_node)-[r:`{link_name}`]->(to_node)
+                    RETURN id(r) AS link_id
+                    '''
+
+                data_dict = {"value_from": d[col_from], "value_to": d[col_to]}
+
             #cls.db.debug_query_print(q, data_dict)
             result = cls.db.update_query(q, data_dict)
             #print(result)
 
             if result.get('relationships_created') == 1:    # If a new link was created
                 returned_data = result.get('returned_data')
-                #if returned_data:
+                # EXAMPLE of returned_data': [{'link_id': 103}]}
                 links_imported.append(returned_data[0]["link_id"])
-                if result.get('properties_set') != 1:
+                if col_link_props and result.get('properties_set') != 1:
                     error_msg = f"import_pandas_links(): failed to set the property value for the new relationship for Pandas row: {d}"
                     if skip_errors:
                         print(error_msg)
