@@ -3141,7 +3141,7 @@ class NeoSchema:
 
     @classmethod
     def remove_multiple_data_relationships(cls, node_id: Union[int, str], rel_name: str, rel_dir: str, labels=None) -> None:
-        """     TODO: test
+        """
         Drop all the relationships with the given name, from or to the given data node.
         Note: the data node is left untouched.
 
@@ -3153,6 +3153,7 @@ class NeoSchema:
         :param labels:      [OPTIONAL]
         :return:            None
         """
+        # TODO: test
         assert rel_name, \
                 f"remove_data_relationship(): no name was provided for the relationship to be removed"
 

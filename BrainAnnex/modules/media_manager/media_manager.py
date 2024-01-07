@@ -5,6 +5,7 @@
 
 import os
 import BrainAnnex.modules.utilities.exceptions as exceptions
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from PIL import Image
 
 
@@ -112,6 +113,98 @@ class MediaManager:
         with open(full_file_name, 'rb') as fh:
             file_contents = fh.read()
             return file_contents
+
+
+
+    @classmethod
+    def get_binary_content(cls, uri :str, th) -> (str, bytes):
+        """
+        Fetch and return the contents of a media item stored on a local file.
+        In case of error, raise an Exception
+
+        :param uri: String identifier for a media item
+        :param th:  If not None, then the thumbnail version is returned (only
+                        applicable to images).
+                        If the thumbnail version is not found, but the full-size image
+                        is present, create and save a thumbnail file, prior to
+                        returning the contents of the newly-created file
+
+        :return:    The pair (filename suffix, binary data in the file)
+        """
+        # TODO: (at least for large media) read the file in blocks
+
+        #print("In get_binary_content(): uri = ", uri)
+        content_node = NeoSchema.fetch_data_node(uri = uri)
+        #print("content_node:", content_node)
+        if content_node is None:
+            raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
+
+        basename = content_node['basename']
+        suffix = content_node['suffix']
+        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
+
+        if th:
+            thumb = True
+        else:
+            thumb = False
+
+        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
+        # Includes the final "/"
+        folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
+
+        try:
+            file_contents = cls.get_from_binary_file(path=folder, filename=filename)
+            return (suffix, file_contents)
+
+        except Exception as ex:
+            # File I/O failed
+            error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
+            print(error_msg)
+            if not thumb:
+                raise Exception(error_msg)
+            else:
+                # We looked for a thumbnail version, and didn't find it
+                print("    Trying to use the full-size image instead of its thumb version...")
+
+                # Attempt to resize the full-sized version, and save the new thumbnail file
+                try:
+                    # Get the folder for the full-size images
+                    images_folder = cls.lookup_file_path(schema_code=content_node['schema_code'],
+                                                                  thumb=False)
+                    source_full_name = images_folder + filename
+                    print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
+
+                    # Full-size version was found; obtain its dimensions
+                    width, height = ImageProcessing.get_image_size(source_full_name)
+                    # Create a thumbnail version
+                    thumb_folder = cls.lookup_file_path(schema_code=content_node['schema_code'],
+                                                                 thumb=thumb)
+                    # Carry out the resizing, and save the thumbnail file
+                    print("    Attempting to create a thumbnail version of it")
+                    #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
+                    #      f"src_width={width} | src_height={height}")
+                    ImageProcessing.save_thumbnail(src_folder=images_folder, filename=filename, save_to_folder=thumb_folder,
+                                                   src_width=width, src_height=height)
+                    # Get the contents of the newly-created thumbnail file
+                    file_contents = cls.get_from_binary_file(path=folder, filename=filename)
+                    return (suffix, file_contents)
+
+                except Exception as ex:
+                    # Failed to resize the file, or to read in the resized file
+                    error_msg = f"    Unable resize the image ({filename}), or to read the resized file. {ex}\n" \
+                                f"    Attempting to return the full-sized file instead"
+                    print(error_msg)
+
+                    # One last attempt: try to read in and return the full-sized version
+                    try:
+                        file_contents = cls.get_from_binary_file(path=images_folder, filename=filename)
+                        return (suffix, file_contents)
+                    except Exception as ex:
+                        # File I/O failed
+                        error_msg = f"Unable to load the full-size version of image, either. {ex}"
+                        print(error_msg)
+                        raise Exception(error_msg)
+
 
 
 

@@ -1,6 +1,6 @@
 """
     Web API endpoint
-    MIT License.  Copyright (c) 2021-2023 Julian A. West
+    MIT License.  Copyright (c) 2021-2024 Julian A. West
 """
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
@@ -723,7 +723,7 @@ class ApiRouting:
                             together with an error message
             """
             try:
-                (suffix, content) = DataManager.get_binary_content(uri, th)
+                (suffix, content) = MediaManager.get_binary_content(uri, th)
                 response = make_response(content)
                 # Set the MIME type
                 mime_type = MediaManager.get_mime_type(suffix)
