@@ -1405,8 +1405,7 @@ class ApiRouting:
             """
             Upload new media Content, to the (currently hardwired) media folder, and attach it to the Category
             specified in the POST variable "category_id"
-            TODO: media is currently added in a fixed position at the END of the Category page
-        
+
             USAGE EXAMPLE:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload_media">
                     <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
@@ -1420,6 +1419,8 @@ class ApiRouting:
             If the upload is successful, a normal status (200) is returned (no response data);
                 in case of error, a server error status is return (500), with a text error message
             """
+            # TODO: move a lot of this function to MediaManager
+            # TODO: media is currently added in a fixed position at the END of the Category page
 
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('category_id', '3677'), ('pos', 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW')])
@@ -1439,7 +1440,7 @@ class ApiRouting:
                 print("upload_media(): ", err_status)
                 response = make_response(err_status, 500)
                 return response
-        
+
 
             # Map the MIME type of the uploaded file into a schema_code
             # TODO: maybe store the MIME type in the database?
@@ -1468,22 +1469,35 @@ class ApiRouting:
             category_uri = post_data["category_id"]
 
 
+            (basename, suffix) = os.path.splitext(tmp_filename_for_upload)  # EXAMPLE: "test.jpg" becomes
+                                                                            #          ("test", ".jpg")
+            if suffix:
+                suffix = suffix[1:]         # Drop the first character (the ".")  EXAMPLE: "jpg"
+
+            properties = {"basename": basename, "suffix": suffix}
+
             # TODO: turn into a call to a plugin-provided method, prior to database add
             if class_name == "Images":
                 # This is specifically for Images
                 try:
-                    properties = ImageProcessing.process_uploaded_image(tmp_filename_for_upload, dest_fullname, media_folder=dest_folder)
-                    #   properties contains the following keys: "caption", "basename", "suffix", "width", "height"
-                except Exception as ex:
-                    err_status = "Unable save, or make a thumb from, the uploaded image. " + exceptions.exception_helper(ex)
+                    extra_properties = ImageProcessing.process_uploaded_image(media_folder=dest_folder,
+                                                                              basename=basename, suffix=suffix)
+                    #   extra_properties may contain the following keys: "caption", "width", "height"
+
+                except Exception:
+                    extra_properties = {}       # Nothing else to save in the database
+                    '''
+                    err_status = "Unable to save, or make a thumb from, the uploaded image. " \
+                                 + exceptions.exception_helper(ex)
                     return make_response(err_status, 500)
+                    '''
             else:
                 # This is specifically for Documents
-                (basename, suffix) = os.path.splitext(tmp_filename_for_upload)     # EXAMPLE: "test.jpg" becomes ("test", ".jpg")
-                suffix = suffix[1:]     # Drop the first character (the ".")  EXAMPLE: "jpg"
+                extra_properties = {"caption": basename}        # Add another attribute
 
-                properties = {"caption": basename,
-                              "basename": basename, "suffix": suffix}
+            #print("upload_media(): extra_properties: ", extra_properties)
+            properties.update(extra_properties)     # Merge the extra dictionary into the main one
+            #print("upload_media(): properties: ", properties)
 
 
             # Update the database (for now, the media is added AT THE END of the Category page)

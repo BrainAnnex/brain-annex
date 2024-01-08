@@ -799,7 +799,7 @@ class Categories:
                                                      silently_drop=True)
         #print("Returned from NeoSchema.create_data_node")
 
-        print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_uri = {new_uri}")
+        print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_uri = '{new_uri}'")
 
         # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
         q = '''
