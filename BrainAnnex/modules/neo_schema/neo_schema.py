@@ -1024,7 +1024,7 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def get_class_properties_fast(cls, class_neo_id: int, include_ancestors=False, sort_by_path_len=False) -> [str]:
+    def get_class_properties_fast(cls, class_node: int, include_ancestors=False, sort_by_path_len=False) -> [str]:
         """
         Faster version of get_class_properties()  [Using class_neo_id]
 
@@ -1033,7 +1033,7 @@ class NeoSchema:
         if include_ancestors is True),
         sorted by the schema-specified position (or, optionally, by path length)
 
-        :param class_neo_id:        Integer with the Neo4j ID of a Class node
+        :param class_node:        Integer with the internal database ID of a Class node
         :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
                                     to the given one by means of a chain of outbound "INSTANCE_OF" relationships
                                     Note: the sorting by relationship index won't mean much if ancestral nodes are included,
@@ -1078,7 +1078,7 @@ class NeoSchema:
                 ORDER BY r.index
                 '''
 
-        name_list = cls.db.query(q, {"class_neo_id": class_neo_id}, single_column="prop_name")
+        name_list = cls.db.query(q, {"class_neo_id": class_node}, single_column="prop_name")
 
         return name_list
 
@@ -1403,7 +1403,7 @@ class NeoSchema:
 
 
     @classmethod
-    def all_properties(cls, label, primary_key_name, primary_key_value) -> [str]:
+    def all_properties(cls, label :str, primary_key_name :str, primary_key_value) -> [str]:
         """
         Return the list of the *names* of all the Properties associated with the given DATA node,
         based on the Schema it is associated with, sorted their by schema-specified position.
@@ -1415,7 +1415,8 @@ class NeoSchema:
         :param label:
         :param primary_key_name:
         :param primary_key_value:
-        :return:
+        :return:                    A list of the names of the Properties associated
+                                        with the given DATA node
         """
         q = f'''
             MATCH  (d :`{label}` {{ {primary_key_name}: $primary_key_value}})
@@ -1443,23 +1444,32 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node_internal_id(cls, uri :str) -> int:
+    def get_data_node_internal_id(cls, uri :str, label=None) -> int:
         """
-        Returns the internal database ID of the given data node,
-        specified by its value of the uri attribute
+        Returns the internal database ID of the given Data Node,
+        specified by the value of its uri attribute
+        (and optionally by a label)
 
-        :param uri: A string to identify a data node by the value of its "uri" attribute
-        :return:    The internal database ID of the specified data node
+        :param uri:     A string to identify a Data Node by the value of its "uri" attribute
+        :param label:   (OPTIONAL) String to require the Data Node to have (redundant,
+                            since "uri" already uniquely specifies a Data Node - but
+                            could be used for speed or data integrity)
+
+        :return:        The internal database ID of the specified Data Node
         """
-        match = cls.db.match(key_name="uri", key_value=uri)
+        match = cls.db.match(key_name="uri", key_value=uri, labels=label)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
-        if not result:
-            raise Exception(f"NeoSchema.get_data_node_internal_id(): no Data Node with the given uri ({uri}) was found")
+        if label:
+            assert result, f"NeoSchema.get_data_node_internal_id(): " \
+                           f"no Data Node with the given uri ('{uri}') and label ('{label}') was found"
+        else:
+            assert result, f"NeoSchema.get_data_node_internal_id(): " \
+                           f"no Data Node with the given uri ('{uri}') was found"
 
         if len(result) > 1:
             raise Exception(f"NeoSchema.get_data_node_internal_id(): more than 1 Data Node "
-                            f"with the given uri ({uri}) was found ({len(result)} were found)")
+                            f"with the given uri ('{uri}') was found ({len(result)} were found)")
 
         return result[0]["internal_id"]
 
@@ -1468,16 +1478,17 @@ class NeoSchema:
     @classmethod
     def get_data_node_id(cls, key_value :str, key_name="uri") -> int:
         """
-        Get the internal database ID of a data node, given some other primary key
+        Get the internal database ID of a Data Node, given some other primary key
 
-        :return:   An integer with the internal database ID of the data node
+        :param key_value:
+        :param key_name:
+        :return:            The internal database ID of the specified Data Node
         """
-
         match = cls.db.match(key_name=key_name, key_value=key_value)
         result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
 
-        if result is None:
-            raise Exception(f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`")
+        assert result is not None, \
+            f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`"
 
         return result
 
