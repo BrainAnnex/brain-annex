@@ -222,6 +222,7 @@ class ApiRouting:
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
         @bp.route('/get_properties_by_class_name', methods=['POST'])
+        #@login_required
         def get_properties_by_class_name():
             """
             Get all Properties of the given Class node (as specified by its name passed as a POST variable),
@@ -236,7 +237,8 @@ class ApiRouting:
                 TODO: add an optional extra field, "include_ancestors"
 
             :return:  A JSON with a list of the Property names of the specified Class,
-                      including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships (TODO: make optional)
+                      including indirect ones that arise thru
+                      chains of outbound "INSTANCE_OF" relationships (TODO: make optional)
                          EXAMPLE:
                             {
                                 "payload":  [
@@ -257,16 +259,16 @@ class ApiRouting:
                 response = {"status": "error", "error_message": "The expected POST parameter `class_name` is not present"}
             else:
                 class_name = data_dict["class_name"]
-                schema_id = NeoSchema.get_class_id(class_name)
-                if schema_id == -1:
-                    response = {"status": "error", "error_message": f"Unable to locate any Class named `{class_name}`"}
-                else:
-                    try:
-                        # Fetch all the Properties
-                        prop_list = NeoSchema.get_class_properties(schema_id, include_ancestors=True)
-                        response = {"status": "ok", "payload": prop_list}
-                    except Exception as ex:
-                        response = {"status": "error", "error_message": str(ex)}
+                #schema_id = NeoSchema.get_class_id(class_name)
+                #if schema_id == -1:
+                    #response = {"status": "error", "error_message": f"Unable to locate any Class named `{class_name}`"}
+                #else:
+                try:
+                    # Fetch all the Properties
+                    prop_list = NeoSchema.get_class_properties(class_node=class_name, include_ancestors=True)
+                    response = {"status": "ok", "payload": prop_list}
+                except Exception as ex:
+                    response = {"status": "error", "error_message": str(ex)}
 
             #print(f"get_properties_by_class_name() is returning: `{response}`")
 
@@ -275,6 +277,7 @@ class ApiRouting:
 
 
         @bp.route('/get_properties/<schema_id>')
+        @login_required
         def get_properties(schema_id):
             """
             Get all Properties by the schema_id of a Class node,
@@ -293,7 +296,7 @@ class ApiRouting:
             """
         
             # Fetch all the Properties
-            prop_list = NeoSchema.get_class_properties(int(schema_id), include_ancestors=True)
+            prop_list = NeoSchema.get_class_properties_OLD(int(schema_id), include_ancestors=True)
             response = {"status": "ok", "payload": prop_list}
             # TODO: handle error scenarios
         
@@ -302,6 +305,7 @@ class ApiRouting:
 
 
         @bp.route('/get_links/<schema_id>')
+        @login_required
         def get_links(schema_id):
             """
             Get the names of all the relationship attached to the Class specified by its Schema ID
@@ -338,6 +342,7 @@ class ApiRouting:
 
 
         @bp.route('/get_class_schema', methods=['POST'])
+        @login_required
         def get_class_schema():
             """
             Get all Schema data - both Properties and Links - of the given Class node
@@ -367,7 +372,6 @@ class ApiRouting:
                                 "status":   "ok"
                             }
             """
-
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'Restaurants')])
             #cls.show_post_data(post_data, "get_class_schema")
@@ -383,7 +387,7 @@ class ApiRouting:
                 else:
                     try:
                         # Fetch all the Properties
-                        prop_list = NeoSchema.get_class_properties(schema_id, include_ancestors=True)
+                        prop_list = NeoSchema.get_class_properties_OLD(schema_id, include_ancestors=True)
                         rel_names = NeoSchema.get_class_relationships(int(schema_id), omit_instance=True)
                         payload = {"properties": prop_list, "in_links": rel_names["in"], "out_links": rel_names["out"]}
                         response = {"status": "ok", "payload": payload}
@@ -397,6 +401,7 @@ class ApiRouting:
 
 
         @bp.route('/get_record_classes')
+        @login_required
         def get_record_classes():
             """
             Get all Classes that are, directly or indirectly, INSTANCE_OF the Class "Records",
@@ -423,6 +428,7 @@ class ApiRouting:
 
 
         @bp.route('/get_properties_by_uri/<uri>')
+        @login_required
         def get_properties_by_uri(uri):
             """
             Get all properties of a DATA node specified by its URI
@@ -740,6 +746,7 @@ class ApiRouting:
 
 
         @bp.route('/get_link_summary/<uri_str>')
+        @login_required
         def get_link_summary_api(uri_str):
             """
             Return a JSON structure identifying the names and counts of all
@@ -777,6 +784,7 @@ class ApiRouting:
 
 
         @bp.route('/get_records_by_link', methods=['POST'])
+        @login_required
         def get_records_by_link_api():
             """
             Locate and return the data of the nodes linked to the one specified by uri,
@@ -1179,9 +1187,10 @@ class ApiRouting:
         #####################################################################################################
 
         @bp.route('/fetch-remote-title')
+        @login_required
         def fetch_remote_title():
             """
-            Retrieve the Title of a remote webpage, given its URL
+            Retrieve the Title of a remote webpage, given its URL.
 
             EXAMPLE invocation:
                 http://localhost:5000/BA/api/fetch-remote-title?url=https://brainannex.org

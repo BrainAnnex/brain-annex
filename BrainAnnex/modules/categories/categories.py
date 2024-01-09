@@ -900,7 +900,7 @@ class Categories:
         # Now extract all the Property fields, in the schema-stored order, of the above Classes
         records_schema_data = {}
         for cl in class_list:
-            prop_list = NeoSchema.get_class_properties(class_node=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
+            prop_list = NeoSchema.get_class_properties_OLD(class_node=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
             class_name = cl["class_name"]
             records_schema_data[class_name] = prop_list
 

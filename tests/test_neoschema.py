@@ -486,7 +486,7 @@ def test_get_class_relationships(db):
 #############   PROPERTIES-RELATED   #############
 
 
-def test_get_class_properties_fast(db):
+def test_get_class_properties(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
@@ -494,27 +494,68 @@ def test_get_class_properties_fast(db):
 
     NeoSchema.create_class_with_properties("My first class", property_list=["A", "B", "C"])
     neo_id = NeoSchema.get_class_internal_id("My first class")
-    props = NeoSchema.get_class_properties_fast(neo_id)
+    props = NeoSchema.get_class_properties(neo_id)
+    assert props == ["A", "B", "C"]
+    props = NeoSchema.get_class_properties("My first class")
     assert props == ["A", "B", "C"]
 
-    neo_id, schema_id = NeoSchema.create_class("Class with no properties")
-    props = NeoSchema.get_class_properties_fast(neo_id)
+    neo_id, _ = NeoSchema.create_class("My BIG class")
+    props = NeoSchema.get_class_properties(neo_id)
+    assert props == []
+    props = NeoSchema.get_class_properties("My BIG class")
     assert props == []
 
     NeoSchema.add_properties_to_class(class_node=neo_id, property_list = ["X", "Y"])
-    props = NeoSchema.get_class_properties_fast(neo_id)
+    props = NeoSchema.get_class_properties(neo_id)
+    assert props == ["X", "Y"]
+    props = NeoSchema.get_class_properties(class_node="My BIG class")
     assert props == ["X", "Y"]
 
     NeoSchema.add_properties_to_class(class_node=neo_id, property_list = ["Z"])
-    props = NeoSchema.get_class_properties_fast(neo_id)
+    props = NeoSchema.get_class_properties(neo_id)
     assert props == ["X", "Y", "Z"]
 
-    # TODO: more tests, especially for other args
+
+    # Make "My first class" an instance of "My BIG class"
+    NeoSchema.create_class_relationship(from_class="My first class", to_class="My BIG class", rel_name="INSTANCE_OF")
+
+    props = NeoSchema.get_class_properties("My first class", include_ancestors=False)
+    assert props == ["A", "B", "C"]
+
+    props = NeoSchema.get_class_properties("My first class", include_ancestors=True)
+    assert compare_unordered_lists(props, ["A", "B", "C", "X", "Y", "Z"])
+
+    with pytest.raises(Exception):
+        # Meaningless combination of arguments
+        NeoSchema.get_class_properties("My first class", include_ancestors=False, sort_by_path_len="ASC")
+
+    with pytest.raises(Exception):
+        NeoSchema.get_class_properties("My first class", include_ancestors=True, sort_by_path_len="meaningless")
+
+    props = NeoSchema.get_class_properties("My first class", include_ancestors=True, sort_by_path_len="ASC")
+    assert props == ["A", "B", "C", "X", "Y", "Z"]
+
+    props = NeoSchema.get_class_properties("My first class", include_ancestors=True, sort_by_path_len="DESC")
+    assert props == ["X", "Y", "Z", "A", "B", "C"]
 
 
+    # Set Property "Y" to be a "system" one
+    NeoSchema.set_property_attribute(class_name="My BIG class", prop_name="Y",
+                                     attribute_name="system", attribute_value=True)
 
-def test_get_class_properties(db):
-    pass    # TODO - will probably get phased out in favor of test_get_class_properties_fast()
+    props = NeoSchema.get_class_properties("My BIG class")
+    assert props == ["X", "Y", "Z"]
+
+    props = NeoSchema.get_class_properties("My BIG class", exclude_system=True)
+    assert props == ["X", "Z"]
+
+    props = NeoSchema.get_class_properties("My first class", include_ancestors=True,
+                                            sort_by_path_len="ASC", exclude_system=True)
+    assert props == ["A", "B", "C", "X", "Z"]
+
+    props = NeoSchema.get_class_properties("My first class", include_ancestors=True,
+                                            sort_by_path_len="DESC", exclude_system=True)
+    assert props == ["X", "Z", "A", "B", "C"]
 
 
 
@@ -1983,7 +2024,7 @@ def test_get_cached_class_data(db):
 
 
     # Test "class_properties" option
-    car_class_properties = NeoSchema.get_class_properties_fast(car_class_id, include_ancestors=False)
+    car_class_properties = NeoSchema.get_class_properties(car_class_id, include_ancestors=False)
     assert compare_unordered_lists(car_class_properties, ["A", "B"])
 
     assert schema_cache.get_cached_class_data(car_class_id, request="class_properties") == car_class_properties
