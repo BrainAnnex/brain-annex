@@ -824,29 +824,6 @@ class ApiRouting:
 
 
 
-        @bp.route('/pin_category/<uri>/<op>')
-        @login_required
-        def pin_category(uri, op):
-            """
-            Set or unset the "pinned" property of the specified Category
-
-            EXAMPLE invocations: http://localhost:5000/BA/api/pin_category/123/set
-                                 http://localhost:5000/BA/api/pin_category/123/unset
-
-            :param uri: The URI of a data node representing a Category
-            :param op:  Either "set" or "unset"
-            """
-            try:
-                Categories.pin_category(uri=uri, op=op)
-                response_data = {"status": "ok"}                                    # Successful termination
-            except Exception as ex:
-                err_details = f"Unable to change the 'pinned' status of the specified Category.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # Error termination
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
         @bp.route('/delete/<uri>/<schema_code>')
         @login_required
         def delete(uri, schema_code):
@@ -870,11 +847,90 @@ class ApiRouting:
 
 
 
+        @bp.route('/add_relationship', methods=['POST'])
+        @login_required
+        def add_relationship():
+            """
+            Add the specified relationship (edge) between existing Data Nodes.
+            This is a generic API for *any* relationship.
 
-        #-----------------------------------------------------------------#
-        #         CATEGORY-RELATED  (incl. adding new Content Items)      #
-        #-----------------------------------------------------------------#
-        
+            POST FIELDS:
+                from                    The URI of the Data Nodes from which the relationship originates
+                to                      The URI of the Data Nodes into which the relationship takes
+                rel_name                The name of the relationship to add
+                schema_code (optional)  If passed, the appropriate plugin gets invoked
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/add_relationship -d
+                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
+            """
+            # TODO: maybe merge with the schema endpoint /add_schema_relationship
+
+            # Extract the POST values
+            post_data = request.form
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            #cls.show_post_data(post_data, "add_relationship")
+
+            try:
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                DataManager.add_data_relationship_handler(data_dict)
+                response_data = {"status": "ok"}                                    # If no errors
+            except Exception as ex:
+                err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # In case of errors
+
+            #print(f"add_relationship() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/remove_relationship', methods=['POST'])
+        @login_required
+        def remove_relationship():
+            """
+            Remove the specified relationship (edge) between data nodes
+
+            POST FIELDS:
+                from                    The uri of the node from which the relationship originates
+                to                      The uri of the node into which the relationship takes
+                rel_name                The name of the relationship to remove
+                schema_code (optional)  If passed, the appropriate plugin gets invoked
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/remove_relationship -d
+                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
+            """
+            # TODO: maybe merge with the schema endpoint /remove_schema_relationship
+
+            # Extract the POST values
+            post_data = request.form
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            #cls.show_post_data(post_data, "remove_relationship")
+
+            try:
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
+                DataManager.remove_data_relationship_handler(data_dict)
+                response_data = {"status": "ok"}                                     # If no errors
+            except Exception as ex:
+                err_details = f"Unable to remove the requested data relationship.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # In case of errors
+
+            #print(f"remove_relationship() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+
+        #####################################################################################################
+
+        '''                 ~  CATEGORY-RELATED  (incl. adding new Content Items)    ~                    '''
+
+        def ________CATEGORY_RELATED________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
         @bp.route('/add_item_to_category', methods=['POST'])
         @login_required
         def add_item_to_category():
@@ -1003,75 +1059,24 @@ class ApiRouting:
 
 
 
-        @bp.route('/add_relationship', methods=['POST'])
+        @bp.route('/pin_category/<uri>/<op>')
         @login_required
-        def add_relationship():
+        def pin_category(uri, op):
             """
-            Add the specified relationship (edge) between data nodes
+            Set or unset the "pinned" property of the specified Category
 
-            POST FIELDS:
-                from                    The URI of the node from which the relationship originates
-                to                      The URI of the node into which the relationship takes
-                rel_name                The name of the relationship to add
-                schema_code (optional)  If passed, the appropriate plugin gets invoked
+            EXAMPLE invocations: http://localhost:5000/BA/api/pin_category/123/set
+                                 http://localhost:5000/BA/api/pin_category/123/unset
 
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/add_relationship -d
-                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
+            :param uri: The URI of a data node representing a Category
+            :param op:  Either "set" or "unset"
             """
-            # TODO: maybe merge with the schema endpoint /add_schema_relationship
-
-            # Extract the POST values
-            post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            #cls.show_post_data(post_data, "add_relationship")
-
             try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                DataManager.add_data_relationship_handler(data_dict)
-                response_data = {"status": "ok"}                                    # If no errors
+                Categories.pin_category(uri=uri, op=op)
+                response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
-                err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # In case of errors
-
-            #print(f"add_relationship() is returning: `{response_data}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
-        @bp.route('/remove_relationship', methods=['POST'])
-        @login_required
-        def remove_relationship():
-            """
-            Remove the specified relationship (edge) between data nodes
-
-            POST FIELDS:
-                from                    The uri of the node from which the relationship originates
-                to                      The uri of the node into which the relationship takes
-                rel_name                The name of the relationship to remove
-                schema_code (optional)  If passed, the appropriate plugin gets invoked
-
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/remove_relationship -d
-                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
-            """
-            # TODO: maybe merge with the schema endpoint /remove_schema_relationship
-
-            # Extract the POST values
-            post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
-            #cls.show_post_data(post_data, "remove_relationship")
-
-            try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                DataManager.remove_data_relationship_handler(data_dict)
-                response_data = {"status": "ok"}                                     # If no errors
-            except Exception as ex:
-                err_details = f"Unable to remove the requested data relationship.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}    # In case of errors
-
-            #print(f"remove_relationship() is returning: `{response_data}`")
+                err_details = f"Unable to change the 'pinned' status of the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
