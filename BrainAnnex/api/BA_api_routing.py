@@ -276,34 +276,6 @@ class ApiRouting:
 
 
 
-        @bp.route('/get_properties/<schema_id>')
-        @login_required
-        def get_properties(schema_id):
-            """
-            Get all Properties by the schema_id of a Class node,
-            including indirect ones thru chains of outbound "INSTANCE_OF" relationships
-        
-            EXAMPLE invocation: http://localhost:5000/BA/api/get_properties/4
-        
-            :param schema_id:   ID of a Class node
-            :return:            A JSON object with a list of the Properties of the specified Class
-                                EXAMPLE:
-                                    [
-                                      "Notes",
-                                      "English",
-                                      "French"
-                                    ]
-            """
-        
-            # Fetch all the Properties
-            prop_list = NeoSchema.get_class_properties_OLD(int(schema_id), include_ancestors=True)
-            response = {"status": "ok", "payload": prop_list}
-            # TODO: handle error scenarios
-        
-            return jsonify(response)   # This function also takes care of the Content-Type header
-
-
-
         @bp.route('/get_links/<schema_id>')
         @login_required
         def get_links(schema_id):
@@ -348,6 +320,8 @@ class ApiRouting:
             Get all Schema data - both Properties and Links - of the given Class node
             (as specified by its name passed as a POST variable),
             including indirect Properties thru chains of outbound "INSTANCE_OF" relationships.
+            Properties marked as "system" ones gets excluded.
+
             Return a JSON object with a list of the Property names of that Class.
 
             EXAMPLE invocation:
