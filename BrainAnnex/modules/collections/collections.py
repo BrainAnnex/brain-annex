@@ -145,7 +145,9 @@ class Collections:
     def link_to_collection_at_end(cls, collection_dbase_id :int, item_dbase_id :int, membership_rel_name :str) -> None:
         """
         Given an EXISTING data node, link it to the end of the specified Collection,
-        using the requested relationship name
+        using the requested relationship name.
+
+        If a connection to that Collection already exists, an Exception is raised. <- TODO: implement this part!
 
         :param collection_dbase_id: Internal database ID of an existing Collection
         :param item_dbase_id:       Internal database ID of an existing Data Node representing a "Collection Item"
@@ -154,7 +156,7 @@ class Collections:
         :return:                    None
         """
 
-        # TODO: replicate to all functions?
+        # TODO: replicate this check to all functions??
         if cls.db is None:
             raise Exception("Collections.link_to_collection_at_end(): database not set")
 

@@ -852,7 +852,7 @@ class ApiRouting:
         def add_relationship():
             """
             Add the specified relationship (edge) between existing Data Nodes.
-            This is a generic API for *any* relationship.
+            This is a generic API to add *any* relationship; no other changes made.
 
             POST FIELDS:
                 from                    The URI of the Data Nodes from which the relationship originates
@@ -889,7 +889,7 @@ class ApiRouting:
         @login_required
         def remove_relationship():
             """
-            Remove the specified relationship (edge) between data nodes
+            Remove the specified relationship (edge) between Data Nodes
 
             POST FIELDS:
                 from                    The uri of the node from which the relationship originates
@@ -1080,6 +1080,28 @@ class ApiRouting:
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
+
+
+        @bp.route('/link_content_at_end/<category_uri>/<item_uri>')
+        @login_required
+        def link_content_at_end(category_uri, item_uri):
+            """
+            Link an existing Content Item at the end of an existing Category
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/link_content_at_end/cat-123/i-222
+
+            :param category_uri:    The URI of a data node representing a Category
+            :param item_uri:        The URI of a data node representing a Content Item
+            """
+            try:
+                Categories.link_content_at_end(category_uri=category_uri, item_uri=item_uri)
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to attach Content Item (URI '({item_uri}') to the end of Category (URI '{category_uri}') .  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
