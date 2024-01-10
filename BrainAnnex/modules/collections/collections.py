@@ -33,8 +33,8 @@ class Collections:
         Return True if the data node whose "uri" has the given value is a Collection,
         that is, if its schema is a Class that is an INSTANCE_OF the "Collection" Class
 
-        :param collection_uri:   A string with the URI of a data node
-        :return:                True if the given data node is a Collection, or False i
+        :param collection_uri:  A string with the URI of a data node
+        :return:                True if the given data node is a Collection, or False otherwise
         """
         #TODO: maybe allow the scenario where there's a longer chain of "INSTANCE_OF" relationships
 
@@ -153,6 +153,11 @@ class Collections:
                                         between the "Collection Item" and the Collection node
         :return:                    None
         """
+
+        # TODO: replicate to all functions?
+        if cls.db is None:
+            raise Exception("Collections.link_to_collection_at_end(): database not set")
+
         # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
         q = f'''
             MATCH (collection) 

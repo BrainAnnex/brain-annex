@@ -1,6 +1,6 @@
 from BrainAnnex.modules.data_manager.data_manager import DataManager
 from BrainAnnex.modules.categories.categories import Categories
-from BrainAnnex.modules.categories.categories import Collections
+from BrainAnnex.modules.collections.collections import Collections
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer

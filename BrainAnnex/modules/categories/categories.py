@@ -407,7 +407,7 @@ class Categories:
 
 
     @classmethod
-    def create_categories_root(cls, data_dict=None) -> int:
+    def create_categories_root(cls, data_dict=None) -> (int, str):
         """
         Create a ROOT Category node;
         and return its internal database ID
@@ -415,17 +415,20 @@ class Categories:
         :param data_dict:   (OPTIONAL) Dict to specify alternate desired values
                                 for the "name" and "remarks" fields of the Root Category
                                 (by default, "HOME" and "top level", respectively)
-        :return:            The internal database ID of the new data node just created
+        :return:            The pair (internal database ID, string URI)
+                                of the new Data Node just created
         """
         if data_dict is None:
             data_dict = {"name": "HOME", "remarks": "top level"}
 
         data_dict["root"] = True
 
+        new_uri = NeoSchema.next_available_datanode_uri()
+
         internal_id = NeoSchema.create_data_node(class_node="Categories",
-                                                    properties = data_dict,
-                                                    assign_uri=True)
-        return internal_id
+                                                 properties = data_dict,
+                                                 new_uri=new_uri)
+        return (internal_id, new_uri)
 
 
 
@@ -803,7 +806,8 @@ class Categories:
         Add a NEW Content Item, with the given properties and Class, to the end of the specified Category.
         First, create a new Data Node, and then link it to the given Category, positioned at the end.
 
-        :param category_uri:    The string "uri" of the Category to which this new Content Media is to be attached
+        :param category_uri:    The string "uri" identifying the Category
+                                    to which this Content Media being newly-created is to be attached
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
@@ -818,14 +822,14 @@ class Categories:
 
 
         # Create a new Data Node
-        new_internal_id = NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
-                                                     extra_labels="BA", assign_uri=False, new_uri=new_uri,
-                                                     silently_drop=True)
+        NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
+                                   extra_labels="BA", assign_uri=False, new_uri=new_uri,
+                                   silently_drop=True)
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
         #       NOT with the Content Item node ;
         #       this is allowed by our convention about "INSTANCE_OF" relationships
 
-        print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_uri = '{new_uri}'")
+        #print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_uri = '{new_uri}'")
 
         cls.link_content_at_end(category_uri=category_uri, item_uri=new_uri)
 
@@ -873,9 +877,11 @@ class Categories:
     def get_items_schema_data(cls, category_uri :str) -> dict:
         """
         Locate all the Classes used by Content Items attached to the given Category,
-        and return a dictionary with the Properties (in Schema order) of each
+        and return a dictionary with the Properties (in Schema order) of each,
+        including Properties of "ancestor" Classes (thru "INSTANCE_OF" relationships).
 
-        TODO: unit test
+        However, Properties marked as "system" are excluded
+
         :param category_uri:A string identifying the desired Category
 
         :return:            A dictionary whose keys are Class names (of Content Items attached to the given Category),
@@ -886,26 +892,27 @@ class Categories:
                                  'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
                                  'Headers': ['text']}
         """
+        # Locate the names of the Classes of all the Content Items attached to the given Category
         q = '''
-            MATCH  (cat :BA {uri: $category_id}) <- [:BA_in_category] - 
-                   (:BA) - [:SCHEMA] -> (cl:CLASS) 
-            RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
+            MATCH   (CLASS {name: "Categories"}) <-[:SCHEMA]- (cat :Categories {uri: $category_uri}) 
+                    <-[:BA_in_category]- (content_item) -[:SCHEMA]-> (cl:CLASS) 
+            RETURN DISTINCT cl.name AS class_name
             '''
+        #cls.db.debug_query_print(q, data_binding={"category_uri": category_uri})
 
-        class_list = cls.db.query(q, data_binding={"category_id": category_uri})
-        # EXAMPLE: [ {"class_name": "French Vocabulary" , "schema_id": 4},
-        #            {"class_name": "Site Link" , "schema_id": 63}]
+        class_list = cls.db.query(q, data_binding={"category_uri": category_uri}, single_column="class_name")
+        # EXAMPLE: ["French Vocabulary", "Site Link"]
 
 
         # Now extract all the Property fields, in the schema-stored order, of the above Classes
         records_schema_data = {}
-        for cl in class_list:
-            prop_list = NeoSchema.get_class_properties_OLD(class_node=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
-            class_name = cl["class_name"]
+        for class_name in class_list:
+            prop_list = NeoSchema.get_class_properties(class_node=class_name,
+                                                       include_ancestors=True, sort_by_path_len="ASC",
+                                                       exclude_system=True)
             records_schema_data[class_name] = prop_list
 
         return records_schema_data
-
 
 
 

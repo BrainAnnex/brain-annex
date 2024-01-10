@@ -29,7 +29,8 @@
                             Used for the addition of new records
                             (TODO: maybe obtain thru a server call, when first needed)
 
-        records_schema_data: A dictionary of record class names mapped into their ordered property names
+        records_schema_data: A dictionary of record class names, mapped into the ordered list of their property names.
+                             Note that properties that have the attribute "system" set to True, are excluded
                              EXAMPLE:
                              {"Quotes": ["quote", "attribution", "notes"],
                               "French Vocabulary": ["French", "English", "notes"],

@@ -6,6 +6,7 @@ from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, co
 from neoaccess import NeoAccess
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.collections.collections import Collections
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -14,6 +15,7 @@ def db():
     neo_obj = NeoAccess(debug=False)
     NeoSchema.set_database(neo_obj)
     Categories.db = neo_obj
+    Collections.db = neo_obj
     yield neo_obj
 
 
@@ -22,14 +24,14 @@ def db():
 
 def initialize_categories(db):
     # Clear the dbase, create the Category Schema, and creates a ROOT Category node;
-    # return the internal database ID of the new Categories node
+    # return the internal database ID and URI of the new Categories node
 
     db.empty_dbase()
 
     node_internal_id, _ = NeoSchema.create_class_with_properties(name="Categories",
                                                                  property_list=["name", "remarks"])
 
-    return Categories.create_categories_root()
+    return Categories.create_categories_root()  # Returns a pair (int, str)
 
 
 
@@ -72,7 +74,7 @@ def test_get_all_categories(db):
 
 def test_get_sibling_categories(db):
 
-    root_internal_id = initialize_categories(db)
+    root_internal_id, _ = initialize_categories(db)
     result = Categories.get_sibling_categories(root_internal_id)
     assert result == []     # The root node has no siblings
 
@@ -119,3 +121,33 @@ def test_get_sibling_categories(db):
     assert len(result) == 2     # Now, "French" has 2 siblings
     sibling_names = [d["name"] for d in result]
     assert compare_unordered_lists(sibling_names, ["Italian", "German"])
+
+
+
+def test_get_items_schema_data(db):
+    _, root_uri = initialize_categories(db)
+    #print("root URI is: ", root_uri)
+
+    res = Categories.get_items_schema_data(category_uri=root_uri)
+    assert res == {}    # There are no Contents Items yet attached to the Category
+
+    NeoSchema.create_class_with_properties(name="Notes", property_list=["title", "basename", "suffix"])
+    NeoSchema.create_class_with_properties(name="Images", property_list=["caption", "basename", "suffix", "uri"])
+
+    # Add some Content Items to the above Category
+    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Notes",
+                                 item_properties={"title": "My 1st note"})
+
+    res = Categories.get_items_schema_data(category_uri=root_uri)
+    assert res == {'Notes': ['title', 'basename', 'suffix']}
+
+    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Images",
+                                  item_properties={"caption": "vacation pic", "basename": "pic1", "suffix": "jpg"})
+    res = Categories.get_items_schema_data(category_uri=root_uri)
+    assert res == {'Notes': ['title', 'basename', 'suffix'], 'Images': ['caption', 'basename', 'suffix', 'uri']}
+
+    # Make the "uri" property of the Class "Images" to be a "system" property
+    NeoSchema.set_property_attribute(class_name="Images", prop_name="uri",
+                                     attribute_name="system", attribute_value=True)
+    res = Categories.get_items_schema_data(category_uri=root_uri)
+    assert res == {'Notes': ['title', 'basename', 'suffix'], 'Images': ['caption', 'basename', 'suffix']}   # 'uri' is no longer included

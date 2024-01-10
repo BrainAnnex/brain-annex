@@ -387,7 +387,7 @@ class ApiRouting:
                 else:
                     try:
                         # Fetch all the Properties
-                        prop_list = NeoSchema.get_class_properties_OLD(schema_id, include_ancestors=True)
+                        prop_list = NeoSchema.get_class_properties(class_name, include_ancestors=True, exclude_system=True)
                         rel_names = NeoSchema.get_class_relationships(int(schema_id), omit_instance=True)
                         payload = {"properties": prop_list, "in_links": rel_names["in"], "out_links": rel_names["out"]}
                         response = {"status": "ok", "payload": payload}

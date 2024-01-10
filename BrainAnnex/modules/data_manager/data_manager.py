@@ -434,38 +434,6 @@ class DataManager:
 
 
 
-    @classmethod
-    def get_records_schema_data(cls, category_id: int) -> dict:
-        """
-        Locate all the Classes of type record ("r") used by Content Items attached to the
-        given Category
-        TODO: being phased out in favor of Categories.get_items_schema_data()
-
-        :param category_id:
-        :return:
-        """
-        q = '''
-            MATCH  (cat :BA {uri: $category_id}) <- 
-                        [:BA_in_category] - (rec :BA {schema_code:"r"}) - [:SCHEMA]->(cl:CLASS) 
-            RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
-            '''
-
-        class_list = cls.db.query(q, data_binding={"category_id": category_id})
-        # EXAMPLE: [ {"class_name": "French Vocabulary" , "schema_id": 4},
-        #            {"class_name": "Site Link" , "schema_id": 63}]
-
-
-        # Now extract all the Property fields, in the schema-stored order, of the above Classes
-        records_schema_data = {}
-        for cl in class_list:
-            prop_list = NeoSchema.get_class_properties_OLD(class_node=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
-            class_name = cl["class_name"]
-            records_schema_data[class_name] = prop_list
-
-        return records_schema_data
-
-
-
 
     #######################     CONTENT-ITEM RELATED      #######################
 

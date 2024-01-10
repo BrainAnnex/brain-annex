@@ -916,7 +916,7 @@ class NeoSchema:
     @classmethod
     def get_class_relationships(cls, schema_id :int, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
         """
-        Fetch and return the names of all the relationship (both inbound and outbound)
+        Fetch and return the names of all the relationships (both inbound and outbound)
         attached to the given Class.
         Treat separately the inbound and the outbound ones.
 
@@ -929,6 +929,7 @@ class NeoSchema:
                                      "out": list of outbound-relationship names}
                                 Otherwise, just return the inbound or outbound list, based on the value of link_dir
         """
+        # TODO: phase out schema ID in favor of Class name
         assert link_dir in ["BOTH", "IN", "OUT"], \
                 f'The argument `link_dir` must be one of "BOTH", "IN" or "OUT" (value passed was {link_dir})'
 
@@ -1110,14 +1111,14 @@ class NeoSchema:
     @classmethod
     def get_class_properties_OLD(cls, class_node :Union[int, str], include_ancestors=False, sort_by_path_len=False) -> list:
         """
-        TODO:  phase out in favor of get_class_properties()
+        TODO:  OBSOLETE.  Phase out in favor of get_class_properties()
 
         Return the list of all the names of the Properties associated with the given Class
         (including those inherited thru ancestor nodes by means of "INSTANCE_OF" relationships,
         if include_ancestors is True),
         sorted by the schema-specified position (or, optionally, by path length)
 
-        :param class_node:          Either an integer with the internal database ID of an existing Class node,
+        :param class_node:          Either an integer with the Schema ID of an existing Class node,
                                         or a string with its name
         :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
                                         to the given one by means of a chain of outbound "INSTANCE_OF" relationships
