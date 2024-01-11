@@ -28,8 +28,8 @@ def initialize_categories(db):
 
     db.empty_dbase()
 
-    node_internal_id, _ = NeoSchema.create_class_with_properties(name="Categories",
-                                                                 property_list=["name", "remarks"])
+    NeoSchema.create_class_with_properties(name="Categories",
+                                           property_list=["name", "remarks", "uri"])
 
     return Categories.create_categories_root()  # Returns a pair (int, str)
 
@@ -151,3 +151,82 @@ def test_get_items_schema_data(db):
                                      attribute_name="system", attribute_value=True)
     res = Categories.get_items_schema_data(category_uri=root_uri)
     assert res == {'Notes': ['title', 'basename', 'suffix'], 'Images': ['caption', 'basename', 'suffix']}   # 'uri' is no longer included
+
+
+
+def test_link_content_at_end(db):
+    _, root_uri = initialize_categories(db)
+    #print("root URI is: ", root_uri)
+
+    NeoSchema.create_class_with_properties(name="Images",
+                                           property_list=["caption", "basename", "suffix", "uri"])
+    NeoSchema.create_class_relationship(from_class="Images", to_class="Categories",
+                                        rel_name="BA_in_category")
+
+    # Create a new Data Node
+    NeoSchema.create_data_node(class_node="Images", properties={"caption": "my_pic"},
+                               assign_uri=False, new_uri="i-100")
+
+    Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100", label=None)
+
+    # Verify that all nodes and links are in place
+    q = f'''
+        MATCH p=(:CLASS {{name:"Images"}})
+        <-[:SCHEMA]-
+        (:Images {{caption:"my_pic", uri:"i-100"}})
+        -[:BA_in_category]->
+        (:Categories {{uri: "{root_uri}"}})
+        -[:SCHEMA]->
+        (:CLASS {{name:"Categories"}}) 
+        RETURN COUNT(p) AS path_count
+        '''
+    result = db.query(q, single_cell="path_count")
+    assert result == 1
+
+    with pytest.raises(Exception):
+        # Link already exists
+        Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100", label=None)
+
+    # TODO: additional testing
+
+
+
+def test_detach_from_category(db):
+    _, root_uri = initialize_categories(db)
+    #print("root URI is: ", root_uri)
+
+    NeoSchema.create_class_with_properties(name="Images", property_list=["caption", "basename", "suffix", "uri"])
+    NeoSchema.create_class_relationship(from_class="Images", to_class="Categories",
+                                        rel_name="BA_in_category")
+
+    # Create a new Data Node
+    NeoSchema.create_data_node(class_node="Images", properties={"caption": "my_pic"},
+                               assign_uri=False, new_uri="i-100")
+
+    Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100", label=None)
+
+    with pytest.raises(Exception):
+        # It would leave the Content Item "stranded"
+        Categories.detach_from_category(category_uri=root_uri, item_uri="i-100")
+
+
+    # Create a 2nd Category, and link up the Content Item to it
+    new_cat_uri = Categories.add_subcategory({"category_id":root_uri,  "subcategory_name": "math"})
+    Categories.link_content_at_end(category_uri=new_cat_uri, item_uri="i-100", label=None)
+
+    # Now, the detachment of the Content Item from the initial (root) Category is possible
+    Categories.detach_from_category(category_uri=root_uri, item_uri="i-100")
+
+    # Verify that nodes and links are in place
+    q = f'''
+        MATCH p=(:CLASS {{name:"Images"}})
+        <-[:SCHEMA]-
+        (:Images {{caption:"my_pic", uri:"i-100"}})
+        -[:BA_in_category]->
+        (:Categories {{uri: "{new_cat_uri}"}})
+        -[:SCHEMA]->
+        (:CLASS {{name:"Categories"}}) 
+        RETURN COUNT(p) AS path_count
+        '''
+    result = db.query(q, single_cell="path_count")
+    assert result == 1

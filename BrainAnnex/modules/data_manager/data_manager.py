@@ -400,16 +400,16 @@ class DataManager:
 
         :return: None
         """
-        from_id = data_dict['from']
-        to_id = data_dict['to']
+        from_uri = data_dict['from']
+        to_uri = data_dict['to']
         rel_name = data_dict['rel_name']
         schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
         if schema_code == "cat":
-            Categories.remove_relationship_before(from_id=from_id, to_id=to_id,
+            Categories.remove_relationship_before(from_id=from_uri, to_id=to_uri,
                                                   rel_name=rel_name)       # Category-specific action
 
-        NeoSchema.remove_data_relationship(from_uri=from_id, to_uri=to_id,
+        NeoSchema.remove_data_relationship(from_uri=from_uri, to_uri=to_uri,
                                            rel_name=rel_name, labels="BA")
 
 

@@ -147,18 +147,26 @@ class Collections:
         Given an EXISTING data node, link it to the end of the specified Collection,
         using the requested relationship name.
 
-        If a connection to that Collection already exists, an Exception is raised. <- TODO: implement this part!
+        If a connection to that Collection already exists, an Exception is raised.
 
         :param collection_dbase_id: Internal database ID of an existing Collection
         :param item_dbase_id:       Internal database ID of an existing Data Node representing a "Collection Item"
         :param membership_rel_name: The name to give to the relationship
-                                        between the "Collection Item" and the Collection node
+                                        in the direction from the "Collection Item" to the Collection node
         :return:                    None
         """
+        # TODO: use this function as a role model for linking at the start
+        # TODO: enforce that the respective Classes of the Data Nodes are a relationship named membership_rel_name;
+        #       use NeoSchema.class_relationship_exists()
 
         # TODO: replicate this check to all functions??
         if cls.db is None:
             raise Exception("Collections.link_to_collection_at_end(): database not set")
+
+        # Make sure that no connection already exists
+        if cls.db.links_exist(match_from=item_dbase_id, match_to=collection_dbase_id, rel_name=membership_rel_name):
+            raise Exception(f"Collections.link_to_collection_at_end(): the link '{membership_rel_name}' already exists "
+                            f"from node with internal database ID {item_dbase_id} to node {collection_dbase_id}")
 
         # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
         q = f'''

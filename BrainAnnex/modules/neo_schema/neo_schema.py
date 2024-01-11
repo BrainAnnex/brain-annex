@@ -1438,7 +1438,8 @@ class NeoSchema:
                             since "uri" already uniquely specifies a Data Node - but
                             could be used for speed or data integrity)
 
-        :return:        The internal database ID of the specified Data Node
+        :return:        The internal database ID of the specified Data Node;
+                            if none (or more than one) found, an Exception is raised
         """
         match = cls.db.match(key_name="uri", key_value=uri, labels=label)
         result = cls.db.get_nodes(match, return_internal_id=True)

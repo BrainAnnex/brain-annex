@@ -443,10 +443,9 @@ class Categories:
                                 subcategory_name                The name to give to the new Subcategory
                                 subcategory_remarks (optional)  A comment field for the new Subcategory
 
-        :return:                If successful, a string with the auto-increment "uri" value of the node just created;
-                                otherwise, an Exception is raised
+        :return:            A string with the auto-increment "uri" value of the Category node just created
         """
-        # TODO: return a string instead of an integer
+        # TODO: change the argument passing, and rename "category_id" to "category_uri"
         # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
         #       a Category to have multiple "children" with the same name)
         category_uri = data_dict.get("category_id")
@@ -607,8 +606,9 @@ class Categories:
         """
         # If the sub-category has only one parent, raise an Exception
         #print(f"In Category.remove_relationship(). from_id = {from_id}  Parent categories : {cls.get_parent_categories(from_id)}")
-        if len(cls.get_parent_categories(from_id)) == 1:
-            raise Exception("Cannot sever the relationship because that would leave the sub-category orphaned (i.e. with no parent categories)")
+        assert len(cls.get_parent_categories(from_id)) != 1, \
+            "Cannot sever the relationship because that would leave " \
+            "the sub-category orphaned (i.e. with no parent categories)"
 
 
 
@@ -749,9 +749,9 @@ class Categories:
 
     #####################################################################################################
 
-    '''                                ~   ADD ITEMS TO CATEGORIES   ~                                '''
+    '''                        ~   ADD/REMOVE ITEMS FROM CATEGORIES   ~                               '''
 
-    def ________ADD_ITEMS_TO_CATEGORIES________(DIVIDER):
+    def ________ADD_REMOVE_ITEMS_FROM_CATEGORIES________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -779,21 +779,26 @@ class Categories:
 
 
     @classmethod
-    def link_content_at_end(cls, category_uri :str, item_uri :str) -> None:
+    def link_content_at_end(cls, category_uri :str, item_uri :str, label="BA") -> None:
         """
         Given an EXISTING data node, link it to the end of the specified Category.
         If a connection to that Category already exists, an Exception is raised.
 
         :param category_uri:String to identify an existing Category
         :param item_uri:    String to identify an existing Content Item
+        :param label:       (OPTIONAL) label required on the Content Item, to speed up the match
         :return:            None
         """
-        # Category to link to
+        #TODO: verify that the item_uri is not referring to a Category!
+        #      More generally, verify that its Class has a "BA_in_category" to
+        #      the "Category" Class; this ought to be enforced by link_to_collection_at_end()
+
+        # Category to link to (this step also enforces that category_uri indeed refers to a Category)
         collection_dbase_id = NeoSchema.get_data_node_internal_id(uri=category_uri,
                                                                   label="Categories")
 
         # Content Item to link to Category
-        item_dbase_id = NeoSchema.get_data_node_internal_id(uri=item_uri, label="BA")
+        item_dbase_id = NeoSchema.get_data_node_internal_id(uri=item_uri, label=label)
 
         Collections.link_to_collection_at_end(collection_dbase_id=collection_dbase_id,
                                               item_dbase_id=item_dbase_id,
@@ -862,6 +867,27 @@ class Categories:
                                                               new_uri=new_uri)
         return new_uri
 
+
+
+    @classmethod
+    def detach_from_category(cls, category_uri :str, item_uri :str) -> None:
+        """
+        Sever the link from the specified Content Item and the given Category.
+        If it's the only Category that the Content Item is currently linked to,
+        an Exception is raised (to avoid leaving that Content Item "stranded")
+
+        :param category_uri:    The URI of a data node representing a Category
+        :param item_uri:        The URI of a data node representing a Content Item
+        :return:                None
+        """
+        match_from = cls.db.match(key_name="uri", key_value=item_uri)
+        match_to = cls.db.match(labels="Categories")
+        assert cls.db.number_of_links(match_from=match_from, match_to=match_to, rel_name="BA_in_category") > 1, \
+            f"detach_from_category(): Cannot delete the only remaining 'BA_in_category' link " \
+            f"from Content Item (URI: '{item_uri}') to Categories"
+
+        NeoSchema.remove_data_relationship(from_uri=item_uri, to_uri=category_uri,
+                                           rel_name="BA_in_category", labels=None)
 
 
 
@@ -1147,16 +1173,19 @@ class Categories:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
-    # TODO: page-handler methods are meant to be plugin-provided complete functionality,
-    #       to be combined with what's currently in BA_pages_routing.py and in BA_pages_request_handler.py
-
     @classmethod
     def viewer_handler(cls, category_uri :str):
         """
 
-        :param category_uri:A string identifying the desired Category
-        :return:
+        :param category_uri: A string identifying the desired Category
+        :return:             A list of dictionaries, with one element for each "sibling";
+                                each element contains the 'internal_id' and 'neo4j_labels' keys,
+                                plus whatever attributes are stored on that node.
+                                EXAMPLE of single element:
+                                {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories', 'BA']}
         """
+        # TODO: expand to cover all the data needs of BA_pages_routing.py
+
         category_internal_id = NeoSchema.get_data_node_internal_id(uri = category_uri)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 

@@ -1093,15 +1093,43 @@ class ApiRouting:
             :param category_uri:    The URI of a data node representing a Category
             :param item_uri:        The URI of a data node representing a Content Item
             """
+            # TODO: maybe switch to a query string, to avoid errors in order of arguments
             try:
                 Categories.link_content_at_end(category_uri=category_uri, item_uri=item_uri)
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
-                err_details = f"Unable to attach Content Item (URI '({item_uri}') to the end of Category (URI '{category_uri}') .  " \
+                err_details = f"Unable to attach Content Item (URI '{item_uri}') to the end of Category (URI '{category_uri}') .  " \
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/detach_from_category/<category_uri>/<item_uri>')
+        @login_required
+        def detach_from_category(category_uri, item_uri):
+            """
+            Sever the link from the specified Content Item and the given Category.
+            If it's the only Category that the Content Item is currently linked to,
+            an error is returned
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/link_content_at_end/cat-123/i-222
+
+            :param category_uri:    The URI of a data node representing a Category
+            :param item_uri:        The URI of a data node representing a Content Item
+            """
+            # TODO: maybe switch to a query string, to avoid errors in order of arguments
+            try:
+                Categories.detach_from_category(category_uri=category_uri, item_uri=item_uri)
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to detach Content Item (URI '{item_uri}') from Category (URI '{category_uri}') .  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
 
