@@ -2068,14 +2068,17 @@ class NeoSchema:
                             skip_errors = False, report_frequency=100) -> [int]:
         """
         Import a group of relationships between existing database Data Nodes,
-        from the rows of a Pandas dataframe, as database links between the existing Data Nodes
+        from the rows of a Pandas dataframe, as database links between the existing Data Nodes.
 
         :param df:          A Pandas Data Frame with the data RELATIONSHIP to import
-        :param col_from:    Name of the Data Frame column specifying the data nodes from which the relationship starts
-        :param col_to:      Name of the Data Frame column specifying the data nodes from which the relationship starts
+        :param col_from:    Name of the Data Frame column identifying the data nodes from which the relationship starts,
+                                (the values are expected to be foreign keys)
+        :param col_to:      Name of the Data Frame column identifying the data nodes from which the relationship starts
+                                (the values are expected to be foreign keys)
         :param link_name:   Name of the new relationship being created
-        :param col_link_props: (OPTIONAL) Name of a property to assign to the relations,
-                                as well as name of the Data Frame column containing the values
+        :param col_link_props: (OPTIONAL) Name of a property to assign to the relationships,
+                                as well as name of the Data Frame column containing the values.
+                                Any NaN values are ignored (no property set on that relationship.)
         :param name_map:    (OPTIONAL) Dict with mapping from Pandas column names
                                 to Property names in the data nodes in the database
         :param skip_errors: (OPTIONAL) If True, the import continues even in the presence of errors;
@@ -2088,11 +2091,15 @@ class NeoSchema:
 
         cols = list(df.columns)     # List of column names in the Pandas Data Frame
         assert col_from in cols, \
-            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` requested in the argument 'col_from'"
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` " \
+            f"requested in the argument 'col_from'"
 
         assert col_to in cols, \
-            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` requested in the argument 'col_to'"
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` " \
+            f"requested in the argument 'col_to'"
 
+        # Starting with the column names in the Pandas data frame,
+        # determine the name of the field names in the database if they're mapped to a different name
         if name_map and col_from in name_map:
             key_from = name_map[col_from]
         else:
@@ -2114,23 +2121,25 @@ class NeoSchema:
 
         links_imported = []
         for d in recordset:     # d is a dictionary
-            # Prepare a Cypher query to link up the 2 nodes
+            # For each row, in the Pandas data frame: prepare a Cypher query to link up the 2 nodes
+            # TODO: turn into a whole-dataset query
+
+            rel_cypher = ""
+            data_dict = {"value_from": d[col_from], "value_to": d[col_to]}
+            is_nan = False
             if link_prop:
-                q = f'''
-                    MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
-                    MERGE (from_node)-[r:`{link_name}` {{{link_prop}: $rel_prop_value}}]->(to_node)
-                    RETURN id(r) AS link_id
-                    '''
+                rel_prop_value = d[link_prop]
+                if pd.isna(rel_prop_value):
+                    is_nan = True
+                else:
+                    rel_cypher = f"{{`{link_prop}`: $rel_prop_value}}"
+                    data_dict["rel_prop_value"] = rel_prop_value
 
-                data_dict = {"value_from": d[col_from], "value_to": d[col_to], "rel_prop_value": d[link_prop]}
-            else:
-                q = f'''
-                    MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
-                    MERGE (from_node)-[r:`{link_name}`]->(to_node)
-                    RETURN id(r) AS link_id
-                    '''
-
-                data_dict = {"value_from": d[col_from], "value_to": d[col_to]}
+            q = f'''
+                MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
+                MERGE (from_node)-[r:`{link_name}` {rel_cypher}]->(to_node)
+                RETURN id(r) AS link_id
+                '''
 
             #cls.db.debug_query_print(q, data_dict)
             result = cls.db.update_query(q, data_dict)
@@ -2140,8 +2149,9 @@ class NeoSchema:
                 returned_data = result.get('returned_data')
                 # EXAMPLE of returned_data': [{'link_id': 103}]}
                 links_imported.append(returned_data[0]["link_id"])
-                if col_link_props and result.get('properties_set') != 1:
-                    error_msg = f"import_pandas_links(): failed to set the property value for the new relationship for Pandas row: {d}"
+                if col_link_props and (not is_nan) and (result.get('properties_set') != 1):
+                    error_msg = f"import_pandas_links(): failed to set the property value " \
+                                f"for the new relationship for Pandas row: {d}"
                     if skip_errors:
                         print(error_msg)
                     else:

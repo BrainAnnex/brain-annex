@@ -1710,6 +1710,9 @@ class ApiRouting:
             EXAMPLES invocation:
                 http://localhost:5000/BA/api/download_dbase_json/full
                 http://localhost:5000/BA/api/download_dbase_json/schema
+
+            If database is large, it may lead to errors:  java.lang.OutOfMemoryError: Java heap space.
+            See manual: https://neo4j.com/docs/operations-manual/4.4/performance/memory-configuration/
         
             :param download_type:   Either "full" (default) or "schema"
             :return:                A Flask response object, with HTTP headers that will initiate a download
@@ -1728,6 +1731,7 @@ class ApiRouting:
                     error_page_body = f'''<b>Unable to perform download</b>. <br>
                                           This is typically due to the 'APOC' library not being installed on Neo4j,
                                           unless the error message below indicates something else. 
+                                          If it says OutOfMemoryError, the Neo4j configuration file needs to be changed. 
                                           Contact your Neo4j database administrator.
                                           <br><br>{response}"
                                        '''
