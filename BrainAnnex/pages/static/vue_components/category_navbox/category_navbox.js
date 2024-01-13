@@ -18,8 +18,8 @@ Vue.component('vue-category-navbox',
                                     each item is an object, whose keys include
                                     "uri" and "name", "remarks" and "internal_id" (among others)
             all_categories:         EXAMPLE:
-                                        [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"},
-                                         {"uri": 523, "name": "work", 'pinned': True}]
+                                        [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"},
+                                         {"uri": "523", "name": "work", 'pinned': True}]
             show_right_sidebox:     Flag indicating whether the sidebar is expanded (true) or contracted (false)
          */
 
@@ -77,7 +77,7 @@ Vue.component('vue-category-navbox',
                     <span class='category-relatives'>Sub-categories:</span>
                     <span class='category-relatives' v-if="subcategories.length === 0">None</span>
                     <template v-for="category in subcategories">
-                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['id']">{{category.name}}</a>
+                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
                     </template>
 
                     <hr>

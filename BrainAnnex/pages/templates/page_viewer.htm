@@ -17,11 +17,14 @@
                                           [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"},
                                            {"uri: 123, "name": "Calculus"},
                                            {"uri": 523, "name": "Work at Acme", 'pinned': True}]
-        subcategories       Note: this is still using "id" instead of "uri", for the time being
+        subcategories       EXAMPLE: [{'uri': '2', 'name': 'Work', remarks: 'outside employment', OTHER_FIELDS_NOT_USED}]
         parent_categories
         siblings_categories
 
         bread_crumbs    A list with data from which to create UI "bread crumbs"
+
+        see_also_links  A list with data about all the "see also" links originating from this Category
+                            EXAMPLE:  [{'name': 'Quotes', 'uri': '823', 'description': None}]
 
         records_types   A list of all the Classes that can be used for new Records
                             (i.e. classes that are INSTANCE_OF the "Records" class)
@@ -45,7 +48,7 @@
                         ]
 
     ----------------------------------------------------------------------------------
-    MIT License.  Copyright (c) 2021-2023 Julian A. West
+    MIT License.  Copyright (c) 2021-2024 Julian A. West
 	----------------------------------------------------------------------------------
  #}
 
@@ -194,10 +197,25 @@
 <div v-if="all_subcategories.length > 0" class='subsections'>
     <span class='subsections-label'>Subcategories: </span>
     <template v-for="(subcategory, index) in all_subcategories" class='subsection-link'>
-        <span v-if="index == 0" class='subsection-link'><a v-bind:href="'/BA/pages/viewer/' + [[ subcategory['id'] ]]">[[ subcategory['name'] ]]</a></span>
-        <span v-else class='subsection-link'>&nbsp; &diams; &nbsp;<a v-bind:href="'/BA/pages/viewer/' + [[ subcategory['id'] ]]">[[ subcategory['name'] ]]</a></span>
+        <span v-if="index == 0" class='subsection-link'><a v-bind:href="'/BA/pages/viewer/' + [[ subcategory['uri'] ]]">[[ subcategory['name'] ]]</a></span>
+        <span v-else class='subsection-link'>&nbsp; &diams; &nbsp;<a v-bind:href="'/BA/pages/viewer/' + [[ subcategory['uri'] ]]">[[ subcategory['name'] ]]</a></span>
     </template>
 </div>
+
+
+
+{# Display the "SEE ALSO" links, if present #}
+{% if see_also_links != [] %}
+    <p style="margin-bottom:15px">
+        -> <b>SEE ALSO:</b>&nbsp;&nbsp;&nbsp;
+        {% for my_item in see_also_links %}
+            <a href="/BA/pages/viewer/{{my_item.uri}}" style="margin-right:30px">
+                {{my_item.description  if my_item.description != None  else my_item.name}}
+            </a>
+        {% endfor %}
+    </p>
+{% endif %}
+
 
 
 {# Give notice if no Content Items were passed #}
@@ -526,7 +544,7 @@ new Vue({
         parent_categories: {{parent_categories  | tojson}},
 
         all_subcategories: {{subcategories | tojson}},
-                        // EXAMPLE: [{"id":709,"name":"English"},{"id":708,"name":"Italian"},{"id":514,"name":"French"}]
+                        // EXAMPLE: [{"uri":"709","name":"English"},{"uri":"708","name":"Italian"},{"uri":"514","name":"French"}]
 
         siblings_categories: {{siblings_categories | tojson}},
                         // EXAMPLE: [{'name': 'French', 'uri': 514, 'schema_code': 'cat', 'internal_id': 522}]

@@ -100,59 +100,29 @@ class Categories:
     @classmethod
     def get_subcategories(cls, category_uri :str) -> [dict]:
         """
-        Return all the (direct) Subcategories of the given category,
+        Return all the (immediate) subcategories of the given category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
-            [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
+            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'},
+             {'uri': '3', 'name': 'Hobbies'}]
 
         :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
         """
-        match = cls.db.match(labels="BA",
-                             properties={"uri": category_uri, "schema_code": "cat"})
+        match = cls.db.match(labels="Categories", key_name="uri", key_value=category_uri)
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
-                                       neighbor_labels="BA")
-
-
-    @classmethod
-    def get_subcategories_alt(cls, category_uri :str) -> [dict]:
-        """
-        Return all the (immediate) subcategories of the given category,
-        as a list of dictionaries with keys 'id' and 'name'
-        EXAMPLE:
-            OLD -> [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
-            [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
-
-        :param category_uri:A string identifying the desired Category
-        :return:            A list of dictionaries
-        """
-        # TODO: merge with get_subcategories()
-        # TODO: replace 'id' with 'uri' in returned dicts
-        q =  '''
-             MATCH (sub:BA {schema_code:"cat"})-[BA_subcategory_of]->(c:BA {schema_code:"cat", uri:$category_id})
-             RETURN sub.uri AS id, sub.name AS name
-             '''
-        result = cls.db.query(q, {"category_id": category_uri})
-
-        '''
-        new = cls.db.follow_links(labels="BA", key_name="uri", key_value=category_id,
-                                  rel_name="BA_subcategory_of", rel_dir="IN",
-                                  neighbor_labels="BA")
-        # OR: properties_condition = {"uri": category_id, "schema_code": "cat"}
-        '''
-
-        return result
+                                   neighbor_labels="Categories")
 
 
 
     @classmethod
     def get_parent_categories(cls, category_uri :str) -> [dict]:
         """
-        Return all the (direct) parent categories of the given category,
+        Return all the (immediate) parent categories of the given Category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
-            [{'uri': 2, 'name': 'Work', remarks: 'outside employment'}, {'uri': 3, 'name': 'Hobbies'}]
+            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'}, {'uri': '3', 'name': 'Hobbies'}]
 
         :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
@@ -162,28 +132,6 @@ class Categories:
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                    neighbor_labels="BA")
-
-
-    @classmethod
-    def get_parent_categories_alt(cls, category_uri :str) -> [dict]:  # TODO: merge with get_parent_categories()
-        """
-        Return all the (immediate) parent categories of the given category,
-        as a list of dictionaries with all the keys of the Category Class
-
-        EXAMPLE:
-            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'}, {'uri': '3', 'name': 'Hobbies'}]
-
-        :param category_uri:A string identifying the desired Category
-        :return:            A list of dictionaries
-        """
-        #TODO: fix inconsistency.  This function uses uri ; others use just id
-        match = cls.db.match(labels="BA",
-                             properties={"uri": category_uri, "schema_code": "cat"})
-
-        result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
-                                     neighbor_labels="BA")
-
-        return result
 
 
 
@@ -401,9 +349,10 @@ class Categories:
         From the given Category, follow all the "see also" links, and return data about them
 
         :param category_uri:A string uniquely identifying an existing Category data node
-        :return:            A list of dictionaries that contain the keys 'name', 'uri' and 'description'
-                            Values for 'description' might be None.  EXAMPLE:
-                                [{'name': 'Quotes', 'uri': '823', 'description': None}]
+        :return:            A (possibly empty) list of dictionaries
+                                that contain the keys 'name', 'uri' and 'description'
+                                Values for 'description' might be None.  EXAMPLE:
+                                    [{'name': 'Quotes', 'uri': '823', 'description': None}]
         """
         # TODO: switch to using db.follow_links() when new features are added to it
 

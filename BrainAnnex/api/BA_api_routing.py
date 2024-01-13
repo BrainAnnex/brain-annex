@@ -1114,7 +1114,7 @@ class ApiRouting:
             If it's the only Category that the Content Item is currently linked to,
             an error is returned
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/link_content_at_end/cat-123/i-222
+            EXAMPLE invocation: http://localhost:5000/BA/api/detach_from_category/cat-123/i-222
 
             :param category_uri:    The URI of a data node representing a Category
             :param item_uri:        The URI of a data node representing a Content Item
