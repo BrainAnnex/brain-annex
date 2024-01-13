@@ -395,6 +395,27 @@ class Categories:
 
 
 
+    @classmethod
+    def follow_see_also(cls, category_uri :str) -> [dict]:
+        """
+        From the given Category, follow all the "see also" links, and return data about them
+
+        :param category_uri:A string uniquely identifying an existing Category data node
+        :return:            A list of dictionaries that contain the keys 'name', 'uri' and 'description'
+                            Values for 'description' might be None.  EXAMPLE:
+                                [{'name': 'Quotes', 'uri': '823', 'description': None}]
+        """
+        # TODO: switch to using db.follow_links() when new features are added to it
+
+        q = '''
+            MATCH (:BA:Categories {uri:$category_uri})-[r:BA_see_also]->(sa :BA:Categories ) 
+            RETURN sa.name AS name, sa.uri AS uri, r.description AS description
+            '''
+
+        return cls.db.query(q, {"category_uri": category_uri})
+
+
+
 
 
     #####################################################################################################
