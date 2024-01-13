@@ -1,6 +1,6 @@
 """
     Router/generator for Brain Annex pages
-    MIT License.  Copyright (c) 2021-2023 Julian A. West
+    MIT License.  Copyright (c) 2021-2024 Julian A. West
 """
 
 from flask import Blueprint, render_template, current_app, make_response, request   # The "request" package
@@ -107,24 +107,27 @@ class PagesRouting:
             category_name = category_info.get("name", "[No name]")
             category_remarks = category_info.get("remarks", "")
 
-            parent_categories = Categories.get_parent_categories_alt(category_uri)
-            subcategories = Categories.get_subcategories_alt(category_uri)
+            parent_categories = Categories.get_parent_categories(category_uri)
+            subcategories = Categories.get_subcategories(category_uri)
             all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)
 
+            # TODO: expand the "manage-everything"  viewer_handler() below into returning
+            #       a dict of all needed data!
             siblings_categories = Categories.viewer_handler(category_uri)
 
             records_types = DataManager.get_leaf_records()
-            #records_schema_data = DataManager.get_records_schema_data(category_uri)  # TODO: *** TEST
-            records_schema_data = Categories.get_items_schema_data(category_uri)      # TODO: *** TEST
+            records_schema_data = Categories.get_items_schema_data(category_uri)
             # EXAMPLE: {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
             #           'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
             #           'Headers': ['text']}
-            #print("records_schema_data: ", records_schema_data)
+            print("records_schema_data: ", records_schema_data)
 
             bread_crumbs = Categories.create_bread_crumbs(category_uri) # A list with data from which to create UI "bread crumbs"
             #print("bread_crumbs: ", bread_crumbs)
             # EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
 
+            see_also_links = Categories.follow_see_also(category_uri)
+            # EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'description': None}]
 
             # Fetch all the Content Items attached to this Category
             content_items = Categories.get_content_items_by_category(category_uri)
@@ -141,7 +144,7 @@ class PagesRouting:
                                    all_categories=all_categories,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    siblings_categories=siblings_categories,
-                                   bread_crumbs=bread_crumbs,
+                                   bread_crumbs=bread_crumbs, see_also_links=see_also_links,
                                    records_types=records_types, records_schema_data=records_schema_data
                                    )
 
@@ -187,9 +190,9 @@ class PagesRouting:
 
             category_info = Categories.get_category_info(category_uri)
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")
-            category_remarks = category_info.get("remarks", "")
-            subcategories = Categories.get_subcategories_alt(category_uri)
-                            # EXAMPLE: [{'id': 2, 'name': 'Work'}, {'id': 3, 'name': 'Hobbies'}]
+            #category_remarks = category_info.get("remarks", "")
+            subcategories = Categories.get_subcategories(category_uri)
+                            # EXAMPLE: [{'uri': '2', 'name': 'Work'}, {'uri': '3', 'name': 'Hobbies'}]
 
             return render_template(template,
                                    content_items=content_items,

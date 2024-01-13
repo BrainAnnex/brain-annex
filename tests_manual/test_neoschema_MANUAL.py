@@ -55,13 +55,13 @@ def test_get_class_relationships(db):
 #############   PROPERTIES-RELATED   #############
 
 def test_get_class_properties(db):
-    prop_list = NeoSchema.get_class_properties(4)
+    prop_list = NeoSchema.get_class_properties_OLD(4)
     assert prop_list == ['French']
 
-    prop_list = NeoSchema.get_class_properties(4, include_ancestors=True, sort_by_path_len="ASC")
+    prop_list = NeoSchema.get_class_properties_OLD(4, include_ancestors=True, sort_by_path_len="ASC")
     assert prop_list == ['French', 'English', 'notes']
 
-    prop_list = NeoSchema.get_class_properties(1, include_ancestors=False)
+    prop_list = NeoSchema.get_class_properties_OLD(1, include_ancestors=False)
     assert prop_list == ['German']
 
 

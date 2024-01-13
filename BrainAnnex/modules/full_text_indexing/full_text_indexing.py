@@ -3,6 +3,7 @@ import html
 from typing import Union, List, Set
 from neoaccess.cypher_utils import CypherUtils
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+import BrainAnnex.modules.utilities.exceptions as exceptions
 
 
 class FullTextIndexing:
@@ -190,10 +191,10 @@ class FullTextIndexing:
             4) break up into individual words
             5) strip off leading/trailing underscores
             6) eliminate "words" that match at least one of these EXCLUSION test:
-                * are 1 or 2 characters long
+                * are just 1 or 2 characters long
                 * are numbers
                 * contain a digit anywhere (e.g. "50m" or "test2")
-                * are in a list of common words
+                * are found in a list of common words
 
             7) eliminate duplicates
 
@@ -412,6 +413,7 @@ class FullTextIndexing:
             '''
 
         data_binding = {"indexer_id": indexer_id, "word_list": unique_words}
+        #print("add_words_to_index(): about to run the query to update the index")
         result = cls.db.update_query(q, data_binding)
         #print(result)
         # EXAMPLE of result:
@@ -470,7 +472,13 @@ class FullTextIndexing:
         # i.e. give a "clean slate" to the "Indexer" data node
         NeoSchema.remove_multiple_data_relationships(node_id=indexer_id, rel_name="occurs", rel_dir="IN", labels="Word")
 
-        cls.add_words_to_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
+        try:
+            #print("update_indexing(): about to calling add_words_to_index()")
+            cls.add_words_to_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
+            print("update_indexing(): returned from call to add_words_to_index()")
+        except Exception as ex:
+            err_details = f"Failure in FullTextIndexing.add_words_to_index().  {exceptions.exception_helper(ex)}"
+            raise Exception(err_details)
 
 
 

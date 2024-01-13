@@ -5,6 +5,7 @@
 
 import os
 import BrainAnnex.modules.utilities.exceptions as exceptions
+from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from PIL import Image
 
 
@@ -112,6 +113,101 @@ class MediaManager:
         with open(full_file_name, 'rb') as fh:
             file_contents = fh.read()
             return file_contents
+
+
+
+    @classmethod
+    def get_binary_content(cls, uri :str, th) -> (str, bytes):
+        """
+        Fetch and return the contents of a media item stored on a local file.
+        In case of error, raise an Exception
+
+        :param uri: String identifier for a media item
+        :param th:  If not None, then the thumbnail version is returned (only
+                        applicable to images).
+                        If the thumbnail version is not found, but the full-size image
+                        is present, create and save a thumbnail file, prior to
+                        returning the contents of the newly-created file
+
+        :return:    The pair (filename suffix, binary data in the file)
+        """
+        # TODO: (at least for large media) read the file in blocks
+
+        #print("In get_binary_content(): uri = ", uri)
+        content_node = NeoSchema.fetch_data_node(uri = uri)
+        #print("content_node:", content_node)
+        if content_node is None:
+            raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
+
+        basename = content_node['basename']
+        suffix = content_node['suffix']
+        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
+
+        if th:
+            thumb = True
+        else:
+            thumb = False
+
+        if suffix.lower() == "svg":
+            thumb = False   # SVG files cannot be resized
+
+        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
+        # Includes the final "/"
+        folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
+
+        try:
+            file_contents = cls.get_from_binary_file(path=folder, filename=filename)
+            return (suffix, file_contents)
+
+        except Exception as ex:
+            # File I/O failed
+            error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
+            print(error_msg)
+            if not thumb:
+                raise Exception(error_msg)
+            else:
+                # We looked for a thumbnail version, and didn't find it
+                print("    Trying to use the full-size image instead of its thumb version...")
+
+                # Attempt to resize the full-sized version, and save the new thumbnail file
+                try:
+                    # Get the folder for the full-size images
+                    images_folder = cls.lookup_file_path(schema_code=content_node['schema_code'],
+                                                                  thumb=False)
+                    source_full_name = images_folder + filename
+                    print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
+
+                    # Full-size version was found; obtain its dimensions
+                    width, height = ImageProcessing.get_image_size(source_full_name)
+                    # Create a thumbnail version
+                    thumb_folder = cls.lookup_file_path(schema_code=content_node['schema_code'],
+                                                                 thumb=thumb)
+                    # Carry out the resizing, and save the thumbnail file
+                    print("    Attempting to create a thumbnail version of it")
+                    #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
+                    #      f"src_width={width} | src_height={height}")
+                    ImageProcessing.save_thumbnail(src_folder=images_folder, filename=filename, save_to_folder=thumb_folder,
+                                                   src_width=width, src_height=height)
+                    # Get the contents of the newly-created thumbnail file
+                    file_contents = cls.get_from_binary_file(path=folder, filename=filename)
+                    return (suffix, file_contents)
+
+                except Exception as ex:
+                    # Failed to resize the file, or to read in the resized file
+                    error_msg = f"    Unable resize the image ({filename}), or to read the resized file. {ex}\n" \
+                                f"    Attempting to return the full-sized file instead"
+                    print(error_msg)
+
+                    # One last attempt: try to read in and return the full-sized version
+                    try:
+                        file_contents = cls.get_from_binary_file(path=images_folder, filename=filename)
+                        return (suffix, file_contents)
+                    except Exception as ex:
+                        # File I/O failed
+                        error_msg = f"Unable to load the full-size version of image, either. {ex}"
+                        print(error_msg)
+                        raise Exception(error_msg)
+
 
 
 
@@ -337,41 +433,48 @@ class ImageProcessing:
 
 
     @classmethod
-    def process_uploaded_image(cls, filename: str, fullname: str, media_folder: str) -> dict:
+    def process_uploaded_image(cls, media_folder :str, basename :str, suffix :str) -> dict:
         """
-        Obtain the size of the image, resize it to a thumbnail,
-        save the thumbnail in the "resized/" subfolder of the specified media folder,
-        and return a dictionary of properties that will go in the database
+        If possible, obtain the size of the image, resize it to a thumbnail,
+        save the thumbnail in the "resized/" subfolder of the specified media folder;
+        not all images (such as SVG's) can be resized.
 
-        :param filename:    EXAMPLE: "my image.jpg"
-        :param fullname:    EXAMPLE (on Windows):  "D:/Docs/media/my image.jpg"
-        :param media_folder: Name of the folder (including the final "/") where the media files are located.
-                             The resized version will go in a "resized" subfolder of it.
-                             EXAMPLE (on Windows):  "D:/Docs/media/
+        Return a dictionary of additional image-specific properties that will go in the database.
 
-        :return:            A dictionary of properties that will go in the database, containing
-                                the following keys: "caption", "basename", "suffix", "width", "height"
+        :param media_folder:Name of the folder (including the final "/") where the media files are located.
+                                The resized version will go in a "resized" subfolder of it.
+                                EXAMPLE (on Windows):  "D:/Docs/media/
+        :param basename:    EXAMPLE: "my image"
+        :param suffix:      EXAMPLE: "jpg"  .  It's ok to be an empty string
+
+        :return:            A dictionary of extra properties to store in database, containing some or all of
+                                the following keys: "caption", "width", "height"
         """
-        (width, height) = ImageProcessing.get_image_size(fullname)  # Extract the dimensions of the uploaded image
+        filename = basename
+        if suffix:
+            filename += f".{suffix}"    # EXAMPLE: "my image.jpg"
 
-        # Create and save a thumbnail version
-        ImageProcessing.save_thumbnail(src_folder = media_folder,
-                                       filename = filename,
-                                       save_to_folder = media_folder+"resized/",
-                                       src_width=width, src_height=height)
+        fullname = media_folder + filename  # EXAMPLE (on Windows):  "D:/Docs/media/my image.jpg"
+
+        try:
+            # Note: image types such as SVG will lead to an Exception
+            (width, height) = ImageProcessing.get_image_size(fullname)  # Extract the dimensions of the uploaded image
+
+            # Create and save a thumbnail version
+            ImageProcessing.save_thumbnail(src_folder = media_folder,
+                                           filename = filename,
+                                           save_to_folder = media_folder+"resized/",
+                                           src_width=width, src_height=height)
+
+            print(f"process_uploaded_image(): Uploaded image has width {width} , height: {height}.  "
+                  f"Thumbnail successfully created and stored")
+            properties = {"caption": basename, "width": width, "height": height}
+        except Exception as ex:
+            print("process_uploaded_image(): Unable to resize image")
+            properties = {"caption": basename}
 
 
-        (basename, suffix) = os.path.splitext(filename)     # EXAMPLE: "test.jpg" becomes ("test", ".jpg")
-        suffix = suffix[1:]     # Drop the first character (the ".")  EXAMPLE: "jpg"
-
-        # Create a dictionary of properties that will go in the database
-        properties = {"caption": basename,
-                      "basename": basename, "suffix": suffix,
-                      "width": width, "height": height}
-
-        print(f"Uploaded image has width : {width} | height: {height}.  Thumbnail successfully created and stored")
-
-        return properties
+        return properties    # A dictionary of additional image-specific properties that will go in the database
 
 
 

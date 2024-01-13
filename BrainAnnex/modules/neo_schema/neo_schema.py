@@ -593,8 +593,9 @@ class NeoSchema:
                                 Used to identify the node to which the new relationship terminates.
         :param rel_name:    Name of the relationship to create, in the from -> to direction
                                 (blanks allowed)
-        :param use_link_node: EXPERIMENTAL feature - insert an intermediate "LINK" node in the newly-created
-                                relationship
+        :param use_link_node: EXPERIMENTAL feature - if True, insert an intermediate "LINK" node in the newly-created
+                                relationship; otherwise, simply create a direct link.
+                                If rel_name has the special value "INSTANCE_OF", it must be False
         :return:            None
         """
         #TODO: add a method that reports on all existing relationships among Classes?
@@ -604,6 +605,10 @@ class NeoSchema:
         # Validate the arguments
         assert (type(rel_name) == str) and (rel_name != ""), \
             "create_class_relationship(): A name (non-empty string) must be provided for the new relationship"
+
+        assert not (rel_name == "INSTANCE_OF" and use_link_node), \
+            "create_class_relationship(): if the argument `rel_name` has the special (default) value of 'INSTANCE_OF', " \
+            "then the flag `use_link_node` must be False"
 
         cls.assert_valid_class_identifier(from_class)
         cls.assert_valid_class_identifier(to_class)
@@ -911,7 +916,7 @@ class NeoSchema:
     @classmethod
     def get_class_relationships(cls, schema_id :int, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
         """
-        Fetch and return the names of all the relationship (both inbound and outbound)
+        Fetch and return the names of all the relationships (both inbound and outbound)
         attached to the given Class.
         Treat separately the inbound and the outbound ones.
 
@@ -924,6 +929,7 @@ class NeoSchema:
                                      "out": list of outbound-relationship names}
                                 Otherwise, just return the inbound or outbound list, based on the value of link_dir
         """
+        # TODO: phase out schema ID in favor of Class name
         assert link_dir in ["BOTH", "IN", "OUT"], \
                 f'The argument `link_dir` must be one of "BOTH", "IN" or "OUT" (value passed was {link_dir})'
 
@@ -1024,16 +1030,16 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def get_class_properties_fast(cls, class_neo_id: int, include_ancestors=False, sort_by_path_len=False) -> [str]:
+    def get_class_properties(cls, class_node: Union[int, str],
+                             include_ancestors=False, sort_by_path_len=None, exclude_system=False) -> [str]:
         """
-        Faster version of get_class_properties()  [Using class_neo_id]
-
         Return the list of all the names of the Properties associated with the given Class
         (including those inherited thru ancestor nodes by means of "INSTANCE_OF" relationships,
         if include_ancestors is True),
         sorted by the schema-specified position (or, optionally, by path length)
 
-        :param class_neo_id:        Integer with the Neo4j ID of a Class node
+        :param class_node:          Either an integer with the internal database ID of an existing Class node,
+                                        or a string with its name
         :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
                                     to the given one by means of a chain of outbound "INSTANCE_OF" relationships
                                     Note: the sorting by relationship index won't mean much if ancestral nodes are included,
@@ -1043,110 +1049,60 @@ class NeoSchema:
                                     If provided, it must be either "ASC" or "DESC", and it will sort the results by path length
                                     (either ascending or descending), before sorting by the schema-specified position for each Class.
                                     Note: with "ASC", the immediate Properties of the given Class will be listed first
+        :param exclude_system:      (OPTIONAL) If True, Property nodes with the attribute "system" set to True will be excluded
 
         :return:                    A list of the Properties of the specified Class (including indirectly, if include_ancestors is True)
         """
+        if sort_by_path_len:
+            assert include_ancestors, \
+                "get_class_properties(): if the argument `sort_by_path_len` is provided," \
+                " then `include_ancestors` must be True"
+
+            assert (sort_by_path_len == "ASC" or sort_by_path_len == "DESC"), \
+                "get_class_properties(): If the argument `sort_by_path_len` is provided, it must be either 'ASC' or 'DESC'"
+
+
+        if type(class_node) == str:
+            clause = "c.name = $class_node"
+        elif type(class_node) == int:
+            clause = "id(c) = $class_node"
+        else:
+            raise Exception(f"get_class_properties(): argument `class_node` must be either a string or an integer ;"
+                            f"the value passed was of type {type(class_node)}")
+
+        if exclude_system:
+            clause += " AND (p.system IS NULL  OR  p.system = false)"
+
         if include_ancestors:
             # Follow zero or more outbound "INSTANCE_OF" relationships from the given Class node;
             #   "zero" relationships means the original node itself (handy in situations when there are no such relationships)
             if sort_by_path_len:
-                assert (sort_by_path_len == "ASC" or sort_by_path_len == "DESC"), \
-                    "If the argument sort_by_path_len is provided, it must be either 'ASC' or 'DESC'"
-
                 q = f'''
                     MATCH path=(c :CLASS)-[:INSTANCE_OF*0..]->(c_ancestor)
                                 -[r:HAS_PROPERTY]->(p :PROPERTY)
-                    WHERE id(c) = $class_neo_id
+                    WHERE {clause}
                     RETURN p.name AS prop_name
                     ORDER BY length(path) {sort_by_path_len}, r.index
                     '''
             else:
-                q = '''
+                q = f'''
                     MATCH (c :CLASS)-[:INSTANCE_OF*0..]->(c_ancestor)
                           -[r:HAS_PROPERTY]->(p :PROPERTY) 
-                    WHERE id(c) = $class_neo_id
+                    WHERE {clause}
                     RETURN p.name AS prop_name
                     ORDER BY r.index
                     '''
 
         else:
             # NOT including ancestor nodes
-            q = '''
+            q = f'''
                 MATCH (c :CLASS)-[r :HAS_PROPERTY]->(p :PROPERTY)
-                WHERE id(c) = $class_neo_id
+                WHERE {clause}
                 RETURN p.name AS prop_name
                 ORDER BY r.index
                 '''
 
-        name_list = cls.db.query(q, {"class_neo_id": class_neo_id}, single_column="prop_name")
-
-        return name_list
-
-
-
-    @classmethod
-    def get_class_properties(cls, class_node :Union[int, str], include_ancestors=False, sort_by_path_len=False) -> list:
-        """
-        TODO: maybe phase out in favor of get_class_properties_fast()
-
-        Return the list of all the names of the Properties associated with the given Class
-        (including those inherited thru ancestor nodes by means of "INSTANCE_OF" relationships,
-        if include_ancestors is True),
-        sorted by the schema-specified position (or, optionally, by path length)
-
-        :param class_node:          Either an integer with the internal database ID of an existing Class node,
-                                        or a string with its name
-        :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
-                                        to the given one by means of a chain of outbound "INSTANCE_OF" relationships
-                                        Note: the sorting by relationship index won't mean much if ancestral nodes are included,
-                                              with their own indexing of relationships; if order matters in those cases, use the
-                                              "sort_by_path_len" argument, below
-        :param sort_by_path_len:    Only applicable if include_ancestors is True.
-                                        If provided, it must be either "ASC" or "DESC", and it will sort the results by path length
-                                        (either ascending or descending), before sorting by the schema-specified position for each Class.
-                                        Note: with "ASC", the immediate Properties of the given Class will be listed first
-
-        :return:                    A list of the Properties of the specified Class (including indirectly, if include_ancestors is True)
-        """
-        if type(class_node) == str:
-            schema_id = cls.get_class_id(class_name=class_node)
-        elif type(class_node) == int:
-            schema_id = class_node
-        else:
-            raise Exception("get_class_properties(): argument `class_node` must be either a string or an integer")
-
-        if include_ancestors:
-            # Follow zero or more outbound "INSTANCE_OF" relationships from the given Class node;
-            #   "zero" relationships means the original node itself (handy in situations when there are no such relationships)
-            if sort_by_path_len:
-                assert (sort_by_path_len == "ASC" or sort_by_path_len == "DESC"), \
-                    "If the argument sort_by_path_len is provided, it must be either 'ASC' or 'DESC'"
-
-                q = f'''
-                    MATCH path=(c :CLASS {{schema_id: $schema_id}})-[:INSTANCE_OF*0..]->(c_ancestor)
-                                -[r:HAS_PROPERTY]->(p :PROPERTY) 
-                    RETURN p.name AS prop_name
-                    ORDER BY length(path) {sort_by_path_len}, r.index
-                    '''
-            else:
-                q = '''
-                    MATCH (c :CLASS {schema_id: $schema_id})-[:INSTANCE_OF*0..]->(c_ancestor)
-                          -[r:HAS_PROPERTY]->(p :PROPERTY) 
-                    RETURN p.name AS prop_name
-                    ORDER BY r.index
-                    '''
-
-        else:
-            # NOT including ancestor nodes
-            q = '''
-                MATCH (c :CLASS {schema_id: $schema_id})-[r :HAS_PROPERTY]->(p :PROPERTY)
-                RETURN p.name AS prop_name
-                ORDER BY r.index
-                '''
-
-        result_list = cls.db.query(q, {"schema_id": schema_id})
-
-        name_list = [item["prop_name"] for item in result_list]
+        name_list = cls.db.query(q, {"class_node": class_node}, single_column="prop_name")
 
         return name_list
 
@@ -1159,13 +1115,11 @@ class NeoSchema:
         The properties are given an inherent order (an attribute named "index", starting at 1),
         based on the order they appear in the list.
         If other Properties already exist, the existing numbering gets extended.
-        TODO: Offer a way to change the order of the Properties,
-              maybe by first deleting all Properties and then re-adding them
 
         NOTE: if the Class doesn't already exist, use create_class_with_properties() instead;
               attempting to add properties to an non-existing Class will result in an Exception
 
-        :param class_node:      Either an integer with the internal database ID of an existing Class node,
+        :param class_node:      An integer with the internal database ID of an existing Class node,
                                     (or a string with its name - TODO: add support for this option)
         :param class_id:        (OPTIONAL) Integer with the schema_id of the Class to which attach the given Properties
                                 TODO: remove
@@ -1176,6 +1130,9 @@ class NeoSchema:
                                     If the list is empty, an Exception is raised
         :return:                The number of Properties added
         """
+        #TODO: Offer a way to change the order of the Properties,
+        #      maybe by first deleting all Properties and then re-adding them
+
         assert (class_node is not None) or (class_id is not None), \
             "add_properties_to_class(): class_internal_id and class_id cannot both be None"
 
@@ -1188,7 +1145,6 @@ class NeoSchema:
             "add_properties_to_class(): Argument `property_list` in add_properties_to_class() must be a list"
         assert cls.class_id_exists(class_id), \
             f"add_properties_to_class(): No Class with ID {class_id} found in the Schema"
-
 
 
         clean_property_list = [prop.strip() for prop in property_list]
@@ -1229,6 +1185,33 @@ class NeoSchema:
             new_index += 1
 
         return number_properties_nodes_created
+
+
+
+    @classmethod
+    def set_property_attribute(cls, class_name :str, prop_name :str, attribute_name :str, attribute_value) -> None:
+        """
+        Set an attribute on an existing "PROPERTY" node of the specified Class
+
+        EXAMPLE:    set_property_attribute(class_name="Content Item", prop_name="uri",
+                                           attribute_name="system", attribute_value=True)
+        :param class_name:
+        :param prop_name:
+        :param attribute_name:
+        :param attribute_value:
+        :return:                None
+        """
+        q = f'''
+            MATCH (:CLASS {{name: $class_name}})-[:HAS_PROPERTY]->(p :PROPERTY {{name: $prop_name}})
+            SET p.`{attribute_name}`= $attribute_value
+            '''
+        #print(q)
+        result = cls.db.update_query(q,
+                            data_binding={"class_name": class_name, "prop_name": prop_name, "attribute_value": attribute_value})
+        print(result)
+        assert result.get('properties_set') == 1, \
+            f"set_property_attribute() : " \
+            f"failed to set the attribute named '{attribute_name}' for Property '{prop_name}'"
 
 
 
@@ -1403,7 +1386,7 @@ class NeoSchema:
 
 
     @classmethod
-    def all_properties(cls, label, primary_key_name, primary_key_value) -> [str]:
+    def all_properties(cls, label :str, primary_key_name :str, primary_key_value) -> [str]:
         """
         Return the list of the *names* of all the Properties associated with the given DATA node,
         based on the Schema it is associated with, sorted their by schema-specified position.
@@ -1415,7 +1398,8 @@ class NeoSchema:
         :param label:
         :param primary_key_name:
         :param primary_key_value:
-        :return:
+        :return:                    A list of the names of the Properties associated
+                                        with the given DATA node
         """
         q = f'''
             MATCH  (d :`{label}` {{ {primary_key_name}: $primary_key_value}})
@@ -1443,23 +1427,33 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node_internal_id(cls, uri :str) -> int:
+    def get_data_node_internal_id(cls, uri :str, label=None) -> int:
         """
-        Returns the internal database ID of the given data node,
-        specified by its value of the uri attribute
+        Returns the internal database ID of the given Data Node,
+        specified by the value of its uri attribute
+        (and optionally by a label)
 
-        :param uri: A string to identify a data node by the value of its "uri" attribute
-        :return:    The internal database ID of the specified data node
+        :param uri:     A string to identify a Data Node by the value of its "uri" attribute
+        :param label:   (OPTIONAL) String to require the Data Node to have (redundant,
+                            since "uri" already uniquely specifies a Data Node - but
+                            could be used for speed or data integrity)
+
+        :return:        The internal database ID of the specified Data Node;
+                            if none (or more than one) found, an Exception is raised
         """
-        match = cls.db.match(key_name="uri", key_value=uri)
+        match = cls.db.match(key_name="uri", key_value=uri, labels=label)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
-        if not result:
-            raise Exception(f"NeoSchema.get_data_node_internal_id(): no Data Node with the given uri ({uri}) was found")
+        if label:
+            assert result, f"NeoSchema.get_data_node_internal_id(): " \
+                           f"no Data Node with the given uri ('{uri}') and label ('{label}') was found"
+        else:
+            assert result, f"NeoSchema.get_data_node_internal_id(): " \
+                           f"no Data Node with the given uri ('{uri}') was found"
 
         if len(result) > 1:
             raise Exception(f"NeoSchema.get_data_node_internal_id(): more than 1 Data Node "
-                            f"with the given uri ({uri}) was found ({len(result)} were found)")
+                            f"with the given uri ('{uri}') was found ({len(result)} were found)")
 
         return result[0]["internal_id"]
 
@@ -1468,16 +1462,17 @@ class NeoSchema:
     @classmethod
     def get_data_node_id(cls, key_value :str, key_name="uri") -> int:
         """
-        Get the internal database ID of a data node, given some other primary key
+        Get the internal database ID of a Data Node, given some other primary key
 
-        :return:   An integer with the internal database ID of the data node
+        :param key_value:
+        :param key_name:
+        :return:            The internal database ID of the specified Data Node
         """
-
         match = cls.db.match(key_name=key_name, key_value=key_value)
         result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
 
-        if result is None:
-            raise Exception(f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`")
+        assert result is not None, \
+            f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`"
 
         return result
 
@@ -1687,16 +1682,16 @@ class NeoSchema:
             1) if silently_drop is True, drop that property from the returned pared-down list
             2) if silently_drop is False, raise an Exception
 
-        TODO: possibly expand to handle REQUIRED properties
+        :param class_internal_id:   The internal database ID of a Schema Class node
+        :param requested_props:     A dictionary of properties one wishes to assign to a new data node, if the Schema allows
+        :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped;
+                                        otherwise, an Exception is raised if any property isn't allowed
+        :param schema_cache:        (OPTIONAL) "SchemaCache" object
 
-        :param class_internal_id:    The internal ID of a Schema Class node
-        :param requested_props: A dictionary of properties one wishes to assign to a new data node, if the Schema allows
-        :param silently_drop:   If True, any requested properties not allowed by the Schema are simply dropped;
-                                    otherwise, an Exception is raised if any property isn't allowed
-        :param schema_cache:    (OPTIONAL) "SchemaCache" object
-
-        :return:                A possibly pared-down version of the requested_props dictionary
+        :return:                    A possibly pared-down version of the requested_props dictionary
         """
+        # TODO: possibly expand to handle REQUIRED properties
+
         if requested_props == {} or requested_props is None:
             return {}     # It's a moot point, if not attempting to set any property
 
@@ -1705,7 +1700,7 @@ class NeoSchema:
 
 
         allowed_props = {}
-        class_properties = cls.get_class_properties_fast(class_internal_id)  # List of Properties registered with the Class
+        class_properties = cls.get_class_properties(class_node=class_internal_id)  # List of Properties registered with the Class
 
         for requested_prop in requested_props.keys():
             # Check each of the requested properties
@@ -2073,14 +2068,17 @@ class NeoSchema:
                             skip_errors = False, report_frequency=100) -> [int]:
         """
         Import a group of relationships between existing database Data Nodes,
-        from the rows of a Pandas dataframe, as database links between the existing Data Nodes
+        from the rows of a Pandas dataframe, as database links between the existing Data Nodes.
 
         :param df:          A Pandas Data Frame with the data RELATIONSHIP to import
-        :param col_from:    Name of the Data Frame column specifying the data nodes from which the relationship starts
-        :param col_to:      Name of the Data Frame column specifying the data nodes from which the relationship starts
+        :param col_from:    Name of the Data Frame column identifying the data nodes from which the relationship starts,
+                                (the values are expected to be foreign keys)
+        :param col_to:      Name of the Data Frame column identifying the data nodes from which the relationship starts
+                                (the values are expected to be foreign keys)
         :param link_name:   Name of the new relationship being created
-        :param col_link_props: (OPTIONAL) Name of a property to assign to the relations,
-                                as well as name of the Data Frame column containing the values
+        :param col_link_props: (OPTIONAL) Name of a property to assign to the relationships,
+                                as well as name of the Data Frame column containing the values.
+                                Any NaN values are ignored (no property set on that relationship.)
         :param name_map:    (OPTIONAL) Dict with mapping from Pandas column names
                                 to Property names in the data nodes in the database
         :param skip_errors: (OPTIONAL) If True, the import continues even in the presence of errors;
@@ -2093,11 +2091,15 @@ class NeoSchema:
 
         cols = list(df.columns)     # List of column names in the Pandas Data Frame
         assert col_from in cols, \
-            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` requested in the argument 'col_from'"
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` " \
+            f"requested in the argument 'col_from'"
 
         assert col_to in cols, \
-            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` requested in the argument 'col_to'"
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` " \
+            f"requested in the argument 'col_to'"
 
+        # Starting with the column names in the Pandas data frame,
+        # determine the name of the field names in the database if they're mapped to a different name
         if name_map and col_from in name_map:
             key_from = name_map[col_from]
         else:
@@ -2119,23 +2121,25 @@ class NeoSchema:
 
         links_imported = []
         for d in recordset:     # d is a dictionary
-            # Prepare a Cypher query to link up the 2 nodes
+            # For each row, in the Pandas data frame: prepare a Cypher query to link up the 2 nodes
+            # TODO: turn into a whole-dataset query
+
+            rel_cypher = ""
+            data_dict = {"value_from": d[col_from], "value_to": d[col_to]}
+            is_nan = False
             if link_prop:
-                q = f'''
-                    MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
-                    MERGE (from_node)-[r:`{link_name}` {{{link_prop}: $rel_prop_value}}]->(to_node)
-                    RETURN id(r) AS link_id
-                    '''
+                rel_prop_value = d[link_prop]
+                if pd.isna(rel_prop_value):
+                    is_nan = True
+                else:
+                    rel_cypher = f"{{`{link_prop}`: $rel_prop_value}}"
+                    data_dict["rel_prop_value"] = rel_prop_value
 
-                data_dict = {"value_from": d[col_from], "value_to": d[col_to], "rel_prop_value": d[link_prop]}
-            else:
-                q = f'''
-                    MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
-                    MERGE (from_node)-[r:`{link_name}`]->(to_node)
-                    RETURN id(r) AS link_id
-                    '''
-
-                data_dict = {"value_from": d[col_from], "value_to": d[col_to]}
+            q = f'''
+                MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
+                MERGE (from_node)-[r:`{link_name}` {rel_cypher}]->(to_node)
+                RETURN id(r) AS link_id
+                '''
 
             #cls.db.debug_query_print(q, data_dict)
             result = cls.db.update_query(q, data_dict)
@@ -2145,8 +2149,9 @@ class NeoSchema:
                 returned_data = result.get('returned_data')
                 # EXAMPLE of returned_data': [{'link_id': 103}]}
                 links_imported.append(returned_data[0]["link_id"])
-                if col_link_props and result.get('properties_set') != 1:
-                    error_msg = f"import_pandas_links(): failed to set the property value for the new relationship for Pandas row: {d}"
+                if col_link_props and (not is_nan) and (result.get('properties_set') != 1):
+                    error_msg = f"import_pandas_links(): failed to set the property value " \
+                                f"for the new relationship for Pandas row: {d}"
                     if skip_errors:
                         print(error_msg)
                     else:
@@ -3141,7 +3146,7 @@ class NeoSchema:
 
     @classmethod
     def remove_multiple_data_relationships(cls, node_id: Union[int, str], rel_name: str, rel_dir: str, labels=None) -> None:
-        """     TODO: test
+        """
         Drop all the relationships with the given name, from or to the given data node.
         Note: the data node is left untouched.
 
@@ -3153,6 +3158,7 @@ class NeoSchema:
         :param labels:      [OPTIONAL]
         :return:            None
         """
+        # TODO: test
         assert rel_name, \
                 f"remove_data_relationship(): no name was provided for the relationship to be removed"
 
@@ -3881,7 +3887,7 @@ class SchemaCache:
             and the values are the names of the Classes on the other side of those relationships
             EXAMPLE:  {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
 
-        :param class_id:    An integer with the database internal ID of the desired Class node
+        :param class_id:    An integer with the internal database ID of the desired Class node
         :param request:     A way to specify what to look up.
                                 Permissible values: "class_attributes", "class_properties", "out_neighbors"
         :return:
@@ -3904,7 +3910,7 @@ class SchemaCache:
         if request == "class_properties":
             if "class_properties" not in cached_data:
                 # The Class properties hadn't been cached; so, retrieve them
-                class_properties = NeoSchema.get_class_properties_fast(class_id, include_ancestors=False)
+                class_properties = NeoSchema.get_class_properties(class_node=class_id, include_ancestors=False)
                 cached_data["class_properties"] = class_properties
 
             return cached_data["class_properties"]

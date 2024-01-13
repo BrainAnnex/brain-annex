@@ -4,15 +4,11 @@ div.notes  {
 	line-height:1.6;
 	border:1px solid #CCC;
 	padding:5px;
-	margin-top:2px;
+	margin-top:10px;
 	margin-left:5px;
 	margin-right:5px;
 	margin-bottom:2px;
 	background-color:#F8F8F8;
-}
-
-div.noteBlock  {
-	margin-top: 5px;
 }
 
 

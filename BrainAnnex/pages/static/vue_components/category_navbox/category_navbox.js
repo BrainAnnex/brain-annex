@@ -1,20 +1,26 @@
 Vue.component('vue-category-navbox',
-/*  Listing of all Categories, including parents and children.
+/*  Listing of all Categories, including the "pinned" ones,
+    and the parents/children/siblings of the current category.
     Option to FILTER the listing of categories to names starting with a particular letter
 */
     {
-        props: ['category_name', 'parent_categories', 'subcategories', 'siblings_categories', 'all_categories', 'show_right_sidebox'],
+        props: ['category_name', 'current_category_uri',
+                'parent_categories', 'subcategories', 'siblings_categories',
+                'all_categories',
+                'show_right_sidebox'],
         /*  category_name:          Name of the Category currently being viewed
+            current_category_uri:   A string with the URI of the Category currently being viewed
             parent_categories:      List of the parent categories of the Current Category;
                                         each item is an object, whose keys include
                                         "uri" and "name" (among others)
-            subcategories:
-            siblings_categories:    List of the parent categories of the Current Category;
+            subcategories:          List of the subcategories of the Current Category
+            siblings_categories:    List of the sibling categories of the Current Category;
                                     each item is an object, whose keys include
                                     "uri" and "name", "remarks" and "internal_id" (among others)
-            all_categories:     EXAMPLE:
-                                    [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
-            show_right_sidebox: Flag indicating whether the sidebar is expanded or contracted
+            all_categories:         EXAMPLE:
+                                        [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"},
+                                         {"uri": "523", "name": "work", 'pinned': True}]
+            show_right_sidebox:     Flag indicating whether the sidebar is expanded (true) or contracted (false)
          */
 
         template: `
@@ -71,7 +77,7 @@ Vue.component('vue-category-navbox',
                     <span class='category-relatives'>Sub-categories:</span>
                     <span class='category-relatives' v-if="subcategories.length === 0">None</span>
                     <template v-for="category in subcategories">
-                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['id']">{{category.name}}</a>
+                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
                     </template>
 
                     <hr>
@@ -96,11 +102,11 @@ Vue.component('vue-category-navbox',
                     </template>
                     <br>
 
-                    <!-- Listing of all the categories allowed by the filter -->
+                    <!-- Listing of all the categories allowed by the filter.  All but the current category will show links  -->
                     <ul style=''>
                     <template v-for="category in categories_to_show">
                         <li>
-                        <a v-if="category_name != category.name" v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
+                        <a v-if="current_category_uri != category.uri" v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
                         <span v-else class="current-category">{{category.name}}</span>
                         </li>
                     </template>

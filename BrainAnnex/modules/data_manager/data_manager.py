@@ -400,16 +400,16 @@ class DataManager:
 
         :return: None
         """
-        from_id = data_dict['from']
-        to_id = data_dict['to']
+        from_uri = data_dict['from']
+        to_uri = data_dict['to']
         rel_name = data_dict['rel_name']
         schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
         if schema_code == "cat":
-            Categories.remove_relationship_before(from_id=from_id, to_id=to_id,
+            Categories.remove_relationship_before(from_id=from_uri, to_id=to_uri,
                                                   rel_name=rel_name)       # Category-specific action
 
-        NeoSchema.remove_data_relationship(from_uri=from_id, to_uri=to_id,
+        NeoSchema.remove_data_relationship(from_uri=from_uri, to_uri=to_uri,
                                            rel_name=rel_name, labels="BA")
 
 
@@ -431,38 +431,6 @@ class DataManager:
         """
 
         return NeoSchema.get_class_instances("Records", leaf_only=True)
-
-
-
-    @classmethod
-    def get_records_schema_data(cls, category_id: int) -> dict:
-        """
-        Locate all the Classes of type record ("r") used by Content Items attached to the
-        given Category
-        TODO: being phased out in favor of Categories.get_items_schema_data()
-
-        :param category_id:
-        :return:
-        """
-        q = '''
-            MATCH  (cat :BA {uri: $category_id}) <- 
-                        [:BA_in_category] - (rec :BA {schema_code:"r"}) - [:SCHEMA]->(cl:CLASS) 
-            RETURN DISTINCT cl.name AS class_name, cl.schema_id AS schema_id
-            '''
-
-        class_list = cls.db.query(q, data_binding={"category_id": category_id})
-        # EXAMPLE: [ {"class_name": "French Vocabulary" , "schema_id": 4},
-        #            {"class_name": "Site Link" , "schema_id": 63}]
-
-
-        # Now extract all the Property fields, in the schema-stored order, of the above Classes
-        records_schema_data = {}
-        for cl in class_list:
-            prop_list = NeoSchema.get_class_properties(class_node=cl["schema_id"], include_ancestors=True, sort_by_path_len="ASC")
-            class_name = cl["class_name"]
-            records_schema_data[class_name] = prop_list
-
-        return records_schema_data
 
 
 
@@ -506,96 +474,6 @@ class DataManager:
             return file_contents
         except Exception as ex:
             return f"I/O failure while reading in contents of Item with URI `{uri}`. {ex}"     # File I/O failed
-
-
-
-    @classmethod
-    def get_binary_content(cls, uri :str, th) -> (str, bytes):
-        """
-        Fetch and return the contents of a media item stored on a local file.
-        In case of error, raise an Exception
-
-        :param uri: String identifier for a media item
-        :param th:  If not None, then the thumbnail version is returned (only
-                        applicable to images).  If not found, but the full-size image
-                        is present, create and save a thumbnail file, prior to
-                        returning the contents of the newly-created file
-        :return:    The binary data
-        """
-        # TODO: (at least for large media) read the file in blocks
-        # TODO: move to MediaManager class
-
-        #print("In get_binary_content(): uri = ", uri)
-        content_node = NeoSchema.fetch_data_node(uri = uri)
-        #print("content_node:", content_node)
-        if content_node is None:
-            raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
-
-        basename = content_node['basename']
-        suffix = content_node['suffix']
-        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
-
-        if th:
-            thumb = True
-        else:
-            thumb = False
-
-        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
-        # Includes the final "/"
-        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
-
-        try:
-            file_contents = MediaManager.get_from_binary_file(path=folder, filename=filename)
-            return (suffix, file_contents)
-
-        except Exception as ex:
-            # File I/O failed
-            error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
-            print(error_msg)
-            if not thumb:
-                raise Exception(error_msg)
-            else:
-                # We looked for a thumbnail version, and didn't find it
-                print("    Trying to use the full-size image instead of its thumb version...")
-
-                # Attempt to resize the full-sized version, and save the new thumbnail file
-                try:
-                    # Get the folder for the full-size images
-                    images_folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'],
-                                                                  thumb=None)
-                    source_full_name = images_folder + filename
-                    print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
-
-                    # Full-size version was found; obtain its dimensions
-                    width, height = ImageProcessing.get_image_size(source_full_name)
-                    # Create a thumbnail version
-                    thumb_folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'],
-                                                                 thumb=thumb)
-                    # Carry out the resizing, and save the thumbnail file
-                    print("    Attempting to create a thumbnail version of it")
-                    #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
-                    #      f"src_width={width} | src_height={height}")
-                    ImageProcessing.save_thumbnail(src_folder=images_folder, filename=filename, save_to_folder=thumb_folder,
-                                                   src_width=width, src_height=height)
-                    # Get the contents of the newly-created thumbnail file
-                    file_contents = MediaManager.get_from_binary_file(path=folder, filename=filename)
-                    return (suffix, file_contents)
-
-                except Exception as ex:
-                    # Failed to resize the file, or to read in the resized file
-                    error_msg = f"    Unable resize the image ({filename}), or to read the resized file. {ex}\n" \
-                                f"    Attempting to return the full-sized file instead"
-                    print(error_msg)
-
-                    # One last attempt: try to read in and return the full-sized version
-                    try:
-                        file_contents = MediaManager.get_from_binary_file(path=images_folder, filename=filename)
-                        return (suffix, file_contents)
-                    except Exception as ex:
-                        # File I/O failed
-                        error_msg = f"Unable to load the full-size version of image, either. {ex}"
-                        print(error_msg)
-                        raise Exception(error_msg)
 
 
 
