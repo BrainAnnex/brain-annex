@@ -126,6 +126,7 @@ class FullTextIndexing:
     # TODO: allow user-specific words, from a configuration file.  For example, for German: ich, du, er, sie, wir, ihr
 
 
+
     ##########   STRING METHODS   ##########
 
     @classmethod

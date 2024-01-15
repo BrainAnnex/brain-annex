@@ -1618,15 +1618,15 @@ class NeoSchema:
 
 
     @classmethod
-    def data_nodes_of_class(cls, class_name) -> [int]:
+    def data_nodes_of_class(cls, class_name :str) -> [int]:
         """
-        Return the Item ID's of all the Data Nodes of the given Class
-        TODO: offer to optionally use a label
-        TODO: switch to returning the internal database ID's
+        Return the uri's of all the Data Nodes of the given Class
 
-        :param class_name:
+        :param class_name:  Name of a Schema Class
         :return:            Return the Item ID's of all the Data Nodes of the given Class
         """
+        # TODO: offer the option of returning the internal database ID's and/or some or all of the fields
+        # TODO: offer to optionally pass a label?
         q = '''
             MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.uri AS uri
             '''
@@ -1634,7 +1634,7 @@ class NeoSchema:
         res = cls.db.query(q, {"class_name": class_name}, single_column="uri")
 
         # Alternate approach
-        #match = cls.db.match(labels="CLASS", properties={"name": "Categories"})
+        #match = cls.db.match(labels="CLASS", properties={"name": class_name})
         #cls.db.follow_links(match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="BA")
 
         return res
@@ -1671,6 +1671,28 @@ class NeoSchema:
         res = cls.db.query(q, single_cell="number_datanodes")
 
         return res
+
+
+
+    @classmethod
+    def data_nodes_lacking_schema(cls, label :str) -> [dict]:
+        """
+        Locate and return all nodes with the given label
+        that aren't associated to any Schema Class
+
+        :label:     A string with a graph-database label
+        :return:    A list containing a single dictionary, with key 'n';
+                        the value is a dict with all the properties of the located nodes
+        """
+        #  TODO: change the return value; test
+
+        q = f'''
+            MATCH  (n :`{label}`)
+            WHERE  not exists ( (n)-[:SCHEMA]-> (:CLASS) )
+            RETURN n
+            '''
+
+        return cls.db.query(q)
 
 
 
@@ -3194,25 +3216,6 @@ class NeoSchema:
 
         #print(q)
         cls.db.update_query(q)
-
-
-
-    @classmethod
-    def data_nodes_lacking_schema(cls):
-        """
-        Locate and return all Data Nodes that aren't associated to any Class
-        TODO: generalize the "BA" label
-        TODO: test
-
-        :return:
-        """
-        q = '''
-            MATCH  (n:BA)
-            WHERE  not exists ( (n)-[:SCHEMA]-> (:CLASS) )
-            RETURN n
-            '''
-
-        return cls.db.query(q)
 
 
 
