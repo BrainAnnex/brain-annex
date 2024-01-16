@@ -964,7 +964,7 @@ class DataManager:
                 title = title_match.group(1)            # The 1st capture group
                 unescaped_title = html.unescape(title)  # Turn HTML entities into characters;
                                                         # e.g. "&ndash;" into "-"
-                print(unescaped_title)
+                #print(unescaped_title)
                 return unescaped_title
             else:
                 err_status = f"Unable to extract title from website at {url}"

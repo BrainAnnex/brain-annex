@@ -1,5 +1,6 @@
 from typing import Union, List
 from neoaccess.cypher_utils import CypherUtils, CypherMatch
+from neoaccess import NeoAccess
 import json
 import math
 from datetime import datetime
@@ -125,14 +126,18 @@ class NeoSchema:
 
 
     @classmethod
-    def set_database(cls, db) -> None:
+    def set_database(cls, db :NeoAccess) -> None:
         """
         IMPORTANT: this method MUST be called before using this class!
 
         :param db:  Database-interface object, created with the NeoAccess library
         :return:    None
         """
-        cls.db = db     # TODO: perform some validation
+
+        assert type(db) == NeoAccess, \
+            "NeoSchema.set_database(): argument passed isn't a valid NeoAccess object"
+
+        cls.db = db
 
 
 
@@ -3670,11 +3675,12 @@ class NeoSchema:
     def generate_uri(cls, prefix, namespace, suffix="") -> str:
         """
         Generate a URI (or fragment thereof, aka "token"),
-        using the given prefix and suffix;
+        using the given prefix and/or suffix;
         the middle part is a unique auto-increment value (separately maintained
         in various groups, or "namespaces".)
 
-        EXAMPLE:  generate_uri("doc.", "documents", ".new") might produce "doc.3.new"
+        EXAMPLES:   generate_uri("doc.", "Documents", ".new") might produce "doc.3.new"
+                    generate_uri("i-", "Images", "") might produce "i-123"
 
         :param prefix:      A string to place at the start of the URI
         :param namespace:   A string with the name of the desired group of auto-increment values
