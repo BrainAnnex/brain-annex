@@ -10,7 +10,7 @@ import pandas as pd
 class NeoSchema:
     """
 
-    A layer above the class NeoAccess (or, in principle, another library providing a compatible interface)
+    A layer above the class NeoAccess (or, in principle, another library providing a compatible interface),
     to provide an optional schema to the underlying database.
 
     Schemas may be used to either:
@@ -28,17 +28,6 @@ class NeoSchema:
 
         To infuse into Neo4j functionality that some people turn to RDF, or to relational databases, for.
         However, carve out a new path rather than attempting to emulate RDF or relational databases!
-
-
-    SECTIONS IN THIS CLASS:
-        * CLASS-related
-            - RELATIONSHIPS AMONG CLASSES
-        * PROPERTIES-RELATED
-        * SCHEMA-CODE  RELATED
-        * DATA NODES
-        * DATA IMPORT
-        * EXPORT SCHEMA
-        * INTERNAL  METHODS
 
 
 
@@ -76,7 +65,8 @@ class NeoSchema:
           We also avoid calling them "label", as done in RDFS, because in Labeled Graph Databases
           like Neo4j, the term "label" has a very specific meaning, and is pervasively used.
 
-        - For convenience, data nodes contain a redundant attribute named "schema_code"
+        - For convenience, data nodes contain a label equal to their Class name,
+          and a redundant attribute (that might be phased out) named "schema_code"
 
 
     AUTHOR:
@@ -91,7 +81,7 @@ class NeoSchema:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2023 Julian A. West
+        Copyright (c) 2021-2024 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -139,7 +129,7 @@ class NeoSchema:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object, to be used with the NeoAccess library
+        :param db:  Database-interface object, created with the NeoAccess library
         :return:    None
         """
         cls.db = db     # TODO: perform some validation
@@ -560,9 +550,10 @@ class NeoSchema:
     @classmethod
     def assert_valid_relationship_name(cls, rel_name :str) -> None:
         """
+        Raise an Exception if the passed argument is not a valid name for a database relationship
 
         :param rel_name:
-        :return:
+        :return:        None
         """
         assert type(rel_name) == str, \
             "assert_valid_relationship_name(): the relationship name must be a string"

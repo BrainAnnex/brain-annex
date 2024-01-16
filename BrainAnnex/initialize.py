@@ -34,7 +34,7 @@ class InitializeBrainAnnex:
 
 
     @classmethod
-    def set_folders(cls, media_folder, log_folder):
+    def set_folders(cls, media_folder, log_folder) -> None:
         """
         Initialize various static classes that need folder locations from the
         configuration file
@@ -42,7 +42,7 @@ class InitializeBrainAnnex:
 
         :param media_folder:
         :param log_folder:
-        :return:
+        :return:            None
         """
         DataManager.LOG_FOLDER = log_folder
 
