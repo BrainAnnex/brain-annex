@@ -31,10 +31,12 @@ Vue.component('vue-plugin-d',
             </div>		<!-- End of Document container -->
 
 
-            <!--  STANDARD CONTROLS
-                  (signals from them get relayed to the parent of this component, but some get handled here)
-                  Intercept the following signal from child component:
-                        v-on:edit-content-item
+            <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                  Signals from the Vue child component "vue-controls" below
+                  get relayed to the parent of this component,
+                  but some get intercepted and handled here, namely:
+
+                          v-on:edit-content-item
             -->
             <vue-controls v-bind:allow_editing="allow_editing"  v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"

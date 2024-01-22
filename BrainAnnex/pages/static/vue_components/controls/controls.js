@@ -1,18 +1,27 @@
-/* Standard controls for Content Items to edit, move, etc,  */
+/*  Standard controls for Content Items to edit, move, etc,
+    If the 'allow_editing' prop is true, it produces a DIV element with a row of controls;
+    the DIV is an inline-block, so that extra controls can be easily added at the start and/or end of its standard row
+ */
 
 Vue.component('vue-controls',
     {
         props: ['allow_editing', 'index', 'item_count'],
-        /*  index:      the zero-based position of the Record on the page
-            item_count: the total number of Content Items on the page
+        /*
+            allow_editing:  A boolean indicating whether in editing mode
+            index:          The zero-based position of the Content Item on the page
+            item_count:     The total number of Content Items on the page
+
+            TODO: maybe add a flag indicating whether to exclude the edit_tags control (not suitable for headers),
+                  more generally, differentiate between controls for "Content Items" and controls for "Page Elements"
          */
 
         template: `
-            <div class='content-controls'>	<!-- Outer container box, serving as Vue-required template root  -->
+            <div v-if="allow_editing"
+                style='display:inline-block; margin:0px'>	<!-- Outer container box, serving as Vue-required template root  -->
 
-            <template v-if="allow_editing" >
                 <img @click="delete_item" src="/BA/pages/static/graphics/delete_16.png"
                      class="control" title="DELETE" alt="DELETE">
+
                 <img @click="move_up" src="/BA/pages/static/graphics/up_arrow_16_1303891.png"
                      class="control" title="Move UP" alt="Move UP">
 
@@ -27,19 +36,21 @@ Vue.component('vue-controls',
                     <input type='hidden' name='elementToMove' value='contentID_TBA'>
                 </form>
 
-
                 <img @click="move_down" src="/BA/pages/static/graphics/down_arrow_16_1303877.png"
                      class="control" title="Move DOWN" alt="Move DOWN">
+
+                <img @click="edit_tags" src="/BA/pages/static/graphics/tag_16.png"
+                     class="control" title="Edit TAGS/Metadata (TBA)" alt="Edit TAGS/Metadata (TBA)">
 
                 <img @click="add_content_below" src="/BA/pages/static/graphics/plusCircle3_16_183316.png"
                      class="control" title="Add new item below" alt="Add new item below">
 
                 <img @click="edit" src="/BA/pages/static/graphics/edit_16_pencil2.png"
                      class="control" title="EDIT" alt="EDIT">
-            </template>
 
-            \n</div>\n		<!-- End of outer container box -->
+            </div>		<!-- End of outer container box -->
             `,
+
 
         data: function() {
             return {
@@ -51,45 +62,56 @@ Vue.component('vue-controls',
         // --------------------  METHODS  ---------------------
         methods: {
 
-            /* The controls are handled by various ancestral components, including the Vue root element
+            /* Note: the controls send individual signals that get handled by various ancestral components,
+                     possibly including the Vue root element.
+                     Typically, the 'edit-content-item' signal is handled by the parent (the plugin-specific component),
+                     while the other signals are handled by the `vue-content-items` grandparent component,
+                     or by the Vue root element
              */
 
             add_content_below() {
                 // Note: this signal will get intercepted by the `vue-content-items` ancestor component
-                console.log("`vue-controls` component is sending 'add-content' signal to its parent");
+                console.log("`vue-controls` component is sending an 'add-content' signal to its parent");
                 this.$emit('add-content');
             },
 
             delete_item() {
                 // Note: this signal will get intercepted by any listening ancestor component
-                console.log("`vue-controls` component is sending 'delete-content-item' signal to its parent");
+                console.log("`vue-controls` component is sending a 'delete-content-item' signal to its parent");
                 this.$emit('delete-content-item');
             },
 
             move_up() {
                 // Note: this signal gets ultimately intercepted by the GRAND-parent component
-                console.log("`vue-controls` component is sending 'move-up-content-item' signal to its parent");
+                console.log("`vue-controls` component is sending a 'move-up-content-item' signal to its parent");
                 this.$emit('move-up-content-item');
             },
 
             move_down() {
                 // Note: this signal gets ultimately intercepted by the GRAND-parent component
-                console.log("`vue-controls` component is sending 'move-down-content-item' signal to its parent");
+                console.log("`vue-controls` component is sending a 'move-down-content-item' signal to its parent");
                 this.$emit('move-down-content-item');
             },
 
             move_item() {
                 // Invoked when the user chooses an entry from the move-to menu
-                // Note: this signal gets ultimately intercepted by the GRAND-parent component
-                console.log("`vue-controls` component is sending 'relocate-content-item' signal to its parent, with argument: ", this.move_after);
+                // Note: this signal gets ultimately intercepted by the GRAND-parent component (the Vue root element)
+                console.log("`vue-controls` component is sending a 'relocate-content-item' signal to its parent, with argument: ", this.move_after);
                 this.$emit('relocate-content-item', this.move_after);
             },
 
-            /* Controls handled by the PARENT component
-             */
+            edit_tags() {
+                /* Invoked when the user clicks on the "Edit TAGS/Metadata" icon.
+                    Send a signal meant for the GRAND-parent component `vue-content-items`
+                 */
+                console.log("`vue-controls` component is sending an 'edit-tags' signal to its parent");
+                this.$emit('edit-tags');
+            },
+
+
             edit() {
-                // Note: this signal, UNLIKE the other ones, is meant for the PARENT component
-                console.log("`vue-controls` component is sending 'edit-content-item' signal to its parent");
+                // Note: this signal, UNLIKE the other ones, is meant for the PARENT component (the plugin-provided component)
+                console.log("`vue-controls` component is sending an 'edit-content-item' signal to its parent");
                 this.$emit('edit-content-item');
             }
 

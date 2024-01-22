@@ -38,11 +38,16 @@ Vue.component('vue-plugin-n',
             </div>  <!--  Terminate the wrapper DIV "note-editor" -->
 
 
-            <!--  STANDARD CONTROLS
-                  (signals from them get relayed to the parent of this component, but some get handled here)
-                  Intercept the following signal from child component:
-                        v-on:edit-content-item
+            <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                  Signals from the Vue child component "vue-controls" below
+                  get relayed to the parent of this component,
+                  but some get intercepted and handled here, namely:
+
+                          v-on:edit-content-item
             -->
+            <img v-if="allow_editing" src="/BA/pages/static/graphics/copy_16_172587.png"
+                 class="control" title="COPY TO CLIPBOARD (TBA)" alt="COPY TO CLIPBOARD (TBA)">
+
             <vue-controls v-bind:allow_editing="allow_editing" v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item(item_data)">

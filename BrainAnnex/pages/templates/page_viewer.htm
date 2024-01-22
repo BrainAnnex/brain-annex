@@ -238,20 +238,22 @@
   -->
 
 
-<!-- Original version, to be used when the EDITING CONTROLS are SHOWN.
+<!-- (PART 1 of 2)
+
+     Original version, to be used when the EDITING CONTROLS are SHOWN.
      This version separates all the Content Items into individual entities.
 
      For each Content Item on this page, make use of the appropriate Vue component (picked dynamically).
      Handle here some UI operations common to all types, such as moves around the page.
      Type-specific operations, such as editing, are handled by the individual components
 
-     v-bind:key Used to provide unique identifiers for each component (it may change if content_array changes)
+     v-bind:key Used to provide unique identifiers for each Vue component (it may change if content_array changes)
      v-bind:is  Specifies which component to use, based on the type of the Content Item
 
-     Props (arguments) passed to the components [some meant for the 'vue-controls' sub-components]
+     Props (arguments) passed to the components [some are meant for the 'vue-controls' sub-components]
             v-bind:item="item"
             v-bind:expose_controls="expose_controls"
-            v-bind:category_id="category_uri"
+            v-bind:category_uri="category_uri"
             v-bind:index="index"                        Zero-based position of the Content Item on the page
             v-bind:item_count="content_array.length"
 
@@ -278,7 +280,7 @@
 
         v-bind:item="item"
         v-bind:expose_controls="expose_controls"
-        v-bind:category_id="category_uri"
+        v-bind:category_uri="category_uri"
         v-bind:index="index"
         v-bind:item_count="content_array.length"
 
@@ -302,7 +304,8 @@
 
 
 
-<!--
+<!-- (PART 2 of 2)
+
     New version, to be used when the EDITING CONTROLS are HIDDEN.
     This version groups together similar adjacent records
   -->
@@ -315,7 +318,7 @@
 
             v-bind:item="content_array[group.index]"
             v-bind:expose_controls="expose_controls"
-            v-bind:category_id="category_uri"
+            v-bind:category_uri="category_uri"
             v-bind:index="group.index"
             v-bind:item_count="content_array.length"
 
