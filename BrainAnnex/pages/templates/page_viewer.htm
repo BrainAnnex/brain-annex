@@ -8,9 +8,9 @@
         current_page
         header_title
 
-        category_id     A string with the URI of a Category
-        category_name   The name of the above Category
-        category_remarks
+        category_uri        A string with the URI of the Category featured on this page
+        category_name       The name of the above Category
+        category_remarks    Descriptive extra text about this Category (may be missing)
 
         all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                     EXAMPLE:
@@ -139,7 +139,7 @@
 
 <vue-category-navbox
     v-bind:category_name="category_name"
-    v-bind:current_category_uri="category_id"
+    v-bind:current_category_uri="category_uri"
     v-bind:parent_categories="parent_categories"
     v-bind:subcategories="all_subcategories"
     v-bind:siblings_categories="siblings_categories"
@@ -172,7 +172,7 @@
 
 <!-- Bread crumbs for this Category -->
 <vue-bread-crumbs
-    v-bind:category_uri="category_id"
+    v-bind:category_uri="category_uri"
     v-bind:bread_crumbs="bread_crumbs"
     v-bind:all_categories="all_categories"
 >
@@ -186,7 +186,7 @@
     {{category_name}}
     <span style="color:gray; margin-left:25px; font-size:10px">{{category_remarks}}</span>
     {# Category management #}
-    <a v-if="expose_controls" href='/BA/pages/category_manager/{{category_id}}' style='margin-left:15px' target="_blank">
+    <a v-if="expose_controls" href='/BA/pages/category_manager/{{category_uri}}' style='margin-left:15px' target="_blank">
         <img src='/BA/pages/static/graphics/edit_16_2530834.png' alt='EDIT category (rename, etc.)' title='EDIT category (rename, etc.)'>
     </a>
 </p>
@@ -251,7 +251,7 @@
      Props (arguments) passed to the components [some meant for the 'vue-controls' sub-components]
             v-bind:item="item"
             v-bind:expose_controls="expose_controls"
-            v-bind:category_id="category_id"
+            v-bind:category_id="category_uri"
             v-bind:index="index"                        Zero-based position of the Content Item on the page
             v-bind:item_count="content_array.length"
 
@@ -278,7 +278,7 @@
 
         v-bind:item="item"
         v-bind:expose_controls="expose_controls"
-        v-bind:category_id="category_id"
+        v-bind:category_id="category_uri"
         v-bind:index="index"
         v-bind:item_count="content_array.length"
 
@@ -315,7 +315,7 @@
 
             v-bind:item="content_array[group.index]"
             v-bind:expose_controls="expose_controls"
-            v-bind:category_id="category_id"
+            v-bind:category_id="category_uri"
             v-bind:index="group.index"
             v-bind:item_count="content_array.length"
 
@@ -384,7 +384,7 @@
         <b>UPLOAD IMAGES or DOCUMENTS</b>:<br>
 
         <form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
-            <input type='hidden' name='category_id' value='{{category_id}}'>
+            <input type='hidden' name='category_id' value='{{category_uri}}'>
             <input type='hidden' name='pos' value='TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'>
         </form>
 
@@ -402,7 +402,7 @@
     <div class='form-box' style="float:right">
         <span class='title'>CREATE A NEW SUBCATEGORY for &ldquo;{{category_name}}&rdquo;</span><br><br>
 
-        <input type='hidden' name='parentID' value={{category_id}}>
+        <input type='hidden' name='parentID' value={{category_uri}}>
 
         <table border='0' cellspacing='5' cellpadding='0'>
             <tr>
@@ -414,11 +414,11 @@
         </table>
 
         <br>
-        <button @click="add_subcategory({{category_id}})">Add New Sub-Category</button>
+        <button @click="add_subcategory({{category_uri}})">Add New Sub-Category</button>
             <span v-if="waiting" class="waiting">Adding the subcategory...</span>
             <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
         <br><br>
-        <span style='color:gray'><b>OR:</b> add an <a href='/BA/pages/category_manager/{{category_id}}'><i>existing</i></a> sub-category</span>
+        <span style='color:gray'><b>OR:</b> add an <a href='/BA/pages/category_manager/{{category_uri}}'><i>existing</i></a> sub-category</span>
     </div>
 
 
@@ -456,8 +456,8 @@
 
 <br>
 <div v-if="expose_controls">
-    <a href="/BA/pages/md-file/{{category_id}}" target="_blank">Export to MD file</a>
-    <a href="/BA/pages/static-web/{{category_id}}" target="_blank" style="margin-left:50px">Export to static webpage</a>
+    <a href="/BA/pages/md-file/{{category_uri}}" target="_blank">Export to MD file</a>
+    <a href="/BA/pages/static-web/{{category_uri}}" target="_blank" style="margin-left:50px">Export to static webpage</a>
 </div>
 <br><br>
 
@@ -524,7 +524,7 @@ new Vue({
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
-        category_id: {{category_id}},   // Integer
+        category_uri: {{category_uri}},   // A string with the URI of the Category featured on this page
 
         show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
         show_right_sidebox: true,       // Indicating whether to show or collapse the right sidebox (with the Category navigation)
@@ -638,9 +638,9 @@ new Vue({
         },
 
 
-        add_subcategory(category_id)
+        add_subcategory(category_uri)
         {
-            console.log(`Adding new sub-category: category_id: ${category_id}, subcategory name: ${this.new_subcategory_name} , remarks: ${this.new_subcategory_remarks}`);
+            console.log(`Adding new sub-category: category_uri: ${category_uri}, subcategory name: ${this.new_subcategory_name} , remarks: ${this.new_subcategory_remarks}`);
             if (this.new_subcategory_name == "")  {
                 alert("Must enter a Subcategory name");
                 return;
@@ -649,7 +649,7 @@ new Vue({
             // Send the request to the server, using a POST
             url_server = "/BA/api/add_subcategory"
             // Compose the body of the POST to send to the server
-            post_obj = {category_id: category_id,
+            post_obj = {category_uri: category_uri,
                         subcategory_name: this.new_subcategory_name,
                         subcategory_remarks: this.new_subcategory_remarks};
             post_body = ServerCommunication.parse_POST_object(post_obj);
@@ -824,7 +824,7 @@ new Vue({
 
             // Request the server to perform the operation on the data
             const swap_uri = this.content_array[i-1].uri;       // The ID of the Item that we're swapping with
-            const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_id}`;
+            const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_move_up, custom_data: i});
@@ -876,7 +876,7 @@ new Vue({
 
             // Request the server to perform the operation on the data
             const swap_uri = this.content_array[i+1].uri;       // The ID of the Item that we're swapping with
-            const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_id}`;
+            const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_move_down, custom_data: i});
@@ -957,7 +957,7 @@ new Vue({
             const schema_code = item.schema_code;
             const uri = item.uri;
 
-            console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , id ${item.uri} to just after the ${where_to}-th entry, within category ${this.category_id}`);
+            console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , id ${item.uri} to just after the ${where_to}-th entry, within category ${this.category_uri}`);
 
             const number_items = this.content_array.length;
 
@@ -981,7 +981,7 @@ new Vue({
             }
 
             // Request the server to perform the operation on the database
-            const url_server = `/BA/api/reposition/${this.category_id}/${uri}/${where_to}`;
+            const url_server = `/BA/api/reposition/${this.category_uri}/${uri}/${where_to}`;
             console.log(url_server);
 
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_relocate_content_item, custom_data: i});

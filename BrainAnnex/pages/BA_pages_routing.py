@@ -140,7 +140,7 @@ class PagesRouting:
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages, header_title=category_name,
                                    content_items=content_items,
-                                   category_id=category_uri, category_name=category_name, category_remarks=category_remarks,
+                                   category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    all_categories=all_categories,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    siblings_categories=siblings_categories,
