@@ -17,7 +17,7 @@ from datetime import datetime
 
 
 """
-    MIT License.  Copyright (c) 2021-2023 Julian A. West     BrainAnnex.org
+    MIT License.  Copyright (c) 2021-2024 Julian A. West     BrainAnnex.org
 """
 
 
@@ -27,6 +27,9 @@ class DataManager:
     For general, high-level database-interaction operations.
     Used by the UI for Page Generation,
     as well as by the web API to produce data for the endpoints.
+
+    This library is primarily a common entry point for data requests:
+    many specific operations get delegated to other, more specialized, libraries.
 
     This class does NOT get instantiated.
     """

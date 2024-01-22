@@ -44,7 +44,7 @@ class FullTextIndexing:
                     'can', 'cannot', 'could', 'might', 'may', 'do', 'does', 'doesn', 'did', 'didn', 'done', 'doing',
                     'make', 'made', 'making',
                     'have', 'haven', 'has', 'had', 'hadn', 'having',
-                    'must', 'need', 'needs', 'seem', 'seems', 'seemed', 'want', 'wants', 'should', 'shouldn', 'ought',
+                    'must', 'need', 'needs', 'needed', 'seem', 'seems', 'seemed', 'want', 'wants', 'should', 'shouldn', 'ought',
                     'will', 'would', 'shall',
                     'get', 'gets', 'got', 'give', 'gives', 'gave', 'giving',
                     'take', 'takes', 'took', 'taking', 'put', 'bring', 'brings', 'bringing',
@@ -77,7 +77,7 @@ class FullTextIndexing:
                     'like', 'as', 'aka', 'akin', 'such', 'fairly', 'actual', 'actually',
                     'likewise', 'similar', 'similarly',
                     'simple', 'simpler', 'simplest', 'simply',
-                    'each', 'per', 'any', 'all', 'everyone', 'anyone', 'anybody', 'anything', 'something', 'someone', 'some',
+                    'each', 'per', 'any', 'all', 'every', 'everyone', 'anyone', 'anybody', 'anything', 'something', 'someone', 'some', 'various',
                     'more', 'most', 'mostly', 'additional', 'extra',
                     'less', 'least', 'than', 'enough', 'only', 'further',
                     'everything', 'nothing',
@@ -120,7 +120,8 @@ class FullTextIndexing:
                     'show', 'shows', 'showing', 'find', 'finds', 'found', 'finding', 'findings', 'respectively',
                     'still', 'size', 'pre', 'inc', 'comfortably', 'look', 'approach',
                     'exact', 'exactly', 'likely', 'probable', 'probably', 'avg', 'total', 'misc',
-                    'require', 'requires', 'requiring', 'quick', 'quickly', 'rather']
+                    'require', 'requires', 'requiring', 'quick', 'quickly', 'rather',
+                    'know', 'knows', 'knowing', 'say', 'says', 'saying']
 
 
     # TODO: allow user-specific words, from a configuration file.  For example, for German: ich, du, er, sie, wir, ihr
@@ -134,7 +135,7 @@ class FullTextIndexing:
         """
         Lower-level function used in the larger context of indexing text that may contain HTML.
 
-        Given a string, optionally zap HTML tags, HTML entities (such as &ndash;)
+        Given a string, optionally zap HTML tags and HTML entities, such as &ndash;
         then ditch punctuation from the given text;
         finally, break it up into individual words, returned as a list.  If requested, turn it all to lower case.
 
@@ -148,7 +149,6 @@ class FullTextIndexing:
             ['Mr', 'Joe', 'sons', 'A', 'Long', 'Term', 'business', 'Find', 'it', 'at', 'http', 'example', 'com', 'home', 'Visit', 'Joe', 's', 'NOW']
 
         Note about numbers:  * negative signs are lost  * numbers with decimals will get split into two parts
-        TODO: maybe eliminate the decimal numbers while leaving the integers alone, to allow indexing of (some) integer numbers such as dates
 
         :param text:            A string with the text to parse
         :param to_lower_case:   If True, all text is converted to lower case
@@ -156,6 +156,8 @@ class FullTextIndexing:
         :return:                A (possibly empty) list of words in the text,
                                     free of punctuation, HTML and HTML entities such as &ndash;
         """
+        # TODO: maybe eliminate the decimal numbers while leaving the integers alone, to allow indexing of (some) integer numbers such as years
+
         if drop_html:
             unescaped_text = html.unescape(text)    # Turn HTML entities into characters; e.g. "&ndash;" into "-"
             #print(unescaped_text)  # <p>Mr. Joe&sons<br>A Long–Term business! Find it at > (http://example.com/home)<br>Visit Joe's "NOW!"</p>

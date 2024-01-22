@@ -4,14 +4,14 @@ import pandas as pd
 
 
 """
-    MIT License.  Copyright (c) 2021-2023 Julian A. West     BrainAnnex.org
+    MIT License.  Copyright (c) 2021-2024 Julian A. West     BrainAnnex.org
 """
 
 
 
 class DocumentationGenerator:
     """
-    To generate an HTML for a documentation page, from a python file
+    To generate the HTML for a documentation page, from a python file
     (for best results, it's expected to be a file following some styling conventions
     as done in the BrainAnnex project)
     """
@@ -82,7 +82,10 @@ class DocumentationGenerator:
 
         safe_htm = htm.replace("<", "&lt;").replace(">", "&gt;")
 
-        # TODO:  < and >  in code comments are still not sufficiently protected
+        # TODO:  < , > and & in code comments are still not sufficiently protected
+        #        Need to replace  <  with  &lt;
+        #        Need to replace  &  with  &amp;
+        #        Try it out on documenting the method FullTextIndexing.split_into_words()
 
         return f"File `{basename}` uploaded successfully.  <b>{len(all_matches)} MATCH(ES)</b> found.  Nothing added to database.  " \
                f"Scan results:<br><br>{scan_results}<br><br>" \

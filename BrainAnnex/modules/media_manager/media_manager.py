@@ -11,7 +11,7 @@ from PIL import Image
 
 class MediaManager:
     """
-    Helper library for the management of media files
+    Helper library for the management of media files (documents and images)
     """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
@@ -483,7 +483,8 @@ class ImageProcessing:
     @classmethod
     def describe_image(cls, source_full_name) -> None:
         """
-        Print out some info about the given image.
+        Print out some info about the given image:
+        the file format, the pixel format, the image size and (if any) the color palette
 
         :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/media/resized/my image.jpg"
         :return:                    None.  In case of error, an Exception is raised
