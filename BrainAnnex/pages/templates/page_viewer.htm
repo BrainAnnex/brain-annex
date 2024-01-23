@@ -16,7 +16,7 @@
                                     EXAMPLE:
                                           [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"},
                                            {"uri: 123, "name": "Calculus"},
-                                           {"uri": 523, "name": "Work at Acme", 'pinned': True}]
+                                           {"uri": 523, "name": "Work at Acme", "pinned": True}]
         subcategories       EXAMPLE: [{'uri': '2', 'name': 'Work', remarks: 'outside employment', OTHER_FIELDS_NOT_USED}]
         parent_categories
         siblings_categories
@@ -288,6 +288,7 @@
         v-bind:records_types="records_types"
 
         v-bind:schema_data="get_schema_data(item)"
+        v-bind:all_categories="all_categories"
 
         v-on:delete-content-item-highlighted="delete_content_item(item)"
         v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"

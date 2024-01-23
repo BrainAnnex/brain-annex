@@ -8,7 +8,8 @@
 
 Vue.component('vue-content-items',
     {
-        props: ['item', 'expose_controls', 'category_uri', 'index', 'item_count', 'registered_plugins', 'records_types', 'schema_data'],
+        props: ['item', 'expose_controls', 'category_uri', 'index', 'item_count',
+                'registered_plugins', 'records_types', 'schema_data', 'all_categories'],
         /*  item:           EXAMPLE: {uri:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Headers"}
                                      (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
             expose_controls:Flag indicating whether in edit mode
@@ -21,6 +22,10 @@ Vue.component('vue-content-items',
                                 (i.e. classes that are INSTANCE_OF the "Records" class)
             schema_data:    Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
                                 EXAMPLE: ["French", "English", "notes"]
+            all_categories: A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
+                                EXAMPLE:
+                                      [{"uri": 1, "name": "HOME"},
+                                       {"uri": 523, "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]
 
             NOTE: some of the data is just passed thru by the child components, on its way to the grand-child 'vue-controls'
                   (TODO: bundle that data into an object)
@@ -86,15 +91,27 @@ Vue.component('vue-content-items',
                 </button>
             </p>
 
-            <p v-if="tag_edit_box" class="insert-box">
+            <div v-if="tag_edit_box" class="insert-box">
                 <img @click="tag_edit_box = false" src="/BA/pages/static/graphics/close_box_16_red.png"
                      class="control" style="float: right" title="Close" alt="Close">
 
-                <b>Current Category Tags for this Item:</b><br>
+                <span class="tag-header">Current Category Tags for this Item:</span><br>
                 TBA <span style="margin-left:20px; color:gray; font-style:italic">(last tag cannot be deleted)</span>
                 <br><br>
-                <b>ADD CATEGORY TAG:</b> MENU_TBA
-            </p>
+
+                <b>ADD CATEGORY TAG: </b>
+                <!-- Pulldown menu to add tags -->
+                <form style='display:inline-block; margin-left:3px'>
+                    <select @change='add_tag(item.uri, category_uri_to_add)' v-model="category_uri_to_add"
+                            v-bind:title="'Add Category tags to this Content Item'">
+                        <option value='-1' selected>[Select new tag]</option>
+                        <option v-for="cat in all_categories"
+                                v-if="cat.uri != category_uri"
+                                v-bind:value="cat.uri">{{cat.name}}</option>
+                    </select>
+                    <input type='hidden' name='TBA' value='TBA'>
+                </form>
+            </div>
             
             </div>		<!-- End of outer container -->
             `,
@@ -105,7 +122,8 @@ Vue.component('vue-content-items',
                 highlight: false,       // Whether to highlight this Content Item (e.g. prior to deleting it)
                 show_button: false,
                 insert_box: false,      // Whether to display a box used to insert a new Content Item below this one
-                tag_edit_box: false     // Whether to display a box used to edit the Category tags of this Content Item
+                tag_edit_box: false,    // Whether to display a box used to edit the Category tags of this Content Item
+                category_uri_to_add: -1 // URI of the chosen Category to tag the current Content Item with (-1 means "not chosen yet")
             }
         }, // data
 
@@ -138,6 +156,15 @@ Vue.component('vue-content-items',
                 console.log(`'vue-content-items' component received Event 'edit-tags'.  Showing editing box for the tags of Item with URI: ${this.item.uri}`);
                 //console.log(this.item);
                 this.tag_edit_box = true;
+            },
+
+            add_tag(item_uri, category_uri)
+            // Invoked when the user chooses an entry from the "ADD CATEGORY TAG" menu
+            {
+                console.log(`add_tag(): will be sending request to server to tag Content Item '${item_uri}' with Category '${category_uri}'`);
+                const url_server = `/BA/api/link_content_at_end/${category_uri}/${item_uri}`;
+                console.log(url_server);
+                //TODO: complete server call.  Double-check not -1 !
             },
 
 
