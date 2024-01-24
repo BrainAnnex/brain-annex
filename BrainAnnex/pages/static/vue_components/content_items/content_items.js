@@ -104,13 +104,15 @@ Vue.component('vue-content-items',
                 <form style='display:inline-block; margin-left:3px'>
                     <select @change='add_tag(item.uri, category_uri_to_add)' v-model="category_uri_to_add"
                             v-bind:title="'Add Category tags to this Content Item'">
-                        <option value='-1' selected>[Select new tag]</option>
+                        <option value="" selected>[Select new tag]</option>
                         <option v-for="cat in all_categories"
                                 v-if="cat.uri != category_uri"
                                 v-bind:value="cat.uri">{{cat.name}}</option>
                     </select>
-                    <input type='hidden' name='TBA' value='TBA'>
                 </form>
+                <!-- Status info -->
+                <span v-if="waiting" class="waiting">Performing the requested operation...</span>
+                <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
             </div>
             
             </div>		<!-- End of outer container -->
@@ -123,7 +125,10 @@ Vue.component('vue-content-items',
                 show_button: false,
                 insert_box: false,      // Whether to display a box used to insert a new Content Item below this one
                 tag_edit_box: false,    // Whether to display a box used to edit the Category tags of this Content Item
-                category_uri_to_add: -1 // URI of the chosen Category to tag the current Content Item with (-1 means "not chosen yet")
+                category_uri_to_add: "",// URI of the chosen Category to tag the current Content Item with ("" means "not chosen yet")
+                waiting: false,         // Whether any server request is still pending
+                error: false,           // Whether the last server communication resulted in error
+                status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
             }
         }, // data
 
@@ -162,10 +167,37 @@ Vue.component('vue-content-items',
             // Invoked when the user chooses an entry from the "ADD CATEGORY TAG" menu
             {
                 console.log(`add_tag(): will be sending request to server to tag Content Item '${item_uri}' with Category '${category_uri}'`);
-                const url_server = `/BA/api/link_content_at_end/${category_uri}/${item_uri}`;
-                console.log(url_server);
-                //TODO: complete server call.  Double-check not -1 !
+                const url_server_api = `/BA/api/link_content_at_end/${category_uri}/${item_uri}`;
+                console.log(`About to contact the server at ${url_server_api}`);
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {callback_fn: this.finish_add_tag
+                            });
             },
+
+            finish_add_tag(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of add_tag() upon getting a response from the server
+            {
+                console.log("Finalizing the add_tag() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+                this.category_uri_to_add = "";  // Return pulldown menu to ask user to SELECT
+            },
+
 
 
             add_new_item_below(schema_code, class_name)
