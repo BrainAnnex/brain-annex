@@ -92,7 +92,8 @@ class DataManager:
         """
         Convert the argument to an integer, if at all possible; otherwise, leave it as a string
         (or leave it as None, if applicable)
-        :param s:
+
+        :param s:   Value to convert to integer, if possible
         :return:    Either an int or a string
         """
         try:
@@ -707,7 +708,7 @@ class DataManager:
             - "category_id"  (for the linking to a Category)
             - Schema-related keys:
                     * schema_code (Required)
-                    * schema_id (Optional)
+                    * schema_uri (Optional)
                     * class_name (Required only for Class Items of type "record")
 
             - insert_after        Either a URI of an existing Content Item attached to this Category,
@@ -745,27 +746,26 @@ class DataManager:
             raise Exception("Missing Schema Code (Item Type)")
         del post_data["schema_code"]
 
-        schema_id = post_data.get("schema_id")
-        if schema_id:
-            schema_id = int(schema_id)
-            del post_data["schema_id"]
+        schema_uri = post_data.get("schema_uri")
+        if schema_uri:
+            del post_data["schema_uri"]
         else:
-            schema_id = NeoSchema.get_schema_id(schema_code)    # If not passed, try to look it up
-            print("schema_id looked up as: ", schema_id)
-            if schema_id == -1:
+            schema_uri = NeoSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
+            print("schema_uri looked up as: ", schema_uri)
+            if schema_uri == "":
                 raise Exception("Missing Schema ID")
 
         class_name = post_data.get("class_name")
         if class_name:
             del post_data["class_name"]
         else:
-            # If not provided, look it up from the schema_id
-            class_name = NeoSchema.get_class_name_by_schema_id(schema_id)
+            # If not provided, look it up from the schema_uri
+            class_name = NeoSchema.get_class_name_by_schema_uri(schema_uri)
             print(f"class_name looked up as: `{class_name}`")
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_uri = NeoSchema.next_available_datanode_uri()
+        new_uri = NeoSchema.reserve_next_uri()
         print("New item will be assigned ID:", new_uri)
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations

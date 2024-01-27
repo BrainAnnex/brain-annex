@@ -1,16 +1,17 @@
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+from neoaccess import NeoAccess
 
 
 class Collections:
     """
-    An ordered sequence of Data Content Items.
+    An ordered sequence of Data Nodes.
 
-    An entity to which a variety of nodes (e.g. representing records or media)
+    An entity to which a variety of Data Nodes
     is attached, with a positional attribute.
 
     In terms of implementation, it's a hub, with a central data node (the "Collection"),
-    to which any number of "Content Items" (or "Collection Items") are linked;
-    the relationship name can be anything (user-passed) but it is given a property
+    to which any number of Data Nodes (or "Collection Items") are linked;
+    the relationship name can be anything (user-passed) but it gets assigned a property
     named "pos", which is managed by this class, to maintain and alter the sequential order.
 
     A generalization of Categories.
@@ -20,7 +21,8 @@ class Collections:
 
     db = None                       # MUST be set before using this class!
 
-    DELTA_POS = 20                  # Arbitrary shift in "pos" value;
+    DELTA_POS = 20                  # Arbitrary default shift in "pos" value between Collection Items that are adjacent
+                                    # (i.e. next in sequence);
                                     # empirically shown best to be even, and not too small nor too large
 
     membership_rel_name = None      # NOT IN USE.   TODO: maybe use instantiation for this class, and set at that time
@@ -28,21 +30,49 @@ class Collections:
 
 
     @classmethod
+    def set_database(cls, db :NeoAccess) -> None:
+        """
+        IMPORTANT: this method MUST be called before using this class!
+
+        :param db:  Database-interface object, created with the NeoAccess library
+        :return:    None
+        """
+
+        assert type(db) == NeoAccess, \
+            "Collections.set_database(): argument passed isn't a valid `NeoAccess` object"
+
+        cls.db = db
+
+
+
+    @classmethod
+    def create_collections_class(cls) -> (int, int):
+        """
+
+        :return:
+        """
+        return NeoSchema.create_class(name="Collections", strict = False)
+
+
+
+    @classmethod
     def is_collection(cls, collection_uri :str) -> bool:
         """
-        Return True if the data node whose "uri" has the given value is a Collection,
-        that is, if its schema is a Class that is an INSTANCE_OF the "Collection" Class
+        Return True if the Data Node with the given uri is a Collection,
+        that is, if its schema is a Class that is an INSTANCE_OF the "Collections" Class
 
-        :param collection_uri:  A string with the URI of a data node
+        :param collection_uri:  A string with the URI of a Data Node
         :return:                True if the given data node is a Collection, or False otherwise
         """
-        #TODO: maybe allow the scenario where there's a longer chain of "INSTANCE_OF" relationships
 
+        #TODO: maybe allow the scenario where there's a longer chain of "INSTANCE_OF" relationships??
         q = '''
-            MATCH p=(n :BA {uri: $collection_id}) -[:SCHEMA]-> (s :CLASS) -[:INSTANCE_OF]-> (coll :CLASS {name: "Collections"})
+            MATCH p=({uri: $collection_uri}) -[:SCHEMA]-> (:CLASS) 
+                    -[:INSTANCE_OF]-> 
+                    (:CLASS {name: "Collections"})
             RETURN count(p) AS number_paths
             '''
-        data_binding = {"collection_id": collection_uri}
+        data_binding = {"collection_uri": collection_uri}
         number_paths = cls.db.query(q, data_binding, single_cell="number_paths")
 
         return True if number_paths > 0 else False
@@ -63,10 +93,11 @@ class Collections:
         :return:                    The number of elements in the given Collection (possibly zero)
         """
         if not skip_check:
-            assert cls.is_collection(collection_id), f"The data node with uri `{collection_id}` doesn't exist or is not a Collection"
+            assert cls.is_collection(collection_id), \
+                    f"The data node with uri `{collection_id}` doesn't exist or is not a Collection"
 
         q = f'''
-            MATCH (coll :BA {{uri: $collection_id}}) <- [:{membership_rel_name}] - (i :BA) 
+            MATCH ({{uri: $collection_id}}) <- [:{membership_rel_name}] - (i) 
             RETURN count(i) AS node_count
             '''
         data_binding = {"collection_id": collection_id}

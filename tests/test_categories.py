@@ -15,7 +15,7 @@ def db():
     neo_obj = NeoAccess(debug=False)
     NeoSchema.set_database(neo_obj)
     Categories.db = neo_obj
-    Collections.db = neo_obj
+    Collections.set_database(neo_obj)
     yield neo_obj
 
 

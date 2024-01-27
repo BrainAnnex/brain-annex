@@ -99,9 +99,9 @@ need to be added, for speed and reliability.
 From the Neo4j browser interface, issue the following Cypher commands:
 
     CREATE CONSTRAINT unique_BA_ID ON (n:BA) ASSERT n.uri IS UNIQUE
-    CREATE CONSTRAINT unique_CLASS_ID ON (n:CLASS) ASSERT n.schema_id IS UNIQUE
+    CREATE CONSTRAINT unique_CLASS_ID ON (n:CLASS) ASSERT n.uri IS UNIQUE
     CREATE CONSTRAINT unique_CLASS_NAME ON (n:CLASS) ASSERT n.name IS UNIQUE
-    CREATE CONSTRAINT unique_PROPERTY_ID ON (n:PROPERTY) ASSERT n.schema_id IS UNIQUE
+    CREATE CONSTRAINT unique_PROPERTY_ID ON (n:PROPERTY) ASSERT n.uri IS UNIQUE
 
 
 # Major components

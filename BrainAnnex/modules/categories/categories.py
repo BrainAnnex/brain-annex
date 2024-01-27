@@ -398,7 +398,7 @@ class Categories:
     def create_categories_root(cls, data_dict=None) -> (int, str):
         """
         Create a ROOT Category node;
-        and return its internal database ID
+        and return its internal database ID and its URI
 
         :param data_dict:   (OPTIONAL) Dict to specify alternate desired values
                                 for the "name" and "remarks" fields of the Root Category
@@ -409,9 +409,9 @@ class Categories:
         if data_dict is None:
             data_dict = {"name": "HOME", "remarks": "top level"}
 
-        data_dict["root"] = True
+        data_dict["root"] = True        # Flag to mark this node as the root of the Category graph
 
-        new_uri = NeoSchema.next_available_datanode_uri()
+        new_uri = NeoSchema.reserve_next_uri()
 
         internal_id = NeoSchema.create_data_node(class_node="Categories",
                                                  properties = data_dict,
@@ -812,7 +812,7 @@ class Categories:
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it
-            new_uri = NeoSchema.generate_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to a namespace based on the Class
+            new_uri = NeoSchema.reserve_next_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to a namespace based on the Class
 
 
         # Create a new Data Node
