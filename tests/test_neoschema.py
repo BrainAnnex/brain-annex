@@ -20,7 +20,7 @@ def db():
 
 def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
-    # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY
+    # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY (both originating from "patient"
 
     patient_id, _  = NeoSchema.create_class_with_properties(name="patient",
                                                             property_list=["name", "age", "balance"])
@@ -490,7 +490,27 @@ def test_get_related_class_names(db):
 
 
 def test_get_class_relationships(db):
-    pass    # TODO
+    db.empty_dbase()
+
+    assert NeoSchema.get_class_relationships(class_name="I_dont_exist") == {"in": [], "out": []}
+
+    NeoSchema.create_class(name="Loner")
+    assert NeoSchema.get_class_relationships(class_name="Loner") == {"in": [], "out": []}
+    assert NeoSchema.get_class_relationships(class_name="Loner", link_dir="OUT") == []
+    assert NeoSchema.get_class_relationships(class_name="Loner", link_dir="IN") == []
+
+    create_sample_schema_1()    # Schema with patient/result/doctor
+
+    assert NeoSchema.get_class_relationships(class_name="patient", link_dir="OUT") == ["HAS_RESULT", "IS_ATTENDED_BY"]
+    assert NeoSchema.get_class_relationships(class_name="patient", link_dir="IN") == []
+
+    assert NeoSchema.get_class_relationships(class_name="doctor", link_dir="OUT") == []
+    assert NeoSchema.get_class_relationships(class_name="doctor", link_dir="IN") == ["IS_ATTENDED_BY"]
+
+    assert NeoSchema.get_class_relationships(class_name="result", link_dir="OUT") == []
+    assert NeoSchema.get_class_relationships(class_name="result", link_dir="IN") == ["HAS_RESULT"]
+
+    #TODO: test the omit_instance argument
 
 
 

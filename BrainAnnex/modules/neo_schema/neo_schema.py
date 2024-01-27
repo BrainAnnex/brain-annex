@@ -915,13 +915,14 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_relationships(cls, schema_uri :str, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
+    def get_class_relationships(cls, class_name :str, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
         """
         Fetch and return the names of all the relationships (both inbound and outbound)
         attached to the given Class.
         Treat separately the inbound and the outbound ones.
+        If the Class doesn't exist, empty lists are returned.
 
-        :param schema_uri:      A string to identify the desired Class
+        :param class_name:      The name of the desired Class
         :param link_dir:        Desired direction(s) of the relationships; one of "BOTH" (default), "IN" or "OUT"
         :param omit_instance:   If True, the common outbound relationship "INSTANCE_OF" is omitted
 
@@ -930,35 +931,34 @@ class NeoSchema:
                                      "out": list of outbound-relationship names}
                                 Otherwise, just return the inbound or outbound list, based on the value of link_dir
         """
-        # TODO: phase out schema uri in favor of Class name
         assert link_dir in ["BOTH", "IN", "OUT"], \
-                f'The argument `link_dir` must be one of "BOTH", "IN" or "OUT" (value passed was {link_dir})'
+                f'get_class_relationships(): the argument `link_dir` must be one of "BOTH", "IN" or "OUT" (value passed was {link_dir})'
 
         if link_dir == "IN":
             rel_out = []        # We only want the inbound relationships; disregard the outbound ones
         else:
             if omit_instance:
                 q_out = '''
-                    MATCH (n:CLASS {uri: $schema_uri})-[r]->(cl:CLASS)
+                    MATCH (:CLASS {name: $class_name})-[r]->(:CLASS)
                     WHERE type(r) <> "INSTANCE_OF"
                     RETURN type(r) AS rel_name
                     '''
             else:
                 q_out = '''
-                    MATCH (n:CLASS {uri: $schema_uri})-[r]->(cl:CLASS) 
+                    MATCH (:CLASS {name: $class_name})-[r]->(:CLASS) 
                     RETURN type(r) AS rel_name
                     '''
-            rel_out = cls.db.query(q_out, data_binding={"uri": schema_uri}, single_column="rel_name")
+            rel_out = cls.db.query(q_out, data_binding={"class_name": class_name}, single_column="rel_name")
 
 
         if link_dir == "OUT":
             rel_in = []        # We only want the outbound relationships; disregard the inbound ones
         else:
             q_in = '''
-                    MATCH (n:CLASS {uri: $schema_uri})<-[r]-(cl:CLASS) 
+                    MATCH (:CLASS {name: $class_name})<-[r]-(:CLASS) 
                     RETURN type(r) AS rel_name
                     '''
-            rel_in = cls.db.query(q_in, data_binding={"uri": schema_uri}, single_column="rel_name")
+            rel_in = cls.db.query(q_in, data_binding={"class_name": class_name}, single_column="rel_name")
 
         if link_dir == "BOTH":
             return  {"in": rel_in, "out": rel_out}
@@ -3789,7 +3789,8 @@ class NeoSchema:
             autoincrement_to_use = 1       # Start a new count for this namespace
         else:
             # Unpack the dictionary
-            (next_count, stored_prefix, stored_suffix) = [result.get(key) for key in ("next_count", "stored_prefix", "stored_suffix")]
+            (next_count, stored_prefix, stored_suffix) = [result.get(key, "") for key in ("next_count", "stored_prefix", "stored_suffix")]
+            # Note that stored_prefix and stored_suffix will be "" if not found in database
             autoincrement_to_use = next_count - 1
             if not prefix:
                 prefix = stored_prefix
