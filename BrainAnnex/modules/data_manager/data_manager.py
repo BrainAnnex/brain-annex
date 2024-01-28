@@ -746,14 +746,14 @@ class DataManager:
             raise Exception("Missing Schema Code (Item Type)")
         del post_data["schema_code"]
 
-        schema_uri = post_data.get("schema_uri")
+        schema_uri = post_data.get("schema_uri")    # TODO: ditch using the schema_uri
         if schema_uri:
             del post_data["schema_uri"]
         else:
             schema_uri = NeoSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
             print("schema_uri looked up as: ", schema_uri)
             if schema_uri == "":
-                raise Exception("Missing Schema ID")
+                raise Exception("Missing Schema URI")
 
         class_name = post_data.get("class_name")
         if class_name:
@@ -765,8 +765,8 @@ class DataManager:
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_uri = NeoSchema.reserve_next_uri()
-        print("New item will be assigned ID:", new_uri)
+        new_uri = NeoSchema.reserve_next_uri()      # TODO: switch to using specific namespaces
+        print(f"New item will be assigned URI: '{new_uri}'")
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
         #       TODO: try to infer them from the Schema

@@ -937,18 +937,20 @@ class ApiRouting:
 
             EXAMPLE invocation:
             curl http://localhost:5000/BA/api/add_item_to_category
-                            -d "category_id=708&insert_after=711&schema_code=h&text=New Header"
+                            -d "category_id=708&insert_after=711&schema_code=h&text=New Header&class_name=Headers"
         
             POST FIELDS:
                 category_id         URI identifying the Category to which attach the new Content Item
                 schema_code         A string to identify the Schema that the new Content Item belongs to
+                class_name
                 insert_after        Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
                 *PLUS* any applicable plugin-specific fields
             """
             # Extract the POST values
             post_data = request.form
-            # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('insert_after', '5'), ('text', 'My Header')])
+            # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('class_name', 'Headers'),
+            #                              ('insert_after', '5'), ('text', 'My Header')])
             #cls.show_post_data(post_data, "add_item_to_category")
         
             # Create a new Content Item with the POST data
@@ -957,7 +959,8 @@ class ApiRouting:
                 payload = DataManager.new_content_item_in_category(pars_dict)        # Include the newly-added ID as a payload
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
-                err_details = f"Unable to add the requested Content Item to the specified Category.  {exceptions.exception_helper(ex)}"
+                err_details = f"/add_item_to_category : Unable to add the requested Content Item to the specified Category.  " \
+                              f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}
 
             #print(f"add_item_to_category() is returning: `{err_details}`")
