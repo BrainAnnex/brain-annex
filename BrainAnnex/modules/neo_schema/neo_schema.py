@@ -3768,10 +3768,12 @@ class NeoSchema:
         assert namespace != "", \
             "reserve_next_uri(): the argument `namespace` cannot be an empty or blank string"
 
-        assert type(prefix) == str, \
-            "reserve_next_uri(): the argument `prefix` must be a string"
-        assert type(suffix) == str, \
-            "reserve_next_uri(): the argument `suffix` must be a string"
+        assert (type(prefix) == str) or (prefix is None), \
+            f"reserve_next_uri(): the argument `prefix` must be a string or None; " \
+            f"value passed was of type {type(prefix)}"
+        assert (type(suffix) == str) or (suffix is None), \
+            f"reserve_next_uri(): the argument `suffix` must be a string or None;" \
+            f" value passed was of type {type(suffix)}"
 
 
         # Attempt to retrieve a `Schema Autoincrement` node for our namespace (it might be absent);
@@ -3783,19 +3785,29 @@ class NeoSchema:
             '''
         result = cls.db.query(q, data_binding={"namespace": namespace}, single_row=True)
 
-        if result is None:     # If no Autoincrement node found, create it - and also store the prefix and suffix
-            cls.db.create_node(labels="Schema Autoincrement",
-                               properties={"namespace": namespace, "next_count": 2, "prefix": prefix, "suffix": suffix})
+        if result is None:     # If no Autoincrement node found, create it - and also store the prefix and suffix, if provided
+            properties={"namespace": namespace, "next_count": 2}
+            if prefix:
+                properties["prefix"] = prefix
+            if suffix:
+                properties["suffix"] = suffix
+
+            cls.db.create_node(labels="Schema Autoincrement", properties=properties)
             autoincrement_to_use = 1       # Start a new count for this namespace
         else:
-            # Unpack the dictionary
-            (next_count, stored_prefix, stored_suffix) = [result.get(key, "") for key in ("next_count", "stored_prefix", "stored_suffix")]
-            # Note that stored_prefix and stored_suffix will be "" if not found in database
+            # Unpack the dictionary of data from the Autoincrement node
+            (next_count, stored_prefix, stored_suffix) = [result.get(key) for key in ("next_count", "stored_prefix", "stored_suffix")]
+            # Note that stored_prefix and stored_suffix will be None if not found in the database
             autoincrement_to_use = next_count - 1
-            if not prefix:
+            if not prefix:      # Use the database value, if not passed as argument
                 prefix = stored_prefix
             if not suffix:
                 suffix = stored_suffix
+
+        if prefix is None:
+            prefix = ""
+        if suffix is None:
+            suffix = ""
 
         uri = f"{prefix}{autoincrement_to_use}{suffix}"
         return uri

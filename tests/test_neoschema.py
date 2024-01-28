@@ -2029,6 +2029,7 @@ def test_reserve_next_uri(db):
     assert NeoSchema.reserve_next_uri("documents") == "d-4"     # It remembers the original prefix
     assert NeoSchema.reserve_next_uri("documents", suffix="/view") == "d-5/view"
     assert NeoSchema.reserve_next_uri("documents") == "d-6"
+    assert NeoSchema.reserve_next_uri("documents", prefix=None, suffix=None) == "d-7"
 
     with pytest.raises(Exception):
         assert NeoSchema.reserve_next_uri(123)    # Not a string
