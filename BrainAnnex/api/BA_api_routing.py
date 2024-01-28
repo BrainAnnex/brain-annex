@@ -1003,19 +1003,21 @@ class ApiRouting:
                             "category_id=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
         
             POST FIELDS:
-                category_id                     URI to identify the Category to which to add the new Subcategory
-                subcategory_name                The name to give to the new Subcategory
-                subcategory_remarks (optional)  A comment field for the new Subcategory
+                category_uri            URI to identify the Category to which to add the new Subcategory
+                subcategory_name        The name to give to the new Subcategory
+                subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
             """
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('category_id', '12'), ('subcategory_name', 'Astronomy')])
+            post_data = request.form     # Example: ImmutableMultiDict([('category_uri', '12'),
+                                         #                              ('subcategory_name', 'Astronomy'), ('subcategory_remarks', '')])
+            #print(post_data)
 
             try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'subcategory_name'])
-                payload = Categories.add_subcategory(data_dict)     # Include the newly-added ID as a payload
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['category_uri', 'subcategory_name'])
+                payload = Categories.add_subcategory(data_dict)     # Include the newly-added URI as a payload
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
-                err_details = f"Unable to add the requested Subcategory.  {exceptions.exception_helper(ex)}"
+                err_details = f"/add_subcategory : Unable to add the requested Subcategory.  {exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}        # Error termination
         
             #print(f"add_subcategory() is returning: `{response_data}`")
