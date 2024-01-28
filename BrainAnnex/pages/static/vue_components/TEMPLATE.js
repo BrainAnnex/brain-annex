@@ -88,9 +88,8 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
              */
             {
                 // Send the request to the server, using a POST
-                let url_server_api = "/BA/api/SOME_API_ENDPOINT";
-                let my_var = "some value";  // Optional parameter, if needed
-                let post_obj = {my_var: my_var};
+                const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
+                const post_obj = {my_post_var: "my POST value"};
 
                 console.log(`About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
@@ -104,7 +103,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                             {post_obj: post_obj,
                              callback_fn: this.finish_get_data_from_server,
                              custom_data: [my_var]
-                             });
+                            });
             },
 
 
@@ -113,8 +112,8 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
              */
             {
                 // Send the request to the server, using a GET
-                let url_server_api = "/BA/api/SOME_API_ENDPOINT";
-                let my_var = "some value";  // Optional parameter, if needed
+                const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
+                const my_var = "some value";        // Optional parameter, if needed
                 console.log(`About to contact the server at ${url_server_api}`);
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -125,7 +124,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 ServerCommunication.contact_server(url_server_api,
                             {callback_fn: this.finish_get_data_from_server,
                              custom_data: [my_var]
-                             });
+                            });
             },
 
 
@@ -133,7 +132,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             finish_get_data_from_server(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of get_data_from_server() upon getting a response from the server
             {
-                console.log("Finalizing the get_data_from_server operation...");
+                console.log("Finalizing the get_data_from_server() operation...");
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;

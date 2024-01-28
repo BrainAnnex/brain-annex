@@ -1,5 +1,6 @@
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.collections.collections import Collections
+from neoaccess import NeoAccess
 
 
 class Categories:
@@ -21,6 +22,23 @@ class Categories:
                 # Database-interface object is a CLASS variable, accessible as cls.db
 
     DELTA_POS = 20      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large
+
+
+
+    @classmethod
+    def set_database(cls, db :NeoAccess) -> None:
+        """
+        IMPORTANT: this method MUST be called before using this class!
+
+        :param db:  Database-interface object, created with the NeoAccess library
+        :return:    None
+        """
+
+        assert type(db) == NeoAccess, \
+            "Categories.set_database(): argument passed isn't a valid NeoAccess object"
+
+        cls.db = db
+        Collections.db = db
 
 
 
@@ -380,7 +398,7 @@ class Categories:
     def create_categories_root(cls, data_dict=None) -> (int, str):
         """
         Create a ROOT Category node;
-        and return its internal database ID
+        and return its internal database ID and its URI
 
         :param data_dict:   (OPTIONAL) Dict to specify alternate desired values
                                 for the "name" and "remarks" fields of the Root Category
@@ -391,9 +409,9 @@ class Categories:
         if data_dict is None:
             data_dict = {"name": "HOME", "remarks": "top level"}
 
-        data_dict["root"] = True
+        data_dict["root"] = True        # Flag to mark this node as the root of the Category graph
 
-        new_uri = NeoSchema.next_available_datanode_uri()
+        new_uri = NeoSchema.reserve_next_uri()
 
         internal_id = NeoSchema.create_data_node(class_node="Categories",
                                                  properties = data_dict,
@@ -782,19 +800,19 @@ class Categories:
         Add a NEW Content Item, with the given properties and Class, to the end of the specified Category.
         First, create a new Data Node, and then link it to the given Category, positioned at the end.
 
-        :param category_uri:    The string "uri" identifying the Category
+        :param category_uri:    A string to identify the Category
                                     to which this Content Media being newly-created is to be attached
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
-        :return:                The auto-increment "uri" assigned to the newly-created data node
+        :return:                The "uri" (passed or created) of the newly-created data node
         """
         #print("Inside Categories.add_content_at_end()")
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it
-            new_uri = NeoSchema.generate_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to namespace "cat-"
+            new_uri = NeoSchema.reserve_next_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to a namespace based on the Class
 
 
         # Create a new Data Node

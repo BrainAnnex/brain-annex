@@ -1,5 +1,6 @@
 from typing import Union, List
 from neoaccess.cypher_utils import CypherUtils, CypherMatch
+from neoaccess import NeoAccess
 import json
 import math
 from datetime import datetime
@@ -10,7 +11,7 @@ import pandas as pd
 class NeoSchema:
     """
 
-    A layer above the class NeoAccess (or, in principle, another library providing a compatible interface)
+    A layer above the class NeoAccess (or, in principle, another library providing a compatible interface),
     to provide an optional schema to the underlying database.
 
     Schemas may be used to either:
@@ -24,21 +25,12 @@ class NeoSchema:
         Neo4j by itself may be too anarchic.
         A schema (whether "lenient/lax/loose" or "strict") in conjunction with Neo4j may be the needed compromise.
 
-    GOAL
+    GOALS
 
-        To infuse into Neo4j functionality that some people turn to RDF, or to relational databases, for.
-        However, carve out a new path rather than attempting to emulate RDF or relational databases!
-
-
-    SECTIONS IN THIS CLASS:
-        * CLASS-related
-            - RELATIONSHIPS AMONG CLASSES
-        * PROPERTIES-RELATED
-        * SCHEMA-CODE  RELATED
-        * DATA NODES
-        * DATA IMPORT
-        * EXPORT SCHEMA
-        * INTERNAL  METHODS
+        - Data integrity
+        - Assist the User Interface
+        - Infuse into Neo4j functionality that some people turn to RDF for.  However, carving out a new path
+          rather than attempting to emulate RDF!
 
 
 
@@ -67,31 +59,31 @@ class NeoSchema:
 
     IMPLEMENTATION DETAILS
 
-        - Every node used by this class has a unique attribute "schema_id",
-          containing a non-negative integer.
-          Similarly, data nodes have a separate unique attribute "uri" (formerly "item_id");
-          note that this is actually a "token", i.e. a part of a URI - not a full URI
+        - Every node used by this class, as well as the data nodes it manages,
+          contains has a unique attribute "uri" (formerly "schema_id" and "item_id", respectively);
+          note that this is actually a "token", i.e. a part of a URI - not a full URI.
+          The uri's of schema nodes have the form "schema-n", where n is a unique number.
+          Data nodes can have any unique uri's, with optional prefixes and suffixes chosen by the higher layers.
+          The Schema layer manages the auto-increments for any desired set of namespaces (and itself makes use
+          of the "schema_node" namespace)
 
         - The names of the Classes and Properties are stored in node attributes called "name".
           We also avoid calling them "label", as done in RDFS, because in Labeled Graph Databases
           like Neo4j, the term "label" has a very specific meaning, and is pervasively used.
 
-        - For convenience, data nodes contain a redundant attribute named "schema_code"
+        - For convenience, data nodes contain a label equal to their Class name,
+          and a redundant attribute (that might be phased out) named "schema_code"
 
 
     AUTHOR:
         Julian West
 
 
-    TODO:   - continue the process of making the methods more efficient,
-              by directly generate Cypher code, rather than using high-level methods in NeoAccess;
-              for example, as done by create_data_node()
-
 
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2023 Julian A. West
+        Copyright (c) 2021-2024 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -133,16 +125,25 @@ class NeoSchema:
     debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
 
 
+    #TODO:   - continue the process of making the methods more efficient,
+    #          by directly generate Cypher code, rather than using high-level methods in NeoAccess;
+    #          for example, as done by create_data_node()
+
+
 
     @classmethod
-    def set_database(cls, db) -> None:
+    def set_database(cls, db :NeoAccess) -> None:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object, to be used with the NeoAccess library
+        :param db:  Database-interface object, created with the NeoAccess library
         :return:    None
         """
-        cls.db = db     # TODO: perform some validation
+
+        assert type(db) == NeoAccess, \
+            "NeoSchema.set_database(): argument passed isn't a valid `NeoAccess` object"
+
+        cls.db = db
 
 
 
@@ -204,7 +205,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class(cls, name :str, code = None, strict = False, no_datanodes = False) -> (int, int):
+    def create_class(cls, name :str, code = None, strict = False, no_datanodes = False) -> (int, str):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -225,14 +226,14 @@ class NeoSchema:
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes
 
-        :return:            A pair of integers with the internal database ID and the unique schema_id assigned to the node just created,
+        :return:            An (int, str) pair of integers with the internal database ID and the unique uri assigned to the node just created,
                                 if it was created;
                                 an Exception is raised if a class by that name already exists
         """
         #TODO: offer the option to link to an existing Class, like create_class_with_properties() does
         #       link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
         #TODO: maybe an option to add multiple Classes of the same type at once???
-        #TODO: maybe stop returning the schema_id ?
+        #TODO: maybe stop returning the uri ?
 
         name = name.strip()     # Strip any whitespace at the ends
         assert name != "", "NeoSchema.create_class(): Unacceptable Class name that is empty or blank"
@@ -240,17 +241,17 @@ class NeoSchema:
         if cls.class_name_exists(name):
             raise Exception(f"NeoSchema.create_class(): A class named `{name}` ALREADY exists")
 
-        schema_id = cls.next_available_schema_id()    # A schema-wide ID, also used for Property nodes
+        schema_uri = cls.next_available_schema_uri()    # A schema-wide uri, also used for Property nodes
 
-        attributes = {"name": name, "schema_id": schema_id, "strict": strict}
+        attributes = {"name": name, "uri": schema_uri, "strict": strict}
         if code:
             attributes["code"] = code
         if no_datanodes:
             attributes["no_datanodes"] = True
 
         #print(f"create_class(): about to call db.create_node with parameters `{cls.class_label}` and `{attributes}`")
-        neo_id = cls.db.create_node(cls.class_label, attributes)
-        return (neo_id, schema_id)
+        internal_id = cls.db.create_node(cls.class_label, attributes)
+        return (internal_id, schema_uri)
 
 
 
@@ -280,41 +281,38 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_id(cls, class_name :str, namespace=None) -> int:
+    def get_class_uri(cls, class_name :str) -> str:
         """
-        Returns the Schema ID of the Class with the given name, or -1 if not found
-        TODO: unique Class names are assumed.  Perhaps add an optional "namespace" attribute, to use in case
-              multiple classes with the same name must be used
-        TODO: maybe raise an Exception if more than one is found
+        Returns the Schema uri of the Class with the given name;
+        raise an Exception if not found
 
         :param class_name:  The name of the desired class
-        :param namespace:   EXPERIMENTAL - not yet in use
-        :return:            The Schema ID of the specified Class, or -1 if not found
+        :return:            The Schema uri of the specified Class
         """
-        assert class_name is not None, "NeoSchema.get_class_id(): argument `class_name` cannot be None"
-        assert type(class_name) == str, f"NeoSchema.get_class_id(): argument `class_name` must be a string (value passed was `{class_name}`)"
-        assert class_name != "", "NeoSchema.get_class_id(): argument `class_name` cannot be an empty string"
+        #TODO: maybe raise an Exception if more than one is found
+
+        cls.assert_valid_class_name(class_name)
 
         match = cls.db.match(labels="CLASS", key_name="name", key_value=class_name)
-        result = cls.db.get_nodes(match, single_cell="schema_id")
+        result = cls.db.get_nodes(match, single_cell="uri")
 
         if result is None:
-            return -1
+            raise Exception(f"No Schema Class named '{class_name}' was found")
 
         return result
 
 
 
     @classmethod
-    def get_class_id_by_neo_id(cls, internal_class_id: int) -> int:
+    def get_class_uri_by_internal_id(cls, internal_class_id: int) -> int:
         """
-        Returns the Schema ID of the Class with the given internal database ID.
+        Returns the Schema uri of the Class with the given internal database ID.
 
         :param internal_class_id:
         :return:            The Schema ID of the specified Class; raise an Exception if not found
         """
 
-        result = cls.db.get_nodes(internal_class_id, single_cell="schema_id")
+        result = cls.db.get_nodes(internal_class_id, single_cell="uri")
 
         if result is None:
             raise Exception(f"NeoSchema.get_class_id_by_neo_id(): no Class with internal id {internal_class_id} found")
@@ -338,17 +336,18 @@ class NeoSchema:
 
 
     @classmethod
-    def class_id_exists(cls, schema_id: int) -> bool:
+    def class_uri_exists(cls, schema_uri :str) -> bool:
         """
-        Return True if a Class by the given schema ID already exists, or False otherwise
+        Return True if a Class by the given uri already exists, or False otherwise
 
-        :param schema_id:
-        :return:
+        :param schema_uri:  The uri of the Class node of interest
+        :return:            True if the Class already exists, or False otherwise
         """
-        assert type(schema_id) == int, \
-            f"NeoSchema.class_id_exists(): argument `schema_id` must be an integer (value passed was `{schema_id}`)"
+        assert cls.is_valid_schema_uri(schema_uri), \
+            f"NeoSchema.class_uri_exists(): argument `schema_uri` " \
+            f"must be a string of the form 'schema-n' for some integer n)"
 
-        return cls.db.exists_by_key(labels="CLASS", key_name="schema_id", key_value=schema_id)
+        return cls.db.exists_by_key(labels="CLASS", key_name="uri", key_value=schema_uri)
 
 
     @classmethod
@@ -359,30 +358,31 @@ class NeoSchema:
         :param class_name:  The name of the class of interest
         :return:            True if the Class already exists, or False otherwise
         """
-        assert type(class_name) == str, \
-            f"NeoSchema.class_name_exists(): argument `class_name` must be a string (value passed has type {type(class_name)})"
+        cls.assert_valid_class_name(class_name)
 
         return cls.db.exists_by_key(labels="CLASS", key_name="name", key_value=class_name)
 
 
 
     @classmethod
-    def get_class_name_by_schema_id(cls, schema_id :int) -> str:
+    def get_class_name_by_schema_uri(cls, schema_uri :str) -> str:
         """
-        Returns the name of the class with the given Schema ID, or "" if not found
+        Returns the name of the class with the given Schema ID;
+        raise an Exception if not found
 
-        :param schema_id:   An integer with the unique ID of the desired class
-        :return:            The name of the class with the given Schema ID, or "" if not found
+        :param schema_uri:  A string uniquely identifying the desired Class
+        :return:            The name of the Class with the given Schema uri
         """
         # TODO: maybe phase out?
-        assert type(schema_id) == int, \
-            "get_class_name_by_schema_id(): The schema id MUST be an integer"
+        assert cls.is_valid_schema_uri(schema_uri), \
+            "get_class_name_by_schema_uri(): The schema uri MUST be a string " \
+            "of the form 'schema-n for some integer n"
 
-        match = cls.db.match(labels="CLASS", key_name="schema_id", key_value=schema_id)
+        match = cls.db.match(labels="CLASS", key_name="uri", key_value=schema_uri)
         result = cls.db.get_nodes(match, single_cell="name")
 
         if not result :
-            return ""
+            raise Exception(f"No Schema Class with uri '{schema_uri}' found")
 
         return result
 
@@ -420,7 +420,7 @@ class NeoSchema:
         :param class_internal_id:   An integer with the Neo4j ID of the desired class
         :return:                    A dictionary of attributed of the class with the given Schema ID;
                                         an Exception is raised if not found
-                                        EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'strict': False}
+                                        EXAMPLE:  {'name': 'MY CLASS', 'uri': '123', 'strict': False}
         """
         #cls.db.assert_valid_internal_id(class_internal_id)
 
@@ -520,23 +520,23 @@ class NeoSchema:
 
 
     @classmethod
-    def allows_data_nodes(cls, class_name = None, class_neo_id = None, schema_cache=None) -> bool:
+    def allows_data_nodes(cls, class_name = None, class_internal_id = None, schema_cache=None) -> bool:
         """
         Determine if the given Class allows data nodes directly linked to it
 
         :param class_name:      Name of the Class
-        :param class_neo_id :   (OPTIONAL) Alternate way to specify the class; if both specified, this one prevails
+        :param class_internal_id :(OPTIONAL) Alternate way to specify the class; if both specified, this one prevails
         :param schema_cache:    (OPTIONAL) "SchemaCache" object
         :return:                True if allowed, or False if not
                                     If the Class doesn't exist, raise an Exception
         """
-        if class_neo_id is None:    # Note: class_neo_id might legitimately be zero
-            class_neo_id = cls.get_class_internal_id(class_name)
+        if class_internal_id is None:    # Note: class_neo_id might legitimately be zero
+            class_internal_id = cls.get_class_internal_id(class_name)
 
         if schema_cache is None:
-            class_node_dict = cls.db.get_nodes(match=class_neo_id, single_row=True)
+            class_node_dict = cls.db.get_nodes(match=class_internal_id, single_row=True)
         else:
-            class_node_dict = schema_cache.get_cached_class_data(class_neo_id, request="class_attributes")
+            class_node_dict = schema_cache.get_cached_class_data(class_internal_id, request="class_attributes")
 
         if class_node_dict is None:
             raise Exception(f"NeoSchema.allows_data_nodes(): Class named `{class_name}` not found in the Schema")
@@ -560,9 +560,10 @@ class NeoSchema:
     @classmethod
     def assert_valid_relationship_name(cls, rel_name :str) -> None:
         """
+        Raise an Exception if the passed argument is not a valid name for a database relationship
 
         :param rel_name:
-        :return:
+        :return:        None
         """
         assert type(rel_name) == str, \
             "assert_valid_relationship_name(): the relationship name must be a string"
@@ -661,17 +662,17 @@ class NeoSchema:
                             otherwise, False
         """
         q = f'''
-            MATCH (from :`{cls.class_label}` {{ schema_id: {from_class} }})
+            MATCH (from :`{cls.class_label}` {{ uri: '{from_class}' }})
                   -[rel]
-                  ->(to :`{cls.class_label}` {{ schema_id: {to_class} }})
+                  ->(to :`{cls.class_label}` {{ uri: '{to_class}' }})
             MERGE (from)-[:{new_rel_name}]->(to)
             DELETE rel 
             '''
         # EXAMPLE:
         '''
-            MATCH (from :`CLASS` { schema_id: 4 })
+            MATCH (from :`CLASS` { uri: 'schema-4' })
                   -[rel]
-                  ->(to :`CLASS` { schema_id: 19 })
+                  ->(to :`CLASS` { uri: 'schema-19' })
             MERGE (from)-[:INSTANCE_OF]->(to)
             DELETE rel
         '''
@@ -736,16 +737,16 @@ class NeoSchema:
                         otherwise, False
         """
         q = f'''
-            MATCH (c1: `{cls.class_label}` {{ schema_id: {class1} }})
+            MATCH (c1: `{cls.class_label}` {{ uri: '{class1}' }})
                   -[r]
-                  -(c2: `{cls.class_label}` {{ schema_id: {class2} }})
+                  -(c2: `{cls.class_label}` {{ uri: '{class2}' }})
             DELETE r
             '''
         # EXAMPLE:
         '''
-        MATCH (c1: `CLASS` { schema_id: 1 })
+        MATCH (c1: `CLASS` { uri: 'schema-1' })
               -[r]
-              -(c2: `CLASS` { schema_id: 15})
+              -(c2: `CLASS` { uri: 'schema-15'})
         DELETE r
         '''
         #print(q)
@@ -914,13 +915,14 @@ class NeoSchema:
 
 
     @classmethod
-    def get_class_relationships(cls, schema_id :int, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
+    def get_class_relationships(cls, class_name :str, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
         """
         Fetch and return the names of all the relationships (both inbound and outbound)
         attached to the given Class.
         Treat separately the inbound and the outbound ones.
+        If the Class doesn't exist, empty lists are returned.
 
-        :param schema_id:       An integer to identify the desired Class
+        :param class_name:      The name of the desired Class
         :param link_dir:        Desired direction(s) of the relationships; one of "BOTH" (default), "IN" or "OUT"
         :param omit_instance:   If True, the common outbound relationship "INSTANCE_OF" is omitted
 
@@ -929,35 +931,34 @@ class NeoSchema:
                                      "out": list of outbound-relationship names}
                                 Otherwise, just return the inbound or outbound list, based on the value of link_dir
         """
-        # TODO: phase out schema ID in favor of Class name
         assert link_dir in ["BOTH", "IN", "OUT"], \
-                f'The argument `link_dir` must be one of "BOTH", "IN" or "OUT" (value passed was {link_dir})'
+                f'get_class_relationships(): the argument `link_dir` must be one of "BOTH", "IN" or "OUT" (value passed was {link_dir})'
 
         if link_dir == "IN":
             rel_out = []        # We only want the inbound relationships; disregard the outbound ones
         else:
             if omit_instance:
                 q_out = '''
-                    MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS)
+                    MATCH (:CLASS {name: $class_name})-[r]->(:CLASS)
                     WHERE type(r) <> "INSTANCE_OF"
                     RETURN type(r) AS rel_name
                     '''
             else:
                 q_out = '''
-                    MATCH (n:CLASS {schema_id:$schema_id})-[r]->(cl:CLASS) 
+                    MATCH (:CLASS {name: $class_name})-[r]->(:CLASS) 
                     RETURN type(r) AS rel_name
                     '''
-            rel_out = cls.db.query(q_out, data_binding={"schema_id": schema_id}, single_column="rel_name")
+            rel_out = cls.db.query(q_out, data_binding={"class_name": class_name}, single_column="rel_name")
 
 
         if link_dir == "OUT":
             rel_in = []        # We only want the outbound relationships; disregard the inbound ones
         else:
             q_in = '''
-                    MATCH (n:CLASS {schema_id:$schema_id})<-[r]-(cl:CLASS) 
+                    MATCH (:CLASS {name: $class_name})<-[r]-(:CLASS) 
                     RETURN type(r) AS rel_name
                     '''
-            rel_in = cls.db.query(q_in, data_binding={"schema_id": schema_id}, single_column="rel_name")
+            rel_in = cls.db.query(q_in, data_binding={"class_name": class_name}, single_column="rel_name")
 
         if link_dir == "BOTH":
             return  {"in": rel_in, "out": rel_out}
@@ -1109,7 +1110,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_properties_to_class(cls, class_node = None, class_id = None, property_list = None) -> int:
+    def add_properties_to_class(cls, class_node = None, class_uri = None, property_list = None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
         The properties are given an inherent order (an attribute named "index", starting at 1),
@@ -1121,7 +1122,7 @@ class NeoSchema:
 
         :param class_node:      An integer with the internal database ID of an existing Class node,
                                     (or a string with its name - TODO: add support for this option)
-        :param class_id:        (OPTIONAL) Integer with the schema_id of the Class to which attach the given Properties
+        :param class_uri:       (OPTIONAL) String with the schema_uri of the Class to which attach the given Properties
                                 TODO: remove
 
         :param property_list:   A list of strings with the names of the properties, in the desired order.
@@ -1133,18 +1134,18 @@ class NeoSchema:
         #TODO: Offer a way to change the order of the Properties,
         #      maybe by first deleting all Properties and then re-adding them
 
-        assert (class_node is not None) or (class_id is not None), \
+        assert (class_node is not None) or (class_uri is not None), \
             "add_properties_to_class(): class_internal_id and class_id cannot both be None"
 
-        if class_node is not None and class_id is None:
-            class_id = cls.get_class_id_by_neo_id(class_node)
+        if class_node is not None and class_uri is None:
+            class_uri = cls.get_class_uri_by_internal_id(class_node)
 
-        assert type(class_id) == int,\
-            f"add_properties_to_class(): Argument `class_id` in add_properties_to_class() must be an integer; value passed was {class_id}"
+        assert type(class_uri) == str,\
+            f"add_properties_to_class(): Argument `class_uri` must be a string; value passed was {class_uri}"
         assert type(property_list) == list, \
             "add_properties_to_class(): Argument `property_list` in add_properties_to_class() must be a list"
-        assert cls.class_id_exists(class_id), \
-            f"add_properties_to_class(): No Class with ID {class_id} found in the Schema"
+        assert cls.class_uri_exists(class_uri), \
+            f"add_properties_to_class(): No Class with ID {class_uri} found in the Schema"
 
 
         clean_property_list = [prop.strip() for prop in property_list]
@@ -1154,10 +1155,10 @@ class NeoSchema:
 
         # Locate the largest index of the Properties currently present (stored on the "HAS_PROPERTY" links)
         q = '''
-            MATCH (:CLASS {schema_id: $schema_id})-[r:HAS_PROPERTY]-(:PROPERTY)
+            MATCH (:CLASS {uri: $schema_uri})-[r:HAS_PROPERTY]-(:PROPERTY)
             RETURN MAX(r.index) AS MAX_INDEX
             '''
-        max_index = cls.db.query(q, {"schema_id": class_id}, single_cell="MAX_INDEX")
+        max_index = cls.db.query(q, {"schema_uri": class_uri}, single_cell="MAX_INDEX")
 
         # Determine the index value to use for the next Property
         if max_index is None:
@@ -1168,16 +1169,16 @@ class NeoSchema:
         number_properties_nodes_created = 0
 
         for property_name in clean_property_list:
-            new_schema_id = cls.next_available_schema_id()
+            new_schema_uri = cls.next_available_schema_uri()
             q = f'''
-                MATCH (c: `{cls.class_label}` {{ schema_id: {class_id} }})
+                MATCH (c: `{cls.class_label}` {{ uri: '{class_uri}' }})
                 MERGE (c)-[:{cls.class_prop_rel} {{ index: {new_index} }}]
-                         ->(p: `{cls.property_label}` {{ schema_id: {new_schema_id}, name: $property_name }})
+                         ->(p: `{cls.property_label}` {{ uri: '{new_schema_uri}', name: $property_name }})
                 '''
             # EXAMPLE:
             '''
-            MATCH (c:`CLASS` {schema_id: 3})
-            MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p: `PROPERTY` {schema_id: 8, name: $property_name})
+            MATCH (c:`CLASS` {uri: 'schema-3'})
+            MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p: `PROPERTY` {uri: 'schema-8', name: $property_name})
             '''
             #print(q)
             result = cls.db.update_query(q, {"property_name": property_name})
@@ -1223,7 +1224,7 @@ class NeoSchema:
         and link them together with "HAS_PROPERTY" relationships.
 
         Return the internal database ID and the auto-incremented unique ID ("scheme ID") assigned to the new Class.
-        Each Property node is also assigned a unique "scheme ID";
+        Each Property node is also assigned a unique "schema ID";
         the "HAS_PROPERTY" relationships are assigned an auto-increment index,
         representing the default order of the Properties.
 
@@ -1250,7 +1251,7 @@ class NeoSchema:
         :param link_name:       Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
         :param link_dir:        Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
-        :return:                If successful, the pair (internal ID, integer "schema_id" assigned to the new Class);
+        :return:                If successful, the pair (internal ID, integer "schema_uri" assigned to the new Class);
                                 otherwise, raise an Exception
         """
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
@@ -1298,21 +1299,21 @@ class NeoSchema:
 
 
     @classmethod
-    def remove_property_from_class(cls, class_id: int, property_id: int) -> None:
+    def remove_property_from_class(cls, class_uri :str, property_uri :str) -> None:
         """
         Take out the specified (single) Property from the given Class.
         If the Class or Property was not found, or if the Property could not be removed, an Exception is raised
 
-        :param class_id:    The schema ID of the Class node
-        :param property_id: The schema ID of the Property node
+        :param class_uri:   The uri of the Class node
+        :param property_uri:The uri of the Property node
         :return:            None
         """
-        assert NeoSchema.class_id_exists(class_id), f"The schema has no Class with the requested ID of {class_id}"
+        assert NeoSchema.class_uri_exists(class_uri), f"The schema has no Class with the requested ID of {class_uri}"
 
         q = f'''
-            MATCH (c :CLASS {{ schema_id: {class_id} }})
+            MATCH (c :CLASS {{ uri: '{class_uri}' }})
                   -[:HAS_PROPERTY]
-                  ->(p :PROPERTY {{ schema_id: {property_id}}})
+                  ->(p :PROPERTY {{ uri: '{property_uri}'}})
             DETACH DELETE p
             '''
 
@@ -1320,7 +1321,7 @@ class NeoSchema:
         #print("result of update_query in remove_property_from_class(): ", result)
 
         # Validate the results of the query
-        assert result.get("nodes_deleted") == 1, f"Failed to find or delete the Property node (with schema_id {property_id})"
+        assert result.get("nodes_deleted") == 1, f"Failed to find or delete the Property node (with schema_uri {property_uri})"
         assert result.get("relationships_deleted") == 1, "Failed to find or delete the relationship"
 
 
@@ -1358,18 +1359,18 @@ class NeoSchema:
 
 
     @classmethod
-    def get_schema_id(cls, schema_code: str) -> int:
+    def get_schema_uri(cls, schema_code :str) -> str:
         """
         Get the Schema ID most directly associated to the given Schema Code
 
-        :return:    An integer with the Schema ID (or -1 if not present)
+        :return:    An integer with the Schema uri (or "" if not present)
         """
 
         match = cls.db.match(labels="CLASS", key_name="code", key_value=schema_code)
-        result = cls.db.get_nodes(match, single_cell="schema_id")
+        result = cls.db.get_nodes(match, single_cell="uri")
 
         if result is None:
-            return -1
+            return ""
 
         return result
 
@@ -1618,15 +1619,15 @@ class NeoSchema:
 
 
     @classmethod
-    def data_nodes_of_class(cls, class_name) -> [int]:
+    def data_nodes_of_class(cls, class_name :str) -> [int]:
         """
-        Return the Item ID's of all the Data Nodes of the given Class
-        TODO: offer to optionally use a label
-        TODO: switch to returning the internal database ID's
+        Return the uri's of all the Data Nodes of the given Class
 
-        :param class_name:
+        :param class_name:  Name of a Schema Class
         :return:            Return the Item ID's of all the Data Nodes of the given Class
         """
+        # TODO: offer the option of returning the internal database ID's and/or some or all of the fields
+        # TODO: offer to optionally pass a label?
         q = '''
             MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.uri AS uri
             '''
@@ -1634,7 +1635,7 @@ class NeoSchema:
         res = cls.db.query(q, {"class_name": class_name}, single_column="uri")
 
         # Alternate approach
-        #match = cls.db.match(labels="CLASS", properties={"name": "Categories"})
+        #match = cls.db.match(labels="CLASS", properties={"name": class_name})
         #cls.db.follow_links(match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="BA")
 
         return res
@@ -1671,6 +1672,28 @@ class NeoSchema:
         res = cls.db.query(q, single_cell="number_datanodes")
 
         return res
+
+
+
+    @classmethod
+    def data_nodes_lacking_schema(cls, label :str) -> [dict]:
+        """
+        Locate and return all nodes with the given label
+        that aren't associated to any Schema Class
+
+        :label:     A string with a graph-database label
+        :return:    A list containing a single dictionary, with key 'n';
+                        the value is a dict with all the properties of the located nodes
+        """
+        #  TODO: change the return value; test
+
+        q = f'''
+            MATCH  (n :`{label}`)
+            WHERE  not exists ( (n)-[:SCHEMA]-> (:CLASS) )
+            RETURN n
+            '''
+
+        return cls.db.query(q)
 
 
 
@@ -1796,7 +1819,7 @@ class NeoSchema:
 
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
             raise Exception(f"NeoSchema.create_data_node(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -1820,8 +1843,8 @@ class NeoSchema:
         if assign_uri or new_uri:
             if not new_uri:
                 # TODO: phase out this branch
-                new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
-                                                                # in the "data_node" namespace
+                new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
+                                                        # in the "data_node" namespace
             else:
                 new_id = new_uri
 
@@ -1938,7 +1961,7 @@ class NeoSchema:
 
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
             raise Exception(f"NeoSchema.import_pandas_nodes(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -1966,7 +1989,7 @@ class NeoSchema:
 
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
             raise Exception(f"NeoSchema.import_pandas_nodes(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -2201,7 +2224,7 @@ class NeoSchema:
         class_internal_id = cls.get_class_internal_id(class_name)
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
             raise Exception(f"NeoSchema.add_data_node_merge(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -2257,7 +2280,7 @@ class NeoSchema:
         class_internal_id = cls.get_class_internal_id(class_name)
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
             raise Exception(f"NeoSchema.add_data_column_merge(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -2374,14 +2397,14 @@ class NeoSchema:
         assert links is None or type(links) == list, \
             f"NeoAccess.add_data_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
 
-        if not cls.allows_data_nodes(class_neo_id=class_internal_id):
+        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
             raise Exception(f"NeoSchema.add_data_node_with_links(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
         # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "uri" and "schema_code";
         # if requested, expand cypher_prop_dict accordingly
         if assign_uri or new_uri:
             if not new_uri:
-                new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
+                new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
             else:
                 new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
@@ -2411,7 +2434,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_fast_OBSOLETE(cls, class_name="", schema_id=None,
+    def add_data_point_fast_OBSOLETE(cls, class_name="", schema_uri=None,
                                      properties=None, labels=None,
                                      connected_to_neo_id=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
                                      assign_uri=False, new_uri=None) -> int:
@@ -2428,7 +2451,7 @@ class NeoSchema:
         NOTE: if the new node requires MULTIPLE links to existing data points, use add_and_link_data_point() instead
 
         EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
-                    add_data_point(schema_id=123,     data_dict={"make": "Toyota", "color": "white"}, labels="car",
+                    add_data_point(schema_uri="123",   data_dict={"make": "Toyota", "color": "white"}, labels="car",
                                    connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
                     assuming there's an existing class named "Cars" and an existing data point with uri = 999, and label "salesperson"
 
@@ -2437,7 +2460,7 @@ class NeoSchema:
         TODO: invoke special plugin-code, if applicable
 
         :param class_name:      The name of the Class that this new data point is an instance of
-        :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
+        :param schema_uri:      Alternate way to specify the Class; if both present, class_name prevails
 
         :param properties:      An optional dictionary with the properties of the new data point.   TODO: NEW - changed name
                                     EXAMPLE: {"make": "Toyota", "color": "white"}
@@ -2464,12 +2487,12 @@ class NeoSchema:
         """
         #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
 
-        # Make sure that at least either class_name or schema_id is present
-        if (not class_name) and (not schema_id):
-            raise Exception("NeoSchema.add_data_point(): Must specify at least either the class_name or the schema_id")
+        # Make sure that at least either class_name or schema_uri is present
+        if (not class_name) and (not schema_uri):
+            raise Exception("NeoSchema.add_data_point(): Must specify at least either the class_name or the schema_uri")
 
         if not class_name:
-            class_name = cls.get_class_name_by_schema_id(schema_id)      # Derive the Class name from its ID
+            class_name = cls.get_class_name_by_schema_uri(schema_uri)      # Derive the Class name from its ID
 
         class_neo_id = cls.get_class_internal_id(class_name)
 
@@ -2492,7 +2515,7 @@ class NeoSchema:
         # if requested, expand cypher_prop_dict accordingly
         if assign_uri or new_uri:
             if not new_uri:
-                new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
+                new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
             else:
                 new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
@@ -2536,7 +2559,7 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_OLD(cls, class_name="", schema_id=None,
+    def add_data_point_OLD(cls, class_name="", schema_uri=None,
                            data_dict=None, labels=None,
                            connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
                            new_uri=None, return_uri=True) -> Union[int, str]:
@@ -2552,7 +2575,7 @@ class NeoSchema:
         If the requested Class doesn't exist, an Exception is raised
 
         EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
-                    add_data_point(schema_id=123,     data_dict={"make": "Toyota", "color": "white"}, labels="car",
+                    add_data_point(schema_uri="123",     data_dict={"make": "Toyota", "color": "white"}, labels="car",
                                    connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
                     assuming there's an existing class named "Cars" and an existing data point with uri = 999, and label "salesperson"
 
@@ -2562,7 +2585,7 @@ class NeoSchema:
         TODO: make the issuance of a new uri optional
 
         :param class_name:      The name of the Class that this new data point is an instance of
-        :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
+        :param schema_uri:      Alternate way to specify the Class; if both present, class_name prevails
 
         :param data_dict:       An optional dictionary with the properties of the new data point.
                                 TODO: a better name might be "properties"
@@ -2593,12 +2616,12 @@ class NeoSchema:
         """
         #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
 
-        # Make sure that at least either class_name or schema_id is present
-        if (not class_name) and (not schema_id):
-            raise Exception("Must specify at least either the class_name or the schema_id")
+        # Make sure that at least either class_name or schema_uri is present
+        if (not class_name) and (not schema_uri):
+            raise Exception("Must specify at least either the `class_name` or the `schema_uri`")
 
         if not class_name:
-            class_name = cls.get_class_name_by_schema_id(schema_id)      # Derive the Class name from its ID
+            class_name = cls.get_class_name_by_schema_uri(schema_uri)      # Derive the Class name from its ID
 
         if labels is None:
             # If not specified, use the Class name
@@ -2619,7 +2642,7 @@ class NeoSchema:
         # expand cypher_props_dict accordingly
         # TODO: make this part optional
         if not new_uri:
-            new_id = cls.next_available_datanode_uri()      # Obtain (and reserve) the next auto-increment value
+            new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
         else:
             new_id = new_uri
         #print("New ID assigned to new data node: ", new_id)
@@ -2829,7 +2852,7 @@ class NeoSchema:
 
 
     @classmethod
-    def register_existing_data_node(cls, class_name="", schema_id=None,
+    def register_existing_data_node(cls, class_name="", schema_uri=None,
                                     existing_neo_id=None, new_uri=None) -> int:
         """
         Register (declare to the Schema) an existing data node with the Schema Class specified by its name or ID.
@@ -2837,14 +2860,14 @@ class NeoSchema:
         Return the newly-assigned uri
 
         EXAMPLES:   register_existing_data_node(class_name="Chemicals", existing_neo_id=123)
-                    register_existing_data_node(schema_id=19, existing_neo_id=456)
+                    register_existing_data_node(schema_uri="schema-19", existing_neo_id=456)
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
         TODO: invoke special plugin-code, if applicable
 
         :param class_name:      The name of the Class that this new data node is an instance of
-        :param schema_id:       Alternate way to specify the Class; if both present, class_name prevails
+        :param schema_uri:      Alternate way to specify the Class; if both present, class_name prevails
 
         :param existing_neo_id: Internal ID to identify the node to register with the above Class.
                                 TODO: expand to use the match() structure
@@ -2860,14 +2883,14 @@ class NeoSchema:
         assert type(existing_neo_id) == int, \
             "register_existing_data_node(): The argument `existing_neo_id` MUST be an integer"  # TODO: use validity checker
 
-        # Make sure that at least either class_name or schema_id is present
-        if (not class_name) and (not schema_id):
-            raise Exception("Must specify at least either the class_name or the schema_id")
+        # Make sure that at least either class_name or schema_uri is present
+        if (not class_name) and (not schema_uri):
+            raise Exception("Must specify at least either the 'class_name' or the 'schema_uri'")
 
         if not class_name:
-            class_name = cls.get_class_name_by_schema_id(schema_id)      # Derive the Class name from its ID
+            class_name = cls.get_class_name_by_schema_uri(schema_uri)      # Derive the Class name from its ID
             if not class_name:
-                raise Exception(f"Unable to locate a Class with schema ID {schema_id}")
+                raise Exception(f"Unable to locate a Class with schema ID {schema_uri}")
 
         if not cls.allows_data_nodes(class_name=class_name):
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
@@ -2882,7 +2905,7 @@ class NeoSchema:
             raise Exception(f"The given data node ALREADY has a SCHEMA relationship")
 
         if not new_uri:
-            new_uri = cls.next_available_datanode_uri()     # Generate, if not already provided
+            new_uri = cls.reserve_next_uri()     # Generate, if not already provided
 
         cls.debug_print("register_existing_data_node(). New uri to be assigned to the data node: ", new_uri)
 
@@ -3198,25 +3221,6 @@ class NeoSchema:
 
 
     @classmethod
-    def data_nodes_lacking_schema(cls):
-        """
-        Locate and return all Data Nodes that aren't associated to any Class
-        TODO: generalize the "BA" label
-        TODO: test
-
-        :return:
-        """
-        q = '''
-            MATCH  (n:BA)
-            WHERE  not exists ( (n)-[:SCHEMA]-> (:CLASS) )
-            RETURN n
-            '''
-
-        return cls.db.query(q)
-
-
-
-    @classmethod
     def follow_links_NOT_YET_IMPLEMENTED(cls, class_name, key_name, key_value, link_sequence):
         """
         Follow a chain of links among data nodes,
@@ -3404,11 +3408,6 @@ class NeoSchema:
         """
         assert cache is not None, "NeoSchema.create_tree_from_dict(): the argument `cache` cannot be None"
         assert type(d) == dict, f"NeoSchema.create_tree_from_dict(): the argument `d` must be a dictionary (instead, it's {type(d)})"
-
-        #schema_id = cls.get_class_id(class_name)
-        #assert schema_id != -1, \
-        #            f"The value passed for the argument `class_name` ({class_name}) is not a valid Class name"  # If not found
-
 
         indent_spaces = level*4
         indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
@@ -3660,11 +3659,13 @@ class NeoSchema:
     @classmethod
     def is_valid_uri(cls, uri :str) -> bool:
         """
-        Return True if the passed uri is valid; otherwise, return False
+        Check the validity of the passed uri.
+        If the uri belongs to a Schema node, a tighter check can be performed with is_valid_schema_uri()
 
-        :param uri:
-        :return:
+        :param uri: A string with a value that is expected to be a uri of a node
+        :return:    True if the passed uri has a valid value, or False otherwise
         """
+        # TODO: also verify that the string isn't just a group of blanks
         if type(uri) == str and uri != "":
             return True
 
@@ -3673,57 +3674,39 @@ class NeoSchema:
 
 
     @classmethod
-    def generate_uri(cls, prefix, namespace, suffix="") -> str:
+    def advance_autoincrement(cls, namespace :str, advance=1) -> int:
         """
-        Generate a URI (or fragment thereof, aka "token"),
-        using the given prefix and suffix;
-        the middle part is a unique auto-increment value (separately maintained
-        in various groups, or "namespaces".)
-
-        EXAMPLE:  generate_uri("doc.", "documents", ".new") might produce "doc.3.new"
-
-        :param prefix:      A string to place at the start of the URI
-        :param namespace:   A string with the name of the desired group of auto-increment values
-        :param suffix:      (OPTIONAL) A string to place at the end of the URI
-        :return:            A string with a newly-generated URI (unique in the given namespace)
-        """
-        return f"{prefix}{cls.next_autoincrement(namespace)}{suffix}"
-
-
-
-    @classmethod
-    def next_autoincrement(cls, namespace :str, advance=1) -> int:
-        """
-        This utilizes an ATOMIC database operation to both read and advance the autoincrement counter,
-        based on a (single) node with label `Schema Autoincrement`
-        and an attribute indicating the desired namespace (group);
+        Utilize an ATOMIC database operation to both read AND advance the autoincrement counter,
+        based on a (single) node that contains the label `Schema Autoincrement`
+        as well as an attribute indicating the desired namespace (group);
         if no such node exists (for example, after a new installation), it gets created, and 1 is returned.
 
-        Note that the returned number (or last of a sequence of numbers, if advance > 1)
+        Note that the returned number (or the last of an implied sequence of numbers, if advance > 1)
         is de-facto "permanently reserved" on behalf of the calling function,
         and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
 
         :param namespace:   A string used to maintain completely separate groups of auto-increment values;
                                 leading/trailing blanks are ignored
         :param advance:     Normally, auto-increment advances by 1 unit, but a different positive integer
-                                may be used
+                                may be used to "reserve" a group of numbers in the above namespace
 
         :return:            An integer that is a unique auto-increment for the specified namespace
                                 (starting with 1); it's ready-to-use and "reserved", i.e. could be used
                                 at any future time
         """
         assert type(namespace) == str, \
-            "next_autoincrement(): the argument `namespace` is required and must be a string"
-        assert namespace != "", \
-            "next_autoincrement(): the argument `namespace` must be a non-empty string"
-
-        assert type(advance) == int, \
-            "next_autoincrement(): the argument `advance` is required and must be an integer"
-        assert advance >= 1, \
-            "next_autoincrement(): the argument `advance` must be an integer >= 1"
-
+            "advance_autoincrement(): the argument `namespace` is required and must be a string"
 
         namespace = namespace.strip()   # Zap leading/trailing blanks
+
+        assert namespace != "", \
+            "advance_autoincrement(): the argument `namespace` must be a non-empty string"
+
+        assert type(advance) == int, \
+            "advance_autoincrement(): the argument `advance` is required and must be an integer"
+        assert advance >= 1, \
+            "advance_autoincrement(): the argument `advance` must be an integer >= 1"
+
 
         q = f'''
             MATCH (n: `Schema Autoincrement` {{namespace: $namespace}})
@@ -3742,21 +3725,91 @@ class NeoSchema:
 
 
     @classmethod
-    def next_available_datanode_uri(cls, prefix="") -> str:
+    def reserve_next_uri(cls, namespace="data_node", prefix="", suffix="") -> str:
         """
-        Reserve and return a URI based on the next available auto-increment ID,
-        in the separately-maintained group (i.e. namespace) called "data_node".
-        This value (not to be confused with the internal database ID assigned to each node),
-        is meant as a permanent primary key.
+        Generate and reserve a URI (or fragment thereof, aka "token"),
+        using the given prefix and/or suffix;
+        the middle part is a unique auto-increment value
+        (separately maintained in various groups, or "namespaces")
 
-        For unique ID's to use on Schema nodes, use next_available_schema_id() instead
+        EXAMPLES:   reserve_next_uri("Documents", "doc.", ".new") might produce "doc.3.new"
+                    reserve_next_uri("Images", prefix="i-") might produce "i-123"
 
-        :param prefix:  (OPTIONAL) String to prefix to the auto-increment number
-        :return:        A unique auto-increment integer used for Data nodes
+        Prefixes and suffixes only need to be passed when first using a new namespace;
+        if they're passed in later calls, they over-ride their stored counterparts.
+
+        An ATOMIC database operation is utilized to both read AND advance the autoincrement counter,
+        based on a (single) node with label `Schema Autoincrement`
+        as well as an attribute indicating the desired namespace (group);
+        if no such node exists (for example, after a new installation), it gets created,
+        and 1 is used as the reserved autoincrement count.
+
+        Note that the returned uri is de-facto "permanently reserved" on behalf of the calling function,
+        and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
+
+        :param namespace:   A string used to maintain completely separate groups of auto-increment values;
+                                leading/trailing blanks are ignored
+        :param prefix:      (OPTIONAL) String to prefix to the auto-increment number.
+                                If it's the 1st call for the given namespace, store it in the database;
+                                otherwise, if a value is passed, use it to over-ride the stored one
+        :param suffix:      (OPTIONAL) String to suffix to the auto-increment number
+                                If it's the 1st call for the given namespace, store it in the database;
+                                otherwise, if a value is passed, use it to over-ride the stored one
+
+        :return:            An integer that is a unique auto-increment for the specified namespace
+                                (starting with 1); it's ready-to-use and "reserved", i.e. could be used
+                                at any future time
         """
-        n = cls.next_autoincrement("data_node")
-        uri = f"{prefix}{n}"
+        assert type(namespace) == str, \
+            "reserve_next_uri(): the argument `namespace` and must be a string"
 
+        namespace = namespace.strip()   # Zap leading/trailing blanks
+
+        assert namespace != "", \
+            "reserve_next_uri(): the argument `namespace` cannot be an empty or blank string"
+
+        assert (type(prefix) == str) or (prefix is None), \
+            f"reserve_next_uri(): the argument `prefix` must be a string or None; " \
+            f"value passed was of type {type(prefix)}"
+        assert (type(suffix) == str) or (suffix is None), \
+            f"reserve_next_uri(): the argument `suffix` must be a string or None;" \
+            f" value passed was of type {type(suffix)}"
+
+
+        # Attempt to retrieve a `Schema Autoincrement` node for our namespace (it might be absent);
+        # if found, advance its autoincrement counter, and also retrieve the stored prefix and suffix
+        q = f'''
+            MATCH (n: `Schema Autoincrement` {{namespace: $namespace}})
+            SET n.next_count = n.next_count + 1
+            RETURN n.next_count AS next_count, n.prefix AS stored_prefix, n.suffix AS stored_suffix
+            '''
+        result = cls.db.query(q, data_binding={"namespace": namespace}, single_row=True)
+
+        if result is None:     # If no Autoincrement node found, create it - and also store the prefix and suffix, if provided
+            properties={"namespace": namespace, "next_count": 2}
+            if prefix:
+                properties["prefix"] = prefix
+            if suffix:
+                properties["suffix"] = suffix
+
+            cls.db.create_node(labels="Schema Autoincrement", properties=properties)
+            autoincrement_to_use = 1       # Start a new count for this namespace
+        else:
+            # Unpack the dictionary of data from the Autoincrement node
+            (next_count, stored_prefix, stored_suffix) = [result.get(key) for key in ("next_count", "stored_prefix", "stored_suffix")]
+            # Note that stored_prefix and stored_suffix will be None if not found in the database
+            autoincrement_to_use = next_count - 1
+            if not prefix:      # Use the database value, if not passed as argument
+                prefix = stored_prefix
+            if not suffix:
+                suffix = stored_suffix
+
+        if prefix is None:
+            prefix = ""
+        if suffix is None:
+            suffix = ""
+
+        uri = f"{prefix}{autoincrement_to_use}{suffix}"
         return uri
 
 
@@ -3772,30 +3825,42 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def valid_schema_id(cls, schema_id: int) -> bool:
+    def is_valid_schema_uri(cls, schema_uri :str) -> bool:
         """
-        Check the validity of the passed Schema ID
+        Check the validity of the passed Schema uri.
+        It should be of the form "schema-n" for some integer n
+        To check the validity of the uri of a Data node rather than a Schema node,
+        use is_valid_uri() instead
 
-        :param schema_id:
-        :return:
+        :param schema_uri:  A string with a value that is expected to be a uri of a Schema node
+        :return:            True if the passed uri has a valid value, or False otherwise
         """
-        if schema_id >= 0:
-            return True
-        else:
+        if type(schema_uri) != str:
             return False
 
+        # Check that the string starts with "schema-"
+        if schema_uri[:7] != "schema-":
+            return False
+
+        # Check that the portion after "schema-" represents an integer
+        try:
+            int(schema_uri[7:])
+        except:
+            return False
+
+        return True
 
 
-    # TODO: prefix "_" to name of private methods
+
     @classmethod
-    def next_available_schema_id(cls) -> int:
+    def next_available_schema_uri(cls) -> str:
         """
-        Return the next available ID for nodes managed by this class
-        For unique ID's to use on data nodes, use next_available_datanode_id() instead
+        Return the next available uri for nodes managed by this class.
+        For unique uri's to use on Data Nodes, use reserve_next_uri() instead
 
-        :return:     A unique auto-increment integer used for Schema nodes
+        :return:     A string based on unique auto-increment values, used for Schema nodes
         """
-        return cls.next_autoincrement("schema_node")
+        return cls.reserve_next_uri(namespace="schema_node", prefix="schema-")
 
 
 
@@ -3807,7 +3872,7 @@ class NeoSchema:
         optionally trimming it, if too long
 
         :param info:
-        :param trim:
+        :param trim:    (OPTIONAL) Flag indicating whether to only print a shortened version
         :return:        None
         """
         if cls.debug:
@@ -3875,7 +3940,7 @@ class SchemaCache:
         If request == "class_attributes":
             return the attributes of the requested Class,
             i.e. a dictionary of all the Class node's attributes
-            EXAMPLE:  {'name': 'MY CLASS', 'schema_id': 123, 'strict': False}
+            EXAMPLE:  {'name': 'MY CLASS', 'schema_uri': '123', 'strict': False}
 
         If request == "class_properties":
             return the properties of the requested Class,

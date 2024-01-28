@@ -93,7 +93,7 @@ def test_extract_unique_good_words():
     assert result == {"world"}
 
     result = FullTextIndexing.extract_unique_good_words("Hello to the world! And, YES - why not - let's say, hello again as well :)")
-    assert result == {"world", "say"}
+    assert result == {"world"}
 
     result = FullTextIndexing.extract_unique_good_words("I shout, and shout - and REALLY, REALLY shout because I can!")
     assert result == {"shout"}

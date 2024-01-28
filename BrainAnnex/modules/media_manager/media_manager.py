@@ -11,7 +11,7 @@ from PIL import Image
 
 class MediaManager:
     """
-    Helper library for the management of media files
+    Helper library for the management of media files (documents and images)
     """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
@@ -80,13 +80,14 @@ class MediaManager:
     @classmethod
     def get_from_text_file(cls, path: str, filename: str, encoding="latin-1") -> str:
         """
-        Read in and return the contents of the specified TEXT file
+        Read in and return the contents of the specified TEXT file.
 
         Note: 'utf8' encoding at times led to problems.
                More info: https://stackoverflow.com/questions/5552555/unicodedecodeerror-invalid-continuation-byte
 
         :param path:        String that must include a final "/", containing the full path of the file
-                                EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
+                                EXAMPLE on Windows:
+                                "D:/media/" (notice the forward slashes, even on Windows)
         :param filename:    EXCLUSIVE of path
         :param encoding:    A string such as "latin-1" (aka "iso-8859-1") or "utf8"
         :return:            The contents of the text file, using 'latin-1' encoding
@@ -482,7 +483,8 @@ class ImageProcessing:
     @classmethod
     def describe_image(cls, source_full_name) -> None:
         """
-        Print out some info about the given image.
+        Print out some info about the given image:
+        the file format, the pixel format, the image size and (if any) the color palette
 
         :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/media/resized/my image.jpg"
         :return:                    None.  In case of error, an Exception is raised

@@ -1,6 +1,6 @@
 """
     Web API endpoint
-    MIT License.  Copyright (c) 2021-2024 Julian A. West
+    MIT License.  Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
 """
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
@@ -55,7 +55,7 @@ class ApiRouting:
 
 
     # NOTE: To test POST-based web APIs, on the Linux shell or Windows PowerShell issue commands such as:
-    #            curl http://localhost:5000/BA/api/add_item_to_category -d "schema_id=1&category_id=60"
+    #            curl http://localhost:5000/BA/api/add_item_to_category -d "schema_uri=1&category_uri=60"
 
 
 
@@ -259,10 +259,6 @@ class ApiRouting:
                 response = {"status": "error", "error_message": "The expected POST parameter `class_name` is not present"}
             else:
                 class_name = data_dict["class_name"]
-                #schema_id = NeoSchema.get_class_id(class_name)
-                #if schema_id == -1:
-                    #response = {"status": "error", "error_message": f"Unable to locate any Class named `{class_name}`"}
-                #else:
                 try:
                     # Fetch all the Properties
                     prop_list = NeoSchema.get_class_properties(class_node=class_name, include_ancestors=True)
@@ -276,15 +272,16 @@ class ApiRouting:
 
 
 
-        @bp.route('/get_links/<schema_id>')
+        @bp.route('/get_links/<class_name>')
         @login_required
-        def get_links(schema_id):
+        def get_links(class_name):
             """
-            Get the names of all the relationship attached to the Class specified by its Schema ID
+            Get the names of all the relationship attached to the specified Class.
+            (No error if the Class doesn't exist)
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/get_links/47
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_links/Entrees
 
-            :param schema_id:   ID of a Class node
+            :param class_name:  The name of a Schema Class node
             :return:            A JSON object with the names of inbound and outbound links
                                 EXAMPLE:
                                     {
@@ -303,11 +300,12 @@ class ApiRouting:
 
             # Fetch all the relationship names
             try:
-                rel_names = NeoSchema.get_class_relationships(int(schema_id), omit_instance=True)
+                rel_names = NeoSchema.get_class_relationships(class_name=class_name, omit_instance=True)
                 payload = {"in": rel_names["in"], "out": rel_names["out"]}
                 response = {"status": "ok", "payload": payload}    # Successful termination
             except Exception as ex:
-                response = {"status": "error", "error_message": str(ex)}    # Error termination
+                err_details = f"/get_links :  {exceptions.exception_helper(ex)}"
+                response = {"status": "error", "error_message": err_details}    # Error termination
 
             return jsonify(response)   # This function also takes care of the Content-Type header
 
@@ -352,23 +350,22 @@ class ApiRouting:
 
             data_dict = dict(post_data)
             if "class_name" not in data_dict:
-                response = {"status": "error", "error_message": "The expected POST parameter `class_name` is not present"}
-            else:
-                class_name = data_dict["class_name"]
-                schema_id = NeoSchema.get_class_id(class_name)
-                if schema_id == -1:
-                    response = {"status": "error", "error_message": f"Unable to locate any Class named `{class_name}`"}
-                else:
-                    try:
-                        # Fetch all the Properties
-                        prop_list = NeoSchema.get_class_properties(class_name, include_ancestors=True, exclude_system=True)
-                        rel_names = NeoSchema.get_class_relationships(int(schema_id), omit_instance=True)
-                        payload = {"properties": prop_list, "in_links": rel_names["in"], "out_links": rel_names["out"]}
-                        response = {"status": "ok", "payload": payload}
-                    except Exception as ex:
-                        response = {"status": "error", "error_message": str(ex)}
+                response = {"status": "error",
+                            "error_message": "/get_class_schema: the expected POST parameter `class_name` is not present"}
+                return jsonify(response)   # This function also takes care of the Content-Type header
 
-            #print(f"get_class_schema() is returning: `{response}`")
+            class_name = data_dict["class_name"]
+
+            try:
+                # Fetch all the Properties
+                prop_list = NeoSchema.get_class_properties(class_name, include_ancestors=True, exclude_system=True)
+                rel_names = NeoSchema.get_class_relationships(class_name=class_name, omit_instance=True)
+                payload = {"properties": prop_list, "in_links": rel_names["in"], "out_links": rel_names["out"]}
+                response = {"status": "ok", "payload": payload}
+            except Exception as ex:
+                err_details = f"/get_class_schema :  {exceptions.exception_helper(ex)}"
+                response = {"status": "error", "error_message": err_details}
+
 
             return jsonify(response)   # This function also takes care of the Content-Type header
 
@@ -473,7 +470,7 @@ class ApiRouting:
                 DataManager.new_schema_class(class_specs)
                 response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
-                err_details = f"Unable to create a new Schema Class.  {exceptions.exception_helper(ex)}"
+                err_details = f"/create_new_schema_class : Unable to create a new Schema Class.  {exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}    # Failure
 
             #print(f"create_new_schema_class() is returning: `{err_details}`")
@@ -1282,8 +1279,7 @@ class ApiRouting:
             print(json_data)
         
             # Fetch the data from the filters
-            #prop_list = NeoSchema.get_class_properties(int(schema_id), include_ancestors=True)
-            prop_list = [1, 2, 3]
+            prop_list = [1, 2, 3]   # TODO: use NeoSchema.get_class_properties(include_ancestors=True)
             response = {"status": "ok", "payload": prop_list}
             return jsonify(response)   # This function also takes care of the Content-Type header
         

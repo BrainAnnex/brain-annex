@@ -31,7 +31,7 @@ def test_create_class_relationship(db):
 
 
 def test_get_class_relationships(db):
-    schema_id = NeoSchema.get_class_id("Restaurants")
+    schema_id = NeoSchema.get_class_uri("Restaurants")
     print("schema_id is: ", schema_id)
 
     result = NeoSchema.get_class_relationships(schema_id)
@@ -67,7 +67,7 @@ def test_get_class_properties(db):
 
 
 def test_add_properties_to_class(db):
-    result = NeoSchema.add_properties_to_class(class_id=1, property_list=["Gender", "German"])
+    result = NeoSchema.add_properties_to_class(class_uri=1, property_list=["Gender", "German"])
     assert result == 2
 
     """
@@ -85,7 +85,7 @@ def test_add_properties_to_class(db):
 
 
 def test_remove_property_from_class(db):
-    NeoSchema.remove_property_from_class(class_id=1, property_id=5)
+    NeoSchema.remove_property_from_class(class_uri=1, property_uri=5)
 
 
 
@@ -134,9 +134,9 @@ def test_initialize_schema(db):
     _ , Profl_class_id = NeoSchema.create_class("Profl Connections")
     print(Profl_class_id)
 
-    NeoSchema.add_properties_to_class(class_id = German_class_id, property_list=["German", "English", "Notes"])
+    NeoSchema.add_properties_to_class(class_uri= German_class_id, property_list=["German", "English", "Notes"])
 
-    NeoSchema.add_properties_to_class(class_id = Profl_class_id, property_list=["name", "role", "location", "notes"])
+    NeoSchema.add_properties_to_class(class_uri= Profl_class_id, property_list=["name", "role", "location", "notes"])
 
     q = '''
         MATCH (c:CLASS {schema_id:1})
@@ -193,32 +193,32 @@ def test_next_available_id(db):
     db.empty_dbase()    # Completely clear the database
 
     # Try on empty database
-    assert NeoSchema.next_available_schema_id() == 1
+    assert NeoSchema.next_available_schema_uri() == 1
 
     db.create_node("CLASS", {"schema_id": 1})
-    assert NeoSchema.next_available_schema_id() == 2
+    assert NeoSchema.next_available_schema_uri() == 2
 
     db.create_node("CLASS", {"schema_id": 2})
-    assert NeoSchema.next_available_schema_id() == 3
+    assert NeoSchema.next_available_schema_uri() == 3
 
     db.create_node("PROPERTY", {"schema_id": 3})
-    assert NeoSchema.next_available_schema_id() == 4
+    assert NeoSchema.next_available_schema_uri() == 4
 
     db.create_node("some_other_label", {"schema_id": 12345})
-    assert NeoSchema.next_available_schema_id() == 4      # Unaffected by other labels
+    assert NeoSchema.next_available_schema_uri() == 4      # Unaffected by other labels
 
     db.create_node("CLASS", {"schema_id": 100})
-    assert NeoSchema.next_available_schema_id() == 101
+    assert NeoSchema.next_available_schema_uri() == 101
 
     db.create_node("PROPERTY", {"schema_id": 665})
-    assert NeoSchema.next_available_schema_id() == 666
+    assert NeoSchema.next_available_schema_uri() == 666
 
     #print(NeoSchema.next_available_schema_id())
 
 
 
 def test_next_available_datapoint_id(db):
-    print(NeoSchema.next_available_datanode_uri())
+    print(NeoSchema.reserve_next_uri())
 
 
 
@@ -292,7 +292,7 @@ def test_add_data_point(db):
 def test_add_existing_data_point(db):
 
     neo_id = db.create_node("BA", {"note": "TO DELETE!"})
-    new_uri = NeoSchema.register_existing_data_node(schema_id=19, existing_neo_id=neo_id)
+    new_uri = NeoSchema.register_existing_data_node(schema_uri=19, existing_neo_id=neo_id)
     print("new_uri: ", new_uri)
 
     neo_id = db.create_node("BA", {"formula": "NH3"})

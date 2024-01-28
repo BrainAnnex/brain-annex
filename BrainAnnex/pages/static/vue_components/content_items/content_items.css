@@ -18,6 +18,19 @@ p.insert-box {
     padding: 10px;
 }
 
+div.insert-box {
+    background-color: #F1EAD1;
+    border: 1px solid gray;
+    margin: 5px;
+    margin-right:15px;
+    padding: 10px;
+}
+
+div.insert-box span.tag-header {
+    font-weight: bold;
+    font-size: 14px;
+}
+
 button.confirm-button {
     padding: 20px;
     margin: 10px;
