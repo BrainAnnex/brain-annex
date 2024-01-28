@@ -426,20 +426,20 @@ class Categories:
         Add a new Subcategory to a given, already existing, Category
 
         :param data_dict:   Dictionary with the following keys:
-                                category_id                     The uri to identify the Category
-                                                                    to which to add a Subcategory
-                                subcategory_name                The name to give to the new Subcategory
-                                subcategory_remarks (optional)  A comment field for the new Subcategory
+                                category_uri            URI to identify the Category
+                                                            to which to add the new Subcategory
+                                subcategory_name        The name to give to the new Subcategory
+                                subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
 
         :return:            A string with the auto-increment "uri" value of the Category node just created
         """
-        # TODO: change the argument passing, and rename "category_id" to "category_uri"
         # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
         #       a Category to have multiple "children" with the same name)
-        category_uri = data_dict.get("category_id")
-        assert NeoSchema.is_valid_uri(category_uri), "invalid category uri"
-        assert category_uri is not None, "add_subcategory(): key `category_id` in argument `data_dict` is missing"
-        assert type(category_uri) == str, "add_subcategory(): value of `category_id` in argument `data_dict` must be a string"
+        category_uri = data_dict.get("category_uri")
+        assert category_uri is not None, \
+                    "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
+        assert NeoSchema.is_valid_uri(category_uri), \
+            f"add_subcategory(): invalid category uri ({category_uri})"
 
         subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
