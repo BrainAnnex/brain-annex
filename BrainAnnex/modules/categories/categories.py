@@ -10,12 +10,7 @@ class Categories:
     An entity to which a variety of nodes (e.g. representing records or media)
     is attached, with a positional attribute.
 
-    Categories also have "subcategory" relationships with other categories.
-
-    Contains the following groups of methods:
-        1. LOOKUP
-        2. UPDATE
-        3. POSITIONING WITHIN CATEGORIES
+    Categories also have "subcategory" and "see_also" relationships with other categories.
     """
 
     db = None   # MUST be set before using this class!
@@ -254,13 +249,14 @@ class Categories:
                             up to a maximum hop length;
                             the values are lists of the uri's of the parent categories of the Category specified by the key
                             EXAMPLES:       {'123': ['1']}                                  # The given category (123) is a child of the root (1)
-                                            {'823': ['709'], '709': ['544'], '544': ['1']}          # A simple 3-hop path from Category 823 to the root (1) :
-                                                                                        #   823 is subcategory of 709,
-                                                                                        #   which is subcategory of 544, which is subcategory of the root
-                                            {'814': ['20', '30'], '20': ['1'], '30': ['79'], '79': ['1']} # Two paths from Category 814 to the root;
-                                                                                        #   814 is subcategory of 20 and 30;
-                                                                                        #   20 is an subcategory of the root,
-                                                                                        #   while with 30 we have to go thru an extra hop
+                                            {'823': ['709'], '709': ['544'], '544': ['1']}  # A simple 3-hop path from Category 823 to the root (1) :
+                                                                                            #       823 is subcategory of 709,
+                                                                                            #       which is subcategory of 544, which is subcategory of the root
+                                            {'814': ['20', '30'], '20': ['1'], '30': ['79'], '79': ['1']}
+                                                                                            # Two paths from Category 814 to the root;
+                                                                                            #       814 is subcategory of 20 and 30;
+                                                                                            #       20 is an subcategory of the root,
+                                                                                            #       while with 30 we have to go thru an extra hop
         """
 
         # Based on the "BA_subcategory_of" relationship,
@@ -588,7 +584,7 @@ class Categories:
         NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
 
         :param from_id:     String with the uri of the subcategory node
-        :param to_id:       NOT USED.  Integer with the uri of the parent-category node
+        :param to_id:       NOT USED.  String with the uri of the parent-category node
         :param rel_name:    NOT USED
         :return:            None.  If the requested new relationship should not be deleted, raise an Exception
         """
@@ -1075,7 +1071,7 @@ class Categories:
 
         then relocate_positions(category_uri, n_to_skip=1, pos_shift=100) will result in:
             pos
-        1:   45     <- got skipped
+        1:   45     <= got skipped
         2:  184
         3:  191
 
@@ -1109,9 +1105,9 @@ class Categories:
         """
         Swap the positions of the specified Content Items within the given Category
 
-        :param uri_1:   A string with the (integer) ID of the 1st Content Item
-        :param uri_2:   A string with the (integer) ID of the 2nd Content Item
-        :param cat_id:  A string with the (integer) ID of the Category
+        :param uri_1:   A string with the uri of the 1st Content Item
+        :param uri_2:   A string with the uri of the 2nd Content Item
+        :param cat_id:  A string with the uri of the Category
         :return:        None.  In case of error, raise an Exception
         """
 
@@ -1164,6 +1160,7 @@ class Categories:
     @classmethod
     def viewer_handler(cls, category_uri :str):
         """
+        Handler function for the Flask page generator "BA_pages_routing.py"
 
         :param category_uri: A string identifying the desired Category
         :return:             A list of dictionaries, with one element for each "sibling";
@@ -1173,6 +1170,7 @@ class Categories:
                                 {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories', 'BA']}
         """
         # TODO: expand to cover all the data needs of BA_pages_routing.py
+        # TODO: maybe move to DataManager layer
 
         category_internal_id = NeoSchema.get_data_node_internal_id(uri = category_uri)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)

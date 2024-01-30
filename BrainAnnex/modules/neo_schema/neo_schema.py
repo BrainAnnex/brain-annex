@@ -83,7 +83,7 @@ class NeoSchema:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2024 Julian A. West
+        Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -150,9 +150,9 @@ class NeoSchema:
 
     #####################################################################################################
 
-    '''                                     ~   CLASS-related   ~                                     '''
+    '''                                     ~   Schema CLASSES   ~                                     '''
 
-    def ________CLASS_related________(DIVIDER):
+    def ________Schema_CLASSES________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -241,7 +241,7 @@ class NeoSchema:
         if cls.class_name_exists(name):
             raise Exception(f"NeoSchema.create_class(): A class named `{name}` ALREADY exists")
 
-        schema_uri = cls.next_available_schema_uri()    # A schema-wide uri, also used for Property nodes
+        schema_uri = cls._next_available_schema_uri()    # A schema-wide uri, also used for Property nodes
 
         attributes = {"name": name, "uri": schema_uri, "strict": strict}
         if code:
@@ -1169,7 +1169,7 @@ class NeoSchema:
         number_properties_nodes_created = 0
 
         for property_name in clean_property_list:
-            new_schema_uri = cls.next_available_schema_uri()
+            new_schema_uri = cls._next_available_schema_uri()
             q = f'''
                 MATCH (c: `{cls.class_label}` {{ uri: '{class_uri}' }})
                 MERGE (c)-[:{cls.class_prop_rel} {{ index: {new_index} }}]
@@ -3627,7 +3627,6 @@ class NeoSchema:
     @classmethod
     def export_schema(cls) -> {}:
         """
-        TODO: unit testing
         Export all the Schema nodes and relationships as a JSON string.
 
         IMPORTANT:  APOC must be activated in the database, to use this function.
@@ -3637,6 +3636,8 @@ class NeoSchema:
                     the number of relationships, and the number of properties,
                     as well as a "data" field with the actual export as a JSON string
         """
+        #TODO: unit testing
+
         # Any Class or Property node
         nodes_query = "MATCH (n) WHERE (n:CLASS OR n:PROPERTY)"
 
@@ -3670,6 +3671,33 @@ class NeoSchema:
             return True
 
         return False
+
+
+    @classmethod
+    def is_valid_schema_uri(cls, schema_uri :str) -> bool:
+        """
+        Check the validity of the passed Schema uri.
+        It should be of the form "schema-n" for some integer n
+        To check the validity of the uri of a Data node rather than a Schema node,
+        use is_valid_uri() instead
+
+        :param schema_uri:  A string with a value that is expected to be a uri of a Schema node
+        :return:            True if the passed uri has a valid value, or False otherwise
+        """
+        if type(schema_uri) != str:
+            return False
+
+        # Check that the string starts with "schema-"
+        if schema_uri[:7] != "schema-":
+            return False
+
+        # Check that the portion after "schema-" represents an integer
+        try:
+            int(schema_uri[7:])
+        except:
+            return False
+
+        return True
 
 
 
@@ -3814,46 +3842,8 @@ class NeoSchema:
 
 
 
-
-
-    #####################################################################################################
-
-    '''                                  ~   PRIVATE METHODS   ~                                      '''
-
-    def ________PRIVATE_METHODS________(DIVIDER):
-        pass        # Used to get a better structure view in IDEs
-    #####################################################################################################
-
     @classmethod
-    def is_valid_schema_uri(cls, schema_uri :str) -> bool:
-        """
-        Check the validity of the passed Schema uri.
-        It should be of the form "schema-n" for some integer n
-        To check the validity of the uri of a Data node rather than a Schema node,
-        use is_valid_uri() instead
-
-        :param schema_uri:  A string with a value that is expected to be a uri of a Schema node
-        :return:            True if the passed uri has a valid value, or False otherwise
-        """
-        if type(schema_uri) != str:
-            return False
-
-        # Check that the string starts with "schema-"
-        if schema_uri[:7] != "schema-":
-            return False
-
-        # Check that the portion after "schema-" represents an integer
-        try:
-            int(schema_uri[7:])
-        except:
-            return False
-
-        return True
-
-
-
-    @classmethod
-    def next_available_schema_uri(cls) -> str:
+    def _next_available_schema_uri(cls) -> str:
         """
         Return the next available uri for nodes managed by this class.
         For unique uri's to use on Data Nodes, use reserve_next_uri() instead
@@ -3863,6 +3853,14 @@ class NeoSchema:
         return cls.reserve_next_uri(namespace="schema_node", prefix="schema-")
 
 
+
+    #####################################################################################################
+
+    '''                                   ~   UTILITIES   ~                                           '''
+
+    def ________UTILITIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def debug_print(cls, info: str, trim=False) -> None:
