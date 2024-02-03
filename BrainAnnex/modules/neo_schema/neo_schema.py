@@ -210,8 +210,8 @@ class NeoSchema:
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
 
-        Return a pair with the Neo4j ID of the new ID,
-        and the auto-incremented unique ID assigned to the new Class.
+        Return a pair with internal database ID,
+        and the auto-incremented uri, assigned to the new Class.
         Raise an Exception if a class by that name already exists.
 
         NOTE: if you want to add Properties at the same time that you create a new Class,

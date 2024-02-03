@@ -24,6 +24,9 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 	----------------------------------------------------------------------------------
+
+    TODO: maybe relocate under modules/pages/static
+
  */
 
 
@@ -303,7 +306,8 @@ class ServerCommunication
 
     static parse_POST_object(post_obj)
     /*  Turn an object literal into a string, after transforming attribute values with encodeURIComponent();
-        suitable for situations when we use 'Content-Type': 'application/x-www-form-urlencoded'
+        suitable for situations when the HTTP request uses
+        'Content-Type': 'application/x-www-form-urlencoded'
 
         Any non-blank string gets passed thru encodeURIComponent.
         [NEW: Any blank strings in the values are left undisturbed]

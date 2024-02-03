@@ -14,8 +14,8 @@
 
         all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                     EXAMPLE:
-                                          [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"},
-                                           {"uri: 123, "name": "Calculus"},
+                                          [{"uri": 1,   "name": "HOME", "remarks": "ROOT NODE"},
+                                           {"uri: 123,  "name": "Calculus"},
                                            {"uri": 523, "name": "Work at Acme", "pinned": True}]
         subcategories       EXAMPLE: [{'uri': '2', 'name': 'Work', remarks: 'outside employment', OTHER_FIELDS_NOT_USED}]
         parent_categories
@@ -400,6 +400,8 @@
 
 
 
+
+
     <!--  To add a new Subcategory (TODO: turn into a Vue component) -->
     <div style='clear: left;'></div> {# To clear any Content Item #}
 
@@ -410,10 +412,12 @@
 
         <table border='0' cellspacing='5' cellpadding='0'>
             <tr>
-                <td>Name</td><td style='padding-left:5px'><input type='text' v-model="new_subcategory_name" size='50' maxlength='60'></td>
+                <td>Name</td>
+                <td style='padding-left:5px'><input type='text' v-model="new_subcategory_name" size='50' maxlength='60'></td>
             </tr>
             <tr>
-                <td>Remarks <span style='color:gray; font-style:italic'>(optional)</span></td><td style='padding-left:5px'><input type='text'  v-model="new_subcategory_remarks" size='50' maxlength='90'></td>
+                <td>Remarks <span style='color:gray; font-style:italic'>(optional)</span></td>
+                <td style='padding-left:5px'><input type='text'  v-model="new_subcategory_remarks" size='50' maxlength='90'></td>
             </tr>
         </table>
 
@@ -424,6 +428,10 @@
         <br><br>
         <span style='color:gray'><b>OR:</b> add an <a href='/BA/pages/category_manager/{{category_uri}}'><i>existing</i></a> sub-category</span>
     </div>
+
+
+
+
 
 
     <div style='height:170px'></div>     <!-- To extend the main page enough to fit the above floating element -->
@@ -643,6 +651,7 @@ new Vue({
 
 
         add_subcategory(category_uri)
+        // Create a new sub-category for the current Category
         {
             console.log(`Adding new sub-category: category_uri: ${category_uri}, subcategory name: ${this.new_subcategory_name} , remarks: ${this.new_subcategory_remarks}`);
             if (this.new_subcategory_name == "")  {
@@ -651,37 +660,36 @@ new Vue({
             }
 
             // Send the request to the server, using a POST
-            url_server = "/BA/api/add_subcategory"
+            const url_server_api = "/BA/api/add_subcategory"
             // Compose the body of the POST to send to the server
-            post_obj = {category_uri: category_uri,
-                        subcategory_name: this.new_subcategory_name,
-                        subcategory_remarks: this.new_subcategory_remarks};
-            post_body = ServerCommunication.parse_POST_object(post_obj);
-            console.log("post_body:", post_body);
+            const post_obj = {category_uri: category_uri,
+                              subcategory_name: this.new_subcategory_name,
+                              subcategory_remarks: this.new_subcategory_remarks};
 
             // Initiate asynchronous contact with the server
-            this.waiting = true;
+            this.waiting = true;        // Entering a waiting-for-server mode
             this.error = false;         // Clear any error from the previous operation
-            this.status_message = "";
-            ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_add_subcategory});
+            this.status_message = "";   // Clear any message from the previous operation
+            ServerCommunication.contact_server(url_server_api,
+                                               {post_obj: post_obj, callback_fn: this.finish_add_subcategory});
         },
 
         finish_add_subcategory(success, server_payload, error_message)
         /*  Callback function to wrap up the action of add_subcategory() upon getting a response from the server.
-            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned ID
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
          */
         {
             console.log("Finalizing the Add Subcategory operation...");
             if (success)  {     // Server reported SUCCESS
-                this.status_message = `New Category successfully added (assigned ID ${server_payload})`;
+                this.status_message = `New sub-category successfully added (assigned URI '${server_payload}')`;
                 // Update the data of the root component, to refresh some displays
-                let new_subcategory = {id: server_payload, name: this.new_subcategory_name};
+                let new_subcategory = {uri: server_payload, name: this.new_subcategory_name};
                 this.all_subcategories.push(new_subcategory);
                 this.all_categories.push(new_subcategory);      // TODO: sort alphabetically
             }
             else  {             // Server reported FAILURE
                 this.error = true;
-                this.status_message = `FAILED addition of new Category`;
+                this.status_message = `FAILED addition of new Sub-category`;
             }
 
             // Final wrap-up, regardless of error or success

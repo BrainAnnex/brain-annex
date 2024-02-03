@@ -996,7 +996,8 @@ class ApiRouting:
         def add_subcategory():
             """
             Add a new Subcategory to a given Category
-            (if the Subcategory to link up to already exists, use add_subcategory_relationship instead)
+            (if the Subcategory to link up to already exists, use '/add_subcategory_relationship' instead)
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
 
             EXAMPLE invocation:
                 curl http://localhost:5000/BA/api/add_subcategory -d

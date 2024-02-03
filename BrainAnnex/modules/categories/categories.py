@@ -435,7 +435,7 @@ class Categories:
         assert category_uri is not None, \
                     "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
         assert NeoSchema.is_valid_uri(category_uri), \
-            f"add_subcategory(): invalid category uri ({category_uri})"
+                    f"add_subcategory(): invalid category uri ({category_uri})"
 
         subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
