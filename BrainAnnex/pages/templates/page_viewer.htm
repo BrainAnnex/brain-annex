@@ -422,7 +422,7 @@
         </table>
 
         <br>
-        <button @click="add_subcategory({{category_uri}})">Add New Sub-Category</button>
+        <button @click="add_subcategory">Add New Sub-Category</button>
             <span v-if="waiting" class="waiting">Adding the subcategory...</span>
             <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
         <br><br>
@@ -565,7 +565,7 @@ new Vue({
                         // EXAMPLE: [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
 
 
-        // For "Add Subcategory" (TODO: move to a separate component?)
+        // For the "Add Subcategory" form (TODO: move to a separate component?)
         new_subcategory_name: "",
         new_subcategory_remarks: "",
         status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
@@ -650,9 +650,10 @@ new Vue({
         },
 
 
-        add_subcategory(category_uri)
+        add_subcategory()
         // Create a new sub-category for the current Category
         {
+            const category_uri = this.category_uri;
             console.log(`Adding new sub-category: category_uri: ${category_uri}, subcategory name: ${this.new_subcategory_name} , remarks: ${this.new_subcategory_remarks}`);
             if (this.new_subcategory_name == "")  {
                 alert("Must enter a Subcategory name");
