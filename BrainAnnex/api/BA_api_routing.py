@@ -215,14 +215,19 @@ class ApiRouting:
         """
 
         ##################  START OF ROUTING DEFINITIONS  ##################
-        
-        #---------------------------------------------#
-        #              SCHEMA-related (reading)       #
-        #---------------------------------------------#
+
+
+        #####################################################################################################
+
+        '''                          ~   SCHEMA-RELATED (reading)  ~                                      '''
+
+        def ________SCHEMA_READ________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
         @bp.route('/get_properties_by_class_name', methods=['POST'])
-        #@login_required
+        @login_required
         def get_properties_by_class_name():
             """
             Get all Properties of the given Class node (as specified by its name passed as a POST variable),
@@ -426,9 +431,9 @@ class ApiRouting:
 
         #####################################################################################################
 
-        '''                   ~   SCHEMA_RELATED (creating/editing/deleting)  ~                           '''
+        '''                   ~   SCHEMA-RELATED (creating/editing/deleting)  ~                           '''
 
-        def ________SCHEMA_RELATED________(DIVIDER):
+        def ________SCHEMA_WRITE________(DIVIDER):
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
@@ -942,10 +947,13 @@ class ApiRouting:
             POST FIELDS:
                 category_id         URI identifying the Category to which attach the new Content Item
                 schema_code         A string to identify the Schema that the new Content Item belongs to
-                class_name
+                class_name          The name of the Class of the new Content Item
                 insert_after        Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
                 *PLUS* any applicable plugin-specific fields
+
+            RETURNED PAYLOAD (on success):
+                The URI of the newly-created Data Node
             """
             # Extract the POST values
             post_data = request.form
@@ -956,7 +964,7 @@ class ApiRouting:
             # Create a new Content Item with the POST data
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
-                payload = DataManager.new_content_item_in_category(pars_dict)        # Include the newly-added ID as a payload
+                payload = DataManager.new_content_item_in_category(pars_dict)        # The URI of the newly-created Data Node
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
                 err_details = f"/add_item_to_category : Unable to add the requested Content Item to the specified Category.  " \
@@ -978,6 +986,9 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/delete_category/123
 
             :param uri: The URI of a data node representing a Category
+
+            RETURNED PAYLOAD (on success):
+                None
             """
             try:
                 Categories.delete_category(uri)
@@ -1007,6 +1018,9 @@ class ApiRouting:
                 category_uri            URI to identify the Category to which to add the new Subcategory
                 subcategory_name        The name to give to the new Subcategory
                 subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
+
+            RETURNED PAYLOAD (on success):
+                The URI of the newly-created Category Data Node
             """
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('category_uri', '12'),
@@ -1015,7 +1029,7 @@ class ApiRouting:
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['category_uri', 'subcategory_name'])
-                payload = Categories.add_subcategory(data_dict)     # Include the newly-added URI as a payload
+                payload = Categories.add_subcategory(data_dict)     # The URI of the newly-created Category Data Node
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
                 err_details = f"/add_subcategory : Unable to add the requested Subcategory.  {exceptions.exception_helper(ex)}"
@@ -1073,6 +1087,9 @@ class ApiRouting:
 
             :param uri: The URI of a data node representing a Category
             :param op:  Either "set" or "unset"
+
+            RETURNED PAYLOAD (on success):
+                None
             """
             try:
                 Categories.pin_category(uri=uri, op=op)
@@ -1095,6 +1112,9 @@ class ApiRouting:
 
             :param category_uri:    The URI of a data node representing a Category
             :param item_uri:        The URI of a data node representing a Content Item
+            :return:                A Flask Response response object
+                                    RETURNED PAYLOAD (on success):
+                                        None
             """
             # TODO: maybe switch to a query string, to avoid errors in order of arguments
             try:
@@ -1106,6 +1126,43 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/get_categories_linked_to/<item_uri>')
+        #@login_required
+        def get_categories_linked_to(item_uri):
+            """
+            Locate and return information about all the Categories
+            that the given Content Item is linked to
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/get_categories_linked_to/n-123
+
+            :param item_uri:        The URI of a data node representing a Content Item
+            :return:                A Flask Response response object
+                                    RETURNED PAYLOAD (on success):
+                                        A (possibly empty) list of pairs [Category name, remarks]
+                                        Any missing value will appear as null
+                                        EXAMPLE:     "payload": [
+                                                                    [
+                                                                        "Some Category name",
+                                                                        null
+                                                                    ],
+                                                                    [
+                                                                        ".A Test",
+                                                                        "my test category"
+                                                                    ]
+                                                                ]
+            """
+            try:
+                result = Categories.get_categories_linked_to_content_item(item_uri=item_uri)
+                response_data = {"status": "ok", "payload": result}                         # Successful termination
+            except Exception as ex:
+                err_details = f"Problem in retrieving Categories to which the Content Item with URI '{item_uri}' is attached .  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}           # Error termination
+
+            return jsonify(response_data)       # This function also takes care of the Content-Type header
 
 
 
@@ -1188,7 +1245,7 @@ class ApiRouting:
             """
             Add a new blank node with the specified label.
             Return the internal database ID of the new node.
-            Mostly used for testing.
+            Meant for testing.
 
             EXAMPLE invocation: http://localhost:5000/BA/api/add_label/Customer
 

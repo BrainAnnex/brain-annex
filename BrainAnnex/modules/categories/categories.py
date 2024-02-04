@@ -683,6 +683,26 @@ class Categories:
     #####################################################################################################
 
     @classmethod
+    def get_categories_linked_to_content_item(cls, item_uri :str) -> [()]:
+        """
+
+        :param item_uri:    The URI of a data node representing a Content Item
+        :return:            A list of pairs (Category name, Category remarks)
+                                Any missing value will appear as None
+        """
+        match = cls.db.match(key_name="uri", key_value=item_uri, labels="BA")
+        category_data = cls.db.follow_links(match=match, rel_name="BA_in_category", rel_dir ="OUT", neighbor_labels = "Categories")
+                        # A list of dictionaries with all the properties of the located Categories nodes
+
+        result = []
+        for cat in category_data:
+            result.append( (cat.get("name"), cat.get("remarks")) )
+
+        return result
+
+
+
+    @classmethod
     def get_content_items_by_category(cls, category_uri = "1") -> [{}]:
         """
         Return the records for all nodes linked
@@ -699,6 +719,7 @@ class Categories:
 
         # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
         # TODO: switch to using one of the Collections methods
+        # TODO: drop the "1" ; either use a name like "cat-root", or a flag
         cypher = """
             MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", uri:$category_id})
             RETURN n, r.pos AS pos, cl.name AS class_name
