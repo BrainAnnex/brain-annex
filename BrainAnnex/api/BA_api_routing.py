@@ -1130,7 +1130,7 @@ class ApiRouting:
 
 
         @bp.route('/get_categories_linked_to/<item_uri>')
-        #@login_required
+        @login_required
         def get_categories_linked_to(item_uri):
             """
             Locate and return information about all the Categories

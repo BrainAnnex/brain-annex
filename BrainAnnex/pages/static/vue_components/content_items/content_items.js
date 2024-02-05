@@ -96,7 +96,11 @@ Vue.component('vue-content-items',
                      class="control" style="float: right" title="Close" alt="Close">
 
                 <span class="tag-header">Current Category Tags for this Item:</span><br>
-                TBA <span style="margin-left:20px; color:gray; font-style:italic">(last tag cannot be deleted)</span>
+                <!-- DISPLAY ALL CURRENT CATEGORY TAGS -->
+                <span style="margin-left:20px; color:gray; font-style:italic">(last tag cannot be deleted)</span><br>
+                <template v-for='category_name in this.categories_linked_to'>
+                    <span style="font-weight:bold; margin-left:15px; border:1px solid black; background-color:#DDD">&nbsp; {{category_name}} &nbsp;</span>
+                </template >
                 <br><br>
 
                 <b>ADD CATEGORY TAG: </b>
@@ -121,11 +125,15 @@ Vue.component('vue-content-items',
 
         data: function() {
             return {
+                tag_edit_box: false,    // Whether to display a box used to edit the Category tags of this Content Item
+
                 highlight: false,       // Whether to highlight this Content Item (e.g. prior to deleting it)
                 show_button: false,
                 insert_box: false,      // Whether to display a box used to insert a new Content Item below this one
-                tag_edit_box: false,    // Whether to display a box used to edit the Category tags of this Content Item
-                category_uri_to_add: "",// URI of the chosen Category to tag the current Content Item with ("" means "not chosen yet")
+
+                categories_linked_to: [],   // Array of names of Categories to which this Content Item is attached to
+                category_uri_to_add: "",    // URI of the Category chosen to tag this Content Item with ("" means "not chosen yet")
+
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -157,11 +165,14 @@ Vue.component('vue-content-items',
 
 
             edit_tags()
+            // Expose a box below the Item, to let the user view/add/remove Category tags for this Content Item
             {
                 console.log(`'vue-content-items' component received Event 'edit-tags'.  Showing editing box for the tags of Item with URI: ${this.item.uri}`);
                 //console.log(this.item);
                 this.tag_edit_box = true;
+                this.populate_category_links();     // Query the server, if needed
             },
+
 
             add_tag(item_uri, category_uri)
             // Invoked when the user chooses an entry from the "ADD CATEGORY TAG" menu
@@ -187,6 +198,7 @@ Vue.component('vue-content-items',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
+                    this.categories_linked_to.push("NEW CATEGORY NAME TBA");    // TODO: fix!
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -196,6 +208,54 @@ Vue.component('vue-content-items',
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;           // Make a note that the asynchronous operation has come to an end
                 this.category_uri_to_add = "";  // Return pulldown menu to ask user to SELECT
+            },
+
+
+            populate_category_links()
+            /* Query the server, if needed, to find out which Categories this Content Item is attached to
+             */
+            {
+                if (this.categories_linked_to.length > 0)  {
+                    // If the variable is already populated
+                    console.log("populate_category_links(): no need to invoke the server");
+                    return;
+                }
+
+                // Send the request to the server, using a GET
+                const url_server_api = `/BA/api/get_categories_linked_to/${this.item.uri}`;
+                console.log(`About to contact the server at ${url_server_api}`);
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {callback_fn: this.finish_populate_category_links
+                            });
+            },
+
+            finish_populate_category_links(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of populate_category_links() upon getting a response from the server
+            {
+                console.log("Finalizing the populate_category_links() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    var name_arr = [];
+                    // For now, discard the "remarks" - and only utilize the Category names
+                    for (i in server_payload) {     // i is a numeric index over the array
+                        name_arr.push(server_payload[i][0]);
+                    }
+                    this.categories_linked_to = name_arr;
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
             },
 
 
