@@ -95,26 +95,35 @@ Vue.component('vue-content-items',
                 <img @click="tag_edit_box = false" src="/BA/pages/static/graphics/close_box_16_red.png"
                      class="control" style="float: right" title="Close" alt="Close">
 
-                <span class="tag-header">Current Category Tags for this Item:</span><br>
+                <span class="tag-header">Current Category Tags for this Item:</span><br><br>
                 <!-- DISPLAY ALL CURRENT CATEGORY TAGS -->
-                <span style="margin-left:20px; color:gray; font-style:italic">(last tag cannot be deleted)</span><br>
-                <template v-for='category_name in this.categories_linked_to'>
-                    <span style="font-weight:bold; margin-left:15px; border:1px solid black; background-color:#DDD">&nbsp; {{category_name}} &nbsp;</span>
-                </template >
+                <template v-for='category in this.categories_linked_to'>
+                    <span style="font-weight:bold; margin-left:20px; border:1px solid black; background-color:#DDD">&nbsp; {{category.name}} &nbsp;</span>
+                    <span v-if="! is_last_tag">
+                        <img @click="untag_category(category.uri, category.name)"
+                             src="/BA/pages/static/graphics/delete_12_1493279.png">
+                    </span>
+                    <span v-else style="margin-left:15px; color:gray; font-style:italic">
+                        (last tag cannot be deleted)
+                    </span>
+                </template>
                 <br><br>
 
                 <b>ADD CATEGORY TAG: </b>
                 <!-- Pulldown menu to add tags -->
                 <form style='display:inline-block; margin-left:3px'>
-                    <select @change='add_tag(item.uri, category_uri_to_add)' v-model="category_uri_to_add"
+                    <select @change='add_tag' v-model="category_to_add"
                             v-bind:title="'Add Category tags to this Content Item'">
-                        <option value="" selected>[Select new tag]</option>
+                        <option disabled value="">[Select new tag]</option>
                         <option v-for="cat in all_categories"
                                 v-if="cat.uri != category_uri"
-                                v-bind:value="cat.uri">{{cat.name}}</option>
+                                v-bind:value="{uri: cat.uri , name: cat.name}">
+                            {{cat.name}}
+                        </option>
                     </select>
                 </form>
-                <!-- Status info -->
+
+                <!-- STATUS INFO -->
                 <span v-if="waiting" class="waiting">Performing the requested operation...</span>
                 <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
             </div>
@@ -131,14 +140,27 @@ Vue.component('vue-content-items',
                 show_button: false,
                 insert_box: false,      // Whether to display a box used to insert a new Content Item below this one
 
-                categories_linked_to: [],   // Array of names of Categories to which this Content Item is attached to
-                category_uri_to_add: "",    // URI of the Category chosen to tag this Content Item with ("" means "not chosen yet")
+                categories_linked_to: [],   // Array of objects representing Categories to which this Content Item is attached to;
+                                            //      each object contains the attributes "uri", "name", "remarks"
+
+                category_to_add: "",        // Object with data about the Category chosen to tag this Content Item with
+                                            //      Attributes are "uri" and "name" (Note: "" indicates no selection in the menu)
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
             }
         }, // data
+
+
+
+        computed: {
+            is_last_tag()
+            // Return true if the current Content Item is down to just 1 Category tag
+            {
+                return this.categories_linked_to.length == 1;
+            }
+        },
 
 
         // ---------------------------  METHODS  ---------------------------
@@ -174,12 +196,16 @@ Vue.component('vue-content-items',
             },
 
 
-            add_tag(item_uri, category_uri)
+            add_tag()
             // Invoked when the user chooses an entry from the "ADD CATEGORY TAG" menu
             {
-                console.log(`add_tag(): will be sending request to server to tag Content Item '${item_uri}' with Category '${category_uri}'`);
+                const category_uri = this.category_to_add.uri;
+                const category_name = this.category_to_add.name;
+                const item_uri = this.item.uri;
+
+                //console.log(`add_tag(): requesting server to tag Item '${item_uri}' with Category '${category_name}' (URI '${category_uri}')`);
                 const url_server_api = `/BA/api/link_content_at_end/${category_uri}/${item_uri}`;
-                console.log(`About to contact the server at ${url_server_api}`);
+                //console.log(`About to contact the server at ${url_server_api}`);
 
                 this.waiting = true;        // Entering a waiting-for-server mode
                 this.error = false;         // Clear any error from the previous operation
@@ -187,7 +213,8 @@ Vue.component('vue-content-items',
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {callback_fn: this.finish_add_tag
+                            {callback_fn: this.finish_add_tag,
+                             custom_data: [category_uri, category_name]
                             });
             },
 
@@ -196,9 +223,10 @@ Vue.component('vue-content-items',
             {
                 console.log("Finalizing the add_tag() operation...");
                 if (success)  {     // Server reported SUCCESS
-                    console.log("    server call was successful; it returned: ", server_payload);
+                    //console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    this.categories_linked_to.push("NEW CATEGORY NAME TBA");    // TODO: fix!
+                    const [category_uri, category_name] = custom_data;       // Unpack URI and name of the Category that was added to the tags
+                    this.categories_linked_to.push({name: category_name, uri: category_uri});       // To update the UI
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -207,19 +235,72 @@ Vue.component('vue-content-items',
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;           // Make a note that the asynchronous operation has come to an end
-                this.category_uri_to_add = "";  // Return pulldown menu to ask user to SELECT
+                this.category_to_add = "";      // Return pulldown menu to ask user to SELECT
             },
+
+
+
+            untag_category(category_uri, category_name)
+            // Detach the current Content Item from the specified Category
+            {
+                const item_uri = this.item.uri;
+
+                console.log(`Untag Item (URI ${item_uri}) from Category '${category_name}' (URI '${category_uri}') : Not yet implemented`);
+
+                // Send the request to the server, using a GET
+                const url_server_api = `/BA/api/detach_from_category/${category_uri}/${item_uri}`;
+                console.log(`About to contact the server at ${url_server_api}`);
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {callback_fn: this.finish_untag_category,
+                             custom_data: category_uri
+                            });
+            },
+
+            finish_untag_category(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of untag_category() upon getting a response from the server
+            {
+                console.log("Finalizing the untag_category() operation...");
+                console.log(`Custom data passed: ${custom_data}`)
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    // Update the UI : drop the just-removed Category from the array categories_linked_to
+                    const unlinked_uri = custom_data;
+                    for (i in this.categories_linked_to) {   // Note:  i is the index, not an array element!
+                        if (this.categories_linked_to[i]["uri"] == unlinked_uri)
+                            this.categories_linked_to.splice(i, 1); // Deletes 1 element from the i-th position in array.
+                                                                    //      Note: Vue automatically detect splice() ops
+                    }
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            },
+
 
 
             populate_category_links()
             /* Query the server, if needed, to find out which Categories this Content Item is attached to
              */
             {
+                /*
+                // Commented out : It may be good to refresh the list whenever re-opening the box...
                 if (this.categories_linked_to.length > 0)  {
                     // If the variable is already populated
                     console.log("populate_category_links(): no need to invoke the server");
                     return;
                 }
+                */
 
                 // Send the request to the server, using a GET
                 const url_server_api = `/BA/api/get_categories_linked_to/${this.item.uri}`;
@@ -242,12 +323,12 @@ Vue.component('vue-content-items',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    var name_arr = [];
+                    var cat_arr = [];
                     // For now, discard the "remarks" - and only utilize the Category names
                     for (i in server_payload) {     // i is a numeric index over the array
-                        name_arr.push(server_payload[i][0]);
+                        cat_arr.push(server_payload[i]);
                     }
-                    this.categories_linked_to = name_arr;
+                    this.categories_linked_to = cat_arr;
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;

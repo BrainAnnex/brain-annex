@@ -1143,16 +1143,19 @@ class ApiRouting:
                                     RETURNED PAYLOAD (on success):
                                         A (possibly empty) list of pairs [Category name, remarks]
                                         Any missing value will appear as null
-                                        EXAMPLE:     "payload": [
-                                                                    [
-                                                                        "Some Category name",
-                                                                        null
-                                                                    ],
-                                                                    [
-                                                                        ".A Test",
-                                                                        "my test category"
-                                                                    ]
-                                                                ]
+                                        EXAMPLE:
+                                                      "payload": [
+                                                                    {
+                                                                      "name": "Some Category name",
+                                                                      "remarks": null,
+                                                                      "uri": "cat-123"
+                                                                    },
+                                                                    {
+                                                                      "name": ".A Test",
+                                                                      "remarks": "my test",
+                                                                      "uri": "cat-999"
+                                                                    }
+                                                                 ]
             """
             try:
                 result = Categories.get_categories_linked_to_content_item(item_uri=item_uri)

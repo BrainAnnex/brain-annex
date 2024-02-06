@@ -90,6 +90,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
                 const post_obj = {my_post_var: "my POST value"};
+                const my_var = "some value";        // Optional parameter to pass, if needed
 
                 console.log(`About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
@@ -102,7 +103,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 ServerCommunication.contact_server(url_server_api,
                             {post_obj: post_obj,
                              callback_fn: this.finish_get_data_from_server,
-                             custom_data: [my_var]
+                             custom_data: my_var
                             });
             },
 
@@ -113,7 +114,8 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             {
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
-                const my_var = "some value";        // Optional parameter, if needed
+                const my_var = "some value";        // Optional parameter to pass, if needed
+
                 console.log(`About to contact the server at ${url_server_api}`);
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -123,7 +125,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
                             {callback_fn: this.finish_get_data_from_server,
-                             custom_data: [my_var]
+                             custom_data: my_var
                             });
             },
 
@@ -133,6 +135,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             // Callback function to wrap up the action of get_data_from_server() upon getting a response from the server
             {
                 console.log("Finalizing the get_data_from_server() operation...");
+                console.log(`Custom data passed: ${custom_data}`)
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
@@ -147,7 +150,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
                 //...
-            }
+            },
 
         }  // METHODS
 

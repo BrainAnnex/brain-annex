@@ -683,21 +683,20 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_categories_linked_to_content_item(cls, item_uri :str) -> [()]:
+    def get_categories_linked_to_content_item(cls, item_uri :str) -> [{}]:
         """
+        Locate and return information about all the Categories
+        that the given Content Item is linked to
 
         :param item_uri:    The URI of a data node representing a Content Item
-        :return:            A list of pairs (Category name, Category remarks)
-                                Any missing value will appear as None
+        :return:            A list of dicts that have the keys "uri", "name", "remarks";
+                                any missing value will appear as None
         """
-        match = cls.db.match(key_name="uri", key_value=item_uri, labels="BA")
-        category_data = cls.db.follow_links(match=match, rel_name="BA_in_category", rel_dir ="OUT", neighbor_labels = "Categories")
-                        # A list of dictionaries with all the properties of the located Categories nodes
-
-        result = []
-        for cat in category_data:
-            result.append( (cat.get("name"), cat.get("remarks")) )
-
+        q = '''
+            MATCH (:BA {uri: $item_uri}) - [:BA_in_category] -> (cat :Categories)
+            RETURN cat.uri AS uri, cat.name AS name, cat.remarks AS remarks
+            '''
+        result = cls.db.query(q, data_binding={"item_uri": item_uri})
         return result
 
 
