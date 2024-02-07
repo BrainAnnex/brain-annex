@@ -323,12 +323,7 @@ Vue.component('vue-content-items',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    var cat_arr = [];
-                    // For now, discard the "remarks" - and only utilize the Category names
-                    for (i in server_payload) {     // i is a numeric index over the array
-                        cat_arr.push(server_payload[i]);
-                    }
-                    this.categories_linked_to = cat_arr;
+                    this.categories_linked_to = server_payload;    // Update the UI
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
