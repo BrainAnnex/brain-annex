@@ -32,7 +32,8 @@ Vue.component('vue-content-items',
          */
 
         template: `
-            <div v-bind:class="{'highlight': highlight}">	<!-- Outer container, serving as Vue-required template root  -->
+            <!-- Outer container, serving as Vue-required template root -->
+            <div v-bind:class="{'highlight': highlight, 'content-item': !use_separate_line, 'content-item-separate-line': use_separate_line}">
 
             <a v-bind:name="item.schema_code + '_' + item.uri"></a>  <!-- Anchor for page scrolling -->
 
@@ -159,6 +160,14 @@ Vue.component('vue-content-items',
             // Return true if the current Content Item is down to just 1 Category tag
             {
                 return this.categories_linked_to.length == 1;
+            },
+
+
+            use_separate_line()
+            // Return true if the current Content Item is meant to be shown on its own separate line
+            {
+                // TODO: make more general; store the "separate_line" flag in the Schema Class nodes
+                return (this.item.class_name == "Headers") || (this.item.class_name == "Site Link");
             }
         },
 
@@ -384,6 +393,8 @@ Vue.component('vue-content-items',
                Vue component to handle the given item (based on its type, stored in item.schema_code)
 
                IMPORTANT: if no handler is registered, default to the generic "r" (general records) handler
+
+               TODO: "schema_code" attribute ought to be stored on the Class nodes, not on the Data nodes
 
                :param item:                 An object representing a Content Item
                :param registered_plugins:   A list of item codes for which a plugin exists

@@ -1,7 +1,15 @@
 a.i-image-link {
-    padding:10px;
+    padding: 10px;
 }
 
+
+p.i-line {
+    margin-top: 3px;    /* Keep a little spacing below the image */
+    margin-bottom: 5px; /* Keep a little spacing above the controls */
+    margin-left: 10px;  /* Should match the "padding" on i-image-link */
+}
+
+
 span.i-caption {
-    font-weight:bold;
+    font-weight: bold;
 }

@@ -7,7 +7,7 @@ Vue.component('vue-controls',
     {
         props: ['allow_editing', 'index', 'item_count'],
         /*
-            allow_editing:  A boolean indicating whether in editing mode
+            allow_editing:  A boolean indicating whether in editing mode  (TODO: maybe rename to "edit_mode")
             index:          The zero-based position of the Content Item on the page
             item_count:     The total number of Content Items on the page
 

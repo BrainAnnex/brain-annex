@@ -273,7 +273,7 @@
             v-on:insert-new-item
      -->
 
-<div v-if="expose_controls"  v-for="(item, index) in content_array" class="content-item">
+<template v-if="expose_controls"  v-for="(item, index) in content_array">
 
     <vue-content-items
         v-bind:key="item.schema_code + '_' + item.uri + '_' + index"
@@ -299,7 +299,7 @@
     >
     </vue-content-items>
 
-</div>
+</template>
 
 
 
@@ -307,13 +307,13 @@
 
 <!-- (PART 2 of 2)
 
-    New version, to be used when the EDITING CONTROLS are HIDDEN.
+    New version, to be used when the EDITING CONTROLS are HIDDEN (i.e. in viewing mode.)
     This version groups together similar adjacent records
   -->
 
 <template v-if="!expose_controls"  v-for="group in element_grouping">
 
-    <!-- If it's "UN-grouped", show it here as an individual Content Item-->
+    <!-- If it's "UN-grouped", show it here as an INDIVIDUAL Content Item-->
     <vue-content-items  v-if="!group.use_group"
             v-bind:key="content_array[group.index].schema_code + '_' + content_array[group.index].uri + '_' + group.index + '_bis'"
 
@@ -338,7 +338,7 @@
     </vue-content-items>
 
 
-    <!-- If it's "grouped", show the whole group of records here -->
+    <!-- If it's "grouped", show the WHOLE GROUP of records here -->
     <vue-plugin-table v-if="group.use_group"
                       v-bind:key="group.index"
 
