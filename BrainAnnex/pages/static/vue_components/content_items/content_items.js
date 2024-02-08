@@ -167,7 +167,10 @@ Vue.component('vue-content-items',
             // Return true if the current Content Item is meant to be shown on its own separate line
             {
                 // TODO: make more general; store the "separate_line" flag in the Schema Class nodes
-                return (this.item.class_name == "Headers") || (this.item.class_name == "Site Link");
+                //       Currently, we're covering some specific class, and the general "records" (which
+                //       lack registered plugins)
+                return (this.item.class_name == "Headers") || (this.item.class_name == "Site Link")
+                            || !this.registered_plugins.includes(this.item.schema_code);
             }
         },
 

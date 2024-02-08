@@ -114,7 +114,8 @@ Vue.component('vue-plugin-r',
             </div>
 
             <!-- Area below the table, for the relationship editing (if in editing mode) -->
-            <div v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:0; padding-top:0; padding-bottom:10px">
+            <div v-if="editing_mode && (in_links_schema.length > 0 || out_links_schema.length > 0)"
+                 style="border-left:1px solid #DDD; padding-left:0; padding-top:0; padding-bottom:10px">
                     <div v-for="link in in_links_schema" class="edit-link"><b>IN_LINK</b><br>{{link}}</div>
                     <div v-for="link in out_links_schema" class="edit-link"><b>OUT_LINK</b><br><br>{{link}}</div>
             </div>
