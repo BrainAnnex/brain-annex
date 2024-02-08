@@ -205,7 +205,7 @@ class Categories:
     @classmethod
     def get_sibling_categories(cls, category_internal_id: int) -> [dict]:
         """
-        Return the data of all the "siblings" of the given Category
+        Return the data of all the "siblings" nodes of the given Category
 
         :param category_internal_id:    The internal database ID of a "Category" data node
         :return:                        A list of dictionaries, with one element for each "sibling";
@@ -221,7 +221,7 @@ class Categories:
         q = f"""
                 MATCH (n) - [:BA_subcategory_of] -> (parent) <- [:BA_subcategory_of] - (sibling)
                 WHERE id(n) = {category_internal_id}
-                RETURN sibling
+                RETURN DISTINCT sibling
                 ORDER BY toLower(sibling.name)
             """
         result = cls.db.query_extended(q, flatten=True)
