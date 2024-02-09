@@ -1,21 +1,18 @@
-/*  EXPERIMENTAL Vue component to display and edit a tabular representation
-    of a group of Content Items at type "r" (Record)
-    MIT License.  Copyright (c) 2021-22 Julian A. West
+/*  Vue component to display and edit a tabular representation
+    of a group of Content Items all of type "r" (Record) and all from the same Schema Class
  */
 
 Vue.component('vue-plugin-table',
     {
-        props: ['record_data_list', 'common_fields', 'common_schema_data'],
+        props: ['record_data_list', 'common_fields'],
         /*  record_data_list:  EXAMPLE:
                                  [{"uri":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
                                   "German":"Tier", "English":"animal"}
                                  ]
                                  (if any uri is -1, it means that it's a newly-created header, not yet registered with the server)
 
-            common_fields:  A list of field names, in order - shared among all records in the table
-                                 EXAMPLE: ["French", "English", "notes", "some extra field"]
-            common_schema_data:  A list of field names, in order - shared among all records in the table
-                                 EXAMPLE: ["French", "English", "notes"]
+            common_fields:      A list of field names, in order - shared (and visible) among all records in the table
+                                    EXAMPLE: ["French", "English", "notes", "some extra field"]
 
             THE REMAINING PROPS are just passed along, for the controls [CURRENTLY NOT IN USE]
             category_id:    The ID of the Category page where this table is displayed (used when creating new records)
@@ -59,10 +56,6 @@ Vue.component('vue-plugin-table',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
-            foo()
-            {
-
-            }
 
         }  // METHODS
 

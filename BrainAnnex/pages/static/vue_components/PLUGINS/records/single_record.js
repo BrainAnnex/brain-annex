@@ -1,4 +1,4 @@
-/*  EXPERIMENTAL Vue component to display and edit a single table rows of data (NOT headers)
+/*  Vue component to display and edit a single table rows of data (NOT headers)
     from a Content Item at type "r" (Record)
  */
 
@@ -6,35 +6,36 @@ Vue.component('vue-plugin-single-record',
     {
         props: ['record_data', 'field_list'],
         /*  record_data:    EXAMPLE:
-                            {"uri":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
+                            {"uri":"52", "pos":10, "schema_code":"r",
+                             class_name:"German Vocabulary", <-- NOT CURRENTLY BEING PASSED
                              "German":"Tier", "English":"animal"}
 
-            field_list:     A list of field names, in order.
+            field_list:     A list of field names being shown, in order.
                             EXAMPLE: ["French", "English", "notes"]
-
-            THE REMAINING PROPS are just passed along, for the controls
-            [NOT IN CURRENT USE]
           */
 
         template: `
-            <tr>    <!-- Outer container, serving as Vue-required template root  -->
+            <tr @dblclick="detect_double_click">    <!-- Outer container, serving as Vue-required template root  -->
             <!--
                 Row of data
-             -->
+            -->
 
                 <td v-for="key in field_list">
-                    <!-- Display SPAN or INPUT elements, depending on the editing status -->
+                    <!-- Display SPAN or INPUT elements, depending on the editing mode -->
                     <span v-if="!editing_mode" v-html="render_cell(record_data[key])"></span>
                     <input v-if="editing_mode" type="text" size="25" v-model="record_data[key]">
                 </td>
 
+                <td v-if="editing_mode">
+                    <button @click="save">SAVE</button>
+                    <a @click.prevent="cancel_edit" href="#" style="margin-left:15px">Cancel</a>
+                </td>
             </tr>
             `,
 
 
         data: function() {
             return {
-                expose_controls: false,     // For now, unused
                 editing_mode: false         // For now, unused
             }
         }, // data
@@ -43,6 +44,25 @@ Vue.component('vue-plugin-single-record',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
+            detect_double_click()
+            {
+                //alert("Double click detected ");
+                this.editing_mode = true;
+            },
+
+            cancel_edit()
+            {
+                this.editing_mode = false;
+            },
+
+            save()
+            {
+                alert("Not yet implemented, sorry");
+                this.editing_mode = false;
+            },
+
+
+
             render_cell(cell_data)
             /*  If the passed string appears to be a URL, convert it into a hyperlink, opening in a new window;
                 and if the URL is very long, show it in abbreviated form

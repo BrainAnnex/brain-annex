@@ -96,6 +96,7 @@ Vue.component('vue-plugin-r',
             </tr>
             </table>
 
+
             <!-- Area below the table, for the linked records (if shown) -->
             <div v-if="linked_records.length > 0" style="border:1px solid #DDD; margin-left: 40px; margin-bottom: 25px; padding-left: 5px">
 
@@ -166,7 +167,7 @@ Vue.component('vue-plugin-r',
                         {
                             "English": "Love",
                             "German": "Liebe",
-                            "uri": 61,
+                            "uri": "61",
                             "schema_code": "r",
                             "class_name": "German Vocabulary",
                             "pos": 0    <- BEING PHASED OUT
