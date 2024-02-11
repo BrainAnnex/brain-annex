@@ -536,53 +536,69 @@ Vue.component('vue-plugin-r',
                 */
 
                 // Start the body of the POST to send to the server.  TODO: switch to newer methods of ServerCommunication
-                post_body = "schema_code=" + this.item_data.schema_code;
+                //post_body = "schema_code=" + this.item_data.schema_code;
+
+                var post_obj = {schema_code: this.item_data.schema_code};
 
                 if (this.item_data.uri == -1)  {     // The -1 is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
-                    post_body += "&category_id=" + this.category_id;
-                    post_body += "&class_name=" + encodeURIComponent(this.item_data.class_name);
-                    const insert_after = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    post_body += "&insert_after=" + insert_after;
+                    post_obj["category_id"] = this.category_id;
+                    post_obj["class_name"] = this.item_data.class_name;
+                    post_obj["insert_after"] = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+
+                    //post_body += "&category_id=" + this.category_id;
+                    //post_body += "&class_name=" + encodeURIComponent(this.item_data.class_name);
+                    //const insert_after = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    //post_body += "&insert_after=" + insert_after;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data)  {
                         // Only pass non-blank values
-                        if (this.current_data[key] != "")
-                            post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
+                        if (this.current_data[key] != "")  {
+                            post_obj[key] = this.current_data[key];
+                            //post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
+                        }
                     }
                     // EXAMPLE of post_body for a NEW record:
                     //          "schema_code=r&category_id=12&class_name=German%20Vocabulary&insert_after=123&German=Liebe"
 
-                    url_server = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {
                     // Update an EXISTING record
-                    post_body += "&uri=" + this.item_data.uri;
+                    post_obj["uri"] = this.item_data.uri;
+                    //post_body += "&uri=" + this.item_data.uri;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
-                        if ( (this.current_data[key] != "")  ||  (key in this.original_data) )
+                        if ( (this.current_data[key] != "")  ||  (key in this.original_data) )  {
                             // Non-blanks always lead to updates; blanks only if the field was originally present
-                            post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
+                            post_obj[key] = this.current_data[key];
+                            //post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
+                        }
                     }
                     // EXAMPLE of post_body for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
-                    url_server = `/BA/api/update`;   // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/update`;   // URL to communicate with the server's endpoint
                 }
 
+
+                console.log(`'vue-plugin-r' : about to contact the server at ${url_server_api} .  POST object:`);
+                console.log(post_obj);
+                //console.log("In 'vue-plugin-r', save().  post_body: ", post_body);
+                //console.log("In 'vue-plugin-r', save().  post_obj: ", post_obj);
+                //ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_save});
+                ServerCommunication.contact_server(url_server_api,
+                                                   {post_obj: post_obj, callback_fn: this.finish_save});
 
                 this.waiting_mode = true;
                 this.error_indicator = false;   // Clear possible past message
 
-                console.log("In 'vue-plugin-r', save().  post_body: ", post_body);
-                ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_save});
             }, // save
-
 
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
              */
             {
                 console.log("Finalizing the Record saving operation...");

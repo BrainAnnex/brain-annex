@@ -1,5 +1,12 @@
-/*  Vue component to display and edit a single table rows of data (NOT headers)
-    from a Content Item at type "r" (Record)
+/*  Vue component to display and edit a SINGLE table row of data (NOT headers)
+    from a Content Item at type "r" (Record).
+    Table headers, and <table> tag, are handled by the parent component, in table.js
+
+    Record edits are enabled by double-clicking on the row.
+
+    At present, no new fields (from the Schema) can be added with this editor;
+    however, fields can be eliminated by blanking them out (the Vue root component will handle
+    resulting changes in the record groupings.)
  */
 
 Vue.component('vue-plugin-single-record',
@@ -77,6 +84,7 @@ Vue.component('vue-plugin-single-record',
         // ------------------------------   METHODS   ------------------------------
         methods: {
             detect_double_click()
+            // Enter the editing mode when a double-click is detected
             {
                 //alert("Double click detected ");
                 this.editing_mode = true;
@@ -128,11 +136,11 @@ Vue.component('vue-plugin-single-record',
                 this.editing_mode = false;  // Exit the editing mode
             },
 
-            finish_save(success, server_payload, error_message, custom_data)
+            finish_save(success, server_payload, error_message)
             // Callback function to wrap up the action of save() upon getting a response from the server
             {
                 console.log("Finalizing the save() operation...");
-                //console.log(`Custom data passed: ${custom_data}`)
+
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Successful edit`;
@@ -169,7 +177,9 @@ Vue.component('vue-plugin-single-record',
             {
                 clone_obj = Object.assign({}, obj);     // Clone the object
 
-                // Scrub some data, so that it won't show up in the tabular format
+                // Scrub some data, so that it won't be passed to the server during edits.
+                // In this Vue component, this scrubbing is NOT needed for the UI display, because
+                // we're currently only dealing with a FIXED set of fields, as passed by the props
                 delete clone_obj.uri;           // A protected field; TODO: specify that in the Schema
                 delete clone_obj.schema_code;   // A protected field; TODO: specify that in the Schema
                 delete clone_obj.class_name;    // Not part of the record; TODO: maybe pass as separate prop
