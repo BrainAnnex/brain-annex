@@ -95,16 +95,16 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 console.log(`About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
 
-                this.waiting = true;        // Entering a waiting-for-server mode
-                this.error = false;         // Clear any error from the previous operation
-                this.status_message = "";   // Clear any message from the previous operation
-
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
                             {post_obj: post_obj,
                              callback_fn: this.finish_get_data_from_server,
                              custom_data: my_var
                             });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
             },
 
 
@@ -118,15 +118,15 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 console.log(`About to contact the server at ${url_server_api}`);
 
-                this.waiting = true;        // Entering a waiting-for-server mode
-                this.error = false;         // Clear any error from the previous operation
-                this.status_message = "";   // Clear any message from the previous operation
-
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
                             {callback_fn: this.finish_get_data_from_server,
                              custom_data: my_var
                             });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
             },
 
 

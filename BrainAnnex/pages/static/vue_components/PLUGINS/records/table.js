@@ -22,6 +22,7 @@ Vue.component('vue-plugin-table',
 
         template: `
             <table class='r-main'>  <!-- Outer container, serving as Vue-required template root  -->
+
                 <!--
                     Header row
                   -->
@@ -31,14 +32,18 @@ Vue.component('vue-plugin-table',
                     </th>
                 </tr>
 
+
                 <!--
-                    Data row
+                    Data row (all signals from the 'vue-plugin-single-record' child component
+                             get relayed to the parent of this component, with v-on="$listeners")
                   -->
                 <tr v-for="record in record_data_list" is="vue-plugin-single-record"
                     v-bind:key="record.uri"
 
                     v-bind:record_data="record"
                     v-bind:field_list="common_fields"
+
+                    v-on="$listeners"
                 >
                 </tr>
 

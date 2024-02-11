@@ -182,8 +182,9 @@ Vue.component('vue-plugin-r',
                     Note that the objects may lack some of the fields specified by the Schema;
                         or, if the Schema is lax, extra fields might be present
                  */
-                current_data: this.clone_and_standardize(this.item_data),   // Scrub some data, so that it won't show up in the tabular format
+                current_data: this.clone_and_standardize(this.item_data),
                 original_data: this.clone_and_standardize(this.item_data),
+                // Scrub some data, so that it won't show up in the tabular format
                 // NOTE: clone_and_standardize() gets called twice
 
                 expanded_row: false,
@@ -271,13 +272,14 @@ Vue.component('vue-plugin-r',
             },
 
 
-            // Used to copy cell contents into the system clipboard
+            // Used to copy cell contents into the system clipboard (NOT in current use)
             onCopy: function (e) {
                 console.log('You just copied: ' + e.text);
             },
             onError: function (e) {
                 alert('Failed to copy texts');
             },
+
 
             render_cell(cell_data)
             /*  If the passed string appears to be a URL, convert it into a hyperlink, opening in a new window;
@@ -302,6 +304,7 @@ Vue.component('vue-plugin-r',
                 else
                     return cell_data;
             },
+
 
 
             /*
@@ -451,11 +454,11 @@ Vue.component('vue-plugin-r',
                          */
                         if (!(field_name in this.current_data))  {
                             //console.log("    Adding missing field: ", field_name);
-                            new_current_data[field_name] = "";
+                            new_current_data[field_name] = "";   // Blank field value
                         }
                     }
 
-                    this.current_data = new_current_data;
+                    this.current_data = new_current_data;  // Replace the record bound to the UI
 
                     this.in_links_schema = server_payload["in_links"];
                     this.out_links_schema = server_payload["out_links"];
@@ -472,7 +475,7 @@ Vue.component('vue-plugin-r',
 
 
             clone_and_standardize(obj)
-            // Clone, and remove keys that don't get shown nor edited
+            // Clone first; then remove some keys that shouldn't get shown nor edited
             {
                 clone_obj = Object.assign({}, obj);     // Clone the object
 
@@ -480,7 +483,7 @@ Vue.component('vue-plugin-r',
                 delete clone_obj.uri;
                 delete clone_obj.schema_code;
                 delete clone_obj.class_name;
-                delete clone_obj.insert_after;
+                delete clone_obj.insert_after;  // TODO: is this field still present?
                 delete clone_obj.pos;           // TODO: this might be getting phased out
 
                 return clone_obj;
@@ -512,6 +515,7 @@ Vue.component('vue-plugin-r',
 
 
             save()
+            // Invoked when the user asks to save the edit-in-progress
             {
                 /*  EXAMPLE of this.current_data and this.original_data:
                         {
@@ -603,7 +607,7 @@ Vue.component('vue-plugin-r',
                     if (this.item_data.uri == -1)
                         this.current_data.uri = server_payload;
 
-                    // Inform the parent component of the new state of the data
+                    // Inform the ancestral root component of the new state of the data
                     console.log("Records component sending `updated-item` signal to its parent");
                     this.$emit('updated-item', this.current_data);
 
@@ -625,6 +629,7 @@ Vue.component('vue-plugin-r',
 
 
             cancel_edit()
+            // Invoked when the user cancels the edit-in-progress, or when the save operation fails
             {
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
