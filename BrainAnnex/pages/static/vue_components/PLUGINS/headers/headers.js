@@ -12,7 +12,7 @@ Vue.component('vue-plugin-h',
                             EXAMPLE: {"uri":52,"pos":10,"schema_code":"h","text":"MY NEW SECTION"}
 
             allow_editing:  A boolean indicating whether in editing mode
-            category_id:    The ID of the Category page where this Header is displayed (used when creating new records)
+            category_id:    The URI of the Category page where this Header is displayed (used when creating new records)
             index:          The zero-based position of this Header item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */

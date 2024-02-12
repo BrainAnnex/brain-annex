@@ -1742,7 +1742,7 @@ class NeoSchema:
 
     @classmethod
     def create_data_node(cls, class_node :Union[int, str], properties = None, extra_labels = None,
-                         assign_uri=False, new_uri=None, silently_drop=False) -> int:
+                         new_uri=None, silently_drop=False) -> int:
         """
         Create a new data node, of the type indicated by specified Class,
         with the given (possibly none) properties and extra label(s);
@@ -1767,23 +1767,17 @@ class NeoSchema:
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
-
-        :param assign_uri:  (DEPRECATED) If True, the new node is given an extra attribute named "uri",
-                                with a unique auto-increment value in the "data_node" namespace,
-                                as well an extra attribute named "schema_code"
-                                (TODO: drop)
-
-        :param new_uri:     If new_uri is provided, then a field called "uri"
+        :param new_uri:     (OPTIONAL)  If new_uri is provided, then a field called "uri"
                                 is set to that value;
                                 also, an extra attribute named "schema_code" gets set
-                                # TODO: "schema_code" should perhaps be responsibility of the higher layer
-
+                                (based on the Class to use for this Data Node)
         :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
                                 Note: only applicable for "Strict" schema - with a "Lenient" schema anything goes
 
         :return:            The internal database ID of the new data node just created
         """
+        # TODO: "schema_code" should perhaps be responsibility of the higher layer
         # TODO: consider allowing creation of multiple nodes from one call
 
         # Do various validations
@@ -1839,25 +1833,19 @@ class NeoSchema:
 
         # In addition to the passed properties for the new node, data nodes may contain 2 special attributes:
         # "uri" and "schema_code";
-        # if requested, expand properties_to_set accordingly
-        if assign_uri or new_uri:
-            if not new_uri:
-                # TODO: phase out this branch
-                new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-                                                        # in the "data_node" namespace
-            else:
-                new_id = new_uri
+        # if a value for new_uri was provided, expand properties_to_set accordingly
+        if new_uri:
+            #print("URI assigned to new data node: ", new_uri)
+            properties_to_set["uri"] = new_uri                   # Expand the dictionary
 
-            #print("New ID assigned to new data node: ", new_id)
-            properties_to_set["uri"] = new_id                   # Expand the dictionary
-
+            # TODO: "schema_code" should perhaps be responsibility of the higher layer
             schema_code = cls.get_schema_code(class_name)
             if schema_code != "":
                 properties_to_set["schema_code"] = schema_code      # Expand the dictionary
 
             # EXAMPLE of properties_to_set at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": 123, "schema_code": "r"}
-            #       where 123 is the next auto-assigned uri
+            #       {"make": "Toyota", "color": "white", "uri": "123", "schema_code": "r"}
+            #       where "123" is the passed URI
 
 
         new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
@@ -2373,6 +2361,7 @@ class NeoSchema:
         :param assign_uri:  If True, the new node is given an extra attribute named "uri",
                                     with a unique auto-increment value, as well an extra attribute named "schema_code".
                                     Default is False
+                                    TODO: OBSOLETE
 
         :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
                                     If new_uri is provided, then assign_uri is automatically made True
@@ -2390,7 +2379,8 @@ class NeoSchema:
         if properties is None:
             properties = {}
 
-        assert type(properties) == dict, "NeoSchema.add_data_node_with_links(): The `properties` argument, if provided, MUST be a dictionary"
+        assert type(properties) == dict, \
+            "NeoSchema.add_data_node_with_links(): The `properties` argument, if provided, MUST be a dictionary"
 
         cypher_prop_dict = properties
 
@@ -2415,8 +2405,8 @@ class NeoSchema:
                 cypher_prop_dict["schema_code"] = schema_code  # Expand the dictionary
 
             # EXAMPLE of cypher_prop_dict at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": 123, "schema_code": "r"}
-            #       where 123 is the next auto-assigned uri
+            #       {"make": "Toyota", "color": "white", "uri": "123", "schema_code": "r"}
+            #       where "123" is the next auto-assigned uri
 
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node and, possible, also relationships to another data nodes

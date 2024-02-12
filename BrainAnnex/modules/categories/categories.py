@@ -264,12 +264,12 @@ class Categories:
         #       where the child c is any ancestor node of the given Category node.
         #       A limit is imposed on the max length of the path
         q = '''
-            MATCH (start :BA:Categories {uri:$category_id})-[:BA_subcategory_of*0..9]->
+            MATCH (start :BA:Categories {uri:$category_uri})-[:BA_subcategory_of*0..9]->
                   (c :Categories)-[:BA_subcategory_of]->(p :Categories)
             WITH c, collect(DISTINCT p.uri) AS all_parents
             RETURN c.uri AS uri, all_parents
             '''
-        result = cls.db.query(q, {"category_id": category_uri})      # A list of dictionaries
+        result = cls.db.query(q, {"category_uri": category_uri})      # A list of dictionaries
         # EXAMPLE:  [{'uri': 823, 'all_parents': [709]},
         #            {'uri': 709, 'all_parents': [544]},
         #            {'uri': 544, 'all_parents': [1]}]
@@ -472,26 +472,26 @@ class Categories:
         :param uri: The uri identifying the desired Category
         :return:    None
         """
-        category_id = uri
+        category_uri = uri
 
-        if cls.is_root_category(category_id):
+        if cls.is_root_category(category_uri):
             raise Exception("Cannot delete the Root node")
 
         # First, make sure that there are no Content Items linked to this Category
-        number_items_attached = Collections.collection_size(collection_id=category_id, membership_rel_name="BA_in_category")
+        number_items_attached = Collections.collection_size(collection_id=category_uri, membership_rel_name="BA_in_category")
 
         if number_items_attached > 0:
-            raise Exception(f"Cannot delete the requested Category (ID {category_id}) because "
+            raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because "
                             f"it has Content Items attached to it: {number_items_attached} item(s). "
                             f"You need to first untag or delete all Items associated to it")
 
-        if cls.count_subcategories(category_id) > 0:
-            raise Exception(f"Cannot delete the requested Category (ID {category_id}) because it has sub-categories. Use the Category manager to first sever those relationships")
+        if cls.count_subcategories(category_uri) > 0:
+            raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because it has sub-categories. Use the Category manager to first sever those relationships")
 
-        number_deleted = NeoSchema.delete_data_point(uri=category_id, labels="BA")
+        number_deleted = NeoSchema.delete_data_point(uri=category_uri, labels="BA")
 
         if number_deleted != 1:
-            raise Exception(f"Failed to delete the requested Category (ID {category_id})")
+            raise Exception(f"Failed to delete the requested Category (URI '{category_uri}')")
 
 
 
@@ -513,17 +513,17 @@ class Categories:
                                 raise an Exception
         """
 
-        subcategory_id = data_dict["sub"]
-        category_id = data_dict["cat"]
+        subcategory_uri = data_dict["sub"]
+        category_uri = data_dict["cat"]
 
 
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
         try:
-            NeoSchema.add_data_relationship_OLD(from_id=subcategory_id, to_id=category_id,
+            NeoSchema.add_data_relationship_OLD(from_id=subcategory_uri, to_id=category_uri,
                                                 rel_name="BA_subcategory_of", id_type="uri")
         except Exception as ex:
-            raise Exception(f"Unable to create a subcategory relationship. {ex}")
+            raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship. {ex}")
 
 
 
@@ -827,13 +827,12 @@ class Categories:
         #print("Inside Categories.add_content_at_end()")
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
-            # then auto-generate it
+            # then auto-generate it: obtain (and reserve) the next auto-increment value in the "data_node" namespace
             new_uri = NeoSchema.reserve_next_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to a namespace based on the Class
 
-
-        # Create a new Data Node
+                                                #
         NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
-                                   extra_labels="BA", assign_uri=False, new_uri=new_uri,
+                                   extra_labels="BA", new_uri=new_uri,
                                    silently_drop=True)
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
         #       NOT with the Content Item node ;

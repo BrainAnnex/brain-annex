@@ -773,9 +773,9 @@ def test_create_data_node_1(db):
 
     # Create a 1st "doctor" data node
     internal_id = NeoSchema.create_data_node(class_node="doctor",
-                               properties={"name": "Dr. Preeti", "specialty": "sports medicine"},
-                               extra_labels = None,
-                               assign_uri=False, new_uri=None, silently_drop=False)
+                                             properties={"name": "Dr. Preeti", "specialty": "sports medicine"},
+                                             extra_labels = None,
+                                             new_uri=None, silently_drop=False)
 
     q = '''
         MATCH (d :doctor {name: "Dr. Preeti", specialty: "sports medicine"}) 
@@ -792,9 +792,9 @@ def test_create_data_node_1(db):
     # Create a 2nd "doctor" data node, this time assigning an extra label and storing a URI
     uri = "doc-1"
     internal_id = NeoSchema.create_data_node(class_node="doctor",
-                                                    properties={"name": "Dr. Watson", "specialty": "genetics"},
-                                                    extra_labels = "Nobelist",
-                                                    assign_uri=True, new_uri=uri, silently_drop=False)
+                                             properties={"name": "Dr. Watson", "specialty": "genetics"},
+                                             extra_labels = "Nobelist",
+                                             new_uri=uri, silently_drop=False)
 
     q = '''
         MATCH (d :doctor:Nobelist {name: "Dr. Watson", specialty: "genetics"}) 
@@ -857,14 +857,14 @@ def test_create_data_node_2(db):
     with pytest.raises(Exception):
         NeoSchema.create_data_node(class_node="person",
                                    properties={"name": "Joe", "address": "extraneous undeclared field"},
-                                   extra_labels = None, assign_uri=False, new_uri=None,
+                                   extra_labels = None, new_uri=None,
                                    silently_drop=False)
 
     # To prevent a failure, we can ask to silently drop any undeclared property
     internal_id = NeoSchema.create_data_node(class_node="person",
-                                               properties={"age": 22, "address": "extraneous undeclared field"},
-                                               extra_labels = None, assign_uri=False, new_uri=None,
-                                               silently_drop=True)
+                                             properties={"age": 22, "address": "extraneous undeclared field"},
+                                             extra_labels = None, new_uri=None,
+                                             silently_drop=True)
     q = '''
         MATCH (p :person {age: 22}) 
         -[:SCHEMA]-> (:CLASS {name: 'person'})
@@ -883,9 +883,9 @@ def test_create_data_node_2(db):
 
     # Because the class is "lenient", data nodes may be created with undeclared properties
     internal_id = NeoSchema.create_data_node(class_node="car",
-                                                properties={"brand": "Toyota", "color": "white"},
-                                                extra_labels = None, assign_uri=False, new_uri=None,
-                                                silently_drop=False)
+                                             properties={"brand": "Toyota", "color": "white"},
+                                             extra_labels = None, new_uri=None,
+                                             silently_drop=False)
     q = '''
         MATCH (c :car {brand: "Toyota", color: "white"}) 
         -[:SCHEMA]-> (:CLASS {name: 'car'})

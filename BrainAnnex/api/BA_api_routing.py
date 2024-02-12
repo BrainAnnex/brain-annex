@@ -955,6 +955,7 @@ class ApiRouting:
             RETURNED PAYLOAD (on success):
                 The URI of the newly-created Data Node
             """
+            # TODO: switch from "category_id" to "category_uri"
             # Extract the POST values
             post_data = request.form
             # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('class_name', 'Headers'),
@@ -1012,7 +1013,7 @@ class ApiRouting:
 
             EXAMPLE invocation:
                 curl http://localhost:5000/BA/api/add_subcategory -d
-                            "category_id=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
+                            "category_uri=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
         
             POST FIELDS:
                 category_uri            URI to identify the Category to which to add the new Subcategory
@@ -1219,18 +1220,19 @@ class ApiRouting:
         
         
         
-        @bp.route('/reposition/<category_id>/<uri>/<move_after_n>')
+        @bp.route('/reposition/<category_uri>/<uri>/<move_after_n>')
         @login_required
-        def reposition(category_id, uri, move_after_n):
+        def reposition(category_uri, uri, move_after_n):
             """
             Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
             Note: moving after the 0-th item means to move to the very top
-            TODO: switch to an after-item version?
         
             EXAMPLE invocation: http://localhost:5000/BA/api/reposition/60/576/4
             """
+            #TODO: TODO: switch to an after-item version?
+
             try:
-                Categories.reposition_content(category_uri=category_id, uri=uri, move_after_n=int(move_after_n))
+                Categories.reposition_content(category_uri=category_uri, uri=uri, move_after_n=int(move_after_n))
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
                 err_details = f"Unable to reposition the Content Item.  {exceptions.exception_helper(ex)}"

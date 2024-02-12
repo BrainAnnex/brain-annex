@@ -53,7 +53,7 @@ def test_get_all_categories(db):
     assert result == []
 
     # Add a new Category ("Languages")
-    language_uri = Categories.add_subcategory({"category_id": "1", "subcategory_name": "Languages",
+    language_uri = Categories.add_subcategory({"category_uri": "1", "subcategory_name": "Languages",
                                 "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
@@ -62,8 +62,8 @@ def test_get_all_categories(db):
     compare_recordsets(result, expected)
 
     # Add 2 new Categories ("French" and "Italian")
-    french_uri = Categories.add_subcategory({"category_id": language_uri, "subcategory_name": "French"})
-    italian_uri = Categories.add_subcategory({"category_id": language_uri, "subcategory_name": "Italian"})
+    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
+    italian_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "Italian"})
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
     expected = [{'uri': 1, 'name': 'HOME', 'remarks': 'top level'},
                 {'uri': language_uri, 'name': 'Languages', 'remarks': 'Common node for all languages'},
@@ -79,15 +79,15 @@ def test_get_sibling_categories(db):
     assert result == []     # The root node has no siblings
 
     # Add a new Category ("Languages")
-    language_uri = Categories.add_subcategory({"category_id": "1", "subcategory_name": "Languages",
+    language_uri = Categories.add_subcategory({"category_uri": "1", "subcategory_name": "Languages",
                                                    "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_sibling_categories(root_internal_id)
     assert result == []     # The "Languages" node has no siblings
 
     # Add 2 new Categories ("French" and "Italian"), both subcategories of "Languages"
-    french_uri = Categories.add_subcategory({"category_id": language_uri, "subcategory_name": "French"})
-    italian_uri = Categories.add_subcategory({"category_id": language_uri, "subcategory_name": "Italian"})
+    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
+    italian_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "Italian"})
 
     french_internal_id = NeoSchema.get_data_node_internal_id(uri = french_uri)
     italian_internal_id = NeoSchema.get_data_node_internal_id(uri = italian_uri)
@@ -115,7 +115,7 @@ def test_get_sibling_categories(db):
     assert entry == expected
 
     # Add a new Categories ("German") as a subcategories of "Languages"
-    Categories.add_subcategory({"category_id": language_uri, "subcategory_name": "German"})
+    Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "German"})
 
     result = Categories.get_sibling_categories(french_internal_id)
     assert len(result) == 2     # Now, "French" has 2 siblings
@@ -165,7 +165,7 @@ def test_link_content_at_end(db):
 
     # Create a new Data Node
     NeoSchema.create_data_node(class_node="Images", properties={"caption": "my_pic"},
-                               assign_uri=False, new_uri="i-100")
+                               new_uri="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100", label=None)
 
@@ -201,7 +201,7 @@ def test_detach_from_category(db):
 
     # Create a new Data Node
     NeoSchema.create_data_node(class_node="Images", properties={"caption": "my_pic"},
-                               assign_uri=False, new_uri="i-100")
+                               new_uri="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100", label=None)
 
@@ -211,7 +211,7 @@ def test_detach_from_category(db):
 
 
     # Create a 2nd Category, and link up the Content Item to it
-    new_cat_uri = Categories.add_subcategory({"category_id":root_uri,  "subcategory_name": "math"})
+    new_cat_uri = Categories.add_subcategory({"category_uri":root_uri,  "subcategory_name": "math"})
     Categories.link_content_at_end(category_uri=new_cat_uri, item_uri="i-100", label=None)
 
     # Now, the detachment of the Content Item from the initial (root) Category is possible
