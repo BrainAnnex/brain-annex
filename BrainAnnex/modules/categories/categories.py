@@ -10,12 +10,7 @@ class Categories:
     An entity to which a variety of nodes (e.g. representing records or media)
     is attached, with a positional attribute.
 
-    Categories also have "subcategory" relationships with other categories.
-
-    Contains the following groups of methods:
-        1. LOOKUP
-        2. UPDATE
-        3. POSITIONING WITHIN CATEGORIES
+    Categories also have "subcategory" and "see_also" relationships with other categories.
     """
 
     db = None   # MUST be set before using this class!
@@ -210,7 +205,7 @@ class Categories:
     @classmethod
     def get_sibling_categories(cls, category_internal_id: int) -> [dict]:
         """
-        Return the data of all the "siblings" of the given Category
+        Return the data of all the "siblings" nodes of the given Category
 
         :param category_internal_id:    The internal database ID of a "Category" data node
         :return:                        A list of dictionaries, with one element for each "sibling";
@@ -226,7 +221,7 @@ class Categories:
         q = f"""
                 MATCH (n) - [:BA_subcategory_of] -> (parent) <- [:BA_subcategory_of] - (sibling)
                 WHERE id(n) = {category_internal_id}
-                RETURN sibling
+                RETURN DISTINCT sibling
                 ORDER BY toLower(sibling.name)
             """
         result = cls.db.query_extended(q, flatten=True)
@@ -254,13 +249,14 @@ class Categories:
                             up to a maximum hop length;
                             the values are lists of the uri's of the parent categories of the Category specified by the key
                             EXAMPLES:       {'123': ['1']}                                  # The given category (123) is a child of the root (1)
-                                            {'823': ['709'], '709': ['544'], '544': ['1']}          # A simple 3-hop path from Category 823 to the root (1) :
-                                                                                        #   823 is subcategory of 709,
-                                                                                        #   which is subcategory of 544, which is subcategory of the root
-                                            {'814': ['20', '30'], '20': ['1'], '30': ['79'], '79': ['1']} # Two paths from Category 814 to the root;
-                                                                                        #   814 is subcategory of 20 and 30;
-                                                                                        #   20 is an subcategory of the root,
-                                                                                        #   while with 30 we have to go thru an extra hop
+                                            {'823': ['709'], '709': ['544'], '544': ['1']}  # A simple 3-hop path from Category 823 to the root (1) :
+                                                                                            #       823 is subcategory of 709,
+                                                                                            #       which is subcategory of 544, which is subcategory of the root
+                                            {'814': ['20', '30'], '20': ['1'], '30': ['79'], '79': ['1']}
+                                                                                            # Two paths from Category 814 to the root;
+                                                                                            #       814 is subcategory of 20 and 30;
+                                                                                            #       20 is an subcategory of the root,
+                                                                                            #       while with 30 we have to go thru an extra hop
         """
 
         # Based on the "BA_subcategory_of" relationship,
@@ -268,12 +264,12 @@ class Categories:
         #       where the child c is any ancestor node of the given Category node.
         #       A limit is imposed on the max length of the path
         q = '''
-            MATCH (start :BA:Categories {uri:$category_id})-[:BA_subcategory_of*0..9]->
+            MATCH (start :BA:Categories {uri:$category_uri})-[:BA_subcategory_of*0..9]->
                   (c :Categories)-[:BA_subcategory_of]->(p :Categories)
             WITH c, collect(DISTINCT p.uri) AS all_parents
             RETURN c.uri AS uri, all_parents
             '''
-        result = cls.db.query(q, {"category_id": category_uri})      # A list of dictionaries
+        result = cls.db.query(q, {"category_uri": category_uri})      # A list of dictionaries
         # EXAMPLE:  [{'uri': 823, 'all_parents': [709]},
         #            {'uri': 709, 'all_parents': [544]},
         #            {'uri': 544, 'all_parents': [1]}]
@@ -439,7 +435,7 @@ class Categories:
         assert category_uri is not None, \
                     "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
         assert NeoSchema.is_valid_uri(category_uri), \
-            f"add_subcategory(): invalid category uri ({category_uri})"
+                    f"add_subcategory(): invalid category uri ({category_uri})"
 
         subcategory_name = data_dict.get("subcategory_name")
         if not subcategory_name:
@@ -476,26 +472,26 @@ class Categories:
         :param uri: The uri identifying the desired Category
         :return:    None
         """
-        category_id = uri
+        category_uri = uri
 
-        if cls.is_root_category(category_id):
+        if cls.is_root_category(category_uri):
             raise Exception("Cannot delete the Root node")
 
         # First, make sure that there are no Content Items linked to this Category
-        number_items_attached = Collections.collection_size(collection_id=category_id, membership_rel_name="BA_in_category")
+        number_items_attached = Collections.collection_size(collection_id=category_uri, membership_rel_name="BA_in_category")
 
         if number_items_attached > 0:
-            raise Exception(f"Cannot delete the requested Category (ID {category_id}) because "
+            raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because "
                             f"it has Content Items attached to it: {number_items_attached} item(s). "
                             f"You need to first untag or delete all Items associated to it")
 
-        if cls.count_subcategories(category_id) > 0:
-            raise Exception(f"Cannot delete the requested Category (ID {category_id}) because it has sub-categories. Use the Category manager to first sever those relationships")
+        if cls.count_subcategories(category_uri) > 0:
+            raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because it has sub-categories. Use the Category manager to first sever those relationships")
 
-        number_deleted = NeoSchema.delete_data_point(uri=category_id, labels="BA")
+        number_deleted = NeoSchema.delete_data_point(uri=category_uri, labels="BA")
 
         if number_deleted != 1:
-            raise Exception(f"Failed to delete the requested Category (ID {category_id})")
+            raise Exception(f"Failed to delete the requested Category (URI '{category_uri}')")
 
 
 
@@ -517,17 +513,17 @@ class Categories:
                                 raise an Exception
         """
 
-        subcategory_id = data_dict["sub"]
-        category_id = data_dict["cat"]
+        subcategory_uri = data_dict["sub"]
+        category_uri = data_dict["cat"]
 
 
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
         try:
-            NeoSchema.add_data_relationship_OLD(from_id=subcategory_id, to_id=category_id,
+            NeoSchema.add_data_relationship_OLD(from_id=subcategory_uri, to_id=category_uri,
                                                 rel_name="BA_subcategory_of", id_type="uri")
         except Exception as ex:
-            raise Exception(f"Unable to create a subcategory relationship. {ex}")
+            raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship. {ex}")
 
 
 
@@ -588,7 +584,7 @@ class Categories:
         NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
 
         :param from_id:     String with the uri of the subcategory node
-        :param to_id:       NOT USED.  Integer with the uri of the parent-category node
+        :param to_id:       NOT USED.  String with the uri of the parent-category node
         :param rel_name:    NOT USED
         :return:            None.  If the requested new relationship should not be deleted, raise an Exception
         """
@@ -687,6 +683,25 @@ class Categories:
     #####################################################################################################
 
     @classmethod
+    def get_categories_linked_to_content_item(cls, item_uri :str) -> [{}]:
+        """
+        Locate and return information about all the Categories
+        that the given Content Item is linked to
+
+        :param item_uri:    The URI of a data node representing a Content Item
+        :return:            A list of dicts that have the keys "uri", "name", "remarks";
+                                any missing value will appear as None
+        """
+        q = '''
+            MATCH (:BA {uri: $item_uri}) - [:BA_in_category] -> (cat :Categories)
+            RETURN cat.uri AS uri, cat.name AS name, cat.remarks AS remarks
+            '''
+        result = cls.db.query(q, data_binding={"item_uri": item_uri})
+        return result
+
+
+
+    @classmethod
     def get_content_items_by_category(cls, category_uri = "1") -> [{}]:
         """
         Return the records for all nodes linked
@@ -703,6 +718,7 @@ class Categories:
 
         # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
         # TODO: switch to using one of the Collections methods
+        # TODO: drop the "1" ; either use a name like "cat-root", or a flag
         cypher = """
             MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", uri:$category_id})
             RETURN n, r.pos AS pos, cl.name AS class_name
@@ -811,13 +827,12 @@ class Categories:
         #print("Inside Categories.add_content_at_end()")
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
-            # then auto-generate it
+            # then auto-generate it: obtain (and reserve) the next auto-increment value in the "data_node" namespace
             new_uri = NeoSchema.reserve_next_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to a namespace based on the Class
 
-
-        # Create a new Data Node
+                                                #
         NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
-                                   extra_labels="BA", assign_uri=False, new_uri=new_uri,
+                                   extra_labels="BA", new_uri=new_uri,
                                    silently_drop=True)
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
         #       NOT with the Content Item node ;
@@ -1075,7 +1090,7 @@ class Categories:
 
         then relocate_positions(category_uri, n_to_skip=1, pos_shift=100) will result in:
             pos
-        1:   45     <- got skipped
+        1:   45     <= got skipped
         2:  184
         3:  191
 
@@ -1109,9 +1124,9 @@ class Categories:
         """
         Swap the positions of the specified Content Items within the given Category
 
-        :param uri_1:   A string with the (integer) ID of the 1st Content Item
-        :param uri_2:   A string with the (integer) ID of the 2nd Content Item
-        :param cat_id:  A string with the (integer) ID of the Category
+        :param uri_1:   A string with the uri of the 1st Content Item
+        :param uri_2:   A string with the uri of the 2nd Content Item
+        :param cat_id:  A string with the uri of the Category
         :return:        None.  In case of error, raise an Exception
         """
 
@@ -1164,6 +1179,7 @@ class Categories:
     @classmethod
     def viewer_handler(cls, category_uri :str):
         """
+        Handler function for the Flask page generator "BA_pages_routing.py"
 
         :param category_uri: A string identifying the desired Category
         :return:             A list of dictionaries, with one element for each "sibling";
@@ -1173,6 +1189,7 @@ class Categories:
                                 {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories', 'BA']}
         """
         # TODO: expand to cover all the data needs of BA_pages_routing.py
+        # TODO: maybe move to DataManager layer
 
         category_internal_id = NeoSchema.get_data_node_internal_id(uri = category_uri)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)

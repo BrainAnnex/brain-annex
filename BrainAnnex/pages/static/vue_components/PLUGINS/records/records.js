@@ -96,6 +96,7 @@ Vue.component('vue-plugin-r',
             </tr>
             </table>
 
+
             <!-- Area below the table, for the linked records (if shown) -->
             <div v-if="linked_records.length > 0" style="border:1px solid #DDD; margin-left: 40px; margin-bottom: 25px; padding-left: 5px">
 
@@ -114,7 +115,8 @@ Vue.component('vue-plugin-r',
             </div>
 
             <!-- Area below the table, for the relationship editing (if in editing mode) -->
-            <div v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:0; padding-top:0; padding-bottom:10px">
+            <div v-if="editing_mode && (in_links_schema.length > 0 || out_links_schema.length > 0)"
+                 style="border-left:1px solid #DDD; padding-left:0; padding-top:0; padding-bottom:10px">
                     <div v-for="link in in_links_schema" class="edit-link"><b>IN_LINK</b><br>{{link}}</div>
                     <div v-for="link in out_links_schema" class="edit-link"><b>OUT_LINK</b><br><br>{{link}}</div>
             </div>
@@ -165,7 +167,7 @@ Vue.component('vue-plugin-r',
                         {
                             "English": "Love",
                             "German": "Liebe",
-                            "uri": 61,
+                            "uri": "61",
                             "schema_code": "r",
                             "class_name": "German Vocabulary",
                             "pos": 0    <- BEING PHASED OUT
@@ -180,8 +182,9 @@ Vue.component('vue-plugin-r',
                     Note that the objects may lack some of the fields specified by the Schema;
                         or, if the Schema is lax, extra fields might be present
                  */
-                current_data: this.clone_and_standardize(this.item_data),   // Scrub some data, so that it won't show up in the tabular format
+                current_data: this.clone_and_standardize(this.item_data),
                 original_data: this.clone_and_standardize(this.item_data),
+                // Scrub some data, so that it won't show up in the tabular format
                 // NOTE: clone_and_standardize() gets called twice
 
                 expanded_row: false,
@@ -269,13 +272,14 @@ Vue.component('vue-plugin-r',
             },
 
 
-            // Used to copy cell contents into the system clipboard
+            // Used to copy cell contents into the system clipboard (NOT in current use)
             onCopy: function (e) {
                 console.log('You just copied: ' + e.text);
             },
             onError: function (e) {
                 alert('Failed to copy texts');
             },
+
 
             render_cell(cell_data)
             /*  If the passed string appears to be a URL, convert it into a hyperlink, opening in a new window;
@@ -300,6 +304,7 @@ Vue.component('vue-plugin-r',
                 else
                     return cell_data;
             },
+
 
 
             /*
@@ -449,11 +454,11 @@ Vue.component('vue-plugin-r',
                          */
                         if (!(field_name in this.current_data))  {
                             //console.log("    Adding missing field: ", field_name);
-                            new_current_data[field_name] = "";
+                            new_current_data[field_name] = "";   // Blank field value
                         }
                     }
 
-                    this.current_data = new_current_data;
+                    this.current_data = new_current_data;  // Replace the record bound to the UI
 
                     this.in_links_schema = server_payload["in_links"];
                     this.out_links_schema = server_payload["out_links"];
@@ -470,7 +475,7 @@ Vue.component('vue-plugin-r',
 
 
             clone_and_standardize(obj)
-            // Clone, and remove keys that don't get shown nor edited
+            // Clone first; then remove some keys that shouldn't get shown nor edited
             {
                 clone_obj = Object.assign({}, obj);     // Clone the object
 
@@ -478,7 +483,7 @@ Vue.component('vue-plugin-r',
                 delete clone_obj.uri;
                 delete clone_obj.schema_code;
                 delete clone_obj.class_name;
-                delete clone_obj.insert_after;
+                delete clone_obj.insert_after;  // TODO: is this field still present?
                 delete clone_obj.pos;           // TODO: this might be getting phased out
 
                 return clone_obj;
@@ -510,6 +515,7 @@ Vue.component('vue-plugin-r',
 
 
             save()
+            // Invoked when the user asks to save the edit-in-progress
             {
                 /*  EXAMPLE of this.current_data and this.original_data:
                         {
@@ -529,54 +535,56 @@ Vue.component('vue-plugin-r',
                         }
                 */
 
-                // Start the body of the POST to send to the server.  TODO: switch to newer methods of ServerCommunication
-                post_body = "schema_code=" + this.item_data.schema_code;
+                // Start the body of the POST to send to the server
+                var post_obj = {schema_code: this.item_data.schema_code};
 
                 if (this.item_data.uri == -1)  {     // The -1 is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
-                    post_body += "&category_id=" + this.category_id;
-                    post_body += "&class_name=" + encodeURIComponent(this.item_data.class_name);
-                    const insert_after = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    post_body += "&insert_after=" + insert_after;
+                    post_obj["category_id"] = this.category_id;
+                    post_obj["class_name"] = this.item_data.class_name;
+                    post_obj["insert_after"] = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data)  {
                         // Only pass non-blank values
-                        if (this.current_data[key] != "")
-                            post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
+                        if (this.current_data[key] != "")  {
+                            post_obj[key] = this.current_data[key];
+                        }
                     }
-                    // EXAMPLE of post_body for a NEW record:
-                    //          "schema_code=r&category_id=12&class_name=German%20Vocabulary&insert_after=123&German=Liebe"
 
-                    url_server = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {
                     // Update an EXISTING record
-                    post_body += "&uri=" + this.item_data.uri;
+                    post_obj["uri"] = this.item_data.uri;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
-                        if ( (this.current_data[key] != "")  ||  (key in this.original_data) )
+                        if ( (this.current_data[key] != "")  ||  (key in this.original_data) )  {
                             // Non-blanks always lead to updates; blanks only if the field was originally present
-                            post_body += "&" + key + "=" + encodeURIComponent(this.current_data[key]);
+                            post_obj[key] = this.current_data[key];
+                        }
                     }
-                    // EXAMPLE of post_body for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
-                    url_server = `/BA/api/update`;   // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/update`;   // URL to communicate with the server's endpoint
                 }
 
+
+                console.log(`'vue-plugin-r' : about to contact the server at ${url_server_api} .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                                                   {post_obj: post_obj, callback_fn: this.finish_save});
 
                 this.waiting_mode = true;
                 this.error_indicator = false;   // Clear possible past message
 
-                console.log("In 'vue-plugin-r', save().  post_body: ", post_body);
-                ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_save});
             }, // save
-
 
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
              */
             {
                 console.log("Finalizing the Record saving operation...");
@@ -601,7 +609,7 @@ Vue.component('vue-plugin-r',
                     if (this.item_data.uri == -1)
                         this.current_data.uri = server_payload;
 
-                    // Inform the parent component of the new state of the data
+                    // Inform the ancestral root component of the new state of the data
                     console.log("Records component sending `updated-item` signal to its parent");
                     this.$emit('updated-item', this.current_data);
 
@@ -623,6 +631,7 @@ Vue.component('vue-plugin-r',
 
 
             cancel_edit()
+            // Invoked when the user cancels the edit-in-progress, or when the save operation fails
             {
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data

@@ -715,7 +715,7 @@ class DataManager:
                                   or one of the special values "TOP" or "BOTTOM"
             - *PLUS* all applicable plugin-specific fields (all the key/values for the new Content Item)
 
-        :return:    The URI of the newly-created node.
+        :return:    The URI of the newly-created Data Node.
                     In case of error, an Exception is raised
         """
 

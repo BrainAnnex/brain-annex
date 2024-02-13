@@ -14,8 +14,8 @@
 
         all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                     EXAMPLE:
-                                          [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"},
-                                           {"uri: 123, "name": "Calculus"},
+                                          [{"uri": 1,   "name": "HOME", "remarks": "ROOT NODE"},
+                                           {"uri: 123,  "name": "Calculus"},
                                            {"uri": 523, "name": "Work at Acme", "pinned": True}]
         subcategories       EXAMPLE: [{'uri': '2', 'name': 'Work', remarks: 'outside employment', OTHER_FIELDS_NOT_USED}]
         parent_categories
@@ -273,7 +273,7 @@
             v-on:insert-new-item
      -->
 
-<div v-if="expose_controls"  v-for="(item, index) in content_array" class="content-item">
+<template v-if="expose_controls"  v-for="(item, index) in content_array">
 
     <vue-content-items
         v-bind:key="item.schema_code + '_' + item.uri + '_' + index"
@@ -299,7 +299,7 @@
     >
     </vue-content-items>
 
-</div>
+</template>
 
 
 
@@ -307,13 +307,13 @@
 
 <!-- (PART 2 of 2)
 
-    New version, to be used when the EDITING CONTROLS are HIDDEN.
+    New version, to be used when the EDITING CONTROLS are HIDDEN (i.e. in viewing mode.)
     This version groups together similar adjacent records
   -->
 
 <template v-if="!expose_controls"  v-for="group in element_grouping">
 
-    <!-- If it's "UN-grouped", show it here as an individual Content Item-->
+    <!-- If it's "UN-grouped", show it here as an INDIVIDUAL Content Item-->
     <vue-content-items  v-if="!group.use_group"
             v-bind:key="content_array[group.index].schema_code + '_' + content_array[group.index].uri + '_' + group.index + '_bis'"
 
@@ -338,13 +338,14 @@
     </vue-content-items>
 
 
-    <!-- If it's "grouped", show the whole group of records here -->
+    <!-- If it's "grouped", show the WHOLE GROUP of records here -->
     <vue-plugin-table v-if="group.use_group"
                       v-bind:key="group.index"
 
                       v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
                       v-bind:common_fields="group.fields"
-                      v-bind:common_schema_data="group.fields"
+
+                      v-on:updated-item="absorb_item_updates_REVISED($event)"
     ></vue-plugin-table>
 
 </template>
@@ -400,6 +401,8 @@
 
 
 
+
+
     <!--  To add a new Subcategory (TODO: turn into a Vue component) -->
     <div style='clear: left;'></div> {# To clear any Content Item #}
 
@@ -410,20 +413,26 @@
 
         <table border='0' cellspacing='5' cellpadding='0'>
             <tr>
-                <td>Name</td><td style='padding-left:5px'><input type='text' v-model="new_subcategory_name" size='50' maxlength='60'></td>
+                <td>Name</td>
+                <td style='padding-left:5px'><input type='text' v-model="new_subcategory_name" size='50' maxlength='60'></td>
             </tr>
             <tr>
-                <td>Remarks <span style='color:gray; font-style:italic'>(optional)</span></td><td style='padding-left:5px'><input type='text'  v-model="new_subcategory_remarks" size='50' maxlength='90'></td>
+                <td>Remarks <span style='color:gray; font-style:italic'>(optional)</span></td>
+                <td style='padding-left:5px'><input type='text'  v-model="new_subcategory_remarks" size='50' maxlength='90'></td>
             </tr>
         </table>
 
         <br>
-        <button @click="add_subcategory({{category_uri}})">Add New Sub-Category</button>
+        <button @click="add_subcategory">Add New Sub-Category</button>
             <span v-if="waiting" class="waiting">Adding the subcategory...</span>
             <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
         <br><br>
         <span style='color:gray'><b>OR:</b> add an <a href='/BA/pages/category_manager/{{category_uri}}'><i>existing</i></a> sub-category</span>
     </div>
+
+
+
+
 
 
     <div style='height:170px'></div>     <!-- To extend the main page enough to fit the above floating element -->
@@ -557,7 +566,7 @@ new Vue({
                         // EXAMPLE: [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
 
 
-        // For "Add Subcategory" (TODO: move to a separate component?)
+        // For the "Add Subcategory" form (TODO: move to a separate component?)
         new_subcategory_name: "",
         new_subcategory_remarks: "",
         status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
@@ -642,8 +651,10 @@ new Vue({
         },
 
 
-        add_subcategory(category_uri)
+        add_subcategory()
+        // Create a new sub-category for the current Category
         {
+            const category_uri = this.category_uri;
             console.log(`Adding new sub-category: category_uri: ${category_uri}, subcategory name: ${this.new_subcategory_name} , remarks: ${this.new_subcategory_remarks}`);
             if (this.new_subcategory_name == "")  {
                 alert("Must enter a Subcategory name");
@@ -651,37 +662,36 @@ new Vue({
             }
 
             // Send the request to the server, using a POST
-            url_server = "/BA/api/add_subcategory"
+            const url_server_api = "/BA/api/add_subcategory"
             // Compose the body of the POST to send to the server
-            post_obj = {category_uri: category_uri,
-                        subcategory_name: this.new_subcategory_name,
-                        subcategory_remarks: this.new_subcategory_remarks};
-            post_body = ServerCommunication.parse_POST_object(post_obj);
-            console.log("post_body:", post_body);
+            const post_obj = {category_uri: category_uri,
+                              subcategory_name: this.new_subcategory_name,
+                              subcategory_remarks: this.new_subcategory_remarks};
 
             // Initiate asynchronous contact with the server
-            this.waiting = true;
+            this.waiting = true;        // Entering a waiting-for-server mode
             this.error = false;         // Clear any error from the previous operation
-            this.status_message = "";
-            ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_add_subcategory});
+            this.status_message = "";   // Clear any message from the previous operation
+            ServerCommunication.contact_server(url_server_api,
+                                               {post_obj: post_obj, callback_fn: this.finish_add_subcategory});
         },
 
         finish_add_subcategory(success, server_payload, error_message)
         /*  Callback function to wrap up the action of add_subcategory() upon getting a response from the server.
-            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned ID
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
          */
         {
             console.log("Finalizing the Add Subcategory operation...");
             if (success)  {     // Server reported SUCCESS
-                this.status_message = `New Category successfully added (assigned ID ${server_payload})`;
+                this.status_message = `New sub-category successfully added (assigned URI '${server_payload}')`;
                 // Update the data of the root component, to refresh some displays
-                let new_subcategory = {id: server_payload, name: this.new_subcategory_name};
+                let new_subcategory = {uri: server_payload, name: this.new_subcategory_name};
                 this.all_subcategories.push(new_subcategory);
                 this.all_categories.push(new_subcategory);      // TODO: sort alphabetically
             }
             else  {             // Server reported FAILURE
                 this.error = true;
-                this.status_message = `FAILED addition of new Category`;
+                this.status_message = `FAILED addition of new Sub-category`;
             }
 
             // Final wrap-up, regardless of error or success
@@ -904,6 +914,64 @@ new Vue({
 
 
 
+
+        absorb_item_updates_REVISED(new_data)
+        /* Update the appropriate entry in this.content_array, with the new data passed by a component
+           (generally done at the end of an update on the server.)
+           NOT to be used for newly-added records: use absorb_item_updates() for those.
+           
+           new_data: object containing the special keys "uri" and "schema_code" (TODO: later replace with the internal_dbase_id),
+                     used to identify the entry in this.content_array,
+                     plus keys/values will all the other properties to update.  
+                     Unaffected fields aren't expected to be included (but no harm if they are.)
+                     EXAMPLE: {uri: '5622', schema_code: 'r', English: 'Woman', German: 'Frau'}
+         */
+        {
+            //console.log("In absorb_item_updates_REVISED()");
+            const schema_code = new_data.schema_code;
+            const uri = new_data.uri;
+
+            //console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' ,  uri '${uri}'`);
+            //console.log(`    Data for the update:`);
+            //console.log(new_data);
+
+            const index = this.locate_item(schema_code, uri);         // TODO: switch to internal ID's
+
+            if (index == -1)  {    // If the Item is not found on the page
+                console.log(`    Failed to locate schema_code ${schema_code}, uri ${uri}`);
+                alert("Unable to update the display.  Save your work and refresh the page");
+            }
+
+            // Bring the frontend up-to-date with the new data
+            //console.log(`   Updating the Content Item found in content_array at index: ${index}`);
+
+
+            let updated_record = Object.assign({}, this.content_array[index]);      // Start with a clone of the Content Item object
+                                                                                    // (to allow for a complete record replacement for Vue reactivity)
+
+            // Update all attributes, except "uri" and "schema_code", 
+            // in the object that will replace the element in content_array at our index position
+            for (key in new_data)  {    // Loop over all the keys in the object
+                if (key != "uri"  &&  key != "schema_code")  {
+                    let new_value = new_data[key];
+                    if (new_value == "")  {
+                        //console.log(`    Ditching the field '${key}'`);
+                        delete updated_record[key];
+                    }
+                    else  {
+                        //console.log(`    Updating field '${key}' with new value '${new_value}'`);
+                        updated_record[key] = new_value;
+                    }
+                }
+            }
+
+            Vue.set(this.content_array, index, updated_record);     // Vue-reactive change (affecting the UI)
+                                                                    // in the specified element of this.content_array
+
+        }, // absorb_item_updates_REVISED
+
+
+
         absorb_item_updates(item, new_data)
         /*  Update the entry for the specified item in this.content_array, with the new data passed by a component
             (generally done at the end of an update on the server.)
@@ -912,11 +980,13 @@ new Vue({
                 * "schema_code" doesn't vary under normal edits
                 * "pos" is not changed thru edits (it uses separate mechanisms to reposition items)
                 * everything else will be updated
+
+            Note: this is an older version, probably to later be combined with absorb_item_updates_REVISED()
          */
         {
-            console.log(`Root element received signal to UPDATE the content item of type '${item.schema_code}' , original id ${item.uri}`);
+            //console.log(`Root element received signal to UPDATE the Content Item of type '${item.schema_code}' , original uri '${item.uri}'`);
             if (new_data.uri)
-                console.log(`    A new current id was passed: ${new_data.uri}`);
+                console.log(`    A new current uri was passed: ${new_data.uri}`);
 
             //if (item.uri != -1)
                 //alert("Attempting to modify an existing ID.  Request ignored...  Save your work and refresh the page");
@@ -924,32 +994,49 @@ new Vue({
             // **********  TODO:  The following will NOT work if there's more than one NEW item of the same type!!!!!
             // 2 strategy ideas: 1) for new items, assign temp ID's of -1, -2, -3, etc. (instead of giving -1 to all)
             //                   2) search by ID (-1) AND by pos
-            const index = this.locate_item(item.schema_code, item.uri);
+            const index = this.locate_item(item.schema_code, item.uri);         // TODO: switch to internal ID's
 
             if (index == -1)    // If the Item is not found on the page
                 alert("Unable to update the display so as to set the ID of the newly-added Content Item.  Save your work and refresh the page");
 
-            // Bring the front-end up-to-date with the new data (possibly including the ID just assigned by the server for new Items)
-            console.log(`Updating the Content Item found in array index ${index}`);
-            //console.log("The new data is:");
-            //console.log(new_data);
+            // Bring the frontend up-to-date with the new data (possibly including the URI just assigned by the server for new Items)
+            //console.log(`Updating the Content Item found in content_array at index: ${index}`);
+            //console.log("The original Content Item is:");
+            //console.log(item);
 
-            //console.log("The current value of that Content Item is:");
+            //console.log("The current value of content_array at index: ${index}` is:");
             //console.log(this.content_array[index]);
 
-            // Save all attributes, except "pos" and "schema_code"
-            for (field_name in new_data)
-                if (field_name != "pos" && field_name != "schema_code")
-                    this.content_array[index][field_name] = new_data[field_name];
+            //console.log("The new data (sent thru the Vue signal) is:");
+            //console.log(new_data);
+            
+            
+            let updated_record = Object.assign({}, this.content_array[index]);      // Start with a clone of the Content Item object
+                                                                                    // (to allow for a complete record replacement for Vue reactivity)
+
+            // Update all attributes, except "pos" and "schema_code",
+            // in the object that will replace the element in content_array at our index position
+            for (key in new_data)  {    // Loop over all the keys in the object
+                if (key != "pos" && key != "schema_code")  {
+                    let new_value = new_data[key];
+                    //console.log(`    Updating value of key '${key}' with new value '${new_value}'`);
+                    updated_record[key] = new_value;
+                }
+            }
 
             // Ditch any fields that were deleted in the edit (however, "pos", "schema_code", "class_name", "uri" are left alone)
             // TODO: editable fields and non-editable ones (such as the special cases above) ought to be treated differently
-            for (old_field_name in this.content_array[index])
-                if ((old_field_name != "pos") && (old_field_name != "schema_code") && (old_field_name != "class_name") && (old_field_name != "uri") && !(old_field_name in new_data))  {
-                    console.log(`absorb_item_updates(): Ditching the old field '${old_field_name}' because it was eliminated in the edit`);
-                    delete this.content_array[index][old_field_name];
+            for (old_key in updated_record)
+                if ((old_key != "pos") && (old_key != "schema_code") && (old_key != "class_name") && (old_key != "uri") && !(old_key in new_data))  {
+                    //console.log(`    Ditching the old field '${old_key}' because it was eliminated in the edit`);
+                    delete updated_record[old_key];
                 }
-        },
+                
+            Vue.set(this.content_array, index, updated_record);     // Vue-reactive change (affecting the UI)
+                                                                    // in the specified element of this.content_array
+                                                                    
+        }, // absorb_item_updates
+
 
 
         relocate_content_item(item, where_to)

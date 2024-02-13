@@ -266,10 +266,10 @@ It does *NOT* delete `' + p.name + '`'"
         <img src="/BA/pages/static/graphics/child.jpg">
 
 
-        <!-- Provide an Add-child form, floated to the right -->
-        <div style="width:180px; float:right">
-            <b>NOT YET IMPLEMENTED</b>
+        <!-- Provide 2 Add-child forms, floated to the right -->
+        <div style="width:180px; float:right; margin-right:2px">
             <span style="font-style:italic; color:#666666">Add an <b>existing</b> Sub-category to &ldquo;{{category_name}}&rdquo;:</span><br>
+            <b>NOT YET IMPLEMENTED</b><br>
             <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_uri}}' id='form_5'>
                 <input type='hidden' name='parentID' value='{{category_uri}}'>
                 <select id = 'menu_5' name = 'childID' style = 'width:180px'>
@@ -284,13 +284,14 @@ It does *NOT* delete `' + p.name + '`'"
                 </select>
             </form><br><br>
 
-            <span style="font-style:italic; color:#666666"><b>OR</b> Create <b>new</b> Sub-category:</span>
-            <form action="doCategoryHandler2.php?op=addNode&cat={{category_uri}}" method="POST" style="border:1px solid #DDD; padding: 2px">
-                <input type='hidden' name='parentID' value='{{category_uri}}'>
-                Name <input type="text" name="name"><br>
-                Remarks <span style="color:gray">(optional)</span><input type="text" name="remarks"><br>
-                <input type="submit" value="Add">
-            </form>
+            <span style="font-style:italic; color:#666666"><b>OR</b> Create a <b>new</b> Sub-category:</span>
+            <div  style="border:1px solid #BBB; padding: 2px; background-color:#E5E5E5">
+                Name <input type='text' v-model="new_subcategory_name" maxlength='60'><br>
+                Remarks <span style="color:gray">(optional)</span><input type='text'  v-model="new_subcategory_remarks" maxlength='90'><br>
+                <button @click="add_subcategory" style="margin-top:2px">Add</button>
+            </div>
+
+
         </div>
 
 
@@ -361,10 +362,8 @@ It does *NOT* delete `' + s.name + '`'"
 </p>
 
 
-<p style="background-color: yellow; margin-top:0; padding: 5px">
-    <span style="font-size:18px;">IMPORTANT: still in Beta.  <i>A few functions aren't yet implemented.</i></span>
-    <br>To add a new sub-category, go to the category-viewer pages, enter editing mode, and
-    use the add-category box at the bottom.
+<p style="margin-top:0; padding: 5px; width: 50%">
+    <span style="font-size:14px; background-color: yellow;">IMPORTANT: still in Beta.  <i>A few functions aren't yet implemented.</i></span>
 </p>
 
 <br>
@@ -393,11 +392,11 @@ new Vue({
         // The DATA HANDOVER from Flask to Vue
         category_uri: {{category_uri}},
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
-                                                           // Eg: [{uri: 544, name: 'Language', schema_code: 'cat'}]
+                                                           // Eg: [{uri: '544', name: 'Language', schema_code: 'cat'}]
         subcategories: {{subcategories | tojson}},         // List of sub-categories, each of which is an object
                                                            //       (same format as for parent_categories)
         all_categories: {{all_categories | tojson}},       // List of all categories, each of which is an object
-                                                           // Eg: [{uri: 888, name: 'Greek'}]
+                                                           // Eg: [{uri: '888', name: 'Greek'}]
 
         // The values bound to the editing fields, initially from the data handover from Flask;
         //      it'll change in the course of the edit-in-progress
@@ -413,6 +412,10 @@ new Vue({
         edit_name_mode: false,      // To expose controls for editing name/remarks
 
         pin_status: {{pin_status | tojson}},    // true if this Category is "pinned"; otherwise, false  (Note: tojson converts bools)
+
+        // For the "Add Subcategory" form
+        new_subcategory_name: "",
+        new_subcategory_remarks: "",
 
         waiting: false,             // Whether any server request is still pending
         error: false,               // Whether the last server communication resulted in error
@@ -693,6 +696,58 @@ new Vue({
             // Final wrap-up, regardless of error or success
             this.waiting = false;      // Make a note that the asynchronous operation has come to an end
         },
+
+
+        add_subcategory()
+        // Create a new sub-category for the current Category
+        {
+            const category_uri = this.category_uri;
+            console.log(`Adding new sub-category: category_uri: ${category_uri}, subcategory name: ${this.new_subcategory_name} , remarks: ${this.new_subcategory_remarks}`);
+            if (this.new_subcategory_name == "")  {
+                alert("Must enter a Subcategory name");
+                return;
+            }
+
+            // Send the request to the server, using a POST
+            const url_server_api = "/BA/api/add_subcategory"
+            // Compose the body of the POST to send to the server
+            const post_obj = {category_uri: category_uri,
+                              subcategory_name: this.new_subcategory_name,
+                              subcategory_remarks: this.new_subcategory_remarks};
+
+            // Initiate asynchronous contact with the server
+            this.waiting = true;        // Entering a waiting-for-server mode
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";   // Clear any message from the previous operation
+            ServerCommunication.contact_server(url_server_api,
+                                               {post_obj: post_obj, callback_fn: this.finish_add_subcategory});
+        },
+
+        finish_add_subcategory(success, server_payload, error_message)
+        /*  Callback function to wrap up the action of add_subcategory() upon getting a response from the server.
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
+         */
+        {
+            console.log("Finalizing the Add Subcategory operation...");
+            if (success)  {     // Server reported SUCCESS
+                this.status_message = `New sub-category successfully added (assigned URI '${server_payload}')`;
+                // Update the data of the root component, to refresh some displays
+                let new_subcategory = {uri: server_payload, name: this.new_subcategory_name};
+                this.subcategories.push(new_subcategory);
+                this.all_categories.push(new_subcategory);      // TODO: sort alphabetically
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED addition of new Sub-category`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            // Clear up the form
+            this.new_subcategory_name = "";
+            this.new_subcategory_remarks = "";
+
+        }, // finish_add_subcategory
 
 
 

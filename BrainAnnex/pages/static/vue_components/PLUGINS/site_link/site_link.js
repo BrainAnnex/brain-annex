@@ -113,7 +113,8 @@ Vue.component('vue-plugin-sl',
                         item_data:      The FULL data passed by the parent component
 
                     COMPONENT VARIABLES:
-                        current_data:   Object with the values bound to the editing fields, initially cloned from (part of) the "prop" data;
+                        current_data:   Object with the values bound to the editing fields,
+                                        initially cloned from (part of) the "prop" data;
                                         it'll change in the course of the edit-in-progress
 
                         original_data:  Object with pre-edit data, initially cloned from (part of) the "prop" data;
@@ -297,7 +298,7 @@ Vue.component('vue-plugin-sl',
 
 
             clone_and_standardize(obj)
-            // Clone, and remove keys that don't get shown nor edited
+            // Clone first; then remove some keys that shouldn't get shown nor edited
             {
                 clone_obj = Object.assign({}, obj);     // Clone the object
 

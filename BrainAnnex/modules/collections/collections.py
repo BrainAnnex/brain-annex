@@ -6,15 +6,15 @@ class Collections:
     """
     An ordered sequence of Data Nodes.
 
-    An entity to which a variety of Data Nodes
-    is attached, with a positional attribute.
+    We define a "Collection" as an entity to which a variety of Data Nodes
+    are attached, with positional attributes in their links.
 
     In terms of implementation, it's a hub, with a central data node (the "Collection"),
     to which any number of Data Nodes (or "Collection Items") are linked;
     the relationship name can be anything (user-passed) but it gets assigned a property
     named "pos", which is managed by this class, to maintain and alter the sequential order.
 
-    A generalization of Categories.
+    Example of use case: "pages" of "Content Items" attached to a "Category"
     """
 
     # Class variables
@@ -48,8 +48,10 @@ class Collections:
     @classmethod
     def create_collections_class(cls) -> (int, int):
         """
+        Create a new Schema Class node that represents a "Collection"
 
-        :return:
+        :return:    An (int, str) pair of integers with the internal database ID
+                        and the unique uri assigned to the node just created
         """
         return NeoSchema.create_class(name="Collections", strict = False)
 

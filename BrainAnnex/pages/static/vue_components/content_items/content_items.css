@@ -1,6 +1,22 @@
+/* Used to highlight the Content Item (e.g. prior to deleting it) */
 div.highlight {
     background-color: red;
 }
+
+div.content-item {
+    display: inline-block;
+    vertical-align: top;
+    margin-bottom: 20px;
+    margin-right: 10px;
+}
+
+div.content-item-separate-line {
+    display: block;
+    vertical-align: top;
+    margin-bottom: 20px;
+}
+
+
 
 p.confirm-question {
     background-color: white;
