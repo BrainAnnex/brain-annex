@@ -369,7 +369,43 @@ def test_delete_class_relationship(db):
 
 
 def test_unlink_classes(db):
-    pass    # TODO
+    db.empty_dbase()
+    person, _ = NeoSchema.create_class(name="Person")
+    car, _ = NeoSchema.create_class(name="Car")
+
+    # Create links in both directions between our 2 Classes
+    NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="OWNS")
+    NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_OWNED_BY")
+
+    q = "MATCH (:CLASS {name: 'Person'}) -[r]- (:CLASS {name: 'Car'}) RETURN count(r) AS n_rel"
+    assert db.query(q, single_cell="n_rel") == 2
+
+    assert NeoSchema.unlink_classes(class1="Person", class2="Car") == 2     # Use class names
+    assert db.query(q, single_cell="n_rel") == 0
+
+
+    # Re-create links in both directions between our 2 Classes
+    NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="OWNS")
+    NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_OWNED_BY")
+
+    assert NeoSchema.unlink_classes(class1="Person", class2=car) == 2       # Use class name and internal ID
+    assert db.query(q, single_cell="n_rel") == 0
+
+
+    # Re-create links in both directions between our 2 Classes
+    NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="OWNS")
+    NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_OWNED_BY")
+
+    assert NeoSchema.unlink_classes(class1=person, class2="Car") == 2       # Use internal ID and class name
+    assert db.query(q, single_cell="n_rel") == 0
+
+
+    # Re-create links in both directions between our 2 Classes
+    NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="OWNS")
+    NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_OWNED_BY")
+
+    assert NeoSchema.unlink_classes(class1=person, class2=car) == 2      # Use internal IDs
+    assert db.query(q, single_cell="n_rel") == 0
 
 
 

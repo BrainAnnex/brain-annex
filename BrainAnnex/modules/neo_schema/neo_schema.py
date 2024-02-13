@@ -188,7 +188,7 @@ class NeoSchema:
 
 
     @classmethod
-    def assert_valid_class_identifier(cls, class_node: Union[int, str]) -> None:
+    def assert_valid_class_identifier(cls, class_node :Union[int, str]) -> None:
         """
         Raise an Exception is the argument is not a valid "identifier" for a Class node,
         meaning either a valid name or a valid internal database ID
@@ -696,7 +696,7 @@ class NeoSchema:
 
         Note: there might be more than one - relationships with the same name between the same nodes
               are allowed, provided that they have different properties.
-              If more than one is found, they will all be deleted.  (TODO: test)
+              If more than one is found, they will all be deleted.
               The number of relationships deleted will be returned
 
         :param from_class:  Name of one existing Class node (blanks allowed in name)
@@ -708,6 +708,8 @@ class NeoSchema:
                             In case of error, or if no relationship was found, an Exception is raised
         """
         #TODO: provide more feedback in case of failure
+        #TODO: maybe merge with unlink_classes()
+        #TODO: test if more than one link is found, they will all be deleted
 
         assert from_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'from_class' argument"
         assert to_class, "NeoSchema.delete_class_relationship(): A name must be provided for the 'to_class' argument"
@@ -727,36 +729,44 @@ class NeoSchema:
 
 
     @classmethod
-    def unlink_classes(cls, class1: int, class2: int) -> bool:
+    def unlink_classes(cls, class1 :Union[int, str], class2 :Union[int, str]) -> int:
         """
-        Remove ALL relationships (in any direction) between the specified classes
+        Remove ALL relationships (in any direction) between the specified Classes
 
-        :param class1:  Integer ID to identify the first Class
-        :param class2:  Integer ID to identify the second Class
-        :return:        True if exactly one relationship (in either direction) was found, and successfully removed;
-                        otherwise, False
+        :param class1:  Either the integer internal database ID, or name, to identify the first Class
+        :param class2:  Either the integer internal database ID, or name, to identify the second Class
+        :return:        The number of relationships deleted (possibly zero)
         """
+        #TODO: maybe merge with delete_class_relationship()
+        if type(class1) == int:
+            where_clause = "ID(c1) = $class1"
+        else:
+            where_clause = "c1.name = $class1"
+
+        where_clause += " AND "
+
+        if type(class2) == int:
+            where_clause += "ID(c2) = $class2"
+        else:
+            where_clause += "c2.name = $class2"
+
         q = f'''
-            MATCH (c1: `{cls.class_label}` {{ uri: '{class1}' }})
-                  -[r]
-                  -(c2: `{cls.class_label}` {{ uri: '{class2}' }})
+            MATCH (c1 :CLASS) - [r] - (c2 :CLASS) 
+            WHERE {where_clause}
             DELETE r
             '''
+
         # EXAMPLE:
         '''
-        MATCH (c1: `CLASS` { uri: 'schema-1' })
-              -[r]
-              -(c2: `CLASS` { uri: 'schema-15'})
+        MATCH (c1 :CLASS) - [r] - (c2 :CLASS) 
+        WHERE "ID(c1) = $class1 AND c2.name = $class2"
         DELETE r
         '''
         #print(q)
 
-        result = cls.db.update_query(q)
-        #print("result of unlink_classes in remove_property_from_class(): ", result)
-        if result.get("relationships_deleted") == 1:
-            return True
-        else:
-            return False
+        result = cls.db.update_query(q, data_binding={"class1": class1, "class2": class2})
+        #print("result of unlink_classes: ", result)
+        return result.get("relationships_deleted")
 
 
 
