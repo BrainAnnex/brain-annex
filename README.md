@@ -10,7 +10,7 @@ The version number can be found in `VERSION_NUMBER.txt`
 
 ### Website: https://BrainAnnex.org
 
-**[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
+**[Change Log](https://brainannex.org/history)**
 
 
 
@@ -27,7 +27,7 @@ _From lower to higher levels:_
 
 * **NeoSchema library** (optional Schema layer)
 
-* **Python/Flask** (for API and webapp pages)
+* **Python/Flask** (for web API, and web app pages)
 
 * **Vue2.js**
 
