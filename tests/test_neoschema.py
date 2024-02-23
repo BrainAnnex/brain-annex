@@ -666,11 +666,21 @@ def test_is_property_allowed(db):
     NeoSchema.create_class_with_properties("German Vocabulary", ["German"], strict=True)
     assert NeoSchema.is_property_allowed(property_name="German", class_name="German Vocabulary")
     assert not NeoSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
+    assert not NeoSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
 
+    # "notes" and "English" are Properties of the more general "Foreign Vocabulary" Class,
+    # of which "German Vocabulary" is an instance
     NeoSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"], strict=True)
     NeoSchema.create_class_relationship(from_class="German Vocabulary", to_class="Foreign Vocabulary", rel_name="INSTANCE_OF")
 
-    assert not NeoSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary") # TODO: fix!
+    assert NeoSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
+    assert NeoSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
+    assert not NeoSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")
+
+    NeoSchema.create_class_with_properties("Content Item", ["uri"], strict=True)
+    NeoSchema.create_class_relationship(from_class="Foreign Vocabulary", to_class="Content Item", rel_name="INSTANCE_OF")
+
+    assert NeoSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")   # "uri" is now available thru ancestry
 
 
 

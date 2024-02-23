@@ -1345,20 +1345,25 @@ class NeoSchema:
         Return True if the given Property is allowed by the specified Class,
         or False otherwise.
 
-        For a Property to be allowed, it must hold:
+        For a Property to be allowed, at least one of the following must hold:
             A) the Class isn't strict (i.e. every property is allowed)
-            OR
+        OR
             B) the Property has been registered with the Schema, for that Class
+        OR
+            C) the Property has been registered with the Schema, for an ancestral Class - reachable
+               from our given Class thru a chain of "INSTANCE_OF" relationships
 
         It's permissible for the specified Class not to exist; in that case, False will be returned
 
-        :param property_name:
-        :param class_name:
-        :return:
+        :param property_name:   Name of a Property (i.e. a field name) whose permissibility
+                                    we want to check
+        :param class_name:      Name of a Class in the Schema
+        :return:                True if the given Property is allowed by the specified Class,
+                                    or False otherwise
         """
-        # We use a Conditional Cypher Execution of the line starting with "MATCH (c)-[:HAS_PROPERTY]" ,
-        # to look up the Class Properties ONLY if the Class is "strict"
-        # (because if not strict, then there's no need to)
+        # We use a Conditional Cypher Execution of the line that starts with "MATCH (c)-[:INSTANCE_OF*0..]->" ,
+        # i.e. we execute it to look up the Class Properties ONLY if the Class is "strict"
+        # (if not strict, then there's no need to do that check; we already have an answer!)
         q = '''
             MATCH (c :CLASS {name: $class_name})
 
@@ -1367,15 +1372,16 @@ class NeoSchema:
                 WITH c
             
                 WHERE c.strict
-                MATCH (c)-[:HAS_PROPERTY]->(p:PROPERTY {name: $property_name})
+                MATCH (c)-[:INSTANCE_OF*0..]->(c_ancestor :CLASS)-[:HAS_PROPERTY]->(p:PROPERTY {name: $property_name})
             
                 RETURN count(p) > 0 AS has_property           
             }
             
             RETURN  (NOT c.strict OR has_property) AS allowed
             '''
-            # Note that count(p) will evaluate to 0 in case the Cypher MATCH immediately above it does not get executed
-            # More info: https://neo4j.com/developer/kb/conditional-cypher-execution/
+            # Note that count(p) will evaluate to 0 in case the Cypher "MATCH" immediately above it does not get executed.
+            # The repeated "WITH c" is necessary because of a quirk about "WITH" being used in subqueries with a "WHERE" clause;
+            # more info: https://neo4j.com/developer/kb/conditional-cypher-execution/
 
         return cls.db.query(q, data_binding={"property_name": property_name, "class_name": class_name},
                             single_cell="allowed")
