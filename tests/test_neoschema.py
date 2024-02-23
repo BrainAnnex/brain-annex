@@ -642,77 +642,36 @@ def test_remove_property_from_class(db):
 
 
 
-
-#############   SCHEMA-CODE  RELATED   ###########
-
-def test_get_schema_code(db):
-    pass    # TODO
-
-
-
-def test_get_schema_uri(db):
-    db.empty_dbase()
-    _ , schema_uri_i = NeoSchema.create_class("My_class", code="i")
-    _ , schema_uri_n = NeoSchema.create_class("My_other_class", code="n")
-
-    assert NeoSchema.get_schema_uri(schema_code="i") == schema_uri_i
-    assert NeoSchema.get_schema_uri(schema_code="n") == schema_uri_n
-    assert NeoSchema.get_schema_uri(schema_code="x") == ""
-
-
-
-#############   DATA POINTS   ###########
-
-def test_all_properties(db):
-    pass    # TODO
-
-
-def test_fetch_data_point(db):
-    pass    # TODO
-
-
-
-def test_data_points_of_class(db):
-    pass    # TODO
-
-
-
-def test_count_data_points_of_class(db):
-
+def test_is_property_allowed(db):
     db.empty_dbase()
 
-    with pytest.raises(Exception):
-        NeoSchema.count_data_nodes_of_class(666)   # Non-existent Class
+    assert not NeoSchema.is_property_allowed(property_name="cost", class_name="I_dont_exist")
 
-    class_internal_id_1 , _ = NeoSchema.create_class("Some class")
+    NeoSchema.create_class_with_properties("My Lax class", ["A", "B"], strict=False)
+    _, strict_uri = NeoSchema.create_class_with_properties("My Strict class", ["X", "Y"], strict=True)
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 0
+    assert NeoSchema.is_property_allowed(property_name="A", class_name="My Lax class")
+    assert NeoSchema.is_property_allowed(property_name="B", class_name="My Lax class")
+    assert NeoSchema.is_property_allowed(property_name="anything goes in a nonstrict class", class_name="My Lax class")
 
-    NeoSchema.create_data_node(class_node=class_internal_id_1)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 1
+    assert NeoSchema.is_property_allowed(property_name="X", class_name="My Strict class")
+    assert NeoSchema.is_property_allowed(property_name="Y", class_name="My Strict class")
+    assert not NeoSchema.is_property_allowed(property_name="some other field", class_name="My Strict class")
 
-    NeoSchema.create_data_node(class_node=class_internal_id_1)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 2
+    NeoSchema.add_properties_to_class(class_uri=strict_uri, property_list=["some other field"])   # Now it will be declared!
 
-
-    class_internal_id_2 , _ = NeoSchema.create_class("Another class")
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_2) == 0
-
-    NeoSchema.create_data_node(class_node=class_internal_id_2)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_2) == 1
-
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 2   # Where we left it off
+    assert NeoSchema.is_property_allowed(property_name="some other field", class_name="My Strict class")
 
 
+    NeoSchema.create_class_with_properties("German Vocabulary", ["German"], strict=True)
+    assert NeoSchema.is_property_allowed(property_name="German", class_name="German Vocabulary")
+    assert not NeoSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
 
-def test_data_points_lacking_schema(db):
-    pass    # TODO
+    NeoSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"], strict=True)
+    NeoSchema.create_class_relationship(from_class="German Vocabulary", to_class="Foreign Vocabulary", rel_name="INSTANCE_OF")
 
+    assert not NeoSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary") # TODO: fix!
 
-
-def test_get_data_point_uri(db):
-    pass    # TODO
 
 
 def test_allowable_props(db):
@@ -799,6 +758,79 @@ def test_allowable_props(db):
     assert cached_data["class_attributes"] == {"name": "My Lax class", "uri": lax_schema_uri, "strict": False}
     cached_data = schema_cache.get_all_cached_class_data(strict_int_uri)
     assert cached_data["class_attributes"] == {"name": "My Strict class", "uri": strict_schema_uri, "strict": True}
+
+
+
+#############   SCHEMA-CODE  RELATED   ###########
+
+def test_get_schema_code(db):
+    pass    # TODO
+
+
+
+def test_get_schema_uri(db):
+    db.empty_dbase()
+    _ , schema_uri_i = NeoSchema.create_class("My_class", code="i")
+    _ , schema_uri_n = NeoSchema.create_class("My_other_class", code="n")
+
+    assert NeoSchema.get_schema_uri(schema_code="i") == schema_uri_i
+    assert NeoSchema.get_schema_uri(schema_code="n") == schema_uri_n
+    assert NeoSchema.get_schema_uri(schema_code="x") == ""
+
+
+
+#############   DATA POINTS   ###########
+
+def test_all_properties(db):
+    pass    # TODO
+
+
+def test_fetch_data_point(db):
+    pass    # TODO
+
+
+
+def test_data_points_of_class(db):
+    pass    # TODO
+
+
+
+def test_count_data_points_of_class(db):
+
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.count_data_nodes_of_class(666)   # Non-existent Class
+
+    class_internal_id_1 , _ = NeoSchema.create_class("Some class")
+
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 0
+
+    NeoSchema.create_data_node(class_node=class_internal_id_1)
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 1
+
+    NeoSchema.create_data_node(class_node=class_internal_id_1)
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 2
+
+
+    class_internal_id_2 , _ = NeoSchema.create_class("Another class")
+
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_2) == 0
+
+    NeoSchema.create_data_node(class_node=class_internal_id_2)
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_2) == 1
+
+    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 2   # Where we left it off
+
+
+
+def test_data_points_lacking_schema(db):
+    pass    # TODO
+
+
+
+def test_get_data_point_uri(db):
+    pass    # TODO
 
 
 

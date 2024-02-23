@@ -28,9 +28,11 @@ class NeoSchema:
     GOALS
 
         - Data integrity
+        - Data filtering upon import
         - Assist the User Interface
-        - Infuse into Neo4j functionality that some people turn to RDF for.  However, carving out a new path
-          rather than attempting to emulate RDF!
+        - Self-documentation of the database
+        - Graft into graph database some of the semantic functionality that some people turn to RDF for.
+            However, carving out a new path rather than attempting to emulate RDF!
 
 
 
@@ -46,7 +48,7 @@ class NeoSchema:
 
         - Data nodes are linked to their respective classes by a "SCHEMA" relationship.
 
-        - Some classes contain an attribute named "schema_code" that identifies the UI code to display/edit them,
+        - Some classes contain an attribute named "schema_code" that identifies the UI code to display/edit them [this might change!],
           as well as their descendants under the "INSTANCE_OF" relationships.
           Conceptually, the "schema_code" is a relationship to an entity consisting of software code.
 
@@ -115,12 +117,13 @@ class NeoSchema:
     class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;
                                         # TODO: maybe double label it with "SCHEMA", in part to avoid potential conflicts with other modules
 
-    property_label = "PROPERTY"         # Neo4j label to be used with Property nodes managed by this class
+    property_label = "PROPERTY"         # Neo4j label to be used with Property nodes managed by this class  TODO: no longer used
 
-    class_prop_rel = "HAS_PROPERTY"     # The name to use for the relationships from `Class` to `Property` nodes
+    class_prop_rel = "HAS_PROPERTY"     # The name to use for the relationships from `Class` to `Property` nodes TODO: no longer used
 
     data_class_rel = "SCHEMA"           # The name to use for the relationships from data nodes to `Property` nodes
                                         #       Alt. name ideas: "IS", "HAS_CLASS", "HAS_SCHEMA", "TYPE", "TYPE_OF"
+                                        #       TODO: no longer used
 
     debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
 
@@ -1336,11 +1339,99 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def is_property_allowed(cls, property_name :str, class_name :str) -> bool:
+        """
+        Return True if the given Property is allowed by the specified Class,
+        or False otherwise.
+
+        For a Property to be allowed, it must hold:
+            A) the Class isn't strict (i.e. every property is allowed)
+            OR
+            B) the Property has been registered with the Schema, for that Class
+
+        It's permissible for the specified Class not to exist; in that case, False will be returned
+
+        :param property_name:
+        :param class_name:
+        :return:
+        """
+        # We use a Conditional Cypher Execution of the line starting with "MATCH (c)-[:HAS_PROPERTY]" ,
+        # to look up the Class Properties ONLY if the Class is "strict"
+        # (because if not strict, then there's no need to)
+        q = '''
+            MATCH (c :CLASS {name: $class_name})
+
+            CALL {           
+                WITH c            
+                WITH c
+            
+                WHERE c.strict
+                MATCH (c)-[:HAS_PROPERTY]->(p:PROPERTY {name: $property_name})
+            
+                RETURN count(p) > 0 AS has_property           
+            }
+            
+            RETURN  (NOT c.strict OR has_property) AS allowed
+            '''
+            # Note that count(p) will evaluate to 0 in case the Cypher MATCH immediately above it does not get executed
+            # More info: https://neo4j.com/developer/kb/conditional-cypher-execution/
+
+        return cls.db.query(q, data_binding={"property_name": property_name, "class_name": class_name},
+                            single_cell="allowed")
+
+
+
+    @classmethod
+    def allowable_props(cls, class_internal_id: int, requested_props: dict, silently_drop: bool, schema_cache=None) -> dict:
+        """
+        If any of the properties in the requested list of properties is not a declared (and thus allowed) Schema property,
+        then:
+            1) if silently_drop is True, drop that property from the returned pared-down list
+            2) if silently_drop is False, raise an Exception
+
+        :param class_internal_id:   The internal database ID of a Schema Class node
+        :param requested_props:     A dictionary of properties one wishes to assign to a new data node, if the Schema allows
+        :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped;
+                                        otherwise, an Exception is raised if any property isn't allowed
+        :param schema_cache:        (OPTIONAL) "SchemaCache" object
+
+        :return:                    A possibly pared-down version of the requested_props dictionary
+        """
+        # TODO: possibly expand to handle REQUIRED properties
+
+        if requested_props == {} or requested_props is None:
+            return {}     # It's a moot point, if not attempting to set any property
+
+        if not cls.is_strict_class(class_internal_id, schema_cache=schema_cache):
+            return requested_props      # Any properties are allowed if the Class isn't strict
+
+
+        allowed_props = {}
+        class_properties = cls.get_class_properties(class_node=class_internal_id)  # List of Properties registered with the Class
+
+        for requested_prop in requested_props.keys():
+            # Check each of the requested properties
+            if requested_prop in class_properties:
+                allowed_props[requested_prop] = requested_props[requested_prop]     # Allowed
+            else:
+                # Not allowed
+                if not silently_drop:
+                    raise Exception(f"NeoSchema.allowable_props(): "
+                                    f"the requested property `{requested_prop}` is not among the registered Properties "
+                                    f"of the Class `{cls.get_class_name(class_internal_id)}`")
+
+        return allowed_props
+
+
+
 
     #####################################################################################################
-    #                                                                                                   #
-    #                                    ~ SCHEMA-CODE  RELATED ~                                       #
-    #                                                                                                   #
+
+    '''                          ~   SCHEMA-CODE  RELATED   ~                                   '''
+
+    def ________SCHEMA_CODE________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
     @classmethod
@@ -1704,49 +1795,6 @@ class NeoSchema:
             '''
 
         return cls.db.query(q)
-
-
-
-    @classmethod
-    def allowable_props(cls, class_internal_id: int, requested_props: dict, silently_drop: bool, schema_cache=None) -> dict:
-        """
-        If any of the properties in the requested list of properties is not a declared (and thus allowed) Schema property,
-        then:
-            1) if silently_drop is True, drop that property from the returned pared-down list
-            2) if silently_drop is False, raise an Exception
-
-        :param class_internal_id:   The internal database ID of a Schema Class node
-        :param requested_props:     A dictionary of properties one wishes to assign to a new data node, if the Schema allows
-        :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped;
-                                        otherwise, an Exception is raised if any property isn't allowed
-        :param schema_cache:        (OPTIONAL) "SchemaCache" object
-
-        :return:                    A possibly pared-down version of the requested_props dictionary
-        """
-        # TODO: possibly expand to handle REQUIRED properties
-
-        if requested_props == {} or requested_props is None:
-            return {}     # It's a moot point, if not attempting to set any property
-
-        if not cls.is_strict_class(class_internal_id, schema_cache=schema_cache):
-            return requested_props      # Any properties are allowed if the Class isn't strict
-
-
-        allowed_props = {}
-        class_properties = cls.get_class_properties(class_node=class_internal_id)  # List of Properties registered with the Class
-
-        for requested_prop in requested_props.keys():
-            # Check each of the requested properties
-            if requested_prop in class_properties:
-                allowed_props[requested_prop] = requested_props[requested_prop]     # Allowed
-            else:
-                # Not allowed
-                if not silently_drop:
-                    raise Exception(f"NeoSchema.allowable_props(): "
-                                    f"the requested property `{requested_prop}` is not among the registered Properties "
-                                    f"of the Class `{cls.get_class_name(class_internal_id)}`")
-
-        return allowed_props
 
 
 
