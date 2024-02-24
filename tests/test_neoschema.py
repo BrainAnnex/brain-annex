@@ -663,24 +663,54 @@ def test_is_property_allowed(db):
     assert NeoSchema.is_property_allowed(property_name="some other field", class_name="My Strict class")
 
 
-    NeoSchema.create_class_with_properties("German Vocabulary", ["German"], strict=True)
+    _ , german_uri = NeoSchema.create_class_with_properties("German Vocabulary", ["German"], strict=True)
     assert NeoSchema.is_property_allowed(property_name="German", class_name="German Vocabulary")
     assert not NeoSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
     assert not NeoSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
 
     # "notes" and "English" are Properties of the more general "Foreign Vocabulary" Class,
     # of which "German Vocabulary" is an instance
-    NeoSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"], strict=True)
+    _ , foreign_uri = NeoSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"], strict=True)
     NeoSchema.create_class_relationship(from_class="German Vocabulary", to_class="Foreign Vocabulary", rel_name="INSTANCE_OF")
 
     assert NeoSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
     assert NeoSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
     assert not NeoSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")
 
-    NeoSchema.create_class_with_properties("Content Item", ["uri"], strict=True)
+    _ , content_uri = NeoSchema.create_class_with_properties("Content Item", ["uri"], strict=True)
     NeoSchema.create_class_relationship(from_class="Foreign Vocabulary", to_class="Content Item", rel_name="INSTANCE_OF")
 
     assert NeoSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")   # "uri" is now available thru ancestry
+    assert NeoSchema.is_property_allowed(property_name="uri", class_name="Foreign Vocabulary")
+
+    assert not NeoSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
+    assert not NeoSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
+    assert not NeoSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
+
+    # Properties "New_1", "New_2", "New_3" will be added, respectively,
+    # to the Classes "German Vocabulary", "Foreign Vocabulary" and "Content Item"
+    NeoSchema.add_properties_to_class(class_uri=german_uri, property_list=["New_1"])
+    assert NeoSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
+    assert not NeoSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
+    assert not NeoSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
+
+    NeoSchema.add_properties_to_class(class_uri=foreign_uri, property_list=["New_2"])
+    assert NeoSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
+    assert NeoSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
+    assert not NeoSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
+
+    NeoSchema.add_properties_to_class(class_uri=content_uri, property_list=["New_3"])
+    assert NeoSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
+    assert NeoSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
+    assert NeoSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
+
+    assert not NeoSchema.is_property_allowed(property_name="New_1", class_name="Foreign Vocabulary")    # "New_1" was added to "German Vocabulary"
+    assert NeoSchema.is_property_allowed(property_name="New_2", class_name="Foreign Vocabulary")
+    assert NeoSchema.is_property_allowed(property_name="New_3", class_name="Foreign Vocabulary")
+
+    assert not NeoSchema.is_property_allowed(property_name="New_1", class_name="Content Item")
+    assert not NeoSchema.is_property_allowed(property_name="New_2", class_name="Content Item")      # New_2" was added to "Foreign Vocabulary"
+    assert NeoSchema.is_property_allowed(property_name="New_3", class_name="Content Item")
 
 
 
