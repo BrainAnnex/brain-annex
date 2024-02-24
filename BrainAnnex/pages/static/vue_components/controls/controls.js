@@ -1,13 +1,13 @@
 /*  Standard controls for Content Items to edit, move, etc,
-    If the 'allow_editing' prop is true, it produces a DIV element with a row of controls;
+    If the 'edit_mode' prop is true, this component generates a DIV element with a row of controls;
     the DIV is an inline-block, so that extra controls can be easily added at the start and/or end of its standard row
  */
 
 Vue.component('vue-controls',
     {
-        props: ['allow_editing', 'index', 'item_count'],
+        props: ['edit_mode', 'index', 'item_count'],
         /*
-            allow_editing:  A boolean indicating whether in editing mode  (TODO: maybe rename to "edit_mode")
+            edit_mode:  A boolean indicating whether in editing mode
             index:          The zero-based position of the Content Item on the page
             item_count:     The total number of Content Items on the page
 
@@ -16,7 +16,7 @@ Vue.component('vue-controls',
          */
 
         template: `
-            <div v-if="allow_editing"
+            <div v-if="edit_mode"
                 style='display:inline-block; margin:0px'>	<!-- Outer container box, serving as Vue-required template root  -->
 
                 <img @click="delete_item" src="/BA/pages/static/graphics/delete_16.png"

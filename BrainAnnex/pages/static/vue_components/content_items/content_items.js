@@ -52,7 +52,7 @@ Vue.component('vue-content-items',
                 v-bind:is="plugin_component_name(item, registered_plugins)"
 
                 v-bind:item_data="item"
-                v-bind:allow_editing="expose_controls"
+                v-bind:edit_mode="expose_controls"
                 v-bind:category_id="category_uri"
                 v-bind:index="index"
                 v-bind:item_count="item_count"

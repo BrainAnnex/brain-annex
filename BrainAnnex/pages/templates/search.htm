@@ -122,7 +122,7 @@
 
      Props (arguments) passed to the components
             v-bind:item_data="item"
-            v-bind:allow_editing="expose_controls"
+            v-bind:edit_mode="expose_controls"
             v-bind:category_id="category_id"
      -->
 <div v-for="item in content_array">
@@ -130,7 +130,7 @@
                 v-bind:key="item.schema_code + item.uri + item.pos"
                 v-bind:is="plugin_component_name(item)"
                 v-bind:item_data="item"
-                v-bind:allow_editing="expose_controls"
+                v-bind:edit_mode="expose_controls"
                 v-bind:category_id="category_id"
     >
     </component>

@@ -3,12 +3,12 @@
 
 Vue.component('vue-plugin-i',
     {
-        props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
+        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
         /*  item_data:  EXAMPLE: {"uri":52,"pos":10,"schema_code":"i","basename":"my pic","suffix":"jpg",
                                                     "caption":"my 1st pic", width:450, height:760}
                                  (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
 
-            allow_editing:  A boolean indicating whether in editing mode
+            edit_mode:  A boolean indicating whether in editing mode
             index:          the zero-based position of the Record on the page
             item_count:     the total number of Content Items (of all types) on the page
          */
@@ -28,7 +28,7 @@ Vue.component('vue-plugin-i',
                   Intercept the following signal from child component:
                         v-on:edit-content-item
             -->
-            <vue-controls v-bind:allow_editing="allow_editing"  v-bind:index="index"  v-bind:item_count="item_count"
+            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item(item_data)">
             </vue-controls>

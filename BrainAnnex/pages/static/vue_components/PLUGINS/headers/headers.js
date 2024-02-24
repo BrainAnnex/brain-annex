@@ -5,13 +5,13 @@
 
 Vue.component('vue-plugin-h',
     {
-        props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
+        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
         /*  item_data:      An object with the relevant data about this Header item;
                                 if the "uri" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
                             EXAMPLE: {"uri":52,"pos":10,"schema_code":"h","text":"MY NEW SECTION"}
 
-            allow_editing:  A boolean indicating whether in editing mode
+            edit_mode:  A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this Header is displayed (used when creating new records)
             index:          The zero-based position of this Header item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -38,7 +38,7 @@ Vue.component('vue-plugin-h',
                   Intercept the following signal from child component:
                         v-on:edit-content-item
             -->
-            <vue-controls v-bind:allow_editing="allow_editing" v-bind:index="index"  v-bind:item_count="item_count"
+            <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item">
             </vue-controls>
