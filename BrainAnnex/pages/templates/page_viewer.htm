@@ -330,7 +330,7 @@
     </vue-content-items>
 
     <p style="margin-top:0; margin-bottom:40px">
-        <input type="checkbox"  v-bind:ref="item.uri"  @click="foo(item.uri)">
+        <input type="checkbox"  v-bind:ref="item.uri"  @click="bulk_checkbox_clicked(item.uri)">
     </p>
 
 </template>
@@ -569,7 +569,8 @@ new Vue({
                                     // TODO: switch from "uri" to "uri"
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
-        bulk_operations: false,
+        bulk_operations: false,     // If true, checkboxes for bulk operations of Content Items are revealed
+        checkboxes_selected: [],    // Array of strings, containing the URI's of the Content Items selected for bulk operations
 
         category_uri: {{category_uri}},   // A string with the URI of the Category featured on this page
 
@@ -655,16 +656,31 @@ new Vue({
 
     methods:  {
 
-        foo(uri)
+        bulk_checkbox_clicked(uri)
         {
             console.log(`Clicked checkbox for Content Item with URI: '${uri}'`);
 
-            //console.log(this.$refs);
+            //console.log(this.$refs);                // Shows an array
             const checkbox_element = this.$refs[uri]; // Pluck out the specific checkbox the invoked this function
             //console.log(checkbox_element);          // Somehow, this reveals an array with 2 elements
             //console.log(checkbox_element[0]);
             const checkbox_status = checkbox_element[0].checked;
             console.log(`    checkbox status is: ${checkbox_status}`);
+            //console.log(`    ${this.checkboxes_selected}`);
+            if (checkbox_status) {
+                console.log(`    adding URI: '${uri}'`);
+                this.checkboxes_selected.push(uri); // Beware: the Vue devtools requires a refresh to
+                                                    //         show the updated value!
+                /*
+                this.checkboxes_selected.splice(this.checkboxes_selected.length, 0, uri);
+                Vue.set(this.checkboxes_selected, this.checkboxes_selected.length, uri);
+                this.checkboxes_selected = this.checkboxes_selected.concat([uri]);
+                */
+            }
+            else
+                console.log(`    removing URI: '${uri}'`);
+
+            console.log(`    checkboxes_selected:  ${this.checkboxes_selected}`);;
         },
 
 
