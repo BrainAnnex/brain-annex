@@ -1,6 +1,8 @@
-/*  Standard controls for Content Items to edit, move, etc,
+/*  Standard controls for a Content Item to edit, move, etc,
     If the 'edit_mode' prop is true, this component generates a DIV element with a row of controls;
-    the DIV is an inline-block, so that extra controls can be easily added at the start and/or end of its standard row
+        the DIV is an inline-block, so that the parent component
+        may easily add extra controls at the start and/or end of its standard row.
+    If the 'edit_mode' prop is false, nothing is generated
  */
 
 Vue.component('vue-controls',
@@ -8,8 +10,8 @@ Vue.component('vue-controls',
         props: ['edit_mode', 'index', 'item_count'],
         /*
             edit_mode:  A boolean indicating whether in editing mode
-            index:          The zero-based position of the Content Item on the page
-            item_count:     The total number of Content Items on the page
+            index:      The zero-based position of the Content Item on the page
+            item_count: The total number of Content Items on the page
 
             TODO: maybe add a flag indicating whether to exclude the edit_tags control (not suitable for headers),
                   more generally, differentiate between controls for "Content Items" and controls for "Page Elements"
@@ -18,6 +20,8 @@ Vue.component('vue-controls',
         template: `
             <div v-if="edit_mode"
                 style='display:inline-block; margin:0px'>	<!-- Outer container box, serving as Vue-required template root  -->
+
+                <!-- <input type="checkbox" v-model="checkbox_status"> -->
 
                 <img @click="delete_item" src="/BA/pages/static/graphics/delete_16.png"
                      class="control" title="DELETE" alt="DELETE">
@@ -54,9 +58,20 @@ Vue.component('vue-controls',
 
         data: function() {
             return {
-                move_after: -1      // Index of the chosen Content Item to move an Item after (in a move operation)
+                move_after: -1,      // Index of the chosen Content Item to move an Item after (in a move operation)
+                checkbox_status: false
             }
         },
+
+
+        // --------------------  WATCH  ---------------------
+        watch: {
+            checkbox_status() {
+                console.log(`The state of the Checkbox has changed to: ${this.checkbox_status}`);
+                //console.log("`vue-controls` component WILL BE sending a 'check-box' signal to its parent");
+                //this.$emit('check-box', this.checkbox_status);
+            }
+       },
 
 
         // --------------------  METHODS  ---------------------

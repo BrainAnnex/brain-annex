@@ -189,6 +189,10 @@
     <a v-if="expose_controls" href='/BA/pages/category_manager/{{category_uri}}' style='margin-left:15px' target="_blank">
         <img src='/BA/pages/static/graphics/edit_16_2530834.png' alt='EDIT category (rename, etc.)' title='EDIT category (rename, etc.)'>
     </a>
+    <a v-if="expose_controls"  @click="bulk_operations = !bulk_operations"  style='margin-left:20px'>
+        <img src='/BA/pages/static/graphics/bulk_operation_16_1031512.png'
+             alt='Toggle BULK operations (tag, move, delete)' title='Toggle BULK operations (tag, move, delete)'>
+    </a>
 </p>
 {% endif %}
 
@@ -273,7 +277,7 @@
             v-on:insert-new-item
      -->
 
-<template v-if="expose_controls"  v-for="(item, index) in content_array">
+<template v-if="expose_controls && !bulk_operations"  v-for="(item, index) in content_array">
 
     <vue-content-items
         v-bind:key="item.schema_code + '_' + item.uri + '_' + index"
@@ -301,6 +305,35 @@
 
 </template>
 
+
+
+
+<!-- EXPERIMENTAL : Bulk operations -->
+
+<template v-if="bulk_operations"  v-for="(item, index) in content_array">
+
+    <vue-content-items
+            v-bind:key="item.uri"
+
+            v-bind:item="item"
+            v-bind:expose_controls="false"
+            v-bind:category_uri="category_uri"
+            v-bind:index="index"
+            v-bind:item_count="content_array.length"
+
+            v-bind:registered_plugins = "registered_plugins"
+            v-bind:records_types="records_types"
+
+            v-bind:schema_data="get_schema_data(item)"
+            v-bind:all_categories="all_categories"
+    >
+    </vue-content-items>
+
+    <p style="margin-top:0; margin-bottom:40px">
+        <input type="checkbox"  v-bind:ref="item.uri"  @click="foo(item.uri)">
+    </p>
+
+</template>
 
 
 
@@ -536,6 +569,7 @@ new Vue({
                                     // TODO: switch from "uri" to "uri"
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
+        bulk_operations: false,
 
         category_uri: {{category_uri}},   // A string with the URI of the Category featured on this page
 
@@ -620,6 +654,20 @@ new Vue({
     // ----------------------------  METHODS  -----------------------------
 
     methods:  {
+
+        foo(uri)
+        {
+            console.log(`Clicked checkbox for Content Item with URI: '${uri}'`);
+
+            //console.log(this.$refs);
+            const checkbox_element = this.$refs[uri]; // Pluck out the specific checkbox the invoked this function
+            //console.log(checkbox_element);          // Somehow, this reveals an array with 2 elements
+            //console.log(checkbox_element[0]);
+            const checkbox_status = checkbox_element[0].checked;
+            console.log(`    checkbox status is: ${checkbox_status}`);
+        },
+
+
 
         adjust_left_sidebar(state)
         // Adjust the collapse/expansion of the left sidebar, based on the requested state: true = expanded; false = collapsed
