@@ -21,8 +21,6 @@ Vue.component('vue-controls',
             <div v-if="edit_mode"
                 style='display:inline-block; margin:0px'>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <!-- <input type="checkbox" v-model="checkbox_status"> -->
-
                 <img @click="delete_item" src="/BA/pages/static/graphics/delete_16.png"
                      class="control" title="DELETE" alt="DELETE">
 
@@ -56,22 +54,13 @@ Vue.component('vue-controls',
             `,
 
 
+        // --------------------  DATA  ---------------------
         data: function() {
             return {
-                move_after: -1,      // Index of the chosen Content Item to move an Item after (in a move operation)
-                checkbox_status: false
+                move_after: -1      // Index of the chosen Content Item to move an Item after (in a move operation)
             }
         },
 
-
-        // --------------------  WATCH  ---------------------
-        watch: {
-            checkbox_status() {
-                console.log(`The state of the Checkbox has changed to: ${this.checkbox_status}`);
-                //console.log("`vue-controls` component WILL BE sending a 'check-box' signal to its parent");
-                //this.$emit('check-box', this.checkbox_status);
-            }
-       },
 
 
         // --------------------  METHODS  ---------------------

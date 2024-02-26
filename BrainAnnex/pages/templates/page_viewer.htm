@@ -336,6 +336,14 @@
 </template>
 
 
+<template v-if="bulk_operations">
+    <button @click="perform_bulk_operation"
+        style="padding: 40px; margin: 50px; font-size:28px; font-weight:bold; border:1px solid #660000; background-color:#00cc00; color:#fff; border-radius:15px">
+        BULK OPERATION
+    </button>
+</template>
+
+
 
 
 <!-- (PART 2 of 2)
@@ -395,7 +403,7 @@
 <br><br>
 
 
-<div v-show="expose_controls">
+<div v-show="expose_controls && !bulk_operations">
 
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
@@ -657,30 +665,54 @@ new Vue({
     methods:  {
 
         bulk_checkbox_clicked(uri)
+        // Invoked whenever the user clicks on any of the bulk-edit checkboxes
         {
             console.log(`Clicked checkbox for Content Item with URI: '${uri}'`);
 
             //console.log(this.$refs);                // Shows an array
-            const checkbox_element = this.$refs[uri]; // Pluck out the specific checkbox the invoked this function
+            const checkbox_element = this.$refs[uri]; // Pluck out the specific checkbox HTML element that invoked this function
             //console.log(checkbox_element);          // Somehow, this reveals an array with 2 elements
             //console.log(checkbox_element[0]);
-            const checkbox_status = checkbox_element[0].checked;
-            console.log(`    checkbox status is: ${checkbox_status}`);
-            //console.log(`    ${this.checkboxes_selected}`);
+            const checkbox_status = checkbox_element[0].checked;    // This will be true if the checkbox is in a selected state
+            //console.log(`    checkbox status is: ${checkbox_status}`);
+
+            // Now update the array of URI's selected for the bulk-update operation
+            //console.log(`    this.checkboxes_selected (prior to update):  ${this.checkboxes_selected}`);
             if (checkbox_status) {
+                //console.log(`    new box checked`);
+                if (this.checkboxes_selected.includes(uri))  {  // Unexpected scenario
+                    alert(`Attempting to select checkbox for URI: '${uri}' more than once; it's recommended to refresh the page and start over`);
+                    return;
+                }
                 console.log(`    adding URI: '${uri}'`);
                 this.checkboxes_selected.push(uri); // Beware: the Vue devtools requires a refresh to
                                                     //         show the updated value!
-                /*
-                this.checkboxes_selected.splice(this.checkboxes_selected.length, 0, uri);
-                Vue.set(this.checkboxes_selected, this.checkboxes_selected.length, uri);
-                this.checkboxes_selected = this.checkboxes_selected.concat([uri]);
-                */
             }
-            else
+            else  {
                 console.log(`    removing URI: '${uri}'`);
+                /*
+                if (! this.checkboxes_selected.includes(uri))  {  // Unexpected scenario
+                    alert(`Attempting to un-select checkbox for a URI ('${uri}') that wasn't selected; it's recommended to refresh the page and start over`);
+                    return;
+                }
+                */
+                // Remove from this.checkboxes_selected
+                const index = this.checkboxes_selected.indexOf(uri);
+                if (index == -1)    {       // Unexpected scenario
+                    alert(`Attempting to un-select checkbox for a URI ('${uri}') that wasn't selected; it's recommended to refresh the page and start over`);
+                    return;
+                }
+                this.checkboxes_selected.splice(index, 1);      // Removes 1 element from the array, at the specified position
+            }
 
-            console.log(`    checkboxes_selected:  ${this.checkboxes_selected}`);;
+            console.log(`    this.checkboxes_selected:  ${this.checkboxes_selected}`);
+        },
+
+
+        perform_bulk_operation()
+        {
+            // TODO: make sure that the array isn't empty!
+            console.log(`Will be performing bulk operation on these elements:  ${this.checkboxes_selected}`);
         },
 
 
