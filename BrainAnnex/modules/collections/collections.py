@@ -140,7 +140,7 @@ class Collections:
         #TODO:  the Data Node creation perhaps should be done ahead of time, and doesn't need to be the responsibility of this class!
         #TODO:  solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
-        #       -> Follow the new way it is handled in add_content_at_end()
+        #       -> Follow the new way it is handled in link_to_collection_at_end()
 
         assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
@@ -175,65 +175,126 @@ class Collections:
 
 
     @classmethod
-    def link_to_collection_at_end(cls, collection_dbase_id :int, item_dbase_id :int, membership_rel_name :str) -> None:
+    def link_to_collection_at_end(cls, item_uri :str, collection_uri :str, membership_rel_name :str) -> None:
         """
-        Given an EXISTING data node, link it to the end of the specified Collection,
+        Given an existing data node (meant to be a "Collection Item"),
+        link it to the end of the specified Collection data node,
         using the requested relationship name.
 
-        If a connection to that Collection already exists, an Exception is raised.
+        If a link already exists, an Exception is raised.
 
-        :param collection_dbase_id: Internal database ID of an existing Collection
-        :param item_dbase_id:       Internal database ID of an existing Data Node representing a "Collection Item"
+        :param item_uri:            The URI of an existing Data Node representing a "Collection Item"
+        :param collection_uri:      The URI of an existing Collection Data Node
         :param membership_rel_name: The name to give to the relationship
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    None
         """
-        # TODO: use this function as a role model for linking at the start
-        # TODO: enforce that the respective Classes of the Data Nodes are a relationship named membership_rel_name;
+        # TODO: use this function as a ***ROLE MODEL*** for linking at the start
+        # TODO: (optionally?) enforce that the respective Classes of the Data Nodes are a relationship named membership_rel_name;
         #       use NeoSchema.class_relationship_exists()
 
-        # TODO: replicate this check to all functions??
-        if cls.db is None:
-            raise Exception("Collections.link_to_collection_at_end(): database not set")
-
-        # Make sure that no connection already exists
-        if cls.db.links_exist(match_from=item_dbase_id, match_to=collection_dbase_id, rel_name=membership_rel_name):
-            raise Exception(f"Collections.link_to_collection_at_end(): the link '{membership_rel_name}' already exists "
-                            f"from node with internal database ID {item_dbase_id} to node {collection_dbase_id}")
-
         # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
+        # The "OPTIONAL MATCH" is used to compute a new positional value
         q = f'''
-            MATCH (collection) 
-            WHERE id(collection) = $collection_dbase_id
-            WITH collection
-            OPTIONAL MATCH (old_ci) -[r :{membership_rel_name}]-> (collection)
-            WITH r.pos AS pos, collection
+            MATCH (ci), (collection) 
+            WHERE ci.uri = $item_uri 
+              AND collection.uri = $collection_uri
+              AND NOT ( (ci) -[:`{membership_rel_name}`]-> (collection) )
+            WITH ci, collection
+            
+            OPTIONAL MATCH (old_ci) -[r :`{membership_rel_name}`]-> (collection)
+            WITH r.pos AS pos, collection, ci
             WITH 
                 CASE WHEN pos IS NULL THEN
                     0
                 ELSE
                     max(pos) + {cls.DELTA_POS}
-                END AS new_pos, collection
+                END AS new_pos, collection, ci
             
-            MATCH (new_ci)
-            WHERE id(new_ci) = $item_dbase_id
-            MERGE (new_ci)-[:{membership_rel_name} {{pos: new_pos}}]->(collection)
-        '''
-        #cls.db.debug_query_print(q, data_binding={"collection_dbase_id": collection_dbase_id, "item_dbase_id": item_dbase_id})
+            MERGE (ci) -[:`{membership_rel_name}` {{pos: new_pos}}]-> (collection)
+            '''
+        #cls.db.debug_query_print(q, data_binding={"collection_uri": collection_uri, "item_uri": item_uri})
 
         status = cls.db.update_query(q,
-                                     data_binding={"collection_dbase_id": collection_dbase_id, "item_dbase_id": item_dbase_id})
+                                     data_binding={"collection_uri": collection_uri, "item_uri": item_uri})
         #print("link_to_collection_at_end(): status is ", status)
 
         # status should be contain {'relationships_created': 1, 'properties_set': 1}
 
         assert status.get('relationships_created') == 1, \
             f"link_to_collection_at_end(): failed to create a new link " \
-            f"to a Collection with internal database ID {collection_dbase_id}"
+            f"to a Collection with URI '{collection_uri}'"
 
         assert status.get('properties_set') == 1, \
             f"link_to_collection_at_end(): failed to set the positional value to the new link " \
-            f"to the Collection with internal database ID {collection_dbase_id}"
+            f"to the Collection with URI '{collection_uri}'"
+
+
+
+    @classmethod
+    def relocate_to_other_collection_at_end(cls, item_uri :str, from_collection_uri :str, to_collection_uri :str, membership_rel_name :str):
+        """
+        Given an existing data node (representing a "Collection Item" of the specified "from" Collection),
+        switch it to become a "Collection Item" of the "to" Collection, positioned at the end of it.
+
+        The collection-membership relationship is severed from the "Collection Item" to the "from" Collection,
+        and a new one is created from the "Collection Item" to the "to" Collection.
+
+        In case no operation is performed, an Exception is raised.
+
+        :param item_uri:            The URI of a Data Node representing a "Collection Item" of the "from" Collection below
+        :param from_collection_uri: The URI of a Collection Data Node to which the above "Collection Item" is connected
+        :param to_collection_uri:   The URI of a Collection Data Node to which the above "Collection Item" needs to be switched to
+        :param membership_rel_name: The name to give to the relationship
+                                        in the direction from the "Collection Item" to the Collection node
+        :return:                    None
+        """
+
+        # Use an ATOMIC operation.  If any of the matches fail, no operation is performed
+        # The "OPTIONAL MATCH" is used to compute a new positional value
+        q = f'''
+            MATCH (collection_from) , (collection_to) ,
+                  (moving_ci) -[old_r :`{membership_rel_name}`]-> (collection_from)
+            WHERE collection_from.uri = $from_collection_uri
+              AND collection_to.uri = $to_collection_uri
+              AND moving_ci.uri = $item_uri
+            WITH collection_from, collection_to, moving_ci, old_r
+                        
+            OPTIONAL MATCH (existing_ci) -[r :`{membership_rel_name}`]-> (collection_to)
+            WITH r.pos AS pos, collection_from, collection_to, moving_ci, old_r
+            WITH 
+                CASE WHEN pos IS NULL THEN
+                    0
+                ELSE
+                    max(pos) + {cls.DELTA_POS}
+                END AS new_pos, collection_from, collection_to, moving_ci, old_r
+            
+            DELETE old_r
+            MERGE (moving_ci)-[:`{membership_rel_name}` {{pos: new_pos}}]->(collection_to)
+            '''
+        cls.db.debug_query_print(q, data_binding={"from_collection_uri": from_collection_uri,
+                                                  "to_collection_uri": to_collection_uri,
+                                                  "item_uri": item_uri})
+
+        status = cls.db.update_query(q,
+                                     data_binding={"from_collection_uri": from_collection_uri,
+                                                   "to_collection_uri": to_collection_uri,
+                                                   "item_uri": item_uri})
+        print("switch_to_other_collection_at_end(): status is ", status)
+
+        # status should be contain {, 'relationships_deleted': 1, 'relationships_created': 1, 'properties_set': 1}
+
+        assert status.get('relationships_deleted') == 1, \
+            f"switch_to_other_collection_at_end(): failed to locate or delete the old '{membership_rel_name}' link " \
+            f"that goes to a Collection with URI '{from_collection_uri}'"
+
+        assert status.get('relationships_created') == 1, \
+            f"switch_to_other_collection_at_end(): failed to create a new link " \
+            f"to a Collection with URI '{to_collection_uri}'"
+
+        assert status.get('properties_set') == 1, \
+            f"switch_to_other_collection_at_end(): failed to set the positional value to the new link " \
+            f"to a Collection with URI '{to_collection_uri}'"
 
 
 
@@ -255,10 +316,10 @@ class Collections:
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
-        #TODO:  the Data Node creation perhaps should be done ahead of time, and doesn't need to be the responsibility of this class!
+        #TODO:  DITCH!  The Data Node creation probably should be done ahead of time, and doesn't need to be the responsibility of this class!
         #TODO:  solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
-        #       -> Follow the new way it is handled in add_content_at_end()
+        #       -> Follow the new way it is handled in link_to_collection_at_end()
 
         assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
@@ -267,7 +328,7 @@ class Collections:
 
         # TODO: this query and the one in add_data_point(), below, ought to be combined, to avoid concurrency problems
         q = f'''
-            MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{uri: $collection_id}}) 
+            MATCH (n:BA) -[r :{membership_rel_name}]-> (c:BA {{uri: $collection_id}}) 
             RETURN max(r.pos) AS max_pos
             '''
         data_binding = {"collection_id": collection_uri}
@@ -315,7 +376,7 @@ class Collections:
         #TODO:  the Data Node creation perhaps should be done ahead of time, and doesn't need to be the responsibility of this class!
         #TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
-        #       -> Follow the new way it is handled in add_content_at_end()
+        #       -> Follow the new way it is handled in link_to_collection_at_end()
 
         assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"

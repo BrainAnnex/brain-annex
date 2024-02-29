@@ -21,19 +21,24 @@ def db():
 
 # ************  CREATE A SAMPLE COLLECTION for the testing  **************
 
-def initialize_collections(db):
-    # Clear the dbase, create a sample Collection named "Album" (a Class with a "name" and "uri" properties
+def create_sample_collections_class(db):
+    # Clear the dbase, create a sample Collections Class named "Photo Album" (a Class with a "name" and "uri" properties)
 
     db.empty_dbase()
 
     Collections.create_collections_class()
 
-    NeoSchema.create_class_with_properties(name="Album",
+    NeoSchema.create_class_with_properties(name="Photo Album",
                                            property_list=["name", "uri"])
 
-    NeoSchema.create_class_relationship(from_class="Album", to_class="Collections",
+    NeoSchema.create_class_relationship(from_class="Photo Album", to_class="Collections",
                                         rel_name="INSTANCE_OF", use_link_node=False)
 
+
+
+def create_sample_collection_item_class():
+    NeoSchema.create_class_with_properties(name="Photo",
+                                           property_list=["caption", "uri"])
 
 
 
@@ -41,11 +46,11 @@ def initialize_collections(db):
 # ************  THE ACTUAL TESTS  ************
 
 def test_is_collection(db):
-    initialize_collections(db)
+    create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
-    new_uri = NeoSchema.reserve_next_uri(prefix="album-")   # Use default namespace
-
-    NeoSchema.create_data_node(class_node="Album", properties ={"name": "Jamaica vacation"}, new_uri=new_uri)
+    # Create a Collection
+    new_uri = NeoSchema.reserve_next_uri(prefix="album-")
+    NeoSchema.create_data_node(class_node="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=new_uri)
 
     assert Collections.is_collection(collection_uri=new_uri)
 
@@ -59,3 +64,117 @@ def test_is_collection(db):
     NeoSchema.create_data_node(class_node="Car", properties ={"color": "white"}, new_uri=car_uri)
     assert not Collections.is_collection(collection_uri=car_uri)
 
+
+
+def test_relocate_to_other_collection_at_end(db):
+    create_sample_collections_class(db)     # Creates a "Photo Album" Class
+
+    # Create 2 Collections : "Jamaica" and a "Brazil" photo albums
+    jamaica_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS", prefix="album-")
+    NeoSchema.create_data_node(class_node="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
+    brazil_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
+    NeoSchema.create_data_node(class_node="Photo Album",
+                               properties ={"name": "Winter in Brazil"}, new_uri=brazil_uri)
+
+    # Create a Collection Item : a Carnaval photo "accidentally" placed in the Jamaica album
+    create_sample_collection_item_class()
+    carnaval_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
+    NeoSchema.create_data_node(class_node="Photo",
+                               properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
+
+    Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
+                                          collection_uri=jamaica_uri,
+                                          membership_rel_name="in_album")
+
+
+    # Fail the attempt to relocate the carnaval photo from the Jamaica album to the Brazil album,
+    # because of any of a number of errors
+    with pytest.raises(Exception):      # Using wrong relationship name
+        Collections.relocate_to_other_collection_at_end(item_uri=carnaval_photo_uri,
+                                                        from_collection_uri=jamaica_uri, to_collection_uri=brazil_uri,
+                                                        membership_rel_name="I don't exist")
+
+    with pytest.raises(Exception):      # Reversed "from" and "to" Collections
+        Collections.relocate_to_other_collection_at_end(item_uri=carnaval_photo_uri,
+                                                        to_collection_uri=jamaica_uri, from_collection_uri=brazil_uri,
+                                                        membership_rel_name="in_album")
+
+    with pytest.raises(Exception):      # Non-existing Collection Items
+        Collections.relocate_to_other_collection_at_end(item_uri="Some junk that does not exist",
+                                                        from_collection_uri=jamaica_uri, to_collection_uri=brazil_uri,
+                                                        membership_rel_name="in_album")
+
+    with pytest.raises(Exception):      # Non-existing "from" Collection
+        Collections.relocate_to_other_collection_at_end(item_uri=carnaval_photo_uri,
+                                                        from_collection_uri="Nonexistent URI", to_collection_uri=brazil_uri,
+                                                        membership_rel_name="in_album")
+
+    # Verify that the carnaval photo is STILL linked to the Jamaica album, with position 0
+    q = '''
+        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
+        RETURN COUNT(p) AS number_paths
+        '''
+    result = db.query(q, data_binding={"carnaval_photo_uri": carnaval_photo_uri}, single_cell="number_paths")
+    assert result == 1
+
+
+    # Relocate the carnaval photo from the Jamaica album to the Brazil album
+    Collections.relocate_to_other_collection_at_end(item_uri=carnaval_photo_uri,
+                                                    from_collection_uri=jamaica_uri, to_collection_uri=brazil_uri,
+                                                    membership_rel_name="in_album")
+
+    # Verify that the carnaval photo is now linked to the Brazil album, with position 0
+    q = '''
+        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        -[:in_album {pos: 0}]->(:`Photo Album` {name: "Winter in Brazil"}) 
+        RETURN COUNT(p) AS number_paths
+        '''
+    result = db.query(q, data_binding={"carnaval_photo_uri": carnaval_photo_uri}, single_cell="number_paths")
+    assert result == 1
+
+
+    # Create 2 other Collection Item : a photo of landing in Jamaica and a photo at a Jamaica resort,
+    # both "accidentally" placed in the Brazil album
+    landing_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
+    NeoSchema.create_data_node(class_node="Photo",
+                               properties ={"caption": "Landing in Jamaica"}, new_uri=landing_photo_uri)
+
+    resort_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
+    NeoSchema.create_data_node(class_node="Photo",
+                               properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
+
+    Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
+                                          membership_rel_name="in_album")
+
+    Collections.link_to_collection_at_end(item_uri=resort_photo_uri,collection_uri=brazil_uri,
+                                          membership_rel_name="in_album")
+
+
+    # Relocate the landing photo from the Brazil album to the Jamaica one
+    Collections.relocate_to_other_collection_at_end(item_uri=landing_photo_uri,
+                                                    from_collection_uri=brazil_uri, to_collection_uri=jamaica_uri,
+                                                    membership_rel_name="in_album")
+
+    # Verify that the landing photo is now linked to the Jamaica album, with position 0
+    q = '''
+        MATCH p=(:Photo {uri:$landing_photo_uri})
+        -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
+        RETURN COUNT(p) AS number_paths
+        '''
+    result = db.query(q, data_binding={"landing_photo_uri": landing_photo_uri}, single_cell="number_paths")
+    assert result == 1
+
+    # Relocate the resort photo from the Brazil album to the Jamaica one
+    Collections.relocate_to_other_collection_at_end(item_uri=resort_photo_uri,
+                                                    from_collection_uri=brazil_uri, to_collection_uri=jamaica_uri,
+                                                    membership_rel_name="in_album")
+
+    # Verify that the resort photo is now linked to the Jamaica album, with position 20
+    q = '''
+        MATCH p=(:Photo {uri:$resort_photo_uri})
+        -[:in_album {pos: 20}]->(:`Photo Album` {name: "Jamaica vacation"}) 
+        RETURN COUNT(p) AS number_paths
+        '''
+    result = db.query(q, data_binding={"resort_photo_uri": resort_photo_uri}, single_cell="number_paths")
+    assert result == 1

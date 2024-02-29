@@ -797,16 +797,11 @@ class Categories:
         #      More generally, verify that its Class has a "BA_in_category" to
         #      the "Category" Class; this ought to be enforced by link_to_collection_at_end()
 
-        # Category to link to (this step also enforces that category_uri indeed refers to a Category)
-        collection_dbase_id = NeoSchema.get_data_node_internal_id(uri=category_uri,
-                                                                  label="Categories")
-
-        # Content Item to link to Category
-        item_dbase_id = NeoSchema.get_data_node_internal_id(uri=item_uri, label=label)
-
-        Collections.link_to_collection_at_end(collection_dbase_id=collection_dbase_id,
-                                              item_dbase_id=item_dbase_id,
+        # Link the Content Item to the end of the Category
+        Collections.link_to_collection_at_end(item_uri=item_uri, collection_uri=category_uri,
                                               membership_rel_name="BA_in_category")
+
+
 
 
 
@@ -830,7 +825,7 @@ class Categories:
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the "data_node" namespace
             new_uri = NeoSchema.reserve_next_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to a namespace based on the Class
 
-                                                #
+
         NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
                                    extra_labels="BA", new_uri=new_uri,
                                    silently_drop=True)
