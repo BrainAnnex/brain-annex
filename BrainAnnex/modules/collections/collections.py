@@ -1,3 +1,4 @@
+from typing import Union, List
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from neoaccess import NeoAccess
 
@@ -272,29 +273,112 @@ class Collections:
             DELETE old_r
             MERGE (moving_ci)-[:`{membership_rel_name}` {{pos: new_pos}}]->(collection_to)
             '''
-        cls.db.debug_query_print(q, data_binding={"from_collection_uri": from_collection_uri,
-                                                  "to_collection_uri": to_collection_uri,
-                                                  "item_uri": item_uri})
+        #cls.db.debug_query_print(q, data_binding={"from_collection_uri": from_collection_uri,
+                                                  #"to_collection_uri": to_collection_uri,
+                                                  #"item_uri": item_uri})
 
         status = cls.db.update_query(q,
                                      data_binding={"from_collection_uri": from_collection_uri,
                                                    "to_collection_uri": to_collection_uri,
                                                    "item_uri": item_uri})
-        print("switch_to_other_collection_at_end(): status is ", status)
+        #print("switch_to_other_collection_at_end(): status is ", status)
 
-        # status should be contain {, 'relationships_deleted': 1, 'relationships_created': 1, 'properties_set': 1}
+        # status should contain {'relationships_deleted': 1, 'relationships_created': 1, 'properties_set': 1}
 
         assert status.get('relationships_deleted') == 1, \
-            f"switch_to_other_collection_at_end(): failed to locate or delete the old '{membership_rel_name}' link " \
+            f"relocate_to_other_collection_at_end(): failed to locate or delete the old '{membership_rel_name}' link " \
             f"that goes to a Collection with URI '{from_collection_uri}'"
 
         assert status.get('relationships_created') == 1, \
-            f"switch_to_other_collection_at_end(): failed to create a new link " \
+            f"relocate_to_other_collection_at_end(): failed to create a new link " \
             f"to a Collection with URI '{to_collection_uri}'"
 
         assert status.get('properties_set') == 1, \
-            f"switch_to_other_collection_at_end(): failed to set the positional value to the new link " \
+            f"relocate_to_other_collection_at_end(): failed to set the positional value to the new link " \
             f"to a Collection with URI '{to_collection_uri}'"
+
+
+
+    @classmethod
+    def bulk_relocate_to_other_collection_at_end(cls, items :Union[List[str], str],
+                                                 from_collection :str, to_collection :str, membership_rel_name :str) -> int:
+        """
+        Given an existing list of data nodes (representing "Collection Items" of the specified "from" Collection),
+        switch each of them to become a "Collection Item" of the "to" Collection, positioned at the end of it.
+
+        The collection-membership relationship is severed from the "Collection Item" to the "from" Collection,
+        and a new one is created from the "Collection Item" to the "to" Collection.
+
+        In case no operation is performed, an Exception is raised.
+
+        :param items:               URI, or list of URI's, of Data Node(s)
+                                        representing a "Collection Items" of the "from" Collection below
+        :param from_collection:     The URI of a Collection Data Node to which the above "Collection Items" is connected
+        :param to_collection:       The URI of a Collection Data Node to which the above "Collection Items" needs to be switched to
+        :param membership_rel_name: The name to give to the relationship
+                                        in the direction from the "Collection Item" to the Collection node
+        :return:                    The number of Collection Items successfully relocated
+        """
+        # If a scalar was passed, turn into a list
+        if type(items) == str:
+            items = [items]
+        else:
+            assert type(items) == list, \
+                "bulk_relocate_to_other_collection_at_end(): the argument `items` must be a string URI, or a list of them"
+
+
+        # Use an ATOMIC operation.  If any of the matches fail, no operation is performed
+        # The "OPTIONAL MATCH" is used to compute a new initial positional value to use on the to_collection
+        q = f'''
+            MATCH (collection_from) , (collection_to)                
+            WHERE collection_from.uri = $from_collection
+              AND collection_to.uri = $to_collection            
+            WITH collection_from, collection_to
+                        
+            // Attempt to locate Items already on the "to" Collection
+            OPTIONAL MATCH (existing_ci) -[r :`{membership_rel_name}`]-> (collection_to)
+            WITH r.pos AS pos, collection_from, collection_to
+            WITH 
+                CASE WHEN pos IS NULL THEN
+                    0                           // The "to" Collection is devoid of Items
+                ELSE
+                    max(pos) + {cls.DELTA_POS}  // A value greater than that of the last Item
+                END AS new_start_pos, collection_from, collection_to
+            
+            WITH range(0, size($item_list)) AS ITEM_INDEX_LIST, 
+                 new_start_pos, collection_from, collection_to
+            
+            UNWIND ITEM_INDEX_LIST AS i         // Used to process each Collection Item in turn
+                MATCH (moving_ci) -[old_r :`{membership_rel_name}`]-> (collection_from)
+                WHERE moving_ci.uri = $item_list[i]
+                WITH moving_ci, old_r, collection_to, 
+                     new_start_pos + i * {cls.DELTA_POS} AS new_pos
+                
+                DELETE old_r
+                MERGE (moving_ci) -[:`{membership_rel_name}` {{pos: new_pos}}]-> (collection_to)
+            '''
+
+        data_binding={"from_collection": from_collection,
+                      "to_collection": to_collection,
+                      "item_list": items}
+
+        #cls.db.debug_query_print(q, data_binding=data_binding)
+
+        status = cls.db.update_query(q, data_binding=data_binding)
+        #print("bulk_relocate_to_other_collection_at_end(): status is ", status)
+        # status should contain, for example {'relationships_deleted': 8, 'relationships_created': 8, 'properties_set': 8}
+
+        number_relationships_created = status.get('relationships_created', 0)
+
+        assert status.get('relationships_deleted', 0) == number_relationships_created, \
+            f"bulk_relocate_to_other_collection_at_end(): " \
+            f"The number of links deleted doesn't match that of links created"
+
+        assert status.get('properties_set', 0) == number_relationships_created, \
+            f"bulk_relocate_to_other_collection_at_end(): " \
+            f"The number of properties set doesn't match that of the links deleted and created"
+
+        return number_relationships_created
 
 
 
