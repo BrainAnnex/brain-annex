@@ -26,7 +26,7 @@ def create_sample_collections_class(db):
 
     db.empty_dbase()
 
-    Collections.create_collections_class()
+    Collections.initialize_collections()
 
     NeoSchema.create_class_with_properties(name="Photo Album",
                                            property_list=["name", "uri"])
@@ -239,7 +239,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     assert result == 1
 
 
-    # Relocate the carnaval photo from the Jamaica album to the Brazil album
+    # Relocate the carnaval photo from the Jamaica album to the empty Brazil album
     Collections.bulk_relocate_to_other_collection_at_end(items=carnaval_photo_uri,
                                                          from_collection=jamaica_uri, to_collection=brazil_uri,
                                                          membership_rel_name="in_album")
@@ -296,3 +296,40 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     result = db.query(q, data_binding={"resort_photo_uri": resort_photo_uri}, single_cell="number_paths")
     assert result == 1
 
+
+    # Add 2 photos to the Brazil album
+    all_photo_uris = [0, 0]
+    for i in range(2):
+        photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
+        all_photo_uris[i] = photo_uri
+        NeoSchema.create_data_node(class_node="Photo",
+                                   properties ={"caption": f"photo_{i}"}, new_uri=photo_uri)
+        Collections.link_to_collection_at_end(item_uri=photo_uri,collection_uri=brazil_uri,
+                                              membership_rel_name="in_album")
+
+    #print("**************", all_photo_uris)
+    # Now, relocate those 2 photos to the Jamaica album
+    Collections.bulk_relocate_to_other_collection_at_end(items=all_photo_uris,
+                                                         from_collection=brazil_uri, to_collection=jamaica_uri,
+                                                         membership_rel_name="in_album")
+
+    # Verify that those photos are now linked to the Jamaica album, with positions 40 and 60
+    q = '''
+        MATCH p=(:Photo {caption:"photo_0"})
+        -[:in_album {pos: 40}]->(:`Photo Album` {name: "Jamaica vacation"}) 
+        RETURN COUNT(p) AS number_paths
+        '''
+    result = db.query(q, single_cell="number_paths")
+    assert result == 1
+
+    q = '''
+        MATCH p=(:Photo {caption:"photo_1"})
+        -[:in_album {pos: 60}]->(:`Photo Album` {name: "Jamaica vacation"}) 
+        RETURN COUNT(p) AS number_paths
+        '''
+    result = db.query(q, single_cell="number_paths")
+    assert result == 1
+
+    # Verify that just 1 photo remains in teh Brazil album
+    match = db.match(key_name="name", key_value="Winter in Brazil")
+    assert 1 == db.count_links(match=match, rel_name="in_album", rel_dir="IN", neighbor_labels = "Photo")

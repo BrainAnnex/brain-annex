@@ -47,7 +47,7 @@ class Collections:
 
 
     @classmethod
-    def create_collections_class(cls) -> (int, int):
+    def initialize_collections(cls) -> (int, int):
         """
         Create a new Schema Class node that represents a "Collection"
 
@@ -250,6 +250,7 @@ class Collections:
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    None
         """
+        # TODO: perhaps to ditch, now that we have bulk_relocate_to_other_collection_at_end()
 
         # Use an ATOMIC operation.  If any of the matches fail, no operation is performed
         # The "OPTIONAL MATCH" is used to compute a new positional value
@@ -306,15 +307,15 @@ class Collections:
         Given an existing list of data nodes (representing "Collection Items" of the specified "from" Collection),
         switch each of them to become a "Collection Item" of the "to" Collection, positioned at the end of it.
 
-        The collection-membership relationship is severed from the "Collection Item" to the "from" Collection,
-        and a new one is created from the "Collection Item" to the "to" Collection.
+        The collection-membership relationship is severed from each of the "Collection Items" to the "from" Collection,
+        and a new one is created from that "Collection Item" to the "to" Collection.
 
-        In case no operation is performed, an Exception is raised.
+        Return the number of Collection Items successfully relocated.
 
         :param items:               URI, or list of URI's, of Data Node(s)
                                         representing a "Collection Items" of the "from" Collection below
-        :param from_collection:     The URI of a Collection Data Node to which the above "Collection Items" is connected
-        :param to_collection:       The URI of a Collection Data Node to which the above "Collection Items" needs to be switched to
+        :param from_collection:     The URI of a Collection Data Node to which the above Collection Item(s) are connected
+        :param to_collection:       The URI of a Collection Data Node to which the above Collection Item(s) needs to be switched to
         :param membership_rel_name: The name to give to the relationship
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    The number of Collection Items successfully relocated
@@ -370,13 +371,20 @@ class Collections:
 
         number_relationships_created = status.get('relationships_created', 0)
 
+        assert number_relationships_created <= len(items), \
+            f"bulk_relocate_to_other_collection_at_end(): " \
+            f"The number of created links ({number_relationships_created}) exceeds " \
+            f"the number of Collection Items to move ({len(items)})"
+
         assert status.get('relationships_deleted', 0) == number_relationships_created, \
             f"bulk_relocate_to_other_collection_at_end(): " \
-            f"The number of links deleted doesn't match that of links created"
+            f"The number of links deleted doesn't match " \
+            f"that of the links created ({number_relationships_created})"
 
         assert status.get('properties_set', 0) == number_relationships_created, \
             f"bulk_relocate_to_other_collection_at_end(): " \
-            f"The number of properties set doesn't match that of the links deleted and created"
+            f"The number of properties set doesn't match " \
+            f"that of the links deleted and created ({number_relationships_created})"
 
         return number_relationships_created
 

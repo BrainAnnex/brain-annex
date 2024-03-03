@@ -844,7 +844,52 @@ class DataManager:
 
 
 
-    #######################     MEDIA-RELATED      #######################
+
+    #####################################################################################################
+
+    '''                 ~  CATEGORY-RELATED  (incl. adding new Content Items)    ~                    '''
+
+    def ________CATEGORY_RELATED________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def switch_category(cls, data_dict) -> None:
+        """
+        Switch one or more Content Items from being attached to a given Category,
+        to another one
+
+        :param data_dict:   Dict with 3 keys:
+                                items   URI, or list of URI's, of Content Items
+                                        to relocate across Categories
+                                from    URI of the old Category
+                                to      URI of the new Category
+        :return:            None
+        """
+        items = data_dict['items']
+        if type(items) == list:
+            number_items = len(items)
+        else:
+            number_items = 1
+
+        number_moved = Categories.relocate_across_categories(items=items,
+                                                        from_category=data_dict['from'],
+                                                        to_category=data_dict['to'])
+        assert number_moved == number_items, \
+                f"Only {number_moved} of the requested {number_items} " \
+                f"Content Items could be successfully moved across Categories"
+
+
+
+
+
+    #####################################################################################################
+
+    '''                                       ~  MEDIA-RELATED    ~                                   '''
+
+    def ________MEDIA_RELATED________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def lookup_media_record(cls, uri: int) -> Union[dict, None]:

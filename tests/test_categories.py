@@ -20,11 +20,11 @@ def db():
 
 
 
-# ************  CREATE SAMPLE CATEGORIES for the testing  **************
+# ************  CREATE CATEGORY CLASS AND ROOT CATEGORY for the testing  **************
 
 def initialize_categories(db):
     # Clear the dbase, create the Category Schema, and creates a ROOT Category node;
-    # return the internal database ID and URI of the new Categories node
+    # return the pari (internal database ID, URI) of the new Categories node
 
     db.empty_dbase()
 
@@ -41,13 +41,13 @@ def initialize_categories(db):
 
 def test_get_all_categories(db):
 
-    initialize_categories(db)
+    _, root_uri = initialize_categories(db)
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-    assert result == [{'uri': '1', 'name': 'HOME', 'remarks': 'top level'}]
+    assert result == [{'uri': root_uri, 'name': 'HOME', 'remarks': 'top level'}]
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=False)
-    assert result == [{'uri': '1', 'name': 'HOME'}]
+    assert result == [{'uri': root_uri, 'name': 'HOME'}]
 
     result = Categories.get_all_categories(exclude_root=True, include_remarks=True)
     assert result == []
@@ -57,7 +57,7 @@ def test_get_all_categories(db):
                                 "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-    expected = [{'uri': 1, 'name': 'HOME', 'remarks': 'top level'},
+    expected = [{'uri': root_uri, 'name': 'HOME', 'remarks': 'top level'},
                 {'uri': language_uri, 'name': 'Languages', 'remarks': 'Common node for all languages'}]
     compare_recordsets(result, expected)
 
@@ -65,7 +65,7 @@ def test_get_all_categories(db):
     french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
     italian_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "Italian"})
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-    expected = [{'uri': 1, 'name': 'HOME', 'remarks': 'top level'},
+    expected = [{'uri': root_uri, 'name': 'HOME', 'remarks': 'top level'},
                 {'uri': language_uri, 'name': 'Languages', 'remarks': 'Common node for all languages'},
                 {'uri': french_uri, 'name': 'French'}, {'uri': italian_uri, 'name': 'Italian'}]
     compare_recordsets(result, expected)

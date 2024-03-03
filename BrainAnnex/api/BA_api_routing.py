@@ -1024,13 +1024,15 @@ class ApiRouting:
                 The URI of the newly-created Category Data Node
             """
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('category_uri', '12'),
-                                         #                              ('subcategory_name', 'Astronomy'), ('subcategory_remarks', '')])
+            post_data = request.form     # Example: ImmutableMultiDict([('category_uri', 'cat-12'),
+                                         #                              ('subcategory_name', 'Astronomy'),
+                                         #                              ('subcategory_remarks', '')])
             #print(post_data)
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['category_uri', 'subcategory_name'])
                 payload = Categories.add_subcategory(data_dict)     # The URI of the newly-created Category Data Node
+                                                                    # TODO: maybe move to DataManager module
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
                 err_details = f"/add_subcategory : Unable to add the requested Subcategory.  {exceptions.exception_helper(ex)}"
@@ -1193,6 +1195,36 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/switch_category', methods=['POST'])
+        @login_required
+        def switch_category():
+            """
+            Switch one or more Content Items from being attached to a given Category,
+            to another one
+
+            POST FIELDS:
+                items   URI, or list of URI's, of Content Items to relocate across Categories
+                from    URI of the old Category
+                to      URI of the new Category
+
+            NO RETURNED PAYLOAD
+            """
+            # Extract the POST values
+            post_data = request.form     # An ImmutableMultiDict
+
+            try:
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['items', 'from', 'to'])
+                DataManager.switch_category(data_dict)
+                response_data = {"status": "ok"}
+            except Exception as ex:
+                err_details = f"/switch_category : Unable to relocate Content Item(s) to new Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
 

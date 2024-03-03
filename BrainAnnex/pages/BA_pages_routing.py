@@ -170,7 +170,7 @@ class PagesRouting:
             """
             template = "md_file_generator.htm"
 
-            content_items = Categories.get_content_items_by_category(category_uri=category_uri)
+            content_items = Categories.get_content_items_by_category(uri=category_uri)
 
             return render_template(template, content_items=content_items)
 

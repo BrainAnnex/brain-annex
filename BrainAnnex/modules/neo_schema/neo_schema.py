@@ -1231,7 +1231,7 @@ class NeoSchema:
 
     @classmethod
     def create_class_with_properties(cls, name :str, property_list: [str], code=None, strict=False,
-                                     class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int, int):
+                                     class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int, str):
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
         and link them together with "HAS_PROPERTY" relationships.
@@ -1264,7 +1264,7 @@ class NeoSchema:
         :param link_name:       Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
         :param link_dir:        Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
-        :return:                If successful, the pair (internal ID, integer "schema_uri" assigned to the new Class);
+        :return:                If successful, the pair (internal ID, string "schema_uri" assigned to the new Class);
                                 otherwise, raise an Exception
         """
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
@@ -1286,7 +1286,7 @@ class NeoSchema:
 
         # Create the new Class
         new_class_int_id , new_class_uri = cls.create_class(name, code=code, strict=strict)
-        cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Schema ID: {new_class_uri})")
+        cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Schema ID: '{new_class_uri}')")
 
         number_properties_added = cls.add_properties_to_class(class_node=new_class_int_id, property_list = property_list)
         if number_properties_added != len(property_list):
