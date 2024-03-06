@@ -860,25 +860,42 @@ class DataManager:
         to another one
 
         :param data_dict:   Dict with 3 keys:
-                                items   URI, or list of URI's, of Content Items
+                                items   list of string URI's of Content Items
                                         to relocate across Categories
                                 from    URI of the old Category
                                 to      URI of the new Category
         :return:            None
         """
-        items = data_dict['items']
-        if type(items) == list:
-            number_items = len(items)
-        else:
-            number_items = 1
+        print("**** : ", data_dict) # EXAMPLE: {'items': ['i-3332', 'i-3278'], 'from': '3676', 'to': '3677'}
+
+        items = data_dict["items"]
+
+        assert type(items) == list, \
+            f"The passed POST value `items` ({items}) doesn't evaluate to a list"
+
+        assert type(data_dict['from']) == str, \
+            f"The passed POST value `from` ({data_dict['from']}) doesn't evaluate to a string"
+
+        assert type(data_dict['to']) == str, \
+            f"The passed POST value `from` ({data_dict['to']}) doesn't evaluate to a string"
+
+
+        number_items = len(items)
+
+        assert number_items != 0, \
+            f"The passed POST value `items` is an EMPTY list"
+
 
         number_moved = Categories.relocate_across_categories(items=items,
                                                         from_category=data_dict['from'],
                                                         to_category=data_dict['to'])
-        assert number_moved == number_items, \
-                f"Only {number_moved} of the requested {number_items} " \
-                f"Content Items could be successfully moved across Categories"
+        assert number_moved != 0, \
+            f"None of the {number_items} requested " \
+            f"Content Item(s) could be successfully moved across Categories"
 
+        assert number_moved == number_items, \
+            f"Only {number_moved} of the {number_items} requested " \
+            f"Content Item(s) could be successfully moved across Categories"
 
 
 

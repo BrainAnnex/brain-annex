@@ -15,6 +15,7 @@ from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
+import json
 #from time import sleep     # For tests of delays in asynchronous fetching.  E.g. sleep(3) for 3 secs
 
 
@@ -112,7 +113,7 @@ class ApiRouting:
 
 
     @classmethod
-    def extract_post_pars(cls, post_data, required_par_list=None) -> dict:
+    def extract_post_pars(cls, post_data, required_par_list=None, json_decode=False) -> dict:
         """
         Convert into a Python dictionary the given POST data
         (expressed as an ImmutableMultiDict) - ASSUMED TO HAVE UNIQUE KEYS -
@@ -128,6 +129,7 @@ class ApiRouting:
                                     EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
 
         :param required_par_list:   A list or tuple.  EXAMPLE: ['uri', 'rel_name']
+        :param json_decode:         If True, all values are expected to be JSON-encoded strings, and they get decoded
         :return:                    A dict populated with the POST data
         """
         #TODO: instead of accepting "post_data" as argument,
@@ -143,8 +145,14 @@ class ApiRouting:
                                                     #          the values associated to the later keys will be discarded
 
         if required_par_list:
+            # Verify that all the required POST parameters are indeed present
             for par in required_par_list:
                 assert par in data_dict, f"The expected parameter `{par}` is missing from the POST request"
+
+        if json_decode:
+            # Decode all the values in the data dictionary
+            for key, val in data_dict.items():
+                data_dict[key] = json.loads(val)
 
         return data_dict
 
@@ -327,11 +335,11 @@ class ApiRouting:
 
             Return a JSON object with a list of the Property names of that Class.
 
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/get_class_schema  -d "class_name=Restaurants"
-
             1 POST FIELD:
                 class_name
+
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/get_class_schema  -d "class_name=Restaurants"
 
             :return:  A JSON with a list of the Property names of the specified Class,
                       including indirect ones thru chains of outbound "INSTANCE_OF" relationships
@@ -1206,17 +1214,21 @@ class ApiRouting:
             to another one
 
             POST FIELDS:
-                items   URI, or list of URI's, of Content Items to relocate across Categories
-                from    URI of the old Category
-                to      URI of the new Category
+                items   JSON-encoded list of URI's to relocate across Categories
+                from    JSON-encoded string URI of the old Category
+                to      JSON-encoded string URI of the new Category
 
             NO RETURNED PAYLOAD
+
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/switch_category  -d "items=[\"i-3332\", \"h-235\"]&from=\"3677\"&to=\"3676\""
             """
             # Extract the POST values
             post_data = request.form     # An ImmutableMultiDict
 
             try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['items', 'from', 'to'])
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['items', 'from', 'to'],
+                                                  json_decode=True)
                 DataManager.switch_category(data_dict)
                 response_data = {"status": "ok"}
             except Exception as ex:
