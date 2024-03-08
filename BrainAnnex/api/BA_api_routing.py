@@ -1234,6 +1234,8 @@ class ApiRouting:
             except Exception as ex:
                 err_details = f"/switch_category : Unable to relocate Content Item(s) to new Category.  {exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}        # Error termination
+                # TODO: manage scenario where SOME - but not all - items got moved;
+                #       maybe implement a standard "error_data" field
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
