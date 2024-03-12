@@ -788,14 +788,16 @@ new Vue({
             console.log("Finalizing the perform_bulk_operation() operation...");
             if (success)  {     // Server reported SUCCESS
                 console.log("    server call was successful");
-                this.status_message = `Items moved to other category`;
-                console.log("    now updating page by removing items: ", this.checkboxes_selected);
+                this.status_message = `${this.checkboxes_selected.length} Content Items moved to other category`;
+                console.log("    updating page by removing items: ", this.checkboxes_selected);
                 // Update the page, by ditching the Content Items that were moved away
                 for (var uri of this.checkboxes_selected) {
                     let i = this.locate_item_simplified(uri);   // Find where the Content Item is stored in the array this.content_array
                     console.log(`    removing item with URI '${uri}' from page: array index is ${i}`);
                     this.content_array.splice(i, 1);            // Deletes 1 array element from the specified index position
                 }
+                this.checkboxes_selected = [];
+                // TODO: still be necessary to clear all checkmarks (some are at times being left behind)
             }
             else  {                     // Server reported FAILURE
                 this.error = true;

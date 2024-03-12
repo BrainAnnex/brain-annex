@@ -232,6 +232,27 @@ class PagesRouting:
 
 
 
+        @bp.route('/schema-viewer')
+        @login_required
+        def schema_viewer() -> str:
+            """
+            Generate an administrative page to view the Schema
+            EXAMPLE invocation: http://localhost:5000/BA/pages/schema-viewer
+            """
+            template = "schema_viewer.htm"
+
+            graph_data = [{"id": 2, "label": "Reaction", "name": "RXN", "kF": "3", "kR": "2", "delta_G": "-1,005.13", "K": "1.5"},
+                          {"id": 1, "label": "Chemical", "name": "Chem B", "diff_rate": None, "stoich": 1, "rxn_order": 1},
+                          {"id": 3, "source": 2, "target": 1, "name": "produces"},
+                          {"id": 0, "label": "Chemical", "name": "Chem A", "diff_rate": None, "stoich": 1, "rxn_order": 1},
+                          {"id": 4, "source": 0, "target": 2, "name": "reacts"}]
+
+            color_mapping = {"Chemical": "neo4j_green", "Reaction": "neo4j_lightbrown"}
+            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+                                   graph_data=graph_data, color_mapping=color_mapping)
+
+
+
         @bp.route('/data-import')
         @login_required
         def data_import() -> str:
@@ -243,7 +264,7 @@ class PagesRouting:
             class_list = DataManager.all_schema_classes()
             intake_status = DataManager.data_intake_status()
 
-            # Extract some config parameters (used for Continuous Data Ingestion)
+            # Extract some app config parameters (used for Continuous Data Ingestion)
             intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
             outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
 

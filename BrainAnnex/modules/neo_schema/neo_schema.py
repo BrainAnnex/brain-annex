@@ -3057,8 +3057,8 @@ class NeoSchema:
 
             #TODO: maybe double-check that the following reported problem is indeed what caused the failure <-- INDEED, DO THAT!
             raise Exception(f"add_data_relationship_OLD(): cannot add the relationship `{rel_name}` between the data nodes, "
-                            f"because no such relationship exists from Class `{class_from}` to Class `{class_to}`. "
-                            f"The Schema needs to be modified first")
+                            f"possibly because no such relationship exists from Class `{class_from}` to Class `{class_to}`; "
+                            f"if that's the case, the Schema needs to be modified first")
 
 
 
