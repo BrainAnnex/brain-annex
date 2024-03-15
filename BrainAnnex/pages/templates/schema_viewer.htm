@@ -22,7 +22,7 @@
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_1.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_2.css">
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js"></script>
@@ -56,12 +56,12 @@
 <!--  ~~~~~~~~~  Container for VUE COMPONENTS : the ROOT of the components below  ~~~~~~~~~~~~  -->
 <div id="vue-root">
 
-    <vue_cytoscape_1
-            v-bind:graph="graph_json"
+    <vue_cytoscape_2
+            v-bind:graph_data="graph_json"
             v-bind:color_mapping="color_mapping_json"
-            v-bind:component_id="component_id_json"
+            v-bind:component_id="1"
     >
-    </vue_cytoscape_1>
+    </vue_cytoscape_2>
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~~~~  END of Vue ROOT element  ~~~~~~~~~~~~~~~~~~~~~~~~  -->
 
@@ -72,7 +72,7 @@
 <!--
     Vue components (and other JS if applicable).  This must appear AFTER the Vue-containing elements
   -->
-<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_1.js"></script>
+<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_2.js"></script>
 
 
 <script>

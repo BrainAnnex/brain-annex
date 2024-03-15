@@ -9,6 +9,7 @@ from flask_login import login_required, current_user
 from BrainAnnex.modules.data_manager.data_manager import DataManager
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from BrainAnnex.modules.categories.categories import Categories
+from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
 from datetime import datetime
 import time
 import json
@@ -241,15 +242,47 @@ class PagesRouting:
             """
             template = "schema_viewer.htm"
 
+            graph_obj = PyGraphScape()
+
+            graph_obj.add_node(uri="schema-1", label="CLASS", name="German Vocabulary", data={"uri":"schema-1", "strict": False})
+            graph_obj.add_node(uri="schema-19", label="CLASS", name="Foreign Vocabulary", data={"uri":"schema-1", "strict": False, "no_datanodes": True})
+
+            graph_obj.add_node(uri="schema-92", label="PROPERTY", name="German", data={"uri":"schema-92"})
+
+            graph_obj.add_edge(from_node="schema-1", to_node="schema-92", name="HAS_PROPERTY")
+            graph_obj.add_edge(from_node="schema-1", to_node="schema-19", name="INSTANCE_OF")
+
+            graph_obj.assign_color_mapping(label="CLASS", color="graph_darkgreen")
+            graph_obj.assign_color_mapping(label="PROPERTY", color="graph_orange")
+
+            '''
+            graph_obj.add_node(uri=0, label="Chemical", name="NaCl", data={"diff_rate": None, "stoich": 1, "rxn_order": 1})
+            graph_obj.add_node(uri=1, label="Chemical", name="CO2", data={"diff_rate": None, "stoich": 1, "rxn_order": 1})
+            graph_obj.add_node(uri=2, label="Reaction", name="RXN", data={"kF": "3", "kR": "2", "delta_G": "-1,005.13", "K": "1.5"})
+
+            graph_obj.add_edge(from_node=0, to_node=2, name="reacts")
+            graph_obj.add_edge(from_node=2, to_node=1, name="produces")
+
+            graph_obj.assign_color_mapping(label="Chemical", color="graph_orchid")
+            graph_obj.assign_color_mapping(label="Reaction", color="graph_orange")
+            
+            graph_obj.assign_color_mapping({"Chemical": "graph_orchid",
+                                "Reaction": "graph_gold"})
+                                            
             graph_data = [{"id": 2, "label": "Reaction", "name": "RXN", "kF": "3", "kR": "2", "delta_G": "-1,005.13", "K": "1.5"},
-                          {"id": 1, "label": "Chemical", "name": "Chem B", "diff_rate": None, "stoich": 1, "rxn_order": 1},
+                          {"id": 1, "label": "Chemical", "name": "CO2", "diff_rate": None, "stoich": 1, "rxn_order": 1},
                           {"id": 3, "source": 2, "target": 1, "name": "produces"},
-                          {"id": 0, "label": "Chemical", "name": "Chem A", "diff_rate": None, "stoich": 1, "rxn_order": 1},
+                          {"id": 0, "label": "Chemical", "name": "NaCl", "diff_rate": None, "stoich": 1, "rxn_order": 1},
                           {"id": 4, "source": 0, "target": 2, "name": "reacts"}]
 
-            color_mapping = {"Chemical": "neo4j_green", "Reaction": "neo4j_lightbrown"}
+            color_mapping = {"Chemical": "graph_orchid",
+                             "Reaction": "graph_lightbrown"}
+            '''
+            print(graph_obj.graph_data)
+            print(graph_obj.graph_color_mapping)
+
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
-                                   graph_data=graph_data, color_mapping=color_mapping)
+                                   graph_data=graph_obj.graph_data, color_mapping=graph_obj.graph_color_mapping)
 
 
 
