@@ -9,15 +9,37 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
 
     def __init__(self):
-        self.graph_data = []
-        self.graph_color_mapping = {}
+        self.structure = []             # A list of dicts defining nodes, and possibly edges as well
+                                        #   Nodes must contain the key 'id' (and, typically, 'labels')
+                                        #   Edges must contain the keys 'source', 'target' and 'name'
+                                        #   (and presumably 'id' as well?)
+
+        self.color_mapping = {}         # Mapping a node label to its interior color
+                                        # EXAMPLE: {"Chemical": "graph_green", "Reaction": "graph_lightbrown"}
+        self.caption_mapping = {}
         self.next_available_edge_id = 1
 
+
+
+    def __str__(self):
+        s = f"Graph contains a total of {len(self.structure)} nodes and edges\n"
+        s += f"    Graph structure: {self.structure}\n"
+        s += f"    Graph color mapping: {self.color_mapping}\n"
+        s += f"    Graph caption mapping: {self.caption_mapping}"
+        return s
+
+
+    def get_graph_data(self):
+        return {"structure": self.structure,
+                "color_mapping": self.color_mapping,
+                "caption_mapping": self.caption_mapping}
 
 
 
     def add_node(self, node_id :Union[int,str], labels="", name=None, data=None) -> None:
         """
+        Prepare the data for 1 node for the visualization
+
         :param node_id: Either an integer or a string to uniquely identify this node in the graph;
                             it will be used to specify the start/end nodes of edges.
                             Typically, use either the internal database ID, or some URI
@@ -45,19 +67,23 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
         if type(labels) == list:
             labels = labels[0]      # TODO: utilize all labels in the future
-        d["label"] = labels
+        d["labels"] = labels
 
         if name:
             d["name"] = name
 
-        self.graph_data.append(d)
+        self.structure.append(d)
 
 
 
     def add_edge(self, from_node :Union[str, int], to_node :Union[str, int], name :str, edge_id=None) -> None:
         """
-        :param from_node:   Integer or a string uniquely identify the node where the edge originates
-        :param to_node:
+        Prepare the data for 1 edge for the visualization.
+        Note that "id", in this context, is whatever we pass to the visualization module for the nodes;
+        not necessarily related to the internal database ID's
+
+        :param from_node:   Integer or a string uniquely identify the "id" of the node where the edge originates
+        :param to_node:     Integer or a string uniquely identify the "id" of the node where the edge ends
         :param name:        Name of the relationship
         :param edge_id:     (OPTIONAL) If not provided, auto-generated consecutive integers are used
                                 TODO: unclear if edge id's are really needed
@@ -71,20 +97,14 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
         if edge_id is not None:
             d["id"] = edge_id
         else:
-            d["id"] = self.next_available_edge_id
+            d["id"] = f"edge-{self.next_available_edge_id}"
             self.next_available_edge_id += 1
 
-        self.graph_data.append(d)
+        self.structure.append(d)
 
 
-
-    def assign_color_mapping_OLD(self, color_mapping :dict) -> None:
-        """
-
-        :param color_mapping:
-        :return:
-        """
-        self.graph_color_mapping = color_mapping
+    def assign_caption(self, label :str, caption :str) -> None:
+        self.caption_mapping[label] = caption
 
 
 
@@ -111,4 +131,4 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
         if color in extra_colors:
             color = extra_colors[color]
 
-        self.graph_color_mapping[label] = color
+        self.color_mapping[label] = color

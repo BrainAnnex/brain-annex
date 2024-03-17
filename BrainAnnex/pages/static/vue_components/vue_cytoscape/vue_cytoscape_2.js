@@ -7,15 +7,12 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
                 required: true
             },
 
-            color_mapping: {        // Mapping the node label to its interior color
-                required: true      // For now (TODO: auto-assign if unspecified; SEE vue_curves_4.js)
-            },
-
             component_id: {
                 default: 1
             }
 
         },
+
 
 
         template: `
@@ -40,7 +37,7 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
         // ----------------  DATA  -----------------
         data: function() {
             return {
-                graph_structure: this.graph_data,
+                graph_structure: this.graph_data.structure,
 
                 node_info: ["Click on a node to see its attributes"]
             }
@@ -66,9 +63,9 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
                 (a list of objects with a key named "data")
                 EXAMPLE:
                     [
-                        {data: {id: 1, name: 'Headers', label: 'CLASS'}
+                        {data: {id: 1, name: 'Headers', labels: 'CLASS'}
                         },
-                        {data: {id: 2, name: 'text', label: 'PROPERTY'}
+                        {data: {id: 2, name: 'text', labels: 'PROPERTY'}
                         },
                         {data: {id: 3, source: 1, target: 2, name: 'HAS_PROPERTY'}
                         }
@@ -113,7 +110,7 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
                             style: {
                                 'width': 60,
                                 'height': 60,
-                                'label': 'data(name)',
+                                'label': this.node_caption_f,         // 'data(color)'
                                 //'background-color': '#8DCC93',
                                 'background-color': this.node_color_f,
 
@@ -137,7 +134,7 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
                                 'target-arrow-shape': 'triangle',
                                 'curve-style': 'bezier',
                                 'label': 'data(name)',
-                                'font-size': '9px',
+                                'font-size': '10px',
                                 'color': '#000',    // Color of the text
                                 'text-rotation': 'autorotate',
                                 'text-background-color': '#f6f6f6', // Same as graph background
@@ -168,11 +165,11 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
                 /*
                 // EXAMPLES of adding nodes
                 cy_object.add([
-                    { data: { id: 4, label: 'import' , name: 'Restaurants' }, position: {x: 80, y: 100} }
+                    { data: { id: 4, labels: 'import' , name: 'Restaurants' }, position: {x: 80, y: 100} }
                 ]);
 
                 cy_object.add([
-                    { data: { id: 5, label: 'SOME_OTHER_LABEL' , name: 'Mr. Node' }, position: {x: 80, y: 200} }
+                    { data: { id: 5, labels: 'SOME_OTHER_LABELS' , name: 'Mr. Node' }, position: {x: 80, y: 200} }
                 ]);
                 */
             },
@@ -211,18 +208,44 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
             },
 
 
+            map_labels_to_caption_field(labels)
+            {
+                console.log(this.graph_data.caption_mapping);
+
+                if (labels in this.graph_data.caption_mapping)
+                    return this.graph_data.caption_mapping[labels];
+
+                return "id";
+            },
+
+            node_caption_f(ele)
+            /*
+                Note: the various fields of the node may be extracted from the argument ele
+                      as ele.data(field_name).  For example: ele.data("id")
+             */
+            {
+                console.log(ele.data("id"));
+                console.log(ele.data("labels"));
+
+                const field_to_use_as_caption = this.map_labels_to_caption_field(ele.data("labels"));
+
+                return ele.data(field_to_use_as_caption)
+            },
+
+
             node_color_f(ele)
             /*  Determine and return the color to use for the inside of the node
                 passed as argument (as a graph element)
              */
             {
                 const default_color = '#FFFFFF';    // TODO: assign colors on rotation instead
+                                                    //       SEE vue_curves_4.js
 
-                //console.log(this.color_mapping);
-                //console.log(ele.data("label"));
-                const label = ele.data("label");    // Counterpart of node label (but only 1 for now)
-                if (label in this.color_mapping)  {
-                    let requested_color = this.color_mapping[label];
+                //console.log(this.graph_data.graph_color_mapping);
+                //console.log(ele.data("labels"));
+                const labels = ele.data("labels");    // Counterpart of node labels (but only 1 for now)
+                if (labels in this.graph_data.color_mapping)  {
+                    let requested_color = this.graph_data.color_mapping[labels];
                     return requested_color;
                 }
                 else
@@ -237,8 +260,8 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
                 same Hue/Saturation but less Luminosity
              */
             {
-                //console.log(this.color_mapping);
-                //console.log(ele.data("label"));
+                //console.log(this.graph_data.color_mapping);
+                //console.log(ele.data("labels"));
                 const interior_color = this.node_color_f(ele);
                 //console.log(interior_color);
                 const c = d3.hsl(interior_color);

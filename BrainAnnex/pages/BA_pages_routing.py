@@ -242,8 +242,19 @@ class PagesRouting:
             """
             template = "schema_viewer.htm"
 
+
             graph_obj = PyGraphScape()
 
+            graph_obj.add_node(node_id=1, labels="PERSON", data={"name": "Julian"})
+            graph_obj.add_node(node_id=2, labels="CAR",    data={"color": "white"})
+            graph_obj.add_edge(from_node=1, to_node=2, name="OWNS")
+
+            graph_obj.assign_color_mapping(label="PERSON", color="cyan")
+            graph_obj.assign_color_mapping(label="CAR", color="orange")
+
+            graph_obj.assign_caption(label="PERSON", caption="name")
+            graph_obj.assign_caption(label="CAR", caption="color")
+            """
             graph_obj.add_node(node_id="schema-1", labels="CLASS", name="German Vocabulary", data={"uri": "schema-1", "strict": False})
             graph_obj.add_node(node_id="schema-19", labels="CLASS", name="Foreign Vocabulary", data={"uri": "schema-19", "strict": False, "no_datanodes": True})
 
@@ -255,34 +266,13 @@ class PagesRouting:
             graph_obj.assign_color_mapping(label="CLASS", color="graph_darkgreen")
             graph_obj.assign_color_mapping(label="PROPERTY", color="graph_orange")
 
-            '''
-            graph_obj.add_node(uri=0, label="Chemical", name="NaCl", data={"diff_rate": None, "stoich": 1, "rxn_order": 1})
-            graph_obj.add_node(uri=1, label="Chemical", name="CO2", data={"diff_rate": None, "stoich": 1, "rxn_order": 1})
-            graph_obj.add_node(uri=2, label="Reaction", name="RXN", data={"kF": "3", "kR": "2", "delta_G": "-1,005.13", "K": "1.5"})
-
-            graph_obj.add_edge(from_node=0, to_node=2, name="reacts")
-            graph_obj.add_edge(from_node=2, to_node=1, name="produces")
-
-            graph_obj.assign_color_mapping(label="Chemical", color="graph_orchid")
-            graph_obj.assign_color_mapping(label="Reaction", color="graph_orange")
             
-            graph_obj.assign_color_mapping({"Chemical": "graph_orchid",
-                                "Reaction": "graph_gold"})
-                                            
-            graph_data = [{"id": 2, "label": "Reaction", "name": "RXN", "kF": "3", "kR": "2", "delta_G": "-1,005.13", "K": "1.5"},
-                          {"id": 1, "label": "Chemical", "name": "CO2", "diff_rate": None, "stoich": 1, "rxn_order": 1},
-                          {"id": 3, "source": 2, "target": 1, "name": "produces"},
-                          {"id": 0, "label": "Chemical", "name": "NaCl", "diff_rate": None, "stoich": 1, "rxn_order": 1},
-                          {"id": 4, "source": 0, "target": 2, "name": "reacts"}]
+            """
+            print(graph_obj)
 
-            color_mapping = {"Chemical": "graph_orchid",
-                             "Reaction": "graph_lightbrown"}
-            '''
-            print(graph_obj.graph_data)
-            print(graph_obj.graph_color_mapping)
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
-                                   graph_data=graph_obj.graph_data, color_mapping=graph_obj.graph_color_mapping)
+                                   graph_data=graph_obj.get_graph_data())
 
 
 

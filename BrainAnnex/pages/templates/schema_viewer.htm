@@ -7,8 +7,7 @@
 
     Flask-passed parameters:
         current_page, site_pages,
-        graph_data,
-        color_mapping
+        graph_data
 #}
 
 <html lang="en">
@@ -51,14 +50,16 @@
 
 <br>
 
+<p>
+    Flask data:  {{graph_data}}
+</p>
 
 
 <!--  ~~~~~~~~~  Container for VUE COMPONENTS : the ROOT of the components below  ~~~~~~~~~~~~  -->
 <div id="vue-root">
 
     <vue_cytoscape_2
-            v-bind:graph_data="graph_json"
-            v-bind:color_mapping="color_mapping_json"
+            v-bind:graph_data="graph_data_json"
             v-bind:component_id="1"
     >
     </vue_cytoscape_2>
@@ -85,9 +86,7 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
 
         // Handover of data from Flask to Vue
-        graph_json: {{graph_data | tojson}},
-
-        color_mapping_json: {{color_mapping | tojson}},  // EXAMPLE: {"Chemical": "neo4j_green", "Reaction": "neo4j_lightbrown"}
+        graph_data_json: {{graph_data | tojson}},
 
         component_id_json: 1
 
