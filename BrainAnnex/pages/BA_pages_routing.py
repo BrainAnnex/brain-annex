@@ -244,10 +244,10 @@ class PagesRouting:
 
             graph_obj = PyGraphScape()
 
-            graph_obj.add_node(uri="schema-1", label="CLASS", name="German Vocabulary", data={"uri":"schema-1", "strict": False})
-            graph_obj.add_node(uri="schema-19", label="CLASS", name="Foreign Vocabulary", data={"uri":"schema-1", "strict": False, "no_datanodes": True})
+            graph_obj.add_node(node_id="schema-1", labels="CLASS", name="German Vocabulary", data={"uri": "schema-1", "strict": False})
+            graph_obj.add_node(node_id="schema-19", labels="CLASS", name="Foreign Vocabulary", data={"uri": "schema-19", "strict": False, "no_datanodes": True})
 
-            graph_obj.add_node(uri="schema-92", label="PROPERTY", name="German", data={"uri":"schema-92"})
+            graph_obj.add_node(node_id="schema-92", labels="PROPERTY", name="German", data={"uri": "schema-92"})
 
             graph_obj.add_edge(from_node="schema-1", to_node="schema-92", name="HAS_PROPERTY")
             graph_obj.add_edge(from_node="schema-1", to_node="schema-19", name="INSTANCE_OF")
