@@ -7,7 +7,7 @@
 
     Flask-passed parameters:
         current_page, site_pages,
-        graph_data
+        graph_data      Dictionary with all the data needed by the Vue component to display the graph
 #}
 
 <html lang="en">
@@ -50,9 +50,14 @@
 
 <br>
 
-<p>
-    Flask data:  {{graph_data}}
-</p>
+<div style="border: 1px solid gray; padding: 5px; margin-bottom: 10px">
+    {# Flask data: #}
+    {% for k, v in graph_data.items() %}
+        <p>
+            {{k}}: <span style="color: gray"> {{v}}</span>
+        </p>
+    {% endfor %}
+</div>
 
 
 <!--  ~~~~~~~~~  Container for VUE COMPONENTS : the ROOT of the components below  ~~~~~~~~~~~~  -->
@@ -86,7 +91,7 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
 
         // Handover of data from Flask to Vue
-        graph_data_json: {{graph_data | tojson}},
+        graph_data_json: {{graph_data | tojson}},   // Object with all the data needed by the Vue component to display the graph
 
         component_id_json: 1
 

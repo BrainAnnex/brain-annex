@@ -270,7 +270,6 @@ class PagesRouting:
             """
             print(graph_obj)
 
-
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    graph_data=graph_obj.get_graph_data())
 

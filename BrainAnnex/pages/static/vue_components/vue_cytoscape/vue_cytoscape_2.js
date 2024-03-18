@@ -1,8 +1,19 @@
-Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component names! -->
+Vue.component('vue_cytoscape_2',
     {
         props: {
-            <!-- NOTE:  Only lower cases in props names! -->
+            /* graph_data is an object with the keys:
+                1) "structure"
+                        EXAMPLE:
+                            [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
+                             {'id': 2, 'color': 'white', 'labels': ['CAR']},
+                             {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
 
+                2) "color_mapping"
+                        EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
+
+                3) "caption_mapping"
+                        EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
+             */
             graph_data: {
                 required: true
             },
@@ -10,7 +21,6 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
             component_id: {
                 default: 1
             }
-
         },
 
 
@@ -63,11 +73,11 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
                 (a list of objects with a key named "data")
                 EXAMPLE:
                     [
-                        {data: {id: 1, name: 'Headers', labels: 'CLASS'}
+                        {data: {'id': 1, 'name': 'Julian', 'labels': ['PERSON']}
                         },
-                        {data: {id: 2, name: 'text', labels: 'PROPERTY'}
+                        {data: {'id': 2, 'color': 'white', 'labels': ['CAR']}
                         },
-                        {data: {id: 3, source: 1, target: 2, name: 'HAS_PROPERTY'}
+                        {data: {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
                         }
                     ]
              */
@@ -79,6 +89,7 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
                     res.push(el);
                 }
 
+                console.log("assemble_element_structure produced:")
                 console.log(res);
 
                 return res;
@@ -101,16 +112,17 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
 
                     container: document.getElementById(element_id),    // Container to render in
 
-                    elements: this.assemble_element_structure,   // List of graph elements (nodes & edges)
+                    elements: this.assemble_element_structure,          // List of graph elements (nodes & edges)
 
 
-                    style: [ // the stylesheet for the graph
+                    style: [    // The stylesheet for the graph
                         {
                             selector: 'node',       // NODES
                             style: {
                                 'width': 60,
                                 'height': 60,
-                                'label': this.node_caption_f,         // 'data(color)'
+                                //'label': 'data(name)',
+                                'label': this.node_caption_f,
                                 //'background-color': '#8DCC93',
                                 'background-color': this.node_color_f,
 
@@ -183,20 +195,21 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
             show_node_info(ev)
             // Invoked when clicking on a node
             {
-                var node = ev.target;
-                console.log(node.position());
+                const node = ev.target;
+
+                //console.log(node.position());   // EXAMPLE: {x: 361, y: 144}
                 //console.log(node.id());
                 //console.log(node.data());
                 //console.log(node);
                 //console.log(node.data);
                 //console.log(node.data('name'));
-                console.log(Object.keys(node.data()));
+                //console.log(Object.keys(node.data()));    // EXAMPLE: ['id', 'labels', 'name']
 
                 const cyto_data_obj = node.data();
                 let info_arr = [];
                 for (k in cyto_data_obj) {
                     //console.log( k, cyto_data_obj[k] );
-                    info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);
+                    info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);  // This will update the UI graph legend
                 }
                 //console.log(info_arr);
 
@@ -208,24 +221,71 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
             },
 
 
-            map_labels_to_caption_field(labels)
+
+            map_labels_to_color(labels)
+            /*  Given the labels of a node (an array of strings),
+                return the name of the color to use for the inside of the node,
+                based on what was specified in "color_mapping" from the "graph_data" prop.
+                In case of multiple labels, try them sequentially, until a mapping is found.
+                If no mapping information is present for any of the labels, use the color white by default
+             */
             {
-                console.log(this.graph_data.caption_mapping);
+                // The default value, in case no mapping info found for any of the labels
+                const default_color = '#FFFFFF';    // TODO: assign colors on rotation instead
 
-                if (labels in this.graph_data.caption_mapping)
-                    return this.graph_data.caption_mapping[labels];
+                //console.log("labels: ", labels);    // Example: ["PERSON"]
+                //console.log(this.graph_data.color_mapping);
 
-                return "id";
+                for (single_label of labels) {
+                    if (single_label in this.graph_data.color_mapping)  {
+                        const color = this.graph_data.color_mapping[labels];
+                        //console.log(`Using the color '${color}' for the inside of this node`);
+                        return color;
+                    }
+                }
+
+                return default_color;
             },
 
+
+            map_labels_to_caption_field(labels)
+            /*  Given the labels of a node (an array of strings),
+                return the name of the field to use for the node caption,
+                based on what was specified in "caption_mapping" from the "graph_data" prop.
+                In case of multiple labels, try them sequentially, until a mapping is found.
+                If no mapping information is present for any of the labels, use the field name "id" by default
+             */
+            {
+                // The default value, in case no mapping info found for any of the labels
+                const default_caption_field_name = "id";
+
+                //console.log("labels: ", labels);    // Example: ["PERSON"]
+                //console.log(this.graph_data.caption_mapping);
+
+                for (single_label of labels) {
+                    if (single_label in this.graph_data.caption_mapping)  {
+                        const caption_field_name = this.graph_data.caption_mapping[labels];
+                        //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
+                        return caption_field_name;
+                    }
+                }
+
+                return default_caption_field_name;
+            },
+
+
+
             node_caption_f(ele)
-            /*
-                Note: the various fields of the node may be extracted from the argument ele
+            /*  Function to generate the caption to show on the graph, for a given node.
+                The caption is based on the node's labels; in the absence of a user-specified mapping,
+                the data in the field "id" is used as caption.
+
+                Note: the various fields of the node may be extracted from the argument ele (representing a node element)
                       as ele.data(field_name).  For example: ele.data("id")
              */
             {
-                console.log(ele.data("id"));
-                console.log(ele.data("labels"));
+                //console.log("Determining node caption for node with id: ", ele.data("id"));
+                //console.log("    and labels: ", ele.data("labels"));
 
                 const field_to_use_as_caption = this.map_labels_to_caption_field(ele.data("labels"));
 
@@ -234,27 +294,23 @@ Vue.component('vue_cytoscape_2',  <!-- NOTE:  Only lower cases in component name
 
 
             node_color_f(ele)
-            /*  Determine and return the color to use for the inside of the node
-                passed as argument (as a graph element)
+            /*  Function to generate the color to use for the inside of the given node.
+                The color is based on the node's labels; in the absence of a user-specified mapping,
+                white is used.
+
+                Note: the various fields of the node may be extracted from the argument ele (representing a node element)
+                      as ele.data(field_name).  For example: ele.data("id")
              */
             {
-                const default_color = '#FFFFFF';    // TODO: assign colors on rotation instead
-                                                    //       SEE vue_curves_4.js
+                //console.log("Determining color for node with id: ", ele.data("id"));
+                //console.log("    and labels: ", ele.data("labels"));
 
-                //console.log(this.graph_data.graph_color_mapping);
-                //console.log(ele.data("labels"));
-                const labels = ele.data("labels");    // Counterpart of node labels (but only 1 for now)
-                if (labels in this.graph_data.color_mapping)  {
-                    let requested_color = this.graph_data.color_mapping[labels];
-                    return requested_color;
-                }
-                else
-                    return default_color;
+                return this.map_labels_to_color(ele.data("labels"));
             },
 
 
             node_border_color_f(ele)
-            /*  Determine and return the color to use for the border of the node
+            /*  Function to generate the color to use for the border of the node
                 passed as argument (as a graph element).
                 The relationship between the interior and edge color is:
                 same Hue/Saturation but less Luminosity

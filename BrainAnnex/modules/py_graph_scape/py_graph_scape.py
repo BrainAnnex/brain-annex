@@ -13,20 +13,28 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
                                         #   Nodes must contain the key 'id' (and, typically, 'labels')
                                         #   Edges must contain the keys 'source', 'target' and 'name'
                                         #   (and presumably 'id' as well?)
+                                        # EXAMPLE:
+                                        #   [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
+                                        #    {'id': 2, 'color': 'white', 'labels': ['CAR']},
+                                        #    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
 
         self.color_mapping = {}         # Mapping a node label to its interior color
-                                        # EXAMPLE: {"Chemical": "graph_green", "Reaction": "graph_lightbrown"}
-        self.caption_mapping = {}
+                                        # EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
+
+        self.caption_mapping = {}       # Mapping a node label to its caption (field name to use on graph)
+                                        # EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
+
         self.next_available_edge_id = 1
 
 
 
     def __str__(self):
-        s = f"Graph contains a total of {len(self.structure)} nodes and edges\n"
+        s = f"Object describing a graph containing a total of {len(self.structure)} nodes and edges:\n"
         s += f"    Graph structure: {self.structure}\n"
         s += f"    Graph color mapping: {self.color_mapping}\n"
         s += f"    Graph caption mapping: {self.caption_mapping}"
         return s
+
 
 
     def get_graph_data(self):
@@ -38,14 +46,15 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
     def add_node(self, node_id :Union[int,str], labels="", name=None, data=None) -> None:
         """
-        Prepare the data for 1 node for the visualization
+        Prepare and store the data for 1 node, in a format for the visualization front-end.
+
+        EXAMPLE:    {'id': 1, 'name': 'Julian', 'labels': ['PERSON']}
 
         :param node_id: Either an integer or a string to uniquely identify this node in the graph;
                             it will be used to specify the start/end nodes of edges.
                             Typically, use either the internal database ID, or some URI
         :param labels:  A string, or list of strings, with the node's label(s) used in the graph database;
                             if not used, pass an empty string
-                            TODO: if more than 1 label is passed, only the 1st one is being used for now
         :param name:    An optional string meant to be displayed by default on the node;
                             if not specified, a decision will be made by the front end about with other data field
                             to use (for example the value of the "uri" argument)
@@ -65,8 +74,12 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
         d["id"] = node_id
 
+        if type(labels) == str:
+            labels = [labels]
+        '''
         if type(labels) == list:
             labels = labels[0]      # TODO: utilize all labels in the future
+        '''
         d["labels"] = labels
 
         if name:
@@ -78,8 +91,11 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
     def add_edge(self, from_node :Union[str, int], to_node :Union[str, int], name :str, edge_id=None) -> None:
         """
-        Prepare the data for 1 edge for the visualization.
-        Note that "id", in this context, is whatever we pass to the visualization module for the nodes;
+        Prepare and store the data for 1 edge, in a format for the visualization front-end.
+
+        EXAMPLE:   {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
+
+        Note that 'id', in this context, is whatever we pass to the visualization module for the nodes;
         not necessarily related to the internal database ID's
 
         :param from_node:   Integer or a string uniquely identify the "id" of the node where the edge originates
@@ -103,13 +119,22 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
         self.structure.append(d)
 
 
+
     def assign_caption(self, label :str, caption :str) -> None:
+        """
+        Assign a mapping from label name to caption (name of field to use on display)
+
+        :param label:
+        :param caption:
+        :return:
+        """
         self.caption_mapping[label] = caption
 
 
 
     def assign_color_mapping(self, label :str, color :str) -> None:
         """
+        Assign a mapping from label name to color to use for nodes having that label
 
         :param label:
         :param color:
