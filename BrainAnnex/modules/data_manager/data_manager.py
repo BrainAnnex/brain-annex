@@ -5,6 +5,7 @@ from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
+from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
 import re                               # For REGEX
 import pandas as pd
 import os
@@ -173,7 +174,7 @@ class DataManager:
     def ________SCHEMA_RELATED________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
-    # TODO: possibly move to separate class
+    # TODO: possibly move to separate class, such as NeoSchema
 
     @classmethod
     def all_schema_classes(cls) -> [str]:
@@ -182,6 +183,38 @@ class DataManager:
         :return:
         """
         return NeoSchema.get_all_classes()
+
+
+
+    @classmethod
+    def get_schema_visualization_data(cls):
+
+        graph_obj = PyGraphScape(cls.db)
+
+        classes_match = cls.db.match(labels="CLASS")
+        schema_nodes = cls.db.get_nodes(match=classes_match,
+                                        return_internal_id=True, return_labels=True)
+        class_node_ids = graph_obj.prepare_graph(schema_nodes, add_edges=True)
+        #print("Class node IDs:", class_node_ids)
+
+        property_match = cls.db.match(labels="PROPERTY")
+        schema_nodes = cls.db.get_nodes(match=property_match,
+                                    return_internal_id=True, return_labels=True)
+
+        property_node_ids = graph_obj.prepare_graph(schema_nodes, add_edges=False)
+        #print("Property node IDs:", property_node_ids)
+
+        graph_obj.link_node_groups(class_node_ids, property_node_ids)
+
+
+        graph_obj.assign_color_mapping(label="CLASS", color="graph_darkgreen")
+        graph_obj.assign_color_mapping(label="PROPERTY", color="graph_orange")
+
+        graph_obj.assign_caption(label="CLASS", caption="name")
+        graph_obj.assign_caption(label="PROPERTY", caption="name")
+
+        return graph_obj
+
 
 
     @classmethod

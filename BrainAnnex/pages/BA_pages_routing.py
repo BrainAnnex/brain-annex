@@ -9,7 +9,7 @@ from flask_login import login_required, current_user
 from BrainAnnex.modules.data_manager.data_manager import DataManager
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from BrainAnnex.modules.categories.categories import Categories
-from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
+#from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
 from datetime import datetime
 import time
 import json
@@ -242,9 +242,8 @@ class PagesRouting:
             """
             template = "schema_viewer.htm"
 
-
+            """
             graph_obj = PyGraphScape()
-
             graph_obj.add_node(node_id=1, labels="PERSON", data={"name": "Julian"})
             graph_obj.add_node(node_id=2, labels="CAR",    data={"color": "white"})
             graph_obj.add_edge(from_node=1, to_node=2, name="OWNS")
@@ -253,22 +252,13 @@ class PagesRouting:
             graph_obj.assign_color_mapping(label="CAR", color="orange")
 
             graph_obj.assign_caption(label="PERSON", caption="name")
-            graph_obj.assign_caption(label="CAR", caption="color")
+            graph_obj.assign_caption(label="CAR", caption="color")          
             """
-            graph_obj.add_node(node_id="schema-1", labels="CLASS", name="German Vocabulary", data={"uri": "schema-1", "strict": False})
-            graph_obj.add_node(node_id="schema-19", labels="CLASS", name="Foreign Vocabulary", data={"uri": "schema-19", "strict": False, "no_datanodes": True})
 
-            graph_obj.add_node(node_id="schema-92", labels="PROPERTY", name="German", data={"uri": "schema-92"})
+            graph_obj = DataManager.get_schema_visualization_data()
 
-            graph_obj.add_edge(from_node="schema-1", to_node="schema-92", name="HAS_PROPERTY")
-            graph_obj.add_edge(from_node="schema-1", to_node="schema-19", name="INSTANCE_OF")
 
-            graph_obj.assign_color_mapping(label="CLASS", color="graph_darkgreen")
-            graph_obj.assign_color_mapping(label="PROPERTY", color="graph_orange")
-
-            
-            """
-            print(graph_obj)
+            #print(graph_obj)
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,
                                    graph_data=graph_obj.get_graph_data())

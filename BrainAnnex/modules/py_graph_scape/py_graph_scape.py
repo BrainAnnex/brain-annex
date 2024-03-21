@@ -8,7 +8,9 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
     """
 
 
-    def __init__(self):
+    def __init__(self, db):
+        self.db = db
+
         self.structure = []             # A list of dicts defining nodes, and possibly edges as well
                                         #   Nodes must contain the key 'id' (and, typically, 'labels')
                                         #   Edges must contain the keys 'source', 'target' and 'name'
@@ -28,7 +30,12 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
 
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """
+        Return an overview description of this object
+
+        :return:
+        """
         s = f"Object describing a graph containing a total of {len(self.structure)} nodes and edges:\n"
         s += f"    Graph structure: {self.structure}\n"
         s += f"    Graph color mapping: {self.color_mapping}\n"
@@ -37,7 +44,12 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
 
 
-    def get_graph_data(self):
+    def get_graph_data(self) -> dict:
+        """
+        Return the data dictionary to pass to the front-end
+
+        :return:
+        """
         return {"structure": self.structure,
                 "color_mapping": self.color_mapping,
                 "caption_mapping": self.caption_mapping}
@@ -76,14 +88,11 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
         if type(labels) == str:
             labels = [labels]
-        '''
-        if type(labels) == list:
-            labels = labels[0]      # TODO: utilize all labels in the future
-        '''
+
         d["labels"] = labels
 
-        if name:
-            d["name"] = name
+        #if name:
+            #d["name"] = name
 
         self.structure.append(d)
 
@@ -141,19 +150,74 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
         :return:
         """
         extra_colors =  {       # Convenient extra colors, not available thru standard CSS names
-                    "graph_green": '#8DCC93',
-                    "graph_darkgreen": '#56947f',
-                    "graph_teal": '#569480',
-                    "graph_orange": '#F79767',
-                    "graph_blue": '#4C8EDA',
-                    "graph_red": '#F16667',
-                    "graph_darkbrown": '#604A0E',
-                    "graph_lightbrown": '#D9C8AE',
-                    "graph_orchid": '#C990C0',
-                    "graph_gold": '#FFC454'     # Has a bit more orange than 'gold'
+                    "graph_green": '#8DCC92',
+                    "graph_darkgreen": '#56947E',
+                    "graph_teal": '#569481',
+                    "graph_orange": '#F79768',
+                    "graph_blue": '#4C8EDB',
+                    "graph_red": '#F16668',
+                    "graph_darkbrown": '#604A0D',
+                    "graph_lightbrown": '#D9C8AD',
+                    "graph_orchid": '#C990C1',
+                    "graph_gold": '#FFC455'     # Has a bit more orange than 'gold'
                 }
 
         if color in extra_colors:
             color = extra_colors[color]
 
         self.color_mapping[label] = color
+
+
+
+    def prepare_graph(self, result_dataset :[dict], add_edges=True) -> [int]:
+        """
+
+        :param result_dataset:
+        :param add_edges:
+        :return:
+        """
+        node_list = []
+        for node in result_dataset:
+            internal_id = node.get("internal_id")
+            if not internal_id:
+                continue
+
+            node_list.append(internal_id)
+
+            self.add_node(node_id=internal_id, labels=node.get("neo4j_labels"),
+                          data=node)
+
+        if add_edges:
+            q = '''
+                MATCH (n1)-[r]->(n2) 
+                WHERE ID(n1) IN $node_list AND ID(n2) IN $node_list 
+                RETURN DISTINCT id(n1) AS from_node, id(n2) AS to_node, type(r) AS name
+                '''
+
+            result = self.db.query(q, {"node_list": node_list})
+            for edge in result:
+                print(edge)
+                self.add_edge(from_node=edge["from_node"], to_node=edge["to_node"], name=edge["name"])
+
+        return node_list
+
+
+
+    def link_node_groups(self, group1 :[int], group2 :[int]) -> None:
+        """
+
+        :param group1:
+        :param group2:
+        :return:
+        """
+        q = '''
+            MATCH (n1)-[r]->(n2) 
+            WHERE ID(n1) IN $group1 AND ID(n2) IN $group2 
+            RETURN DISTINCT id(n1) AS from_node, id(n2) AS to_node, type(r) AS name
+            '''
+
+        result = self.db.query(q, {"group1": group1, "group2": group2})
+        for edge in result:
+            print(edge)
+            self.add_edge(from_node=edge["from_node"], to_node=edge["to_node"], name=edge["name"])
+

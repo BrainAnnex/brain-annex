@@ -166,7 +166,7 @@ Vue.component('vue_cytoscape_2',
 
 
                     layout: {
-                        name: 'circle',   // OR: 'grid'
+                        name: 'breadthfirst',   // CHOICES: 'grid', 'circle', 'random', 'concentric', 'breadthfirst', 'cose'
                         rows: 1
                     }
 
