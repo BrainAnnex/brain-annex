@@ -242,22 +242,7 @@ class PagesRouting:
             """
             template = "schema_viewer.htm"
 
-            """
-            graph_obj = PyGraphScape()
-            graph_obj.add_node(node_id=1, labels="PERSON", data={"name": "Julian"})
-            graph_obj.add_node(node_id=2, labels="CAR",    data={"color": "white"})
-            graph_obj.add_edge(from_node=1, to_node=2, name="OWNS")
-
-            graph_obj.assign_color_mapping(label="PERSON", color="cyan")
-            graph_obj.assign_color_mapping(label="CAR", color="orange")
-
-            graph_obj.assign_caption(label="PERSON", caption="name")
-            graph_obj.assign_caption(label="CAR", caption="color")          
-            """
-
             graph_obj = DataManager.get_schema_visualization_data()
-
-
             #print(graph_obj)
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,

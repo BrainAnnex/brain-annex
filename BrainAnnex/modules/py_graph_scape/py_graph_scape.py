@@ -46,7 +46,8 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
     def get_graph_data(self) -> dict:
         """
-        Return the data dictionary to pass to the front-end
+        Return the data dictionary with all the relevant visualization info
+        (typically, to pass to the front-end)
 
         :return:
         """
@@ -58,7 +59,7 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
     def add_node(self, node_id :Union[int,str], labels="", name=None, data=None) -> None:
         """
-        Prepare and store the data for 1 node, in a format for the visualization front-end.
+        Prepare and store the data for 1 node, in a format expected by the visualization front-end
 
         EXAMPLE:    {'id': 1, 'name': 'Julian', 'labels': ['PERSON']}
 
@@ -91,16 +92,13 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
         d["labels"] = labels
 
-        #if name:
-            #d["name"] = name
-
         self.structure.append(d)
 
 
 
     def add_edge(self, from_node :Union[str, int], to_node :Union[str, int], name :str, edge_id=None) -> None:
         """
-        Prepare and store the data for 1 edge, in a format for the visualization front-end.
+        Prepare and store the data for 1 edge, in a format expected by the visualization front-end.
 
         EXAMPLE:   {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
 
@@ -131,11 +129,11 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
     def assign_caption(self, label :str, caption :str) -> None:
         """
-        Assign a mapping from label name to caption (name of field to use on display)
+        Assign and store a mapping from label name to caption (name of field to use on the display)
 
         :param label:
         :param caption:
-        :return:
+        :return:        None
         """
         self.caption_mapping[label] = caption
 
@@ -143,11 +141,11 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
     def assign_color_mapping(self, label :str, color :str) -> None:
         """
-        Assign a mapping from label name to color to use for nodes having that label
+        Assign and store a mapping from label name to color to use for nodes having that label
 
         :param label:
         :param color:
-        :return:
+        :return:        None
         """
         extra_colors =  {       # Convenient extra colors, not available thru standard CSS names
                     "graph_green": '#8DCC92',
@@ -171,23 +169,39 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
     def prepare_graph(self, result_dataset :[dict], add_edges=True) -> [int]:
         """
+        Given a list of dictionary data about graph-database nodes - for example,
+        as returned by NeoAccess.get_nodes() - construct and save visualization data for them.
 
-        :param result_dataset:
-        :param add_edges:
-        :return:
+        Each dictionary entry is expected to have a key named "internal_id";
+        if not present, it will be silently ignored.
+        Though not required, a key named "neo4j_labels" is typically present as well.
+
+        :param result_dataset:  A list of dictionary data about graph-database nodes
+        :param add_edges:       If True, all existing edges among the displayed nodes
+                                    will also be part of the visualization
+        :return:                A list of integers with the internal databased IDs
+                                    of all the nodes added to the graph structure
         """
-        node_list = []
+        node_list = []      # Running list of internal databased IDs, for nodes included in visualization
         for node in result_dataset:
             internal_id = node.get("internal_id")
             if not internal_id:
-                continue
+                continue    # Silently ignore any entry lacking this data
 
             node_list.append(internal_id)
 
-            self.add_node(node_id=internal_id, labels=node.get("neo4j_labels"),
+            if "neo4j_labels" in node:
+                labels = node["neo4j_labels"]
+                del node["neo4j_labels"]
+            else:
+                labels = ""
+
+            self.add_node(node_id=internal_id, labels=labels,
                           data=node)
 
+
         if add_edges:
+            # Search the database for any edges among any of the nodes selected for the visualization
             q = '''
                 MATCH (n1)-[r]->(n2) 
                 WHERE ID(n1) IN $node_list AND ID(n2) IN $node_list 
@@ -196,7 +210,7 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
             result = self.db.query(q, {"node_list": node_list})
             for edge in result:
-                print(edge)
+                #print(edge)
                 self.add_edge(from_node=edge["from_node"], to_node=edge["to_node"], name=edge["name"])
 
         return node_list
@@ -205,10 +219,12 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
     def link_node_groups(self, group1 :[int], group2 :[int]) -> None:
         """
+        Search the database for any edges from any of the nodes in the 1st group, to any node in the 2nd group.
+        Any located edge will be added to the visualization data stored in this object
 
-        :param group1:
-        :param group2:
-        :return:
+        :param group1:  List of integers with the internal databased IDs of the 1st group of nodes
+        :param group2:  List of integers with the internal databased IDs of the 2nd group of nodes
+        :return:        None
         """
         q = '''
             MATCH (n1)-[r]->(n2) 
@@ -218,6 +234,5 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
         result = self.db.query(q, {"group1": group1, "group2": group2})
         for edge in result:
-            print(edge)
+            #print(edge)
             self.add_edge(from_node=edge["from_node"], to_node=edge["to_node"], name=edge["name"])
-

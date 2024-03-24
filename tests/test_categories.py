@@ -53,7 +53,7 @@ def test_get_all_categories(db):
     assert result == []
 
     # Add a new Category ("Languages")
-    language_uri = Categories.add_subcategory({"category_uri": "1", "subcategory_name": "Languages",
+    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
                                 "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
@@ -74,13 +74,13 @@ def test_get_all_categories(db):
 
 def test_get_sibling_categories(db):
 
-    root_internal_id, _ = initialize_categories(db)
+    root_internal_id, root_uri = initialize_categories(db)
     result = Categories.get_sibling_categories(root_internal_id)
     assert result == []     # The root node has no siblings
 
     # Add a new Category ("Languages")
-    language_uri = Categories.add_subcategory({"category_uri": "1", "subcategory_name": "Languages",
-                                                   "subcategory_remarks": "Common node for all languages"})
+    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
+                                               "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_sibling_categories(root_internal_id)
     assert result == []     # The "Languages" node has no siblings
@@ -167,7 +167,7 @@ def test_link_content_at_end(db):
     NeoSchema.create_data_node(class_node="Images", properties={"caption": "my_pic"},
                                new_uri="i-100")
 
-    Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100", label=None)
+    Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
     # Verify that all nodes and links are in place
     q = f'''
@@ -185,7 +185,7 @@ def test_link_content_at_end(db):
 
     with pytest.raises(Exception):
         # Link already exists
-        Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100", label=None)
+        Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
     # TODO: additional testing
 
@@ -203,7 +203,7 @@ def test_detach_from_category(db):
     NeoSchema.create_data_node(class_node="Images", properties={"caption": "my_pic"},
                                new_uri="i-100")
 
-    Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100", label=None)
+    Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
     with pytest.raises(Exception):
         # It would leave the Content Item "stranded"
@@ -212,7 +212,7 @@ def test_detach_from_category(db):
 
     # Create a 2nd Category, and link up the Content Item to it
     new_cat_uri = Categories.add_subcategory({"category_uri":root_uri,  "subcategory_name": "math"})
-    Categories.link_content_at_end(category_uri=new_cat_uri, item_uri="i-100", label=None)
+    Categories.link_content_at_end(category_uri=new_cat_uri, item_uri="i-100")
 
     # Now, the detachment of the Content Item from the initial (root) Category is possible
     Categories.detach_from_category(category_uri=root_uri, item_uri="i-100")

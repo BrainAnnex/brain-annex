@@ -1,7 +1,8 @@
 Vue.component('vue_cytoscape_2',
     {
         props: {
-            /* graph_data is an object with the keys:
+            /* graph_data is an object with the following KEYS:
+
                 1) "structure"
                         EXAMPLE:
                             [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
@@ -32,11 +33,33 @@ Vue.component('vue_cytoscape_2',
                     <!-- CYTOSCAPE.js WILL INSERT THE GRAPH HERE -->
                 </div>
 
-                <div class="legend">
-                    <template v-for="item in node_info">
-                        <span v-html="item"></span>
-                        <br>
-                    </template>
+                <div class="cytoscape-legend">
+
+                    <p v-if="!node_info">
+                        <b>Node labels</b><br><br>
+                        <template v-for="color_map in Object.entries(graph_data.color_mapping)">
+                            <div class="label" v-bind:style="{'background-color': color_map[1]}">{{color_map[0]}}</div>
+                        </template>
+
+                        <br><br><br>
+                        <i>Select a node on the graph</i>
+                    </p>
+
+                    <p v-else>
+                        <template v-for="label_name in node_labels">
+                            <div class="label" v-bind:style="{'background-color': graph_data.color_mapping[label_name]}">{{label_name}}</div>
+                        </template>
+                        <br><br>
+
+                        <template v-for="item in node_info">
+                            <span v-html="item"></span>
+                            <br>
+                        </template>
+                    </p>
+
+                    <br>
+                    <button @click=flip_plot_style>Flip plot style</button>
+                    <p style="color: #BBB; margin-top:5px; margin-bottom:0">Current: "{{plot_layout_style}}"</p>
                 </div>
 
             </div>		<!-- End of outer container -->
@@ -49,7 +72,11 @@ Vue.component('vue_cytoscape_2',
             return {
                 graph_structure: this.graph_data.structure,
 
-                node_info: ["Click on a node to see its attributes"]
+                // Data of the currently-selected node
+                node_labels: null,
+                node_info: null,
+
+                plot_layout_style: "breadthfirst"
             }
         },
 
@@ -100,6 +127,21 @@ Vue.component('vue_cytoscape_2',
 
         // ----------------  METHODS  -----------------
         methods: {
+            flip_plot_style()
+            // Re-render the graph with a changed plot style
+            {
+                //console.log("In flip_plot_style()");
+                if (this.plot_layout_style == "breadthfirst")
+                    this.plot_layout_style = "random";
+                else
+                    this.plot_layout_style = "breadthfirst";
+
+                this.create_graph('cy_' + this.component_id);    // This will let Cytoscape.js re-render the plot
+
+                this.node_info = null;                          // Unset any node selection
+            },
+
+
             create_graph(element_id)
             /*  This function needs to be invoked after this Vue component is "mounted".
                 Replace the contents of the HTML element whose id is the given element_id
@@ -166,7 +208,7 @@ Vue.component('vue_cytoscape_2',
 
 
                     layout: {
-                        name: 'breadthfirst',   // CHOICES: 'grid', 'circle', 'random', 'concentric', 'breadthfirst', 'cose'
+                        name: this.plot_layout_style,   // CHOICES: 'grid', 'circle', 'random', 'concentric', 'breadthfirst', 'cose'
                         rows: 1
                     }
 
@@ -205,7 +247,7 @@ Vue.component('vue_cytoscape_2',
                 //console.log(node.data('name'));
                 //console.log(Object.keys(node.data()));    // EXAMPLE: ['id', 'labels', 'name']
 
-                const cyto_data_obj = node.data();
+                const cyto_data_obj = node.data();      // An object with various keys, such as 'id', 'labels', 'name'
                 let info_arr = [];
                 for (k in cyto_data_obj) {
                     //console.log( k, cyto_data_obj[k] );
@@ -218,6 +260,7 @@ Vue.component('vue_cytoscape_2',
                 const y = pos.y.toFixed(1);
                 //this.node_info = `id: ${node.id()} , x: ${x} , y: ${y}`;
                 this.node_info = info_arr;
+                this.node_labels = cyto_data_obj.labels;
             },
 
 
@@ -238,7 +281,7 @@ Vue.component('vue_cytoscape_2',
 
                 for (single_label of labels) {
                     if (single_label in this.graph_data.color_mapping)  {
-                        const color = this.graph_data.color_mapping[labels];
+                        const color = this.graph_data.color_mapping[single_label];
                         //console.log(`Using the color '${color}' for the inside of this node`);
                         return color;
                     }
@@ -251,7 +294,7 @@ Vue.component('vue_cytoscape_2',
             map_labels_to_caption_field(labels)
             /*  Given the labels of a node (an array of strings),
                 return the name of the field to use for the node caption,
-                based on what was specified in "caption_mapping" from the "graph_data" prop.
+                based on what was specified in the "caption_mapping" value from the "graph_data" prop.
                 In case of multiple labels, try them sequentially, until a mapping is found.
                 If no mapping information is present for any of the labels, use the field name "id" by default
              */
@@ -259,12 +302,12 @@ Vue.component('vue_cytoscape_2',
                 // The default value, in case no mapping info found for any of the labels
                 const default_caption_field_name = "id";
 
-                //console.log("labels: ", labels);    // Example: ["PERSON"]
+                //console.log("In map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
                 //console.log(this.graph_data.caption_mapping);
 
                 for (single_label of labels) {
                     if (single_label in this.graph_data.caption_mapping)  {
-                        const caption_field_name = this.graph_data.caption_mapping[labels];
+                        const caption_field_name = this.graph_data.caption_mapping[single_label];
                         //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
                         return caption_field_name;
                     }
@@ -287,9 +330,10 @@ Vue.component('vue_cytoscape_2',
                 //console.log("Determining node caption for node with id: ", ele.data("id"));
                 //console.log("    and labels: ", ele.data("labels"));
 
-                const field_to_use_as_caption = this.map_labels_to_caption_field(ele.data("labels"));
+                const field_to_use_for_caption = this.map_labels_to_caption_field(ele.data("labels"));
+                //console.log(`Name of field to use for caption: '${field_to_use_for_caption}'`);
 
-                return ele.data(field_to_use_as_caption)
+                return ele.data(field_to_use_for_caption)
             },
 
 

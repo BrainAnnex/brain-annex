@@ -104,7 +104,7 @@ class Categories:
 
         # NOTE: historically, "1" has been used for the ROOT Category; however, now that uri is shared
         #       among all types of plugins, maybe a different approach would be better (such as an attribute in the node)
-        return True if category_uri == "1" else False
+        return True if category_uri == "1" else False    # TODO: this will eventually have to be managed differently
 
 
 
@@ -195,7 +195,8 @@ class Categories:
         """
         clause = ""
         if exclude_root:
-            clause = "WHERE cat.uri <> '1'"     # TODO: this will eventually be done differently
+            clause = "WHERE (cat.root <> true OR cat.root is NULL)"
+            #clause = "WHERE cat.uri <> '1'"     # The obsolete old convention
 
         remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
 
@@ -507,7 +508,7 @@ class Categories:
         category_uri = uri
 
         if cls.is_root_category(category_uri):
-            raise Exception("Cannot delete the Root node")
+            raise Exception("Cannot delete the Root node")       # TODO: this will eventually have to be managed differently
 
         # First, make sure that there are no Content Items linked to this Category
         number_items_attached = Collections.collection_size(collection_id=category_uri, membership_rel_name="BA_in_category")
@@ -590,7 +591,7 @@ class Categories:
         :return:            None.  If the requested new relationship should not be created, raise an Exception
         """
         # If the sub-category is the Root Category, raise an Exception
-        if cls.is_root_category(from_id):
+        if cls.is_root_category(from_id):        # TODO: this will eventually have to be managed differently
             raise Exception("Cannot add the relationship because the Root Category cannot be made a subcategory of something else")
 
         # If the parent and the child are the same, raise an Exception

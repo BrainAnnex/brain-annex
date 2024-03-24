@@ -43,21 +43,14 @@
     {% include "navbar_top.htm" %}
 </div>
 
-<a href='/BA/pages/admin'>Admin</a> &raquo; Schema Viewer
+<a href='/BA/pages/admin'>Admin</a>  &raquo; <a href='/BA/pages/schema-manager'>Schema Manager</a> &raquo; Schema Viewer
 
 <h2 class="page-title">Schema Viewer</h2>
 
 
 <br>
 
-<div style="border: 1px solid gray; padding: 5px; margin-bottom: 10px">
-    {# Flask data: #}
-    {% for k, v in graph_data.items() %}
-        <p>
-            {{k}}: <span style="color: gray"> {{v}}</span>
-        </p>
-    {% endfor %}
-</div>
+
 
 
 <!--  ~~~~~~~~~  Container for VUE COMPONENTS : the ROOT of the components below  ~~~~~~~~~~~~  -->
@@ -71,7 +64,26 @@
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~~~~  END of Vue ROOT element  ~~~~~~~~~~~~~~~~~~~~~~~~  -->
 
+
+
+<p style="padding:15px">
+    The above graphics correspond to the following Cypher query:<br><br>
+    <b>MATCH (c :CLASS), (p :PROPERTY) RETURN c, p</b>
+</p>
+
+
+<div class="content-block" style="margin-left: 5px">
+    <div class="content-block-title">Plot Data</div>
+    {# Show the Flask data: #}
+    {% for k, v in graph_data.items() %}
+    <p>
+        <span style="color: #666; font-weight: bold"> {{k}}:</span> <span style="color: gray; font-size: 9px">{{v}}</span>
+    </p>
+    {% endfor %}
+</div>
+
 <br><br>
+
 
 
 

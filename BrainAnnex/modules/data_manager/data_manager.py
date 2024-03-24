@@ -188,8 +188,30 @@ class DataManager:
 
     @classmethod
     def get_schema_visualization_data(cls):
+        """
+        Create and return an object with all the info
+        to visualise a graph with the database Schema info
+
+        :return:    An object of class PyGraphScape
+        """
 
         graph_obj = PyGraphScape(cls.db)
+
+        '''
+        # TODO: turn this simple example into a tutorial
+        graph_obj.add_node(node_id=1, labels=["PERSON", "OWNER"], data={"name": "Julian"})
+        graph_obj.add_node(node_id=2, labels=["VEHICLE", "CAR"],  data={"color": "white", "year": 2003})
+        graph_obj.add_edge(from_node=1, to_node=2, name="OWNS")
+
+        graph_obj.assign_color_mapping(label="PERSON", color="cyan")
+        graph_obj.assign_color_mapping(label="OWNER", color="red")
+        graph_obj.assign_color_mapping(label="CAR", color="orange")
+
+        graph_obj.assign_caption(label="PERSON", caption="name")
+        graph_obj.assign_caption(label="CAR", caption="color")
+        graph_obj.assign_caption(label="VEHICLE", caption="year")
+        return graph_obj
+        '''
 
         classes_match = cls.db.match(labels="CLASS")
         schema_nodes = cls.db.get_nodes(match=classes_match,
