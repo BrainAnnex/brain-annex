@@ -5,6 +5,7 @@ from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
+from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
 import re                               # For REGEX
 import pandas as pd
 import os
@@ -173,7 +174,7 @@ class DataManager:
     def ________SCHEMA_RELATED________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
-    # TODO: possibly move to separate class
+    # TODO: possibly move to separate class, such as NeoSchema
 
     @classmethod
     def all_schema_classes(cls) -> [str]:
@@ -182,6 +183,60 @@ class DataManager:
         :return:
         """
         return NeoSchema.get_all_classes()
+
+
+
+    @classmethod
+    def get_schema_visualization_data(cls):
+        """
+        Create and return an object with all the info
+        to visualise a graph with the database Schema info
+
+        :return:    An object of class PyGraphScape
+        """
+
+        graph_obj = PyGraphScape(cls.db)
+
+        '''
+        # TODO: turn this simple example into a tutorial
+        graph_obj.add_node(node_id=1, labels=["PERSON", "OWNER"], data={"name": "Julian"})
+        graph_obj.add_node(node_id=2, labels=["VEHICLE", "CAR"],  data={"color": "white", "year": 2003})
+        graph_obj.add_edge(from_node=1, to_node=2, name="OWNS")
+
+        graph_obj.assign_color_mapping(label="PERSON", color="cyan")
+        graph_obj.assign_color_mapping(label="OWNER", color="red")
+        graph_obj.assign_color_mapping(label="CAR", color="orange")
+
+        graph_obj.assign_caption(label="PERSON", caption="name")
+        graph_obj.assign_caption(label="CAR", caption="color")
+        graph_obj.assign_caption(label="VEHICLE", caption="year")
+        return graph_obj
+        '''
+
+        classes_match = cls.db.match(labels="CLASS")
+        schema_nodes = cls.db.get_nodes(match=classes_match,
+                                        return_internal_id=True, return_labels=True)
+        class_node_ids = graph_obj.prepare_graph(schema_nodes, add_edges=True)
+        #print("Class node IDs:", class_node_ids)
+
+        property_match = cls.db.match(labels="PROPERTY")
+        schema_nodes = cls.db.get_nodes(match=property_match,
+                                    return_internal_id=True, return_labels=True)
+
+        property_node_ids = graph_obj.prepare_graph(schema_nodes, add_edges=False)
+        #print("Property node IDs:", property_node_ids)
+
+        graph_obj.link_node_groups(class_node_ids, property_node_ids)
+
+
+        graph_obj.assign_color_mapping(label="CLASS", color="graph_darkgreen")
+        graph_obj.assign_color_mapping(label="PROPERTY", color="graph_orange")
+
+        graph_obj.assign_caption(label="CLASS", caption="name")
+        graph_obj.assign_caption(label="PROPERTY", caption="name")
+
+        return graph_obj
+
 
 
     @classmethod
@@ -844,7 +899,69 @@ class DataManager:
 
 
 
-    #######################     MEDIA-RELATED      #######################
+
+    #####################################################################################################
+
+    '''                 ~  CATEGORY-RELATED  (incl. adding new Content Items)    ~                    '''
+
+    def ________CATEGORY_RELATED________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def switch_category(cls, data_dict) -> None:
+        """
+        Switch one or more Content Items from being attached to a given Category,
+        to another one
+
+        :param data_dict:   Dict with 3 keys:
+                                items   list of string URI's of Content Items
+                                        to relocate across Categories
+                                from    URI of the old Category
+                                to      URI of the new Category
+        :return:            None
+        """
+        #print("**** : ", data_dict)     # EXAMPLE: {'items': ['i-3332', 'i-3278'], 'from': '3676', 'to': '3677'}
+
+        items = data_dict["items"]
+
+        assert type(items) == list, \
+            f"The passed POST value `items` ({items}) doesn't evaluate to a list"
+
+        assert type(data_dict['from']) == str, \
+            f"The passed POST value `from` ({data_dict['from']}) doesn't evaluate to a string"
+
+        assert type(data_dict['to']) == str, \
+            f"The passed POST value `from` ({data_dict['to']}) doesn't evaluate to a string"
+
+
+        number_items = len(items)
+
+        assert number_items != 0, \
+            f"The passed POST value `items` is an EMPTY list"
+
+
+        number_moved = Categories.relocate_across_categories(items=items,
+                                                        from_category=data_dict['from'],
+                                                        to_category=data_dict['to'])
+        assert number_moved != 0, \
+            f"None of the {number_items} requested " \
+            f"Content Item(s) could be successfully moved across Categories"
+
+        assert number_moved == number_items, \
+            f"Only {number_moved} of the {number_items} requested " \
+            f"Content Item(s) could be successfully moved across Categories"
+
+
+
+
+    #####################################################################################################
+
+    '''                                       ~  MEDIA-RELATED    ~                                   '''
+
+    def ________MEDIA_RELATED________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     @classmethod
     def lookup_media_record(cls, uri: int) -> Union[dict, None]:

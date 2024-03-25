@@ -52,7 +52,7 @@ Vue.component('vue-content-items',
                 v-bind:is="plugin_component_name(item, registered_plugins)"
 
                 v-bind:item_data="item"
-                v-bind:allow_editing="expose_controls"
+                v-bind:edit_mode="expose_controls"
                 v-bind:category_id="category_uri"
                 v-bind:index="index"
                 v-bind:item_count="item_count"
@@ -97,7 +97,7 @@ Vue.component('vue-content-items',
                      class="control" style="float: right" title="Close" alt="Close">
 
                 <span class="tag-header">Current Category Tags for this Item:</span><br><br>
-                <!-- DISPLAY ALL CURRENT CATEGORY TAGS -->
+                <!-- DISPLAY ALL CURRENT CATEGORY TAGS for this Content Item -->
                 <template v-for='category in this.categories_linked_to'>
                     <span style="font-weight:bold; margin-left:20px; border:1px solid black; background-color:#DDD">&nbsp; {{category.name}} &nbsp;</span>
                     <span v-if="! is_last_tag">
@@ -111,7 +111,7 @@ Vue.component('vue-content-items',
                 <br><br>
 
                 <b>ADD CATEGORY TAG: </b>
-                <!-- Pulldown menu to add tags -->
+                <!-- Pulldown menu to add tags: show all categories -->
                 <form style='display:inline-block; margin-left:3px'>
                     <select @change='add_tag' v-model="category_to_add"
                             v-bind:title="'Add Category tags to this Content Item'">

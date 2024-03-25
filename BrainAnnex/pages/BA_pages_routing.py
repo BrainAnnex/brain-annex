@@ -9,6 +9,7 @@ from flask_login import login_required, current_user
 from BrainAnnex.modules.data_manager.data_manager import DataManager
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from BrainAnnex.modules.categories.categories import Categories
+#from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
 from datetime import datetime
 import time
 import json
@@ -170,7 +171,7 @@ class PagesRouting:
             """
             template = "md_file_generator.htm"
 
-            content_items = Categories.get_content_items_by_category(category_uri=category_uri)
+            content_items = Categories.get_content_items_by_category(uri=category_uri)
 
             return render_template(template, content_items=content_items)
 
@@ -232,6 +233,23 @@ class PagesRouting:
 
 
 
+        @bp.route('/schema-viewer')
+        @login_required
+        def schema_viewer() -> str:
+            """
+            Generate an administrative page to view the Schema
+            EXAMPLE invocation: http://localhost:5000/BA/pages/schema-viewer
+            """
+            template = "schema_viewer.htm"
+
+            graph_obj = DataManager.get_schema_visualization_data()
+            #print(graph_obj)
+
+            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+                                   graph_data=graph_obj.get_graph_data())
+
+
+
         @bp.route('/data-import')
         @login_required
         def data_import() -> str:
@@ -243,7 +261,7 @@ class PagesRouting:
             class_list = DataManager.all_schema_classes()
             intake_status = DataManager.data_intake_status()
 
-            # Extract some config parameters (used for Continuous Data Ingestion)
+            # Extract some app config parameters (used for Continuous Data Ingestion)
             intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
             outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
 

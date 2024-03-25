@@ -2,7 +2,7 @@
     ----------------------------------------------------------------------------------
 	MIT License
 
-    Copyright (c) 2021-23 Julian A. West
+    Copyright (c) 2021-24 Julian A. West
 
     This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -57,6 +57,7 @@ class ServerCommunication
             post_body:      If a non-empty string is passed, the method is automatically forced to POST;
                                 (disregarded if a non-empty post_obj was passed,
                                  i.e. post_obj has higher priority over post_obj)
+                                 TODO: maybe phase out
 
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data:    If present, it is passed as a final argument to the callback function
@@ -93,7 +94,7 @@ class ServerCommunication
         }
 
         const post_obj_as_string = ServerCommunication.parse_POST_object(post_obj);
-        //console.log(`contact_server() converted the post object to the following string: "${post_obj_as_string}"`);
+        //console.log(`contact_server() converted the POST object to the following string: ${post_obj_as_string}`);
         if (post_obj_as_string != "")
             post_body = post_obj_as_string;     // If a post_body was passed, it will be over-ridden,
                                                 // because post_obj has higher priority
@@ -293,7 +294,7 @@ class ServerCommunication
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
-                // Note: I'm using form-urlencoded.
+                // Note: We're using form-urlencoded.
                 //       Alternatively, I could encode the data with Jason or XML, and skip encodeURIComponent()
             },
             credentials: 'same-origin',
@@ -319,6 +320,8 @@ class ServerCommunication
         EXAMPLE of usage:
                 post_obj = {id: 123,  name: "some name"};
                 post_body = ServerCommunication.parse_POST_object(post_obj);
+
+        TODO: offer an option where JSON encoding is done on all values instead
      */
     {
         var post_body = "";

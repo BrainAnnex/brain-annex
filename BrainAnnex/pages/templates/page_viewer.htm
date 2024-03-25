@@ -186,8 +186,12 @@
     {{category_name}}
     <span style="color:gray; margin-left:25px; font-size:10px">{{category_remarks}}</span>
     {# Category management #}
-    <a v-if="expose_controls" href='/BA/pages/category_manager/{{category_uri}}' style='margin-left:15px' target="_blank">
+    <a v-if="expose_controls"  href="/BA/pages/category_manager/{{category_uri}}"  target="_blank"  style="margin-left:15px">
         <img src='/BA/pages/static/graphics/edit_16_2530834.png' alt='EDIT category (rename, etc.)' title='EDIT category (rename, etc.)'>
+    </a>
+    <a v-if="expose_controls"  @click="bulk_operations = !bulk_operations"  class="clickable-icon"  style='margin-left:20px'>
+        <img src='/BA/pages/static/graphics/bulk_operation_16_1031512.png'
+             alt='Toggle BULK operations (tag, move, delete)' title='Toggle BULK operations (tag, move, delete)'>
     </a>
 </p>
 {% endif %}
@@ -273,7 +277,7 @@
             v-on:insert-new-item
      -->
 
-<template v-if="expose_controls"  v-for="(item, index) in content_array">
+<template v-if="expose_controls && !bulk_operations"  v-for="(item, index) in content_array">
 
     <vue-content-items
         v-bind:key="item.schema_code + '_' + item.uri + '_' + index"
@@ -301,6 +305,65 @@
 
 </template>
 
+
+
+
+<!-- For BULK OPERATIONS -->
+
+<template v-if="bulk_operations"  v-for="(item, index) in content_array">
+
+    <vue-content-items
+            v-bind:key="item.uri"
+
+            v-bind:item="item"
+            v-bind:expose_controls="false"
+            v-bind:category_uri="category_uri"
+            v-bind:index="index"
+            v-bind:item_count="content_array.length"
+
+            v-bind:registered_plugins = "registered_plugins"
+            v-bind:records_types="records_types"
+
+            v-bind:schema_data="get_schema_data(item)"
+            v-bind:all_categories="all_categories"
+    >
+    </vue-content-items>
+
+    <p style="margin-top:0; margin-bottom:40px">
+        <input type="checkbox"  v-bind:ref="item.uri"  @click="bulk_checkbox_clicked(item.uri)">
+    </p>
+
+</template>
+
+
+<template v-if="bulk_operations">
+    <p style="margin-left:15px; font-style:italic">
+        Move the selected items to a new category:
+    </p>
+
+    <button @click="perform_bulk_operation"
+        style="margin-left:15px; margin-right:15px; margin-bottom:30px; padding:20px; font-size:24px; font-weight:bold; border:1px solid #660000; background-color:#00cc00; color:#fff; border-radius:15px">
+        BULK RE-CLASSIFY
+    </button>
+
+    <span style="font-style:bold; font-size:18px">AS...</span>
+
+    <select v-model="category_to_move_to"
+            v-bind:title="'Reclassify the selected Content Items with a different Category tag'"
+            style='margin-left:15px'>
+        <option disabled value="">[Select new tag]</option>
+        <option v-for="cat in all_categories"
+                v-if="cat.uri != category_uri"
+                v-bind:value="{uri: cat.uri , name: cat.name}">
+            [[cat.name]]
+        </option>
+    </select>
+
+    <br>
+    <span v-if="waiting" class="waiting">Performing the bulk operation...</span>
+    <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+    <br><br>
+</template>
 
 
 
@@ -362,7 +425,7 @@
 <br><br>
 
 
-<div v-show="expose_controls">
+<div v-show="expose_controls && !bulk_operations">
 
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
@@ -519,13 +582,17 @@ new Vue({
 
     delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
+
+
+    // ---------------------  DATA  ----------------------
+
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
         registered_plugins: ["n", "i", "h", "cd", "d", "sl"],  // "r" not included here, because a generic core one
-                                                            // TODO: either pass from the database, or infer from some config file
-                                                            // IMPORTANT: the items in the list MUST correspond to the folders in
-                                                            //      BrainAnnex/pages/static/vue_components/PLUGINS
+                                                               // TODO: either pass from the database, or infer from some config file
+                                                               // IMPORTANT: the items in the list MUST correspond to the folders in
+                                                               //      BrainAnnex/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
@@ -533,11 +600,10 @@ new Vue({
                                     //           {pos:50,"uri":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                     //          ]
                                     // TODO: component-editable fields and non-editable ones ("pos", "uri", "schema_code", "class_name") ought to be treated differently
-                                    // TODO: switch from "uri" to "uri"
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
-        category_uri: {{category_uri}},   // A string with the URI of the Category featured on this page
+        category_uri: {{category_uri | tojson}},   // A string with the URI of the Category featured on this page
 
         show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
         show_right_sidebox: true,       // Indicating whether to show or collapse the right sidebox (with the Category navigation)
@@ -564,6 +630,12 @@ new Vue({
 
         all_categories: {{all_categories | tojson}},
                         // EXAMPLE: [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
+
+
+        // For bulk operations
+        bulk_operations: false,     // If true, checkboxes for bulk operations of Content Items are revealed
+        checkboxes_selected: [],    // Array of strings, containing the URI's of the Content Items selected for bulk operations
+        category_to_move_to: null,
 
 
         // For the "Add Subcategory" form (TODO: move to a separate component?)
@@ -620,6 +692,123 @@ new Vue({
     // ----------------------------  METHODS  -----------------------------
 
     methods:  {
+
+        bulk_checkbox_clicked(uri)
+        // Invoked whenever the user clicks on any of the bulk-edit checkboxes
+        {
+            console.log(`Clicked checkbox for Content Item with URI: '${uri}'`);
+
+            //console.log(this.$refs);                // Shows an array
+            const checkbox_element = this.$refs[uri]; // Pluck out the specific checkbox HTML element that invoked this function
+            //console.log(checkbox_element);          // Somehow, this reveals an array with 2 elements
+            //console.log(checkbox_element[0]);
+            const checkbox_status = checkbox_element[0].checked;    // This will be true if the checkbox is in a selected state
+            //console.log(`    checkbox status is: ${checkbox_status}`);
+
+            // Now update the array of URI's selected for the bulk-update operation
+            //console.log(`    this.checkboxes_selected (prior to update):  ${this.checkboxes_selected}`);
+            if (checkbox_status) {
+                //console.log(`    new box checked`);
+                if (this.checkboxes_selected.includes(uri))  {  // Unexpected scenario
+                    alert(`Attempting to select checkbox for URI: '${uri}' more than once; it's recommended to refresh the page and start over`);
+                    return;
+                }
+                console.log(`    adding URI: '${uri}'`);
+                this.checkboxes_selected.push(uri); // Beware: the Vue devtools requires a refresh to
+                                                    //         show the updated value!
+            }
+            else  {
+                console.log(`    removing URI: '${uri}'`);
+                /*
+                if (! this.checkboxes_selected.includes(uri))  {  // Unexpected scenario
+                    alert(`Attempting to un-select checkbox for a URI ('${uri}') that wasn't selected; it's recommended to refresh the page and start over`);
+                    return;
+                }
+                */
+                // Remove from this.checkboxes_selected
+                const index = this.checkboxes_selected.indexOf(uri);
+                if (index == -1)    {       // Unexpected scenario
+                    alert(`Attempting to un-select checkbox for a URI ('${uri}') that wasn't selected; it's recommended to refresh the page and start over`);
+                    return;
+                }
+                this.checkboxes_selected.splice(index, 1);      // Removes 1 element from the array, at the specified position
+            }
+
+            console.log(`    this.checkboxes_selected:  [${this.checkboxes_selected}]`);
+        },
+
+
+        perform_bulk_operation()
+        // Invoked when the user presses the "BULK RE-CLASSIFY" button
+        {
+            // Make sure that the selection isn't empty
+            if (this.checkboxes_selected.length == 0)  {
+                alert("No elements were selected for this bulk operation!  Use the checkboxes to select the elements first");
+                return;
+            }
+
+            if (!this.category_to_move_to)  {
+                alert("No Category was selected for this bulk operation!  Use the pulldown menu to select a Category first");
+                return;
+            }
+
+            const category_from_uri = this.category_uri;
+            const category_to_uri = this.category_to_move_to.uri;
+            const category_to_name = this.category_to_move_to.name;
+
+            console.log(`Bulk reclassifying the following Content Items:  [${this.checkboxes_selected}]`);
+            console.log(`    moving them from Category URI '${category_from_uri}' (${this.category_name}) to URI '${category_to_uri}' (${category_to_name})`);
+
+
+            // Send the request to the server, using a POST
+            const url_server_api = "/BA/api/switch_category";
+            const post_obj = {items: JSON.stringify(this.checkboxes_selected),
+                              from: JSON.stringify(category_from_uri),
+                              to: JSON.stringify(category_to_uri)};
+            // TODO: maybe let contact_server() handle the JSON.stringify calls
+
+            console.log(`About to contact the server at ${url_server_api} .  POST object:`);
+            console.log(post_obj);
+
+            // Initiate asynchronous contact with the server
+            ServerCommunication.contact_server(url_server_api,
+                        {post_obj: post_obj,
+                         callback_fn: this.finish_perform_bulk_operation
+                        });
+
+            this.waiting = true;        // Entering a waiting-for-server mode
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";   // Clear any message from the previous operation
+        },
+
+
+        finish_perform_bulk_operation(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of perform_bulk_operation() upon getting a response from the server
+        {
+            console.log("Finalizing the perform_bulk_operation() operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful");
+                this.status_message = `${this.checkboxes_selected.length} Content Items moved to other category`;
+                console.log("    updating page by removing items: ", this.checkboxes_selected);
+                // Update the page, by ditching the Content Items that were moved away
+                for (var uri of this.checkboxes_selected) {
+                    let i = this.locate_item_simplified(uri);   // Find where the Content Item is stored in the array this.content_array
+                    console.log(`    removing item with URI '${uri}' from page: array index is ${i}`);
+                    this.content_array.splice(i, 1);            // Deletes 1 array element from the specified index position
+                }
+                this.checkboxes_selected = [];
+                // TODO: still be necessary to clear all checkmarks (some are at times being left behind)
+            }
+            else  {                     // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED operation: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        },
+
+
 
         adjust_left_sidebar(state)
         // Adjust the collapse/expansion of the left sidebar, based on the requested state: true = expanded; false = collapsed

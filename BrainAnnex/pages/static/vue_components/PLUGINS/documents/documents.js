@@ -3,12 +3,12 @@
 
 Vue.component('vue-plugin-d',
     {
-        props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
+        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
         /*  item_data:  EXAMPLE: {"basename": "test", "caption": "My first document", "class_name": "Documents",
                                   "uri": 4849, "pos": 0, "schema_code": "d", "suffix": "txt"}
                                  (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
 
-            allow_editing:  A boolean indicating whether in editing mode
+            edit_mode:  A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
             index:          The zero-based position of this Document on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -38,7 +38,7 @@ Vue.component('vue-plugin-d',
 
                           v-on:edit-content-item
             -->
-            <vue-controls v-bind:allow_editing="allow_editing"  v-bind:index="index"  v-bind:item_count="item_count"
+            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item(item_data)">
             </vue-controls>

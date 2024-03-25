@@ -10,7 +10,7 @@ The version number can be found in `VERSION_NUMBER.txt`
 
 ### Website: https://BrainAnnex.org
 
-**[Change Log](https://brainannex.org/viewer.php?ac=2&cat=14)**
+**[Change Log](https://brainannex.org/history)**
 
 
 
@@ -27,7 +27,7 @@ _From lower to higher levels:_
 
 * **NeoSchema library** (optional Schema layer)
 
-* **Python/Flask** (for API and webapp pages)
+* **Python/Flask** (for web API, and web app pages)
 
 * **Vue2.js**
 
@@ -57,6 +57,8 @@ The libraries that are the bottom layers may also be used independently.
 Brain Annex, if used in its entirety, supports both local and remote setup of the web app and of the Neo4j database.
 
 The database and web app may reside on the same or different machines.
+
+You may also opt to simply use some of its library: everything is very modular!
 
 ## SETUP
 

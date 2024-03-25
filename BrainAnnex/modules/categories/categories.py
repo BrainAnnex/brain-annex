@@ -1,3 +1,4 @@
+from typing import Union, List
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.collections.collections import Collections
 from neoaccess import NeoAccess
@@ -37,7 +38,37 @@ class Categories:
 
 
 
-    #####################################################################################################
+    @classmethod
+    def initialize_categories(cls) -> (int, str):
+        """
+        Create a new Schema Class node that represents "Categories",
+        and make it an "INSTANCE_OF" of the "Collections" Class
+
+        :return:    An (int, str) pair of integers with the internal database ID
+                        and the unique uri assigned to the new Class node
+        """
+        (int_dbase_id, uri) = NeoSchema.create_class_with_properties(name="Categories",
+                                                        property_list=["name", "remarks", "uri", "root"],
+                                                        strict=True)
+
+        NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories",
+                                            rel_name="BA_subcategory_of", use_link_node=False)
+
+        NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories",
+                                            rel_name="BA_see_also", use_link_node=False)
+
+        if not NeoSchema.class_name_exists("Collections"):
+            Collections.initialize_collections()
+            NeoSchema.create_class_relationship(from_class="Categories", to_class="Collections",
+                                                rel_name="INSTANCE_OF", use_link_node=False)
+
+        return (int_dbase_id, uri)
+
+
+
+
+
+        #####################################################################################################
 
     '''                                 ~   LOOKUP CATEGORY DATA   ~                                  '''
 
@@ -73,7 +104,7 @@ class Categories:
 
         # NOTE: historically, "1" has been used for the ROOT Category; however, now that uri is shared
         #       among all types of plugins, maybe a different approach would be better (such as an attribute in the node)
-        return True if category_uri == "1" else False
+        return True if category_uri == "1" else False    # TODO: this will eventually have to be managed differently
 
 
 
@@ -164,7 +195,8 @@ class Categories:
         """
         clause = ""
         if exclude_root:
-            clause = "WHERE cat.uri <> '1'"     # TODO: this will eventually be done differently
+            clause = "WHERE (cat.root <> true OR cat.root is NULL)"
+            #clause = "WHERE cat.uri <> '1'"     # The obsolete old convention
 
         remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
 
@@ -407,7 +439,8 @@ class Categories:
 
         data_dict["root"] = True        # Flag to mark this node as the root of the Category graph
 
-        new_uri = NeoSchema.reserve_next_uri()
+        new_uri = NeoSchema.reserve_next_uri(namespace="Categories", prefix="cat-")
+        # TODO: maybe use a special URI, such as "cat-root", instead?
 
         internal_id = NeoSchema.create_data_node(class_node="Categories",
                                                  properties = data_dict,
@@ -475,7 +508,7 @@ class Categories:
         category_uri = uri
 
         if cls.is_root_category(category_uri):
-            raise Exception("Cannot delete the Root node")
+            raise Exception("Cannot delete the Root node")       # TODO: this will eventually have to be managed differently
 
         # First, make sure that there are no Content Items linked to this Category
         number_items_attached = Collections.collection_size(collection_id=category_uri, membership_rel_name="BA_in_category")
@@ -558,7 +591,7 @@ class Categories:
         :return:            None.  If the requested new relationship should not be created, raise an Exception
         """
         # If the sub-category is the Root Category, raise an Exception
-        if cls.is_root_category(from_id):
+        if cls.is_root_category(from_id):        # TODO: this will eventually have to be managed differently
             raise Exception("Cannot add the relationship because the Root Category cannot be made a subcategory of something else")
 
         # If the parent and the child are the same, raise an Exception
@@ -702,12 +735,12 @@ class Categories:
 
 
     @classmethod
-    def get_content_items_by_category(cls, category_uri = "1") -> [{}]:
+    def get_content_items_by_category(cls, uri) -> [{}]:
         """
         Return the records for all nodes linked
-        to the Category node identified by its uri value (by default, the ROOT Category)
+        to the Category node identified by its uri value
 
-        :param category_uri:A string identifying the desired Category
+        :param uri: A string identifying the desired Category
         :return:    A list of dictionaries
                     EXAMPLE:
                     [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
@@ -718,15 +751,15 @@ class Categories:
 
         # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
         # TODO: switch to using one of the Collections methods
-        # TODO: drop the "1" ; either use a name like "cat-root", or a flag
-        cypher = """
-            MATCH (cl :CLASS)<-[:SCHEMA]-(n :BA)-[r :BA_in_category]->(category :BA {schema_code:"cat", uri:$category_id})
+
+        q = '''
+            MATCH (cl :CLASS)<-[:SCHEMA]- (n) -[r :BA_in_category]-> (:Categories {uri:$category_id})
             RETURN n, r.pos AS pos, cl.name AS class_name
             ORDER BY r.pos
-            """
+            '''
 
-        result = cls.db.query(cypher, {"category_id": category_uri})
-        #print(result)
+        result = cls.db.query(q, data_binding={"category_id": uri})
+        #cls.db.debug_query_print(q, data_binding={"category_id": uri})
 
 
         content_item_list = []
@@ -783,29 +816,21 @@ class Categories:
 
 
     @classmethod
-    def link_content_at_end(cls, category_uri :str, item_uri :str, label="BA") -> None:
+    def link_content_at_end(cls, category_uri :str, item_uri :str) -> None:
         """
         Given an EXISTING data node, link it to the end of the specified Category.
         If a connection to that Category already exists, an Exception is raised.
 
         :param category_uri:String to identify an existing Category
         :param item_uri:    String to identify an existing Content Item
-        :param label:       (OPTIONAL) label required on the Content Item, to speed up the match
         :return:            None
         """
         #TODO: verify that the item_uri is not referring to a Category!
         #      More generally, verify that its Class has a "BA_in_category" to
         #      the "Category" Class; this ought to be enforced by link_to_collection_at_end()
 
-        # Category to link to (this step also enforces that category_uri indeed refers to a Category)
-        collection_dbase_id = NeoSchema.get_data_node_internal_id(uri=category_uri,
-                                                                  label="Categories")
-
-        # Content Item to link to Category
-        item_dbase_id = NeoSchema.get_data_node_internal_id(uri=item_uri, label=label)
-
-        Collections.link_to_collection_at_end(collection_dbase_id=collection_dbase_id,
-                                              item_dbase_id=item_dbase_id,
+        # Link the Content Item to the end of the Category
+        Collections.link_to_collection_at_end(item_uri=item_uri, collection_uri=category_uri,
                                               membership_rel_name="BA_in_category")
 
 
@@ -830,7 +855,7 @@ class Categories:
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the "data_node" namespace
             new_uri = NeoSchema.reserve_next_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to a namespace based on the Class
 
-                                                #
+
         NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
                                    extra_labels="BA", new_uri=new_uri,
                                    silently_drop=True)
@@ -891,6 +916,30 @@ class Categories:
 
         NeoSchema.remove_data_relationship(from_uri=item_uri, to_uri=category_uri,
                                            rel_name="BA_in_category", labels=None)
+
+
+
+    @classmethod
+    def relocate_across_categories(cls, items :Union[List[str], str], from_category :str, to_category :str):
+        """
+        Given an existing list of data nodes (representing "Content Items" attached to the specified "from" Category),
+        switch each of them to become a "Content Item" of the "to" Category, positioned at the end of it.
+
+        The category-membership relationships ("BA_in_category") is severed from each the "Content Items" to the "from" Category,
+        and a new one is created from that "Content Item" to the "to" Collection.
+
+        Return the number of Content Items successfully relocated.
+
+        :param items:           URI, or list of URI's, of Data Node(s)
+                                    representing a "Content Items" attached to the "from" Category below
+        :param from_category:   The URI of a Category Data Node to which the above Content Item(s) are connected
+        :param to_category:     The URI of a Category Data Node to which the above Content Item(s) needs to be switched to
+        :return:                The number of Content Items successfully relocated
+        """
+        return Collections.bulk_relocate_to_other_collection_at_end(items=items,
+                                                             from_collection=from_category, to_collection=to_category,
+                                                             membership_rel_name="BA_in_category")
+
 
 
 

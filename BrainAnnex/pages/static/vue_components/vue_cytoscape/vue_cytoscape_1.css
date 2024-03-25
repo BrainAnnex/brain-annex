@@ -1,0 +1,18 @@
+div.cytoscape-container {
+    width: 600px;
+    height: 350px;
+    display: block;
+    background-color: #f6f6f6;
+    border: 1px solid #CCC;
+    display: inline-block;
+}
+
+
+div.legend {
+    border: 1px solid #CCC;
+    padding: 5px;
+    display: inline-block;
+    vertical-align: top;
+
+    color: #444;
+}

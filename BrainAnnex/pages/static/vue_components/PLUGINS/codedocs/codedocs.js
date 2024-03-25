@@ -3,9 +3,9 @@
 
 Vue.component('vue-plugin-cd',
     {
-        props: ['item_data', 'allow_editing', 'category_id', 'index', 'item_count'],
+        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
         /*  index:          the zero-based position of the Record on the page
-            allow_editing:  A boolean indicating whether in editing mode
+            edit_mode:  A boolean indicating whether in editing mode
             item_count:     the total number of Content Items (of all types) on the page
          */
 
@@ -60,7 +60,7 @@ Vue.component('vue-plugin-cd',
                   Intercept the following signal from child component:
                         v-on:edit-content-item
             -->
-            <vue-controls v-bind:allow_editing="allow_editing"  v-bind:index="index"  v-bind:item_count="item_count"
+            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item(item_data)">
             </vue-controls>

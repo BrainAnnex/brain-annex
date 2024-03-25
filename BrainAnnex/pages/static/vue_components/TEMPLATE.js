@@ -135,7 +135,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             // Callback function to wrap up the action of get_data_from_server() upon getting a response from the server
             {
                 console.log("Finalizing the get_data_from_server() operation...");
-                console.log(`Custom data passed: ${custom_data}`)
+                console.log(`Custom data passed: ${custom_data}`);
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;

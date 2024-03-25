@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+{#  Schema Viewer.
+    This pages hosts a Vue component
+    to display the Schema.
+    For background info, see:
+        https://julianspolymathexplorations.blogspot.com/2022/11/schema-graph-databases-neo4j.html
+
+    Flask-passed parameters:
+        current_page, site_pages,
+        graph_data      Dictionary with all the data needed by the Vue component to display the graph
+#}
+
+<html lang="en">
+<head>
+    <title>Schema Viewer</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_2.css">
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js"></script>
+
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+
+<body>
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
+<a href='/BA/pages/admin'>Admin</a>  &raquo; <a href='/BA/pages/schema-manager'>Schema Manager</a> &raquo; Schema Viewer
+
+<h2 class="page-title">Schema Viewer</h2>
+
+
+<br>
+
+
+
+
+<!--  ~~~~~~~~~  Container for VUE COMPONENTS : the ROOT of the components below  ~~~~~~~~~~~~  -->
+<div id="vue-root">
+
+    <vue_cytoscape_2
+            v-bind:graph_data="graph_data_json"
+            v-bind:component_id="1"
+    >
+    </vue_cytoscape_2>
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~~~~  END of Vue ROOT element  ~~~~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+<p style="padding:15px">
+    The above graphics correspond to the following Cypher query:<br><br>
+    <b>MATCH (c :CLASS), (p :PROPERTY) RETURN c, p</b>
+</p>
+
+
+<div class="content-block" style="margin-left: 5px">
+    <div class="content-block-title">Plot Data</div>
+    {# Show the Flask data: #}
+    {% for k, v in graph_data.items() %}
+    <p>
+        <span style="color: #666; font-weight: bold"> {{k}}:</span> <span style="color: gray; font-size: 9px">{{v}}</span>
+    </p>
+    {% endfor %}
+</div>
+
+<br><br>
+
+
+
+
+<!--
+    Vue components (and other JS if applicable).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_2.js"></script>
+
+
+<script>
+// Instantiation of the ROOT component must come after the definition of the descendant components
+new Vue({
+    el: '#vue-root',
+
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {     // GLOBAL DATA for the whole page (Vue root element).
+
+        // Handover of data from Flask to Vue
+        graph_data_json: {{graph_data | tojson}},   // Object with all the data needed by the Vue component to display the graph
+
+        component_id_json: 1
+
+    }, // DATA
+
+
+
+    // ---------------------  HOOKS  ----------------------
+
+    mounted() {
+    },
+
+
+
+    // ---------------------  COMPUTED  ----------------------
+
+    computed: {
+
+        computed_var()
+        {
+        }
+
+    }, // COMPUTED
+
+
+
+    // ----------------------------  METHODS  -----------------------------
+
+    methods:  {
+
+        some_method()
+        {
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>
