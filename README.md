@@ -58,6 +58,8 @@ Brain Annex, if used in its entirety, supports both local and remote setup of th
 
 The database and web app may reside on the same or different machines.
 
+You may also opt to simply use some of its library: everything is very modular!
+
 ## SETUP
 
 [INSTRUCTIONS](https://brainannex.org/setup)
