@@ -1472,6 +1472,7 @@ class NeoSchema:
 
         :return:    An integer with the Schema uri (or "" if not present)
         """
+        #TODO: create a counterpart for Data Nodes
 
         match = cls.db.match(labels="CLASS", key_name="code", key_value=schema_code)
         result = cls.db.get_nodes(match, single_cell="uri")
@@ -1921,24 +1922,30 @@ class NeoSchema:
 
     @classmethod
     def _create_data_node_helper(cls, class_internal_id :int,
-                                 labels=None, properties_to_set=None) -> int:
+                                 labels=None, properties_to_set=None,
+                                 uri_namespace=None) -> int:
         """
-        Helper function.
-        IMPORTANT: all validations/schema checks are assumed to have been performed by the caller functions.
+        Helper function, to create a new data node, of the type indicated by specified Class,
+        with the given (possibly none) label(s) properties.
 
-        Create a new data node, of the type indicated by specified Class,
-        with the given (possibly none) properties and extra label(s);
-        the name of the Class is always used as a label.
+        IMPORTANT: all validations/schema checks are assumed to have been performed by the caller functions;
+                   this is a private method not for the end user!
 
-        :param class_internal_id:   The internal database ID of the above class
+        :param class_internal_id:   The internal database ID of an existing Class node
         :param labels:              String, or list/tuple of strings, with label(s)
-                                        to assign to the new data node,
+                                        to assign to the new Data node,
                                         (note: the Class name is expected to be among them)
         :param properties_to_set:   (OPTIONAL) Dictionary with the properties of the new data node.
                                         EXAMPLE: {"make": "Toyota", "color": "white"}
+        :param uri_namespace:       (OPTIONAL) String with a namespace to use to auto-assign a uri value on the new node;
+                                        if not passed, no uri gets set on the new node
 
-        :return:                    The internal database ID of the new data node just created
+        :return:                    The internal database ID of the new Data node just created
         """
+
+        if uri_namespace:
+            new_uri = NeoSchema.reserve_next_uri(namespace=uri_namespace)
+            properties_to_set["uri"] = new_uri                   # Expand the dictionary
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
         #   to define the new node to be created
@@ -1949,6 +1956,7 @@ class NeoSchema:
         #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
 
         # Create a new Data node, with a "SCHEMA" relationship to its Class node
+        # TODO: allow the creation of multiple nodes with a single Cypher query, with an UNWIND
         q = f'''
             MATCH (cl :CLASS)
             WHERE id(cl) = {class_internal_id}           
@@ -1957,7 +1965,8 @@ class NeoSchema:
             RETURN id(dn) AS internal_id
             '''
 
-        # TODO: consider switching to update_query(), for more insight
+        # TODO: consider switching to update_query(), for more insight;
+        #       also, unclear about what gets returned if creation fails
         internal_id = cls.db.query(q, data_binding, single_cell="internal_id")
 
         return internal_id
@@ -1967,9 +1976,10 @@ class NeoSchema:
     @classmethod
     def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
                             datetime_cols=None, int_cols=None,
-                            extra_labels=None, schema_code=None, report_frequency=100) -> [int]:
+                            extra_labels=None, uri_namespace=None,
+                            schema_code=None, report_frequency=100) -> [int]:
         """
-        Import a group of entities, from the rows of a Pandas dataframe, as data nodes in the database.
+        Import a group of entities, from the rows of a Pandas dataframe, as Data Nodes in the database.
 
         NaN's and empty strings are dropped - and never make it into the database
 
@@ -1986,15 +1996,17 @@ class NeoSchema:
                                 that contain integers, or that are to be converted to integers
                                 (typically necessary because numeric Pandas columns with NaN's
                                  are automatically turned into floats)
-        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new data node,
+        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
                                 IN ADDITION TO the Class name (which is always used as label)
+        :param uri_namespace:(OPTIONAL) String with a namespace to use to auto-assign uri values on the new Data nodes;
+                                if not passed, no uri's get set on the new nodes
         :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
                                 to a "schema_code" property for each new data node created
         :param report_frequency: (OPTIONAL) How often to print out the status of the import-in-progress
 
-        :return:            A list of the internal database ID's of the newly-created data nodes
+        :return:            A list of the internal database ID's of the newly-created Data nodes
         """
-        # TODO: consider a partial merger with create_data_node()
+        # TODO: pytest uri_namespace argument
 
         # Do various validations
         cls.assert_valid_class_identifier(class_node)
@@ -2020,7 +2032,7 @@ class NeoSchema:
 
         labels = class_name     # By default, use the Class name as a label
 
-        if type(extra_labels) == str and extra_labels.strip() != class_name:
+        if (type(extra_labels) == str) and (extra_labels.strip() != class_name):
             labels = [extra_labels, class_name]
 
         elif isinstance(extra_labels, (list, tuple)):
@@ -2040,12 +2052,6 @@ class NeoSchema:
             int_cols = []
 
 
-        # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
-            raise Exception(f"NeoSchema.import_pandas_nodes(): "
-                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
-
-
         # Verify whether all properties are allowed
         # TODO: consider using allowable_props()
         cols = list(df.columns)     # List of column names in the Pandas Data Frame
@@ -2057,11 +2063,11 @@ class NeoSchema:
 
 
         # Prepare the properties to add
-
         recordset = df.to_dict('records')   # Turn the Pandas dataframe into a list of dicts
         #print(recordset)
         print(f"Getting ready to import {len(recordset)} records...")
 
+        # Import each row ("recordset") in turn
         internal_id_list = []
         for d in recordset:     # d is a dictionary
             d_scrubbed = cls._scrub_dict(d)     # Zap NaN's, blank strings, leading/trailing spaces
@@ -2086,8 +2092,11 @@ class NeoSchema:
                 d_scrubbed["schema_code"] = schema_code      # Add a legacy element, perhaps to be discontinued
 
             #print(d_scrubbed)
+
+            # Perform the actual import
             new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
-                                                           labels=labels, properties_to_set=d_scrubbed)
+                                                           labels=labels, properties_to_set=d_scrubbed,
+                                                           uri_namespace=uri_namespace)
             #print("new_internal_id", new_internal_id)
             internal_id_list.append(new_internal_id)
 
@@ -3377,7 +3386,7 @@ class NeoSchema:
         metadata_neo_id = cls.add_data_node_with_links(class_name="Import Data", properties=import_metadata)
 
         # Store the import date in the node with the metadata
-        # Note: this is done as a separate step, so that the attribute will be a DATE (""LocalDate") field, not a text one
+        # Note: this is done as a separate step, so that the attribute will be a DATE ("LocalDate") field, not a text one
         q = f'''
             MATCH (n :`Import Data`) WHERE id(n) = {metadata_neo_id}
             SET n.date = date()
@@ -3756,53 +3765,36 @@ class NeoSchema:
 
 
     @classmethod
-    def advance_autoincrement(cls, namespace :str, advance=1) -> int:
+    def assign_uri(cls, internal_id :int, namespace="data_node") -> str:
         """
-        Utilize an ATOMIC database operation to both read AND advance the autoincrement counter,
-        based on a (single) node that contains the label `Schema Autoincrement`
-        as well as an attribute indicating the desired namespace (group);
-        if no such node exists (for example, after a new installation), it gets created, and 1 is returned.
+        Given a Data Node that lacks a URI value, assign one to it.
+        If a value already exists, an Exception is raised
 
-        Note that the returned number (or the last of an implied sequence of numbers, if advance > 1)
-        is de-facto "permanently reserved" on behalf of the calling function,
-        and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
-
+        :param internal_id: Internal database ID to identify a Data Node tha currently lack a URI value
         :param namespace:   A string used to maintain completely separate groups of auto-increment values;
                                 leading/trailing blanks are ignored
-        :param advance:     Normally, auto-increment advances by 1 unit, but a different positive integer
-                                may be used to "reserve" a group of numbers in the above namespace
-
-        :return:            An integer that is a unique auto-increment for the specified namespace
-                                (starting with 1); it's ready-to-use and "reserved", i.e. could be used
-                                at any future time
+        :return:            A string with the newly-assigned URI value
         """
-        assert type(namespace) == str, \
-            "advance_autoincrement(): the argument `namespace` is required and must be a string"
+        #TODO: pytest
 
-        namespace = namespace.strip()   # Zap leading/trailing blanks
+        assert NeoSchema.data_node_exists(internal_id), \
+            f"assign_uri(): no valid Data Node with an internal ID of {internal_id} was found"
 
-        assert namespace != "", \
-            "advance_autoincrement(): the argument `namespace` must be a non-empty string"
-
-        assert type(advance) == int, \
-            "advance_autoincrement(): the argument `advance` is required and must be an integer"
-        assert advance >= 1, \
-            "advance_autoincrement(): the argument `advance` must be an integer >= 1"
-
-
+        new_uri = NeoSchema.reserve_next_uri(namespace=namespace)
         q = f'''
-            MATCH (n: `Schema Autoincrement` {{namespace: $namespace}})
-            SET n.next_count = n.next_count + {advance}
-            RETURN n.next_count AS next_count
+            MATCH (n) 
+            WHERE id(n) = {internal_id}  AND n.uri IS NULL
+            SET n.uri = "{new_uri}" 
             '''
-        next_count = cls.db.query(q, data_binding={"namespace": namespace}, single_cell="next_count")
+        #cls.db.debug_query_print(q)
 
-        if next_count is None:     # If no node found
-            cls.db.create_node(labels="Schema Autoincrement",
-                               properties={"namespace": namespace, "next_count": 1+advance})
-            return 1       # Start a new count for this namespace
-        else:
-            return next_count - advance
+        stats = cls.db.update_query(q)
+        number_properties_set = stats.get("properties_set", 0)
+        assert number_properties_set == 1, \
+            f"assign_uri(): unable to set a value for the `uri` property of " \
+            f"the Data Node with an internal ID of {internal_id}  (perhaps it already has a uri?)"
+
+        return new_uri
 
 
 
@@ -3810,14 +3802,18 @@ class NeoSchema:
     def reserve_next_uri(cls, namespace="data_node", prefix="", suffix="") -> str:
         """
         Generate and reserve a URI (or fragment thereof, aka "token"),
-        using the given prefix and/or suffix;
-        the middle part is a unique auto-increment value
-        (separately maintained in various groups, or "namespaces")
+        using the given namespace and, optionally the given prefix and/or suffix.
+
+        The middle part of the generated URI is a unique auto-increment value
+        (separately maintained for various groups, or "namespaces").
+
+        If no prefix or suffix is specified, use the values provided when the namespace
+        was first created.
 
         EXAMPLES:   reserve_next_uri("Documents", "doc.", ".new") might produce "doc.3.new"
                     reserve_next_uri("Images", prefix="i-") might produce "i-123"
 
-        Prefixes and suffixes only need to be passed when first using a new namespace;
+        IMPORTANT: Prefixes and suffixes only need to be passed when first using a new namespace;
         if they're passed in later calls, they over-ride their stored counterparts.
 
         An ATOMIC database operation is utilized to both read AND advance the autoincrement counter,
@@ -3842,10 +3838,14 @@ class NeoSchema:
                                 (starting with 1); it's ready-to-use and "reserved", i.e. could be used
                                 at any future time
         """
+        # TODO: provide a function reserve_next_uri_GROUP()
+        # TODO: maybe require namespaces to be created ahead of time, to reduce confusion,
+        #       and also to reduce risk of accidentally creating new namespace from a typo!
+
         assert type(namespace) == str, \
             "reserve_next_uri(): the argument `namespace` and must be a string"
 
-        namespace = namespace.strip()   # Zap leading/trailing blanks
+        namespace = namespace.strip()       # Zap leading/trailing blanks
 
         assert namespace != "", \
             "reserve_next_uri(): the argument `namespace` cannot be an empty or blank string"
@@ -3857,6 +3857,8 @@ class NeoSchema:
             f"reserve_next_uri(): the argument `suffix` must be a string or None;" \
             f" value passed was of type {type(suffix)}"
 
+
+        # TODO: simplify by making use of _advance_autoincrement()
 
         # Attempt to retrieve a `Schema Autoincrement` node for our namespace (it might be absent);
         # if found, advance its autoincrement counter, and also retrieve the stored prefix and suffix
@@ -3897,6 +3899,58 @@ class NeoSchema:
 
 
     @classmethod
+    def _advance_autoincrement(cls, namespace :str, advance=1) -> int:
+        """
+        Utilize an ATOMIC database operation to both read AND advance the autoincrement counter,
+        based on a (single) node that contains the label `Schema Autoincrement`
+        as well as an attribute indicating the desired namespace (group);
+        if no such node exists (for example, after a new installation), it gets created, and 1 is returned.
+
+        Note that the returned number (or the last of an implied sequence of numbers, if advance > 1)
+        is de-facto "permanently reserved" on behalf of the calling function,
+        and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
+
+        :param namespace:   A string used to maintain completely separate groups of auto-increment values;
+                                leading/trailing blanks are ignored
+        :param advance:     Normally, auto-increment advances by 1 unit, but a different positive integer
+                                may be used to "reserve" a group of numbers in the above namespace
+
+        :return:            An integer that is a unique auto-increment for the specified namespace
+                                (starting with 1); it's ready-to-use and "reserved", i.e. could be used
+                                at any future time.
+                                If advance > 1, the first of the reversed numbers is returned
+        """
+        assert type(namespace) == str, \
+            "advance_autoincrement(): the argument `namespace` is required and must be a string"
+
+        namespace = namespace.strip()   # Zap leading/trailing blanks
+
+        assert namespace != "", \
+            "advance_autoincrement(): the argument `namespace` must be a non-empty string"
+
+        assert type(advance) == int, \
+            "advance_autoincrement(): the argument `advance` is required and must be an integer"
+        assert advance >= 1, \
+            "advance_autoincrement(): the argument `advance` must be an integer >= 1"
+
+
+        q = f'''
+            MATCH (n: `Schema Autoincrement` {{namespace: $namespace}})
+            SET n.next_count = n.next_count + {advance}
+            RETURN n.next_count AS next_count
+            '''
+        next_count = cls.db.query(q, data_binding={"namespace": namespace}, single_cell="next_count")
+
+        if next_count is None:     # If no node found
+            cls.db.create_node(labels="Schema Autoincrement",
+                               properties={"namespace": namespace, "next_count": 1+advance})
+            return 1       # Start a new count for this namespace
+        else:
+            return next_count - advance
+
+
+
+    @classmethod
     def _next_available_schema_uri(cls) -> str:
         """
         Return the next available uri for nodes managed by this class.
@@ -3905,6 +3959,7 @@ class NeoSchema:
         :return:     A string based on unique auto-increment values, used for Schema nodes
         """
         return cls.reserve_next_uri(namespace="schema_node", prefix="schema-")
+
 
 
 

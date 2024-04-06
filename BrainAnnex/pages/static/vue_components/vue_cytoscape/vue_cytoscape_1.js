@@ -1,7 +1,8 @@
 Vue.component('vue_cytoscape_1',  <!-- NOTE:  Only lower cases in component names! -->
+    /* OBSOLETE */
     {
         props: {
-            <!-- NOTE:  Only lower cases in props names! -->
+
 
             graph: {
             },
