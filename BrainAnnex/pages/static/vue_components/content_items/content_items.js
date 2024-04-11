@@ -12,6 +12,8 @@ Vue.component('vue-content-items',
                 'registered_plugins', 'records_types', 'schema_data', 'all_categories'],
         /*  item:           EXAMPLE: {uri:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Headers"}
                                      (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+                            Maybe rename to item_data
+
             expose_controls:Flag indicating whether in edit mode
             category_uri:   A string indicating which Category-viewer page is using this component
             index:          The zero-based position of this Content Items on the above Category-specific page
@@ -36,7 +38,6 @@ Vue.component('vue-content-items',
             <div v-bind:class="{'highlight': highlight, 'content-item': !use_separate_line, 'content-item-separate-line': use_separate_line}">
 
             <a v-bind:name="item.schema_code + '_' + item.uri"></a>  <!-- Anchor for page scrolling -->
-
             <!--
                  The line with "v-bind:is" dynamically dispatches to the appropriate specialized component.
 

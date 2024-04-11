@@ -104,7 +104,8 @@
 
 <!--   The "scroll-canvas" is the MAIN part of the page,
        incl. the navbar at the top and the sidebox on the right,
-       but exclusive of the left sidebar, which is fixed in position -->
+       but exclusive of the left sidebar, which is fixed in position.
+       If the left sidebar is collapsed, then the "scroll-canvas" needs a different size -->
 <div v-bind:class="{ 'scroll-canvas': show_left_sidebar, 'scroll-canvas--collapsed-left': !show_left_sidebar }">
 
 
@@ -242,7 +243,7 @@
   -->
 
 
-<!-- (PART 1 of 2)
+<!-- (CASE 1 of 2 : editing controls SHOWN)
 
      Original version, to be used when the EDITING CONTROLS are SHOWN.
      This version separates all the Content Items into individual entities.
@@ -368,7 +369,7 @@
 
 
 
-<!-- (PART 2 of 2)
+<!-- (CASE 2 of 2 : editing controls HIDDEN)
 
     New version, to be used when the EDITING CONTROLS are HIDDEN (i.e. in viewing mode.)
     This version groups together similar adjacent records
@@ -401,7 +402,7 @@
     </vue-content-items>
 
 
-    <!-- If it's "grouped", show the WHOLE GROUP of records here -->
+    <!-- By contrast, if it's "GROUPED", show the WHOLE GROUP of records here -->
     <vue-plugin-table v-if="group.use_group"
                       v-bind:key="group.index"
 
@@ -596,19 +597,19 @@ new Vue({
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
-                                    // EXAMPLE: [{pos:0,"uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                                    //           {pos:50,"uri":8,schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                                    // EXAMPLE: [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                                    //           {pos:50,"uri":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
                                     //          ]
                                     // TODO: component-editable fields and non-editable ones ("pos", "uri", "schema_code", "class_name") ought to be treated differently
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
-        category_uri: {{category_uri | tojson}},   // A string with the URI of the Category featured on this page
+        category_uri: {{category_uri | tojson}},    // A string with the URI of the Category featured on this page
 
-        show_left_sidebar: true,        // Indicating whether to show or collapse the left sidebar (with the Page Contents)
-        show_right_sidebox: true,       // Indicating whether to show or collapse the right sidebox (with the Category navigation)
+        show_left_sidebar: true,    // If true, the the left sidebar (with the Page Contents) is shown; otherwise, collapsed
+        show_right_sidebox: true,   // If true, the the left sidebar (with the Category navigation) is shown; otherwise, collapsed
 
-        records_types: {{records_types | tojson}},    // Array of all the names of leaf Classes associated to records
+        records_types: {{records_types | tojson}},   // Array of all the names of leaf Classes associated to records
 
         records_schema_data : {{records_schema_data | tojson }}, // EXAMPLE:
                                                                  // {"Quotes": ["quote", "attribution", "notes"],
@@ -811,7 +812,7 @@ new Vue({
 
 
         adjust_left_sidebar(state)
-        // Adjust the collapse/expansion of the left sidebar, based on the requested state: true = expanded; false = collapsed
+        // If state is true, expand the left sidebar; otherwise, collapse it
         {
             //console.log(`Root element received signal to adjust the left sidebar, with state ${state}`);
             this.show_left_sidebar = state;

@@ -1,16 +1,36 @@
 /*  Left sidebar (with the page's Table of Contents)
-    Used by page_viewer.htm
+    Used by page_viewer.htm and search.htm
     Show the headers, and varying details of some of Content Items under them
  */
 
 Vue.component('vue-toc-sidebar',
     {
-        props: ['content_array', 'show_left_sidebar'],
+        props: {
+
+            /*  Array containing item-data objects.  EXAMPLE:
+                                [{pos:0,"uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                                 {pos:50,"uri":8,schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
+                                ]
+             */
+            content_array: {
+            },
+
+            /* Flag indicating whether this sidebar is to be shown */
+            show_left_sidebar : {
+            },
+
+            /* Flag indicating whether the "Details?" checkbox is to be shown */
+            show_hide_details:  {
+                type: Boolean,
+                default: true
+            }
+        },
+
         /*  content_array:  Array containing item-data objects.  EXAMPLE:
                             [{pos:0,"uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
                              {pos:50,"uri":8,schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
                             ]
-            show_left_sidebar: Flag indicating whether the sidebar containing the TOC is to be show
+            show_left_sidebar: Flag indicating whether this sidebar is to be shown
          */
 
         template: `
@@ -27,7 +47,10 @@ Vue.component('vue-toc-sidebar',
 
                     <!-- Page navigation section -->
                     <a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
-                        <input type="checkbox" v-model="expand_categories" style='margin-left:8px'>Details?
+                        <span v-if="show_hide_details">
+                            <input type="checkbox" v-model="expand_categories" style='margin-left:8px'>
+                            Details?
+                        </span>
                     <br>
 
                     <div class="page-toc">
@@ -46,6 +69,12 @@ Vue.component('vue-toc-sidebar',
                                 <p v-if="item.schema_code == 'i'">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
                                     <img src='/BA/pages/static/graphics/image_14_1814111.png'>
+                                    <br>
+                                </p>
+
+                                <p v-if="item.schema_code == 'd'">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
+                                    <img src='/BA/pages/static/graphics/document_14_2124302.png'>
                                     <br>
                                 </p>
 
