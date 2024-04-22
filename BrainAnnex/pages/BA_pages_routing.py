@@ -321,7 +321,7 @@ class PagesRouting:
             if search_terms is None:
                 raise Exception("Missing value for parameter `term`")   # TODO: deal with empty searches
 
-            content_items = DataManager.search_for_word(search_terms)
+            content_items = DataManager.search_for_terms(search_terms)
 
             page_header = f"{len(content_items)} SEARCH RESULT(S) for `{search_terms}`"
 

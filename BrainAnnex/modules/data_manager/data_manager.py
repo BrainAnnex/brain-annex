@@ -992,8 +992,31 @@ class DataManager:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+
     @classmethod
-    def search_for_word(cls, word: str) -> [dict]:
+    def search_for_terms(cls, search_term :str) -> [dict]:
+        """
+
+        :param search_term:
+        :return:
+        """
+        print(f"search_term: `{search_term}`")
+
+        word_list = FullTextIndexing.split_into_words(text=search_term, to_lower_case=True, drop_html=True)
+
+        if len(word_list) == 0:
+            return []
+
+        if len(word_list) == 1:
+            return cls.search_for_word(word_list[0])
+
+        print(f"Multiple ({len(word_list)}) words found")
+        return cls.search_for_all_words(word_list)
+
+
+
+    @classmethod
+    def search_for_word(cls, word :str) -> [dict]:
         """
         Look up any stored words that contains the requested string
         (ignoring case and leading/trailing blanks.)
@@ -1003,12 +1026,12 @@ class DataManager:
 
         :param word:    A string, typically containing a word or word fragment;
                             case and leading/trailing blanks are ignored
-        :return:
+        :return:        A list of dictionaries, each with the record data of a search result
         """
         result = FullTextIndexing.search_word(word, all_properties=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': 55, 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
-        #    {'basename': 'notes-3', 'uri': 14, 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
         #   ]
 
         for node in result:
@@ -1047,6 +1070,63 @@ class DataManager:
             
             # And then return new_result outside of the loop
             '''
+
+
+        # Note: attributes 'pos' and 'class_name' (used by some HTML templates) are not in the the result
+        #print("------- RESULT -------------  :\n", result)
+        return result
+
+
+
+    @classmethod
+    def search_for_all_words(cls, word_list :[str]) -> [dict]:
+        """
+        Look up any stored words that contains the requested string
+        (ignoring case and leading/trailing blanks.)
+
+        Then locate the Content nodes that are indexed by any of those words.
+        Return a (possibly empty) list of the data of all the found nodes.
+
+        :param word_list:   A list of strings, each typically containing a word or word fragment;
+                                case and leading/trailing blanks are ignored
+        :return:            A list of dictionaries, each with the record data of a search result
+        """
+        matching_all = []
+        for word in word_list:
+            print(f"searching for word: `{word}`")
+            matching_all = FullTextIndexing.search_word(word, all_properties=False, restrict_search=matching_all)
+            print("matching_all: ", matching_all)
+
+        # matching_all will now contain the set of all internal ID's of Content Items that contain ALL the search term
+
+        q = '''
+            MATCH (ci)
+            WHERE id(ci) IN $id_list
+            RETURN ci
+            '''
+
+        result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
+        # EXAMPLE:
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
+        #   ]
+
+        for node in result:
+            internal_id = node["internal_id"]   # Ignore the PyCharm's complain about the data type!
+            #print("\n\n--- internal_id: ", internal_id)
+
+
+            # TODO: generalize the following line, to other types of links; for now, just used to extract the Categories
+            neighbor_props = cls.db.follow_links(match=internal_id,
+                                                 rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Categories")
+            # EXAMPLE of neighbor_props:
+            #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
+            #print(neighbor_props)
+            node["internal_links"] = neighbor_props
+
+            if "date_created" in node:
+                del node["date_created"]    # Datetime objects aren't serializable and lead to Flask errors
+                # TODO: go beyond this ad-hoc fix!
 
 
         # Note: attributes 'pos' and 'class_name' (used by some HTML templates) are not in the the result

@@ -666,20 +666,25 @@ class FullTextIndexing:
     #########################   SEARCHING   #########################
 
     @classmethod
-    def search_word(cls, word :str, all_properties=False) -> Union[List[int], List[dict]]:
+    def search_word(cls, word :str, all_properties=False, restrict_search=None) -> Union[List[int], List[dict]]:
         """
-        Look up in the index for any stored words that contains the requested string
+        Look up any stored words that contains the requested string
         (ignoring case and leading/trailing blanks.)
 
         Then locate the Content nodes that are indexed by any of those words.
-        Return a (possibly empty) list of either the internal database ID's of all the found nodes,
-        or a list of their full attributes.
 
-        :param word:    A string, typically containing a word or word fragment;
-                            case is ignored, and so are leading/trailing blanks
+        Return a (possibly empty) list of either the internal database ID's of all the found nodes,
+        or a list of their full properties.
+
+        :param word:            A string, typically containing a word or word fragment;
+                                    case is ignored, and so are leading/trailing blanks
         :param all_properties:  If True, the properties of the located nodes are returned
-                                alongside their internal database ID's.
-                                Default is False: only return the internal database ID's
+                                    alongside their internal database ID's.
+                                    Default is False: only return the internal database ID's
+        :param restrict_search: If None or an empty list, ignored;
+                                    otherwise, it should be a list of internal database ID's to which
+                                    the search is to be limited to
+
         :return:        If all_properties is False,
                             a (possibly empty) list of the internal database ID's
                             of all the found nodes
@@ -696,20 +701,31 @@ class FullTextIndexing:
             return []
 
         if all_properties:
-            return_statement = "RETURN DISTINCT c"
+            return_statement = "RETURN DISTINCT ci"
         else:
-            return_statement = "RETURN DISTINCT id(c) AS content_id"
+            return_statement = "RETURN DISTINCT id(ci) AS content_id"
 
-        q = f'''MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
-             (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(c)
-             WHERE w.name CONTAINS toLower('{clean_term}')
-             {return_statement} 
-             '''
+        if not restrict_search:
+            where_additional_clause = ""
+            data_binding = {}
+        else:
+            print("Restricting search to Content Items with internal ID's: ", restrict_search)
+            where_additional_clause = " AND id(ci) IN $restrict_search"
+            data_binding = {"restrict_search": restrict_search}
+
+        q = f'''
+            MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
+            (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(ci)
+            WHERE w.name CONTAINS toLower('{clean_term}')
+            {where_additional_clause}
+            {return_statement} 
+            '''
 
         #print(q)
 
         if all_properties:
-            result = cls.db.query_extended(q, flatten=True)
+            result = cls.db.query_extended(q, data_binding=data_binding, flatten=True)
         else:
-            result = cls.db.query(q, single_column="content_id")
+            result = cls.db.query(q, data_binding=data_binding, single_column="content_id")
+
         return result
