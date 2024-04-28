@@ -222,7 +222,7 @@ class FullTextIndexing:
         #print("The split text is : ", split_text)
 
         # Eliminate "words" that are 1 or 2 characters long, or that are numbers,
-        # or that are in a list of common words.  Don't include duplicates
+        # or that are in a list of common words.  Also eliminate duplicates
         word_set = set()    # Empty set
 
         # Define a regular expression pattern to match numeric characters
@@ -666,7 +666,8 @@ class FullTextIndexing:
     #########################   SEARCHING   #########################
 
     @classmethod
-    def search_word(cls, word :str, all_properties=False, restrict_search=None) -> Union[List[int], List[dict]]:
+    def search_word(cls, word :str, all_properties=False,
+                    restrict_search=None, search_category=None) -> Union[List[int], List[dict]]:
         """
         Look up any stored words that contains the requested string
         (ignoring case and leading/trailing blanks.)
@@ -684,6 +685,9 @@ class FullTextIndexing:
         :param restrict_search: If None or an empty list, ignored;
                                     otherwise, it should be a list of internal database ID's to which
                                     the search is to be limited to
+        :param search_category: (OPTIONAL) URI of Category.  If supplied, all searching will
+                                    be limited to Content Items in this Category
+                                    or in any of its sub-categories
 
         :return:        If all_properties is False,
                             a (possibly empty) list of the internal database ID's
@@ -705,23 +709,34 @@ class FullTextIndexing:
         else:
             return_statement = "RETURN DISTINCT id(ci) AS content_id"
 
-        if not restrict_search:
-            where_additional_clause = ""
-            data_binding = {}
-        else:
+
+        where_additional_clause = ""
+        data_binding = {}
+        additional_matching = ""
+
+        if restrict_search:
             print("Restricting search to Content Items with internal ID's: ", restrict_search)
-            where_additional_clause = " AND id(ci) IN $restrict_search"
-            data_binding = {"restrict_search": restrict_search}
+            where_additional_clause += " AND id(ci) IN $restrict_search"
+            data_binding["restrict_search"] = restrict_search
+
+        if search_category:
+            print("Restricting search to Content Items under Category with URI: ", search_category)
+            additional_matching = "-[:BA_in_category]->(:Categories)-[:BA_subcategory_of*0..]->(cat:Categories)"
+            where_additional_clause += " AND cat.uri = $search_category"
+            data_binding["search_category"] = search_category
+
 
         q = f'''
             MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
             (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(ci)
+            {additional_matching}
             WHERE w.name CONTAINS toLower('{clean_term}')
             {where_additional_clause}
             {return_statement} 
             '''
 
-        #print(q)
+        cls.db.debug_query_print(q=q, data_binding=data_binding, method="search_word")
+
 
         if all_properties:
             result = cls.db.query_extended(q, data_binding=data_binding, flatten=True)

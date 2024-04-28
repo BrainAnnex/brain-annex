@@ -1636,8 +1636,8 @@ class NeoSchema:
         :param uri:         The "uri" field to uniquely identify the data node
         :param internal_id: OPTIONAL alternate way to specify the data node;
                                 if present, it takes priority
-        :param labels:      OPTIONAL (generally, redundant) ways to locate the data node
-        :param properties:  OPTIONAL (generally, redundant) ways to locate the data node
+        :param labels:      OPTIONAL (generally redundant) ways to locate the data node
+        :param properties:  OPTIONAL (generally redundant) ways to locate the data node
 
         :return:            A dictionary with all the key/value pairs, if found; or None if not
         """

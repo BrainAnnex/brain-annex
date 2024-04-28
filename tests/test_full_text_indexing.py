@@ -116,6 +116,10 @@ def test_extract_unique_good_words():
     text = "2.3 5 99 -99 0 4912.42 -124 100 2023"
     assert FullTextIndexing.extract_unique_good_words(text) == set()
 
+    # Explore partially-numeric values that should not be indexed
+    text = "50m test2"
+    assert FullTextIndexing.extract_unique_good_words(text) == set()
+
 
     text = '''
         Seven key ideas that\nlie at the heart of present-day machine-learning algorithms and that\nmay 

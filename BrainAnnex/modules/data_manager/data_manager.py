@@ -994,29 +994,42 @@ class DataManager:
 
 
     @classmethod
-    def search_for_terms(cls, search_term :str) -> [dict]:
+    def search_for_terms(cls, words :str, search_category="") -> ([dict], str):
         """
+        Carry out a full-text search for a word, or set of words - possibly restricted to some Categories
 
-        :param search_term:
-        :return:
+        :param words:       String containing one or more words to search for
+        :param search_category: (OPTIONAL) URI of Category.  If supplied, all searching will
+                                    be limited to Content Items in this Category
+                                    or in any of its sub-categories
+        :return:            A list of dictionaries, each with the record data of a search result
         """
-        print(f"search_term: `{search_term}`")
+        print(f"search_for_terms(). Words: `{words}`")
+        print(f"search_category: `{search_category}`")
 
-        word_list = FullTextIndexing.split_into_words(text=search_term, to_lower_case=True, drop_html=True)
+        word_list = FullTextIndexing.split_into_words(text=words, to_lower_case=True, drop_html=True)
 
         if len(word_list) == 0:
             return []
 
         if len(word_list) == 1:
-            return cls.search_for_word(word_list[0])
+            content_items = cls.search_for_word(word_list[0], search_category=search_category)
+        else:
+            print(f"Multiple ({len(word_list)}) words found")
+            content_items = cls.search_for_all_words(word_list, search_category=search_category)
 
-        print(f"Multiple ({len(word_list)}) words found")
-        return cls.search_for_all_words(word_list)
+        caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
+
+        if search_category:
+            category_name = NeoSchema.fetch_data_node(uri=search_category).get("name")
+            caption += f" , restricted to Sub-Categories of `{category_name}`"
+
+        return (content_items, caption)
 
 
 
     @classmethod
-    def search_for_word(cls, word :str) -> [dict]:
+    def search_for_word(cls, word :str, search_category="") -> [dict]:
         """
         Look up any stored words that contains the requested string
         (ignoring case and leading/trailing blanks.)
@@ -1026,9 +1039,12 @@ class DataManager:
 
         :param word:    A string, typically containing a word or word fragment;
                             case and leading/trailing blanks are ignored
+        :param search_category: (OPTIONAL) URI of Category.  If supplied, all searching will
+                                    be limited to Content Items in this Category
+                                    or in any of its sub-categories
         :return:        A list of dictionaries, each with the record data of a search result
         """
-        result = FullTextIndexing.search_word(word, all_properties=True)
+        result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
         #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
         #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
@@ -1079,7 +1095,7 @@ class DataManager:
 
 
     @classmethod
-    def search_for_all_words(cls, word_list :[str]) -> [dict]:
+    def search_for_all_words(cls, word_list :[str], search_category="") -> [dict]:
         """
         Look up any stored words that contains the requested string
         (ignoring case and leading/trailing blanks.)
@@ -1089,16 +1105,21 @@ class DataManager:
 
         :param word_list:   A list of strings, each typically containing a word or word fragment;
                                 case and leading/trailing blanks are ignored
+        :param search_category: (OPTIONAL) URI of Category.  If supplied, all searching will
+                                    be limited to Content Items in this Category
+                                    or in any of its sub-categories
         :return:            A list of dictionaries, each with the record data of a search result
         """
         matching_all = []
         for word in word_list:
-            print(f"searching for word: `{word}`")
-            matching_all = FullTextIndexing.search_word(word, all_properties=False, restrict_search=matching_all)
+            print(f"SEARCHING for word: `{word}`")
+            matching_all = FullTextIndexing.search_word(word, all_properties=False,
+                                                        restrict_search=matching_all, search_category=search_category)
             print("matching_all: ", matching_all)
 
         # matching_all will now contain the set of all internal ID's of Content Items that contain ALL the search term
 
+        # Retrieve all the properties of the located records
         q = '''
             MATCH (ci)
             WHERE id(ci) IN $id_list
