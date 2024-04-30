@@ -1,5 +1,6 @@
 import re
 import html
+import os
 from typing import Union, List, Set
 from neoaccess.cypher_utils import CypherUtils
 from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
@@ -196,7 +197,7 @@ class FullTextIndexing:
             6) eliminate "words" that match at least one of these EXCLUSION test:
                 * are just 1 or 2 characters long
                 * are numbers
-                * contain a digit anywhere (e.g. "50m" or "test2")
+                * start with digits (e.g. "50m" or "123plus")
                 * are found in a list of common words
 
             7) eliminate duplicates
@@ -225,15 +226,15 @@ class FullTextIndexing:
         # or that are in a list of common words.  Also eliminate duplicates
         word_set = set()    # Empty set
 
-        # Define a regular expression pattern to match numeric characters
-        pattern = r"\d"
+        # Define a regular expression pattern to match anything that STARTS with a numeric character
+        pattern = r"^\d"        # Formerly: pattern = r"\d"
 
         for word in split_text:
             word = word.strip("_")
             if len(word) > 2 \
                     and not word.isnumeric() \
                     and word not in cls.COMMON_WORDS \
-                    and not re.search(pattern, word):
+                    and not re.findall(pattern, word):
                 word_set.add(word)      # Add the element to the set, if it passed all the exclusions
 
         #print("The word set for the index is: ", word_set)
@@ -324,46 +325,6 @@ class FullTextIndexing:
                                                                   "rel_dir": "IN"}])
 
         cls.add_words_to_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
-
-
-
-    @classmethod
-    def add_words_to_index_OBSOLETE(cls, indexer_id :int, unique_words :Set[str], to_lower_case :bool) -> None:
-        """
-        Add to the database "Word" nodes for all the given words, unless already present.
-        Then link all the "Word" nodes, both the found and the newly-created ones,
-        to the passed "Indexer" node with "occurs" relationships
-
-        :param indexer_id:      Internal database ID of an "Indexer" data node
-                                    used to hold all the "occurs" relationships
-                                    to the various Word nodes
-        :param unique_words:    Set of strings, with unique words for the index
-        :param to_lower_case:   If True, all text is converted to lower case
-        :return:                None
-        """
-        # TODO: drop this function - obsoleted by the far faster add_words_to_index()
-        if to_lower_case:
-            unique_words = list(map(str.lower, unique_words))
-        else:
-            unique_words = list(unique_words)
-
-
-        # Locate (if already present), or create, a "Word" data node for each word in the list unique_words
-        result = NeoSchema.add_data_column_merge(class_name="Word",
-                                                 property_name="name", value_list=unique_words)
-
-        print("Completed the add_data_column_merge")
-        #print("result: ", result)      # A dict with 2 keys: 'old_nodes' and 'new_nodes'
-
-        word_node_list = result['old_nodes'] + result['new_nodes']  # Join the 2 lists
-                                                                    # This is a combined list of internal database ID's
-
-        # Link all the "Word" nodes (located or created above) to the "Indexer" node,
-        # with an "occurs" outbound relationship
-        # (in the future, to also perhaps store a count property)
-        NeoSchema.add_data_relationship_hub(center_id=indexer_id, periphery_ids=word_node_list,
-                                            periphery_class="Word",
-                                            rel_name="occurs", rel_dir="IN")
 
 
 

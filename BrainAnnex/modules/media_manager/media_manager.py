@@ -223,7 +223,7 @@ class MediaManager:
         :return:            None.  In case of errors, detailed Exceptions are raised
         """
 
-        folder = cls.lookup_file_path(schema_code="n")                          # TODO: pass schema_code as an argument, instead of being hardwired
+        folder = cls.lookup_file_path(schema_code="n")                  # TODO: pass schema_code as an argument, instead of being hardwired
         full_file_name = folder + filename
 
         try:

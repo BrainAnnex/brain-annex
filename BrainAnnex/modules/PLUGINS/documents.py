@@ -40,6 +40,7 @@ class Documents:
         pass
 
 
+
     @classmethod
     def update_content_NOT_SUPPORTED(cls, data_binding: dict, set_dict: dict) -> dict:
         """
@@ -86,7 +87,7 @@ class Documents:
     @classmethod
     def new_content_item_successful(cls, uri :str, pars :dict, mime_type :str) -> None:
         """
-        Invoked after a new Content Item of this type gets successfully added to the database
+        Invoked after a new Content Item of this type (Documents) gets successfully added to the database
 
         :param uri:         A string with the URI of the Content Item
         :param pars:        Dict with the various properties of this Content Item
@@ -95,7 +96,7 @@ class Documents:
                                 EXAMPLES: 'text/plain', 'application/pdf'
         :return:            None
         """
-        filename = pars["basename"] + "." + pars["suffix"]  # EXAMPLE: "my_file.txt"
+        filename = pars["basename"] + "." + pars["suffix"]              # EXAMPLE: "my_file.txt"
         path = MediaManager.lookup_file_path(class_name="Documents")    # Incl. the final "/"
 
         # Extract the individual words "worthy" of being indexed in the document
@@ -104,13 +105,12 @@ class Documents:
             unique_words = FullTextIndexing.extract_unique_good_words(body)
 
         elif mime_type == "application/pdf":    # TODO: also include EPUB
-            # TODO: this ought to be done in a separate execution thread
             full_file_name = path + filename
             unique_words = cls.parse_pdf(full_file_name)
             #TODO: also store in database the doc.page_count and non-trivial values in doc.metadata
 
         else:
-            # TODO: handle mime_types such as 'application/msword'
+            # TODO: handle other mime_types such as 'application/msword'
             return
 
 
@@ -125,7 +125,10 @@ class Documents:
 
         # Carry out the actual indexing in the database
         content_id = NeoSchema.get_data_node_internal_id(uri=uri)
+
+        # TODO: this ought to be done in a separate execution thread or process
         FullTextIndexing.new_indexing(internal_id=content_id, unique_words=unique_words)
+
         print("Documents.new_content_item_successful(): Completed the indexing")
 
 
