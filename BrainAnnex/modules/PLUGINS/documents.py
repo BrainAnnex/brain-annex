@@ -19,7 +19,7 @@ class Documents:
         :param uri: An integer with the URI ("item ID") of the Content Item
         :return:    None.  If index isn't found, an Exception is raised
         """
-        pass
+        pass    # No action needed
 
 
 
@@ -37,7 +37,7 @@ class Documents:
         :param data_binding:
         :return:            The altered data_binding dictionary.  In case of error, an Exception is raised.
         """
-        pass
+        pass    # No action needed
 
 
 
@@ -71,12 +71,14 @@ class Documents:
             body = page.get_text(flags = fitz.TEXT_PRESERVE_WHITESPACE | fitz.TEXT_MEDIABOX_CLIP | fitz.TEXT_DEHYPHENATE)
             # TEXT_DEHYPHENATE re-forms any word that was split at the end of the line by hyphenation; not clear if the other flags are needed
             new_unique_words = FullTextIndexing.extract_unique_good_words(body)
+
+            '''
             n_words = len(new_unique_words)
             if n_words < 10:    # Give a more verbose feedback
                 print(f"    Page {p_number} - PyMuPDF found {n_words} unique words: {new_unique_words}")
             else:               # Give abridged feedback
                 print(f"    Page {p_number} - PyMuPDF found {n_words} unique words; first few: {list(new_unique_words)[:10]}")
-
+            '''
             unique_words = unique_words.union(new_unique_words)
             #print(f"--------------- unique_words_alt (size {len(unique_words_alt)}): ", unique_words_alt)
 

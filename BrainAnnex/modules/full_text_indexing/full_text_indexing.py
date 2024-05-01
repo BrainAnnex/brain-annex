@@ -439,7 +439,7 @@ class FullTextIndexing:
         try:
             #print("update_indexing(): about to calling add_words_to_index()")
             cls.add_words_to_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
-            print("update_indexing(): returned from call to add_words_to_index()")
+            #print("update_indexing(): returned from call to add_words_to_index()")
         except Exception as ex:
             err_details = f"Failure in FullTextIndexing.add_words_to_index().  {exceptions.exception_helper(ex)}"
             raise Exception(err_details)
@@ -603,21 +603,21 @@ class FullTextIndexing:
         from BrainAnnex.modules.media_manager.media_manager import MediaManager
 
         file_list = os.listdir(directory)
-        print(f"Total number of files: {len(file_list)}")
+        #print(f"Total number of files: {len(file_list)}")
 
         # Index the content of all the files
         i = 1
         for filename in file_list:
-            print(f"\n {i} -------------------------\n", filename)
+            #print(f"\n {i} -------------------------\n", filename)
             (basename, suffix) = os.path.splitext(filename)
             q = f"MATCH (n:Notes) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN ID(n) AS node_int_id"
             node_int_id = cls.db.query(q, single_cell="node_int_id")
-            print("    node's integer ID: ", node_int_id)
+            #print("    node's integer ID: ", node_int_id)
             path = "TBA"
             file_contents = MediaManager.get_from_text_file(path, filename)
             #print(file_contents)
             word_list = FullTextIndexing.extract_unique_good_words(file_contents)
-            print(word_list)
+            #print(word_list)
             FullTextIndexing.new_indexing(internal_id= node_int_id, unique_words = word_list)
             i += 1
 
@@ -676,12 +676,12 @@ class FullTextIndexing:
         additional_matching = ""
 
         if restrict_search:
-            print("Restricting search to Content Items with internal ID's: ", restrict_search)
+            #print("Restricting search to Content Items with internal ID's: ", restrict_search)
             where_additional_clause += " AND id(ci) IN $restrict_search"
             data_binding["restrict_search"] = restrict_search
 
         if search_category:
-            print("Restricting search to Content Items under Category with URI: ", search_category)
+            #print("Restricting search to Content Items under Category with URI: ", search_category)
             additional_matching = "-[:BA_in_category]->(:Categories)-[:BA_subcategory_of*0..]->(cat:Categories)"
             where_additional_clause += " AND cat.uri = $search_category"
             data_binding["search_category"] = search_category
@@ -696,7 +696,7 @@ class FullTextIndexing:
             {return_statement} 
             '''
 
-        cls.db.debug_query_print(q=q, data_binding=data_binding, method="search_word")
+        #cls.db.debug_query_print(q=q, data_binding=data_binding, method="search_word")
 
 
         if all_properties:
