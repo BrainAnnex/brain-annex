@@ -1,5 +1,6 @@
 /*
- * ADDITIONS:  	Cosmetic modifications for readability by Julian West (Dec. 2017)
+ * ADDITIONS:  	Cosmetic modifications for readability by Julian West (Dec. 2017);
+                    also, increased maxFilesize
  				Dropzone.version = "4.3.0";
 				Drag-and-Drop Upload in HTML5
  *
@@ -116,13 +117,14 @@
 
     Dropzone.prototype.events = ["drop", "dragstart", "dragend", "dragenter", "dragover", "dragleave", "addedfile", "addedfiles", "removedfile", "thumbnail", "error", "errormultiple", "processing", "processingmultiple", "uploadprogress", "totaluploadprogress", "sending", "sendingmultiple", "success", "successmultiple", "canceled", "canceledmultiple", "complete", "completemultiple", "reset", "maxfilesexceeded", "maxfilesreached", "queuecomplete"];
 
+    // maxFilesize is in MB
     Dropzone.prototype.defaultOptions = {
       url: null,
       method: "post",
       withCredentials: false,
       parallelUploads: 2,
       uploadMultiple: false,
-      maxFilesize: 256,
+      maxFilesize: 2000,
       paramName: "file",
       createImageThumbnails: true,
       maxThumbnailFilesize: 10,

@@ -17,6 +17,7 @@ class Collections:
 
     Example of use case: "pages" of "Content Items" attached to a "Category"
     """
+    # TODO: maybe rename the class to OrderedCollections (or OrderedSequences)
 
     # Class variables
 
@@ -47,7 +48,7 @@ class Collections:
 
 
     @classmethod
-    def initialize_collections(cls) -> (int, int):
+    def initialize_collections(cls) -> (int, str):
         """
         Create a new Schema Class node that represents a "Collection"
 
@@ -193,6 +194,16 @@ class Collections:
         # TODO: use this function as a ***ROLE MODEL*** for linking at the start
         # TODO: (optionally?) enforce that the respective Classes of the Data Nodes are a relationship named membership_rel_name;
         #       use NeoSchema.class_relationship_exists()
+
+        # TODO: validate more thoroughly the URI's
+        assert item_uri, \
+            "link_to_collection_at_end: Missing `item_uri` argument"
+
+        assert collection_uri, \
+            "link_to_collection_at_end: Missing `collection_uri` argument"
+
+        assert membership_rel_name, \
+            "link_to_collection_at_end: Missing `item_uri` membership_rel_name"
 
         # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
         # The "OPTIONAL MATCH" is used to compute a new positional value

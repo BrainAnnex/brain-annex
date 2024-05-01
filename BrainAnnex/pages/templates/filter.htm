@@ -1,7 +1,16 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters:
+{#  Forms to initiate searches, including full-text searching
 
-        current_page, site_pages
+    Flask-passed parameters:
+
+        current_page
+        site_pages
+
+        all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
+                                EXAMPLE:
+                                    [{"uri": 1,   "name": "HOME", "remarks": "ROOT NODE"},
+                                    {"uri: 123,  "name": "Calculus"},
+                                    {"uri": 523, "name": "Work at Acme", "pinned": True}]
  #}
 
 <html lang="en">
@@ -34,21 +43,36 @@
 </div>
 
 
-<h2>Search Notes by Words</h2>
-<i>(for now, just 1 single word)</i><br><br>
+<h2>Search Notes and Documents</h2>
+<i>(retrieve anything that includes ALL the words below; common words ignored)</i><br><br>
 
 <div class="content-block">
     <div class="content-block-title">Search</div>
+
     <form method='GET' action='search'>
-        <input type='text' name='term'  size="25" maxlength="35" placeholder="Enter a single word to search for">
+        <br>
+        <input type='text' name='words'  size="100" maxlength="225" placeholder="Enter all the words to search for">
+        <br><br><br>
+
+        <select name='search_category'  style='font-size:14px'>
+            <option value=''>[OPTIONALLY, select category to restrict search under]</option>
+            {% for category in all_categories %}
+            <option value='{{category.uri}}'>
+                {{category.name}}
+                {% if category.remarks %} [{{category.remarks}}] {% endif %}
+            </option>
+            {% endfor %}
+        </select>
+
         <input type="submit" value="SEARCH">
     </form>
+
 </div>
 
 
 
 
-<br><br><br><br>
+<br><br><br><br><br>
 
 <h2>Search the Database (EXPERIMENTAL!)</h2>
 

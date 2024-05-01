@@ -151,18 +151,6 @@ class PagesRouting:
 
 
 
-        @bp.route('/filter')
-        def filter_page() -> str:
-            """
-            # General filter page, in early stage
-            # EXAMPLE invocation: http://localhost:5000/BA/pages/filter
-            """
-            template = "filter.htm"
-
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
-
-
-
         @bp.route('/md-file/<category_uri>')
         def md_file(category_uri) -> str:
             """
@@ -305,6 +293,23 @@ class PagesRouting:
 
         #############################   SEARCH-RELATED   #############################
 
+
+        @bp.route('/filter')
+        @login_required
+        def filter_page() -> str:
+            """
+            # General filter page, including full-text searches
+            # EXAMPLE invocation: http://localhost:5000/BA/pages/filter
+            """
+            template = "filter.htm"
+
+            all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)
+
+            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+                                   all_categories=all_categories)
+
+
+
         #@bp.route('/search/<search_terms>')
         @bp.route('/search')
         @login_required
@@ -312,18 +317,18 @@ class PagesRouting:
         #def search(search_terms) -> str:
             """
             Generate a page of search results
-            EXAMPLE invocation: http://localhost:5000/BA/pages/search?term=boat
+            EXAMPLE invocation: http://localhost:5000/BA/pages/search?words=marine+biology&search_category=3775
             """
             template = "search.htm"
 
-            search_terms = request.args.get("term", type = str)     # COULD ALSO ADD: , default = "someDefault"      Using Request data in Flask
+            words = request.args.get("words", type = str)     # COULD ALSO ADD: , default = "someDefault"      Using Request data in Flask
+            search_category = request.args.get("search_category", type = str)
+            #return f"{words}, {search_category}"
 
-            if search_terms is None:
-                raise Exception("Missing value for parameter `term`")   # TODO: deal with empty searches
+            if words is None:
+                return "Incorrectly-formed URL; missing query-string parameter `<b>words</b>`"
 
-            content_items = DataManager.search_for_word(search_terms)
-
-            page_header = f"{len(content_items)} SEARCH RESULT(S) for `{search_terms}`"
+            content_items, page_header = DataManager.search_for_terms(words=words, search_category=search_category)
 
             return render_template(template,
                                    content_items=content_items,

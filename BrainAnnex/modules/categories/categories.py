@@ -819,7 +819,7 @@ class Categories:
     def link_content_at_end(cls, category_uri :str, item_uri :str) -> None:
         """
         Given an EXISTING data node, link it to the end of the specified Category.
-        If a connection to that Category already exists, an Exception is raised.
+        If a link to that Category already exists, an Exception is raised.
 
         :param category_uri:String to identify an existing Category
         :param item_uri:    String to identify an existing Content Item

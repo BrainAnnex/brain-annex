@@ -116,6 +116,14 @@ def test_extract_unique_good_words():
     text = "2.3 5 99 -99 0 4912.42 -124 100 2023"
     assert FullTextIndexing.extract_unique_good_words(text) == set()
 
+    # Explore partially-numeric values that should NOT be indexed
+    text = "50m 123plus"
+    assert FullTextIndexing.extract_unique_good_words(text) == set()
+
+    # Explore partially-numeric values that should be indexed
+    text = "TRV240 test8 A5X"
+    assert FullTextIndexing.extract_unique_good_words(text) == {'trv240', 'test8', 'a5x'}
+
 
     text = '''
         Seven key ideas that\nlie at the heart of present-day machine-learning algorithms and that\nmay 
@@ -263,65 +271,6 @@ def test_add_words_to_index(db):
     assert n_added == 1
 
     assert NeoSchema.count_data_nodes_of_class(class_id="Word") == 4          # One word from earlier ("research") got re-used
-    assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 2
-    assert NeoSchema.count_data_nodes_of_class(class_id="Content Item") == 2
-
-    assert FullTextIndexing.number_of_indexed_words(content_id) == 2
-
-    q = '''
-        MATCH (ci_cl:CLASS {name:"Content Item"})-[:has_index]->(CLASS {name:"Indexer"})
-        <-[:occurs]-(:CLASS {name:"Word"})
-        <-[:SCHEMA]-(w:Word)-[:occurs]
-        ->(:Indexer)
-        <-[:has_index]-(:`Content Item`)-[:SCHEMA]
-        ->(ci_cl)
-        RETURN DISTINCT w.name AS name
-        '''
-    res = db.query(q, single_column="name")
-    #print(res)
-    assert compare_unordered_lists(res, ["lab", "research", "r/d", "science"])
-
-
-
-def test_add_words_to_index_OBSOLETE(db):
-    # Set up a new indexing system, and create a sample Content node
-    content_id = setup_sample_index(db)
-
-    # Create a data node of type "Indexer", and link it up to the passed Content Item data node
-    indexer_id = NeoSchema.add_data_node_with_links(class_name ="Indexer",
-                                                    links =[{"internal_id": content_id, "rel_name": "has_index",
-                                                             "rel_dir": "IN"}])
-    # ...and then index some words to it
-    FullTextIndexing.add_words_to_index_OBSOLETE(indexer_id=indexer_id,
-                                                 unique_words={"lab", "research", "R/D"}, to_lower_case=True)
-
-    assert NeoSchema.count_data_nodes_of_class(class_id="Word") == 3
-    assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 1
-    assert NeoSchema.count_data_nodes_of_class(class_id="Content Item") == 1
-
-    assert FullTextIndexing.number_of_indexed_words(content_id) == 3
-
-    q = '''
-        MATCH (w:Word)-[:SCHEMA]->(wc:CLASS {name: "Word"})-[:occurs]->(ic:CLASS {name:"Indexer"})
-        <-[:SCHEMA]-(i:Indexer)<-[:occurs]-(w)
-        RETURN w.name AS name
-        '''
-    res = db.query(q, single_column="name")
-    assert compare_unordered_lists(res, ["lab", "research", "r/d"])
-
-
-    # Now test a scenario where some Word node already exist
-
-    # Create another data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Other_Document.txt"})
-    # ...then create a data node of type "Indexer", and link it up to the passed Content Item data node
-    indexer_id = NeoSchema.add_data_node_with_links(class_name ="Indexer",
-                                                    links =[{"internal_id": content_id, "rel_name": "has_index",
-                                                             "rel_dir": "IN"}])
-    # ...and then index some words to it
-    FullTextIndexing.add_words_to_index_OBSOLETE(indexer_id=indexer_id, unique_words={"RESEARCH", "science"}, to_lower_case=True)
-
-    assert NeoSchema.count_data_nodes_of_class(class_id="Word") == 4            # One word from earlier ("research") got re-used
     assert NeoSchema.count_data_nodes_of_class(class_id="Indexer") == 2
     assert NeoSchema.count_data_nodes_of_class(class_id="Content Item") == 2
 
