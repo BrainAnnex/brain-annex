@@ -3,30 +3,31 @@ from typing import Union
 
 class PyGraphScape:     # Alternate name: PyGraphVisual
     """
+    Facilitate data preparation for graph visualization using the Cytoscape.js library
 
-    GraphicLog.export_plot(PyGraphScape_object, "vue_cytoscape_1")
     """
 
 
-    def __init__(self, db):
-        self.db = db
+    def __init__(self, db=None):
+        self.db = db                    # Object of "NeoAccess" class
 
-        self.structure = []             # A list of dicts defining nodes, and possibly edges as well
-                                        #   Nodes must contain the key 'id' (and, typically, 'labels')
-                                        #   Edges must contain the keys 'source', 'target' and 'name'
+        self.structure = []             # The data that defines a graph to visualize.
+                                        #    A list of dicts defining nodes, and possibly edges as well.
+                                        #   NODES must contain the key 'id' (and, typically, 'labels')
+                                        #   EDGES must contain the keys 'name', 'source', and 'target'
                                         #   (and presumably 'id' as well?)
-                                        # EXAMPLE:
+                                        # EXAMPLE (2 nodes and an edge):
                                         #   [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
                                         #    {'id': 2, 'color': 'white', 'labels': ['CAR']},
                                         #    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
 
-        self.color_mapping = {}         # Mapping a node label to its interior color
+        self.color_mapping = {}         # Mapping a node label to its interior color (the edge color is an automatic variation)
                                         # EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
 
-        self.caption_mapping = {}       # Mapping a node label to its caption (field name to use on graph)
+        self.caption_mapping = {}       # Mapping a node label to its caption (field name to use on the graph)
                                         # EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
 
-        self.next_available_edge_id = 1
+        self.next_available_edge_id = 1 # An auto-increment value
 
 
 
@@ -34,22 +35,23 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
         """
         Return an overview description of this object
 
-        :return:
+        :return:    A string with a description of this object
         """
         s = f"Object describing a graph containing a total of {len(self.structure)} nodes and edges:\n"
         s += f"    Graph structure: {self.structure}\n"
         s += f"    Graph color mapping: {self.color_mapping}\n"
         s += f"    Graph caption mapping: {self.caption_mapping}"
+
         return s
 
 
 
     def get_graph_data(self) -> dict:
         """
-        Return the data dictionary with all the relevant visualization info
-        (typically, to pass to the front-end)
+        Return a data dictionary with all the relevant visualization info
+        (typically, to pass to the front-end, for eventual use by the Cytoscape.js library)
 
-        :return:
+        :return:    A dict with 3 keys - "structure", "color_mapping" and "caption_mapping"
         """
         return {"structure": self.structure,
                 "color_mapping": self.color_mapping,
@@ -57,7 +59,7 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
 
 
 
-    def add_node(self, node_id :Union[int,str], labels="", name=None, data=None) -> None:
+    def add_node(self, node_id :Union[int,str], labels="", data=None) -> None:
         """
         Prepare and store the data for 1 node, in a format expected by the visualization front-end
 
@@ -68,15 +70,11 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
                             Typically, use either the internal database ID, or some URI
         :param labels:  A string, or list of strings, with the node's label(s) used in the graph database;
                             if not used, pass an empty string
-        :param name:    An optional string meant to be displayed by default on the node;
-                            if not specified, a decision will be made by the front end about with other data field
-                            to use (for example the value of the "uri" argument)
-        :param data:    A dict with all other node data not specified in any of the other arguments
+        :param data:    A dict with all other node data not already specified in any of the other arguments
         :return:        None
         """
-        if type(node_id) == str:
-            assert node_id != "", \
-                "add_node(): cannot use an empty string for the argument `node_id`"
+        assert node_id != "", \
+            "add_node(): cannot use an empty string for the argument `node_id`"
 
         if data is None:
             data = {}
@@ -121,7 +119,7 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
             d["id"] = edge_id
         else:
             d["id"] = f"edge-{self.next_available_edge_id}"
-            self.next_available_edge_id += 1
+            self.next_available_edge_id += 1        # Maintain an auto-increment value
 
         self.structure.append(d)
 
@@ -131,8 +129,8 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
         """
         Assign and store a mapping from label name to caption (name of field to use on the display)
 
-        :param label:
-        :param caption:
+        :param label:   The name of a node label
+        :param caption: The name of the node field to use on the display
         :return:        None
         """
         self.caption_mapping[label] = caption
@@ -143,8 +141,8 @@ class PyGraphScape:     # Alternate name: PyGraphVisual
         """
         Assign and store a mapping from label name to color to use for nodes having that label
 
-        :param label:
-        :param color:
+        :param label:   The name of a node label
+        :param color:   The name (hex string or standard CSS name) of the color to use on the display
         :return:        None
         """
         extra_colors =  {       # Convenient extra colors, not available thru standard CSS names
