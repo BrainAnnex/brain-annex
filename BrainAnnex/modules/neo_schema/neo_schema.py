@@ -1938,7 +1938,7 @@ class NeoSchema:
         :param properties_to_set:   (OPTIONAL) Dictionary with the properties of the new data node.
                                         EXAMPLE: {"make": "Toyota", "color": "white"}
         :param uri_namespace:       (OPTIONAL) String with a namespace to use to auto-assign a uri value on the new node;
-                                        if not passed, no uri gets set on the new node
+                                        if not passed, no uri value gets set on the new node
 
         :return:                    The internal database ID of the new Data node just created
         """
@@ -1999,7 +1999,7 @@ class NeoSchema:
         :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
                                 IN ADDITION TO the Class name (which is always used as label)
         :param uri_namespace:(OPTIONAL) String with a namespace to use to auto-assign uri values on the new Data nodes;
-                                if not passed, no uri's get set on the new nodes
+                                if not passed, no uri values get set on the new nodes
         :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
                                 to a "schema_code" property for each new data node created
         :param report_frequency: (OPTIONAL) How often to print out the status of the import-in-progress

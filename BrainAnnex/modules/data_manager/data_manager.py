@@ -5,7 +5,7 @@ from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
+from BrainAnnex.modules.py_graph_visual.py_graph_visual import PyGraphVisual
 import re                               # For REGEX
 import pandas as pd
 import os
@@ -195,7 +195,7 @@ class DataManager:
         :return:    An object of class PyGraphScape
         """
 
-        graph_obj = PyGraphScape(cls.db)
+        graph_obj = PyGraphVisual(cls.db)
 
         '''
         # TODO: turn this simple example into a tutorial
