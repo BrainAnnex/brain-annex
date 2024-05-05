@@ -100,7 +100,7 @@ Vue.component('vue_cytoscape_2',
         computed: {
             assemble_element_structure()
             /*  Create and return the graph structure needed by Cytoscape.js
-                (a list of objects, each with a key named "data")
+                (an array of objects, each with a key named "data")
                 EXAMPLE:
                     [
                         {data: {'id': 1, 'name': 'Julian', 'labels': ['PERSON']}
@@ -112,17 +112,17 @@ Vue.component('vue_cytoscape_2',
                     ]
              */
             {
-                res = [];
+                cyto_arr = [];
 
                 for (i in this.graph_structure) {   // Note:  i will be an integer, not an array element!!
                     el = {data: this.graph_structure[i]};
-                    res.push(el);
+                    cyto_arr.push(el);
                 }
 
-                console.log("assemble_element_structure produced:")
-                console.log(res);
+                //console.log("assemble_element_structure produced:")
+                //console.log(cyto_arr);
 
-                return res;
+                return cyto_arr;
             }
         },
 
@@ -279,11 +279,12 @@ Vue.component('vue_cytoscape_2',
 
 
             clear_legend(ev)
-            /*  Invoked when clicking anywhere.
+            /*  Invoked when clicking anywhere - including the image background.
                 Clear the plot legend (note: if clicking on a node or edge, the legend
                 will get set again by the next handler)
             */
             {
+                // The following change will clear the plot legend
                 this.node_info = null;
                 this.node_labels = null;
             },
