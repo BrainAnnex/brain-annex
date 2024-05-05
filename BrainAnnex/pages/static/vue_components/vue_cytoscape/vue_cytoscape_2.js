@@ -218,6 +218,7 @@ Vue.component('vue_cytoscape_2',
 
                 });
 
+                cy_object.on('click', this.clear_legend);   // Detect all click events that the core receices
                 cy_object.on('click', 'node', this.show_node_info);
                 cy_object.on('click', 'edge', this.show_edge_info);
 
@@ -273,6 +274,17 @@ Vue.component('vue_cytoscape_2',
 
                 // Update the legend
                 this.node_info = info_arr;
+                this.node_labels = null;
+            },
+
+
+            clear_legend(ev)
+            /*  Invoked when clicking anywhere.
+                Clear the plot legend (note: if clicking on a node or edge, the legend
+                will get set again by the next handler)
+            */
+            {
+                this.node_info = null;
                 this.node_labels = null;
             },
 
