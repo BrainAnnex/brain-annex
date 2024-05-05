@@ -1,6 +1,9 @@
 Vue.component('vue_cytoscape_2',
     {
         props: {
+            graph_data: {
+                required: true
+            },
             /* graph_data is an object with the following KEYS:
 
                 1) "structure"
@@ -9,18 +12,15 @@ Vue.component('vue_cytoscape_2',
                              {'id': 2, 'color': 'white', 'labels': ['CAR']},
                              {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
 
-                2) "color_mapping"
+                2) "color_mapping"      (TODO: auto-assign if unspecified; SEE vue_curves_4.js)
                         EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
 
-                3) "caption_mapping"
+                3) "caption_mapping"    (from label to property to use for caption)
                         EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
              */
-            graph_data: {
-                required: true
-            },
 
             component_id: {
-                default: 1
+                default: 1      // Used in forming a unique ID for the DIV that contains the Cytoscape grape
             }
         },
 
@@ -30,11 +30,13 @@ Vue.component('vue_cytoscape_2',
             <div>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
 
                 <div v-bind:id="'cy_' + component_id" class="cytoscape-container">
-                    <!-- CYTOSCAPE.js WILL INSERT THE GRAPH HERE -->
+                    <!--
+                        ****  CYTOSCAPE.js WILL INSERT THE GRAPH HERE!  ***
+                      -->
                 </div>
 
-                <div class="cytoscape-legend">
 
+                <div class="cytoscape-legend">
                     <p v-if="!node_info">
                         <b>Node labels</b><br><br>
                         <template v-for="color_map in Object.entries(graph_data.color_mapping)">
@@ -42,7 +44,7 @@ Vue.component('vue_cytoscape_2',
                         </template>
 
                         <br><br><br>
-                        <i>Select a node on the graph</i>
+                        <i>Select a node or edge<br>on the graph</i>
                     </p>
 
                     <p v-else>
@@ -76,7 +78,8 @@ Vue.component('vue_cytoscape_2',
                 node_labels: null,
                 node_info: null,
 
-                plot_layout_style: "breadthfirst"
+                plot_layout_style: "breadthfirst"   // CHOICES: 'grid', 'circle', 'random',
+                                                    //          'concentric', 'breadthfirst', 'cose'
             }
         },
 
@@ -88,7 +91,7 @@ Vue.component('vue_cytoscape_2',
              */
             console.log('The component is now mounted');
 
-            this.create_graph('cy_' + this.component_id);    // This will let Cytoscape.js do its thing
+            this.create_graph('cy_' + this.component_id);    // This will let Cytoscape.js do its thing!
         },
 
 
@@ -97,7 +100,7 @@ Vue.component('vue_cytoscape_2',
         computed: {
             assemble_element_structure()
             /*  Create and return the graph structure needed by Cytoscape.js
-                (a list of objects with a key named "data")
+                (a list of objects, each with a key named "data")
                 EXAMPLE:
                     [
                         {data: {'id': 1, 'name': 'Julian', 'labels': ['PERSON']}
@@ -140,6 +143,7 @@ Vue.component('vue_cytoscape_2',
 
                 this.node_info = null;                          // Unset any node selection
             },
+
 
 
             create_graph(element_id)
@@ -197,7 +201,7 @@ Vue.component('vue_cytoscape_2',
                         },
 
                         {
-                            selector: ':selected',
+                            selector: ':selected',   // SELECTED node and links
                             style: {
                                 'background-color': 'yellow',
                                 'line-color': 'red'
@@ -208,13 +212,14 @@ Vue.component('vue_cytoscape_2',
 
 
                     layout: {
-                        name: this.plot_layout_style,   // CHOICES: 'grid', 'circle', 'random', 'concentric', 'breadthfirst', 'cose'
+                        name: this.plot_layout_style,
                         rows: 1
                     }
 
                 });
 
                 cy_object.on('click', 'node', this.show_node_info);
+                cy_object.on('click', 'edge', this.show_edge_info);
 
                 /*
                 // EXAMPLES of adding nodes
@@ -239,28 +244,36 @@ Vue.component('vue_cytoscape_2',
             {
                 const node = ev.target;
 
-                //console.log(node.position());   // EXAMPLE: {x: 361, y: 144}
-                //console.log(node.id());
-                //console.log(node.data());
-                //console.log(node);
-                //console.log(node.data);
-                //console.log(node.data('name'));
-                //console.log(Object.keys(node.data()));    // EXAMPLE: ['id', 'labels', 'name']
-
                 const cyto_data_obj = node.data();      // An object with various keys, such as 'id', 'labels', 'name'
-                let info_arr = [];
+                let info_arr = [];                      // Each of the object key/value pairs will go into an array element, as an HTML string
                 for (k in cyto_data_obj) {
                     //console.log( k, cyto_data_obj[k] );
-                    info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);  // This will update the UI graph legend
+                    info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);  // Data to update the UI graph legend
                 }
                 //console.log(info_arr);
 
-                const pos = node.position()
-                const x = pos.x.toFixed(1);
-                const y = pos.y.toFixed(1);
-                //this.node_info = `id: ${node.id()} , x: ${x} , y: ${y}`;
+                // Update the legend
                 this.node_info = info_arr;
                 this.node_labels = cyto_data_obj.labels;
+            },
+
+
+            show_edge_info(ev)
+            // Invoked when clicking on an edge
+            {
+                const edge = ev.target;
+
+                const cyto_data_obj = edge.data();      // An object with various keys, such as 'id', 'name', 'source', 'target'
+                let info_arr = [];                      // Each of the object key/value pairs will go into an array element, as an HTML string
+                for (k in cyto_data_obj) {
+                    //console.log( k, cyto_data_obj[k] );
+                    info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);  // Data to update the UI graph legend
+                }
+                //console.log(info_arr);
+
+                // Update the legend
+                this.node_info = info_arr;
+                this.node_labels = null;
             },
 
 
