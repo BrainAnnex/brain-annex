@@ -196,7 +196,7 @@ class Categories:
         clause = ""
         if exclude_root:
             clause = "WHERE (cat.root <> true OR cat.root is NULL)"
-            #clause = "WHERE cat.uri <> '1'"     # The obsolete old convention
+
 
         remarks_subquery = ", cat.remarks AS remarks"  if include_remarks else ""
 
@@ -214,8 +214,7 @@ class Categories:
              RETURN cat.uri AS uri, cat.name AS name {remarks_subquery}
              ORDER BY toLower(cat.name)
              '''
-        # Notes: 1 is the ROOT category.  TODO: replace with check .root = true
-        # Sorting must be done across names of consistent capitalization, or "GSK" will appear before "German"!
+        # Notes: Sorting must be done across names of consistent capitalization, or "GSK" will appear before "German"!
 
         result =  cls.db.query(q)
 

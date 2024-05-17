@@ -370,7 +370,7 @@ class NeoSchema:
     @classmethod
     def get_class_name_by_schema_uri(cls, schema_uri :str) -> str:
         """
-        Returns the name of the class with the given Schema ID;
+        Returns the name of the class with the given Schema URI;
         raise an Exception if not found
 
         :param schema_uri:  A string uniquely identifying the desired Class
@@ -379,7 +379,7 @@ class NeoSchema:
         # TODO: maybe phase out?
         assert cls.is_valid_schema_uri(schema_uri), \
             "get_class_name_by_schema_uri(): The schema uri MUST be a string " \
-            "of the form 'schema-n for some integer n"
+            "of the form 'schema-n' for some integer n"
 
         match = cls.db.match(labels="CLASS", key_name="uri", key_value=schema_uri)
         result = cls.db.get_nodes(match, single_cell="name")
@@ -1468,9 +1468,9 @@ class NeoSchema:
     @classmethod
     def get_schema_uri(cls, schema_code :str) -> str:
         """
-        Get the Schema ID most directly associated to the given Schema Code
+        Get the Schema URI most directly associated to the given Schema Code
 
-        :return:    An integer with the Schema uri (or "" if not present)
+        :return:    A string with the Schema uri (or "" if not present)
         """
         #TODO: create a counterpart for Data Nodes
 

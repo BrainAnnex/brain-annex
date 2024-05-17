@@ -3,6 +3,8 @@ from typing import Union
 
 class PyGraphVisual:
     """
+    TODO: replace with newest version from Life123
+
     Facilitate data preparation for graph visualization using the Cytoscape.js library
 
     GraphicLog.export_plot(PyGraphVisual_object, "vue_cytoscape_1")
