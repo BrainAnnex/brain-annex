@@ -230,7 +230,7 @@ class PagesRouting:
             """
             template = "schema_viewer.htm"
 
-            graph_obj = DataManager.get_schema_visualization_data()
+            graph_obj = DataManager.get_schema_visualization_data()  # TODO: turn into a dict
             #print(graph_obj)
 
             return render_template(template, current_page=request.path, site_pages=cls.site_pages,

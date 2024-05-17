@@ -5,7 +5,7 @@ from BrainAnnex.modules.PLUGINS.documents import Documents
 from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
 from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
+from BrainAnnex.modules.py_graph_visual.py_graph_visual import PyGraphVisual
 import re                               # For REGEX
 import pandas as pd
 import os
@@ -195,7 +195,7 @@ class DataManager:
         :return:    An object of class PyGraphScape
         """
 
-        graph_obj = PyGraphScape(cls.db)
+        graph_obj = PyGraphVisual(cls.db)
 
         '''
         # TODO: turn this simple example into a tutorial
@@ -235,7 +235,7 @@ class DataManager:
         graph_obj.assign_caption(label="CLASS", caption="name")
         graph_obj.assign_caption(label="PROPERTY", caption="name")
 
-        return graph_obj
+        return graph_obj    # TODO: return a dict instead - use the serialize() method
 
 
 
@@ -801,14 +801,14 @@ class DataManager:
             raise Exception("Missing Schema Code (Item Type)")
         del post_data["schema_code"]
 
-        schema_uri = post_data.get("schema_uri")    # TODO: ditch using the schema_uri
+        schema_uri = post_data.get("schema_uri")    # TODO: ditch using the schema_uri, in favor of class_name
         if schema_uri:
             del post_data["schema_uri"]
         else:
             schema_uri = NeoSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
             print("schema_uri looked up as: ", schema_uri)
             if schema_uri == "":
-                raise Exception("Missing Schema URI")
+                raise Exception(f"Missing Schema URI for schema_code `{schema_code}`")
 
         class_name = post_data.get("class_name")
         if class_name:

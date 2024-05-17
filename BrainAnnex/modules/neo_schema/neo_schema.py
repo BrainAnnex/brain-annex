@@ -370,7 +370,7 @@ class NeoSchema:
     @classmethod
     def get_class_name_by_schema_uri(cls, schema_uri :str) -> str:
         """
-        Returns the name of the class with the given Schema ID;
+        Returns the name of the class with the given Schema URI;
         raise an Exception if not found
 
         :param schema_uri:  A string uniquely identifying the desired Class
@@ -379,7 +379,7 @@ class NeoSchema:
         # TODO: maybe phase out?
         assert cls.is_valid_schema_uri(schema_uri), \
             "get_class_name_by_schema_uri(): The schema uri MUST be a string " \
-            "of the form 'schema-n for some integer n"
+            "of the form 'schema-n' for some integer n"
 
         match = cls.db.match(labels="CLASS", key_name="uri", key_value=schema_uri)
         result = cls.db.get_nodes(match, single_cell="name")
@@ -1468,9 +1468,9 @@ class NeoSchema:
     @classmethod
     def get_schema_uri(cls, schema_code :str) -> str:
         """
-        Get the Schema ID most directly associated to the given Schema Code
+        Get the Schema URI most directly associated to the given Schema Code
 
-        :return:    An integer with the Schema uri (or "" if not present)
+        :return:    A string with the Schema uri (or "" if not present)
         """
         #TODO: create a counterpart for Data Nodes
 
@@ -1938,7 +1938,7 @@ class NeoSchema:
         :param properties_to_set:   (OPTIONAL) Dictionary with the properties of the new data node.
                                         EXAMPLE: {"make": "Toyota", "color": "white"}
         :param uri_namespace:       (OPTIONAL) String with a namespace to use to auto-assign a uri value on the new node;
-                                        if not passed, no uri gets set on the new node
+                                        if not passed, no uri value gets set on the new node
 
         :return:                    The internal database ID of the new Data node just created
         """
@@ -1999,7 +1999,7 @@ class NeoSchema:
         :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
                                 IN ADDITION TO the Class name (which is always used as label)
         :param uri_namespace:(OPTIONAL) String with a namespace to use to auto-assign uri values on the new Data nodes;
-                                if not passed, no uri's get set on the new nodes
+                                if not passed, no uri values get set on the new nodes
         :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
                                 to a "schema_code" property for each new data node created
         :param report_frequency: (OPTIONAL) How often to print out the status of the import-in-progress
