@@ -1,1 +1,1 @@
-__version__ = "5.0.0-beta.38.3"
+__version__ = "5.0.0-beta.39_IN_PROGRESS"

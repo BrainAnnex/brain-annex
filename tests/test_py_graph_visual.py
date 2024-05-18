@@ -13,7 +13,7 @@ def test_add_node():
 
     assert result == {'structure': [{'name': 'Julian', 'id': 123, 'labels': ['Person']}],
                       'color_mapping': {}, 'caption_mapping': {}}
-    assert graph.all_node_ids == [123]
+    assert graph._all_node_ids == [123]
 
 
     graph.add_node(node_id=456, labels="Person", data={"name": "Val"})
@@ -24,7 +24,7 @@ def test_add_node():
                 {'name': 'Val', 'id': 456, 'labels': ['Person']}]
 
     assert compare_recordsets(result , expected)
-    assert graph.all_node_ids == [123, 456]
+    assert graph._all_node_ids == [123, 456]
 
 
     graph.add_node(node_id=456, labels="Person", data={"name": "it doesn't matter"})
@@ -32,4 +32,4 @@ def test_add_node():
     result = graph.get_graph_data().get("structure")
 
     assert compare_recordsets(result , expected)    # No change from before
-    assert graph.all_node_ids == [123, 456]
+    assert graph._all_node_ids == [123, 456]
