@@ -2081,34 +2081,34 @@ def test_class_of_data_point(db):
 
 def test_advance_autoincrement(db):
     db.empty_dbase()
-    assert NeoSchema._advance_autoincrement("a") == 1
-    assert NeoSchema._advance_autoincrement("a") == 2
-    assert NeoSchema._advance_autoincrement("schema") == 1
-    assert NeoSchema._advance_autoincrement("schema") == 2
-    assert NeoSchema._advance_autoincrement("a") == 3
-    assert NeoSchema._advance_autoincrement("documents") == 1
-    assert NeoSchema._advance_autoincrement("documents") == 2
+    assert NeoSchema.advance_autoincrement("a") == 1
+    assert NeoSchema.advance_autoincrement("a") == 2
+    assert NeoSchema.advance_autoincrement("schema") == 1
+    assert NeoSchema.advance_autoincrement("schema") == 2
+    assert NeoSchema.advance_autoincrement("a") == 3
+    assert NeoSchema.advance_autoincrement("documents") == 1
+    assert NeoSchema.advance_autoincrement("documents") == 2
 
     # The following line will "reserve" the values 3 and 4
-    assert NeoSchema._advance_autoincrement("documents", advance=2) == 3
-    assert NeoSchema._advance_autoincrement("documents") == 5
+    assert NeoSchema.advance_autoincrement("documents", advance=2) == 3
+    assert NeoSchema.advance_autoincrement("documents") == 5
 
     # The following line will "reserve" the values 1 thru 10
-    assert NeoSchema._advance_autoincrement("image", advance=10) == 1
-    assert NeoSchema._advance_autoincrement("image") == 11
-    assert NeoSchema._advance_autoincrement("          image   ") == 12 # Leading/trailing blanks are ignored
+    assert NeoSchema.advance_autoincrement("image", advance=10) == 1
+    assert NeoSchema.advance_autoincrement("image") == 11
+    assert NeoSchema.advance_autoincrement("          image   ") == 12 # Leading/trailing blanks are ignored
 
     with pytest.raises(Exception):
-        assert NeoSchema._advance_autoincrement(123)    # Not a string
+        assert NeoSchema.advance_autoincrement(123)    # Not a string
 
     with pytest.raises(Exception):
-        assert NeoSchema._advance_autoincrement("        ")
+        assert NeoSchema.advance_autoincrement("        ")
 
     with pytest.raises(Exception):
-        assert NeoSchema._advance_autoincrement(namespace ="a", advance ="not an integer")
+        assert NeoSchema.advance_autoincrement(namespace ="a", advance ="not an integer")
 
     with pytest.raises(Exception):
-        assert NeoSchema._advance_autoincrement(namespace ="a", advance = 0)  # Advance isn't >= 1
+        assert NeoSchema.advance_autoincrement(namespace ="a", advance = 0)  # Advance isn't >= 1
 
 
 

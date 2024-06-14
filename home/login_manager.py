@@ -62,6 +62,8 @@ class User():
 
 class UserManagerNeo4j:
     """
+    TODO: many of this class' responsibilities are being taken over by the new "UserManager" class
+
     Class for User Management (Neo4j version)
 
     This is a STATIC class that doesn't get initialized.
@@ -78,7 +80,7 @@ class UserManagerNeo4j:
     @classmethod
     def show_users(cls) -> None:
         """
-        Show a list of users stored in the local lookup table
+        Print out a list of users stored in the local lookup table
         (implemented with the dict kept in the class property user_dict).  Meant for debugging
 
         :return:    None
@@ -175,11 +177,11 @@ class UserManagerNeo4j:
 
         # The requested "User" object was NOT found in the local lookup table; now attempt to retrieve it from the database
 
-        # Query the database
+        # Query the database.   TODO: being moved to UserManager class
         #print(f"obtain_user_obj(): querying the dbase for node labeled `User Login`, "
               #f"with attribute `user_id` having a value of `{user_id}`")
         result_dict = cls.db.get_record_by_primary_key(labels="User Login",
-                                                        primary_key_name="user_id", primary_key_value=user_id)
+                                                       primary_key_name="user_id", primary_key_value=user_id)
         if (result_dict is None) or ("username" not in result_dict):
             #print("obtain_user_obj(): node not found in the database, or missing an attribute `username`")
             return None     # Not found
@@ -228,7 +230,7 @@ class UserManagerNeo4j:
         :param password:    A string with the password
         :return:            If the login credentials are valid, return an integer with the User ID; otherwise, return -1
         """
-
+        #TODO: being moved to UserManager class
         # Query the database to get back a list of values for User ID's (ideally, exactly 1)
         credentials = {"username": username, "password": password}
         match = cls.db.match(labels="User Login", properties=credentials)

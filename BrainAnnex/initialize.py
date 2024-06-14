@@ -5,7 +5,8 @@ from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
 from BrainAnnex.modules.media_manager.media_manager import MediaManager
 from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
 from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from home.user_manager import UserManagerNeo4j
+from BrainAnnex.modules.user_manager.user_manager import UserManager
+from home.login_manager import UserManagerNeo4j
 
 
 
@@ -30,6 +31,7 @@ class InitializeBrainAnnex:
         UserManagerNeo4j.db = db_handle
         NodeExplorer.db = db_handle
         FullTextIndexing.db = db_handle
+        UserManager.db = db_handle
 
 
 

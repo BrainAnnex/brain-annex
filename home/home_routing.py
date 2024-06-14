@@ -4,7 +4,7 @@ Router/generator for navigation pages:
 """
 
 from flask import Blueprint, render_template, request, session      # Not used: redirect
-from home.user_manager import UserManagerNeo4j, User
+from home.login_manager import UserManagerNeo4j, User
 import flask_login
 
 
