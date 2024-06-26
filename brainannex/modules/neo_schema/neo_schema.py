@@ -1248,7 +1248,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class_with_properties(cls, name :str, properties :[str], property_list=None, code=None, strict=False,
+    def create_class_with_properties(cls, name :str, properties :[str], code=None, strict=False,
                                      class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int, str):
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
@@ -1270,7 +1270,6 @@ class NeoSchema:
 
         :param name:            String with name to assign to the new class
         :param properties:      List of strings with the names of the Properties, in their default order (if that matters)
-        :param property_list:   DEPRECATED old name for argument `properties`
         :param code:            Optional string indicative of the software handler for this Class and its subclasses.
                                     TODO: deprecate
 
@@ -1293,11 +1292,6 @@ class NeoSchema:
 
         # TODO: add argument 'extra_labels'
 
-        if property_list:
-            print("create_class_with_properties(): argument `property_list` is deprecated; use `properties` instead")
-        if properties:
-            property_list = properties
-
         if class_to_link_to:
             assert link_name, \
                 "create_class_with_properties(): if the argument `class_to_link_to` is provided, " \
@@ -1312,11 +1306,11 @@ class NeoSchema:
         new_class_int_id , new_class_uri = cls.create_class(name, code=code, strict=strict)
         cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Schema ID: '{new_class_uri}')")
 
-        number_properties_added = cls.add_properties_to_class(class_node=new_class_int_id, property_list = property_list)
-        if number_properties_added != len(property_list):
-            raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {property_list}")
+        number_properties_added = cls.add_properties_to_class(class_node=new_class_int_id, property_list = properties)
+        if number_properties_added != len(properties):
+            raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {properties}")
 
-        cls.debug_print(f"{number_properties_added} Properties added to the new Class: {property_list}")
+        cls.debug_print(f"{number_properties_added} Properties added to the new Class: {properties}")
 
 
         if class_to_link_to and link_name:

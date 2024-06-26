@@ -10,18 +10,19 @@ from brainannex.modules.user_manager.user_manager import UserManager
 @pytest.fixture(scope="module")
 def db():
     neo_obj = NeoAccess(debug=False)
+    neo_obj.empty_dbase()
     NeoSchema.set_database(neo_obj)
     UserManager.set_database(neo_obj)
+    UserManager.create_schema()
 
     yield neo_obj
+
 
 
 
 # ************************************************************************************************************
 
 def test_create_user(db):
-
-    db.empty_dbase()
 
     with pytest.raises(Exception):
         UserManager.create_user(username="", password="top_secret!!", email="me@you.com", admin=True)
