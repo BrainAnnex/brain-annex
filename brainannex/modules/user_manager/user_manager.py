@@ -1,7 +1,7 @@
 import bcrypt
 from typing import Union
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
 
 
 class UserManager:
@@ -124,6 +124,29 @@ class UserManager:
 
 
     @classmethod
+    def get_username(cls, user_id :int) -> Union[str, None]:
+        """
+
+        :param user_id:
+        :return:
+        """
+        # Query the database
+        #print(f"get_username(): querying the dbase for node labeled `User Login`, "
+        #f"with attribute `user_id` having a value of `{user_id}`")
+        #TODO: re-do
+        result_dict = cls.db.get_record_by_primary_key(labels="User Login",
+                                                       primary_key_name="user_id", primary_key_value=user_id)
+        if (result_dict is None) or ("username" not in result_dict):
+            #print("get_username(): node not found in the database, or missing an attribute `username`")
+            return None     # Not found
+
+        username = result_dict["username"]
+
+        return username
+
+
+
+    @classmethod
     def authenticate_user(cls, username :str, password :str) -> bool:
         """
 
@@ -133,30 +156,6 @@ class UserManager:
                                 or False otherwise
         """
         pass
-
-
-
-    @classmethod
-    def get_username(cls, user_id :int) -> Union[str, None]:
-        """
-
-        :param user_id:
-        :return:
-        """
-        # The requested "User" object was NOT found in the local lookup table; now attempt to retrieve it from the database
-
-        # Query the database
-        #print(f"obtain_user_obj(): querying the dbase for node labeled `User Login`, "
-        #f"with attribute `user_id` having a value of `{user_id}`")
-        result_dict = cls.db.get_record_by_primary_key(labels="User Login",
-                                                       primary_key_name="user_id", primary_key_value=user_id)
-        if (result_dict is None) or ("username" not in result_dict):
-            #print("obtain_user_obj(): node not found in the database, or missing an attribute `username`")
-            return None     # Not found
-
-        username = result_dict["username"]
-
-        return username
 
 
 

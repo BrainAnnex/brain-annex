@@ -1,6 +1,6 @@
 from typing import Union, List
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.collections.collections import Collections
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.collections.collections import Collections
 from neoaccess import NeoAccess
 
 
@@ -48,7 +48,7 @@ class Categories:
                         and the unique uri assigned to the new Class node
         """
         (int_dbase_id, uri) = NeoSchema.create_class_with_properties(name="Categories",
-                                                        property_list=["name", "remarks", "uri", "root"],
+                                                        properties=["name", "remarks", "uri", "root"],
                                                         strict=True)
 
         NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories",

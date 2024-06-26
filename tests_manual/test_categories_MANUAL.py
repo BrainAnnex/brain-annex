@@ -1,7 +1,7 @@
 import pytest
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.categories.categories import Categories, Collections
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.categories.categories import Categories, Collections
 
 
 # Provide a database connection that can be used by the various tests that need it

@@ -1270,7 +1270,7 @@ class NeoSchema:
 
         :param name:            String with name to assign to the new class
         :param properties:      List of strings with the names of the Properties, in their default order (if that matters)
-        :param property_list:   Deprecated old name for argument `properties`
+        :param property_list:   DEPRECATED old name for argument `properties`
         :param code:            Optional string indicative of the software handler for this Class and its subclasses.
                                     TODO: deprecate
 
@@ -1895,7 +1895,7 @@ class NeoSchema:
 
         labels = class_name     # By default, use the Class name as a label
 
-        if type(extra_labels) == str and extra_labels.strip() != class_name:
+        if (type(extra_labels) == str) and (extra_labels.strip() != class_name):
             labels = [extra_labels, class_name]
 
         elif isinstance(extra_labels, (list, tuple)):
@@ -3743,7 +3743,7 @@ class NeoSchema:
             properties.remove('neo4j_labels')
             print("PROPERTIES:", properties)
             print()
-            cls.create_class_with_properties(name=class_name, property_list=properties, strict=False)
+            cls.create_class_with_properties(name=class_name, properties=properties, strict=False)
     
     
         for link in res:
@@ -4147,12 +4147,12 @@ class SchemaCache:
                 "get_cached_class_data(): bad value for `request` argument.  Allowed values: " \
                 "'class_attributes', 'class_properties', 'out_neighbors'"
 
-        cached_data = self.get_all_cached_class_data(class_id)  # A dict
+        cached_data = self.get_all_cached_class_data(class_id)      # A dict
 
         if request == "class_attributes":
             if "class_attributes" not in cached_data:
                 # The Class attributes hadn't been cached; so, retrieve them
-                class_attributes = cls.get_class_attributes(class_id)
+                class_attributes = NeoSchema.get_class_attributes(class_id)
                 cached_data["class_attributes"] = class_attributes
 
             return cached_data["class_attributes"]

@@ -23,8 +23,8 @@ from home.home_routing import HomeRouting
 from navigation.navigation_routing import Navigation
 from navigation.navigation import get_site_pages
 
-from BrainAnnex.pages.BA_pages_routing import PagesRouting
-from BrainAnnex.api.BA_api_routing import ApiRouting
+from brainannex.pages.BA_pages_routing import PagesRouting
+from brainannex.api.BA_api_routing import ApiRouting
 
 # These are an example of an independent site embedded (co-hosted) with Brain Annex.
 # Comment out if not needed!
@@ -33,7 +33,7 @@ from sample_embedded_site.sample_api.sample_api_routing import SampleApiRouting
 
 # The remaining imports, below, are for the database initialization
 from neoaccess import NeoAccess
-from BrainAnnex.initialize import InitializeBrainAnnex
+from brainannex.initialize import InitializeBrainAnnex
 
 
 

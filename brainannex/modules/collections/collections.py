@@ -1,5 +1,5 @@
 from typing import Union, List
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
 from neoaccess import NeoAccess
 
 

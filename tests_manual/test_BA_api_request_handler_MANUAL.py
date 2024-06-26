@@ -1,9 +1,9 @@
 import pytest
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.data_manager.data_manager import DataManager
-from BrainAnnex.modules.categories.categories import Categories
-from BrainAnnex.modules.media_manager.media_manager import ImageProcessing
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.data_manager.data_manager import DataManager
+from brainannex.modules.categories.categories import Categories
+from brainannex.modules.media_manager.media_manager import ImageProcessing
 
 
 MEDIA_FOLDER = "D:/Docs/media/"

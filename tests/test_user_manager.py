@@ -1,8 +1,8 @@
 import pytest
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.user_manager.user_manager import UserManager
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.user_manager.user_manager import UserManager
 
 
 
@@ -21,7 +21,7 @@ def db():
 
 def test_create_user(db):
 
-    # db.empty_dbase()
+    db.empty_dbase()
 
     with pytest.raises(Exception):
         UserManager.create_user(username="", password="top_secret!!", email="me@you.com", admin=True)

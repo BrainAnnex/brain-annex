@@ -1,6 +1,6 @@
-from BrainAnnex.modules.media_manager.media_manager import MediaManager
-from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.media_manager.media_manager import MediaManager
+from brainannex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
 
 
 class Notes:

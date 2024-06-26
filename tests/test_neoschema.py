@@ -2,9 +2,9 @@
 
 
 import pytest
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache
+from brainannex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -23,13 +23,13 @@ def create_sample_schema_1():
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY (both originating from "patient"
 
     patient_id, _  = NeoSchema.create_class_with_properties(name="patient",
-                                                            property_list=["name", "age", "balance"])
+                                                            properties=["name", "age", "balance"])
 
     result_id, _  = NeoSchema.create_class_with_properties(name="result",
-                                                           property_list=["biomarker", "value"])
+                                                           properties=["biomarker", "value"])
 
     doctor_id, _  = NeoSchema.create_class_with_properties(name="doctor",
-                                                           property_list=["name", "specialty"])
+                                                           properties=["name", "specialty"])
 
     NeoSchema.create_class_relationship(from_class="patient", to_class="result", rel_name="HAS_RESULT")
     NeoSchema.create_class_relationship(from_class="patient", to_class="doctor", rel_name="IS_ATTENDED_BY")
@@ -42,10 +42,10 @@ def create_sample_schema_2():
     # Class "quotes" with relationship named "in_category" to Class "categories";
     # each Class has some properties
     _, sch_1 = NeoSchema.create_class_with_properties(name="quotes",
-                                                      property_list=["quote", "attribution", "verified"])
+                                                      properties=["quote", "attribution", "verified"])
 
     _, sch_2 = NeoSchema.create_class_with_properties(name="categories",
-                                                      property_list=["name", "remarks"])
+                                                      properties=["name", "remarks"])
 
     NeoSchema.create_class_relationship(from_class="quotes", to_class="categories", rel_name="in_category")
 
@@ -560,7 +560,7 @@ def test_get_class_properties(db):
     with pytest.raises(Exception):
         NeoSchema.create_class_with_properties(111)    # Invalid class name
 
-    NeoSchema.create_class_with_properties("My first class", property_list=["A", "B", "C"])
+    NeoSchema.create_class_with_properties("My first class", properties=["A", "B", "C"])
     neo_uri = NeoSchema.get_class_internal_id("My first class")
     props = NeoSchema.get_class_properties(neo_uri)
     assert props == ["A", "B", "C"]
@@ -959,7 +959,7 @@ def test_create_data_node_2(db):
 
     # Using a class of type "strict"
     NeoSchema.create_class_with_properties(name="person",
-                                           property_list=["name", "age"], strict=True)
+                                           properties=["name", "age"], strict=True)
 
     # Create a "person" data node, attempting to set a property not declared in the Schema; this will fail
     with pytest.raises(Exception):
@@ -987,7 +987,7 @@ def test_create_data_node_2(db):
 
     # Switch a new class, of type "lenient"
     NeoSchema.create_class_with_properties(name="car",
-                                           property_list=["brand"], strict=False)
+                                           properties=["brand"], strict=False)
 
     # Because the class is "lenient", data nodes may be created with undeclared properties
     internal_id = NeoSchema.create_data_node(class_node="car",
@@ -1523,7 +1523,7 @@ def test_add_data_column_merge(db):
         NeoSchema.add_data_column_merge(class_name="Car", property_name="color", value_list=["white"])
 
     class_internal_id , class_schema_uri = NeoSchema.create_class_with_properties("Car",
-                                                                                 property_list=["color", "year"],
+                                                                                 properties=["color", "year"],
                                                                                  strict=True)
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
 
@@ -1831,8 +1831,8 @@ def test_add_data_relationship_hub(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties("City", property_list=["name"])
-    NeoSchema.create_class_with_properties("State", property_list=["name"])
+    NeoSchema.create_class_with_properties("City", properties=["name"])
+    NeoSchema.create_class_with_properties("State", properties=["name"])
 
     # Set up the Data Nodes (2 cities and a state)
     berkeley = NeoSchema.create_data_node(class_node="City", properties = {"name": "Berkeley"})

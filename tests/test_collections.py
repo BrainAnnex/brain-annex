@@ -2,10 +2,10 @@
 
 
 import pytest
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.collections.collections import Collections
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.collections.collections import Collections
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -29,7 +29,7 @@ def create_sample_collections_class(db):
     Collections.initialize_collections()
 
     NeoSchema.create_class_with_properties(name="Photo Album",
-                                           property_list=["name", "uri"])
+                                           properties=["name", "uri"])
 
     NeoSchema.create_class_relationship(from_class="Photo Album", to_class="Collections",
                                         rel_name="INSTANCE_OF", use_link_node=False)
@@ -38,7 +38,7 @@ def create_sample_collections_class(db):
 
 def create_sample_collection_item_class():
     NeoSchema.create_class_with_properties(name="Photo",
-                                           property_list=["caption", "uri"])
+                                           properties=["caption", "uri"])
 
 
 
@@ -59,7 +59,7 @@ def test_is_collection(db):
 
     # Create something that is NOT a collection
     NeoSchema.create_class_with_properties(name="Car",
-                                           property_list=["color", "uri"])
+                                           properties=["color", "uri"])
     car_uri = NeoSchema.reserve_next_uri(namespace="cars", prefix="c-")
     NeoSchema.create_data_node(class_node="Car", properties ={"color": "white"}, new_uri=car_uri)
     assert not Collections.is_collection(collection_uri=car_uri)

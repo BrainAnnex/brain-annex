@@ -1,6 +1,6 @@
 import pytest
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
-from BrainAnnex.modules.media_manager.media_manager import MediaManager
+from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.modules.media_manager.media_manager import MediaManager
 
 
 

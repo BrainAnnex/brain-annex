@@ -1,6 +1,6 @@
 import pytest
 from neoaccess import NeoAccess
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 
 
 # Provide a database connection that can be used by the various tests that need it

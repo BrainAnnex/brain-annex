@@ -6,10 +6,10 @@
 from flask import Blueprint, render_template, current_app, make_response, request   # The "request" package
                                                                                     # makes available a GLOBAL request object
 from flask_login import login_required, current_user
-from BrainAnnex.modules.data_manager.data_manager import DataManager
-from BrainAnnex.modules.node_explorer.node_explorer import NodeExplorer
-from BrainAnnex.modules.categories.categories import Categories
-#from BrainAnnex.modules.py_graph_scape.py_graph_scape import PyGraphScape
+from brainannex.modules.data_manager.data_manager import DataManager
+from brainannex.modules.node_explorer.node_explorer import NodeExplorer
+from brainannex.modules.categories.categories import Categories
+#from brainannex.modules.py_graph_scape.py_graph_scape import PyGraphScape
 from datetime import datetime
 import time
 import json

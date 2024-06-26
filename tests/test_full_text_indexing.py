@@ -1,8 +1,8 @@
 import pytest
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
+from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 
 
 
@@ -25,7 +25,7 @@ def setup_sample_index(db) -> int:
 
     # Set up all the needed Schema
     NeoSchema.create_class_with_properties(name="Content Item", strict=True,
-                                           property_list=["filename"])
+                                           properties=["filename"])
     FullTextIndexing.initialize_schema()
 
     # Create a data node of type "Content Item"...

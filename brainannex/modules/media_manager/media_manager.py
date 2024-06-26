@@ -4,8 +4,8 @@
 
 
 import os
-import BrainAnnex.modules.utilities.exceptions as exceptions
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
+import brainannex.modules.utilities.exceptions as exceptions
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
 from PIL import Image
 
 
