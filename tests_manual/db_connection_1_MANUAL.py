@@ -1,4 +1,4 @@
-# Test of ability to connect to the Neo4j database upon having the user type in the credentials
+# Test of the ability to connect to the Neo4j database upon having the user type in the credentials
 
 import os
 from neoaccess import NeoAccess
@@ -9,7 +9,7 @@ host += ":7687"
 print("Enter the password:")
 password = input()
 
-print(f"Attempting to connect as host='{host}', username='neo4j', password=`{password}`")
+print(f"Attempting to connect as host='{host}', username='neo4j', with the password just entered...")
 
 
 # Attempt to connect to the Neo4j database from the passed credentials
@@ -20,5 +20,5 @@ obj = NeoAccess(host=host,
 
 print("Version of the Neo4j driver: ", obj.version())
 
-print("End of test")
+print("END of test")
 

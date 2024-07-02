@@ -3,8 +3,8 @@ import html
 import os
 from typing import Union, List, Set
 from neoaccess.cypher_utils import CypherUtils
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-import BrainAnnex.modules.utilities.exceptions as exceptions
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+import brainannex.modules.utilities.exceptions as exceptions
 
 
 class FullTextIndexing:
@@ -282,7 +282,7 @@ class FullTextIndexing:
         indexer_class_id, _ = NeoSchema.create_class(name="Indexer", strict=True)
 
         NeoSchema.create_class_with_properties(name="Word", strict=True,
-                                               property_list=["name"],
+                                               properties=["name"],
                                                class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
 
         NeoSchema.create_class_relationship(from_class=content_item_class_id, to_class=indexer_class_id, rel_name="has_index")
@@ -600,7 +600,7 @@ class FullTextIndexing:
         :return:
         """
         import os
-        from BrainAnnex.modules.media_manager.media_manager import MediaManager
+        from brainannex.modules.media_manager.media_manager import MediaManager
 
         file_list = os.listdir(directory)
         #print(f"Total number of files: {len(file_list)}")

@@ -1,10 +1,10 @@
 import pytest
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
-from BrainAnnex.modules.data_manager.data_manager import DataManager
+from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.modules.data_manager.data_manager import DataManager
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.categories.categories import Categories
-from BrainAnnex.modules.collections.collections import Collections
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.categories.categories import Categories
+from brainannex.modules.collections.collections import Collections
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -45,7 +45,7 @@ def test_switch_category(db):
 
     # Create 2 Content Items, and initially attach them to the Root Category
     NeoSchema.create_class_with_properties(name="Photo",
-                                           property_list=["name", "uri"])
+                                           properties=["name", "uri"])
 
     all_photo_uris = []
     for i in range(4):

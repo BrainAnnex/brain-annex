@@ -23,8 +23,8 @@ from home.home_routing import HomeRouting
 from navigation.navigation_routing import Navigation
 from navigation.navigation import get_site_pages
 
-from BrainAnnex.pages.BA_pages_routing import PagesRouting
-from BrainAnnex.api.BA_api_routing import ApiRouting
+from brainannex.pages.BA_pages_routing import PagesRouting
+from brainannex.api.BA_api_routing import ApiRouting
 
 # These are an example of an independent site embedded (co-hosted) with Brain Annex.
 # Comment out if not needed!
@@ -33,7 +33,7 @@ from sample_embedded_site.sample_api.sample_api_routing import SampleApiRouting
 
 # The remaining imports, below, are for the database initialization
 from neoaccess import NeoAccess
-from BrainAnnex.initialize import InitializeBrainAnnex
+from brainannex.initialize import InitializeBrainAnnex
 
 
 
@@ -204,13 +204,14 @@ app.secret_key = b"pqE3_t(4!x"
 ###  Fire up the web app
 
 #if os.environ.get("FLASK_APP"):
-if DEPLOYMENT == "REMOTE":
+if DEPLOYMENT == "REMOTE":      # starting the app with gunicorn
     # Remote deployment.  The web app is started from the CLI,
     # with the command "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
     print(f" * REMOTE deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN or https://YOUR_IP_OR_DOMAIN")
-else:
+else:       # "LOCAL" : starting the app with Flask
     # Local deployment.  The web app is started by running this main.py
     debug_mode = True   # At least for now, local deployment always enables Flask's debug mode
     print(f" * LOCAL deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
-    app.run(debug=debug_mode, port=PORT_NUMBER) # CORE of UI : transfer control to the "Flask object"
-                                                # This  will start a local WSGI server.  Threaded mode is enabled by default
+    if __name__ == '__main__':  # Skip the next command if application is run from the Flask command line executable
+        app.run(debug=debug_mode, port=PORT_NUMBER) # CORE of UI : transfer control to the "Flask object"
+                                                    # This  will start a local WSGI server.  Threaded mode is enabled by default

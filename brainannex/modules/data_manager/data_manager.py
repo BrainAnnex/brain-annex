@@ -1,11 +1,12 @@
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.categories.categories import Categories
-from BrainAnnex.modules.PLUGINS.notes import Notes
-from BrainAnnex.modules.PLUGINS.documents import Documents
-from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
-from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
-from BrainAnnex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from BrainAnnex.modules.py_graph_visual.py_graph_visual import PyGraphVisual
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.categories.categories import Categories
+from brainannex.modules.PLUGINS.notes import Notes
+from brainannex.modules.PLUGINS.documents import Documents
+from brainannex.modules.upload_helper.upload_helper import UploadHelper
+from brainannex.modules.media_manager.media_manager import MediaManager, ImageProcessing
+from brainannex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
+from brainannex.modules.py_graph_visual.py_graph_visual import PyGraphVisual
+from neoaccess import NeoAccess
 import re                               # For REGEX
 import pandas as pd
 import os
@@ -36,7 +37,8 @@ class DataManager:
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
-    db = None           # Object of class "NeoAccess".  MUST be set before using this class!
+    db = None           # Object of class "NeoAccess"
+                        # MUST be set, with a call to set_database(), before using this class!
 
     LOG_FOLDER = None   # Location where the log file is stored
 
@@ -45,6 +47,23 @@ class DataManager:
 
     log_filename = "IMPORT_LOG.txt"     # TODO: generalize to BrainAnnex-wide
     log_file_handle = None
+
+
+
+
+    @classmethod
+    def set_database(cls, db :NeoAccess) -> None:
+        """
+        IMPORTANT: this method MUST be called before using this class!
+
+        :param db:  Database-interface object, created with the NeoAccess library
+        :return:    None
+        """
+
+        assert type(db) == NeoAccess, \
+            "NeoSchema.set_database(): argument passed isn't a valid `NeoAccess` object"
+
+        cls.db = db
 
 
 
@@ -289,7 +308,7 @@ class DataManager:
 
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
-        new_id, _ = NeoSchema.create_class_with_properties(new_class_name, property_list_clean,
+        new_id, _ = NeoSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
                                                            class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
 
 
@@ -1267,7 +1286,28 @@ class DataManager:
     #####################################################################################################
 
     @classmethod
-    def export_full_dbase(cls):
+    def export_full_dbase(cls) -> dict:
+        """
+        Export the entire Neo4j database as a JSON string.
+
+        IMPORTANT: APOC must be activated in the database, to use this function.
+                   Otherwise it'll raise an Exception
+
+        EXAMPLE:
+        { 'nodes': 2,
+          'relationships': 1,
+          'properties': 6,
+          'data': '[{"type":"node","id":"3","labels":["User"],"properties":{"name":"Adam","age":32,"male":true}},\n
+                    {"type":"node","id":"4","labels":["User"],"properties":{"name":"Eve","age":18}},\n
+                    {"id":"1","type":"relationship","label":"KNOWS","properties":{"since":2003},"start":{"id":"3","labels":["User"]},"end":{"id":"4","labels":["User"]}}\n
+                   ]'
+        }
+
+        :return:    A dictionary specifying the number of nodes exported ("nodes"),
+                    the number of relationships ("relationships"),
+                    and the number of properties ("properties"),
+                    as well as a "data" field with the actual export as a JSON string
+        """
         return cls.db.export_dbase_json()
 
 

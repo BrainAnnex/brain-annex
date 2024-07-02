@@ -2,11 +2,11 @@
 
 
 import pytest
-from BrainAnnex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.categories.categories import Categories
-from BrainAnnex.modules.collections.collections import Collections
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.categories.categories import Categories
+from brainannex.modules.collections.collections import Collections
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -29,7 +29,7 @@ def initialize_categories(db):
     db.empty_dbase()
 
     NeoSchema.create_class_with_properties(name="Categories",
-                                           property_list=["name", "remarks", "uri"])
+                                           properties=["name", "remarks", "uri"])
 
     return Categories.create_categories_root()  # Returns a pair (int, str)
 
@@ -131,8 +131,8 @@ def test_get_items_schema_data(db):
     res = Categories.get_items_schema_data(category_uri=root_uri)
     assert res == {}    # There are no Contents Items yet attached to the Category
 
-    NeoSchema.create_class_with_properties(name="Notes", property_list=["title", "basename", "suffix"])
-    NeoSchema.create_class_with_properties(name="Images", property_list=["caption", "basename", "suffix", "uri"])
+    NeoSchema.create_class_with_properties(name="Notes", properties=["title", "basename", "suffix"])
+    NeoSchema.create_class_with_properties(name="Images", properties=["caption", "basename", "suffix", "uri"])
 
     # Add some Content Items to the above Category
     Categories.add_content_at_end(category_uri=root_uri, item_class_name="Notes",
@@ -159,7 +159,7 @@ def test_link_content_at_end(db):
     #print("root URI is: ", root_uri)
 
     NeoSchema.create_class_with_properties(name="Images",
-                                           property_list=["caption", "basename", "suffix", "uri"])
+                                           properties=["caption", "basename", "suffix", "uri"])
     NeoSchema.create_class_relationship(from_class="Images", to_class="Categories",
                                         rel_name="BA_in_category")
 
@@ -195,7 +195,7 @@ def test_detach_from_category(db):
     _, root_uri = initialize_categories(db)
     #print("root URI is: ", root_uri)
 
-    NeoSchema.create_class_with_properties(name="Images", property_list=["caption", "basename", "suffix", "uri"])
+    NeoSchema.create_class_with_properties(name="Images", properties=["caption", "basename", "suffix", "uri"])
     NeoSchema.create_class_relationship(from_class="Images", to_class="Categories",
                                         rel_name="BA_in_category")
 

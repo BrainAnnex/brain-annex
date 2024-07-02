@@ -6,8 +6,8 @@
 
 import pytest
 from neoaccess import NeoAccess
-from BrainAnnex.modules.utilities.comparisons import compare_recordsets
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache
+from brainannex.modules.utilities.comparisons import compare_recordsets
+from brainannex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache
 from tests.test_neoschema import create_sample_schema_1, create_sample_schema_2
 
 
@@ -41,7 +41,7 @@ def test_create_tree_from_dict_1(db):
 
     # Set up the Schema
     NeoSchema.create_class_with_properties(name="address",
-                                           property_list=["state", "city"])
+                                           properties=["state", "city"])
 
     # Import a data dictionary
     data = {"state": "California", "city": "Berkeley"}
@@ -69,9 +69,9 @@ def test_create_tree_from_dict_2(db):
 
     # Set up the Schema
     NeoSchema.create_class_with_properties(name="person",
-                                           property_list=["name"])
+                                           properties=["name"])
     NeoSchema.create_class_with_properties(name="address",
-                                           property_list=["state", "city"])
+                                           properties=["state", "city"])
 
     NeoSchema.create_class_relationship(from_class="person", to_class="address", rel_name="address")
 
@@ -108,7 +108,7 @@ def test_create_tree_from_list_1(db):
 
     # Set up the Schema
     NeoSchema.create_class_with_properties(name="address",
-                                           property_list=["state", "city"])
+                                           properties=["state", "city"])
 
     # Import a data dictionary
     data = [{"state": "California", "city": "Berkeley"}, {"state": "Texas", "city": "Dallas"}]
@@ -142,7 +142,7 @@ def test_create_tree_from_list_2(db):
 
     # Set up the Schema
     NeoSchema.create_class_with_properties(name="address",
-                                           property_list=["value"])
+                                           properties=["value"])
 
     # Import a data dictionary
     data = ["California", "Texas"]
@@ -177,10 +177,10 @@ def test_create_data_nodes_from_python_data_1(db):
 
     # Set up the Schema
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
 
     NeoSchema.create_class_with_properties(name="my_class_1",
-                                           property_list=["legit", "other"])
+                                           properties=["legit", "other"])
 
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="my_class_1", rel_name="imported_data")
 
@@ -215,7 +215,7 @@ def test_create_data_nodes_from_python_data_2(db):
 
     # Set up the Schema.  Nothing in it yet, other than the "Import Data" node
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
 
 
     data = {"arbitrary": "Doesn't matter"}
@@ -239,9 +239,9 @@ def test_create_data_nodes_from_python_data_3(db):
 
     # Set up Schema that only contains parts of the attributes in the data - and lacks the "result" relationship
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
     NeoSchema.create_class_with_properties(name="patient",
-                                           property_list=["age", "balance"])
+                                           properties=["age", "balance"])
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
 
 
@@ -291,7 +291,7 @@ def test_create_data_nodes_from_python_data_4(db):
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
 
 
@@ -348,7 +348,7 @@ def test_create_data_nodes_from_python_data_5(db):
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
 
 
@@ -416,7 +416,7 @@ def test_create_data_nodes_from_python_data_6(db):
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
 
     # Some of the data below is not registered in the Schema
@@ -501,7 +501,7 @@ def test_create_data_nodes_from_python_data_7(db):
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
 
     data = [
@@ -550,7 +550,7 @@ def test_create_data_nodes_from_python_data_8(db):
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
 
     data = [
@@ -604,7 +604,7 @@ def test_create_data_nodes_from_python_data_9(db):
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
-                                           property_list=["source", "date"])
+                                           properties=["source", "date"])
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
 
     data = [

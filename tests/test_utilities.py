@@ -1,4 +1,4 @@
-from BrainAnnex.modules.utilities.comparisons import *
+from brainannex.modules.utilities.comparisons import *
 
 
 

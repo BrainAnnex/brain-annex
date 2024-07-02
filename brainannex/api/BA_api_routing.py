@@ -5,14 +5,14 @@
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from flask_login import login_required
-from BrainAnnex.modules.data_manager.data_manager import DataManager
-from BrainAnnex.modules.data_manager.documentation_generator import DocumentationGenerator
-from BrainAnnex.modules.media_manager.media_manager import MediaManager, ImageProcessing
-from BrainAnnex.modules.neo_schema.neo_schema import NeoSchema
-from BrainAnnex.modules.categories.categories import Categories
-from BrainAnnex.modules.PLUGINS.documents import Documents
-from BrainAnnex.modules.upload_helper.upload_helper import UploadHelper
-import BrainAnnex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
+from brainannex.modules.data_manager.data_manager import DataManager
+from brainannex.modules.data_manager.documentation_generator import DocumentationGenerator
+from brainannex.modules.media_manager.media_manager import MediaManager, ImageProcessing
+from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.modules.categories.categories import Categories
+from brainannex.modules.PLUGINS.documents import Documents
+from brainannex.modules.upload_helper.upload_helper import UploadHelper
+import brainannex.modules.utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
 import json
@@ -1815,11 +1815,19 @@ class ApiRouting:
         @login_required
         def download_dbase_json(download_type="full"):
             """
-            Download the full Neo4j database as a JSON file
+            Download the Neo4j database (either all or part) as a JSON file
         
             EXAMPLES invocation:
                 http://localhost:5000/BA/api/download_dbase_json/full
                 http://localhost:5000/BA/api/download_dbase_json/schema
+
+            EXAMPLE of exported file:
+
+            [
+                {"type":"node","id":"3","labels":["User"],"properties":{"name":"Adam","age":32,"male":true}},\n
+                {"type":"node","id":"4","labels":["User"],"properties":{"name":"Eve","age":18}},\n
+                {"type":"relationship","id":"1","label":"KNOWS","properties":{"since":2003},"start":{"id":"3","labels":["User"]},"end":{"id":"4","labels":["User"]}}\n
+            ]
 
             If database is large, it may lead to errors:  java.lang.OutOfMemoryError: Java heap space.
             See manual: https://neo4j.com/docs/operations-manual/4.4/performance/memory-configuration/
@@ -1851,8 +1859,11 @@ class ApiRouting:
             # result is a dict with 4 keys
             print(f"Getting ready to export {result.get('nodes')} nodes, "
                   f"{result.get('relationships')} relationships, and {result.get('properties')} properties")
-        
+
+            # Note that we're only returning the value of the "data" key
+            # TODO: move this part to DataManager.export_full_dbase()
             data = result["data"]
+
             response = make_response(data)
             response.headers['Content-Type'] = 'application/save'
             response.headers['Content-Disposition'] = f'attachment; filename=\"{export_filename}\"'
