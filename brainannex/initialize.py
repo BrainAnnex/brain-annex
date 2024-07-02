@@ -6,7 +6,7 @@ from brainannex.modules.media_manager.media_manager import MediaManager
 from brainannex.modules.node_explorer.node_explorer import NodeExplorer
 from brainannex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
 from brainannex.modules.user_manager.user_manager import UserManager
-from home.login_manager import UserManagerNeo4j
+from home.login_manager import FlaskUserManagement
 
 
 
@@ -28,7 +28,7 @@ class InitializeBrainAnnex:
         Categories.db = db_handle
         Collections.db = db_handle
         NeoSchema.db = db_handle
-        UserManagerNeo4j.db = db_handle
+        FlaskUserManagement.db = db_handle
         NodeExplorer.db = db_handle
         FullTextIndexing.db = db_handle
         UserManager.db = db_handle

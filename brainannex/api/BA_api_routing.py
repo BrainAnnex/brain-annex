@@ -1821,6 +1821,14 @@ class ApiRouting:
                 http://localhost:5000/BA/api/download_dbase_json/full
                 http://localhost:5000/BA/api/download_dbase_json/schema
 
+            EXAMPLE of exported file:
+
+            [
+                {"type":"node","id":"3","labels":["User"],"properties":{"name":"Adam","age":32,"male":true}},\n
+                {"type":"node","id":"4","labels":["User"],"properties":{"name":"Eve","age":18}},\n
+                {"type":"relationship","id":"1","label":"KNOWS","properties":{"since":2003},"start":{"id":"3","labels":["User"]},"end":{"id":"4","labels":["User"]}}\n
+            ]
+
             If database is large, it may lead to errors:  java.lang.OutOfMemoryError: Java heap space.
             See manual: https://neo4j.com/docs/operations-manual/4.4/performance/memory-configuration/
         
@@ -1851,8 +1859,11 @@ class ApiRouting:
             # result is a dict with 4 keys
             print(f"Getting ready to export {result.get('nodes')} nodes, "
                   f"{result.get('relationships')} relationships, and {result.get('properties')} properties")
-        
+
+            # Note that we're only returning the value of the "data" key
+            # TODO: move this part to DataManager.export_full_dbase()
             data = result["data"]
+
             response = make_response(data)
             response.headers['Content-Type'] = 'application/save'
             response.headers['Content-Disposition'] = f'attachment; filename=\"{export_filename}\"'

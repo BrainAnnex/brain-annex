@@ -1,10 +1,14 @@
-# 2 Classes : "User" and "UserManagerNeo4j" (to support flask_login)
+# 2 Classes : "User" and "FlaskUserManagement" (to support flask_login)
 
 from typing import Union
+from brainannex import UserManager
+
 
 
 class User():
     """
+    Class needed by Flask.
+
     The "flask_login" package used for authentication
     expects user objects that have the following 3 properties and 1 method:
 
@@ -21,7 +25,7 @@ class User():
 
         # Properties required by Flask-Login
         # By default, we're instantiating authenticated, active, non-anonymous users
-        # (that's the ONLY type of user login we're using)
+        # (and that's the ONLY type of user login we're using)
         self.is_authenticated = True
         self.is_active = True
         self.is_anonymous = False
@@ -36,7 +40,7 @@ class User():
 
 
 
-    def get_id(self):
+    def get_id(self) -> str:
         """
         Method required by the "flask_login" package.
 
@@ -57,20 +61,17 @@ class User():
 
 
 
+
 ##################################################################################################################################
 
 
-class UserManagerNeo4j:
+class FlaskUserManagement:
     """
-    TODO: many of this class' responsibilities are being taken over by the new "UserManager" class
-
-    Class for User Management (Neo4j version)
+    Class for User Management for Flask logins.
+    All interaction with the database goes thru the class UserManager
 
     This is a STATIC class that doesn't get initialized.
-    IMPORTANT: prior to use, its class variable "db" must be set
     """
-
-    db = None           # "NeoAccess" object.  MUST be set before using this class!
 
     user_dict = {}      # Dictionary of "User" objects, indexed by the user ID (an integer value)
                         # This is used as a "local lookup table" for user info
@@ -102,7 +103,7 @@ class UserManagerNeo4j:
                                 otherwise, None
         """
         # Attempt to locate the requested user in the local lookup table, which
-        # is implemented in the form of the dictionary:  cls.user_dict
+        #   is implemented in the form of the dictionary:  cls.user_dict
         return cls.user_dict.get(user_id, None)    # None is returned if the dictionary lookup fails
 
 
@@ -110,8 +111,8 @@ class UserManagerNeo4j:
     @classmethod
     def prepare_user_obj(cls, user_id: int, username = "") -> User:
         """
-        Attempt to locate the user, specified by the given ID, in the local lookup table;
-        if not found, create an object of type "User", with the passed user ID and name
+        Attempt to locate the user, specified by the given ID (or by the given username), in the local lookup table;
+        if not found, create an object of type "User", with the passed user ID and username
 
         :param user_id:     An integer identifying a particular user
         :param username:    A string containing the username - needed if the specified user ID wasn't found
@@ -139,7 +140,7 @@ class UserManagerNeo4j:
         based on the given user ID.
         If unable to locate the given user ID, either locally or in the database, return None
 
-        This method is needed by a callback function - implemented in Home.load_user() - required
+        This method is needed by a callback function - implemented in HomeRouting.load_user() - required
         by the "flask_login" package.
 
         NOTE on user-login caching:
@@ -175,8 +176,14 @@ class UserManagerNeo4j:
                 return  user_obj
 
 
-        # The requested "User" object was NOT found in the local lookup table; now attempt to retrieve it from the database
+        # The requested "User" object was NOT found in the local lookup table; attempt instead to retrieve it from the database
 
+        username = UserManager.get_username(user_id)
+
+
+        if username is None:
+            return None         # Not found
+        """ 
         # Query the database.   TODO: being moved to UserManager class
         #print(f"obtain_user_obj(): querying the dbase for node labeled `User Login`, "
               #f"with attribute `user_id` having a value of `{user_id}`")
@@ -187,6 +194,7 @@ class UserManagerNeo4j:
             return None     # Not found
 
         username = result_dict["username"]
+        """
 
         user_obj = cls.create_user_obj(user_id, username)    # Create a "User" object, as needed by flask_login
         #print(f"obtain_user_obj(): Creating a new 'User' object from database data, "
@@ -214,35 +222,3 @@ class UserManagerNeo4j:
         cls.user_dict[user_id] = user_obj
 
         return user_obj
-
-
-
-    @classmethod
-    def check_login_credentials(cls, username: str, password: str) -> int:
-        """
-        Verify the validity of the specified password for the given username,
-        by consulting the database.
-        If successful, return the User ID; otherwise, return -1
-
-        TODO: introduce encryption in the passwords stored in the database
-
-        :param username:    A string with the username
-        :param password:    A string with the password
-        :return:            If the login credentials are valid, return an integer with the User ID; otherwise, return -1
-        """
-        #TODO: being moved to UserManager class
-        # Query the database to get back a list of values for User ID's (ideally, exactly 1)
-        credentials = {"username": username, "password": password}
-        match = cls.db.match(labels="User Login", properties=credentials)
-        result_list = cls.db.get_single_field(match=match, field_name="user_id")
-
-        print("In check_login_credentials(). List of matching User ID's:", result_list)
-
-        if len(result_list) == 1:
-            user_id = result_list[0]
-            print("check_login_credentials(): successful validation of user credentials. User ID: ", user_id)
-            return user_id      # Successful login
-        else:
-            print("check_login_credentials(): failed validation of user credentials. No matches or more than one")
-            print(f"Credentials used in database query: {credentials}")
-            return -1           # Unsuccessful login

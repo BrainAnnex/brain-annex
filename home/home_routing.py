@@ -4,7 +4,8 @@ Router/generator for navigation pages:
 """
 
 from flask import Blueprint, render_template, request, session      # Not used: redirect
-from home.login_manager import UserManagerNeo4j, User
+from home.login_manager import FlaskUserManagement, User
+from brainannex import UserManager
 import flask_login
 
 
@@ -134,9 +135,10 @@ class HomeRouting:
 
             # Verify the login credential against the database;
             # if successful, obtain the User ID (-1 in case of failure)
-            user_id = UserManagerNeo4j.check_login_credentials(username, passwd)
+            #user_id = UserManagerNeo4j.check_login_credentials(username, passwd)
+            user_id = UserManager.check_login_credentials(username, passwd)
 
-            if user_id == -1:
+            if user_id is None:
                 return "<b>Login failed</b>.  <a href='/login'>Try again</a>"
 
 
@@ -144,16 +146,16 @@ class HomeRouting:
 
 
             # Look up or, if not found, create an object of type "User"
-            user_obj = UserManagerNeo4j.prepare_user_obj(user_id, username)
-            print("user_obj:", user_obj)
-            UserManagerNeo4j.show_users()
+            user_obj = FlaskUserManagement.prepare_user_obj(user_id, username)
+            print("do_login(): user_obj:", user_obj)
+            FlaskUserManagement.show_users()
 
             #print("~~~ Flask session ID PRIOR to login: ", session.get("_id"))
 
             status = flask_login.login_user(user_obj)
 
-            print("status of login operation handled by Flask: ", status)
-            print(f"~~~ Flask session ID upon login of user id {user_id}: ", session.get("_id"))
+            print("do_login(): status of login operation handled by Flask: ", status)
+            print(f"do_login(): ~~~ Flask session ID upon login of user id {user_id}: ", session.get("_id"))
 
             if status:
                 # flask.flash('Logged in successfully.')
@@ -187,7 +189,7 @@ class HomeRouting:
             #print(f"Inside callback function load_user().  flask_user_id = {repr(flask_user_id)} , with integer representation : {user_id_as_int}")
             #print("~~~ Flask session ID: ", session.get("_id"))
 
-            return UserManagerNeo4j.obtain_user_obj(user_id_as_int)
+            return FlaskUserManagement.obtain_user_obj(user_id_as_int)
 
 
 
