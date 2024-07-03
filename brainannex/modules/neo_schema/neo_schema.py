@@ -460,7 +460,7 @@ class NeoSchema:
     def delete_class(cls, name: str, safe_delete=True) -> None:
         """
         Delete the given Class AND all its attached Properties.
-        If safe_delete is True (recommended) delete ONLY if there are no data nodes of that Class
+        If safe_delete is True (highly recommended), then delete ONLY if there are no data nodes of that Class
         (i.e., linked to it by way of "SCHEMA" relationships.)
 
         :param name:        Name of the Class to delete
@@ -470,6 +470,7 @@ class NeoSchema:
                                      then data nodes may be left without a Schema
         :return:            None.  In case of no node deletion, an Exception is raised
         """
+        # TODO: maybe eliminate the dangerous safe_delete=False option!
         # TODO: in case of failure, investigate further the problem
         #       (e.g. no class by that name vs. class has data points still attached to it)
         #       and give a more specific error message
