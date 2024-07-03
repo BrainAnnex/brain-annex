@@ -6,7 +6,7 @@ This major new release is in a *late Beta* stage, approaching "release candidate
 However, the bottom layer (the `NeoAccess` library) is NOT in Beta: it's stable,
 and is released independently.
 
-The version number can be found in the `__init__.py` file.
+The version number can be found in the `brainannex/__init__.py` file.
 
 ### Website: https://BrainAnnex.org
 

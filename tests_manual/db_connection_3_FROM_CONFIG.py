@@ -35,7 +35,7 @@ config = ConfigParser()
 
 if os.environ.get("FLASK_APP"):     # Remote deployment
     print("This is a REMOTE deployment")
-    found_files = config.read(['../config.defaults.ini', '../config.ini'])     # For server
+    found_files = config.read(['../config.defaults.ini', '../config.ini'])     # For server     TODO: any way to use absolute paths?
 else:                               # Local deployment
     print("This is a LOCAL deployment")
     found_files = config.read(['../config.defaults.ini', '../config.ini'])     # For local machine
@@ -43,7 +43,8 @@ else:                               # Local deployment
 #print("found_files: ", found_files)    # This will be a list of the names of the files that were found
 
 if found_files == []:
-    raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
+    raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py, "
+                    "and to run this script from the tests_manual folder")
 
 if found_files == ['config.defaults.ini']:
     raise Exception("Only found a DEFAULT version of the config file ('config.defaults.ini'); make sure to duplicate it, name it 'config.ini' and personalize it")
@@ -87,7 +88,7 @@ else:
     # Attempt to connect to the Neo4j database from credentials in the config file(s)
     obj = NeoAccess(host=NEO4J_HOST,
                     credentials=(NEO4J_USER, NEO4J_PASSWORD),
-                    debug=True, autoconnect=True)
+                    debug=False, autoconnect=True)
 
     print("Version of the Neo4j driver: ", obj.version())
 

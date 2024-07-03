@@ -147,7 +147,7 @@ Vue.component('vue-schema-editor',
 
             <!-- ----------------------------------------------------------------------------------- -->
             <template>
-                <span class='title'>DELETE AN EXISTING CLASS</span><br><br>
+                <span class='title'>DELETE AN EXISTING CLASS</span> &nbsp; (and all its Properties)<br><br>
 
                 <table border='0' cellspacing='5' cellpadding='0'>
 
@@ -287,7 +287,7 @@ Vue.component('vue-schema-editor',
                 console.log(`Processing request to delete the Class "${this.del_class_name}"`);
 
                 if (this.del_class_name == "")  {
-                    alert("Must enter a relationship name");
+                    alert("Must enter a class name");
                     return;
                 }
 

@@ -499,7 +499,7 @@ class ApiRouting:
             Delete a Class specified by its name.
             All its Properties will also get deleted alongside.
             The operation will fail if the Class doesn't exist,
-            or if data nodes attached to that Class are present (those need to be deleted first)
+            or if data nodes attached to that Class are present (those would need to be deleted first)
 
             POST FIELDS:
                 class_name
