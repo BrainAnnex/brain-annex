@@ -1,4 +1,4 @@
-from brainannex.modules.categories.categories import Collections
+from brainannex.categories import Collections
 
 
 

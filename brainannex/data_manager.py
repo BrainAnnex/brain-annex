@@ -1,11 +1,11 @@
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
-from brainannex.modules.categories.categories import Categories
-from brainannex.modules.PLUGINS.notes import Notes
-from brainannex.modules.PLUGINS.documents import Documents
-from brainannex.modules.upload_helper.upload_helper import UploadHelper
-from brainannex.modules.media_manager.media_manager import MediaManager, ImageProcessing
-from brainannex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from brainannex.modules.py_graph_visual.py_graph_visual import PyGraphVisual
+from brainannex.neo_schema.neo_schema import NeoSchema
+from brainannex.categories import Categories
+from brainannex.PLUGINS.notes import Notes
+from brainannex.PLUGINS.documents import Documents
+from brainannex.upload_helper import UploadHelper
+from brainannex.media_manager import MediaManager
+from brainannex.full_text_indexing import FullTextIndexing
+from brainannex.py_graph_visual import PyGraphVisual
 from neoaccess import NeoAccess
 import re                               # For REGEX
 import pandas as pd

@@ -2,8 +2,7 @@
 
 import pytest
 from neoaccess import NeoAccess
-from brainannex.modules.utilities.comparisons import compare_recordsets
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.neo_schema.neo_schema import NeoSchema
 
 
 

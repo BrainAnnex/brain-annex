@@ -2,11 +2,11 @@
 
 
 import pytest
-from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
-from brainannex.modules.categories.categories import Categories
-from brainannex.modules.collections.collections import Collections
+from brainannex.neo_schema.neo_schema import NeoSchema
+from brainannex.categories import Categories
+from brainannex.collections import Collections
 
 
 # Provide a database connection that can be used by the various tests that need it

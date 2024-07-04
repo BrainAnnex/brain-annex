@@ -132,6 +132,6 @@ dmypy.json
 .idea/
 
 # Brain Annex - specific
-/BrainAnnex/modules/utilities/unused.py
+/brainannex/utilities/unused.py
 /notebooks/PRIVATE/
 config.ini

@@ -1,10 +1,9 @@
 import re
 import html
-import os
 from typing import Union, List, Set
 from neoaccess.cypher_utils import CypherUtils
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
-import brainannex.modules.utilities.exceptions as exceptions
+from brainannex.neo_schema.neo_schema import NeoSchema
+import brainannex.utilities.exceptions as exceptions
 
 
 class FullTextIndexing:
@@ -600,7 +599,7 @@ class FullTextIndexing:
         :return:
         """
         import os
-        from brainannex.modules.media_manager.media_manager import MediaManager
+        from brainannex.media_manager import MediaManager
 
         file_list = os.listdir(directory)
         #print(f"Total number of files: {len(file_list)}")

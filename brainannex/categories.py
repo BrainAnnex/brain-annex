@@ -1,6 +1,6 @@
 from typing import Union, List
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
-from brainannex.modules.collections.collections import Collections
+from brainannex.neo_schema.neo_schema import NeoSchema
+from brainannex.collections import Collections
 from neoaccess import NeoAccess
 
 

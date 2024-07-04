@@ -1,8 +1,8 @@
 import pytest
 from neoaccess import NeoAccess
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
-from brainannex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.neo_schema.neo_schema import NeoSchema
+from brainannex.full_text_indexing import FullTextIndexing
+from brainannex.utilities.comparisons import compare_unordered_lists, compare_recordsets
 
 
 
