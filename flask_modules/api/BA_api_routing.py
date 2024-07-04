@@ -42,16 +42,18 @@ class ApiRouting:
     """
 
     # Module-specific parameters (as class variables)
-    blueprint_name = "BA_api"           # Name unique to this module
-    url_prefix = "/BA/api"              # Prefix for all URL's handled by this module
-    template_folder = "templates"       # Relative to this module's location
-    static_folder = "static"            # Relative to this module's location
+    blueprint_name = "BA_api"       # Name unique to this module
+    url_prefix = "/BA/api"          # Prefix for all URL's handled by this module
+    template_folder = "templates"   # Relative to this module's location
+    static_folder = "static"        # Relative to this module's location
+    config_pars = {}                # Dict with all the app configuration parameters [NOT USED IN THIS MODULE]
 
-    MEDIA_FOLDER = None                 # Location where the media for Content Items is stored
-    UPLOAD_FOLDER = None                # Temporary location for uploads
 
-    debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
-                                        #       (currently, in very limited use)
+    MEDIA_FOLDER = None             # Location where the media for Content Items is stored
+    UPLOAD_FOLDER = None            # Temporary location for uploads
+
+    debug = False                   # Flag indicating whether a debug mode is to be used by all methods of this class
+                                    #       (currently, in very limited use)
 
 
 

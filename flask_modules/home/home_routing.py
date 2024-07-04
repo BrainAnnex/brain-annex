@@ -4,7 +4,7 @@ Router/generator for navigation pages:
 """
 
 from flask import Blueprint, render_template, request, session      # Not used: redirect
-from home.login_manager import FlaskUserManagement, User
+from flask_modules.home.login_manager import FlaskUserManagement, User
 from brainannex import UserManager
 import flask_login
 
@@ -22,6 +22,7 @@ class HomeRouting:
     #url_prefix = ""                # NOT USED FOR THIS TOP-LEVEL MODULE.  Prefix for all URL's handled by this module
     template_folder = "templates"   # Relative to this module's location
     static_folder = "static"        # Relative to this module's location
+    config_pars = {}                # Dict with all the app configuration parameters
 
 
     # Set up the user-authentication mechanism
@@ -29,7 +30,6 @@ class HomeRouting:
     #             such as how to load a user from an ID, where to send users when they need to log in, etc."
     login_manager = None                # This gets a value assigned by calls to setup()
 
-    config_pars = {}                    # Dict with all the app configuration parameters
 
 
 
@@ -38,7 +38,7 @@ class HomeRouting:
     #############################################################
 
     @classmethod
-    def setup(cls, flask_app_obj, config_dict) -> None:
+    def setup(cls, flask_app_obj) -> None:
         """
         Based on this module-specific class variables, and given a Flask app object,
         instantiate a "Blueprint" object,
@@ -48,7 +48,6 @@ class HomeRouting:
             the functions that will be assigned to the various URL endpoints [NOT USED IN THIS MODULE]
 
         :param flask_app_obj:	The Flask app object
-        :param config_dict:     Dict with all the app configuration parameters
         :return:				None
         """
         flask_blueprint = Blueprint(cls.blueprint_name, __name__,
@@ -67,7 +66,7 @@ class HomeRouting:
         flask_app_obj.register_blueprint(flask_blueprint)       # NOT USED:  url_prefix = cls.url_prefix
 
         # Save the app configuration parameters in a class variable
-        cls.config_pars = config_dict
+        cls.config_pars = flask_app_obj.config
 
 
 

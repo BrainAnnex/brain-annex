@@ -26,7 +26,9 @@ class PagesRouting:
     url_prefix = "/BA/pages"            # Prefix for all URL's handled by this module
     template_folder = "templates"       # Location of HTML templates (Relative to this module's location)
     static_folder = "static"            # Location of website's static content (Relative to this module's location)
-    
+    config_pars = {}                    # Dict with all the app configuration parameters [NOT USED IN THIS MODULE]
+
+
     site_pages = None                   # Data for the site navigation
 
 

@@ -3,7 +3,7 @@ Generator of Sample Pages for the Example Embedded Site
 """
 
 from flask import Blueprint, render_template, request   # The "request" package makes available a GLOBAL request object
-from navigation.navigation import get_site_pages        # Navigation configuration for this site
+from flask_modules.navigation.navigation import get_site_pages        # Navigation configuration for this site
 
 
 
@@ -17,6 +17,7 @@ class SamplePagesRouting:
     url_prefix = "/sample/pages"            # Prefix for all URL's handled by this module
     template_folder = "templates"           # Relative to this module's location
     static_folder = "static"                # Relative to this module's location
+    config_pars = {}                        # Dict with all the app configuration parameters
 
 
 
@@ -45,6 +46,9 @@ class SamplePagesRouting:
 
         # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
         flask_app_obj.register_blueprint(flask_blueprint, url_prefix = cls.url_prefix)
+
+        # Save the app configuration parameters in a class variable
+        cls.config_pars = flask_app_obj.config
 
 
 

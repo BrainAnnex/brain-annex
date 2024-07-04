@@ -16,6 +16,7 @@ class SampleApiRouting:
     url_prefix = "/sample/api"              # Prefix for all URL's handled by this module
     template_folder = "templates"           # Relative to this module's location
     static_folder = "static"                # Relative to this module's location
+    config_pars = {}                        # Dict with all the app configuration parameters
 
 
 
@@ -44,6 +45,9 @@ class SampleApiRouting:
 
         # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
         flask_app_obj.register_blueprint(flask_blueprint, url_prefix = cls.url_prefix)
+
+        # Save the app configuration parameters in a class variable
+        cls.config_pars = flask_app_obj.config
 
 
 

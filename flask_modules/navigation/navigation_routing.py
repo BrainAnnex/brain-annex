@@ -11,10 +11,11 @@ class Navigation:
     """
 
     # Module-specific parameters (as class variables)
-    blueprint_name = "navigation"     # Name unique to this module
-    url_prefix = "/navigation"        # Prefix for all URL's handled by this module
-    template_folder = "templates"     # Relative to this module's location
-    static_folder = "static"          # Relative to this module's location
+    blueprint_name = "navigation"   # Name unique to this module
+    url_prefix = "/navigation"      # Prefix for all URL's handled by this module
+    template_folder = "templates"   # Relative to this module's location
+    static_folder = "static"        # Relative to this module's location
+    config_pars = {}                # Dict with all the app configuration parameters [NOT USED IN THIS MODULE]
 
 
 

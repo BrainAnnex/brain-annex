@@ -6,7 +6,7 @@ from brainannex.modules.media_manager.media_manager import MediaManager
 from brainannex.modules.node_explorer.node_explorer import NodeExplorer
 from brainannex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
 from brainannex.modules.user_manager.user_manager import UserManager
-from home.login_manager import FlaskUserManagement
+from flask_modules.home.login_manager import FlaskUserManagement
 
 
 
