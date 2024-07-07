@@ -457,8 +457,8 @@ class DataManager:
                                                rel_name=rel_name)       # Category-specific action
 
         # The adding of the relationship is done here
-        NeoSchema.add_data_relationship_OLD(from_id=from_id, to_id=to_id,
-                                            rel_name=rel_name, id_type="uri")
+        NeoSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="uri",
+                                            rel_name=rel_name)
 
 
 

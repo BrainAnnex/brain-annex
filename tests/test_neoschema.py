@@ -23,13 +23,13 @@ def create_sample_schema_1():
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY (both originating from "patient"
 
     patient_id, _  = NeoSchema.create_class_with_properties(name="patient",
-                                                            properties=["name", "age", "balance"])
+                                                            properties=["name", "age", "balance"], strict=True)
 
     result_id, _  = NeoSchema.create_class_with_properties(name="result",
-                                                           properties=["biomarker", "value"])
+                                                           properties=["biomarker", "value"], strict=False)
 
     doctor_id, _  = NeoSchema.create_class_with_properties(name="doctor",
-                                                           properties=["name", "specialty"])
+                                                           properties=["name", "specialty"], strict=False)
 
     NeoSchema.create_class_relationship(from_class="patient", to_class="result", rel_name="HAS_RESULT")
     NeoSchema.create_class_relationship(from_class="patient", to_class="doctor", rel_name="IS_ATTENDED_BY")
@@ -483,14 +483,54 @@ def test_delete_class(db):
 
 
 
+def test_is_link_allowed(db):
+    db.empty_dbase()
+
+    NeoSchema.create_class("strict", strict=True)
+    NeoSchema.create_class("lax1", strict=False)
+    NeoSchema.create_class("lax2", strict=False)
+
+    assert NeoSchema.is_link_allowed("belongs to", from_class="lax1", to_class="lax2")  # Anything goes, if both Classes are lax!
+
+    assert not NeoSchema.is_link_allowed("belongs to", from_class="lax1", to_class="strict")
+
+    NeoSchema.create_class_relationship(from_class="lax1", to_class="strict",
+                                        rel_name="belongs to")
+
+    assert  NeoSchema.is_link_allowed("belongs to", from_class="lax1", to_class="strict")
+
+    assert  not NeoSchema.is_link_allowed("works for", from_class="strict", to_class="lax2")
+
+    NeoSchema.create_class_relationship(from_class="strict", to_class="lax2",
+                                        rel_name="works for", use_link_node=True)
+
+    assert  NeoSchema.is_link_allowed("works for", from_class="strict", to_class="lax2")
+
+
+
 def test_is_strict_class(db):
     db.empty_dbase()
 
+    NeoSchema.create_class("I am strict", strict=True)
+    assert NeoSchema.is_strict_class("I am strict")
+
+    NeoSchema.create_class("I am lax", strict=False)
+    assert not NeoSchema.is_strict_class("I am lax")
+
+    db.create_node(labels="CLASS", properties={"name": "Damaged_class"})
+    assert not NeoSchema.is_strict_class("Damaged_class")   # Sloppily-create Class node lacking a "strict" attribute
+
+
+
+
+def test_is_strict_class_fast(db):
+    db.empty_dbase()
+
     internal_id , _ = NeoSchema.create_class("I am strict", strict=True)
-    assert NeoSchema.is_strict_class(internal_id)
+    assert NeoSchema.is_strict_class_fast(internal_id)
 
     internal_id , _ = NeoSchema.create_class("I am lax", strict=False)
-    assert not NeoSchema.is_strict_class(internal_id)
+    assert not NeoSchema.is_strict_class_fast(internal_id)
 
 
 
@@ -1892,90 +1932,6 @@ def test_add_data_relationship_hub(db):
 def test_add_data_relationship(db):
     db.empty_dbase()
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_OLD(from_id=123, to_id=456, rel_name="junk")  # No such nodes exist
-
-    neo_uri_1 = db.create_node("random A")
-    neo_uri_2 = db.create_node("random B")
-    with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_OLD(from_id=neo_uri_1, to_id=neo_uri_2, rel_name="junk") # Not data nodes with a Schema
-
-    _ , person_class_uri = NeoSchema.create_class("Person")
-    person_uri = NeoSchema.add_data_point_OLD("Person")
-
-    _ , car_class_uri = NeoSchema.create_class("Car")
-    car_uri = NeoSchema.add_data_point_OLD("Car")
-
-    with pytest.raises(Exception):
-        # No such relationship exists between their Classes
-        NeoSchema.add_data_relationship_OLD(from_id=person_uri, to_id=car_uri, rel_name="DRIVES", id_type="uri")
-
-    # Add the "DRIVE" relationship between the classes
-    NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="DRIVES")
-
-    with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_OLD(from_id=person_uri, to_id=car_uri, rel_name="", id_type="uri")  # Lacks relationship name
-
-    with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_OLD(from_id=person_uri, to_id=car_uri, rel_name=None, id_type="uri")  # Lacks relationship name
-
-    with pytest.raises(Exception):
-        NeoSchema.add_data_relationship_OLD(from_id=car_uri, to_id=person_uri, rel_name="DRIVES", id_type="uri")  # Wrong direction
-
-    # Now, finally, it'll work
-    NeoSchema.add_data_relationship_OLD(from_id=person_uri, to_id=car_uri, rel_name="DRIVES", id_type="uri")
-
-    # Verify the cycle of "DRIVES" relationships
-    q = '''
-    MATCH (c:Car {uri:$car_uri})<-[:DRIVES]-(p:Person {uri:$person_uri})
-    -[:SCHEMA]->(cl1:CLASS {name:"Person"})-[:DRIVES]->(cl2:CLASS {name:"Car"})
-    <-[:SCHEMA]-(c)
-    RETURN COUNT(c) AS number_cars
-    '''
-    result = db.query(q, {"car_uri": car_uri, "person_uri": person_uri}, single_cell="number_cars")
-    assert result == 1
-
-
-    with pytest.raises(Exception):
-        # Attempting to add it again
-        NeoSchema.add_data_relationship_OLD(from_id=person_uri, to_id=car_uri, rel_name="DRIVES", id_type="uri")
-
-    with pytest.raises(Exception):
-        # Relationship name not declared in the Schema
-        NeoSchema.add_data_relationship_OLD(from_id=person_uri, to_id=car_uri, rel_name="SOME_OTHER_NAME", id_type="uri")
-
-
-    # Now add reverse a relationship, and this time use the Neo4j ID's to locate the nodes
-    NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_DRIVEN_BY")
-
-    neo_person_id = NeoSchema.get_data_node_id(person_uri)
-    neo_car_id = NeoSchema.get_data_node_id(car_uri)
-    NeoSchema.add_data_relationship_OLD(from_id=neo_car_id, to_id=neo_person_id, rel_name="IS_DRIVEN_BY")
-
-    # Verify the cycle of "IS_DRIVEN_BY" relationships
-    q = '''
-    MATCH (c:Car {uri:$car_uri})-[:IS_DRIVEN_BY]->(p:Person {uri:$person_uri})
-    -[:SCHEMA]->(cl1:CLASS {name:"Person"})<-[:IS_DRIVEN_BY]-(cl2:CLASS {name:"Car"})
-    <-[:SCHEMA]-(c)
-    RETURN COUNT(c) AS number_cars
-    '''
-    result = db.query(q, {"car_uri": car_uri, "person_uri": person_uri}, single_cell="number_cars")
-    assert result == 1
-
-    # Verify that the cycle of "DRIVES" relationships is also still there
-    q = '''
-    MATCH (c:Car {uri:$car_uri})<-[:DRIVES]-(p:Person {uri:$person_uri})
-    -[:SCHEMA]->(cl1:CLASS {name:"Person"})-[:DRIVES]->(cl2:CLASS {name:"Car"})
-    <-[:SCHEMA]-(c)
-    RETURN COUNT(c) AS number_cars
-    '''
-    result = db.query(q, {"car_uri": car_uri, "person_uri": person_uri}, single_cell="number_cars")
-    assert result == 1
-
-
-
-def test_add_data_relationship_2(db):
-    db.empty_dbase()
-    with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=123, to_id=456, rel_name="junk")  # No such nodes exist
 
     neo_uri_1 = db.create_node("random A")
@@ -1983,45 +1939,57 @@ def test_add_data_relationship_2(db):
     with pytest.raises(Exception):
         NeoSchema.add_data_relationship(from_id=neo_uri_1, to_id=neo_uri_2, rel_name="junk") # Not data nodes with a Schema
 
-    _ , person_class_uri = NeoSchema.create_class("Person")
-    person_neo_uri = NeoSchema.add_data_point_fast_OBSOLETE("Person")
+    _ , person_class_uri = NeoSchema.create_class("Person", strict=True)
+    person_internal_id = NeoSchema.create_data_node(class_node="Person", new_uri="julian")
 
     _ , car_class_uri = NeoSchema.create_class("Car")
-    car_neo_uri = NeoSchema.add_data_point_fast_OBSOLETE("Car")
+    car_internal_id = NeoSchema.create_data_node(class_node="Car", properties={"color": "white"})
 
     with pytest.raises(Exception):
         # No such relationship exists between their Classes
-        NeoSchema.add_data_relationship(from_id=person_neo_uri, to_id=car_neo_uri, rel_name="DRIVES")
+        NeoSchema.add_data_relationship(from_id=person_internal_id, to_id=car_internal_id, rel_name="DRIVES")
 
     # Add the "DRIVE" relationship between the Classes
     NeoSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="DRIVES")
 
-    with pytest.raises(Exception):
-        NeoSchema.add_data_relationship(from_id=person_neo_uri, to_id=car_neo_uri, rel_name="")  # Lacks relationship name
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship(from_id=person_neo_uri, to_id=car_neo_uri, rel_name=None)  # Lacks relationship name
+        NeoSchema.add_data_relationship(from_id=person_internal_id, to_id=car_internal_id, rel_name="")  # Lacks relationship name
 
     with pytest.raises(Exception):
-        NeoSchema.add_data_relationship(from_id=car_neo_uri, to_id=person_neo_uri, rel_name="DRIVES")  # Wrong direction
+        NeoSchema.add_data_relationship(from_id=person_internal_id, to_id=car_internal_id, rel_name=None)  # Lacks relationship name
 
-    # Now it works
-    NeoSchema.add_data_relationship(from_id=person_neo_uri, to_id=car_neo_uri, rel_name="DRIVES")
+    with pytest.raises(Exception):
+        NeoSchema.add_data_relationship(from_id=car_internal_id, to_id=person_internal_id, rel_name="DRIVES")  # Wrong direction
+
+    # Now, adding the data relationship will work
+    NeoSchema.add_data_relationship(from_id=person_internal_id, to_id=car_internal_id, rel_name="DRIVES")
+    assert db.links_exist(match_from=person_internal_id, match_to=car_internal_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         # Attempting to add it again
-        NeoSchema.add_data_relationship(from_id=person_neo_uri, to_id=car_neo_uri, rel_name="DRIVES")
+        NeoSchema.add_data_relationship(from_id=person_internal_id, to_id=car_internal_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         # Relationship name not declared in the Schema
-        NeoSchema.add_data_relationship(from_id=person_neo_uri, to_id=car_neo_uri, rel_name="SOME_OTHER_NAME")
+        NeoSchema.add_data_relationship(from_id=person_internal_id, to_id=car_internal_id, rel_name="SOME_OTHER_NAME")
 
 
     # Now add reverse a relationship between the Classes
     NeoSchema.create_class_relationship(from_class="Car", to_class="Person", rel_name="IS_DRIVEN_BY")
 
-    # Add that same reverse relationship between the data points
-    NeoSchema.add_data_relationship(from_id=car_neo_uri, to_id=person_neo_uri, rel_name="IS_DRIVEN_BY")
+    # Add that same reverse relationship between the data nodes
+    NeoSchema.add_data_relationship(from_id=car_internal_id, to_id=person_internal_id, rel_name="IS_DRIVEN_BY")
+    assert db.links_exist(match_from=car_internal_id, match_to=person_internal_id, rel_name="IS_DRIVEN_BY")
+
+    # Now add a relationship using URI's instead of internal database ID's
+    red_car_internal_id = NeoSchema.create_data_node(class_node="Car", properties={"color": "red"}, new_uri="new_car")
+    NeoSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="uri", rel_name="DRIVES")
+    assert db.links_exist(match_from=person_internal_id, match_to=red_car_internal_id, rel_name="DRIVES")
+
+    with pytest.raises(Exception):
+        # Relationship name not declared in the Schema
+        NeoSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="uri", rel_name="PAINTS")
 
 
 
@@ -2282,21 +2250,21 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
 
     cache.get_cached_class_data(class_id=patient_uri, request="class_attributes")
     assert len(cache._schema) == 2
-    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': False}
+    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': True}
                        }
     assert cache.get_all_cached_class_data(class_id=patient_uri) == expected_patient
     assert cache.get_all_cached_class_data(class_id=neo_uri) == expected_first_class     # Unchanged
 
 
     cache.get_cached_class_data(class_id=patient_uri, request="class_properties")
-    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': False},
+    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': True},
                         "class_properties": ['name', 'age', 'balance']
                         }
     assert cache.get_all_cached_class_data(class_id=patient_uri) == expected_patient
     assert cache.get_all_cached_class_data(class_id=neo_uri) == expected_first_class     # Unchanged
 
     cache.get_cached_class_data(class_id=patient_uri, request="out_neighbors")
-    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': False},
+    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': True},
                         "class_properties": ['name', 'age', 'balance'],
                         "out_neighbors": {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
                         }

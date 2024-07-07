@@ -552,8 +552,8 @@ class Categories:
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
         try:
-            NeoSchema.add_data_relationship_OLD(from_id=subcategory_uri, to_id=category_uri,
-                                                rel_name="BA_subcategory_of", id_type="uri")
+            NeoSchema.add_data_relationship(from_id=subcategory_uri, to_id=category_uri,
+                                            rel_name="BA_subcategory_of", id_type="uri")
         except Exception as ex:
             raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship. {ex}")
 
@@ -701,6 +701,22 @@ class Categories:
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
 
         return value
+
+
+
+    @classmethod
+    def create_see_also(cls, from_category :str, to_category :str) -> None:
+        """
+        Create a "see_also" link between the given Categories
+
+        :param from_category:   URI of the Category where the "see_also" relationship originates
+        :param to_category:     URI of the Category where the "see_also" relationship terminates
+        :return:                None
+        """
+
+        NeoSchema.add_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
+                                        rel_name="BA_see_also")
+
 
 
 

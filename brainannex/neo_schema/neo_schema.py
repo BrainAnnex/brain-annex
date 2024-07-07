@@ -505,7 +505,27 @@ class NeoSchema:
 
 
     @classmethod
-    def is_strict_class(cls, class_internal_id: int, schema_cache=None) -> bool:
+    def is_strict_class(cls, name :str) -> bool:
+        """
+        Return True if the given Class is of "Strict" type,
+        or False otherwise (or if the information is missing)
+
+        :param name:    The name of a Schema Class node
+        :return:        True if the Class is "strict" or False if not (i.e., if it's "lax")
+        """
+        q = '''
+            MATCH (c :CLASS {name: $name})
+            RETURN c.strict AS strict
+            '''
+        result = cls.db.query(q, data_binding={"name": name},
+                                 single_cell="strict")
+
+        return True if (result == True) else False
+
+
+
+    @classmethod
+    def is_strict_class_fast(cls, class_internal_id: int, schema_cache=None) -> bool:
         """
         Return True if the given Class is of "Strict" type,
         or False otherwise (or if the information is missing)
@@ -791,6 +811,8 @@ class NeoSchema:
             - Either of the 2 above scenarios, but between "ancestors" of the two nodes;
               "ancestors" are defined by means of following
               any number of "INSTANCE_OF" hops to other Class nodes
+
+        SEE ALSO:  is_link_allowed()
 
         :param from_class:  Name of an existing Class node (blanks allowed in name)
         :param to_class:    Name of another existing Class node (blanks allowed in name)
@@ -1365,6 +1387,7 @@ class NeoSchema:
         or False otherwise.
 
         For a Property to be allowed, at least one of the following must hold:
+
             A) the Class isn't strict (i.e. every property is allowed)
         OR
             B) the Property has been registered with the Schema, for that Class
@@ -1373,6 +1396,7 @@ class NeoSchema:
                from our given Class thru a chain of "INSTANCE_OF" relationships
 
         It's permissible for the specified Class not to exist; in that case, False will be returned
+        (TODO: may be better to raise an Exception in such cases!)
 
         :param property_name:   Name of a Property (i.e. a field name) whose permissibility
                                     we want to check
@@ -1380,6 +1404,8 @@ class NeoSchema:
         :return:                True if the given Property is allowed by the specified Class,
                                     or False otherwise
         """
+        assert property_name, f"NeoSchema.is_property_allowed(): no name was provided for the property"
+
         # We use a Conditional Cypher Execution of the line that starts with "MATCH (c)-[:INSTANCE_OF*0..]->" ,
         # i.e. we execute it to look up the Class Properties ONLY if the Class is "strict"
         # (if not strict, then there's no need to do that check; we already have an answer!)
@@ -1408,6 +1434,67 @@ class NeoSchema:
 
 
     @classmethod
+    def is_link_allowed(cls, link_name :str, from_class :str, to_class :str) -> bool:
+        """
+        Return True if the given Link is allowed between the specified Classes (in the given direction),
+        or False otherwise.
+
+        For a Link to be allowed, at least one of the following must hold:
+
+            A) BOTH of the Classes aren't strict (in which case any arbitrary link is allowed!
+        OR
+            B) the Link has been registered with the Schema, for those Classes
+
+        It's permissible for the specified Class not to exist; in that case, False will be returned
+
+        :param link_name:   Name of a Link (i.e. relationship) whose permissibility
+                                we want to check
+        :param from_class:  Name of a Class that we want to check whether the given Link can originate from
+        :param to_class:    Name of a Class that we want to check whether the given Link can terminate into
+        :return:            True if the given Link is allowed by the specified Classes,
+                                or False otherwise
+        """
+        # TODO: also ought to allow intermediate "INSTANCE_OF" hops
+
+        assert link_name, f"NeoSchema.is_link_allowed(): empty name was provided for the argument `link_name`"
+
+        # Start by checking the most straightforward scenario of a direct link between the CLASS nodes
+        q = f'''
+            MATCH (from :CLASS {{name: $class_from}}) - [r :`{link_name}`] -> (to :CLASS {{name: $class_to}})
+            RETURN count(r) AS link_count
+            '''
+
+        result = cls.db.query(q, data_binding={"class_from": from_class, "class_to": to_class},
+                              single_cell="link_count")
+
+        if result > 0:
+            return True
+
+
+        # If no direct link between the Classes was found, check for an extra hop thu a "LINK" node
+        q = f'''
+            MATCH (from :CLASS {{name: $class_from}}) - [r :`{link_name}`] -> 
+                  (:LINK) - [:`{link_name}`] -> (to :CLASS {{name: $class_to}})
+            RETURN count(r) AS link_count
+            '''
+
+        result = cls.db.query(q, data_binding={"class_from": from_class, "class_to": to_class},
+                              single_cell="link_count")
+
+        if result > 0:
+            return True
+
+
+        # As a last resort, check whether both Classes aren't strict
+        if not cls.is_strict_class(from_class) and not cls.is_strict_class(to_class):
+            return True     # "Letting things slide" because both end Classes are lax
+
+
+        return False    # We've exhausted all options
+
+
+
+    @classmethod
     def allowable_props(cls, class_internal_id: int, requested_props: dict, silently_drop: bool, schema_cache=None) -> dict:
         """
         If any of the properties in the requested list of properties is not a declared (and thus allowed) Schema property,
@@ -1428,7 +1515,7 @@ class NeoSchema:
         if requested_props == {} or requested_props is None:
             return {}     # It's a moot point, if not attempting to set any property
 
-        if not cls.is_strict_class(class_internal_id, schema_cache=schema_cache):
+        if not cls.is_strict_class_fast(class_internal_id, schema_cache=schema_cache):
             return requested_props      # Any properties are allowed if the Class isn't strict
 
 
@@ -1702,15 +1789,16 @@ class NeoSchema:
 
 
     @classmethod
-    def class_of_data_node(cls, node_id: int, id_type=None, labels=None) -> str:
+    def class_of_data_node(cls, node_id, id_type=None, labels=None) -> str:
         """
         Return the name of the Class of the given data node: identified
-        either by its internal database ID (default), or by a primary key (with optional label)
+        either by its internal database ID (default), or by a primary key (such as "uri")
+        with optional label)
 
         :param node_id:     Either an internal database ID or a primary key value
-        :param id_type:     OPTIONAL - name of a primary key used to identify the data node;
-                                leave blank to use the internal database ID
-        :param labels:      Optional string, or list/tuple of strings, with Neo4j labels
+        :param id_type:     OPTIONAL - name of a primary key used to identify the data node; for example, "uri".
+                                Leave blank to use the internal database ID
+        :param labels:      Optional string, or list/tuple of strings, with internal database labels
                                 (DEPRECATED)
 
         :return:            A string with the name of the Class of the given data node
@@ -1890,7 +1978,8 @@ class NeoSchema:
         :param new_uri:     (OPTIONAL)  If new_uri is provided, then a field called "uri"
                                 is set to that value;
                                 also, an extra attribute named "schema_code" gets set
-                                (based on the Class to use for this Data Node)
+                                (based on the Class to use for this Data Node);
+                                this extra attribute might eventually get obsoleted
         :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
                                 Note: only applicable for "Strict" schema - with a "Lenient" schema anything goes
@@ -2049,6 +2138,7 @@ class NeoSchema:
                                 1) The internal database ID of either an existing Data Node or of a new one just created
                                 2) True if a new Data Node was created, or False if not (i.e. an existing one was found)
         """
+        # TODO: eventually absorb into create_data_node()
         # TODO: maybe return a dict with 2 keys: "internal_id" and "created" ? (like done by NeoAccess)
 
         assert (type(properties) == dict) and (properties != {}), \
@@ -2104,6 +2194,7 @@ class NeoSchema:
         :return:                A dictionary with 2 keys - "new_nodes" and "old_nodes";
                                     their values are the respective numbers of nodes (created vs. found)
         """
+        # TODO: eventually absorb into create_data_node()
         assert (type(property_name) == str) and (property_name != ""), \
             "NeoSchema.add_data_column_merge(): the `property_name` argument MUST be a string, and cannot be empty"
 
@@ -2160,6 +2251,7 @@ class NeoSchema:
                                  links = None,
                                  assign_uri=False, new_uri=None) -> int:
         """
+        # TODO: eventually absorb into create_data_node()
         This is NeoSchema's counterpart of NeoAccess.create_node_with_links()
 
         Add a new data node, of the Class specified by its name,
@@ -2274,6 +2366,7 @@ class NeoSchema:
                                      connected_to_neo_id=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
                                      assign_uri=False, new_uri=None) -> int:
         """
+        # TODO: eventually absorb into create_data_node()
         TODO: OBSOLETED BY add_data_node_with_links() - TO DITCH *AFTER* add_data_node_with_links() gets link validation!
         A faster version of add_data_point()
         Add a new data node, of the Class specified by name or ID,
@@ -2399,6 +2492,7 @@ class NeoSchema:
                            connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
                            new_uri=None, return_uri=True) -> Union[int, str]:
         """
+        # TODO: eventually absorb into create_data_node()
         TODO: OBSOLETE.  Replace by add_data_node_with_links()
               TO DITCH *AFTER* add_data_node_with_links() gets link validation!
 
@@ -2523,6 +2617,7 @@ class NeoSchema:
     def add_and_link_data_point_OBSOLETE(cls, class_name: str, connected_to_list: [tuple], properties=None, labels=None,
                                          assign_uri=False) -> int:
         """
+        # TODO: eventually absorb into create_data_node()
         TODO: OBSOLETED BY add_data_node_with_links() - TO DITCH *AFTER* add_data_node_with_links() gets link validation!
         Create a new data node, of the Class with the given name,
         with the specified optional labels and properties,
@@ -2776,74 +2871,6 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_relationship_OLD(cls, from_id: Union[int, str], to_id: Union[int, str], rel_name: str, rel_props = None,
-                                  labels_from=None, labels_to=None, id_type=None) -> None:
-        """
-        -> Maybe not really needed.  IF POSSIBLE, USE add_data_relationship() INSTEAD
-        TODO: possibly ditch, in favor of add_data_relationship()
-
-        Add a new relationship with the given name, from one to the other of the 2 given DATA nodes.
-        The new relationship must be present in the Schema, or an Exception will be raised.
-
-        The data nodes may be identified either by their Neo4j ID's, or by a primary key (with optional label.)
-
-        Note that if a relationship with the same name already exists between the data nodes exists,
-        nothing gets created (and an Exception is raised)
-
-        :param from_id:     The ID of the data node at which the new relationship is to originate;
-                                this is understood be the internal database ID, unless an 'id_type' argument is passed
-        :param to_id:       The ID of the data node at which the new relationship is to end;
-                                this is understood be the internal database ID, unless an 'id_type' argument is passed
-        :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
-        :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
-        :param labels_from: (OPTIONAL) Labels on the 1st data node
-        :param labels_to:   (OPTIONAL) Labels on the 2nd data node
-        :param id_type:     For example, "uri";
-                            if not specified, all the node ID's are assumed to be internal database ID's
-
-        :return:            None.  If the specified relationship didn't get created (for example,
-                            in case the the new relationship doesn't exist in the Schema), raise an Exception
-        """
-        assert rel_name, f"add_data_relationship_OLD(): no name was provided for the new relationship"
-
-        # Create "CypherMatch" objects later used to locate the two data node
-        from_match = cls.locate_node(node_id=from_id, id_type=id_type, labels=labels_from, dummy_node_name="from")
-        to_match   = cls.locate_node(node_id=to_id,   id_type=id_type, labels=labels_to,   dummy_node_name="to")
-
-        # Get Cypher fragments related to matching the data nodes
-        from_node = from_match.node
-        to_node = to_match.node
-        where_clause = CypherUtils.combined_where(from_match, to_match, check_compatibility=True)
-        data_binding = CypherUtils.combined_data_binding(from_match, to_match)
-
-        # Using the Cypher fragments from above, create a query that looks for a path
-        # from the first to the second data nodes, passing thru their classes
-        # and thru a link with the same relationship name between those classes;
-        # upon finding such a path, join the data nodes with a relationship
-        q = f'''
-            MATCH   {from_node} 
-                    -[:SCHEMA]-> (from_class :CLASS)-[:{rel_name}]->(to_class :CLASS) <-[:SCHEMA]- 
-                    {to_node}
-            {where_clause}
-            MERGE (from)-[:{rel_name}]->(to)
-            '''
-
-        result = cls.db.update_query(q, data_binding)
-        number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
-
-        if number_relationships_added != 1:
-            # The following 2 lines will raise an Exception if either data node doesn't exist or lacks a Class
-            class_from = cls.class_of_data_node(node_id=from_id, id_type=id_type, labels=labels_from)
-            class_to = cls.class_of_data_node(node_id=to_id, id_type=id_type, labels=labels_to)
-
-            #TODO: maybe double-check that the following reported problem is indeed what caused the failure <-- INDEED, DO THAT!
-            raise Exception(f"add_data_relationship_OLD(): cannot add the relationship `{rel_name}` between the data nodes, "
-                            f"possibly because no such relationship exists from Class `{class_from}` to Class `{class_to}`; "
-                            f"if that's the case, the Schema needs to be modified first")
-
-
-
-    @classmethod
     def add_data_relationship_hub(cls, center_id :int, periphery_ids :[int], periphery_class :str,
                                     rel_name :str, rel_dir = "OUT") -> int:
         """
@@ -2902,9 +2929,8 @@ class NeoSchema:
 
 
 
-
     @classmethod
-    def add_data_relationship(cls, from_id :int, to_id :int, rel_name :str, rel_props = None) -> None:
+    def add_data_relationship(cls, from_id, to_id, rel_name :str, rel_props = None, id_type=None) -> None:
         """
         Simpler (and possibly faster) version of add_data_relationship_OLD()
 
@@ -2912,64 +2938,57 @@ class NeoSchema:
         identified by their Neo4j ID's.
 
         The requested new relationship MUST be present in the Schema, or an Exception will be raised.
-        TODO: also ought to allow intermediate "INSTANCE_OF" hops
+
 
         Note that if a relationship with the same name already exists between the data nodes exists,
         nothing gets created (and an Exception is raised)
 
-        :param from_id: The internal database ID of the data node at which the new relationship is to originate
-                                TODO: also allow primary keys, as done in class_of_data_node()
-        :param to_id:   The internal database ID of the data node at which the new relationship is to end
-                                TODO: also allow primary keys, as done in class_of_data_node()
-        :param rel_name:    The name to give to the new relationship between the 2 specified data nodes
-                                IMPORTANT: it MUST match an existing relationship in the Schema,
-                                           between the respective Classes of the 2 data nodes
-        :param rel_props:   TODO: not currently used.  Unclear what multiple calls would do in this case
+        :param from_id: Either an internal database ID or a primary key value
+                            of the data node at which the new relationship is to originate
+        :param to_id:   Either an internal database ID or a primary key value
+                            of the data node at which the new relationship is to end
+        :param rel_name:The name to give to the new relationship between the 2 specified data nodes
+                            IMPORTANT: it MUST be allowed by the Schema
+        :param rel_props:TODO: not currently used.  Unclear what multiple calls would do in this case
+
+        :param id_type: OPTIONAL - name of a primary key used to identify the data nodes; for example, "uri".
+                            Leave blank to use the internal database ID's instead
 
         :return:            None.  If the specified relationship didn't get created (for example,
                                 in case the the new relationship doesn't exist in the Schema), raise an Exception
         """
         assert rel_name, f"NeoSchema.add_data_relationship(): no name was provided for the new relationship"
 
+        from_class = cls.class_of_data_node(node_id=from_id, id_type=id_type)
+        to_class = cls.class_of_data_node(node_id=to_id, id_type=id_type)
+        assert cls.is_link_allowed(link_name=rel_name, from_class=from_class, to_class=to_class), \
+            f"add_data_relationship(): Relationship `{rel_name}` from Class `{from_class}` to Class `{to_class}` " \
+            f"must first be registered in the Schema"
+
+
         # Create a query that looks for a path
         # from the first to the second data nodes, passing thru their classes
         # and thru a link with the requested new relationship name between those classes;
         # upon finding such a path, join the data nodes with a relationship
 
-        # TODO: drop the current approach of putting "-[:`{rel_name}`]->" in the Cypher only captures Schema
-        #       Class relationships with no Properties; should instead call a new method:
-        #           class_relationship_exists(from_class, to_class, rel_name)
-        #       and then proceed if True
-        '''      
-        assert cls.class_relationship_exists(from_class=from_class, to_class=to_class, rel_name=rel_name), \
-            f"Relationship `{rel_name}` from Class `{from_class}` to Class `{to_class}` must first be registered in the Schema"
-
-        q = f
-            MATCH (from_node), (to_node)
-            WHERE id(from_node) = $from_neo_id AND id(to_node) = $to_neo_id
-            MERGE (from_node)-[:`{rel_name}`]->(to_node)          
-        '''
+        if id_type:
+            where_clause = f"from_data_node.{id_type} = $from_neo_id  AND  to_data_node.{id_type} = $to_neo_id"
+        else:
+            where_clause = "id(from_data_node) = $from_neo_id  AND  id(to_data_node) = $to_neo_id"
 
         q = f'''
-            MATCH   (from_node) -[:SCHEMA]-> (from_class :CLASS)
-                    -[:`{rel_name}`]->
-                    (to_class :CLASS) <-[:SCHEMA]- (to_node)
-            WHERE id(from_node) = $from_neo_id AND id(to_node) = $to_neo_id
-            MERGE (from_node)-[:`{rel_name}`]->(to_node)
+            MATCH (from_data_node :`{from_class}`), (to_data_node :`{to_class}`)
+            WHERE {where_clause}
+            MERGE (from_data_node)-[:`{rel_name}`]->(to_data_node)
             '''
 
         result = cls.db.update_query(q, {"from_neo_id": from_id, "to_neo_id": to_id})
         number_relationships_added = result.get("relationships_created", 0)   # If key isn't present, use a value of 0
 
         if number_relationships_added != 1:
-            # The following 2 lines will raise an Exception if either data node doesn't exist or lacks a Class
-            class_from = cls.class_of_data_node(node_id=from_id)
-            class_to = cls.class_of_data_node(node_id=to_id)
-
             # TODO: double-check that the following reported problem is indeed what caused the failure
-            raise Exception(f"NeoSchema.add_data_relationship(): Cannot add the relationship `{rel_name}` between the data nodes, "
-                            f"because no such relationship exists from Class `{class_from}` to Class` {class_to}`. "
-                            f"The Schema needs to be modified first")
+            raise Exception(f"NeoSchema.add_data_relationship(): Failed to add the relationship `{rel_name}` between the data nodes, "
+                            f"respectively of Class `{from_class}` and Class` {to_class}`")
 
 
 

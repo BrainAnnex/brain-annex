@@ -309,7 +309,7 @@ def test_add_data_relationship(db):
     #status = NeoSchema.add_data_relationship(subcategory_id=536, category_id=540, rel_name="BA_served_at")
     #status = NeoSchema.add_data_relationship(subcategory_id=514, category_id=544, rel_name="BA_subcategory_of")
     #status = NeoSchema.add_data_relationship(subcategory_id=541, category_id=535, rel_name="BA_in_category")
-    number_added = NeoSchema.add_data_relationship_OLD(from_id=9, to_id=690, rel_name="BA_testing")
+    number_added = NeoSchema.add_data_relationship(from_id=9, to_id=690, rel_name="BA_testing")
     assert number_added == 1
 
 
