@@ -1506,9 +1506,9 @@ class NeoSchema:
 
     #####################################################################################################
 
-    '''                                      ~   DATA NODES   ~                                       '''
+    '''                         ~   DATA NODES : READING  ~                                           '''
 
-    def ________DATA_NODES________(DIVIDER):
+    def ________DATA_NODES_READING_______(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -1825,28 +1825,61 @@ class NeoSchema:
 
 
     @classmethod
+    def follow_links_NOT_YET_IMPLEMENTED(cls, class_name, key_name, key_value, link_sequence):
+        """
+        Follow a chain of links among data nodes,
+        starting with a given data node (or maybe possibly a set of them?)
+
+        :param class_name:      (OPTIONAL)
+        :param key_name:        TODO: or pass a "match" object?
+        :param key_value:
+        :param link_sequence:   EXAMPLE: [("occurs", "OUT", "Indexer),
+                                          ("has_index", "IN", None)]
+                                    Each triplet is: (relationship name,
+                                                      direction,
+                                                      name of Class of data node on other side)
+                                    Any component could be None
+        :return:                A list of internal node ID's (or, optionally, all properties of the end nodes?)
+        """
+        #TODO: possibly use cls.db.follow_links()
+        pass
+
+
+
+
+
+    #####################################################################################################
+
+    '''                     ~   DATA NODES : CREATING / MODIFYING  ~                                  '''
+
+    def ________DATA_NODES_CREATING_______(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    @classmethod
     def create_data_node(cls, class_node :Union[int, str], properties = None, extra_labels = None,
                          new_uri=None, silently_drop=False) -> int:
         """
-        Create a new data node, of the type indicated by specified Class,
-        with the given (possibly none) properties and extra label(s);
+        Create a single new data node, of the type indicated by specified Class,
+        with the given (possibly None) properties, and optional extra label(s);
         the name of the Class is always used as a label.
 
-        No check is made as to whether another data node with identical fields already exists;
-        if that would be an issue, use add_data_node_merge() instead.
+        If the requested Class doesn't exist, an Exception is raised.
+
+        CAUTION: no check is made whether another data node with identical fields already exists;
+                 if that should be prevented, use add_data_node_merge() instead.
 
         The new data node, if successfully created, will optionally be assigned
-        a passed URI value, or a unique auto-gen value, for its field uri.
-
-        If the requested Class doesn't exist, an Exception is raised
-
-        If the data node needs to be created with links to other existing data nodes,
-        use add_data_node_with_links() instead
+        the passed URI value (new_uri) for its field `uri`.
 
         Note: the responsibility for picking a URI belongs to the calling function,
               which will typically make use of a namespace, and make use of reserve_next_uri()
 
-        Not: if creating multiple data nodes at once, one might use import_pandas_nodes()
+        Alternatives:
+            - If the data node needs to be created with links to other existing data nodes,
+              use add_data_node_with_links() instead.
+            - If creating multiple data nodes at once, consider using import_pandas_nodes()
 
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
@@ -1993,291 +2026,6 @@ class NeoSchema:
         internal_id = cls.db.query(q, data_binding, single_cell="internal_id")
 
         return internal_id
-
-
-
-    @classmethod
-    def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
-                            datetime_cols=None, int_cols=None,
-                            extra_labels=None, uri_namespace=None,
-                            schema_code=None, report_frequency=100) -> [int]:
-        """
-        Import a group of entities, from the rows of a Pandas dataframe, as Data Nodes in the database.
-
-        NaN's and empty strings are dropped - and never make it into the database
-
-        :param df:          A Pandas Data Frame with the data to import;
-                                each row represents a record - to be turned into a graph-database node.
-                                Each column represents a Property of the data node, and it must have been
-                                previously declared in the Schema
-        :param class_node:  Either an integer with the internal database ID of an existing Class node,
-                                or a string with its name
-        :param datetime_cols: (OPTIONAL) String, or list/tuple of strings, of column name(s)
-                                that contain datetime strings such as '2015-08-15 01:02:03'
-                                (compatible with the python "datetime" format)
-        :param int_cols:    (OPTIONAL) String, or list/tuple of strings, of column name(s)
-                                that contain integers, or that are to be converted to integers
-                                (typically necessary because numeric Pandas columns with NaN's
-                                 are automatically turned into floats)
-        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
-                                IN ADDITION TO the Class name (which is always used as label)
-        :param uri_namespace:(OPTIONAL) String with a namespace to use to auto-assign uri values on the new Data nodes;
-                                if not passed, no uri values get set on the new nodes
-        :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
-                                to a "schema_code" property for each new data node created
-        :param report_frequency: (OPTIONAL) How often to print out the status of the import-in-progress
-
-        :return:            A list of the internal database ID's of the newly-created Data nodes
-        """
-        # TODO: pytest uri_namespace argument
-
-        # Do various validations
-        cls.assert_valid_class_identifier(class_node)
-
-        assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
-            "NeoSchema.import_pandas_nodes(): argument `extra_labels`, if passed, must be a string, or list/tuple of strings"
-
-
-        # Obtain both the Class name and its internal database ID
-        if type(class_node) == str:
-            class_name = class_node
-            class_internal_id = cls.get_class_internal_id(class_node)
-        else:
-            class_name = cls.get_class_name(class_node)
-            class_internal_id = class_node
-
-
-        # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
-            raise Exception(f"NeoSchema.import_pandas_nodes(): "
-                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
-
-
-        labels = class_name     # By default, use the Class name as a label
-
-        if (type(extra_labels) == str) and (extra_labels.strip() != class_name):
-            labels = [extra_labels, class_name]
-
-        elif isinstance(extra_labels, (list, tuple)):
-            # If we get thus far, labels is a list or tuple
-            labels = list(extra_labels)
-            if class_name not in extra_labels:
-                labels += [class_name]
-
-        if type(datetime_cols) == str:
-            datetime_cols = [datetime_cols]
-        elif datetime_cols is None:
-            datetime_cols = []
-
-        if type(int_cols) == str:
-            int_cols = [int_cols]
-        elif int_cols is None:
-            int_cols = []
-
-
-        # Verify whether all properties are allowed
-        # TODO: consider using allowable_props()
-        cols = list(df.columns)     # List of column names in the Pandas Data Frame
-        class_properties = cls.get_class_properties(class_node=class_node, include_ancestors=True)
-
-        assert set(cols) <= set(class_properties), \
-            f"import_pandas(): attempting to import Pandas dataframe columns " \
-            f"not declared in the Schema:  {set(cols) - set(class_properties)}"
-
-
-        # Prepare the properties to add
-        recordset = df.to_dict('records')   # Turn the Pandas dataframe into a list of dicts
-        #print(recordset)
-        print(f"Getting ready to import {len(recordset)} records...")
-
-        # Import each row ("recordset") in turn
-        internal_id_list = []
-        for d in recordset:     # d is a dictionary
-            d_scrubbed = cls._scrub_dict(d)     # Zap NaN's, blank strings, leading/trailing spaces
-
-            for dt_col in datetime_cols:
-                if dt_col in d_scrubbed:
-                    dt_str = d_scrubbed[dt_col]     # EXAMPLE: '2015-08-15 01:02:03'
-                    dt_python = datetime.fromisoformat(dt_str)  # As a python "datetime" object
-                                                                # EXAMPLE: datetime.datetime(2015, 8, 15, 1, 2, 3)
-                    dt_neo = DateTime.from_native(dt_python)    # In Neo4j format; TODO: let NeoAccess handle this
-                                                                # EXAMPLE: neo4j.time.DateTime(2015, 8, 15, 1, 2, 3, 0)
-                    d_scrubbed[dt_col] = dt_neo     # Replace the original string value
-
-            for col in int_cols:
-                if col in d_scrubbed:
-                    val = d_scrubbed[col]           # This might be a float
-                    val_int = int(val)
-                    d_scrubbed[col] = val_int       # Replace the original value
-
-
-            if schema_code:
-                d_scrubbed["schema_code"] = schema_code      # Add a legacy element, perhaps to be discontinued
-
-            #print(d_scrubbed)
-
-            # Perform the actual import
-            new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
-                                                           labels=labels, properties_to_set=d_scrubbed,
-                                                           uri_namespace=uri_namespace)
-            #print("new_internal_id", new_internal_id)
-            internal_id_list.append(new_internal_id)
-
-            if report_frequency  and  (len(internal_id_list) % report_frequency == 0):
-                print(f"    imported {len(internal_id_list)} so far")
-        # END for
-
-        if report_frequency:
-            print(f"    FINISHED importing a total of {len(internal_id_list)} records")
-
-        return internal_id_list
-
-
-
-    @classmethod
-    def _scrub_dict(cls, d :dict) -> dict:
-        """
-        Helper function to clean up data during imports.
-
-        Given a dictionary, assemble and return a new dict where string values are trimmed of
-        any leading or trailing blanks.
-        Entries whose values are blank or NaN get omitted from the new dictionary being returned.
-
-        EXAMPLE:    {"a": 1, "b": 3.5, "c": float("nan"), "d": "some value", "e": "   needs  cleaning!    ",
-                     "f": "", "g": "            "}
-                gets simplified to:
-                    {"a": 1, "b": 3.5, "d": "some value", "e": "needs  cleaning!"  }
-
-        :param d:   A python dictionary
-        :return:
-        """
-        scrubbed_d = {}
-        for k,v in d.items():   # Loop over all key/value pairs in the dictionary
-            if type(v) == str:
-                v = v.strip()       # Zap all leading and trailing blanks
-                if v == "":
-                    continue        # Blank string values get omitted
-
-            elif type(v) == float and math.isnan(v):
-                continue            # NaN's get omitted
-
-            scrubbed_d[k] = v
-
-        return scrubbed_d
-
-
-
-    @classmethod
-    def import_pandas_links(cls, df :pd.DataFrame,
-                            col_from :str, col_to :str,
-                            link_name :str,
-                            col_link_props=None, name_map=None,
-                            skip_errors = False, report_frequency=100) -> [int]:
-        """
-        Import a group of relationships between existing database Data Nodes,
-        from the rows of a Pandas dataframe, as database links between the existing Data Nodes.
-
-        :param df:          A Pandas Data Frame with the data RELATIONSHIP to import
-        :param col_from:    Name of the Data Frame column identifying the data nodes from which the relationship starts,
-                                (the values are expected to be foreign keys)
-        :param col_to:      Name of the Data Frame column identifying the data nodes from which the relationship starts
-                                (the values are expected to be foreign keys)
-        :param link_name:   Name of the new relationship being created
-        :param col_link_props: (OPTIONAL) Name of a property to assign to the relationships,
-                                as well as name of the Data Frame column containing the values.
-                                Any NaN values are ignored (no property set on that relationship.)
-        :param name_map:    (OPTIONAL) Dict with mapping from Pandas column names
-                                to Property names in the data nodes in the database
-        :param skip_errors: (OPTIONAL) If True, the import continues even in the presence of errors;
-                                default is False
-        :param report_frequency: (OPTIONAL) How often to print out the status of the import-in-progress
-
-        :return:            A list of of the internal database ID's of the created links
-        """
-        # TODO: verify that the requested relationship between the Classes is registered in the Schema
-
-        cols = list(df.columns)     # List of column names in the Pandas Data Frame
-        assert col_from in cols, \
-            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` " \
-            f"requested in the argument 'col_from'"
-
-        assert col_to in cols, \
-            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` " \
-            f"requested in the argument 'col_to'"
-
-        # Starting with the column names in the Pandas data frame,
-        # determine the name of the field names in the database if they're mapped to a different name
-        if name_map and col_from in name_map:
-            key_from = name_map[col_from]
-        else:
-            key_from = col_from
-
-        if name_map and col_to in name_map:
-            key_to = name_map[col_to]
-        else:
-            key_to = col_to
-
-        if name_map and col_link_props in name_map:
-            link_prop = name_map[col_link_props]
-        else:
-            link_prop = col_link_props
-
-
-        recordset = df.to_dict('records')   # Turn the Pandas dataframe into a list of dicts
-        print(f"Getting ready to import {len(recordset)} links...")
-
-        links_imported = []
-        for d in recordset:     # d is a dictionary
-            # For each row, in the Pandas data frame: prepare a Cypher query to link up the 2 nodes
-            # TODO: turn into a whole-dataset query
-
-            rel_cypher = ""
-            data_dict = {"value_from": d[col_from], "value_to": d[col_to]}
-            is_nan = False
-            if link_prop:
-                rel_prop_value = d[link_prop]
-                if pd.isna(rel_prop_value):
-                    is_nan = True
-                else:
-                    rel_cypher = f"{{`{link_prop}`: $rel_prop_value}}"
-                    data_dict["rel_prop_value"] = rel_prop_value
-
-            q = f'''
-                MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
-                MERGE (from_node)-[r:`{link_name}` {rel_cypher}]->(to_node)
-                RETURN id(r) AS link_id
-                '''
-
-            #cls.db.debug_query_print(q, data_dict)
-            result = cls.db.update_query(q, data_dict)
-            #print(result)
-
-            if result.get('relationships_created') == 1:    # If a new link was created
-                returned_data = result.get('returned_data')
-                # EXAMPLE of returned_data': [{'link_id': 103}]}
-                links_imported.append(returned_data[0]["link_id"])
-                if col_link_props and (not is_nan) and (result.get('properties_set') != 1):
-                    error_msg = f"import_pandas_links(): failed to set the property value " \
-                                f"for the new relationship for Pandas row: {d}"
-                    if skip_errors:
-                        print(error_msg)
-                    else:
-                        raise Exception(error_msg)
-            else:                                           # If no link was created
-                error_msg = f"import_pandas_links(): failed to create a new relationship for Pandas row: {d}"
-                if skip_errors:
-                    print(error_msg)
-                else:
-                    raise Exception(error_msg)
-
-            if report_frequency  and  (len(links_imported) % report_frequency == 0):
-                print(f"    imported {len(links_imported)} so far")
-        # END for
-
-        if report_frequency:
-            print(f"    FINISHED importing a total of {len(links_imported)} links")
-
-        return links_imported
 
 
 
@@ -3307,36 +3055,300 @@ class NeoSchema:
 
 
 
-    @classmethod
-    def follow_links_NOT_YET_IMPLEMENTED(cls, class_name, key_name, key_value, link_sequence):
-        """
-        Follow a chain of links among data nodes,
-        starting with a given data node (or maybe possibly a set of them?)
-
-        :param class_name:      (OPTIONAL)
-        :param key_name:        TODO: or pass a "match" object?
-        :param key_value:
-        :param link_sequence:   EXAMPLE: [("occurs", "OUT", "Indexer),
-                                          ("has_index", "IN", None)]
-                                    Each triplet is: (relationship name,
-                                                      direction,
-                                                      name of Class of data node on other side)
-                                    Any component could be None
-        :return:                A list of internal node ID's (or, optionally, all properties of the end nodes?)
-        """
-        #TODO: possibly use cls.db.follow_links()
-        pass
-
-
-
 
     #####################################################################################################
 
-    '''                                      ~   DATA IMPORT   ~                                       '''
+    '''                                  ~   BULK DATA IMPORT   ~                                     '''
 
-    def ________DATA_IMPORT________(DIVIDER):
+    def ________BULK_DATA_IMPORT________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
+
+
+    @classmethod
+    def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
+                            datetime_cols=None, int_cols=None,
+                            extra_labels=None, uri_namespace=None,
+                            schema_code=None, report_frequency=100) -> [int]:
+        """
+        Import a group of entities, from the rows of a Pandas dataframe, as Data Nodes in the database.
+
+        Dataframe cells with NaN's and empty strings are dropped - and never make it into the database.
+
+        :param df:          A Pandas Data Frame with the data to import;
+                                each row represents a record - to be turned into a graph-database node.
+                                Each column represents a Property of the data node, and it must have been
+                                previously declared in the Schema
+        :param class_node:  Either an integer with the internal database ID of an existing Class node,
+                                or a string with its name
+        :param datetime_cols:(OPTIONAL) String, or list/tuple of strings, of column name(s)
+                                that contain datetime strings such as '2015-08-15 01:02:03'
+                                (compatible with the python "datetime" format)
+        :param int_cols:    (OPTIONAL) String, or list/tuple of strings, of column name(s)
+                                that contain integers, or that are to be converted to integers
+                                (typically necessary because numeric Pandas columns with NaN's
+                                 are automatically turned into floats; this argument will cast them to int's, and drop the NaN's)
+        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
+                                IN ADDITION TO the Class name (which is always used as label)
+        :param uri_namespace:(OPTIONAL) String with a namespace to use to auto-assign uri values on the new Data nodes;
+                                if not passed, no uri values will get set on the new nodes
+        :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
+                                to a "schema_code" property for each new data node created
+        :param report_frequency: (OPTIONAL) How often to print the status of the import-in-progress
+
+        :return:            A list of the internal database ID's of the newly-created Data nodes
+        """
+        # TODO: pytest uri_namespace argument
+
+        # Do various validations
+        cls.assert_valid_class_identifier(class_node)
+
+        assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
+            "NeoSchema.import_pandas_nodes(): argument `extra_labels`, if passed, must be a string, or list/tuple of strings"
+
+
+        # Obtain both the Class name and its internal database ID
+        if type(class_node) == str:
+            class_name = class_node
+            class_internal_id = cls.get_class_internal_id(class_node)
+        else:
+            class_name = cls.get_class_name(class_node)
+            class_internal_id = class_node
+
+
+        # Make sure that the Class accepts Data Nodes
+        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
+            raise Exception(f"NeoSchema.import_pandas_nodes(): "
+                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
+
+
+        labels = class_name     # By default, use the Class name as a label
+
+        if (type(extra_labels) == str) and (extra_labels.strip() != class_name):
+            labels = [extra_labels, class_name]
+
+        elif isinstance(extra_labels, (list, tuple)):
+            # If we get thus far, labels is a list or tuple
+            labels = list(extra_labels)
+            if class_name not in extra_labels:
+                labels += [class_name]
+
+        if type(datetime_cols) == str:
+            datetime_cols = [datetime_cols]
+        elif datetime_cols is None:
+            datetime_cols = []
+
+        if type(int_cols) == str:
+            int_cols = [int_cols]
+        elif int_cols is None:
+            int_cols = []
+
+
+        # Verify whether all properties are allowed
+        # TODO: consider using allowable_props()
+        cols = list(df.columns)     # List of column names in the Pandas Data Frame
+        class_properties = cls.get_class_properties(class_node=class_node, include_ancestors=True)
+
+        assert set(cols) <= set(class_properties), \
+            f"import_pandas(): attempting to import Pandas dataframe columns " \
+            f"not declared in the Schema:  {set(cols) - set(class_properties)}"
+
+
+        # Prepare the properties to add
+        recordset = df.to_dict('records')   # Turn the Pandas dataframe into a list of dicts
+        #print(recordset)
+        print(f"import_pandas_nodes(): getting ready to import {len(recordset)} records...")
+
+        # Import each row ("recordset") in turn
+        internal_id_list = []
+        for d in recordset:     # d is a dictionary
+            d_scrubbed = cls._scrub_dict(d)     # Zap NaN's, blank strings, leading/trailing spaces
+
+            for dt_col in datetime_cols:
+                if dt_col in d_scrubbed:
+                    dt_str = d_scrubbed[dt_col]     # EXAMPLE: '2015-08-15 01:02:03'
+                    dt_python = datetime.fromisoformat(dt_str)  # As a python "datetime" object
+                    # EXAMPLE: datetime.datetime(2015, 8, 15, 1, 2, 3)
+                    dt_neo = DateTime.from_native(dt_python)    # In Neo4j format; TODO: let NeoAccess handle this
+                    # EXAMPLE: neo4j.time.DateTime(2015, 8, 15, 1, 2, 3, 0)
+                    d_scrubbed[dt_col] = dt_neo     # Replace the original string value
+
+            for col in int_cols:
+                if col in d_scrubbed:
+                    val = d_scrubbed[col]           # This might be a float
+                    val_int = int(val)
+                    d_scrubbed[col] = val_int       # Replace the original value
+
+
+            if schema_code:
+                d_scrubbed["schema_code"] = schema_code      # Add a legacy element, perhaps to be discontinued
+
+            #print(d_scrubbed)
+
+            # Perform the actual import
+            new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
+                                                           labels=labels, properties_to_set=d_scrubbed,
+                                                           uri_namespace=uri_namespace)
+            #print("new_internal_id", new_internal_id)
+            internal_id_list.append(new_internal_id)
+
+            if report_frequency  and  (len(internal_id_list) % report_frequency == 0):
+                print(f"    ...imported {len(internal_id_list)} so far")
+        # END for
+
+        if report_frequency:
+            print(f"    FINISHED importing a total of {len(internal_id_list)} records")
+
+        return internal_id_list
+
+
+
+    @classmethod
+    def import_pandas_links(cls, df :pd.DataFrame,
+                            col_from :str, col_to :str,
+                            link_name :str,
+                            col_link_props=None, name_map=None,
+                            skip_errors = False, report_frequency=100) -> [int]:
+        """
+        Import a group of relationships between existing database Data Nodes,
+        from the rows of a Pandas dataframe, as database links between the existing Data Nodes.
+
+        :param df:          A Pandas Data Frame with the data RELATIONSHIP to import
+        :param col_from:    Name of the Data Frame column identifying the data nodes from which the relationship starts,
+                                (the values are expected to be foreign keys)
+        :param col_to:      Name of the Data Frame column identifying the data nodes from which the relationship starts
+                                (the values are expected to be foreign keys)
+        :param link_name:   Name of the new relationship being created
+        :param col_link_props: (OPTIONAL) Name of a property to assign to the relationships,
+                                as well as name of the Data Frame column containing the values.
+                                Any NaN values are ignored (no property set on that relationship.)
+        :param name_map:    (OPTIONAL) Dict with mapping from Pandas column names
+                                to Property names in the data nodes in the database
+        :param skip_errors: (OPTIONAL) If True, the import continues even in the presence of errors;
+                                default is False
+        :param report_frequency: (OPTIONAL) How often to print out the status of the import-in-progress
+
+        :return:            A list of of the internal database ID's of the created links
+        """
+        # TODO: verify that the requested relationship between the Classes is registered in the Schema
+
+        cols = list(df.columns)     # List of column names in the Pandas Data Frame
+        assert col_from in cols, \
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` " \
+            f"requested in the argument 'col_from'"
+
+        assert col_to in cols, \
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` " \
+            f"requested in the argument 'col_to'"
+
+        # Starting with the column names in the Pandas data frame,
+        # determine the name of the field names in the database if they're mapped to a different name
+        if name_map and col_from in name_map:
+            key_from = name_map[col_from]
+        else:
+            key_from = col_from
+
+        if name_map and col_to in name_map:
+            key_to = name_map[col_to]
+        else:
+            key_to = col_to
+
+        if name_map and col_link_props in name_map:
+            link_prop = name_map[col_link_props]
+        else:
+            link_prop = col_link_props
+
+
+        recordset = df.to_dict('records')   # Turn the Pandas dataframe into a list of dicts
+        print(f"Getting ready to import {len(recordset)} links...")
+
+        links_imported = []
+        for d in recordset:     # d is a dictionary
+            # For each row, in the Pandas data frame: prepare a Cypher query to link up the 2 nodes
+            # TODO: turn into a whole-dataset query
+
+            rel_cypher = ""
+            data_dict = {"value_from": d[col_from], "value_to": d[col_to]}
+            is_nan = False
+            if link_prop:
+                rel_prop_value = d[link_prop]
+                if pd.isna(rel_prop_value):
+                    is_nan = True
+                else:
+                    rel_cypher = f"{{`{link_prop}`: $rel_prop_value}}"
+                    data_dict["rel_prop_value"] = rel_prop_value
+
+            q = f'''
+                MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
+                MERGE (from_node)-[r:`{link_name}` {rel_cypher}]->(to_node)
+                RETURN id(r) AS link_id
+                '''
+
+            #cls.db.debug_query_print(q, data_dict)
+            result = cls.db.update_query(q, data_dict)
+            #print(result)
+
+            if result.get('relationships_created') == 1:    # If a new link was created
+                returned_data = result.get('returned_data')
+                # EXAMPLE of returned_data': [{'link_id': 103}]}
+                links_imported.append(returned_data[0]["link_id"])
+                if col_link_props and (not is_nan) and (result.get('properties_set') != 1):
+                    error_msg = f"import_pandas_links(): failed to set the property value " \
+                                f"for the new relationship for Pandas row: {d}"
+                    if skip_errors:
+                        print(error_msg)
+                    else:
+                        raise Exception(error_msg)
+            else:                                           # If no link was created
+                error_msg = f"import_pandas_links(): failed to create a new relationship for Pandas row: {d}"
+                if skip_errors:
+                    print(error_msg)
+                else:
+                    raise Exception(error_msg)
+
+            if report_frequency  and  (len(links_imported) % report_frequency == 0):
+                print(f"    imported {len(links_imported)} so far")
+        # END for
+
+        if report_frequency:
+            print(f"    FINISHED importing a total of {len(links_imported)} links")
+
+        return links_imported
+
+
+
+    @classmethod
+    def _scrub_dict(cls, d :dict) -> dict:
+        """
+        Helper function to clean up data during imports.
+
+        Given a dictionary, assemble and return a new dict where string values are trimmed of
+        any leading or trailing blanks.
+        Entries whose values are blank or NaN get omitted from the new dictionary being returned.
+
+        EXAMPLE:    {"a": 1, "b": 3.5, "c": float("nan"), "d": "some value", "e": "   needs  cleaning!    ",
+                     "f": "", "g": "            "}
+                gets simplified to:
+                    {"a": 1, "b": 3.5, "d": "some value", "e": "needs  cleaning!"  }
+
+        :param d:   A python dictionary with data to "clean up"
+        :return:    A python dictionary with the cleaned-up data
+        """
+        scrubbed_d = {}
+        for k,v in d.items():   # Loop over all key/value pairs in the dictionary
+            if type(v) == str:
+                v = v.strip()       # Zap all leading and trailing blanks
+                if v == "":
+                    continue        # Blank string values get omitted
+
+            elif type(v) == float and math.isnan(v):
+                continue            # NaN's get omitted
+
+            scrubbed_d[k] = v
+
+        return scrubbed_d
+
 
 
     @classmethod
@@ -3389,7 +3401,7 @@ class NeoSchema:
         :param provenance:  Optional string to be stored in a "source" attribute
                                 in a special "Import Data" node for metadata about the import
 
-        :return:            List (possibly empty) of Neo4j ID's of the root node(s) created
+        :return:            List (possibly empty) of internal database ID's of the root node(s) created
 
         TODO:   * The "Import Data" Class must already be in the Schema; should automatically add it, if not already present
                 * DIRECTION OF RELATIONSHIP (cannot be specified by Python dict/JSON)

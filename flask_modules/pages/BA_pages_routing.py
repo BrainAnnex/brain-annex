@@ -6,10 +6,9 @@
 from flask import Blueprint, render_template, current_app, make_response, request   # The "request" package
                                                                                     # makes available a GLOBAL request object
 from flask_login import login_required, current_user
-from brainannex.data_manager import DataManager
+from flask_modules.navigation.navigation import get_site_pages  # Navigation configuration
+from brainannex import DataManager, Categories, version
 from brainannex.node_explorer import NodeExplorer
-from brainannex.categories import Categories
-#from brainannex.modules.py_graph_scape.py_graph_scape import PyGraphScape
 from datetime import datetime
 import time
 import json
@@ -26,10 +25,13 @@ class PagesRouting:
     url_prefix = "/BA/pages"            # Prefix for all URL's handled by this module
     template_folder = "templates"       # Location of HTML templates (Relative to this module's location)
     static_folder = "static"            # Location of website's static content (Relative to this module's location)
-    config_pars = {}                    # Dict with all the app configuration parameters [NOT USED IN THIS MODULE]
+    config_pars = {}                    # Dict with all the app configuration parameters
 
-
-    site_pages = None                   # Data for the site navigation
+    site_data = {}                      # Dict of general site data to pass to most or all of the Flask templates;
+                                        # it contains the keys:
+                                        #   "site_pages"
+                                        #   "branding"
+                                        #   "version"
 
 
 
@@ -58,6 +60,14 @@ class PagesRouting:
 
         # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
         flask_app_obj.register_blueprint(flask_blueprint, url_prefix = cls.url_prefix)
+
+        # Save the app configuration parameters in a class variable
+        cls.config_pars = flask_app_obj.config
+
+        cls.site_data =  {"site_pages": get_site_pages(),
+                          "branding": cls.config_pars.get("BRANDING"),
+                          "version": version()
+                         }
 
 
 
@@ -123,7 +133,7 @@ class PagesRouting:
             # EXAMPLE: {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
             #           'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
             #           'Headers': ['text']}
-            print("records_schema_data: ", records_schema_data)
+            #print("records_schema_data: ", records_schema_data)
 
             bread_crumbs = Categories.create_bread_crumbs(category_uri) # A list with data from which to create UI "bread crumbs"
             #print("bread_crumbs: ", bread_crumbs)
@@ -141,7 +151,9 @@ class PagesRouting:
             #       ]
 
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages, header_title=category_name,
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    content_items=content_items,
                                    category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    all_categories=all_categories,
@@ -163,7 +175,10 @@ class PagesRouting:
 
             content_items = Categories.get_content_items_by_category(uri=category_uri)
 
-            return render_template(template, content_items=content_items)
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
+                                   content_items=content_items)
 
 
 
@@ -186,6 +201,8 @@ class PagesRouting:
                             # EXAMPLE: [{'uri': '2', 'name': 'Work'}, {'uri': '3', 'name': 'Hobbies'}]
 
             return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    content_items=content_items,
                                    category_id=category_uri, category_name=category_name,
                                    subcategories=subcategories)
@@ -203,9 +220,10 @@ class PagesRouting:
             """
             #print(f"User is logged in as: `{current_user.username}`")
             template = "admin.htm"
+
             return render_template(template,
-                                   username=current_user.username,
-                                   current_page=request.path, site_pages=cls.site_pages)
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username)
 
 
 
@@ -218,7 +236,9 @@ class PagesRouting:
             """
             template = "schema_manager.htm"
             class_list = DataManager.all_schema_classes()
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    class_list=class_list)
 
 
@@ -235,7 +255,9 @@ class PagesRouting:
             graph_obj = DataManager.get_schema_visualization_data()  # TODO: turn into a dict
             #print(graph_obj)
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    graph_data=graph_obj.get_graph_data())
 
 
@@ -255,7 +277,9 @@ class PagesRouting:
             intake_folder = current_app.config['INTAKE_FOLDER']            # Defined in main file
             outtake_folder = current_app.config['OUTTAKE_FOLDER']          # Defined in main file
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    class_list=class_list, intake_status=intake_status,
                                    intake_folder=intake_folder, outtake_folder=outtake_folder)
 
@@ -285,7 +309,9 @@ class PagesRouting:
             parent_categories = Categories.get_parent_categories(category_uri)
             pin_status = Categories.is_pinned(category_uri)
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    all_categories=all_categories, pin_status=pin_status)
@@ -307,7 +333,9 @@ class PagesRouting:
 
             all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    all_categories=all_categories)
 
 
@@ -333,9 +361,10 @@ class PagesRouting:
             content_items, page_header = DataManager.search_for_terms(words=words, search_category=search_category)
 
             return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    content_items=content_items,
-                                   page_header=page_header,
-                                   current_page=request.path, site_pages=cls.site_pages)
+                                   page_header=page_header)
 
 
 
@@ -354,7 +383,9 @@ class PagesRouting:
 
             template = "experimental.htm"
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username)
 
 
 
@@ -367,7 +398,9 @@ class PagesRouting:
 
             label_list = DataManager.get_node_labels()
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    label_list = label_list)
 
 
@@ -382,7 +415,9 @@ class PagesRouting:
             node_list = NodeExplorer.serialize_nodes(None)
             node_list_json = json.dumps(node_list)
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages,
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    node_list=node_list, node_list_json=node_list_json)
 
 
@@ -398,8 +433,10 @@ class PagesRouting:
 
             template = "manage_node_labels.htm"
             label_list = DataManager.get_node_labels()
-            return render_template(template, label_list = label_list, current_page=request.path,
-                                   site_pages=cls.site_pages)
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
+                                   label_list = label_list)
 
 
 
@@ -416,7 +453,9 @@ class PagesRouting:
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = \
                 NodeExplorer.all_nodes_by_label(label)
 
-            return render_template(template, current_page="node", site_pages=cls.site_pages,   # Maybe it should be current_page=request.path
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    label_list = label_list,
                                    header_list = header_list, record_list = record_list,
                                    inbound_headers = inbound_headers,
@@ -436,7 +475,9 @@ class PagesRouting:
             """
             template = "table_tests.htm"
 
-            return render_template(template, current_page=request.path, site_pages=cls.site_pages)
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username)
 
 
 
@@ -457,7 +498,9 @@ class PagesRouting:
             # A test of integration into site navigation
             # EXAMPLE invocation: http://localhost:5000/BA/pages/test/nav
             template = "tests/nav.htm"
-            return render_template(template, site_pages=cls.site_pages)
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username)
 
 
         @bp.route('/test/upload')

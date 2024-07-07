@@ -118,8 +118,12 @@ Vue.component('vue-plugin-r-linked',
             },
 
             render_cell(cell_data)
-            // If the string is a URL, convert it into a hyperlink
+            // If the string is a string that appears to be a URL, convert it into a hyperlink;
+            // otherwise, just return the argument
             {
+                if (typeof cell_data != "string")
+                     return cell_data;
+
                 // Do a simple-minded check as to whether the cell content appear to be a hyperlink
                 if (cell_data.substring(0, 8) == "https://"
                             ||  cell_data.substring(0, 7) == "http://")

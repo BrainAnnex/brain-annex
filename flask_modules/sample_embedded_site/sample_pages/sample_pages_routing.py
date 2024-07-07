@@ -2,8 +2,11 @@
 Generator of Sample Pages for the Example Embedded Site
 """
 
-from flask import Blueprint, render_template, request   # The "request" package makes available a GLOBAL request object
-from flask_modules.navigation.navigation import get_site_pages        # Navigation configuration for this site
+from flask import Blueprint, render_template, request           # The "request" package makes available a GLOBAL request object
+from flask_login import login_required, current_user
+
+from flask_modules.navigation.navigation import get_site_pages  # Navigation configuration
+from brainannex import version
 
 
 
@@ -18,6 +21,13 @@ class SamplePagesRouting:
     template_folder = "templates"           # Relative to this module's location
     static_folder = "static"                # Relative to this module's location
     config_pars = {}                        # Dict with all the app configuration parameters
+
+    site_data = {}                          # Dict of general site data to pass to most or all of the Flask templates;
+                                            # it contains the keys:
+                                            #   "site_pages"
+                                            #   "branding"
+                                            #   "version"
+
 
 
 
@@ -49,6 +59,11 @@ class SamplePagesRouting:
 
         # Save the app configuration parameters in a class variable
         cls.config_pars = flask_app_obj.config
+
+        cls.site_data =  {"site_pages": get_site_pages(),
+                          "branding": cls.config_pars.get("BRANDING"),
+                          "version": version()
+                          }
 
 
 
@@ -85,7 +100,9 @@ class SamplePagesRouting:
             # EXAMPLE invocation: http://localhost:5000/sample/pages/sample-page
 
             template = "sample.htm"
-            return render_template(template, current_page=request.path, site_pages=get_site_pages())
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username)
 
 
 
@@ -113,7 +130,8 @@ class SamplePagesRouting:
             # 3. Pass to the HTML template whatever variables are needed
             #    (current_page and site_pages are currently used for navigation)
             return render_template(template,
-                                   current_page=request.path, site_pages=get_site_pages(),
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
                                    biomarker = my_variable, my_list = my_list,
                                    template_page=template)
 

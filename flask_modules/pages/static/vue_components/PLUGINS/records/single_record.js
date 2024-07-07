@@ -190,13 +190,23 @@ Vue.component('vue-plugin-single-record',
 
 
             render_cell(cell_data)
-            /*  If the passed string appears to be a URL, convert it into a hyperlink, opening in a new window;
-                and if the URL is very long, show it in abbreviated form
+            /*  If the passed argument is a string that appears to be a URL, convert it into a string with HTML code
+                for a hyperlink that opens in a new window;
+                if the URL is very long, show it in abbreviated form in the hyperlink text.
+                In all other cases, just return the argument.
+
+                Note: this function is also found in records.js
              */
             {
-                const max_url_len = 30;     // NOT counting the protocol part (such as "https://")
+                const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
 
                 let dest_name = "";         // Name of the destination of the link, if applicable
+
+                if (typeof cell_data != "string")  {
+                    //console.log(`Argument passed to render_cell() is not a string.  Value passed: ${cell_data}`);
+                    return cell_data;
+                }
+
                 // Do a simple-minded check as to whether the cell content appear to be a hyperlink
                 if (cell_data.substring(0, 8) == "https://")
                     dest_name = cell_data.substring(8);
@@ -205,7 +215,7 @@ Vue.component('vue-plugin-single-record',
 
                 if (dest_name != "")  {     // If the cell data was determined to be a URL
                     if (dest_name.length > max_url_len)
-                        dest_name = dest_name.substring(0, max_url_len) + "..."; // Display long links in abbreviated form
+                        dest_name = dest_name.substring(0, max_url_len) + "...";    // Display long links in abbreviated form
 
                     return `<a href='${cell_data}' target='_blank' style='font-size:10px'>${dest_name}<a>`;
                 }

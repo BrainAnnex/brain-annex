@@ -1,8 +1,9 @@
-{#  Flask-passed parameters:
+{#  Top Navigation bar
 
-        site_pages, current_page
+    Flask-passed parameters:
 
-    Top Navigation bar
+        site_data.site_pages, current_page
+
 
     The entries from which to populate the navbar are defined in navigation.py
 
@@ -10,7 +11,7 @@
                 need to
                 1) include (in a suitable position) the line
                     {% include "navbar_top.htm" %}
-                2) receive the Flask-passed parameters:  site_pages, current_page
+                2) receive the Flask-passed parameters:  site_data.site_pages, current_page
                     (passed as arguments to the Flask function render_template)
                 3) include in their header the CSS file:  /navigation/static/navbar_top.css
  #}
@@ -24,13 +25,13 @@
     <tr class='major-line'>
 
     {# Loop over the listing of pages to show in the navbar #}
-    {% for url in site_pages %}
+    {% for url in site_data.site_pages %}
         {% if url == current_page %}
         <td align='center' class='selected'>
-            {{site_pages[url].upper()}}
+            {{site_data.site_pages[url].upper()}}
         {% else %}
         <td align='center' class='unselected'>
-            <a href="{{url}}">{{site_pages[url]}}</a>
+            <a href="{{url}}">{{site_data.site_pages[url]}}</a>
         {% endif %}
         </td>
     {% endfor %}

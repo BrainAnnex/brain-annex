@@ -4,9 +4,9 @@
 
     Flask-passed parameters:
 
-        site_pages
+        site_data           A dict (for details, see BA_pages_routings.py)
         current_page
-        header_title
+        username
 
         category_uri        A string with the URI of the Category featured on this page
         category_name       The name of the above Category
@@ -46,6 +46,7 @@
                          {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
                          {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
                         ]
+
 
     ----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2024 Julian A. West
@@ -98,7 +99,9 @@
 
 
 {# HORIZONTAL STATUS BAR (fixed at the top) #}
-{% include "horiz_status_bar.htm" %}
+{% with header_title=category_name %}
+    {% include "horiz_status_bar.htm" %}
+{% endwith %}
 
 
 
@@ -541,6 +544,8 @@
 
 
 </div>  <!-- END OF scroll-canvas -->
+
+<p style="color:#AAA; text-align: center; margin-top:0">Powered by Brain Annex {{site_data.version}}</p>
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
 

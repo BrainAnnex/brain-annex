@@ -21,7 +21,6 @@ from flask_modules.home.home_routing import HomeRouting
 # The navigation is shared by Brain Annex and possibly other independent sites
 # embedded (co-hosted) with it
 from flask_modules.navigation.navigation_routing import Navigation
-from flask_modules.navigation.navigation import get_site_pages
 
 from flask_modules.pages.BA_pages_routing import PagesRouting
 from flask_modules.api.BA_api_routing import ApiRouting
@@ -134,7 +133,7 @@ APP_NEO4J_DBASE = NeoAccess(host=NEO4J_HOST, credentials=(NEO4J_USER, NEO4J_PASS
 InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
 InitializeBrainAnnex.set_folders(MEDIA_FOLDER, LOG_FOLDER)
 
-site_pages = get_site_pages()     # Data for the site navigation
+#site_pages = get_site_pages()     # Data for the site navigation
 
 
 
@@ -161,24 +160,26 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER                 # A temporary folder
 app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
 app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
 
+#app.config['site_pages'] = site_pages
+
 
 
 # The site's home (i.e. top-level) pages, incl. login
 HomeRouting.setup(app)
 
 # The navbar
-Navigation.setup(app)       # TODO: also pass config_dict
+Navigation.setup(app)
 
 # The BrainAnnex-provided UI
-PagesRouting.site_pages = site_pages
-PagesRouting.setup(app)     # TODO: also pass config_dict
+#PagesRouting.site_pages = site_pages
+PagesRouting.setup(app)
 
 # The BrainAnnex-provided endpoints
 ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
 ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
-ApiRouting.setup(app)       # TODO: also pass config_dict
+ApiRouting.setup(app)
 
-# Examples of generic pages and API     # TODO: also pass config_dict
+# Examples of generic pages and API
 SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
 SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
 

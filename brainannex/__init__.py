@@ -11,5 +11,10 @@ __all__ = [
     'NeoSchema',
     'DataManager',
     'UserManager',
-    'Categories'
+    'Categories',
+    'version'
 ]
+
+
+def version():
+    return __version__
