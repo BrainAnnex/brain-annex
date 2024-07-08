@@ -937,7 +937,7 @@ class ApiRouting:
 
         #####################################################################################################
 
-        '''                 ~  CATEGORY-RELATED  (incl. adding new Content Items)    ~                    '''
+        '''                                 ~  CATEGORY-RELATED   ~                                       '''
 
         def ________CATEGORY_RELATED________(DIVIDER):
             pass        # Used to get a better structure view in IDEs
@@ -1102,7 +1102,7 @@ class ApiRouting:
             :param op:  Either "set" or "unset"
 
             RETURNED PAYLOAD (on success):
-                None
+                Nothing
             """
             try:
                 Categories.pin_category(uri=uri, op=op)
@@ -1113,6 +1113,62 @@ class ApiRouting:
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
+
+
+        @bp.route('/see_also', methods=['POST'])
+        @login_required
+        def see_also():
+            """
+            Add or remove a "SEE ALSO" relationship between two given Categories
+
+
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/see_also -d
+                            "from_category_uri=some_category_uri&to_category_uri=some_other_category_uri&action=add"
+
+            POST FIELDS:
+                from_category_uri       URI to identify the Category from which the "BA_see_also" link originates
+                to_category_uri         URI to identify the Category towards which the "BA_see_also" link points
+                action                  Either "add" or "remove"
+
+            RETURNED PAYLOAD (on success):
+                Nothing
+            """
+            # Extract the POST values
+            post_data = request.form     # Example: ImmutableMultiDict([('from_category_uri', 'cat-12'),
+            #                              ('to_category_uri', 'cat-4732'),
+            #                              ('action', 'remove')])
+            #print(post_data)
+
+            try:
+                data_dict = cls.extract_post_pars(post_data,
+                                                  required_par_list=['from_category_uri', 'to_category_uri', 'action'])
+                if data_dict["action"] == "add":
+                    Categories.create_see_also(from_category=data_dict["from_category_uri"], to_category=data_dict["to_category_uri"])
+                elif data_dict["action"] == "remove":
+                    Categories.remove_see_also(from_category=data_dict["from_category_uri"], to_category=data_dict["to_category_uri"])
+                else:
+                    raise Exception(f"The parameter `action` in the POST request has an unknown value ({data_dict['action']}); "
+                                    f"allowed values are 'add' and 'remove'")
+
+                response_data = {"status": "ok"}
+            except Exception as ex:
+                err_details = f"/see_also : Unable to modify the requested 'SEE ALSO' link.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+
+        #####################################################################################################
+
+        '''                                  ~  CONTENT ITEMS    ~                                       '''
+
+        def ________CONTENT_ITEMS________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
 
 
         @bp.route('/link_content_at_end/<category_uri>/<item_uri>')

@@ -459,8 +459,11 @@ class Categories:
                                 subcategory_name        The name to give to the new Subcategory
                                 subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
 
-        :return:            A string with the auto-increment "uri" value of the Category node just created
+        :return:            A string with the "uri" of the Category node just created
+                                (which makes use of a auto-increment value)
         """
+        # TODO: use named arguments rather than the archaic data_dict
+
         # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
         #       a Category to have multiple "children" with the same name)
         category_uri = data_dict.get("category_uri")
@@ -707,15 +710,29 @@ class Categories:
     @classmethod
     def create_see_also(cls, from_category :str, to_category :str) -> None:
         """
-        Create a "see_also" link between the given Categories
+        Create a "see_also" link between the given Categories, in the specified direction
 
         :param from_category:   URI of the Category where the "see_also" relationship originates
         :param to_category:     URI of the Category where the "see_also" relationship terminates
         :return:                None
         """
-
         NeoSchema.add_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
                                         rel_name="BA_see_also")
+
+
+
+    @classmethod
+    def remove_see_also(cls, from_category :str, to_category :str) -> None:
+        """
+        Remove a "see_also" link between the given Categories, in the specified direction.
+        If not found, an Exception is raised.
+
+        :param from_category:   URI of the Category where the "see_also" relationship originates
+        :param to_category:     URI of the Category where the "see_also" relationship terminates
+        :return:                None
+        """
+        NeoSchema.remove_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
+                                           rel_name="BA_see_also", labels="Categories")
 
 
 
@@ -929,7 +946,7 @@ class Categories:
             f"detach_from_category(): Cannot delete the only remaining 'BA_in_category' link " \
             f"from Content Item (URI: '{item_uri}') to Categories"
 
-        NeoSchema.remove_data_relationship(from_uri=item_uri, to_uri=category_uri,
+        NeoSchema.remove_data_relationship(from_id=item_uri, to_id=category_uri,
                                            rel_name="BA_in_category", labels=None)
 
 

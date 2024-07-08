@@ -487,7 +487,7 @@ class DataManager:
             Categories.remove_relationship_before(from_id=from_uri, to_id=to_uri,
                                                   rel_name=rel_name)       # Category-specific action
 
-        NeoSchema.remove_data_relationship(from_uri=from_uri, to_uri=to_uri,
+        NeoSchema.remove_data_relationship(from_id=from_uri, to_id=to_uri,
                                            rel_name=rel_name, labels="BA")
 
 

@@ -315,4 +315,4 @@ def test_add_data_relationship(db):
 
 
 def test_remove_data_relationship(db):
-    NeoSchema.remove_data_relationship(from_uri=3, to_uri=1, rel_name="BA_subcategory_of")
+    NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")

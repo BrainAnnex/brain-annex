@@ -1820,14 +1820,24 @@ class NeoSchema:
         result = cls.db.query(q, data_binding)
 
         if len(result) == 0:    # TODO: separate the 2 scenarios leading to this
-            raise Exception(f"The given data node (id: {node_id}) does not exist or is not associated to any schema class")
+            if id_type:
+                raise Exception(f"class_of_data_node(): The given data node ({id_type}: `{node_id}`) "
+                                f"does not exist or is not associated to any Schema class")
+            else:
+                raise Exception(f"The given data node (internal database id: {node_id}) "
+                                f"does not exist or is not associated to any Schema class")
         elif len(result) > 1:
-            raise Exception(f"The given data node (id: {node_id}) is associated to more than 1 schema class (forbidden scenario)")
+            if id_type:
+                raise Exception(f"class_of_data_node(): The given data node ({id_type}: `{node_id}`) "
+                                f"is associated to more than 1 Schema class (forbidden scenario)")
+            else:
+                raise Exception(f"class_of_data_node(): The given data node (internal database id: {node_id}) "
+                                f"is associated to more than 1 Schema class (forbidden scenario)")
 
         class_node = result[0]
 
         if "name" not in class_node:
-            raise Exception("The associate schema class node lacks a name")
+            raise Exception("class_of_data_node(): The associate schema class node lacks a name")
 
         return class_node["name"]
 
@@ -2962,7 +2972,8 @@ class NeoSchema:
         from_class = cls.class_of_data_node(node_id=from_id, id_type=id_type)
         to_class = cls.class_of_data_node(node_id=to_id, id_type=id_type)
         assert cls.is_link_allowed(link_name=rel_name, from_class=from_class, to_class=to_class), \
-            f"add_data_relationship(): Relationship `{rel_name}` from Class `{from_class}` to Class `{to_class}` " \
+            f"add_data_relationship(): The relationship requested to be added `{rel_name}`, " \
+            f"from Class `{from_class}` to Class `{to_class}`, " \
             f"must first be registered in the Schema"
 
 
@@ -2993,28 +3004,32 @@ class NeoSchema:
 
 
     @classmethod
-    def remove_data_relationship(cls, from_uri :str, to_uri :str, rel_name :str, labels=None) -> None:
+    def remove_data_relationship(cls, from_id :str, to_id :str, rel_name :str, id_type="uri", labels=None) -> None:
         """
         Drop the relationship with the given name, from one to the other of the 2 given DATA nodes.
         Note: the data nodes are left untouched.
         If the specified relationship didn't get deleted, raise an Exception
 
-        TODO: first verify that the relationship is optional in the schema???
-        TODO: migrate from "uri" values to also internal database ID's, as done in class_of_data_node()
-
-        :param from_uri:    String with the "uri" value of the data node at which the relationship originates
-        :param to_uri:      String with the "uri" value of the data node at which the relationship ends
+        :param from_id:     String with the "uri" value of the data node at which the relationship originates
+        :param to_id:       String with the "uri" value of the data node at which the relationship ends
         :param rel_name:    The name of the relationship to delete
+        :param id_type:     For now, only "uri" (default) is implemented
         :param labels:      OPTIONAL (generally, redundant).  Labels required to be on both nodes
 
         :return:            None.  If the specified relationship didn't get deleted, raise an Exception
         """
+        # TODO: first verify that the relationship is optional in the schema???
+        # TODO: migrate from "uri" values to also offer option or internal database ID's, as done in class_of_data_node()
+
         assert rel_name != "", f"remove_data_relationship(): no name was provided for the relationship"
 
-        match_from = cls.db.match(labels=labels, key_name="uri", key_value=from_uri,
+        assert id_type == "uri", \
+                f"remove_data_relationship(): currently, only the 'uri' option is available for the argument `id_type`"
+
+        match_from = cls.db.match(labels=labels, key_name="uri", key_value=from_id,
                                   dummy_node_name="from")
 
-        match_to =   cls.db.match(labels=labels, key_name="uri", key_value=to_uri,
+        match_to =   cls.db.match(labels=labels, key_name="uri", key_value=to_id,
                                   dummy_node_name="to")
 
         cls.db.remove_links(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
