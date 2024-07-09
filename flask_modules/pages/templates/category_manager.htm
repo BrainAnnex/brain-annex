@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+{#  Editor for Categories and the relationships among them
+
+    Flask-passed parameters:
+        site_data
+        current_page
+        username
+
+        category_uri        EXAMPLE: "123"
+        category_name       EXAMPLE: "French"
+        category_remarks    EXAMPLE: "Notes from class"
+
+        subcategories
+        parent_categories   EXAMPLE: [{'name': 'Language', 'uri': '544', 'schema_code': 'cat'}]
+        all_categories      EXAMPLE: [{'name': 'Language', 'uri': '544'}]
+
+        pin_status          True if this Category is "pinned"; otherwise, False
+
+        TODO: pass the see_also data
+#}
+
+<html>
+<head>
+    <title>Edit Categories - Brain Annex</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/category_manager.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <!-- JavaScript -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+<body class='cp'>
+
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
+
+
+
+<!-- Informational/Navigational OVERLAY used if this Category gets deleted -->
+
+<div v-if="overlay" class="overlay-bg" v-bind:style="{ 'height': compute_height() + 'px' }">
+    <div class="overlay-box">
+        <img src="/BA/pages/static/graphics/info_small_24.png" style="vertical-align:middle">
+        <span style="color:green; font-weight: bold">This Category (&ldquo;{{category_name}}&rdquo;) was successfully deleted</span>
+        <br><br><br>
+        Go to the &nbsp; <a href="/BA/pages/category_manager/1" style='font-size:22px'>Root (home) category</a>
+        <br><br>
+        Or go to one of its <i>parent</i> categories: &nbsp; &nbsp;
+        <span v-for="parent_category in parent_categories" style='font-size:18px; margin-right:30px'>
+            <a v-bind:href="'/BA/pages/category_manager/' + [[ parent_category['uri'] ]]">[[ parent_category['name'] ]]</a>
+        </span>
+    </div>
+</div>
+
+
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
+
+<div class='lightbox' id='page'>   <!--  START LIGHTBOX -->
+
+
+<div class='page-header'>
+    Edit Categories
+
+    <form method='GET' action='/search.php'  id='ajax-form'  style='float:right; padding-right:5px;'>
+        <img src='/BA/pages/static/graphics/magnifier.png' alt='search box' title='search box'>
+        <input type='text' name='text' size='35'>
+        <input type='hidden' name='ac' value=1>
+        <input type='submit' value='SEARCH'>
+
+    </form>
+</div>   <!--  END PAGE HEADER -->
+
+<a href='/BA/pages/viewer/{{category_uri}}' title="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;"><img src="/BA/pages/static/graphics/open_16_227574.png" title="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;" alt="EXIT edit mode and go to the page for the category &ldquo;{{category_name}}&rdquo;" style="margin-left:16px">EXIT EDITOR and go to &ldquo;{{category_name}}&rdquo;</a><br>
+
+
+
+
+<div id='categoryManager' style='border:1px solid gray; background-color:white; margin-left:15px; margin-right:15px; margin-top:15px; padding:2px'>
+
+
+    <div class='categoryManagement  topRow'>
+        <img src='/BA/pages/static/graphics/parent.jpg'>
+
+
+        <template v-for="p in parent_categories">
+
+            <div style='width:105px'>&nbsp;</div>
+
+            <div style='width:105px; text-align:center'>
+
+                <!-- TODO: this needs replacing -->
+                <a href='javascript:replaceMenu(0)'>
+                    <img src='/BA/pages/static/graphics/replace_16_1329089.png'
+                         v-bind:title="'NOT YET IMPLEMENTED!!!  REMOVE &ldquo;' + p.name + '&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
+                    >
+                </a>
+                <br>
+
+                <!-- TODO: this form needs replacing -->
+                <form method='POST' action='doCategoryHandler2.php?op=switchParentNode&cat={{category_uri}}' id='form_0' style='display:none'>
+                    <input type='hidden' name='childID' value='{{category_uri}}'>
+                    <input type='hidden' name='oldParentID' value='8888'>
+                    <select id = 'menu_0' name = 'newParentID' style = 'width:180px'>
+                        <option value='-1'>[Select parent category]</option>
+                        {% for s in subcategories %}
+                            {% if s['uri'] != category_uri %}
+                                <option value="{{s['uri']}}">{{s['name']}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </form>
+
+                <!-- Icon to detach this category from one of its parents [TODO: gray out if only one parent] -->
+                <img @click="sever_relationship(p.uri , {{category_uri}} , 'parent')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                     class='clickable-icon' style="margin-left:8px"
+                     v-bind:title="'SEVER the sub-category relationship between `' + p.name + '` and `{{category_name}}`\n\
+It does *NOT* delete `' + p.name + '`'"
+                >
+                <br>
+
+                <span style='font-weight:bold; font-size:11px'>
+                    <a v-bind:href="'/BA/pages/category_manager/' + p.uri"
+                       v-bind:title="'Re-Center the Editor on this Category (&ldquo;'+ p.name + '&rdquo;)'"
+                    >
+                        [[p.name]]
+                    </a>
+                </span>
+
+            </div>
+
+        </template>     <!-- END of:  v-for="p in parent_categories" -->
+
+
+
+        <div style='width:105px'>&nbsp;</div>
+
+
+        <!-- Add an existing Category as an additional parent Category -->
+        <div style='width:180px; text-align:center'>
+            <span style='font-style:italic; color:#666666'>Make &ldquo;{{category_name}}&rdquo; also a Sub-category of:</span>
+            <br>
+
+            <select @change="add_parent_category"  v-model="uri_parent_to_add"  style='width:180px'>
+                <option disabled value=''>[Select parent category]</option>
+
+                {% for c in all_categories %}
+                    {% if c['uri'] != category_uri %}
+                        <option value="{{c['uri']}}">{{c['name']}}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+
+        </div>
+
+
+    </div><div class='categoryManagement'><div style='width:38px'>&nbsp;</div><div style='width:90%; border-bottom:2px solid black; border-left:2px solid black; border-right:2px solid black'>&nbsp;</div></div>
+
+    <div class='categoryManagement'>
+        <div style='width:350px'>&nbsp;</div>
+
+        <div><img src='/BA/pages/static/graphics/down_128_172594_from_parents.png'></div>
+    </div>
+
+    <div class="categoryManagement  midRow">
+
+
+    <div><img src="/BA/pages/static/graphics/current.jpg"></div>		<!-- The "THIS category" image on the left -->
+
+
+    <!-- A few icons with controls, to the left of this Category's name;
+         hide them (but without disturbing the layout) if we're in the middle of editing the name/remarks -->
+    <div v-bind:style="{visibility: !edit_name_mode ? 'visible' : 'hidden'}"
+                style="width:240px; text-align:right">
+
+        <a href='/BA/pages/viewer/{{category_uri}}'>
+            <img src='/BA/pages/static/graphics/open_16_227574.png'  style='margin-right:8px'
+                 title='Visit the &ldquo;{{category_name}}&rdquo; Page (EXIT edit mode)'
+                 alt='Visit the &ldquo;{{category_name}}&rdquo; Page (EXIT edit mode)'>
+        </a>
+
+        <!-- Icon to delete this Category -->
+        <div style='display:inline-block; margin-left:5px; margin-bottom:7px'>
+            <input type='image' src='/BA/pages/static/graphics/delete_16.png' @click="delete_category({{category_uri}})" title='delete this category ("{{category_name}}")' alt='delete this category ("{{category_name}}")'>
+        </div>
+
+        <!-- Icon to edit the name/remarks of this Category -->
+        <img @click="edit_name()"  src="/BA/pages/static/graphics/pencil2_16.png" class='clickable-icon' style="margin-left:8px"
+             title="edit name" alt="edit name">
+
+    </div>
+
+
+    <!-- Show the Category name/remarks OR an editing form for them -->
+    <div  v-if="!edit_name_mode" id="categoryName" style="font-weight:bold; color:brown; width:260px; text-align:center; font-size:16px; border:1px solid #CCC; padding:5px">
+        [[category_name_current_data]] &nbsp;<span style='font-size:10px; color:gray'>[[category_remarks_current_data]]</span>
+    </div>
+
+    <div v-else style="width:260px; border:1px solid #DDD; padding: 2px">
+        <!-- Form to edit the category's name/remarks -->
+        <input type="text" v-model="category_name_current_data" style="width:203px;">
+            <span style="font-size:9px; color:gray">Name</span>
+        <br>
+        <input type="text" v-model="category_remarks_current_data" style="width:203px;">
+            <span style="font-size:9px; color:gray">Remarks</span>
+        <br>
+
+        <button @click="save_name_edit">SAVE</button>
+        <a @click.prevent="cancel_name_edit()" href="#" style="margin-left:5px">Cancel</a>
+    </div>
+
+
+
+    <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
+    </div>
+
+    <!-- Pulldown menu to add SEE_ALSO links to other existing Categories -->
+    <div style="width:160px; font-size:12px">
+        &diams; Add "See Also" link:
+
+        <select @change="add_see_also"  v-model="uri_see_also_child_to_add"  style='width:185px'>
+            <option disabled value=''>[Select 'see-also' category]</option>
+
+            {% for c in all_categories %}
+                {% if c.uri != category_uri %}
+                    <option value="{{c.uri}}">
+                        {{c.name}}
+                    </option>
+                {% endif %}
+            {% endfor %}
+        </select>
+
+
+        <br><br>
+        <!-- TODO: IMPLEMENT DELETION of existing SEE_ALSO links -->
+        <form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_uri}}' style='display:inline-block; margin-left:5px'>
+        <input type='hidden' name='parentID' value='{{category_uri}}'>
+        <input type='hidden' name='childID' value='366'>
+        <input type='image' src='/BA/pages/static/graphics/delete_12_1493279.png'
+               title='NOT YET IMPLEMENTED.  SEVER the "see also" relationship between "{{category_name}}" and "OTHER CATEGORY TBA"'
+        >
+        </form>
+
+
+        <br><br>
+        <input type='checkbox' v-model="pin_status" @click='pin_category(pin_status)'>Pin
+
+    </div>
+</div>
+
+
+
+    <div class="categoryManagement">
+        <div style="width:350px">&nbsp;</div>
+        <div><img src="/BA/pages/static/graphics/down_128_172594_to_children.png"></div>
+    </div>
+
+
+    <div class="categoryManagement">
+        <div style="width:38px">&nbsp;</div>
+        <div style="width:90%; border-top:2px solid black; border-left:2px solid black; border-right:2px solid black">&nbsp;</div>
+    </div>
+
+
+    <div class="categoryManagement bottomRow">
+
+        <img src="/BA/pages/static/graphics/child.jpg">
+
+
+        <!-- Provide 2 Add-child forms, floated to the right -->
+        <div style="width:180px; float:right; margin-right:2px">
+            <!-- TODO: this needs replacing -->
+            <span style="font-style:italic; color:#666666">Add an <b>existing</b> Sub-category to &ldquo;{{category_name}}&rdquo;:</span><br>
+            <b>NOT YET IMPLEMENTED</b><br>
+            <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_uri}}' id='form_5'>
+                <input type='hidden' name='parentID' value='{{category_uri}}'>
+                <select id = 'menu_5' name = 'childID' style = 'width:180px'>
+                    <option value='-1'>[Select sub-category]</option>
+
+                    {% for c in all_categories %}
+                        {% if c['uri'] != category_uri %}
+                            <option value="{{c['uri']}}">{{c['name']}}</option>
+                        {% endif %}
+                    {% endfor %}
+
+                </select>
+            </form><br><br>
+
+            <span style="font-style:italic; color:#666666"><b>OR</b> Create a <b>new</b> Sub-category:</span>
+            <div  style="border:1px solid #BBB; padding: 2px; background-color:#E5E5E5">
+                Name <input type='text' v-model="new_subcategory_name" maxlength='60'><br>
+                Remarks <span style="color:gray">(optional)</span><input type='text'  v-model="new_subcategory_remarks" maxlength='90'><br>
+                <button @click="add_subcategory" style="margin-top:2px">Add</button>
+            </div>
+
+
+        </div>
+
+
+        <template v-for="s in subcategories">
+
+            <div style='width:73px; border-left:1px solid #CCC; text-align:center'>
+
+                <span style='font-weight:bold; font-size:10px'>
+                    <a v-bind:href="'/BA/pages/category_manager/' + s.uri"
+                       v-bind:title="'Re-Center the Editor on this Category (&ldquo;'+ s.name + '&rdquo;)'"
+                    >
+                        [[s.name]]
+                    </a>
+                </span><br>
+
+
+                <!-- Icon to detach this category from one of its children -->
+                <img @click="sever_relationship({{category_uri}} , s.uri , 'child')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                     class='clickable-icon' style="margin-left:8px"
+                     v-bind:title="'SEVER the sub-category relationship between `{{category_name}}` and &ldquo;' + s.name + '&rdquo;\n\
+It does *NOT* delete `' + s.name + '`'"
+                >
+                <br>
+
+                <!-- TODO: this needs replacing -->
+                <a href='javascript:replaceMenu(6)'>
+                    <img src='/BA/pages/static/graphics/replace_16_1329089.png'
+                         v-bind:title="'NOT YET IMPLEMENTED!!!  REMOVE &ldquo;' + s.name + '&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
+                    >
+                </a>
+                <br>
+
+                <!-- TODO: this form needs replacing -->
+                <form method='POST' action='doCategoryHandler2.php?op=switchChildNode&cat={{category_uri}}' id='form_6' style='display:none'>
+                    <input type='hidden' name='parentID' value='{{category_uri}}'>
+                    <input type='hidden' name='oldChildID' value='666'>
+                    <select id = 'menu_6' name = 'newChildID' style = 'width:180px'>
+                        <option value='-1'>[Select sub-category]</option>
+                        {% for c in all_categories %}
+                            {% if c['uri'] != category_uri %}
+                                <option value="{{c['uri']}}">{{c['name']}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </form>
+
+            </div>
+
+
+            <div style='width:73px'>&nbsp;</div>
+
+        </template>     <!-- END of:  v-for="s in subcategories" -->
+
+
+    </div>  <!-- end div class="categoryManagement bottomRow" -->
+
+    <div style="clear: both;"></div>  <!-- Clear the bottom of the Add-child form -->
+
+
+</div>
+
+
+
+<!-- Status info -->
+<p style="font-size:16px">
+    <span v-if="waiting" class="waiting">Performing the requested operation...</span>
+    <span v-bind:class="{'error-message': error, 'status-message-success': !error }">[[status_message]]</span>
+</p>
+
+
+<p style="margin-top:0; padding: 5px; width: 50%">
+    <span style="font-size:14px; background-color: yellow;">IMPORTANT: still in Beta.  <i>A few functions aren't yet implemented.</i></span>
+</p>
+
+<br>
+
+</div>	<!-- END OF lightbox -->
+
+
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root-1 element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements.
+     Using type="module" because it contains imports! -->
+
+<script>
+// Instantiation must come after the component definition
+new Vue({
+    el: '#vue-root-1',
+
+    delimiters: ['[[', ']]'] ,      // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+
+    data: {
+
+        overlay: false,             // To cover the main display with a message
+
+        // The DATA HANDOVER from Flask to Vue
+        category_uri: {{category_uri}},
+        parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
+                                                           // Eg: [{uri: '544', name: 'Language', schema_code: 'cat'}]
+        subcategories: {{subcategories | tojson}},         // List of sub-categories, each of which is an object
+                                                           //       (same format as for parent_categories)
+        all_categories: {{all_categories | tojson}},       // List of all categories, each of which is an object
+                                                           // Eg: [{uri: '888', name: 'Greek'}]
+
+        // The values bound to the editing fields, initially from the data handover from Flask;
+        //      it'll change in the course of the edit-in-progress
+        category_name_current_data: {{category_name | tojson}},
+        category_remarks_current_data: {{category_remarks | tojson}},
+
+        // Copy of the field values, used to restore the data in case of a Cancel or failed save
+        category_name_original_data: {{category_name | tojson}},
+        category_remarks_original_data: {{category_remarks | tojson}},
+
+        // Used by pulldown menus ('' is its default choice - asking the user to make a selection)
+        uri_parent_to_add: '',
+        uri_see_also_child_to_add: '',
+
+
+        edit_name_mode: false,      // To expose controls for editing name/remarks
+
+        pin_status: {{pin_status | tojson}},    // true if this Category is "pinned"; otherwise, false  (Note: tojson converts bools)
+
+        // For the "Add Subcategory" form
+        new_subcategory_name: "",
+        new_subcategory_remarks: "",
+
+        waiting: false,             // Whether any server request is still pending
+        error: false,               // Whether the last server communication resulted in error
+        status_message: ""          // Message for user about status of last operation upon server response (NOT for "waiting" status)
+    },
+
+
+    // ---------------------  METHODS  ----------------------
+
+    methods:  {
+
+        compute_height()
+        {
+            /*
+            const bodytags = document.getElementsByTagName('body');	// Locate all the <body> tag elements
+            const mainbody = bodytags[0];						    // First element with a <body> tag
+            const window_height = mainbody.offsetHeight;		    // To take into account the vertical extension that might be hidden by the scrolling
+		    alert(window_height);
+
+            alert(window.innerHeight);
+            alert(window.outerHeight);
+
+            // Neither window_height, window.innerHeight, or window.outerHeight
+            // worked well.  But the value belows seems fine for a wide variety
+            // of window sizes.
+            */
+
+            overlay_height = 1080;
+            return overlay_height;
+        },
+
+
+        add_see_also()
+        /*  Create a 'BA_see_also' link from the current category
+            to the just-selected category (specified by this.uri_see_also_child_to_add)
+         */
+        {
+            console.log(`Attempting to create a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the just-selected Category URI '${this.uri_see_also_child_to_add}'`);
+
+            let url_server = "/BA/api/see_also";
+
+            let post_obj = {from_category_uri: this.category_uri,
+                            to_category_uri: this.uri_see_also_child_to_add,
+                            action: "add"};
+            console.log(`About to contact the server at ${url_server} .  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;        // About to contact the server
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {post_obj: post_obj,
+                        callback_fn: this.finish_add_see_also, custom_data: this.uri_see_also_child_to_add});
+        },
+
+        finish_add_see_also(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of add_see_also() upon getting a response from the server
+        // custom_data contains the uri of the Category pointed to by the newly-added SEE_ALSO link
+        {
+            console.log(`Finalizing the add_see_also operation...  custom_data: ${custom_data}`);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `'SEE_ALSO' Relationship added`;
+
+                // Synchronize the page data to the finalized current data
+
+                // TBA after the page starts managing the list of SEE_ALSO links: update that list!
+
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED addition of 'SEE_ALSO' relationship: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;                   // Make a note that the asynchronous operation has come to an end
+            this.uri_see_also_child_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
+        },
+
+
+
+        add_parent_category()
+        // Add the just-selected parent category (specified by this.uri_parent_to_add) to the current category
+        {
+            console.log(`Attempting to make the just-selected Category URI '${this.uri_parent_to_add}' a parent of the current Category (URI '${this.category_uri}')`);
+
+            let url_server = "/BA/api/add_relationship";    // TODO: switch to the more specialized /BA/api/add_subcategory_relationship
+            // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
+            let post_obj = {from: this.category_uri,
+                            to: this.uri_parent_to_add,
+                            rel_name: "BA_subcategory_of",
+                            schema_code: "cat"};
+            console.log(`About to contact the server at ${url_server} .  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;        // About to contact the server
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {post_obj: post_obj,
+                        callback_fn: this.finish_add_parent_category, custom_data: this.uri_parent_to_add});
+        },
+
+        finish_add_parent_category(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of add_parent_category() upon getting a response from the server
+        // custom_data contains the uri of the requested new Parent Category
+        {
+            console.log(`Finalizing the add_parent_category operation...  custom_data: ${custom_data}`);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Relationship added`;
+
+                // Synchronize the page data to the finalized current data
+                pos = this.locate_item(this.all_categories, custom_data);
+                if (pos == -1)
+                    alert("Unable to find the added parent Category in the page. Try refreshing");
+                else
+                    // Append the new parent category to the list of parent categories
+                    this.parent_categories.push(this.all_categories[pos]);
+                    //this.parent_categories.splice(pos, 1);
+                    //this.parent_categories.push(custom_data);
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED relationship addition: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+            this.uri_parent_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
+        },
+
+
+
+        sever_relationship(parent_id, child_id, location)
+        /* Detach a sub-category relationship
+           location is either 'parent' or 'child'
+         */
+        {
+            console.log(`Attempting to delete relationship from Category ${parent_id} to ${child_id}`);
+
+            let url_server = "/BA/api/remove_relationship";
+            // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
+            let post_obj = {from: child_id,
+                            to: parent_id,
+                            rel_name: "BA_subcategory_of",
+                            schema_code: "cat"};
+            console.log(`About to contact the server at ${url_server} .  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;        // About to contact the server
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            var custom_data;            // To pass to the callback function, to update the page upon server success
+
+            if (location == 'parent')
+                custom_data = ['parent', parent_id];
+            else
+                custom_data = ['child', child_id];
+
+            ServerCommunication.contact_server(url_server,
+                        {post_obj: post_obj,
+                        callback_fn: this.finish_sever_relationship, custom_data: custom_data});
+        },
+
+        finish_sever_relationship(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of sever_relationship() upon getting a response from the server
+        // custom_data is a 2-element array of the form [location, category_uri]
+        {
+            console.log(`Finalizing the sever_relationship operation...  custom_data: ${custom_data}`);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Relationship removed`;
+
+                // Synchronize the page data to the finalized current data
+                let cat_id = custom_data[1];    // The ID of the deleted Category
+                var pos;                        // The array position of the deleted Category
+                if (custom_data[0] == "parent")  {      // Deleting a parent category
+                    pos = this.locate_item(this.parent_categories, cat_id);
+                    if (pos == -1)
+                        alert("Unable to find the deleted parent Category in the page. Try refreshing");
+                    else
+                        this.parent_categories.splice(pos, 1);
+                }
+                else  {                                 // Deleting a sub-category
+                    pos = this.locate_item(this.subcategories, cat_id);
+                    if (pos == -1)
+                        alert("Unable to find the deleted Subcategory in the page. Try refreshing");
+                    else
+                        this.subcategories.splice(pos, 1);
+                }
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED relationship deletion: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+        },
+
+        locate_item(arr, uri)
+        // Locate a Category, specified by its ID, in the given array (of Parent Categories or Subcategories)
+        // TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
+        {
+            const number_items = arr.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (arr[i].uri == uri)
+                    return i;          //  Found it
+            }
+
+            return -1;    // Didn't find it
+        },
+
+
+
+        edit_name()
+        // Enter edit mode for the Category name and remarks
+        {
+            this.edit_name_mode = true;
+        },
+
+        cancel_name_edit()
+        {
+            this.edit_name_mode = false;
+            // Undo the changes
+            this.category_name_current_data = this.category_name_original_data;
+            this.category_remarks_current_data = this.category_remarks_original_data;
+        },
+
+        save_name_edit()
+        {
+            this.edit_name_mode = false;
+
+            if (! this.category_name_current_data) {
+                alert("The name for the Category is a required field");
+                return;
+            }
+
+            let url_server = "/BA/api/update";
+            let post_obj = {uri: this.category_uri,
+                            schema_code: "cat",
+                            name: this.category_name_current_data,
+                            remarks: this.category_remarks_current_data};
+            console.log(`About to contact the server at ${url_server} .  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {post_obj: post_obj, callback_fn: this.finish_save_name_edit});
+        },
+
+
+        finish_save_name_edit(success, server_payload, error_message)
+        // Callback function to wrap up the action of save_name_edit() upon getting a response from the server
+        {
+            console.log("Finalizing the save_name_edit operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Saved`;
+
+                // Synchronize the baseline data to the finalized current data
+                this.category_name_original_data = this.category_name_current_data;
+                this.category_remarks_original_data = this.category_remarks_current_data;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED update: ${error_message}`;
+                // Restore the data to how it was prior to the failed changes (but remain in edit mode)
+                this.category_name_current_data = this.category_name_original_data;
+                this.category_remarks_current_data = this.category_remarks_original_data;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+            this.edit_name_mode = false;    // Exit the editing mode
+        },
+
+
+
+        delete_category(category_uri)
+        // Delete the specified Category
+        {
+            if (category_uri == 1)  {
+                alert("Cannot delete the root (top) category!");
+                return;
+            }
+
+            const retVal = confirm("Do you want to DELETE this Category? (Note: only possible if no Content Items are in it)");
+            if  (retVal != true) {
+                // Cancel selected
+                return;
+            }
+
+            const url_server = "/BA/api/delete_category/" + category_uri;
+            console.log(`delete_category(): About to contact the server at ${url_server}`);
+
+            // Initiate asynchronous contact with the server
+            this.waiting = true;
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";
+            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_delete_category});
+        },
+
+        finish_delete_category(success, server_payload, error_message)
+        // Callback function to wrap up the action of delete_category() upon getting a response from the server
+        {
+            //console.log("Finalizing the delete_category() operation...");
+
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: " , server_payload);
+                this.status_message = "Category deleted successfully";
+                //alert("The Category WAS deleted successfully; a link will appear to take you to the parent page");
+                this.overlay = true;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED addition of new Category`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        },
+
+
+        add_subcategory()
+        // Create a new sub-category for the current Category
+        {
+            const category_uri = this.category_uri;
+            console.log(`Adding new sub-category: category_uri: ${category_uri}, subcategory name: ${this.new_subcategory_name} , remarks: ${this.new_subcategory_remarks}`);
+            if (this.new_subcategory_name == "")  {
+                alert("Must enter a Subcategory name");
+                return;
+            }
+
+            // Send the request to the server, using a POST
+            const url_server_api = "/BA/api/add_subcategory"
+            // Compose the body of the POST to send to the server
+            const post_obj = {category_uri: category_uri,
+                              subcategory_name: this.new_subcategory_name,
+                              subcategory_remarks: this.new_subcategory_remarks};
+
+            // Initiate asynchronous contact with the server
+            this.waiting = true;        // Entering a waiting-for-server mode
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";   // Clear any message from the previous operation
+            ServerCommunication.contact_server(url_server_api,
+                                               {post_obj: post_obj, callback_fn: this.finish_add_subcategory});
+        },
+
+        finish_add_subcategory(success, server_payload, error_message)
+        /*  Callback function to wrap up the action of add_subcategory() upon getting a response from the server.
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
+         */
+        {
+            console.log("Finalizing the Add Subcategory operation...");
+            if (success)  {     // Server reported SUCCESS
+                this.status_message = `New sub-category successfully added (assigned URI '${server_payload}')`;
+                // Update the data of the root component, to refresh some displays
+                let new_subcategory = {uri: server_payload, name: this.new_subcategory_name};
+                this.subcategories.push(new_subcategory);
+                this.all_categories.push(new_subcategory);      // TODO: sort alphabetically
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED addition of new Sub-category`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            // Clear up the form
+            this.new_subcategory_name = "";
+            this.new_subcategory_remarks = "";
+
+        }, // finish_add_subcategory
+
+
+
+        pin_category(initial_status)
+        /* Flip the "pinned" status of this Category.
+           Note: initial_status is the boolean value BEFORE the click on the checkbox
+         */
+        {
+            //console.log(`Calling pin_category().  'initial_status' is: ${initial_status}`);
+
+            if (initial_status)
+                url_server_api = `/BA/api/pin_category/${this.category_uri}/unset`;  // It was originally in the "set" status
+            else
+                url_server_api = `/BA/api/pin_category/${this.category_uri}/set`;
+
+            console.log(`About to contact the server at ${url_server_api}`);
+
+            this.waiting = true;        // Entering a waiting-for-server mode
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";   // Clear any message from the previous operation
+
+            // Initiate asynchronous contact with the server
+            ServerCommunication.contact_server(url_server_api,{callback_fn: this.finish_pin_category});
+        },
+
+        finish_pin_category(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of pin_category() upon getting a response from the server
+        {
+            console.log("Finalizing the finish_pin_category operation...");
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Operation completed`;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED operation: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        }
+
+    } // METHODS
+
+});
+</script>
+
+
+</body>
+</html>

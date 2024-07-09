@@ -1,0 +1,37 @@
+{#  Horizontal status bar, also including a link to scroll to the page's top
+
+    OPTIONAL Flask-passed parameters:
+            site_data.branding: Text to replace the default "Brain Annex"
+            header_title:       Text to display on this status bar
+            username:           Text to display, if header_title is missing
+
+    HOW TO USE:
+            Site page templates that want to include this "Horizontal status bar"
+            need to have the line
+            {% include "horiz_status_bar.htm" %}
+
+    PARAMETERS TO PASS:
+            1) if the optional Flask variable site_data.branding is defined, its value replaces "Brain Annex"
+
+            2) if the optional Flask variable header_title is defined, it also gets included in the bar;
+               if not, the optional Flask variable username is used instead, if defined
+
+    NOTE on parameters:
+            If the enclosing file doesn't contain a desired Flask parameter,
+            it can be passed during the inclusion, as follows:
+
+            {% with header_title="Some value you want to pass" %}
+                {% include "horiz_status_bar.htm" %}
+            {% endwith %}
+
+    CSS:
+            Adjust the corresponding CSS file (horiz_status_bar.css) as needed
+            (for example, to display this status bar as a fixed element at the top)
+ #}
+
+
+<div class='horiz-status-bar  dark-background'>
+    <span class='site-name'>{{site_data.branding if (site_data is defined and site_data.branding is defined) else "Brain Annex"}}</span>
+    <span class='header-title'>{{header_title if header_title is defined else (username if site_data is defined)}}</span>
+    <a href='#' style='margin-left:130px'>^TOP</a>
+</div>

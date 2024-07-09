@@ -1,6 +1,5 @@
-import pytest
-from brainannex.modules.py_graph_visual.py_graph_visual import PyGraphVisual
-from brainannex.modules.utilities.comparisons import *
+from brainannex.py_graph_visual import PyGraphVisual
+from brainannex.utilities.comparisons import *
 
 
 

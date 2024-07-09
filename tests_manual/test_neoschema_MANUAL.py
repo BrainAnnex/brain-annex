@@ -2,8 +2,7 @@
 
 import pytest
 from neoaccess import NeoAccess
-from brainannex.modules.utilities.comparisons import compare_recordsets
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
+from brainannex.neo_schema.neo_schema import NeoSchema
 
 
 
@@ -310,10 +309,10 @@ def test_add_data_relationship(db):
     #status = NeoSchema.add_data_relationship(subcategory_id=536, category_id=540, rel_name="BA_served_at")
     #status = NeoSchema.add_data_relationship(subcategory_id=514, category_id=544, rel_name="BA_subcategory_of")
     #status = NeoSchema.add_data_relationship(subcategory_id=541, category_id=535, rel_name="BA_in_category")
-    number_added = NeoSchema.add_data_relationship_OLD(from_id=9, to_id=690, rel_name="BA_testing")
+    number_added = NeoSchema.add_data_relationship(from_id=9, to_id=690, rel_name="BA_testing")
     assert number_added == 1
 
 
 
 def test_remove_data_relationship(db):
-    NeoSchema.remove_data_relationship(from_uri=3, to_uri=1, rel_name="BA_subcategory_of")
+    NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")

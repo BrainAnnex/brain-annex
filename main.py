@@ -16,20 +16,19 @@ from configparser import ConfigParser
 
 # The site's home/login/top-level pages
 # (possibly under the control of a co-hosted independent site)
-from home.home_routing import HomeRouting
+from flask_modules.home.home_routing import HomeRouting
 
 # The navigation is shared by Brain Annex and possibly other independent sites
 # embedded (co-hosted) with it
-from navigation.navigation_routing import Navigation
-from navigation.navigation import get_site_pages
+from flask_modules.navigation.navigation_routing import Navigation
 
-from brainannex.pages.BA_pages_routing import PagesRouting
-from brainannex.api.BA_api_routing import ApiRouting
+from flask_modules.pages.BA_pages_routing import PagesRouting
+from flask_modules.api.BA_api_routing import ApiRouting
 
 # These are an example of an independent site embedded (co-hosted) with Brain Annex.
 # Comment out if not needed!
-from sample_embedded_site.sample_pages.sample_pages_routing import SamplePagesRouting
-from sample_embedded_site.sample_api.sample_api_routing import SampleApiRouting
+from flask_modules.sample_embedded_site.sample_pages.sample_pages_routing import SamplePagesRouting
+from flask_modules.sample_embedded_site.sample_api.sample_api_routing import SampleApiRouting
 
 # The remaining imports, below, are for the database initialization
 from neoaccess import NeoAccess
@@ -67,7 +66,7 @@ def extract_par(name: str, d, display=True) -> str:
 config = ConfigParser()
 
 # Attempt to import parameters from the default config file first, then from 'config.ini'
-# (possibly overwriting some or all values from the default config file)
+# (possibly overwriting some or all values from the default config file with those from 'config.ini', which takes priority)
 found_files = config.read(['config.defaults.ini', 'config.ini'])
 #print("found_files: ", found_files)    # This will be a list of the names of the config files that were found
 
@@ -134,14 +133,15 @@ APP_NEO4J_DBASE = NeoAccess(host=NEO4J_HOST, credentials=(NEO4J_USER, NEO4J_PASS
 InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
 InitializeBrainAnnex.set_folders(MEDIA_FOLDER, LOG_FOLDER)
 
-site_pages = get_site_pages()     # Data for the site navigation
+#site_pages = get_site_pages()     # Data for the site navigation
 
 
 
 ###  FLASK-RELATED INITIALIZATION  ###
 
 # Instantiate the Flask object used to provide a UI and an API
-app = Flask(__name__)   # The Flask object (exposed so that this main program may also be started from the CLI
+app = Flask(__name__)   # The Flask object (exposed, at the top level of this module,
+                        #                   so that this main program may also be started from the CLI
                         #                   with the "flask run" command)
 
 
@@ -153,41 +153,37 @@ app = Flask(__name__)   # The Flask object (exposed so that this main program ma
 #   ==> TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
 
 
-#   TODO: maybe all the various setup() methods could take an optional 2nd arg, a dict,
-#         to pass module-specific data.  Currently being tried out with the Home module...
-config_dict = {"BRANDING": extract_par("BRANDING", SETTINGS)}   # TODO: expand to include all other parameters
+### Save in the "app" object various module-specific data, to propagate to those modules
+app.config['BRANDING'] = extract_par("BRANDING", SETTINGS)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER                 # A temporary folder for file uploads
+# Parameters for Continuous Data Ingestion)
+app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
+app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
+
+#app.config['site_pages'] = site_pages
+
+
 
 # The site's home (i.e. top-level) pages, incl. login
-HomeRouting.setup(app, config_dict)
+HomeRouting.setup(app)
 
 # The navbar
-Navigation.setup(app)       # TODO: also pass config_dict
+Navigation.setup(app)
 
 # The BrainAnnex-provided UI
-PagesRouting.site_pages = site_pages
-PagesRouting.setup(app)     # TODO: also pass config_dict
+#PagesRouting.site_pages = site_pages
+PagesRouting.setup(app)
 
 # The BrainAnnex-provided endpoints
 ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
 ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
-ApiRouting.setup(app)       # TODO: also pass config_dict
+ApiRouting.setup(app)
 
-# Examples of generic pages and API     # TODO: also pass config_dict
+# Examples of generic pages and API
 SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
 SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
 
 
-
-# DEFINE A TEMPORARY FOLDER FOR FILE UPLOADS
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-#app.config['UPLOAD_FOLDER'] = r'D:\tmp'
-#APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-#UPLOAD_FOLDER = os.path.join(APP_ROOT, 'api/static/')
-
-# STORE OTHER PARAMETERS IN FLASK (used for Continuous Data Ingestion)
-app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
-app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
 
 
 

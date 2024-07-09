@@ -2,11 +2,9 @@
 
 
 import pytest
-from brainannex.modules.utilities.comparisons import compare_unordered_lists, compare_recordsets
+from brainannex.utilities.comparisons import compare_unordered_lists, compare_recordsets
 from neoaccess import NeoAccess
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
-from brainannex.modules.categories.categories import Categories
-from brainannex.modules.collections.collections import Collections
+from brainannex import NeoSchema, Categories, Collections
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -24,12 +22,15 @@ def db():
 
 def initialize_categories(db):
     # Clear the dbase, create the Category Schema, and creates a ROOT Category node;
-    # return the pari (internal database ID, URI) of the new Categories node
+    # return the pair (internal database ID, URI) of that newly-created node
 
     db.empty_dbase()
 
     NeoSchema.create_class_with_properties(name="Categories",
-                                           properties=["name", "remarks", "uri"])
+                                           properties=["name", "remarks", "uri", "root"], strict=True)
+
+    NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories", rel_name="BA_subcategory_of")
+    NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories", rel_name="BA_see_also")
 
     return Categories.create_categories_root()  # Returns a pair (int, str)
 
@@ -121,6 +122,52 @@ def test_get_sibling_categories(db):
     assert len(result) == 2     # Now, "French" has 2 siblings
     sibling_names = [d["name"] for d in result]
     assert compare_unordered_lists(sibling_names, ["Italian", "German"])
+
+
+
+def test_create_see_also(db):
+    root_internal_id, root_uri = initialize_categories(db)
+
+    A_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "A"})
+
+    B_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "B"})
+
+    Categories.create_see_also(from_category=A_uri, to_category=B_uri)
+
+    assert db.links_exist(match_from = db.match(key_name="uri", key_value=A_uri),
+                          match_to = db.match(key_name="uri", key_value=B_uri),
+                          rel_name="BA_see_also")
+
+    with pytest.raises(Exception):
+        Categories.create_see_also(from_category="I don't exist", to_category=B_uri)
+
+
+
+
+def test_remove_see_also(db):
+    root_internal_id, root_uri = initialize_categories(db)
+
+    A_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "A"})
+
+    B_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "B"})
+
+    Categories.create_see_also(from_category=A_uri, to_category=B_uri)
+
+    Categories.remove_see_also(from_category=A_uri, to_category=B_uri)
+
+    assert not db.links_exist(match_from = db.match(key_name="uri", key_value=A_uri),
+                              match_to = db.match(key_name="uri", key_value=B_uri),
+                              rel_name="BA_see_also")
+
+    with pytest.raises(Exception):
+        # Attempting to remove a non-existent link
+        Categories.remove_see_also(from_category=A_uri, to_category=B_uri)
+
+
+
+
+
+##########  VIEW ITEMS IN CATEGORIES  ##########
 
 
 

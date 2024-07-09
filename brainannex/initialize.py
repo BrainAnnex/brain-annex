@@ -1,12 +1,12 @@
-from brainannex.modules.data_manager.data_manager import DataManager
-from brainannex.modules.categories.categories import Categories
-from brainannex.modules.collections.collections import Collections
-from brainannex.modules.neo_schema.neo_schema import NeoSchema
-from brainannex.modules.media_manager.media_manager import MediaManager
-from brainannex.modules.node_explorer.node_explorer import NodeExplorer
-from brainannex.modules.full_text_indexing.full_text_indexing import FullTextIndexing
-from brainannex.modules.user_manager.user_manager import UserManager
-from home.login_manager import FlaskUserManagement
+from brainannex.data_manager import DataManager
+from brainannex.categories import Categories
+from brainannex.collections import Collections
+from brainannex.neo_schema.neo_schema import NeoSchema
+from brainannex.media_manager import MediaManager
+from brainannex.node_explorer import NodeExplorer
+from brainannex.full_text_indexing import FullTextIndexing
+from brainannex.user_manager import UserManager
+from flask_modules.home.login_manager import FlaskUserManagement
 
 
 

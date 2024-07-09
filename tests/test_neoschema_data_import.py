@@ -6,8 +6,7 @@
 
 import pytest
 from neoaccess import NeoAccess
-from brainannex.modules.utilities.comparisons import compare_recordsets
-from brainannex.modules.neo_schema.neo_schema import NeoSchema, SchemaCache
+from brainannex.neo_schema.neo_schema import NeoSchema, SchemaCache
 from tests.test_neoschema import create_sample_schema_1, create_sample_schema_2
 
 
