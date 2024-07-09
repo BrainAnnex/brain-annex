@@ -1,16 +1,22 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters:
-    current_page
-    site_pages
+{#  Editor for Categories and the relationships among them
 
-    category_uri        EXAMPLE: "123"
-    category_name       EXAMPLE: "French"
-    category_remarks    EXAMPLE: "Notes from class"
+    Flask-passed parameters:
+        site_data
+        current_page
+        username
 
-    subcategories
-    parent_categories   EXAMPLE: [{'name': 'Language', 'uri': '544', 'schema_code': 'cat'}]
-    all_categories      EXAMPLE: [{'name': 'Language', 'uri': '544'}]
-    pin_status          True if this Category is "pinned"; otherwise, False
+        category_uri        EXAMPLE: "123"
+        category_name       EXAMPLE: "French"
+        category_remarks    EXAMPLE: "Notes from class"
+
+        subcategories
+        parent_categories   EXAMPLE: [{'name': 'Language', 'uri': '544', 'schema_code': 'cat'}]
+        all_categories      EXAMPLE: [{'name': 'Language', 'uri': '544'}]
+
+        pin_status          True if this Category is "pinned"; otherwise, False
+
+        TODO: pass the see_also data
 #}
 
 <html>
@@ -142,13 +148,13 @@ It does *NOT* delete `' + p.name + '`'"
         <div style='width:105px'>&nbsp;</div>
 
 
-
+        <!-- Add an existing Category as an additional parent Category -->
         <div style='width:180px; text-align:center'>
             <span style='font-style:italic; color:#666666'>Make &ldquo;{{category_name}}&rdquo; also a Sub-category of:</span>
             <br>
 
-            <select @change="add_parent_category"  v-model="parent_to_add"  style='width:180px'>
-                <option value='-1'>[Select parent category]</option>
+            <select @change="add_parent_category"  v-model="uri_parent_to_add"  style='width:180px'>
+                <option disabled value=''>[Select parent category]</option>
 
                 {% for c in all_categories %}
                     {% if c['uri'] != category_uri %}
@@ -158,6 +164,7 @@ It does *NOT* delete `' + p.name + '`'"
             </select>
 
         </div>
+
 
     </div><div class='categoryManagement'><div style='width:38px'>&nbsp;</div><div style='width:90%; border-bottom:2px solid black; border-left:2px solid black; border-right:2px solid black'>&nbsp;</div></div>
 
@@ -218,30 +225,36 @@ It does *NOT* delete `' + p.name + '`'"
 
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
     </div>
+
+    <!-- Pulldown menu to add SEE_ALSO links to other existing Categories -->
     <div style="width:160px; font-size:12px">
-        &diams; The "See Also" is NOT YET IMPLEMENTED<form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_uri}}' style='display:inline-block; margin-left:5px'>
+        &diams; Add "See Also" link:
+
+        <select @change="add_see_also"  v-model="uri_see_also_child_to_add"  style='width:185px'>
+            <option disabled value=''>[Select 'see-also' category]</option>
+
+            {% for c in all_categories %}
+                {% if c.uri != category_uri %}
+                    <option value="{{c.uri}}">
+                        {{c.name}}
+                    </option>
+                {% endif %}
+            {% endfor %}
+        </select>
+
+
+        <br><br>
+        <!-- TODO: IMPLEMENT DELETION of existing SEE_ALSO links -->
+        <form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_uri}}' style='display:inline-block; margin-left:5px'>
         <input type='hidden' name='parentID' value='{{category_uri}}'>
         <input type='hidden' name='childID' value='366'>
         <input type='image' src='/BA/pages/static/graphics/delete_12_1493279.png'
-               title='SEVER the "see also" relationship between "{{category_name}}" and "OTHER CATEGORY TBA"'
+               title='NOT YET IMPLEMENTED.  SEVER the "see also" relationship between "{{category_name}}" and "OTHER CATEGORY TBA"'
         >
-    </form>
-        <br>
-        Add:
-        <form method='POST' action='doCategoryHandler2.php?op=addSeeAlso&cat={{category_uri}}' id='form_4'>
-            <input type='hidden' name='parentID' value='{{category_uri}}'>
-            <select id = 'menu_4' name = 'childID' style = 'width:180px'>
-                <option value='-1'>[Select 'see-also' category]</option>
-
-                {% for c in all_categories %}
-                    {% if c['uri'] != category_uri %}
-                        <option value="{{c['uri']}}">{{c['name']}}</option>
-                    {% endif %}
-                {% endfor %}
-
-            </select>
         </form>
-        <br>
+
+
+        <br><br>
         <input type='checkbox' v-model="pin_status" @click='pin_category(pin_status)'>Pin
 
     </div>
@@ -268,6 +281,7 @@ It does *NOT* delete `' + p.name + '`'"
 
         <!-- Provide 2 Add-child forms, floated to the right -->
         <div style="width:180px; float:right; margin-right:2px">
+            <!-- TODO: this needs replacing -->
             <span style="font-style:italic; color:#666666">Add an <b>existing</b> Sub-category to &ldquo;{{category_name}}&rdquo;:</span><br>
             <b>NOT YET IMPLEMENTED</b><br>
             <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_uri}}' id='form_5'>
@@ -407,7 +421,10 @@ new Vue({
         category_name_original_data: {{category_name | tojson}},
         category_remarks_original_data: {{category_remarks | tojson}},
 
-        parent_to_add: -1,          // Used by the add-parent pulldown menu (-1 is its default choice - asking the user to make a selection)
+        // Used by pulldown menus ('' is its default choice - asking the user to make a selection)
+        uri_parent_to_add: '',
+        uri_see_also_child_to_add: '',
+
 
         edit_name_mode: false,      // To expose controls for editing name/remarks
 
@@ -448,15 +465,65 @@ new Vue({
         },
 
 
-        add_parent_category()
-        // Add a new parent category (specified by this.parent_to_add) to the current category
+        add_see_also()
+        /*  Create a 'BA_see_also' link from the current category
+            to the just-selected category (specified by this.uri_see_also_child_to_add)
+         */
         {
-            console.log(`Attempting to make the just-selected Category ID ${this.parent_to_add} a parent of the current Category (ID ${this.category_uri})`);
+            console.log(`Attempting to create a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the just-selected Category URI '${this.uri_see_also_child_to_add}'`);
+
+            let url_server = "/BA/api/see_also";
+
+            let post_obj = {from_category_uri: this.category_uri,
+                            to_category_uri: this.uri_see_also_child_to_add,
+                            action: "add"};
+            console.log(`About to contact the server at ${url_server} .  POST object:`);
+            console.log(post_obj);
+
+            this.waiting = true;        // About to contact the server
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {post_obj: post_obj,
+                        callback_fn: this.finish_add_see_also, custom_data: this.uri_see_also_child_to_add});
+        },
+
+        finish_add_see_also(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of add_see_also() upon getting a response from the server
+        // custom_data contains the uri of the Category pointed to by the newly-added SEE_ALSO link
+        {
+            console.log(`Finalizing the add_see_also operation...  custom_data: ${custom_data}`);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `'SEE_ALSO' Relationship added`;
+
+                // Synchronize the page data to the finalized current data
+
+                // TBA after the page starts managing the list of SEE_ALSO links: update that list!
+
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED addition of 'SEE_ALSO' relationship: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;                   // Make a note that the asynchronous operation has come to an end
+            this.uri_see_also_child_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
+        },
+
+
+
+        add_parent_category()
+        // Add the just-selected parent category (specified by this.uri_parent_to_add) to the current category
+        {
+            console.log(`Attempting to make the just-selected Category URI '${this.uri_parent_to_add}' a parent of the current Category (URI '${this.category_uri}')`);
 
             let url_server = "/BA/api/add_relationship";    // TODO: switch to the more specialized /BA/api/add_subcategory_relationship
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: this.category_uri,
-                            to: this.parent_to_add,
+                            to: this.uri_parent_to_add,
                             rel_name: "BA_subcategory_of",
                             schema_code: "cat"};
             console.log(`About to contact the server at ${url_server} .  POST object:`);
@@ -468,7 +535,7 @@ new Vue({
 
             ServerCommunication.contact_server(url_server,
                         {post_obj: post_obj,
-                        callback_fn: this.finish_add_parent_category, custom_data: this.parent_to_add});
+                        callback_fn: this.finish_add_parent_category, custom_data: this.uri_parent_to_add});
         },
 
         finish_add_parent_category(success, server_payload, error_message, custom_data)
@@ -497,7 +564,7 @@ new Vue({
 
             // Final wrap-up, regardless of error or success
             this.waiting = false;           // Make a note that the asynchronous operation has come to an end
-            this.parent_to_add = -1;        // Reset the pulldown menu to its default choice (asking the user to make a selection)
+            this.uri_parent_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
         },
 
 
