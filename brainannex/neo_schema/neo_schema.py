@@ -3100,83 +3100,6 @@ class NeoSchema:
 
 
     @classmethod
-    def import_triplestore(cls, df :pd.DataFrame, class_node :Union[int, str],
-                           col_names = None, uri_prefix = None,
-                           datetime_cols=None, int_cols=None,
-                           extra_labels=None,
-                           schema_code=None, report_frequency=100
-                            ) -> [int]:
-        """
-        Import "triplestore" data from a Pandas dataframe that contains 3 columns called:
-                subject , predicate , object
-
-        The values of the "subject" column are used for identifying entities, and then turned into URI's.
-        The values of the "predicate" column are taken to be the names of the Properties (possibly mapped
-            by means of the dictionary "col_names"
-        The values of the "object" column are taken to be the values (literals) of the Properties
-
-        Note: "subject" and "predicate" is typically an integer or a string
-
-        EXAMPLE -
-            Panda's data frame:
-             	subject 	 predicate 	  object
-            0 	    57 	            1 	  Advanced Graph Databases
-            1 	    57 	            2 	  New York University
-            2 	    57 	            3 	  Fall 2024
-
-            col_names = {1: "Course Title", 2: "School", 3: "Semester"}
-            uri_prefix = "r-"
-
-            The above will result in the import of a node with the following properties:
-
-                {"uri": "r-57",
-                "Course Title": "Advanced Graph Databases",
-                "School": "New York University",
-                "Semester": "Fall 2024"}
-
-        :param df:              A Pandas dataframe that contains 3 columns called:
-                                    subject , predicate , object
-        :param class_node:      Either an integer with the internal database ID of an existing Class node,
-                                    or a string with its name
-        :param col_names:       [OPTIONAL] Dict with mapping from values in the "predicate" column of the data frame
-                                           and the names of the new nodes' Properties
-        :param uri_prefix:      [OPTIONAL] String to prefix to the values in the "subjec" column
-        :param datetime_cols:   [SEE import_pandas_nodes()]
-        :param int_cols:        [SEE import_pandas_nodes()]
-        :param extra_labels:    [SEE import_pandas_nodes()]
-        :param schema_code:     [SEE import_pandas_nodes()]
-        :param report_frequency:[SEE import_pandas_nodes()]
-
-        :return:                A list of the internal database ID's of the newly-created Data nodes
-        """
-        if uri_prefix:
-            # Alter the 'subject' column with a prefix
-            df['subject'] = uri_prefix + df['subject'].astype(str)
-
-
-        # Transform the triples ("narrow table") into a wide table with all the properties in separate columns
-        # EXAMPLE: predicate    subject                         1                    2          3
-        #                  0       r-57  Advanced Graph Databases  New York University  Fall 2024
-        df_wide = df.pivot(index='subject', columns='predicate', values='object').reset_index()
-
-        # Rename the columns, based on the passed name mapping, if any
-        # EXAMPLE: predicate    subject             Course Title                 School   Semester
-        #                 0        r-57   Advanced Graph Databases  New York University  Fall 2024
-        if col_names:
-            df_wide = df_wide.rename(columns=col_names)
-
-        # Rename the "subject" column to be "uri"
-        df_wide = df_wide.rename(columns={"subject": "uri"})
-
-        # Now that the data frame is transformed, do the actual import
-        return cls.import_pandas_nodes(df=df_wide, class_node=class_node, uri_namespace=None,
-                                       datetime_cols=datetime_cols, int_cols=int_cols,
-                                       extra_labels=extra_labels, schema_code=schema_code,
-                                       report_frequency=report_frequency)
-
-
-
-    @classmethod
     def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
                             datetime_cols=None, int_cols=None,
                             extra_labels=None, uri_namespace=None,
@@ -3459,6 +3382,85 @@ class NeoSchema:
             scrubbed_d[k] = v
 
         return scrubbed_d
+
+
+
+    @classmethod
+    def import_triplestore(cls, df :pd.DataFrame, class_node :Union[int, str],
+                           col_names = None, uri_prefix = None,
+                           datetime_cols=None, int_cols=None,
+                           extra_labels=None,
+                           schema_code=None, report_frequency=100
+                           ) -> [int]:
+        """
+        Import "triplestore" data from a Pandas dataframe that contains 3 columns called:
+                subject , predicate , object
+
+        The values of the "subject" column are used for identifying entities, and then turned into URI's.
+        The values of the "predicate" column are taken to be the names of the Properties (possibly mapped
+            by means of the dictionary "col_names"
+        The values of the "object" column are taken to be the values (literals) of the Properties
+
+        Note: "subject" and "predicate" is typically an integer or a string
+
+        EXAMPLE -
+            Panda's data frame:
+             	subject 	 predicate 	  object
+            0 	    57 	            1 	  Advanced Graph Databases
+            1 	    57 	            2 	  New York University
+            2 	    57 	            3 	  Fall 2024
+
+            col_names = {1: "Course Title", 2: "School", 3: "Semester"}
+            uri_prefix = "r-"
+
+            The above will result in the import of a node with the following properties:
+
+                {"uri": "r-57",
+                "Course Title": "Advanced Graph Databases",
+                "School": "New York University",
+                "Semester": "Fall 2024"}
+
+        :param df:              A Pandas dataframe that contains 3 columns called:
+                                    subject , predicate , object
+        :param class_node:      Either an integer with the internal database ID of an existing Class node,
+                                    or a string with its name
+        :param col_names:       [OPTIONAL] Dict with mapping from values in the "predicate" column of the data frame
+                                           and the names of the new nodes' Properties
+        :param uri_prefix:      [OPTIONAL] String to prefix to the values in the "subjec" column
+        :param datetime_cols:   [SEE import_pandas_nodes()]
+        :param int_cols:        [SEE import_pandas_nodes()]
+        :param extra_labels:    [SEE import_pandas_nodes()]
+        :param schema_code:     [SEE import_pandas_nodes()]
+        :param report_frequency:[SEE import_pandas_nodes()]
+
+        :return:                A list of the internal database ID's of the newly-created Data nodes
+        """
+        # Note: an alternate implementation might use df.groupby(['subject']).head(1)
+        #       and then directly import the records, rather than be built atop import_pandas_nodes()
+        if uri_prefix:
+            # Alter the 'subject' column with a prefix
+            df['subject'] = uri_prefix + df['subject'].astype(str)
+
+
+        # Transform the triples ("narrow table") into a wide table with all the properties in separate columns
+        # EXAMPLE: predicate    subject                         1                    2          3
+        #                  0       r-57  Advanced Graph Databases  New York University  Fall 2024
+        df_wide = df.pivot(index='subject', columns='predicate', values='object').reset_index()
+
+        # Rename the columns, based on the passed name mapping, if any
+        # EXAMPLE: predicate    subject             Course Title                 School   Semester
+        #                 0        r-57   Advanced Graph Databases  New York University  Fall 2024
+        if col_names:
+            df_wide = df_wide.rename(columns=col_names)
+
+        # Rename the "subject" column to be "uri"
+        df_wide = df_wide.rename(columns={"subject": "uri"})
+
+        # Now that the data frame is transformed, do the actual import
+        return cls.import_pandas_nodes(df=df_wide, class_node=class_node, uri_namespace=None,
+                                       datetime_cols=datetime_cols, int_cols=int_cols,
+                                       extra_labels=extra_labels, schema_code=schema_code,
+                                       report_frequency=report_frequency)
 
 
 
