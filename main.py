@@ -171,7 +171,6 @@ HomeRouting.setup(app)
 Navigation.setup(app)
 
 # The BrainAnnex-provided UI
-#PagesRouting.site_pages = site_pages
 PagesRouting.setup(app)
 
 # The BrainAnnex-provided endpoints
