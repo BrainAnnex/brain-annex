@@ -1934,9 +1934,10 @@ class NeoSchema:
         :param links:       A string with the name of the link(s) to follow
         :param id_type:     [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
                                 Leave blank to use the internal database ID
-        :param properties:  [OPTIONAL] Name of the properties to return on the found nodes;
+        :param properties:  [OPTIONAL] String, or list of strings, with the name(s)
+                                of the properties to return on the found nodes;
                                 if not specified, an Exception is raised
-                                TODO: allow to specify a list; return all properties if unspecified
+                                TODO: return all properties if unspecified
         :param labels:      [OPTIONAL] string, or list/tuple of strings,
                                 with node labels required to be present on the located nodes
                                 TODO: not currently in use
@@ -1957,27 +1958,41 @@ class NeoSchema:
                                       name of Class of data node on other side)
                     Any component could be None
         '''
-
-        assert type(properties) == str, \
-            "follow_links(): the argument `properties` for now must be a string"
+        if properties:
+            assert (type(properties) == str or type(properties) == list), \
+                "follow_links(): the argument `properties` must be a string or list of strings"
 
         if id_type:
             where_clause = f"from.`{id_type}` = $node_id"
         else:
             where_clause = "id(from) = $node_id"
 
+        if type(properties) == str:
+            properties_cypher_str = f"to.`{properties}` AS `{properties}`"
+        elif type(properties) == list:
+            properties_cypher_list = [f"to.`{prop}` AS `{prop}`"
+                                      for prop in properties]
+            print(properties_cypher_list)
+            properties_cypher_str = ", ".join(properties_cypher_list)
+        else:
+            # TODO: also handle None, to be interpreted as "all properties"
+            raise Exception("follow_links(): the argument `properties` must be a string or list of strings")
+
         q = f'''
             MATCH (from :`{class_name}`) -[:`{links}`]-> (to)
             WHERE {where_clause}
-            RETURN to.`{properties}` AS `{properties}`
+            RETURN {properties_cypher_str}
             '''
         result = cls.db.query(q, data_binding={"node_id": node_id})
 
+        if type(properties) != str:
+            return result       # List of dicts
+
         data = []
         for node in result:
-            data.append(node[properties])
+                data.append(node[properties])
 
-        return data
+        return data             # List of values
 
 
 

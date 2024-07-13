@@ -304,9 +304,10 @@ class PagesRouting:
 
             # EXAMPLE of the various categories listings, below:
             #               [{'uri': 2, 'name': 'Work'}, {'uri': 3, 'name': 'Hobbies'}]
-            subcategories = Categories.get_subcategories(category_uri)
             all_categories = Categories.get_all_categories(exclude_root=False)
+            subcategories = Categories.get_subcategories(category_uri)
             parent_categories = Categories.get_parent_categories(category_uri)
+            see_also_categories = Categories.get_see_also(category_uri)
             pin_status = Categories.is_pinned(category_uri)
 
             return render_template(template,
@@ -314,7 +315,8 @@ class PagesRouting:
                                    current_page=request.path, username=current_user.username,
                                    category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
-                                   all_categories=all_categories, pin_status=pin_status)
+                                   all_categories=all_categories, see_also_categories=see_also_categories,
+                                   pin_status=pin_status)
 
 
 

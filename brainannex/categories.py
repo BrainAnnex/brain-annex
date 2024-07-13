@@ -718,7 +718,7 @@ class Categories:
                                     by a "see_also" relationship
         """
         return NeoSchema.follow_links(class_name="Categories", node_id=from_category, id_type="uri",
-                                      links="BA_see_also", labels="Categories", properties="uri")
+                                      links="BA_see_also", labels="Categories", properties=["name", "remarks", "uri"])
 
 
 

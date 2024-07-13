@@ -135,7 +135,7 @@ def test_get_see_also(db):
     Categories.create_see_also(from_category=A_uri, to_category=B_uri)
 
     result = Categories.get_see_also(from_category=A_uri)
-    assert result == [B_uri]
+    assert result == [{'name': 'B', 'remarks': None, 'uri': B_uri}]
 
 
 
