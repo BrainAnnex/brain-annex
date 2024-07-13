@@ -1923,24 +1923,61 @@ class NeoSchema:
 
 
     @classmethod
-    def follow_links_NOT_YET_IMPLEMENTED(cls, class_name, key_name, key_value, link_sequence):
+    def follow_links(cls, class_name :str, node_id, links :str, id_type=None, properties=None, labels=None) -> Union[list, dict]:
         """
-        Follow a chain of links among data nodes,
-        starting with a given data node (or maybe possibly a set of them?)
+        From the given starting data node(s), follow all the relationships that have the specified name,
+        from/into neighbor nodes (optionally having the given labels),
+        and return some of the properties of those found nodes.
 
-        :param class_name:      (OPTIONAL)
-        :param key_name:        TODO: or pass a "match" object?
-        :param key_value:
-        :param link_sequence:   EXAMPLE: [("occurs", "OUT", "Indexer),
-                                          ("has_index", "IN", None)]
-                                    Each triplet is: (relationship name,
-                                                      direction,
-                                                      name of Class of data node on other side)
-                                    Any component could be None
-        :return:                A list of internal node ID's (or, optionally, all properties of the end nodes?)
+        :param class_name:  String with the name of the Class of the given ddata node
+        :param node_id:     Either an internal database ID or a primary key value
+        :param links:       A string with the name of the link(s) to follow
+        :param id_type:     [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+                                Leave blank to use the internal database ID
+        :param properties:  [OPTIONAL] Name of the properties to return on the found nodes;
+                                if not specified, an Exception is raised
+                                TODO: allow to specify a list; return all properties if unspecified
+        :param labels:      [OPTIONAL] string, or list/tuple of strings,
+                                with node labels required to be present on the located nodes
+                                TODO: not currently in use
+
+        :return:            A list of values, if properties only contains a single element (currently, the only option);
+                                otherwise, a list of dictionaries
         """
-        #TODO: possibly use cls.db.follow_links()
-        pass
+        #TODO: pytest
+        #TODO: allow an option to return the internal database ID's
+        '''
+        TODO - idea to expand `links`:
+        
+                    EXAMPLE: [("occurs", "OUT", "Indexer"),
+                              ("has_index", "IN", None)]
+                              
+                    Each triplet is: (relationship name,
+                                      direction,
+                                      name of Class of data node on other side)
+                    Any component could be None
+        '''
+
+        assert type(properties) == str, \
+            "follow_links(): the argument `properties` for now must be a string"
+
+        if id_type:
+            where_clause = f"from.`{id_type}` = $node_id"
+        else:
+            where_clause = "id(from) = $node_id"
+
+        q = f'''
+            MATCH (from :`{class_name}`) -[:`{links}`]-> (to)
+            WHERE {where_clause}
+            RETURN to.`{properties}` AS `{properties}`
+            '''
+        result = cls.db.query(q, data_binding={"node_id": node_id})
+
+        data = []
+        for node in result:
+            data.append(node[properties])
+
+        return data
 
 
 

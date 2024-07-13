@@ -708,6 +708,21 @@ class Categories:
 
 
     @classmethod
+    def get_see_also(cls, from_category :str) -> [str]:
+        """
+        Retrieve and return the URI's of all the Categories that are on the receiving end
+        of "see_also" relationships from the given Category
+
+        :param from_category:   URI of the Category where the "see_also" relationship originates
+        :return:                List (possibly empty) of URI's of Categories linked to
+                                    by a "see_also" relationship
+        """
+        return NeoSchema.follow_links(class_name="Categories", node_id=from_category, id_type="uri",
+                                      links="BA_see_also", labels="Categories", properties="uri")
+
+
+
+    @classmethod
     def create_see_also(cls, from_category :str, to_category :str) -> None:
         """
         Create a "see_also" link between the given Categories, in the specified direction
