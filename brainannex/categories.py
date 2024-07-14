@@ -388,28 +388,6 @@ class Categories:
 
 
 
-    @classmethod
-    def follow_see_also(cls, category_uri :str) -> [dict]:
-        """
-        From the given Category, follow all the "see also" links, and return data about them
-
-        :param category_uri:A string uniquely identifying an existing Category data node
-        :return:            A (possibly empty) list of dictionaries
-                                that contain the keys 'name', 'uri' and 'description'
-                                Values for 'description' might be None.  EXAMPLE:
-                                    [{'name': 'Quotes', 'uri': '823', 'description': None}]
-        """
-        # TODO: switch to using db.follow_links() when new features are added to it
-
-        q = '''
-            MATCH (:BA:Categories {uri:$category_uri})-[r:BA_see_also]->(sa :BA:Categories ) 
-            RETURN sa.name AS name, sa.uri AS uri, r.description AS description
-            '''
-
-        return cls.db.query(q, {"category_uri": category_uri})
-
-
-
 
 
     #####################################################################################################
@@ -708,15 +686,18 @@ class Categories:
 
 
     @classmethod
-    def get_see_also(cls, from_category :str) -> [str]:
+    def get_see_also(cls, from_category :str) -> [dict]:
         """
-        Retrieve and return the URI's of all the Categories that are on the receiving end
-        of "see_also" relationships from the given Category
+        From the given Category, follow all the "see also" links, and return data about
+        the Categories that are on their receiving end
 
         :param from_category:   URI of the Category where the "see_also" relationship originates
-        :return:                List (possibly empty) of URI's of Categories linked to
-                                    by a "see_also" relationship
+        :return:                List (possibly empty) of dictionaries of data from Categories linked to
+                                    by a "see_also" relationship.  They keys are "name", "remarks", "uri".
+                                    EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
         """
+        # TODO: perhaps restore the old feature of also storing a "description" field on the relationships
+
         return NeoSchema.follow_links(class_name="Categories", node_id=from_category, id_type="uri",
                                       links="BA_see_also", labels="Categories", properties=["name", "remarks", "uri"])
 

@@ -139,8 +139,8 @@ class PagesRouting:
             #print("bread_crumbs: ", bread_crumbs)
             # EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
 
-            see_also_links = Categories.follow_see_also(category_uri)
-            # EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'description': None}]
+            see_also_links = Categories.get_see_also(category_uri)
+            # EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
 
             # Fetch all the Content Items attached to this Category
             content_items = Categories.get_content_items_by_category(category_uri)
