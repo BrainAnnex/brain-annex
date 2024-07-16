@@ -252,13 +252,16 @@ class PagesRouting:
             """
             template = "schema_viewer.htm"
 
-            graph_obj = DataManager.get_schema_visualization_data()  # TODO: turn into a dict
+            graph_obj = DataManager.get_schema_visualization_data() # An object of class PyGraphScape
             #print(graph_obj)
+            graph_dict = graph_obj.get_graph_data()     # A dict with 3 keys:
+                                                        # "structure", "color_mapping" and "caption_mapping"
+            #print(graph_obj.get_graph_data())
 
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
-                                   graph_data=graph_obj.get_graph_data())
+                                   graph_data=graph_dict)
 
 
 
