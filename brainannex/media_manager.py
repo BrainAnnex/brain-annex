@@ -253,7 +253,7 @@ class MediaManager:
         :return:            True if successful, or False otherwise
         """
         filename = basename + "." + suffix
-        print(f"Attempting to delete file `{filename}`")
+        #print(f"Attempting to delete file `{filename}`")
 
         folder = cls.lookup_file_path(schema_code=schema_code, thumb=thumbs)
         full_file_name = folder + filename
