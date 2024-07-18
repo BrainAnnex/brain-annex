@@ -46,7 +46,7 @@ class ApiRouting:
     url_prefix = "/BA/api"          # Prefix for all URL's handled by this module
     template_folder = "templates"   # Relative to this module's location
     static_folder = "static"        # Relative to this module's location
-    config_pars = {}                # Dict with all the app configuration parameters [NOT USED IN THIS MODULE]
+    config_pars = {}                # Dict with all the app configuration parameters
 
 
     MEDIA_FOLDER = None             # Location where the media for Content Items is stored
@@ -89,12 +89,15 @@ class ApiRouting:
         # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
         flask_app_obj.register_blueprint(flask_blueprint, url_prefix = cls.url_prefix)
 
+        # Save the app configuration parameters in a class variable
+        cls.config_pars = flask_app_obj.config
 
 
 
-    ###############################################
-    #               UTILITY methods               #
-    ###############################################
+
+    #######################################################
+    #                   UTILITY methods                   #
+    #######################################################
 
     @classmethod
     def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
@@ -111,6 +114,45 @@ class ApiRouting:
                 assert par in data_dict, f"The expected parameter `{par}` is missing from the GET request (i.e. from the query string)"
 
         return data_dict
+
+
+
+    @classmethod
+    def explain_flask_request(cls, request_obj :request) -> None:
+        """
+        Print out a bunch of information to elucidate the contents
+        of the given flask.request object
+
+        :param request_obj: A flask.request object
+        :return:            None
+        """
+        request_dict = request_obj.__dict__     # A dictionary of all names and attributes of the flask.request object
+        keys_list = list(request_dict)
+            # EXAMPLE: ['method', 'scheme', 'server', 'root_path', 'path', 'query_string', 'headers',
+            #           'remote_addr', 'environ', 'shallow', 'cookies', 'url_rule', 'view_args',
+            #           'stream', '_parsed_content_type', 'content_length', 'form', 'files']
+
+        print(f"Upload flask.request object contains {len(request_dict)} items:\n    {keys_list}\n")
+
+        for i, k in enumerate(keys_list):
+            print(f"    ({i}) * {k}: {request_dict[k]}")
+
+        # Note: somehow, cannot simply loop over request_dict, or it crashes with error "dictionary changed size during iteration"
+
+        print("\nrequest.files: ", request_obj.files)     # Somehow, that's NOT included in the previous listing!
+        # EXAMPLE: ImmutableMultiDict([('imported_datafile', <FileStorage: 'my_data.json' ('application/json')>)])
+        #               where 'imported_datafile' originates from <input type="file" name="imported_datafile">
+        #               and the name after FileStorage is the name of the file being uploaded
+
+        print("request.args: ", request_obj.args)
+        print("request.form: ", request_obj.form)
+        # EXAMPLE: ImmutableMultiDict([('categoryID', '123'), ('pos', 888)])
+        #               if the HTML form included <input type="hidden" name="categoryID" value="123">
+        #                                     and <input type="hidden" name="pos" value="88">
+
+        print("request.values: ", request_obj.values)
+        print("request.json: ", request_obj.json)
+        print("request.data: ", request_obj.data)
 
 
 
@@ -141,7 +183,7 @@ class ApiRouting:
         #       but maybe the parameter validation doesn't belong to this API module, which ought to remain thin
         #       Example - int_pars = ['uri']
 
-        #TODO: merge with UploadHelper.get_form_data()
+        #TODO: merge with get_form_data()
 
         data_dict = post_data.to_dict(flat=True)    # WARNING: if multiple identical keys occur,
                                                     #          the values associated to the later keys will be discarded
@@ -157,6 +199,44 @@ class ApiRouting:
                 data_dict[key] = json.loads(val)
 
         return data_dict
+
+
+    @classmethod
+    def get_form_data(cls, request_obj, flat=True) -> dict:
+        """
+        It accepts a flask.request object, and it extracts and returns
+        a dictionary with the data passed by the calling form thru inputs, such as:
+                <input type="hidden" name="categoryID" value="123">
+                <input name="remarks" value="some text">
+        or its counterpart in JS submissions, such as
+                                            const post_data = new FormData();
+                                            post_data.append('categoryID', "123");
+
+        TODO: merge with extract_post_pars()
+
+        :param request_obj: A flask.request object
+        :param flat:        A flag only relevant when there are non-unique keys;
+                            if True (default), the values associated to the later keys will be discarded...
+                            if False, values are returned as lists
+                            EXAMPLE - if the data originates from:
+                                <input type="hidden" name="my_data" value="88">
+                                <input type="hidden" name="my_data" value="99">
+                            then flat=True returns {'my_data': '88'}
+                            while flat=False returns {'my_data': ['88', '99']}
+
+        :return:            A dictionary with the POST data
+        """
+        hidden_data = request_obj.form
+        # EXAMPLE: ImmutableMultiDict([('categoryID', '123'), ('pos', 888)])
+        #               if the HTML form included <input type="hidden" name="categoryID" value="123">
+        #                                     and <input type="hidden" name="pos" value="88">
+        #               Note that the keys may not be unique
+
+        data_dict = hidden_data.to_dict(flat=flat)  # WARNING: if multiple identical keys occur,
+        #          the values associated to the later keys will be discarded
+
+        return data_dict
+
 
 
 
@@ -1510,12 +1590,15 @@ class ApiRouting:
             post_data = request.form     # Example: ImmutableMultiDict([('use_schema', 'SCHEMA'), ('schema_class', 'my_class_name')])
             cls.show_post_data(post_data, "import_json_file")
 
-            print("request.files: ", request.files)
+            #print("request.files: ", request.files)
             # EXAMPLE: ImmutableMultiDict([('file', <FileStorage: 'julian_test.json' ('application/json')>)])
+
+            #explain_flask_request(request)
 
             try:
                 post_pars = cls.extract_post_pars(post_data, required_par_list=["use_schema"])
-                result = DataManager.upload_import_json_file(post_pars)
+                result = DataManager.upload_import_json_file(files=request.files, upload_dir=cls.config_pars['UPLOAD_FOLDER'],
+                                                             post_pars=post_pars, verbose=False)
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -1595,12 +1678,15 @@ class ApiRouting:
         
             if request.method != 'POST':
                 return "This endpoint requires POST data (you invoked it with a GET method.) No action taken..."   # Handy for testing
-        
+
+            #explain_flask_request(request)
+
             return_url = request.form["return_url"] # This originates from the HTML form :
             #    <input type="hidden" name="return_url" value="my_return_url">
             #print("return_url: ", return_url)
         
-            status = DataManager.upload_import_json(verbose=False, return_url=return_url)
+            status = DataManager.upload_import_json(files=request.files, upload_dir=cls.config_pars['UPLOAD_FOLDER'],
+                                                    return_url=return_url, verbose=False)
             return status
         
         
@@ -1639,7 +1725,7 @@ class ApiRouting:
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the temporary directory used for the uploads.
                                                                     #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
                 (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
-                            UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
+                            UploadHelper.store_uploaded_file(files=request.files, upload_dir=upload_dir, key_name="file")
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1754,7 +1840,7 @@ class ApiRouting:
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']
                 (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
-                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="file", verbose=True)
+                        UploadHelper.store_uploaded_file(files=request.files, upload_dir=upload_dir, key_name="file")
                 print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
@@ -1799,7 +1885,7 @@ class ApiRouting:
                 # Manage the upload
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # Defined in main file
                 (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
-                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+                        UploadHelper.store_uploaded_file(files=request.files, upload_dir=upload_dir, key_name="imported_datafile")
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
         
@@ -1849,7 +1935,7 @@ class ApiRouting:
                 # Manage the upload
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # Defined in main file
                 (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
-                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_datafile", verbose=False)
+                        UploadHelper.store_uploaded_file(files=request.files, upload_dir=upload_dir, key_name="imported_datafile")
             except Exception as ex:
                 return f"<b>ERROR in upload</b>: {ex}"
 

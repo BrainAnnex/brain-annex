@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 {#  Schema Viewer.
-    This pages hosts a Vue component
-    to display the Schema.
+    This pages hosts a Vue component ("vue_cytoscape_2") to display the database Schema.
     For background info, see:
         https://julianspolymathexplorations.blogspot.com/2022/11/schema-graph-databases-neo4j.html
 
     Flask-passed parameters:
-        current_page, site_pages,
-        graph_data      Dictionary with all the data needed by the Vue component to display the graph
+        site_data       Dict of general site data.  Keys: "site_pages", "branding", "version";
+                            for details, see class PagesRouting
+        current_page
+        username
+        graph_data      Dictionary with all the data needed by the Vue component to display the graph;
+                            3 keys:  "structure", "color_mapping" and "caption_mapping"
 #}
 
 <html lang="en">
@@ -66,6 +69,9 @@
 
 
 
+
+
+<!--  Everything below is largely diagnostic data shown below the main plot  -->
 <p style="padding:15px">
     The above graphics correspond to the following Cypher query:<br><br>
     <b>MATCH (c :CLASS), (p :PROPERTY) RETURN c, p</b>
@@ -104,6 +110,7 @@ new Vue({
 
         // Handover of data from Flask to Vue
         graph_data_json: {{graph_data | tojson}},   // Object with all the data needed by the Vue component to display the graph
+                                                    // 3 keys:  "structure", "color_mapping" and "caption_mapping"
 
         component_id_json: 1
 

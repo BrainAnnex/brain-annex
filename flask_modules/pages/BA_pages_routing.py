@@ -139,8 +139,8 @@ class PagesRouting:
             #print("bread_crumbs: ", bread_crumbs)
             # EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
 
-            see_also_links = Categories.follow_see_also(category_uri)
-            # EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'description': None}]
+            see_also_links = Categories.get_see_also(category_uri)
+            # EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
 
             # Fetch all the Content Items attached to this Category
             content_items = Categories.get_content_items_by_category(category_uri)
@@ -252,13 +252,16 @@ class PagesRouting:
             """
             template = "schema_viewer.htm"
 
-            graph_obj = DataManager.get_schema_visualization_data()  # TODO: turn into a dict
+            graph_obj = DataManager.get_schema_visualization_data() # An object of class PyGraphScape
             #print(graph_obj)
+            graph_dict = graph_obj.get_graph_data()     # A dict with 3 keys:
+                                                        # "structure", "color_mapping" and "caption_mapping"
+            #print(graph_obj.get_graph_data())
 
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
-                                   graph_data=graph_obj.get_graph_data())
+                                   graph_data=graph_dict)
 
 
 
@@ -304,9 +307,10 @@ class PagesRouting:
 
             # EXAMPLE of the various categories listings, below:
             #               [{'uri': 2, 'name': 'Work'}, {'uri': 3, 'name': 'Hobbies'}]
-            subcategories = Categories.get_subcategories(category_uri)
             all_categories = Categories.get_all_categories(exclude_root=False)
+            subcategories = Categories.get_subcategories(category_uri)
             parent_categories = Categories.get_parent_categories(category_uri)
+            see_also_categories = Categories.get_see_also(category_uri)
             pin_status = Categories.is_pinned(category_uri)
 
             return render_template(template,
@@ -314,7 +318,8 @@ class PagesRouting:
                                    current_page=request.path, username=current_user.username,
                                    category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    subcategories=subcategories, parent_categories=parent_categories,
-                                   all_categories=all_categories, pin_status=pin_status)
+                                   all_categories=all_categories, see_also_categories=see_also_categories,
+                                   pin_status=pin_status)
 
 
 

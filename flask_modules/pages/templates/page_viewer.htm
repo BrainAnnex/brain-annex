@@ -24,7 +24,7 @@
         bread_crumbs    A list with data from which to create UI "bread crumbs"
 
         see_also_links  A list with data about all the "see also" links originating from this Category
-                            EXAMPLE:  [{'name': 'Quotes', 'uri': '823', 'description': None}]
+                            EXAMPLE:  [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
 
         records_types   A list of all the Classes that can be used for new Records
                             (i.e. classes that are INSTANCE_OF the "Records" class)
@@ -1332,7 +1332,8 @@ new Vue({
             The item is identified by its uri.
             If found, return its index in the array; otherwise, return -1
             (No check is done as to whether there might be more than one match; the first one is returned.)
-            TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
+            TODO: replace it wth call to Utilities.find_item_by_uri(uri, this.content_array);
+                  also include script src="/BA/pages/static/js/utilities.js"
          */
         {
             //console.log(`Attempting to locate content item with id ${uri}`);

@@ -5,6 +5,7 @@
 
 
 import pytest
+import pandas as pd
 from neoaccess import NeoAccess
 from brainannex.neo_schema.neo_schema import NeoSchema, SchemaCache
 from tests.test_neoschema import create_sample_schema_1, create_sample_schema_2
@@ -735,3 +736,38 @@ def test_create_data_nodes_from_python_data_9(db):
     data_types = db.query(q, data_binding={"quote_id": new_root_id}, single_cell="data_types")
     #print(data_types)
     assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING'}    # 'uri': 'INTEGER' (not in current use)
+
+
+
+def test_import_triplestore(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="Course", strict=True,
+                                           properties=["uri", "Course Title", "School", "Semester"])
+
+    df = pd.DataFrame({"subject": [57, 57, 57],
+                       "predicate": [1, 2, 3],
+                       "object": ["Advanced Graph Databases", "New York University", "Fall 2024"]})
+
+    result = NeoSchema.import_triplestore(df=df, class_node="Course",
+                                          col_names = {1: "Course Title", 2: "School", 3: "Semester"},
+                                          uri_prefix = "r-")
+    assert len(result) == 1
+
+    internal_id = result[0]
+    lookup = db.get_nodes(internal_id)
+    assert lookup == [{'School': 'New York University', 'Semester': 'Fall 2024', 'Course Title': 'Advanced Graph Databases', 'uri': 'r-57'}]
+
+
+    # A second 1-entity import
+    df = pd.DataFrame({"subject": ["MCB 273", "MCB 273", "MCB 273"],
+                       "predicate": ["Course Title", "School", "Semester"],
+                       "object": ["Systems Biology", "UC Berkeley", "Spring 2023"]})
+
+    result = NeoSchema.import_triplestore(df=df, class_node="Course")
+    assert len(result) == 1
+
+    internal_id = result[0]
+    lookup = db.get_nodes(internal_id)
+    assert lookup == [{'School': 'UC Berkeley', 'Semester': 'Spring 2023', 'Course Title': 'Systems Biology', 'uri': 'MCB 273'}]

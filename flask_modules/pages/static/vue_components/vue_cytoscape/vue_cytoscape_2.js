@@ -4,13 +4,14 @@ Vue.component('vue_cytoscape_2',
             graph_data: {
                 required: true
             },
-            /* graph_data is an object with the following KEYS:
+            /* graph_data is an object with the following 3 KEYS:
 
                 1) "structure"
                         EXAMPLE:
-                            [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
-                             {'id': 2, 'color': 'white', 'labels': ['CAR']},
-                             {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
+                            [{'name': 'German Vocabulary', 'strict': False, 'uri': 'schema-1', 'internal_id': 77, 'id': 77, 'labels': ['CLASS']},
+                             {'allowed': ['der', 'die', 'das'], 'name': 'Gender', 'dtype': 'categorical', 'uri': 'schema-91', 'internal_id': 79, 'id': 79, 'labels': ['PROPERTY']}
+                             {'name': 'HAS_PROPERTY', 'source': 116602, 'target': 116618, 'id': 'edge-185'}
+                            ]
 
                 2) "color_mapping"      (TODO: auto-assign if unspecified; SEE vue_curves_4.js)
                         EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
@@ -36,6 +37,7 @@ Vue.component('vue_cytoscape_2',
                 </div>
 
 
+                <!-- SIDE BOX, to the right of the main plot -->
                 <div class="cytoscape-legend">
                     <p v-if="!node_info">
                         <b>Node labels</b><br><br>
@@ -60,8 +62,19 @@ Vue.component('vue_cytoscape_2',
                     </p>
 
                     <br>
+                    <hr>
+                    <br>
                     <button @click=flip_plot_style>Flip plot style</button>
                     <p style="color: #BBB; margin-top:5px; margin-bottom:0">Current: "{{plot_layout_style}}"</p>
+
+                    <br><br>
+                    <b>List of Classes:</b>
+                    <br>
+                    <ul>
+                        <li v-for="item in class_list" >
+                            <span style='color:#56947E'>{{item}}</span>
+                        </li>
+                    </ul>
                 </div>
 
             </div>		<!-- End of outer container -->
@@ -72,14 +85,16 @@ Vue.component('vue_cytoscape_2',
         // ----------------  DATA  -----------------
         data: function() {
             return {
-                graph_structure: this.graph_data.structure,
+                graph_structure: this.graph_data.structure, // A list of dicts
 
                 // Data of the currently-selected node
                 node_labels: null,
                 node_info: null,
 
-                plot_layout_style: "breadthfirst"   // CHOICES: 'grid', 'circle', 'random',
+                plot_layout_style: "breadthfirst",  // CHOICES: 'grid', 'circle', 'random',
                                                     //          'concentric', 'breadthfirst', 'cose'
+
+                class_list: []                      // List of all Class names in the Schema
             }
         },
 
@@ -92,6 +107,18 @@ Vue.component('vue_cytoscape_2',
             console.log('The component is now mounted');
 
             this.create_graph('cy_' + this.component_id);    // This will let Cytoscape.js do its thing!
+
+            // Create a list of all Class names in the Schema
+            for (node of this.graph_structure) {        // Loop over this.graph_structure
+                let labels = node.labels;
+                //console.log(`labels: ${labels}`);
+                if (labels !== undefined  &&  labels.includes('CLASS'))  {
+                        //console.log(`ADDING CLASS NAME: '${node.name}'`);
+                        this.class_list.push(node.name);
+                }
+            }
+            // Finally, sort the newly-created list
+            this.class_list.sort();
         },
 
 

@@ -10,7 +10,6 @@ from neoaccess import NeoAccess
 import re                               # For REGEX
 import pandas as pd
 import os
-from flask import request, current_app  # TODO: phase out (?)
 from typing import Union
 import shutil
 import requests
@@ -1313,22 +1312,27 @@ class DataManager:
 
 
     @classmethod
-    def upload_import_json(cls, verbose=False, return_url=None) -> str:
+    def upload_import_json(cls, files, upload_dir :str, return_url=None, verbose=False) -> str:
         """
         Modify the database, based on the contents of the uploaded file (expected to contain the JSON format
         of a Neo4j export)
 
-        :param verbose:
+        :param files:       An ImmutableMultiDict object.
+                                EXAMPLE: ImmutableMultiDict([('imported_datafile', <FileStorage: 'my_data.json' ('application/json')>)])
+                                    where 'imported_datafile' originates from <input type="file" name="imported_datafile">
+                                    and the name after FileStorage is the name of the file being uploaded
+        :param upload_dir:  Name of a temporary folder for file uploads.  EXAMPLE: "D:/tmp/"
         :param return_url:
+        :param verbose:
         :return:            Status string (error or success message)
         """
         # If a return URL was provided, compose a link for it
         return_link = "" if return_url is None else f" <a href='{return_url}'>GO BACK</a><br><br>"
 
         try:
-            upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
+            #upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
             (basename, full_filename, original_name, mime_type) = \
-                        UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name="imported_json", verbose=False)
+                        UploadHelper.store_uploaded_file(files=files, upload_dir=upload_dir, key_name="imported_json")
             # basename and full name of the temporary file created during the upload
         except Exception as ex:
             return f"ERROR in upload: {ex} {return_link}"
@@ -1361,19 +1365,25 @@ class DataManager:
 
 
     @classmethod
-    def upload_import_json_file(cls, post_pars, verbose=False) -> str:
+    def upload_import_json_file(cls, files, upload_dir :str, post_pars, verbose=False) -> str:
         """
         Manage the upload and import into the database of a data file in JSON format.
 
-        :return:    Status string, if successful.  In case of error, an Exception is raised
+        :param files:       An ImmutableMultiDict object.
+                                EXAMPLE: ImmutableMultiDict([('imported_datafile', <FileStorage: 'my_data.json' ('application/json')>)])
+                                    where 'imported_datafile' originates from <input type="file" name="imported_datafile">
+                                    and the name after FileStorage is the name of the file being uploaded
+        :param upload_dir:  Name of a temporary folder for file uploads.  EXAMPLE: "D:/tmp/"
+        :param post_pars:
+        :param verbose:
+        :return:            Status string, if successful.  In case of error, an Exception is raised
         """
-        print("In upload_import_json_file()")
+        #print("In upload_import_json_file()")
 
-        upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
-                                                                    # TODO: maybe extract in the api_routing file
+        #upload_dir = current_app.config['UPLOAD_FOLDER']            # Defined in main file.  EXAMPLE: "D:/tmp/"
         # 'file' is just an identifier attached to the upload by the frontend
         (basename, full_filename, original_name, mime_type) = \
-                    UploadHelper.store_uploaded_file(request, upload_dir=upload_dir, key_name=None, verbose=False)
+                    UploadHelper.store_uploaded_file(files=files, upload_dir=upload_dir, key_name=None)
         # basename and full name of the temporary file created during the upload
 
         assert post_pars["use_schema"], "Missing value for POST parameter `use_schema`"

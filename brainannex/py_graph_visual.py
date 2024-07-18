@@ -3,7 +3,7 @@ from typing import Union
 
 class PyGraphVisual:
     """
-    Facilitate data preparation for graph visualization using the Cytoscape.js library
+    Facilitate data preparation for graph visualization that uses the Cytoscape.js library
     """
 
 
@@ -34,7 +34,7 @@ class PyGraphVisual:
 
     def serialize(self) -> dict:
         """
-        Extract and return a dict of relevent data from this object
+        Extract and return a dict of relevant data from this object
 
         :return:
         """

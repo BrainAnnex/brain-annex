@@ -2,7 +2,8 @@
 {#  Editor for Categories and the relationships among them
 
     Flask-passed parameters:
-        site_data
+        site_data           Dict of general site data.  Keys: "site_pages", "branding", "version";
+                                for details, see class PagesRouting
         current_page
         username
 
@@ -10,9 +11,11 @@
         category_name       EXAMPLE: "French"
         category_remarks    EXAMPLE: "Notes from class"
 
+        all_categories      EXAMPLE: [{'name': 'Language', 'uri': '544'}]
         subcategories
         parent_categories   EXAMPLE: [{'name': 'Language', 'uri': '544', 'schema_code': 'cat'}]
-        all_categories      EXAMPLE: [{'name': 'Language', 'uri': '544'}]
+        see_also_categories A list with data about all the "see also" links originating from this Category
+                            EXAMPLE:  [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
 
         pin_status          True if this Category is "pinned"; otherwise, False
 
@@ -32,6 +35,7 @@
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
+    <script src="/BA/pages/static/js/utilities.js"></script>
 </head>
 
 <body class='cp'>
@@ -226,9 +230,18 @@ It does *NOT* delete `' + p.name + '`'"
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
     </div>
 
-    <!-- Pulldown menu to add SEE_ALSO links to other existing Categories -->
-    <div style="width:160px; font-size:12px">
-        &diams; Add "See Also" link:
+    <!-- Show existing SEE_ALSO links (and, TODO: offer a way to delete them) -->
+    <div style="width:250px; font-size:12px">
+        <template v-for='cat in this.see_also_categories'>
+        &diams; [[cat.name]]
+        <img @click="remove_see_also(cat.uri)"  class="clickable-icon" src='/BA/pages/static/graphics/delete_12_1493279.png' style="margin-left:5px"
+             title='NOT YET IMPLEMENTED.  SEVER the "see also" relationship betw. "{{category_name}}" and this category'
+        >
+        <br>
+        </template>
+
+        <!-- Pulldown menu to add SEE_ALSO links to other existing Categories; todo: don't show existing ones -->
+        <span style="color:#AAA; font-style:italic">Add "See Also" link to:</span>
 
         <select @change="add_see_also"  v-model="uri_see_also_child_to_add"  style='width:185px'>
             <option disabled value=''>[Select 'see-also' category]</option>
@@ -244,42 +257,31 @@ It does *NOT* delete `' + p.name + '`'"
 
 
         <br><br>
-        <!-- TODO: IMPLEMENT DELETION of existing SEE_ALSO links -->
-        <form method='POST' action='doCategoryHandler2.php?op=deleteSeeAlso&cat={{category_uri}}' style='display:inline-block; margin-left:5px'>
-        <input type='hidden' name='parentID' value='{{category_uri}}'>
-        <input type='hidden' name='childID' value='366'>
-        <input type='image' src='/BA/pages/static/graphics/delete_12_1493279.png'
-               title='NOT YET IMPLEMENTED.  SEVER the "see also" relationship between "{{category_name}}" and "OTHER CATEGORY TBA"'
-        >
-        </form>
-
-
-        <br><br>
         <input type='checkbox' v-model="pin_status" @click='pin_category(pin_status)'>Pin
 
-    </div>
-</div>
-
-
-
-    <div class="categoryManagement">
-        <div style="width:350px">&nbsp;</div>
-        <div><img src="/BA/pages/static/graphics/down_128_172594_to_children.png"></div>
+        </div>
     </div>
 
 
-    <div class="categoryManagement">
-        <div style="width:38px">&nbsp;</div>
-        <div style="width:90%; border-top:2px solid black; border-left:2px solid black; border-right:2px solid black">&nbsp;</div>
-    </div>
+
+        <div class="categoryManagement">
+            <div style="width:350px">&nbsp;</div>
+            <div><img src="/BA/pages/static/graphics/down_128_172594_to_children.png"></div>
+        </div>
 
 
-    <div class="categoryManagement bottomRow">
+        <div class="categoryManagement">
+            <div style="width:38px">&nbsp;</div>
+            <div style="width:90%; border-top:2px solid black; border-left:2px solid black; border-right:2px solid black">&nbsp;</div>
+        </div>
 
-        <img src="/BA/pages/static/graphics/child.jpg">
+
+        <div class="categoryManagement bottomRow">
+
+            <img src="/BA/pages/static/graphics/child.jpg">
 
 
-        <!-- Provide 2 Add-child forms, floated to the right -->
+            <!-- Provide 2 Add-child forms, floated to the right -->
         <div style="width:180px; float:right; margin-right:2px">
             <!-- TODO: this needs replacing -->
             <span style="font-style:italic; color:#666666">Add an <b>existing</b> Sub-category to &ldquo;{{category_name}}&rdquo;:</span><br>
@@ -389,6 +391,8 @@ It does *NOT* delete `' + s.name + '`'"
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root-1 element  ~~~~~~~~~~~~~~~~~~~~~  -->
 
 
+
+
 <!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements.
      Using type="module" because it contains imports! -->
 
@@ -405,12 +409,13 @@ new Vue({
 
         // The DATA HANDOVER from Flask to Vue
         category_uri: {{category_uri}},
+        all_categories: {{all_categories | tojson}},       // List of all categories, each of which is an object
+                                                           // Eg: [{uri: '888', name: 'Greek'}]
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
                                                            // Eg: [{uri: '544', name: 'Language', schema_code: 'cat'}]
         subcategories: {{subcategories | tojson}},         // List of sub-categories, each of which is an object
                                                            //       (same format as for parent_categories)
-        all_categories: {{all_categories | tojson}},       // List of all categories, each of which is an object
-                                                           // Eg: [{uri: '888', name: 'Greek'}]
+        see_also_categories: {{see_also_categories | tojson}},   // List of related Categories, each an object
 
         // The values bound to the editing fields, initially from the data handover from Flask;
         //      it'll change in the course of the edit-in-progress
@@ -500,8 +505,16 @@ new Vue({
 
                 // Synchronize the page data to the finalized current data
 
-                // TBA after the page starts managing the list of SEE_ALSO links: update that list!
-
+                // Update the list of SEE_ALSO links shown on the page
+                const item_index = Utilities.find_item_by_uri(custom_data, this.all_categories);
+                if (item_index != 1)  {      // If found
+                    const category_data = this.all_categories[item_index];
+                    this.see_also_categories.push({uri: custom_data, name: category_data.name, remarks: category_data.remarks});
+                }
+                else  {                         // Not found
+                    alert(`Unable to locate Category with URI: '${custom_data}'; try refreshing the page`);
+                    this.see_also_categories.push({uri: custom_data});
+                }
             }
             else  {             // Server reported FAILURE
                 this.error = true;
@@ -511,6 +524,15 @@ new Vue({
             // Final wrap-up, regardless of error or success
             this.waiting = false;                   // Make a note that the asynchronous operation has come to an end
             this.uri_see_also_child_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
+        },
+
+
+
+        remove_see_also(uri)
+        // Remove the 'SEE ALSO' link from the current Category to the Category with the given uri
+        {
+            alert(`Sorry, removal of 'SEE ALSO' relationships not yet implemented`);
+            console.log(`Attempting to remove a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the Category with URI '${uri}'`);
         },
 
 

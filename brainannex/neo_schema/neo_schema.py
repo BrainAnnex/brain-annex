@@ -1923,24 +1923,76 @@ class NeoSchema:
 
 
     @classmethod
-    def follow_links_NOT_YET_IMPLEMENTED(cls, class_name, key_name, key_value, link_sequence):
+    def follow_links(cls, class_name :str, node_id, links :str, id_type=None, properties=None, labels=None) -> Union[list, dict]:
         """
-        Follow a chain of links among data nodes,
-        starting with a given data node (or maybe possibly a set of them?)
+        From the given starting data node(s), follow all the relationships that have the specified name,
+        from/into neighbor nodes (optionally having the given labels),
+        and return some of the properties of those found nodes.
 
-        :param class_name:      (OPTIONAL)
-        :param key_name:        TODO: or pass a "match" object?
-        :param key_value:
-        :param link_sequence:   EXAMPLE: [("occurs", "OUT", "Indexer),
-                                          ("has_index", "IN", None)]
-                                    Each triplet is: (relationship name,
-                                                      direction,
-                                                      name of Class of data node on other side)
-                                    Any component could be None
-        :return:                A list of internal node ID's (or, optionally, all properties of the end nodes?)
+        :param class_name:  String with the name of the Class of the given ddata node
+        :param node_id:     Either an internal database ID or a primary key value
+        :param links:       A string with the name of the link(s) to follow
+        :param id_type:     [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+                                Leave blank to use the internal database ID
+        :param properties:  [OPTIONAL] String, or list of strings, with the name(s)
+                                of the properties to return on the found nodes;
+                                if not specified, an Exception is raised
+                                TODO: return all properties if unspecified
+        :param labels:      [OPTIONAL] string, or list/tuple of strings,
+                                with node labels required to be present on the located nodes
+                                TODO: not currently in use
+
+        :return:            A list of values, if properties only contains a single element (currently, the only option);
+                                otherwise, a list of dictionaries
         """
-        #TODO: possibly use cls.db.follow_links()
-        pass
+        #TODO: pytest
+        #TODO: allow an option to return the internal database ID's
+        '''
+        TODO - idea to expand `links`:
+        
+                    EXAMPLE: [("occurs", "OUT", "Indexer"),
+                              ("has_index", "IN", None)]
+                              
+                    Each triplet is: (relationship name,
+                                      direction,
+                                      name of Class of data node on other side)
+                    Any component could be None
+        '''
+        if properties:
+            assert (type(properties) == str or type(properties) == list), \
+                "follow_links(): the argument `properties` must be a string or list of strings"
+
+        if id_type:
+            where_clause = f"from.`{id_type}` = $node_id"
+        else:
+            where_clause = "id(from) = $node_id"
+
+        if type(properties) == str:
+            properties_cypher_str = f"to.`{properties}` AS `{properties}`"
+        elif type(properties) == list:
+            properties_cypher_list = [f"to.`{prop}` AS `{prop}`"
+                                      for prop in properties]
+            #print(properties_cypher_list)
+            properties_cypher_str = ", ".join(properties_cypher_list)
+        else:
+            # TODO: also handle None, to be interpreted as "all properties"
+            raise Exception("follow_links(): the argument `properties` must be a string or list of strings")
+
+        q = f'''
+            MATCH (from :`{class_name}`) -[:`{links}`]-> (to)
+            WHERE {where_clause}
+            RETURN {properties_cypher_str}
+            '''
+        result = cls.db.query(q, data_binding={"node_id": node_id})
+
+        if type(properties) != str:
+            return result       # List of dicts
+
+        data = []
+        for node in result:
+                data.append(node[properties])
+
+        return data             # List of values
 
 
 
@@ -3099,14 +3151,14 @@ class NeoSchema:
     #####################################################################################################
 
 
-
     @classmethod
     def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
                             datetime_cols=None, int_cols=None,
                             extra_labels=None, uri_namespace=None,
                             schema_code=None, report_frequency=100) -> [int]:
         """
-        Import a group of entities, from the rows of a Pandas dataframe, as Data Nodes in the database.
+        Import a group of entities (records), from the rows of a Pandas dataframe,
+        as Data Nodes in the database.
 
         Dataframe cells with NaN's and empty strings are dropped - and never make it into the database.
 
@@ -3382,6 +3434,85 @@ class NeoSchema:
             scrubbed_d[k] = v
 
         return scrubbed_d
+
+
+
+    @classmethod
+    def import_triplestore(cls, df :pd.DataFrame, class_node :Union[int, str],
+                           col_names = None, uri_prefix = None,
+                           datetime_cols=None, int_cols=None,
+                           extra_labels=None,
+                           schema_code=None, report_frequency=100
+                           ) -> [int]:
+        """
+        Import "triplestore" data from a Pandas dataframe that contains 3 columns called:
+                subject , predicate , object
+
+        The values of the "subject" column are used for identifying entities, and then turned into URI's.
+        The values of the "predicate" column are taken to be the names of the Properties (possibly mapped
+            by means of the dictionary "col_names"
+        The values of the "object" column are taken to be the values (literals) of the Properties
+
+        Note: "subject" and "predicate" is typically an integer or a string
+
+        EXAMPLE -
+            Panda's data frame:
+             	subject 	 predicate 	  object
+            0 	    57 	            1 	  Advanced Graph Databases
+            1 	    57 	            2 	  New York University
+            2 	    57 	            3 	  Fall 2024
+
+            col_names = {1: "Course Title", 2: "School", 3: "Semester"}
+            uri_prefix = "r-"
+
+            The above will result in the import of a node with the following properties:
+
+                {"uri": "r-57",
+                "Course Title": "Advanced Graph Databases",
+                "School": "New York University",
+                "Semester": "Fall 2024"}
+
+        :param df:              A Pandas dataframe that contains 3 columns called:
+                                    subject , predicate , object
+        :param class_node:      Either an integer with the internal database ID of an existing Class node,
+                                    or a string with its name
+        :param col_names:       [OPTIONAL] Dict with mapping from values in the "predicate" column of the data frame
+                                           and the names of the new nodes' Properties
+        :param uri_prefix:      [OPTIONAL] String to prefix to the values in the "subjec" column
+        :param datetime_cols:   [SEE import_pandas_nodes()]
+        :param int_cols:        [SEE import_pandas_nodes()]
+        :param extra_labels:    [SEE import_pandas_nodes()]
+        :param schema_code:     [SEE import_pandas_nodes()]
+        :param report_frequency:[SEE import_pandas_nodes()]
+
+        :return:                A list of the internal database ID's of the newly-created Data nodes
+        """
+        # Note: an alternate implementation might use df.groupby(['subject']).head(1)
+        #       and then directly import the records, rather than be built atop import_pandas_nodes()
+        if uri_prefix:
+            # Alter the 'subject' column with a prefix
+            df['subject'] = uri_prefix + df['subject'].astype(str)
+
+
+        # Transform the triples ("narrow table") into a wide table with all the properties in separate columns
+        # EXAMPLE: predicate    subject                         1                    2          3
+        #                  0       r-57  Advanced Graph Databases  New York University  Fall 2024
+        df_wide = df.pivot(index='subject', columns='predicate', values='object').reset_index()
+
+        # Rename the columns, based on the passed name mapping, if any
+        # EXAMPLE: predicate    subject             Course Title                 School   Semester
+        #                 0        r-57   Advanced Graph Databases  New York University  Fall 2024
+        if col_names:
+            df_wide = df_wide.rename(columns=col_names)
+
+        # Rename the "subject" column to be "uri"
+        df_wide = df_wide.rename(columns={"subject": "uri"})
+
+        # Now that the data frame is transformed, do the actual import
+        return cls.import_pandas_nodes(df=df_wide, class_node=class_node, uri_namespace=None,
+                                       datetime_cols=datetime_cols, int_cols=int_cols,
+                                       extra_labels=extra_labels, schema_code=schema_code,
+                                       report_frequency=report_frequency)
 
 
 

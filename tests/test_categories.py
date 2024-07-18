@@ -125,6 +125,20 @@ def test_get_sibling_categories(db):
 
 
 
+def test_get_see_also(db):
+    root_internal_id, root_uri = initialize_categories(db)
+
+    A_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "A"})
+
+    B_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "B"})
+
+    Categories.create_see_also(from_category=A_uri, to_category=B_uri)
+
+    result = Categories.get_see_also(from_category=A_uri)
+    assert result == [{'name': 'B', 'remarks': None, 'uri': B_uri}]
+
+
+
 def test_create_see_also(db):
     root_internal_id, root_uri = initialize_categories(db)
 
