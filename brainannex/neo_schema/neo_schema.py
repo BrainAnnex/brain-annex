@@ -1972,7 +1972,7 @@ class NeoSchema:
         elif type(properties) == list:
             properties_cypher_list = [f"to.`{prop}` AS `{prop}`"
                                       for prop in properties]
-            print(properties_cypher_list)
+            #print(properties_cypher_list)
             properties_cypher_str = ", ".join(properties_cypher_list)
         else:
             # TODO: also handle None, to be interpreted as "all properties"
