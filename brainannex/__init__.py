@@ -1,4 +1,4 @@
-__version__ = "5.0.0-beta.42"
+__version__ = "5.0.0-beta.43_IP"
 
 
 from brainannex.neo_schema.neo_schema import NeoSchema
@@ -6,6 +6,7 @@ from brainannex.data_manager import DataManager
 from brainannex.user_manager import UserManager
 from brainannex.categories import Categories
 from brainannex.collections import Collections
+from brainannex.full_text_indexing import FullTextIndexing
 
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     'UserManager',
     'Categories',
     'Collections',
+    'FullTextIndexing',
     'version'
 ]
 
