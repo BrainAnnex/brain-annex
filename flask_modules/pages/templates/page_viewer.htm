@@ -212,13 +212,13 @@
 
 
 
-{# Display the "SEE ALSO" links, if present #}
+{# Display all the "SEE ALSO" links, if present #}
 {% if see_also_links != [] %}
     <p style="margin-bottom:15px">
         -> <b>SEE ALSO:</b>&nbsp;&nbsp;&nbsp;
-        {% for my_item in see_also_links %}
-            <a href="/BA/pages/viewer/{{my_item.uri}}" style="margin-right:30px">
-                {{my_item.description  if my_item.description != None  else my_item.name}}
+        {% for linked_category in see_also_links %}
+            <a href="/BA/pages/viewer/{{linked_category.uri}}" style="margin-right:30px">
+                {{linked_category.name}}
             </a>
         {% endfor %}
     </p>
