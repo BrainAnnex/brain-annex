@@ -635,6 +635,61 @@ class DataManager:
     ##############   MODIFYING CONTENT ITEMS   ##############
 
     @classmethod
+    def update_content_item_NEW(cls, uri :str, class_name :str, update_data: dict) -> None:
+        """
+        Update an existing Content Item.
+        In case of error, an Exception is raised
+
+        Notes:
+            - if a field is blank, drop it altogether from the node
+            - leading/trailing blanks in the field values are stripped away
+
+        :return:    None.  In case of error, an Exception is raised
+        """
+        # First, make sure that the requested Content Item exists.
+        assert NeoSchema.data_node_exists(data_node=uri), \
+                    f"update_content_item_NEW(): no Content Item found with URI `{uri}`"
+
+        # TODO: lift this limitation (see also comments below)
+        assert class_name != "Notes", \
+            "update_content_item_NEW(): not currently usable with updates of `Notes` Content Items"
+
+        '''
+        # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
+        #       TODO: try to infer them from the Schema
+        original_post_data = update_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
+
+        # TODO: instead of passing along in the POST request things like `basename` and `suffix`
+        #       (which place a burden on the front end),
+        #       get them from the database, and just pass all the node attributes to the plugin-specific modules
+        #       Try:
+        #           db_data = NeoSchema.fetch_data_node(uri=uri)
+        #           Then pass db_data as a parameter to the plugin-specific modules
+
+        if class_name == "Notes":
+            if update_data.get("basename") == "undefined":
+                raise Exception("update_content_item(): attempting "
+                                "to pass a `basename` attribute to the value 'undefined'")
+            set_dict = Notes.before_update_content(data_binding, set_dict)        
+        '''
+
+        # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
+        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks = True)
+
+
+        '''
+        if schema_code == "n":
+            Notes.update_content_item_successful(uri, original_post_data)
+        '''
+
+        # If the update was NOT for a "note" (in which case it might only be about the note's body than its metadata)
+        # verify that some fields indeed got changed
+        if class_name != "Notes" and number_updated == 0:
+            raise Exception("update_content_item_NEW(): No update performed")
+
+
+
+    @classmethod
     def update_content_item(cls, post_data: dict) -> None:
         """
         Update an existing Content Item.

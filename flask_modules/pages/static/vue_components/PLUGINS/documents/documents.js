@@ -91,13 +91,13 @@ Vue.component('vue-plugin-d',
 
             edit_content_item()
             {
-                //console.log(`Documents component received signal to edit content item of type '${item.schema_code}' , id ${item.uri}`);
+                //console.log(`Documents component received signal to edit document`);
                 this.edit_metadata = true;
             },
 
             cancel_edit()
             {
-                console.log(`In cancel_edit()`);
+                //console.log(`In cancel_edit()`);
                 this.current_caption = this.original_caption;
                 this.edit_metadata = false;
             },

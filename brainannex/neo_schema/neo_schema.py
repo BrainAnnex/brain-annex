@@ -1702,6 +1702,8 @@ class NeoSchema:
                                 or a string (representing the value of the "uri" field)
         :return:            True if the specified Data Node exists, or False otherwise
         """
+        # TODO: also allow to optionally pass a Class name for double-check
+
         # Prepare the clause part of a Cypher query
         if type(data_node) == int:
             clause = "WHERE id(dn) = $data_node"
@@ -2002,7 +2004,7 @@ class NeoSchema:
 
     '''                     ~   DATA NODES : CREATING / MODIFYING  ~                                  '''
 
-    def ________DATA_NODES_CREATING_______(DIVIDER):
+    def ________DATA_NODES_CREATE_MODIFY______(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -2732,6 +2734,7 @@ class NeoSchema:
         :param data_node:   Either an integer with the internal database ID, or a string with a URI value
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
                                 (note: blanks ARE allowed within the keys)
+                                Blanks at the start/end of string values are zapped
         :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
         :return:            The number of properties set or removed;
@@ -2756,13 +2759,18 @@ class NeoSchema:
         data_binding = {}
         set_list = []
         remove_list = []
-        for field_name, field_value in set_dict.items():                # field_name, field_value are key/values in set_dict
+        for field_name, field_value in set_dict.items():            # field_name, field_value are key/values in set_dict
+            if type(field_value) == str:
+                field_value = field_value.strip()                           # Zap all leading and trailing blanks
+
             if (field_value != "") or (drop_blanks == False):
                 field_name_safe = field_name.replace(" ", "_")              # To protect against blanks in name, which could not be used
                                                                             #   in names of data-binding variables.  E.g., "end date" becomes "end_date"
                 set_list.append(f"n.`{field_name}` = ${field_name_safe}")   # Example:  "n.`end date` = end_date"
+
                 data_binding[field_name_safe] = field_value                 # Add entry the Cypher data-binding dictionary, of the form {"end_date": some_value}
             else:
+                # We get here in case the field value is a blank string AND drop_blanks is True
                 remove_list.append(f"n.`{field_name}`")
 
         # Example of data_binding at the end of the loop: {'color': 'white', 'max_quantity': 7000}

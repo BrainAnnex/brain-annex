@@ -176,6 +176,17 @@ class ApiRouting:
         :param json_decode:         If True, all values are expected to be JSON-encoded strings, and they get decoded
         :return:                    A dict populated with the POST data
         """
+        #TODO: return a dict whose keys are the required fields,
+        #      PLUS an extra key, "OTHER_FIELDS" that contains a dict with the remaining field
+        '''
+        return_dict = {"OTHER_FIELDS": other_fields}
+        for k, v in data_binding.items():
+            if k in required_par_list:    # Exclude some special keys
+                return_dict[k] = v
+            else:
+                other_fields[k] = v
+        '''
+
         #TODO: instead of accepting "post_data" as argument,
         #      extract it here, with a:  post_data = request.form  (and optional call to show_post_data)
 
@@ -915,6 +926,44 @@ class ApiRouting:
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
+        @bp.route('/update_content_item', methods=['POST'])
+        @login_required
+        def update_content_item():
+            """
+            Update an existing Content Item.
+            THIS IS A NEWER VERSION of the old endpoint '/update', and meant to eventually replace it
+            NOTE: the "class_name" field in the POST data is redundant
+
+            EXAMPLES of invocation:
+                curl http://localhost:5000/BA/api/update -d "uri=11&class_name=Headers&text=my_header"
+                curl http://localhost:5000/BA/api/update -d "uri=62&class_name=German Vocabulary&English=Love&German=Liebe"
+            """
+            #TODO: maybe use a PUT or PATCH method, instead of a POST
+
+            # Extract the POST values
+            post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('class_name', 'Headers'), ('text', 'my_header')])
+            #cls.show_post_data(post_data, "update_content_item")
+
+            try:
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['uri', 'class_name'])
+                uri=data_dict["uri"]
+                class_name=data_dict["class_name"]
+                del data_dict["uri"]
+                del data_dict["class_name"]
+                DataManager.update_content_item_NEW(uri=uri, class_name=class_name,
+                                                    update_data=data_dict)
+                response_data = {"status": "ok"}                                    # If no errors
+            except Exception as ex:
+                err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                #TODO: consider a "500 Internal Server Error" in this case
+                #      or maybe a "422 Unprocessable Entity"
+
+            #print(f"update_content_item() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
 
         @bp.route('/delete/<uri>/<schema_code>')
         @login_required
@@ -1244,9 +1293,9 @@ class ApiRouting:
 
         #####################################################################################################
 
-        '''                                  ~  CONTENT ITEMS    ~                                       '''
+        '''                          ~  CONTENT ITEMS in CATEGORIES    ~                                   '''
 
-        def ________CONTENT_ITEMS________(DIVIDER):
+        def ________CONTENT_ITEMS_CATEGORIES________(DIVIDER):
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
