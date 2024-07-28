@@ -645,7 +645,7 @@ class DataManager:
     def update_content_item_NEW(cls, uri :str, class_name :str, update_data: dict) -> None:
         """
         Update an existing Content Item.
-        In case of error, an Exception is raised
+        No harm if new values are identical to the earlier old values.
 
         Notes:
             - if a field is blank, it gets completely dropped from the node
@@ -684,7 +684,8 @@ class DataManager:
         '''
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks = True)
+        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks = True,
+                                                    class_name=class_name)
 
 
         '''
@@ -693,9 +694,13 @@ class DataManager:
         '''
 
         # If the update was NOT for a "note" (in which case it might only be about the note's body than its metadata)
-        # verify that some fields indeed got changed
+        # verify that some fields indeed got updated
+        # Note: an update with the same value as before is considered legit, and counts as an update
         if class_name != "Notes" and number_updated == 0:
-            raise Exception("update_content_item_NEW(): No update performed")
+            if not NeoSchema.class_name_exists(class_name):
+                raise Exception(f"update_content_item_NEW(): Requested Class ({class_name}) doesn't exist; no update performed")
+            else:
+                raise Exception("update_content_item_NEW(): No update performed")
 
 
 

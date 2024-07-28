@@ -2731,7 +2731,7 @@ class NeoSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True) -> int:
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True, class_name=None) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
@@ -2741,11 +2741,14 @@ class NeoSchema:
                                 Blanks at the start/end of string values are zapped
         :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
+        :param class_name:  [OPTIONAL] The name of the Class to which the given Data Note is part of;
+                                if provided, it gets enforced
         :return:            The number of properties set or removed;
                                 if the record wasn't found, or an empty set_dict was passed, return 0
                                 Important: a property is counted as "set" even if the new value is
                                            identical to the old value!
         """
+        #TODO: test the class_name argument
         #TODO: check whether the Schema allows the added/dropped fields, if applicable
         #      Compare the keys of set_dict against the Properties of the Class of the Data Node
 
@@ -2787,9 +2790,14 @@ class NeoSchema:
         if drop_blanks and remove_list:
             remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
 
+        if class_name:
+            match_str = f"MATCH (n)-[:SCHEMA]->(:CLASS {{name: '{class_name}'}}) "
+        else:
+            match_str = f"MATCH (n) "
 
         q = f'''
-            MATCH (n) {where_clause}
+            {match_str} 
+            {where_clause}
             {set_clause} 
             {remove_clause}            
             '''
