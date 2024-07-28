@@ -429,6 +429,13 @@ class DataManager:
 
 
 
+    #####################################################################################################
+
+    '''                                    ~   CONTENT-RELATED   ~                                    '''
+
+    def ________CONTENT_RELATED________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
     #######################     RECORDS-RELATED       #######################
 
@@ -641,12 +648,15 @@ class DataManager:
         In case of error, an Exception is raised
 
         Notes:
-            - if a field is blank, drop it altogether from the node
+            - if a field is blank, it gets completely dropped from the node
             - leading/trailing blanks in the field values are stripped away
 
-        :return:    None.  In case of error, an Exception is raised
+        :param uri:         String with a unique identifier for the Content Item to update
+        :param class_name:  Name of the Schema Class of the Content Item
+        :param update_data: A dict of data field names and their desired new values
+        :return:            None
         """
-        # First, make sure that the requested Content Item exists.
+        # First, make sure that the requested Content Item exists
         assert NeoSchema.data_node_exists(data_node=uri), \
                     f"update_content_item_NEW(): no Content Item found with URI `{uri}`"
 
@@ -839,7 +849,7 @@ class DataManager:
                     * schema_uri (Optional)
                     * class_name (Required only for Class Items of type "record")
 
-            - insert_after        Either a URI of an existing Content Item attached to this Category,
+            - insert_after        Either the URI of an existing Content Item attached to this Category,
                                   or one of the special values "TOP" or "BOTTOM"
             - *PLUS* all applicable plugin-specific fields (all the key/values for the new Content Item)
 
@@ -1094,7 +1104,7 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_name = NeoSchema.fetch_data_node(uri=search_category).get("name")
+            category_name = NeoSchema.get_data_node(uri=search_category).get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
         return (content_items, caption)

@@ -1656,6 +1656,8 @@ class NeoSchema:
         :return:        The internal database ID of the specified Data Node;
                             if none (or more than one) found, an Exception is raised
         """
+        #TODO: merge with get_data_node_id()
+
         match = cls.db.match(key_name="uri", key_value=uri, labels=label)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
@@ -1679,10 +1681,12 @@ class NeoSchema:
         """
         Get the internal database ID of a Data Node, given some other primary key
 
-        :param key_value:
-        :param key_name:
+        :param key_value:   The name of a primary key to use for the node lookup
+        :param key_name:    The value of the above primary key
         :return:            The internal database ID of the specified Data Node
         """
+        #TODO: merge with get_data_node_internal_id()
+
         match = cls.db.match(key_name=key_name, key_value=key_value)
         result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
 
@@ -1735,7 +1739,7 @@ class NeoSchema:
 
 
     @classmethod
-    def fetch_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
+    def get_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data node
 
@@ -1747,7 +1751,7 @@ class NeoSchema:
         :param labels:      OPTIONAL (generally redundant) ways to locate the data node
         :param properties:  OPTIONAL (generally redundant) ways to locate the data node
 
-        :return:            A dictionary with all the key/value pairs, if found; or None if not
+        :return:            A dictionary with all the key/value pairs, if node is found; or None if not
         """
         # TODO: add function that only returns a specified single Property, or specified list of Properties
         if internal_id is None:
@@ -1766,7 +1770,7 @@ class NeoSchema:
     @classmethod
     def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> CypherMatch:
         """
-        EXPERIMENTAL - a generalization of fetch_data_node()
+        EXPERIMENTAL - a generalization of get_data_node()
 
         Return the "match" structure to later use to locate a node identified
         either by its internal database ID (default), or by a primary key (with optional label.)

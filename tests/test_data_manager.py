@@ -21,8 +21,8 @@ def db():
 # ************  CREATE CATEGORY CLASS AND ROOT CATEGORY for the testing  **************
 
 def initialize_categories(db):
-    # Clear the dbase, create the Category Schema, and creates a ROOT Category node;
-    # return the pari (internal database ID, URI) of the new Categories node
+    # Clear the dbase, create the Schema needed for Categories , and create a ROOT Category node;
+    # return the pair (internal database ID, URI) of the new Categories ROOT node
 
     db.empty_dbase()
 
@@ -34,7 +34,41 @@ def initialize_categories(db):
 
 
 
-# ************  THE ACTUAL TESTS  ************
+# ********************  THE ACTUAL TESTS  ********************
+
+def test_update_content_item_NEW(db):
+
+    _, root_uri = initialize_categories(db)
+
+    # Create a Content Item, and attach it to the Root Category
+    NeoSchema.create_class_with_properties(name="Photo", strict=True,
+                                           properties=["caption", "remarks", "uri"])
+    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
+                                  item_properties={"caption": "beach at sunrise"}, new_uri="photo_1")
+
+    # Alter the Content Item
+    DataManager.update_content_item_NEW(uri="photo_1", class_name="Photo",
+                                        update_data={"caption": "    beach under full moon  "})
+    result = NeoSchema.get_data_node(uri="photo_1")
+    assert result.get("caption") == "beach under full moon"     # Notice the leading/trailing blanks are gone
+    assert result.get("remarks") is None
+
+    # Alter again the Content Item
+    DataManager.update_content_item_NEW(uri="photo_1", class_name="Photo",
+                                        update_data={"caption": "      "})
+    result = NeoSchema.get_data_node(uri="photo_1")
+    assert result.get("caption") is None     # That field is now gone altogether
+    assert result.get("remarks") is None
+
+
+    # Alter yet again the Content Item
+    DataManager.update_content_item_NEW(uri="photo_1", class_name="Photo",
+                                        update_data={"remarks": "3 is a charm!  ", "caption": "  beach in the late afternoon"})
+    result = NeoSchema.get_data_node(uri="photo_1")
+    assert result.get("caption") == "beach in the late afternoon"
+    assert result.get("remarks") == "3 is a charm!"
+
+
 
 def test_switch_category(db):
 

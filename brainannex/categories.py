@@ -87,7 +87,7 @@ class Categories:
         """
         # Note: since the category_uri is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
-        return NeoSchema.fetch_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
+        return NeoSchema.get_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
 
 
 
@@ -468,7 +468,7 @@ class Categories:
                                 links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
                                 assign_uri=True)
 
-        new_data_point = NeoSchema.fetch_data_node(internal_id = new_internal_id)
+        new_data_point = NeoSchema.get_data_node(internal_id = new_internal_id)
         assert new_data_point is not None, \
             "add_subcategory(): failure to fetch data node for the newly created subcategory"
 
@@ -676,7 +676,7 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True or False
         """
-        all_props = NeoSchema.fetch_data_node(uri=uri, labels="Categories")    # Returns a dict, or None
+        all_props = NeoSchema.get_data_node(uri=uri, labels="Categories")    # Returns a dict, or None
         assert all_props, "is_pinned(): unable to locate the specified Category node"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
@@ -872,12 +872,13 @@ class Categories:
         :param category_uri:    A string to identify the Category
                                     to which this Content Media being newly-created is to be attached
         :param item_class_name: For example, "Images"
-        :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
+        :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix"
+                                    NOTE: if the Class was declared as "strict",
+                                          then any key not declared in the Schema gets silently ignored
         :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                The "uri" (passed or created) of the newly-created data node
         """
-        #print("Inside Categories.add_content_at_end()")
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the "data_node" namespace

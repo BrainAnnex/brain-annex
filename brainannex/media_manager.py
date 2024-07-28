@@ -135,7 +135,7 @@ class MediaManager:
         # TODO: (at least for large media) read the file in blocks
 
         #print("In get_binary_content(): uri = ", uri)
-        content_node = NeoSchema.fetch_data_node(uri = uri)
+        content_node = NeoSchema.get_data_node(uri = uri)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
