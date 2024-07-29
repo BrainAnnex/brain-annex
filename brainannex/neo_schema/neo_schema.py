@@ -3173,6 +3173,7 @@ class NeoSchema:
 
     @classmethod
     def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
+                            drop=None, rename=None,
                             datetime_cols=None, int_cols=None,
                             extra_labels=None, uri_namespace=None,
                             schema_code=None, report_frequency=100) -> [int]:
@@ -3182,30 +3183,40 @@ class NeoSchema:
 
         Dataframe cells with NaN's and empty strings are dropped - and never make it into the database.
 
+        Note: if you have a CSV file whose first row contains the field names, you can first do operations such as
+                    df = pd.read_csv("C:/Users/me/some_name.csv", encoding = "ISO-8859-1")
+
         :param df:          A Pandas Data Frame with the data to import;
                                 each row represents a record - to be turned into a graph-database node.
                                 Each column represents a Property of the data node, and it must have been
                                 previously declared in the Schema
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
-        :param datetime_cols:(OPTIONAL) String, or list/tuple of strings, of column name(s)
+        :param drop:        [OPTIONAL] Name of a field, or list of names, to ignore during import
+        :param rename:      [OPTIONAL] dictionary to rename the Pandas dataframe's columns to
+                                EXAMPLE {"current_name": "name_we_want"}
+        :param datetime_cols:[OPTIONAL] String, or list/tuple of strings, of column name(s)
                                 that contain datetime strings such as '2015-08-15 01:02:03'
                                 (compatible with the python "datetime" format)
-        :param int_cols:    (OPTIONAL) String, or list/tuple of strings, of column name(s)
+        :param int_cols:    [OPTIONAL] String, or list/tuple of strings, of column name(s)
                                 that contain integers, or that are to be converted to integers
                                 (typically necessary because numeric Pandas columns with NaN's
-                                 are automatically turned into floats; this argument will cast them to int's, and drop the NaN's)
-        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
+                                 are automatically turned into floats;
+                                 this argument will cast them to int's, and drop the NaN's)
+        :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
                                 IN ADDITION TO the Class name (which is always used as label)
-        :param uri_namespace:(OPTIONAL) String with a namespace to use to auto-assign uri values on the new Data nodes;
-                                if not passed, no uri values will get set on the new nodes
-        :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
+        :param uri_namespace:[OPTIONAL] String with a namespace to use to auto-assign uri values on the new Data nodes;
+                                if that namespace hasn't previously been created with create_namespace() or with reserve_next_uri(),
+                                a new one will be created with no prefix nor suffix (i.e. all uri's be numeric strings.)
+                                If not passed, no uri values will get set on the new nodes
+        :param schema_code: [OPTIONAL] Legacy element, deprecated.  Extra string to add as value
                                 to a "schema_code" property for each new data node created
-        :param report_frequency: (OPTIONAL) How often to print the status of the import-in-progress
+        :param report_frequency: [OPTIONAL] How often to print the status of the import-in-progress
 
         :return:            A list of the internal database ID's of the newly-created Data nodes
         """
-        # TODO: pytest uri_namespace argument
+        # TODO: pytest uri_namespace argument, drop, rename
+        # TODO: allow rename to do a drop, by using None as some values
 
         # Do various validations
         cls.assert_valid_class_identifier(class_node)
@@ -3249,6 +3260,13 @@ class NeoSchema:
             int_cols = [int_cols]
         elif int_cols is None:
             int_cols = []
+
+
+        if drop is not None:
+            df = df.drop(drop, axis=1)      # Drop a column, or list of columns
+
+        if rename is not None:
+            df = df.rename(rename, axis=1)  # Rename the columns in the Pandas data frame
 
 
         # Verify whether all properties are allowed
@@ -4069,6 +4087,31 @@ class NeoSchema:
 
 
     @classmethod
+    def create_namespace(cls, name :str, prefix="", suffix="") -> None:
+        """
+        Set up a new namespace
+
+        Note: If you want to create, and immediately start using, a new namespace,
+              you may simply call reserve_next_uri()
+
+        :param name:    A string used to maintain completely separate groups of auto-increment values;
+                            leading/trailing blanks are ignored
+        :param prefix:  (OPTIONAL) String to prefix to the auto-increment number;
+                            it will be stored in the database
+        :param suffix:  (OPTIONAL) String to suffix to the auto-increment number;
+                            it will be stored in the database
+        :return:        None
+        """
+        # TODO: pytest
+        next_uri = cls.reserve_next_uri(namespace=name, prefix=prefix, suffix=suffix)
+
+        assert next_uri == f"{prefix}1{suffix}", \
+            f"create_namespace(): namespace named `{name}` already exists, or otherwise failed to be created"
+            # TODO: carry out some investigation, prior to generating the error message
+
+
+
+    @classmethod
     def reserve_next_uri(cls, namespace="data_node", prefix="", suffix="") -> str:
         """
         Generate and reserve a URI (or fragment thereof, aka "token"),
@@ -4077,6 +4120,8 @@ class NeoSchema:
         The middle part of the generated URI is a unique auto-increment value
         (separately maintained for various groups, or "namespaces").
 
+        A namespace is automatically created if this is the first call using that name.
+
         If no prefix or suffix is specified, use the values provided when the namespace
         was first created.
 
@@ -4084,7 +4129,7 @@ class NeoSchema:
                     reserve_next_uri("Images", prefix="i-") might produce "i-123"
 
         IMPORTANT: Prefixes and suffixes only need to be passed when first using a new namespace;
-        if they're passed in later calls, they over-ride their stored counterparts.
+                   if they're passed in later calls, they over-ride their stored counterparts.
 
         An ATOMIC database operation is utilized to both read AND advance the autoincrement counter,
         based on a (single) node with label `Schema Autoincrement`
@@ -4104,7 +4149,8 @@ class NeoSchema:
                                 If it's the 1st call for the given namespace, store it in the database;
                                 otherwise, if a value is passed, use it to over-ride the stored one
 
-        :return:            An integer that is a unique auto-increment for the specified namespace
+        :return:            A string (with the prefix and suffix from above) that contains an integer
+                                that is a unique auto-increment for the specified namespace
                                 (starting with 1); it's ready-to-use and "reserved", i.e. could be used
                                 at any future time
         """
