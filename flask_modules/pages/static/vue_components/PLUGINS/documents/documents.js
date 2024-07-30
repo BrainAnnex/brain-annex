@@ -21,8 +21,8 @@ Vue.component('vue-plugin-d',
             <div class='doc'>
                 <img src="/BA/pages/static/graphics/document_48_8168668.png" style="float: left; margin-right: 5px">
 
-                <input v-show="edit_metadata" v-model="current_caption">
-                <span v-show="!edit_metadata" style='font-weight:bold; font-size:12px'>&ldquo;{{item_data.caption}}&rdquo;</span>
+                <input v-show="edit_metadata" v-model="current_caption" size="30">
+                <span v-show="!edit_metadata" style='font-weight:bold; font-size:12px'>&ldquo;{{current_caption}}&rdquo;</span>
 
                 <br><br>
 
@@ -38,7 +38,10 @@ Vue.component('vue-plugin-d',
                 <p v-show="edit_metadata" style="text-align: right">
                     <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                     <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
+                    <br>
+                    <span v-if="waiting" class="waiting">Performing the update</span>
                 </p>
+                <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
             </div>		<!-- End of Document container -->
 
 
@@ -67,15 +70,19 @@ Vue.component('vue-plugin-d',
             return {
                 // This object contains the values bound to the editing field, cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: Object.assign({}, this.item_data),
+                //current_data: Object.assign({}, this.item_data),      // NOT in current use; just saving the caption for now
 
                 // Clone, used to restore the data in case of a Cancel or failed save
-                original_data: Object.assign({}, this.item_data),
+                //original_data: Object.assign({}, this.item_data),
+
+                current_caption: this.item_data.caption,
+                original_caption: this.item_data.caption,
 
                 edit_metadata: false,
 
-                current_caption: this.item_data.caption,
-                original_caption: this.item_data.caption
+                waiting: false,         // Whether any server request is still pending
+                error: false,           // Whether the last server communication resulted in error
+                status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
             }
         }, // data
 
@@ -105,8 +112,51 @@ Vue.component('vue-plugin-d',
             save_edit()
             {
                 console.log(`In save_edit(): attempting to save the new caption (${this.current_caption}) , for document with URI '${this.item_data.uri}'`);
-                alert("Saving is not yet implemented, sorry!");
+
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/update_content_item";
+                const post_obj = {uri: this.item_data.uri,
+                                  class_name: "Documents",
+                                  caption: this.current_caption};
+                const my_var = null;        // Optional parameter to pass, if needed
+
+                console.log(`About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {post_obj: post_obj,
+                             callback_fn: this.finish_save_edit,
+                             custom_data: my_var
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
             },
+
+
+            finish_save_edit(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of save_edit() upon getting a response from the server
+            {
+                console.log("Finalizing the save_edit() operation...");
+                console.log(`Custom data passed: ${custom_data}`);
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    this.original_caption = this.current_caption;
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    this.current_caption = this.original_caption;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.edit_metadata = false; // Leave editing mode
+            }
+
 
         }  // methods
 

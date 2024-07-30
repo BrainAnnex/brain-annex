@@ -83,7 +83,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 SERVER CALLS
              */
 
-            get_data_from_server_POST()          /* "POST"  version */
+            server_communication_POST()          /* "POST"  version */
             /* Initiate request to server
              */
             {
@@ -98,7 +98,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
                             {post_obj: post_obj,
-                             callback_fn: this.finish_get_data_from_server,
+                             callback_fn: this.finish_server_communication,
                              custom_data: my_var
                             });
 
@@ -108,7 +108,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             },
 
 
-            get_data_from_server_GET()          /* "GET"  version */
+            server_communication_GET()          /* "GET"  version */
             /* Initiate request to server
              */
             {
@@ -120,7 +120,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {callback_fn: this.finish_get_data_from_server,
+                            {callback_fn: this.finish_server_communication,
                              custom_data: my_var
                             });
 
@@ -131,7 +131,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
 
-            finish_get_data_from_server(success, server_payload, error_message, custom_data)
+            finish_server_communication(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of get_data_from_server() upon getting a response from the server
             {
                 console.log("Finalizing the get_data_from_server() operation...");

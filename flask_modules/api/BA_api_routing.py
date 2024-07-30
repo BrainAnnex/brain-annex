@@ -931,7 +931,10 @@ class ApiRouting:
         def update_content_item():
             """
             Update an existing Content Item.
-            THIS IS A NEWER VERSION of the old endpoint '/update', and meant to eventually replace it
+            THIS IS A NEWER VERSION of the old endpoint '/update', and meant to eventually replace it.
+            Required POST variables:
+                'uri', 'class_name'
+            Optional  POST variables: whichever fields are being edited
             NOTE: the "class_name" field in the POST data is redundant
 
             EXAMPLES of invocation:
