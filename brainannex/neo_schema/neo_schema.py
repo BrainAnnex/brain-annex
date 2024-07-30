@@ -3183,7 +3183,7 @@ class NeoSchema:
 
         Dataframe cells with NaN's and empty strings are dropped - and never make it into the database.
 
-        Note: if you have a CSV file whose first row contains the field names, you can first do operations such as
+        Note: if you have a CSV file whose first row contains the field names, you can first do imports such as
                     df = pd.read_csv("C:/Users/me/some_name.csv", encoding = "ISO-8859-1")
 
         :param df:          A Pandas Data Frame with the data to import;

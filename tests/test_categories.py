@@ -26,11 +26,12 @@ def initialize_categories(db):
 
     db.empty_dbase()
 
+    #TODO: replace the next 3 lines with Categories.initialize_categories()
     NeoSchema.create_class_with_properties(name="Categories",
                                            properties=["name", "remarks", "uri", "root"], strict=True)
-
     NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories", rel_name="BA_subcategory_of")
     NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories", rel_name="BA_see_also")
+
 
     return Categories.create_categories_root()  # Returns a pair (int, str)
 

@@ -2,6 +2,7 @@ from typing import Union, List
 from brainannex.neo_schema.neo_schema import NeoSchema
 from brainannex.collections import Collections
 from neoaccess import NeoAccess
+import pandas as pd
 
 
 class Categories:
@@ -392,9 +393,9 @@ class Categories:
 
     #####################################################################################################
 
-    '''                                 ~   UPDATE CATEGORY DATA   ~                                  '''
+    '''                                 ~   MODIFY CATEGORY DATA   ~                                  '''
 
-    def ________UPDATE_CATEGORIES________(DIVIDER):
+    def ________MODIFY_CATEGORIES________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -427,7 +428,7 @@ class Categories:
 
 
     @classmethod
-    def add_subcategory(cls, data_dict :dict) -> str:
+    def add_subcategory(cls, data_dict :dict, category_uri=None) -> str:
         """
         Add a new Subcategory to a given, already existing, Category
 
@@ -437,16 +438,20 @@ class Categories:
                                 subcategory_name        The name to give to the new Subcategory
                                 subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
 
+        :param category_uri: Optional way to specify the parent Category
+
         :return:            A string with the "uri" of the Category node just created
-                                (which makes use of a auto-increment value)
+                                (which makes use of an auto-increment value)
         """
-        # TODO: use named arguments rather than the archaic data_dict
+        # TODO: complete switch to named arguments rather than the archaic data_dict
 
         # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
         #       a Category to have multiple "children" with the same name)
-        category_uri = data_dict.get("category_uri")
-        assert category_uri is not None, \
-                    "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
+        if not category_uri:
+            category_uri = data_dict.get("category_uri")
+            assert category_uri is not None, \
+                        "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
+
         assert NeoSchema.is_valid_uri(category_uri), \
                     f"add_subcategory(): invalid category uri ({category_uri})"
 
@@ -730,6 +735,78 @@ class Categories:
         NeoSchema.remove_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
                                            rel_name="BA_see_also", labels="Categories")
 
+
+
+    @classmethod
+    def import_ontology(cls, df :pd.DataFrame, root_uri :str) -> int:
+        """
+        Import an ontology of Categories, from a Pandas dataframe whose columns, named "0", "1", "2", ...
+        represent levels of increasing depth.
+        Each row of the dataframe must have exactly 1 entry, representing a Category name;
+        all other entries are expected to be NaN
+
+        EXAMPLE of dataframe (NaN's not shown):
+            0           1           2
+            Chapter 1
+                        Section 1
+                                    Paragraph 1
+                                    Paragraph 2
+                                    Paragraph 3
+                        Section 2
+                                    Paragraph 1
+
+        Note: the above dataframe may be imported from a header-free CSV file with operations such as
+                    pd.read_csv('C:/my_folder/my_file.csv',
+                                header=None, encoding = "ISO-8859-1")
+
+        Note: all Category nodes get assigned a unique URI
+              based on the namespace currently used by add_subcategory()
+
+        :param df:          A Pandas dataframe with the data to import
+        :param root_uri:    A string with the unique URI of an existing Category node that is to be
+                                the parent of all the top-level (column "0") imported Categories
+        :return:            The number of Category nodes created
+        """
+        n_cols = len(df.columns)            # Number of columns in the dataframe
+
+        ancestry_name = [None] * n_cols     # A list with None repeated as many times as the number of columns
+        ancestry_uri =  [None] * n_cols
+
+        n_created = 0       # Number of new Category nodes created
+
+        for ind in df.index:
+            print("-- Row: ", ind, " --")
+            s = df.loc[ind]      # a Pandas Series for the current row
+            #print(s)
+
+            # Find the first non-NaN index
+            level = int(s.first_valid_index())  # Note that the index will be either "0", "1", etc.
+
+            # Get the value at the first non-NaN index
+            category_name = s[level]
+
+            print(f"Category: `{category_name}`, at level {level}")
+
+            if level == 0:
+                parent_name = "ROOT"
+                parent_uri = root_uri
+            else:
+                parent_name = ancestry_name[level -1]
+                parent_uri   = ancestry_uri[level -1]
+
+
+            print(f"    CREATING `{category_name}` as a subcategory of `{parent_name}` (uri: '{parent_uri}')")
+            #new_uri = "TEMP"
+            new_uri = Categories.add_subcategory(category_uri=parent_uri,
+                                                 data_dict={"subcategory_name": category_name} )
+            n_created += 1
+            print(f"        newly-assigned uri: '{new_uri}'")
+            ancestry_name[level] = category_name
+            ancestry_uri[level] = new_uri
+
+            print()
+
+        return n_created
 
 
 
