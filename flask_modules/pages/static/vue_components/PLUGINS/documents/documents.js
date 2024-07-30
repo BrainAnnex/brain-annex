@@ -21,11 +21,12 @@ Vue.component('vue-plugin-d',
             <div class='doc'>
                 <img src="/BA/pages/static/graphics/document_48_8168668.png" style="float: left; margin-right: 5px">
 
-                <input v-show="edit_metadata" v-model="current_caption" size="30">
+                <!-- Document caption (or editable version) -->
                 <span v-show="!edit_metadata" style='font-weight:bold; font-size:12px'>&ldquo;{{current_caption}}&rdquo;</span>
-
+                <input v-show="edit_metadata" v-model="current_caption" size="30">
                 <br><br>
 
+                <!-- Clickable link to document -->
                 <a href v-bind:href="document_url(item_data)"
                         v-bind:title="item_data.caption" v-bind:alt="item_data.caption"
                         target="_blank"
@@ -46,7 +47,7 @@ Vue.component('vue-plugin-d',
 
 
             <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
-                  Signals from the Vue child component "vue-controls" below
+                  Signals from the Vue child component "vue-controls", below,
                   get relayed to the parent of this component,
                   but some get intercepted and handled here, namely:
 
@@ -63,6 +64,7 @@ Vue.component('vue-plugin-d',
 
             \n</div>\n		<!-- End of outer container box -->
             `,
+
 
 
         // ------------------------------   DATA   ------------------------------
@@ -87,6 +89,7 @@ Vue.component('vue-plugin-d',
         }, // data
 
 
+
         // ------------------------------   METHODS   ------------------------------
         methods: {
             document_url(item_data)
@@ -97,12 +100,14 @@ Vue.component('vue-plugin-d',
 
 
             edit_content_item()
+            // Enable the document edit mode
             {
                 //console.log(`Documents component received signal to edit document`);
                 this.edit_metadata = true;
             },
 
             cancel_edit()
+            // Revert any changes, and exit the edit mode
             {
                 //console.log(`In cancel_edit()`);
                 this.current_caption = this.original_caption;
@@ -110,6 +115,7 @@ Vue.component('vue-plugin-d',
             },
 
             save_edit()
+            // Send a request to the server, to update the document's caption
             {
                 console.log(`In save_edit(): attempting to save the new caption (${this.current_caption}) , for document with URI '${this.item_data.uri}'`);
 
@@ -154,9 +160,8 @@ Vue.component('vue-plugin-d',
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;       // Make a note that the asynchronous operation has come to an end
-                this.edit_metadata = false; // Leave editing mode
+                this.edit_metadata = false; // Leave the editing mode
             }
-
 
         }  // methods
 

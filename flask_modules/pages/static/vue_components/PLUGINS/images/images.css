@@ -13,3 +13,14 @@ p.i-line {
 span.i-caption {
     font-weight: bold;
 }
+
+
+div.edit {		/* For editing box enclosing image and metadata being edited */
+	box-shadow: 5px 5px 10px #333;
+	margin: 10px;
+	border:1px solid gray;
+	background-color:#ffffff;
+	width:300px;
+	padding:12px;
+	font-size: 10px;
+}
