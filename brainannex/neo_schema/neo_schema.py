@@ -1656,6 +1656,8 @@ class NeoSchema:
         :return:        The internal database ID of the specified Data Node;
                             if none (or more than one) found, an Exception is raised
         """
+        #TODO: merge with get_data_node_id()
+
         match = cls.db.match(key_name="uri", key_value=uri, labels=label)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
@@ -1679,10 +1681,12 @@ class NeoSchema:
         """
         Get the internal database ID of a Data Node, given some other primary key
 
-        :param key_value:
-        :param key_name:
+        :param key_value:   The name of a primary key to use for the node lookup
+        :param key_name:    The value of the above primary key
         :return:            The internal database ID of the specified Data Node
         """
+        #TODO: merge with get_data_node_internal_id()
+
         match = cls.db.match(key_name=key_name, key_value=key_value)
         result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
 
@@ -1702,6 +1706,8 @@ class NeoSchema:
                                 or a string (representing the value of the "uri" field)
         :return:            True if the specified Data Node exists, or False otherwise
         """
+        # TODO: also allow to optionally pass a Class name for double-check
+
         # Prepare the clause part of a Cypher query
         if type(data_node) == int:
             clause = "WHERE id(dn) = $data_node"
@@ -1733,7 +1739,7 @@ class NeoSchema:
 
 
     @classmethod
-    def fetch_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
+    def get_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data node
 
@@ -1745,7 +1751,7 @@ class NeoSchema:
         :param labels:      OPTIONAL (generally redundant) ways to locate the data node
         :param properties:  OPTIONAL (generally redundant) ways to locate the data node
 
-        :return:            A dictionary with all the key/value pairs, if found; or None if not
+        :return:            A dictionary with all the key/value pairs, if node is found; or None if not
         """
         # TODO: add function that only returns a specified single Property, or specified list of Properties
         if internal_id is None:
@@ -1764,7 +1770,7 @@ class NeoSchema:
     @classmethod
     def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> CypherMatch:
         """
-        EXPERIMENTAL - a generalization of fetch_data_node()
+        EXPERIMENTAL - a generalization of get_data_node()
 
         Return the "match" structure to later use to locate a node identified
         either by its internal database ID (default), or by a primary key (with optional label.)
@@ -2002,7 +2008,7 @@ class NeoSchema:
 
     '''                     ~   DATA NODES : CREATING / MODIFYING  ~                                  '''
 
-    def ________DATA_NODES_CREATING_______(DIVIDER):
+    def ________DATA_NODES_CREATE_MODIFY______(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -2725,20 +2731,24 @@ class NeoSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True) -> int:
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True, class_name=None) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
         :param data_node:   Either an integer with the internal database ID, or a string with a URI value
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
                                 (note: blanks ARE allowed within the keys)
+                                Blanks at the start/end of string values are zapped
         :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
+        :param class_name:  [OPTIONAL] The name of the Class to which the given Data Note is part of;
+                                if provided, it gets enforced
         :return:            The number of properties set or removed;
                                 if the record wasn't found, or an empty set_dict was passed, return 0
                                 Important: a property is counted as "set" even if the new value is
                                            identical to the old value!
         """
+        #TODO: test the class_name argument
         #TODO: check whether the Schema allows the added/dropped fields, if applicable
         #      Compare the keys of set_dict against the Properties of the Class of the Data Node
 
@@ -2756,13 +2766,18 @@ class NeoSchema:
         data_binding = {}
         set_list = []
         remove_list = []
-        for field_name, field_value in set_dict.items():                # field_name, field_value are key/values in set_dict
+        for field_name, field_value in set_dict.items():            # field_name, field_value are key/values in set_dict
+            if type(field_value) == str:
+                field_value = field_value.strip()                           # Zap all leading and trailing blanks
+
             if (field_value != "") or (drop_blanks == False):
                 field_name_safe = field_name.replace(" ", "_")              # To protect against blanks in name, which could not be used
                                                                             #   in names of data-binding variables.  E.g., "end date" becomes "end_date"
                 set_list.append(f"n.`{field_name}` = ${field_name_safe}")   # Example:  "n.`end date` = end_date"
+
                 data_binding[field_name_safe] = field_value                 # Add entry the Cypher data-binding dictionary, of the form {"end_date": some_value}
             else:
+                # We get here in case the field value is a blank string AND drop_blanks is True
                 remove_list.append(f"n.`{field_name}`")
 
         # Example of data_binding at the end of the loop: {'color': 'white', 'max_quantity': 7000}
@@ -2775,9 +2790,14 @@ class NeoSchema:
         if drop_blanks and remove_list:
             remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
 
+        if class_name:
+            match_str = f"MATCH (n)-[:SCHEMA]->(:CLASS {{name: '{class_name}'}}) "
+        else:
+            match_str = f"MATCH (n) "
 
         q = f'''
-            MATCH (n) {where_clause}
+            {match_str} 
+            {where_clause}
             {set_clause} 
             {remove_clause}            
             '''
@@ -3153,6 +3173,7 @@ class NeoSchema:
 
     @classmethod
     def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
+                            drop=None, rename=None,
                             datetime_cols=None, int_cols=None,
                             extra_labels=None, uri_namespace=None,
                             schema_code=None, report_frequency=100) -> [int]:
@@ -3162,30 +3183,40 @@ class NeoSchema:
 
         Dataframe cells with NaN's and empty strings are dropped - and never make it into the database.
 
+        Note: if you have a CSV file whose first row contains the field names, you can first do imports such as
+                    df = pd.read_csv("C:/Users/me/some_name.csv", encoding = "ISO-8859-1")
+
         :param df:          A Pandas Data Frame with the data to import;
                                 each row represents a record - to be turned into a graph-database node.
                                 Each column represents a Property of the data node, and it must have been
                                 previously declared in the Schema
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
-        :param datetime_cols:(OPTIONAL) String, or list/tuple of strings, of column name(s)
+        :param drop:        [OPTIONAL] Name of a field, or list of names, to ignore during import
+        :param rename:      [OPTIONAL] dictionary to rename the Pandas dataframe's columns to
+                                EXAMPLE {"current_name": "name_we_want"}
+        :param datetime_cols:[OPTIONAL] String, or list/tuple of strings, of column name(s)
                                 that contain datetime strings such as '2015-08-15 01:02:03'
                                 (compatible with the python "datetime" format)
-        :param int_cols:    (OPTIONAL) String, or list/tuple of strings, of column name(s)
+        :param int_cols:    [OPTIONAL] String, or list/tuple of strings, of column name(s)
                                 that contain integers, or that are to be converted to integers
                                 (typically necessary because numeric Pandas columns with NaN's
-                                 are automatically turned into floats; this argument will cast them to int's, and drop the NaN's)
-        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
+                                 are automatically turned into floats;
+                                 this argument will cast them to int's, and drop the NaN's)
+        :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
                                 IN ADDITION TO the Class name (which is always used as label)
-        :param uri_namespace:(OPTIONAL) String with a namespace to use to auto-assign uri values on the new Data nodes;
-                                if not passed, no uri values will get set on the new nodes
-        :param schema_code: (OPTIONAL) Legacy element, deprecated.  Extra string to add as value
+        :param uri_namespace:[OPTIONAL] String with a namespace to use to auto-assign uri values on the new Data nodes;
+                                if that namespace hasn't previously been created with create_namespace() or with reserve_next_uri(),
+                                a new one will be created with no prefix nor suffix (i.e. all uri's be numeric strings.)
+                                If not passed, no uri values will get set on the new nodes
+        :param schema_code: [OPTIONAL] Legacy element, deprecated.  Extra string to add as value
                                 to a "schema_code" property for each new data node created
-        :param report_frequency: (OPTIONAL) How often to print the status of the import-in-progress
+        :param report_frequency: [OPTIONAL] How often to print the status of the import-in-progress
 
         :return:            A list of the internal database ID's of the newly-created Data nodes
         """
-        # TODO: pytest uri_namespace argument
+        # TODO: pytest uri_namespace argument, drop, rename
+        # TODO: allow rename to do a drop, by using None as some values
 
         # Do various validations
         cls.assert_valid_class_identifier(class_node)
@@ -3229,6 +3260,13 @@ class NeoSchema:
             int_cols = [int_cols]
         elif int_cols is None:
             int_cols = []
+
+
+        if drop is not None:
+            df = df.drop(drop, axis=1)      # Drop a column, or list of columns
+
+        if rename is not None:
+            df = df.rename(rename, axis=1)  # Rename the columns in the Pandas data frame
 
 
         # Verify whether all properties are allowed
@@ -4049,6 +4087,31 @@ class NeoSchema:
 
 
     @classmethod
+    def create_namespace(cls, name :str, prefix="", suffix="") -> None:
+        """
+        Set up a new namespace
+
+        Note: If you want to create, and immediately start using, a new namespace,
+              you may simply call reserve_next_uri()
+
+        :param name:    A string used to maintain completely separate groups of auto-increment values;
+                            leading/trailing blanks are ignored
+        :param prefix:  (OPTIONAL) String to prefix to the auto-increment number;
+                            it will be stored in the database
+        :param suffix:  (OPTIONAL) String to suffix to the auto-increment number;
+                            it will be stored in the database
+        :return:        None
+        """
+        # TODO: pytest
+        next_uri = cls.reserve_next_uri(namespace=name, prefix=prefix, suffix=suffix)
+
+        assert next_uri == f"{prefix}1{suffix}", \
+            f"create_namespace(): namespace named `{name}` already exists, or otherwise failed to be created"
+            # TODO: carry out some investigation, prior to generating the error message
+
+
+
+    @classmethod
     def reserve_next_uri(cls, namespace="data_node", prefix="", suffix="") -> str:
         """
         Generate and reserve a URI (or fragment thereof, aka "token"),
@@ -4057,6 +4120,8 @@ class NeoSchema:
         The middle part of the generated URI is a unique auto-increment value
         (separately maintained for various groups, or "namespaces").
 
+        A namespace is automatically created if this is the first call using that name.
+
         If no prefix or suffix is specified, use the values provided when the namespace
         was first created.
 
@@ -4064,7 +4129,7 @@ class NeoSchema:
                     reserve_next_uri("Images", prefix="i-") might produce "i-123"
 
         IMPORTANT: Prefixes and suffixes only need to be passed when first using a new namespace;
-        if they're passed in later calls, they over-ride their stored counterparts.
+                   if they're passed in later calls, they over-ride their stored counterparts.
 
         An ATOMIC database operation is utilized to both read AND advance the autoincrement counter,
         based on a (single) node with label `Schema Autoincrement`
@@ -4084,7 +4149,8 @@ class NeoSchema:
                                 If it's the 1st call for the given namespace, store it in the database;
                                 otherwise, if a value is passed, use it to over-ride the stored one
 
-        :return:            An integer that is a unique auto-increment for the specified namespace
+        :return:            A string (with the prefix and suffix from above) that contains an integer
+                                that is a unique auto-increment for the specified namespace
                                 (starting with 1); it's ready-to-use and "reserved", i.e. could be used
                                 at any future time
         """

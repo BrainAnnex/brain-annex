@@ -1224,31 +1224,22 @@ def test_update_data_node(db):
     assert result == [{'uri': uri, "name": ""}]
 
 
-    # Change the URI field      (TODO: in the future, this will happen automatically, and "uri" will become "uri"
-    count = NeoSchema.update_data_node(data_node=internal_id, set_dict={"uri": uri})
-
-    assert count == 1
-    result = db.get_nodes(match=internal_id,
-                          return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "uri": uri, "name": ""}]
-
-
     # Set the name, this time locating the record by its URI
     count = NeoSchema.update_data_node(data_node=uri, set_dict={"name": "Prof. Fleming"})
 
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "uri": uri, "name": "Prof. Fleming"}]
+    assert result == [{'uri': uri, "name": "Prof. Fleming"}]
 
 
-    # Add 2 extra fields
-    count = NeoSchema.update_data_node(data_node=uri, set_dict={"location": "San Francisco", "retired": False})
+    # Add 2 extra fields: notice the junk leading/trailing blanks in the string
+    count = NeoSchema.update_data_node(data_node=uri, set_dict={"location": "     San Francisco     ", "retired": False})
 
     assert count == 2
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
 
 
     # A vacuous "change" that doesn't actually do anything
@@ -1257,7 +1248,7 @@ def test_update_data_node(db):
     assert count == 0
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
 
 
     # A "change" that doesn't actually change anything, but nonetheless is counted as 1 property set
@@ -1265,7 +1256,15 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "uri": uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+
+
+    # A "change" that causes a field of blanks to get dropped
+    count = NeoSchema.update_data_node(data_node=uri, set_dict={"name": "        "}, drop_blanks = True)
+    assert count == 1
+    result = db.get_nodes(match=internal_id,
+                          return_internal_id=False, return_labels=False)
+    assert result == [{'uri': uri, "location": "San Francisco", "retired": False}]
 
 
 
@@ -1599,7 +1598,7 @@ def test_add_data_column_merge(db):
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
 
     id_green_car = result["new_nodes"][0]
-    data_point = NeoSchema.fetch_data_node(internal_id=id_green_car, labels="Car")
+    data_point = NeoSchema.get_data_node(internal_id=id_green_car, labels="Car")
     assert data_point["color"] == "green"
 
 
@@ -1820,18 +1819,18 @@ def test_delete_data_point(db):
     patient_data_uri = NeoSchema.create_data_node(class_node="patient",
                                                  properties={"name": "Val", "age": 22})
 
-    doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
-    patient = NeoSchema.fetch_data_node(internal_id=patient_data_uri)
+    patient = NeoSchema.get_data_node(internal_id=patient_data_uri)
     assert patient == {'name': 'Val', 'age': 22}
 
     NeoSchema.delete_data_node(node_id=doctor_data_uri)
 
-    doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
     assert doctor is None   # The doctor got deleted
 
-    patient = NeoSchema.fetch_data_node(internal_id=patient_data_uri)
+    patient = NeoSchema.get_data_node(internal_id=patient_data_uri)
     assert patient == {'name': 'Val', 'age': 22}    # The patient is still there
 
     with pytest.raises(Exception):
@@ -1842,27 +1841,27 @@ def test_delete_data_point(db):
 
     NeoSchema.delete_data_node(node_id=patient_data_uri, labels="patient")
 
-    patient = NeoSchema.fetch_data_node(internal_id=patient_data_uri)
+    patient = NeoSchema.get_data_node(internal_id=patient_data_uri)
     assert patient is None    # The patient is now gone
 
 
     doctor_data_uri = NeoSchema.create_data_node(class_node="doctor", extra_labels="employee",
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
-    doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
     NeoSchema.delete_data_node(node_id=doctor_data_uri, labels="employee")
-    doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
     assert doctor is None   # The doctor got deleted
 
     doctor_data_uri = NeoSchema.create_data_node(class_node="doctor", extra_labels=["doctor", "employee"],
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
                                                 # No harm in re-specifying the "doctor" label
-    doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
     NeoSchema.delete_data_node(node_id=doctor_data_uri, labels=["employee", "doctor"])
-    doctor = NeoSchema.fetch_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
     assert doctor is None       # The doctor got deleted
 
 

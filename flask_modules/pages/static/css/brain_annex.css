@@ -69,7 +69,7 @@ div.form-box input {
 
 
 
-/* Make the element (for example, an image or a TD) clickable,
+/* Make the element (for example, an image, a SPAN or a TD, etc) clickable,
    with the same cursor as for links */
 .clickable-icon {
     cursor: pointer;
