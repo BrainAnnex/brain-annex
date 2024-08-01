@@ -492,7 +492,7 @@ class PagesRouting:
 
         @bp.route('/test/hello-world')
         def test_hello_world() -> str:
-            # A very basic test
+            # A very basic test, generating a minimalist greeting page
             # EXAMPLE invocation: http://localhost:5000/BA/pages/test/hello-world
             template = "tests/hello_world.htm"
             return render_template(template)

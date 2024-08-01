@@ -61,7 +61,7 @@ Vue.component('vue-plugin-i',
 
             <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
 
-            \n</div>\n		<!-- End of outer container box -->
+            </div>		<!-- End of outer container box -->
             `,
 
 

@@ -1,4 +1,4 @@
-/*  Vue component to display and edit Content Items of type "r" (genetic Records)
+/*  Vue component to display and edit Content Items of type "r" (generic Records)
  */
 
 Vue.component('vue-plugin-r',
@@ -26,8 +26,8 @@ Vue.component('vue-plugin-r',
             <table class='r-main'>
             <!-- Header row  -->
             <tr>
-                <th v-for="cell in this.determine_headers()">
-                {{cell}}
+                <th v-for="header_cell in this.determine_headers()">
+                    {{header_cell}}
                 </th>
 
                 <!--  <th>controls</th>   Experimental control cell not in current use  -->

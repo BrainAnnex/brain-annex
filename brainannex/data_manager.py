@@ -62,7 +62,10 @@ class DataManager:
         assert type(db) == NeoAccess, \
             "NeoSchema.set_database(): argument passed isn't a valid `NeoAccess` object"
 
-        cls.db = db
+        cls.db = db     # Save the database object
+
+        # Initialize dependencies
+        Categories.set_database(db)
 
 
 
