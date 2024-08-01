@@ -4,7 +4,7 @@ import pandas as pd
 
 
 """
-    MIT License.  Copyright (c) 2021-2024 Julian A. West     BrainAnnex.org
+    MIT License.  Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
 """
 
 
@@ -16,10 +16,12 @@ class DocumentationGenerator:
     as done in the BrainAnnex project)
     """
 
+
     @classmethod
     def import_python_file(cls, basename, full_filename) -> str:
         """
-        Parse a python file (with a few conventions) and generate HTML to create a documentation page
+        Parse a python source file (expected to conform to a few conventions)
+        and generate HTML that can be used to create a documentation page
 
         :param basename:        EXAMPLE: "my_file_being_uploaded.txt"
         :param full_filename:   EXAMPLE: "D:/tmp/my_file_being_uploaded.txt"
@@ -70,12 +72,16 @@ class DocumentationGenerator:
         # Put together the parsing data as a Pandas dataframe
         column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
         df = pd.DataFrame(all_matches, columns = column_names)
-        print(df.count())
+        #print("Number of records matched:", df.count())
         '''
         print(df.head(10))
         print("...")
         print(df.tail(10))
         '''
+
+        # Modify the "args" column, by applying the "clean_up_args" to each of its entries
+        df["args"] = df["args"].map(cls.clean_up_args)
+
 
         # Produce HTML code to documented the python file from its parsing data
         htm = cls.generate_documentation(df)
@@ -195,6 +201,34 @@ class DocumentationGenerator:
 
 
     @classmethod
+    def clean_up_args(cls, s:str) -> str:
+        """
+        Strip off the leading "cls" or "self", together with the comma after it,
+        from a string that is meant to represent the arguments of a python class method declaration.
+        Leading/trailing blanks are also eliminated
+
+        EXAMPLES:   "   cls, r, x    "                  gives  "r, x"
+                    "   self   , r:int,  x :list    "   gives  "r:int,  x :list"
+
+        :param s:   String with a list of arguments of a python class method
+        :return:    Cleanup-up version, stripped of leading "cls" or "self"
+        """
+        pos_first_comma = s.find(",")       # Position in the string of the first comma
+        if pos_first_comma == -1:           # If not found
+            return s.strip()
+
+        first_arg = s[:pos_first_comma]
+        first_arg = first_arg.strip()       # Cleaned-up version of the 1st argument (the expected "cls" or "self")
+
+        if (first_arg != "cls") and (first_arg != "self"):      # If not found
+            return s.strip()
+
+        abridged = s[pos_first_comma+1 :]   # Ditch the early part of the string, up to - and including - the first comma
+        return abridged.strip()             # Eliminate lading/trailing blanks
+
+
+
+    @classmethod
     def generate_documentation(cls, df :pd.DataFrame) -> str:
         """
         Print out, and return as a string, the HTML code to create a documentation page,
@@ -236,7 +270,7 @@ class DocumentationGenerator:
                 section_name = df['method_name'][ind]
                 clean_name = section_name.replace("_", " ").strip()
 
-                toc += f"\n    <span style='margin-left:15px'>{clean_name}:</span><br>\n"
+                toc += f"\n    <span style='margin-left:15px; font-weight:bold'>{clean_name}:</span><br>\n"
                 htm += f"<br><h2 class='section-header'>{clean_name}</h2>\n\n"
 
             else:           # Document an individual class method
