@@ -1389,7 +1389,7 @@ class DataManager:
         print(q)
 
         result = cls.db.query(q)
- 
+
         data = []
         for record in result:
             data.append(record["n"])

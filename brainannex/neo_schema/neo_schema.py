@@ -604,8 +604,6 @@ class NeoSchema:
         between the 2 existing Class nodes (identified by names or by their internal database IDs),
         in the ( from -> to ) direction.
 
-        In case of error, an Exception is raised.
-
         Note: multiple relationships by the same name between the same nodes are allowed by Neo4j,
               as long as the relationships differ in their attributes
               (but this method doesn't allow setting properties on the new relationship)
@@ -664,22 +662,30 @@ class NeoSchema:
             '''
 
         if use_link_node:
-            q += f"MERGE (from)-[:`{rel_name}`]->(l:LINK)-[:`{rel_name}`]->(to) \n"
+            new_link_uri = cls.reserve_next_uri(namespace="schema_node")     # For the "LINK" node about to get created
+            q += f'''MERGE (from)-[:`{rel_name}`]->
+                    (l:LINK {{uri: $link_uri}})
+                    -[:`{rel_name}`]->(to) \n'''
+            data_binding["link_uri"] = new_link_uri
             number_rel_expected = 2
 
             if link_properties:
                 index = 1
                 for prop in link_properties:
-                    q += f"MERGE (l)-[:HAS_PROPERTY {{index: {index}}}]->(:PROPERTY {{name: $link_property_{index}}}) \n"
+                    new_property_uri = cls.reserve_next_uri(namespace="schema_node")     # For the "PROPERTY" node about to get created
+                    q += f'''
+                        MERGE (l)
+                        -[:HAS_PROPERTY {{index: {index}}}]->
+                        (:PROPERTY {{name: $link_property_{index}, uri: '{new_property_uri}'}}) \n'''
                     data_binding[f"link_property_{index}"] = prop
                     number_rel_expected += 1
                     index += 1
 
                 # EXAMPLE of the additional Cypher created when link_properties = ["p1", "p2"], on link "CONNECTED_TO":
                 '''
-                    MERGE (from)-[:`CONNECTED_TO`]->(l:LINK)-[:`CONNECTED_TO`]->(to)
-                    MERGE (l)-[:HAS_PROPERTY {index: 1}]->(:PROPERTY {name: $link_property_1})
-                    MERGE (l)-[:HAS_PROPERTY {index: 2}]->(:PROPERTY {name: $link_property_2})
+                    MERGE (from)-[:`CONNECTED_TO`]->(l:LINK {uri: $link_uri})-[:`CONNECTED_TO`]->(to)
+                    MERGE (l)-[:HAS_PROPERTY {index: 1}]->(:PROPERTY {name: $link_property_1, uri: 'schema-123'})
+                    MERGE (l)-[:HAS_PROPERTY {index: 2}]->(:PROPERTY {name: $link_property_2, uri: 'schema-124'})
                 '''
                 # The corresponding addition to data_binding dict would be:
                 #                   {"link_property_1": "p1", "link_property_2": "p2"}
@@ -4078,8 +4084,8 @@ class NeoSchema:
     @classmethod
     def assign_uri(cls, internal_id :int, namespace="data_node") -> str:
         """
-        Given a Data Node that lacks a URI value, assign one to it (save it in the database.)
-        If a value already exists, an Exception is raised
+        Given a Data Node that lacks a URI value, assign one to it (and save it in the database.)
+        If a URI value already exists on the node, an Exception is raised
 
         :param internal_id: Internal database ID to identify a Data Node tha currently lack a URI value
         :param namespace:   A string used to maintain completely separate groups of auto-increment values;
@@ -4089,7 +4095,7 @@ class NeoSchema:
         #TODO: pytest
 
         assert cls.data_node_exists(internal_id), \
-            f"assign_uri(): no valid Data Node with an internal ID of {internal_id} was found"
+            f"assign_uri(): no Data Node with an internal ID of {internal_id} was found"
 
         new_uri = cls.reserve_next_uri(namespace=namespace)
         q = f'''
