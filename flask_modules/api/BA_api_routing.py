@@ -1593,19 +1593,24 @@ class ApiRouting:
         @login_required
         def get_filtered():
             """
-            Note: a JSON version is also available
+            Note: a JSON version is also available (but not in current use)
         
             EXAMPLES of invocation:
                 curl http://localhost:5000/BA/api/get_filtered -d "labels=BA&key_name=uri&key_value=123"
                 curl http://localhost:5000/BA/api/get_filtered -d "labels=CLASS&key_name=code&key_value=h"
         
             POST FIELDS (all optional):
-                labels      To name of a single Neo4j label (TODO: for now, just 1 label)
+                labels      To name of a Neo4j label, or a list of labels
                 key_name    A string with the name of a node attribute; if provided, key_value must be present, too
                 key_value   The required value for the above key; if provided, key_name must be present, too
                                         Note: no requirement for the key to be primary
+                clause
+                order_by
+                skip
                 limit       The max number of entries to return
             """
+            #TODO: turn into GET method(?)
+
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
             cls.show_post_data(post_data, "get_filtered")

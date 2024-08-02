@@ -598,7 +598,7 @@ class NeoSchema:
 
     @classmethod
     def create_class_relationship(cls, from_class: Union[int, str], to_class: Union[int, str],
-                                  rel_name="INSTANCE_OF", use_link_node=False) -> None:
+                                  rel_name="INSTANCE_OF", use_link_node=False, link_properties=None) -> None:
         """
         Create a relationship (provided that it doesn't already exist) with the specified name
         between the 2 existing Class nodes (identified by names or by their internal database IDs),
@@ -618,18 +618,25 @@ class NeoSchema:
                                 Used to identify the node to which the new relationship terminates.
         :param rel_name:    Name of the relationship to create, in the from -> to direction
                                 (blanks allowed)
-        :param use_link_node: EXPERIMENTAL feature - if True, insert an intermediate "LINK" node in the newly-created
+        :param use_link_node: If True, insert an intermediate "LINK" node in the newly-created
                                 relationship; otherwise, simply create a direct link.
-                                If rel_name has the special value "INSTANCE_OF", it must be False
+                                Note: if rel_name has the special value "INSTANCE_OF",
+                                      this argument must be False
+        :param link_properties: [OPTIONAL] List of Property names to attach to the newly-created link.
+                                    Note: if link_properties is specified, then use_link_node is automatically True
         :return:            None
         """
+        #TODO: maybe rename rel_name to link_name, for consistency
         #TODO: add a method that reports on all existing relationships among Classes?
-        #TODO: allow properties on the relationship
         #TODO: provide more feedback in case of failure
 
         # Validate the arguments
         assert (type(rel_name) == str) and (rel_name != ""), \
-            "create_class_relationship(): A name (non-empty string) must be provided for the new relationship"
+            "create_class_relationship(): A name (non-empty string) must be provided for the new relationship, " \
+            "in the argument `rel_name`"
+
+        if link_properties:
+            use_link_node = True
 
         assert not (rel_name == "INSTANCE_OF" and use_link_node), \
             "create_class_relationship(): if the argument `rel_name` has the special (default) value of 'INSTANCE_OF', " \
@@ -640,14 +647,16 @@ class NeoSchema:
 
         # Prepare the WHERE clause for a Cypher query
         if type(from_class) == int:
-            from_clause = f"id(from) = {from_class}"
+            from_clause = "id(from) = $from_class"
         else:
-            from_clause = f'from.name = "{from_class}"'
+            from_clause = "from.name = $from_class"
 
         if type(to_class) == int:
-            to_clause = f"id(to) = {to_class}"
+            to_clause = "id(to) = $to_class"
         else:
-            to_clause = f'to.name = "{to_class}"'
+            to_clause = "to.name = $to_class"
+
+        data_binding = {"from_class": from_class, "to_class": to_class}
 
         q = f'''
             MATCH (from:CLASS), (to:CLASS)
@@ -655,19 +664,33 @@ class NeoSchema:
             '''
 
         if use_link_node:
-            q += f"MERGE (from)-[:`{rel_name}`]->(l:LINK)-[:`{rel_name}`]->(to)"
+            q += f"MERGE (from)-[:`{rel_name}`]->(l:LINK)-[:`{rel_name}`]->(to) \n"
             number_rel_expected = 2
-            # TODO: implement
-            '''
-            EXAMPLE of attaching properties to the link node:
-                MERGE (l)-[:HAS_PROPERTY {index:1}]->(:PROPERTY {name:'Assay'})
-                MERGE (l)-[:HAS_PROPERTY {index:2}]->(:PROPERTY {name:'Binding Score'})
-            '''
+
+            if link_properties:
+                index = 1
+                for prop in link_properties:
+                    q += f"MERGE (l)-[:HAS_PROPERTY {{index: {index}}}]->(:PROPERTY {{name: $link_property_{index}}}) \n"
+                    data_binding[f"link_property_{index}"] = prop
+                    number_rel_expected += 1
+                    index += 1
+
+                # EXAMPLE of the additional Cypher created when link_properties = ["p1", "p2"], on link "CONNECTED_TO":
+                '''
+                    MERGE (from)-[:`CONNECTED_TO`]->(l:LINK)-[:`CONNECTED_TO`]->(to)
+                    MERGE (l)-[:HAS_PROPERTY {index: 1}]->(:PROPERTY {name: $link_property_1})
+                    MERGE (l)-[:HAS_PROPERTY {index: 2}]->(:PROPERTY {name: $link_property_2})
+                '''
+                # The corresponding addition to data_binding dict would be:
+                #                   {"link_property_1": "p1", "link_property_2": "p2"}
+
         else:
             q += f"MERGE (from)-[:`{rel_name}`]->(to)"
             number_rel_expected = 1
 
-        result = cls.db.update_query(q, {"from_id": from_class, "to_id": to_class})
+        #cls.db.debug_query_print(q, data_binding)
+
+        result = cls.db.update_query(q, data_binding)
         #print("result of update_query in create_class_relationship(): ", result)
 
 
@@ -3287,7 +3310,7 @@ class NeoSchema:
         # Import each row ("recordset") in turn
         internal_id_list = []
         for d in recordset:     # d is a dictionary
-            d_scrubbed = cls._scrub_dict(d)     # Zap NaN's, blank strings, leading/trailing spaces
+            d_scrubbed = cls.scrub_dict(d)     # Zap NaN's, blank strings, leading/trailing spaces
 
             for dt_col in datetime_cols:
                 if dt_col in d_scrubbed:
@@ -3443,7 +3466,7 @@ class NeoSchema:
 
 
     @classmethod
-    def _scrub_dict(cls, d :dict) -> dict:
+    def scrub_dict(cls, d :dict) -> dict:
         """
         Helper function to clean up data during imports.
 

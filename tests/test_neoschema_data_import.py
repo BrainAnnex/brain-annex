@@ -28,7 +28,7 @@ def test__scrub_dict():
          "f": "", "g": "            ",
          "h": (1, 2)}
 
-    result = NeoSchema._scrub_dict(d)
+    result = NeoSchema.scrub_dict(d)
     assert result == {"a": 1,
                       "b": 3.5,
                       "d": "some value", "e": "needs  cleaning!",
