@@ -99,23 +99,6 @@ class ApiRouting:
     #                   UTILITY methods                   #
     #######################################################
 
-    @classmethod
-    def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
-        """
-
-        :param get_data:
-        :param required_par_list:
-        :return:
-        """
-        data_dict = get_data.to_dict(flat=True)     # WARNING: if multiple identical keys occur,
-                                                    #          the values associated to the later keys will be discarded
-        if required_par_list:
-            for par in required_par_list:
-                assert par in data_dict, f"The expected parameter `{par}` is missing from the GET request (i.e. from the query string)"
-
-        return data_dict
-
-
 
     @classmethod
     def explain_flask_request(cls, request_obj :request) -> None:
@@ -157,6 +140,33 @@ class ApiRouting:
 
 
     @classmethod
+    def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
+        """
+        Convert into a Python dictionary the given GET data.
+
+        EXAMPLE:
+            get_data = request.args
+            data_dict = cls.extract_get_pars(get_data, ["name_of_some_required_field"])
+
+        :param get_data:            An ImmutableMultiDict object, which is a sub-class of Dictionary
+                                        that may contain multiple values for the same key.
+                                        EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
+        :param required_par_list:   [OPTIONAL] A list or tuple of name of GET parameters whose presence is to be enforce.
+                                        EXAMPLE: ['uri', 'rel_name']
+        :return:                    A dict populated with the GET data
+        """
+        data_dict = get_data.to_dict(flat=True)     # WARNING: if multiple identical keys occur,
+                                                    #          the values associated to the later keys will be discarded
+        if required_par_list:
+            for par in required_par_list:
+                assert par in data_dict, \
+                    f"The expected parameter `{par}` is missing from the GET request (i.e. from the query string)"
+
+        return data_dict
+
+
+
+    @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None, json_decode=False) -> dict:
         """
         Convert into a Python dictionary the given POST data
@@ -166,14 +176,15 @@ class ApiRouting:
 
         EXAMPLE:
                 post_data = request.form
-                post_pars = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
+                data_dict = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
 
         :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
-                                    that can contain multiple values for the same key.
-                                    EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
+                                        that may contain multiple values for the same key.
+                                        EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
 
-        :param required_par_list:   A list or tuple.  EXAMPLE: ['uri', 'rel_name']
-        :param json_decode:         If True, all values are expected to be JSON-encoded strings, and they get decoded
+        :param required_par_list:   [OPTIONAL] A list or tuple of name of POST parameters whose presence is to be enforce.
+                                        EXAMPLE: ['uri', 'rel_name']
+        :param json_decode:         If True, all values are expected to be JSON-encoded strings, which get decoded
         :return:                    A dict populated with the POST data
         """
         #TODO: return a dict whose keys are the required fields,
@@ -1589,16 +1600,59 @@ class ApiRouting:
         
         
         
-        @bp.route('/get_filtered', methods=['POST'])
+        @bp.route('/get_filtered')
         @login_required
         def get_filtered():
             """
-            Note: a JSON version is also available (but not in current use)
+            EXAMPLES of invocation:
+                http://localhost:5000/BA/api/get_filtered?label=BA&key_name=uri&key_value=123
+                http://localhost:5000/BA/api/get_filtered?label=YouTube+Channel&order_by=name&limit=5&skip=15
+                http://localhost:5000/BA/api/get_filtered?label=Quotes&order_by=attribution,quote
+                http://localhost:5000/BA/api/get_filtered?label=YouTube+Channel&clause=n.name+CONTAINS+%27science%27
+                http://localhost:5000/BA/api/get_filtered?label=Quotes&clause=n.quote%20CONTAINS%20%27kiss%27&order_by=attribution,quote
+
+                Note: "+" corresponds to a blank space and "%27" corresponds to a single quote
         
+            GET FIELDS (all optional):
+                label       To name of a node label
+                key_name    A string with the name of a node attribute;
+                                if provided, key_value must be passed, too
+                key_value   The required value for the above key; if provided, key_name must be passed, too.
+                                Note: no requirement for the key to be primary
+                clause      MUST use "n" as dummy name
+                                EXAMPLE:  n.name CONTAINS 'art'
+                order_by    Field name, or comma-separated list;
+                                each name may optionally be followed by "DESC"
+                skip        The number of initial entries (in the context of specified order) to skip
+                limit       The max number of entries to return
+            """
+            # Extract the GET values
+            get_data = request.args     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
+
+            try:
+                data_dict = cls.extract_get_pars(get_data)
+                print("/get_filtered parameters: ", data_dict)
+                result = DataManager.get_nodes_by_filter(data_dict)
+                response = {"status": "ok", "payload": result}              # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+        
+            print(f"get_filtered() is returning: `{response}`")
+        
+            return jsonify(response)        # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/get_filtered_OLD', methods=['POST'])
+        @login_required
+        def get_filtered_OLD():
+            """
+            Note: a JSON version is also available (but not in current use)
+
             EXAMPLES of invocation:
                 curl http://localhost:5000/BA/api/get_filtered -d "labels=BA&key_name=uri&key_value=123"
                 curl http://localhost:5000/BA/api/get_filtered -d "labels=CLASS&key_name=code&key_value=h"
-        
+
             POST FIELDS (all optional):
                 labels      To name of a Neo4j label, or a list of labels
                 key_name    A string with the name of a node attribute; if provided, key_value must be present, too
@@ -1614,16 +1668,17 @@ class ApiRouting:
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
             cls.show_post_data(post_data, "get_filtered")
-        
+
             try:
                 result = DataManager.get_nodes_by_filter(dict(post_data))
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
-        
+
             print(f"get_filtered() is returning: `{response}`")
-        
+
             return jsonify(response)        # This function also takes care of the Content-Type header
+
 
 
 

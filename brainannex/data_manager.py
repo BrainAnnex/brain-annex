@@ -1319,17 +1319,22 @@ class DataManager:
         Return the nodes in the database that match all the requirements spelled out in the given filter
 
         :param filter_dict: A dictionary, with keys:
-                                "labels"
-                                "key_name"
-                                "key_value"
-                                "clause"        MUST use "n" as dummy name
+                                "label"         To name of a node label
+                                "key_name"      A string with the name of a node attribute;
+                                                    if provided, key_value must be passed, too
+                                "key_value"     The required value for the above key; if provided, key_name must be passed, too.
+                                                    Note: no requirement for the key to be primary
+                                "clause"        MUST use "n" as dummy name.
+                                                    EXAMPLE: "n.name CONTAINS 'art'"
                                 "order_by"      Field name, or comma-separated list;
                                                     each name may optionally be followed by "DESC"
-                                "skip"
+                                "skip"          The number of initial entries (in the context of specified order) to skip
                                 "limit"         The max number of entries to return
                             EXAMPLES:
-                                {"labels": "BA", "key_name": "uri", "key_value": "sl-123"}
-                                {"labels": "doctor", "limit": 25, "skip": 50}
+                                {"label": "BA", "key_name": "uri", "key_value": "sl-123"}
+                                {"label": "doctor", "limit": 25, "skip": 50}
+                                {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
+                                {'label': 'Quotes', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
         :return:            A (possibly-empty) list of dictionaries
         """
@@ -1337,7 +1342,7 @@ class DataManager:
 
         #print(f"In get_nodes_by_filter().  filter_dict: {filter_dict}")
 
-        labels = filter_dict.get("labels")      # It will be None if key isn't present
+        label = filter_dict.get("label")      # It will be None if key isn't present
 
         key_name = filter_dict.get("key_name")
         key_value = filter_dict.get("key_value")
@@ -1362,7 +1367,7 @@ class DataManager:
 
         #print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | clause: {clause} | limit: {limit}")
 
-        match = cls.db.match(labels=labels, key_name=key_name, key_value=key_value, clause=clause)
+        match = cls.db.match(labels=label, key_name=key_name, key_value=key_value, clause=clause)
 
         #result = cls.db.get_nodes(match, order_by=order_by, limit=limit)
 
@@ -1378,17 +1383,17 @@ class DataManager:
 
         if order_by:
             revised_order_by = cls._process_order_by(s=order_by, dummy_node_name=dummy_node_name)
-            q += f" ORDER BY {revised_order_by} \n"
+            q += f"ORDER BY {revised_order_by} \n"
 
         if skip:
-            q += f" SKIP {skip} \n"
+            q += f"SKIP {skip} \n"
 
         if limit:
-            q += f" LIMIT {limit}"
+            q += f"LIMIT {limit}"
 
-        print(q)
+        #cls.db.debug_query_print(q, data_binding)
 
-        result = cls.db.query(q)
+        result = cls.db.query(q, data_binding=data_binding)
 
         data = []
         for record in result:
