@@ -117,7 +117,7 @@ Vue.component('vue-plugin-d',
             save_edit()
             // Send a request to the server, to update the document's caption
             {
-                console.log(`In save_edit(): attempting to save the new caption (${this.current_caption}) , for document with URI '${this.item_data.uri}'`);
+                //console.log(`In save_edit(): attempting to save the new caption (${this.current_caption}) , for document with URI '${this.item_data.uri}'`);
 
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item";

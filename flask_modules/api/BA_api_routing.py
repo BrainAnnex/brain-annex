@@ -1634,13 +1634,16 @@ class ApiRouting:
                 print("/get_filtered parameters: ", data_dict)
                 result = DataManager.get_nodes_by_filter(data_dict)
                 response = {"status": "ok", "payload": result}              # Successful termination
+                #print(f"get_filtered() is returning successfully: `{response}`")
+                return jsonify(response)        # This function also takes care of the Content-Type header
+                                                #   Note: jsonify() may fail if any parts of the response are not JSON serializable
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
-        
-            print(f"get_filtered() is returning: `{response}`")
-        
-            return jsonify(response)        # This function also takes care of the Content-Type header
-
+                print(f"get_filtered() is returning with error: `{response}`")
+                return jsonify(response)        # This function also takes care of the Content-Type header
+                # Maybe, do this instead:
+                # response = make_response(response["error_message"], 422)  # "422 Unprocessable Entity"
+                # return response
 
 
         @bp.route('/get_filtered_OLD', methods=['POST'])

@@ -36,7 +36,11 @@ Vue.component('vue-plugin-rs',
 
             </table>
 
-            Page 1 of 1
+            <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue"> << </span>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue"> < </span>
+            &nbsp;&nbsp;&nbsp;  Page {{current_page}}   &nbsp;&nbsp;&nbsp;
+            <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue"> > </span>
 
             </div>		<!-- End of outer container box -->
             `,
@@ -48,17 +52,92 @@ Vue.component('vue-plugin-rs',
             return {
                 headers: ["name", "url", "uri"],
 
-                recordset: [
-                            {name: "Doctor Mike", url: "http://www.youtube.com/channel/UC0QHWhjbe5fGJEPz3sVb6nw", uri: "ytc-20"},
-                            {name: "Higgsino physics", url: "http://www.youtube.com/channel/UC02-e6K7o5_bPw0weXh3W3g", uri: "ytc-17"}
-                           ]
+                recordset: [ ],         // This will get loaded by querying the server when the page loads
+
+                current_page: 1,
+                records_per_page: 10,
+
+                waiting: false,         // Whether any server request is still pending
+                error: false,           // Whether the last server communication resulted in error
+                status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
             }
         }, // data
 
 
 
+
+        // ------------------------------------   HOOKS   ------------------------------------
+
+        mounted()
+        /* Note: the "mounted" Vue hook is invoked later in the process of launching this component.
+                 TODO: investigate if earlier would be better
+         */
+        {
+            console.log(`The Recordsets component has been mounted`);
+            //alert(`The Recordsets component has been mounted`);
+
+            this.get_recordset(1);  // Fetch contents of an initial recordset from the server
+        },
+
+
+
         // ------------------------------   METHODS   ------------------------------
         methods: {
+
+            get_recordset(page)
+            {
+                skip = (page-1) * this.records_per_page;
+
+                console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.item_data.uri}'`);
+
+                // Send the request to the server, using a POST
+                const url_server_api = `/BA/api/get_filtered?label=YouTube+Channel&order_by=name&limit=${this.records_per_page}&skip=${skip}`;
+
+                const get_obj = {label: "YouTube Channel",
+                                 order_by: "name",
+                                 limit: this.records_per_page}; // TODO: not yet in use
+
+                const my_var = page;        // Optional parameter to pass
+
+                console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+                console.log(get_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {callback_fn: this.finish_get_recordset,
+                             custom_data: my_var
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            }, // get_recordset
+
+
+            finish_get_recordset(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of get_recordset() upon getting a response from the server
+            {
+                console.log("Finalizing the get_recordset() operation...");
+                console.log(`Custom data passed: ${custom_data}`);
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    this.recordset = server_payload;
+                    this.current_page = custom_data;
+                    //...
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    //...
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                //...
+            }, // finish_get_recordset
+
+
 
             render_cell(cell_data)
             /*  If the passed argument is a string that appears to be a URL, convert it into a string with HTML code

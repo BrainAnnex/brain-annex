@@ -57,7 +57,7 @@ class ServerCommunication
             post_body:      If a non-empty string is passed, the method is automatically forced to POST;
                                 (disregarded if a non-empty post_obj was passed,
                                  i.e. post_obj has higher priority over post_obj)
-                                 TODO: maybe phase out
+                                 TODO: phase out
 
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data:    If present, it is passed as a final argument to the callback function

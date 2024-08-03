@@ -1338,6 +1338,8 @@ class DataManager:
 
         :return:            A (possibly-empty) list of dictionaries
         """
+        #TODO: raise Exception if unknown labels are present
+        #TODO: intercept and decode values such as neo4j.time.DateTime(2016, 11, 5, 23, 13, 46, 0)  , for example found in Item 'sl-1087'
         #TODO: maybe parse the filter_dict here, but move the body of the computation to NeoSchema
 
         #print(f"In get_nodes_by_filter().  filter_dict: {filter_dict}")
