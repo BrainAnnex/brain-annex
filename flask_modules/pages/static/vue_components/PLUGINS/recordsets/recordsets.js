@@ -57,7 +57,7 @@ Vue.component('vue-plugin-rs',
         // ------------------------------   DATA   ------------------------------
         data: function() {
             return {
-                headers: ["quote", "attribution", "uri"],   // ["name", "url", "uri"],
+                headers: ["quote", "attribution", "uri"],   // ["name", "url", "uri"],  TODO: generalize
 
                 recordset: [],         // This will get loaded by querying the server when the page loads
 

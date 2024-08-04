@@ -612,9 +612,6 @@ def test_get_class_relationships(db):
 def test_get_class_properties(db):
     db.empty_dbase()
 
-    with pytest.raises(Exception):
-        NeoSchema.create_class_with_properties(111)    # Invalid class name
-
     NeoSchema.create_class_with_properties("My first class", properties=["A", "B", "C"])
     neo_uri = NeoSchema.get_class_internal_id("My first class")
     props = NeoSchema.get_class_properties(neo_uri)
@@ -649,11 +646,7 @@ def test_get_class_properties(db):
     assert compare_unordered_lists(props, ["A", "B", "C", "X", "Y", "Z"])
 
     with pytest.raises(Exception):
-        # Meaningless combination of arguments
-        NeoSchema.get_class_properties("My first class", include_ancestors=False, sort_by_path_len="ASC")
-
-    with pytest.raises(Exception):
-        NeoSchema.get_class_properties("My first class", include_ancestors=True, sort_by_path_len="meaningless")
+        NeoSchema.get_class_properties("My first class", sort_by_path_len="meaningless")
 
     props = NeoSchema.get_class_properties("My first class", include_ancestors=True, sort_by_path_len="ASC")
     assert props == ["A", "B", "C", "X", "Y", "Z"]

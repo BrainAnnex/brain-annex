@@ -1334,7 +1334,7 @@ class DataManager:
                                 {"label": "BA", "key_name": "uri", "key_value": "sl-123"}
                                 {"label": "doctor", "limit": 25, "skip": 50}
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
-                                {'label': 'Quotes', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
+                                {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
         :return:            A (possibly-empty) list of dictionaries
         """

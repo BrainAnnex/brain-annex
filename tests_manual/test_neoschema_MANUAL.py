@@ -113,7 +113,7 @@ def test_allows_datanodes(db):
     print(NeoSchema.allows_data_nodes("Records"))
     print(NeoSchema.allows_data_nodes("Foreign Vocabulary"))
     print(NeoSchema.allows_data_nodes("German Vocabulary"))
-    print(NeoSchema.allows_data_nodes("Quotes"))
+    print(NeoSchema.allows_data_nodes("Quote"))
 
 
 

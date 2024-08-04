@@ -1067,23 +1067,30 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_items_schema_data(cls, category_uri :str) -> dict:
+    def get_items_schema_data(cls, category_uri :str, exclude_system=True) -> dict:
         """
-        Locate all the Classes used by Content Items attached to the given Category,
-        and return a dictionary with the Properties (in Schema order) of each,
-        including Properties of "ancestor" Classes (thru "INSTANCE_OF" relationships).
+        Locate all the schema Classes used by Content Items attached to the given Category,
+        and return a dictionary with the Properties (in the Schema order) of each,
+        including Properties of their "ancestor" Classes (ancestral thru "INSTANCE_OF" relationships)
 
-        However, Properties marked as "system" are excluded
+        Properties marked as "system" are optionally excluded (default).
 
-        :param category_uri:A string identifying the desired Category
-
+        :param category_uri:A string with the "uri" value to identify the desired Category
+        :param exclude_system: [OPTIONAL] If True, Property nodes with the attribute "system" set to True will be excluded;
+                                    default is True
         :return:            A dictionary whose keys are Class names (of Content Items attached to the given Category),
-                            and whose values are the Properties (in declared Schema order) of those Classes.
-                            Properties declared in "ancestor" Classes (thru "INSTANCE_OF" relationships) are also included.
+                            and whose values are the Properties (in their Schema order) of those Classes.
+                            Properties declared in "ancestor" Classes (thru "INSTANCE_OF" relationships)
+                            are also included.
+                            Properties regarded as "system" ones, such as "uri", are excluded.
                             EXAMPLE:
-                                {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
+                                {'Headers': ['text'],
                                  'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
-                                 'Headers': ['text']}
+                                 'Notes': ['title', 'public', 'date_created', 'basename', 'suffix']
+                                 'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
+                                 'Quote': ['quote', 'attribution', 'notes'],
+                                 'Recordset': ['class', 'order_by', 'clause', 'n_group']
+                                 }
         """
         # Locate the names of the Classes of all the Content Items attached to the given Category
         q = '''
@@ -1093,7 +1100,8 @@ class Categories:
             '''
         #cls.db.debug_query_print(q, data_binding={"category_uri": category_uri})
 
-        class_list = cls.db.query(q, data_binding={"category_uri": category_uri}, single_column="class_name")
+        class_list = cls.db.query(q, data_binding={"category_uri": category_uri},
+                                  single_column="class_name")
         # EXAMPLE: ["French Vocabulary", "Site Link"]
 
 
@@ -1102,7 +1110,7 @@ class Categories:
         for class_name in class_list:
             prop_list = NeoSchema.get_class_properties(class_node=class_name,
                                                        include_ancestors=True, sort_by_path_len="ASC",
-                                                       exclude_system=True)
+                                                       exclude_system=exclude_system)
             records_schema_data[class_name] = prop_list
 
         return records_schema_data

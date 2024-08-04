@@ -188,7 +188,7 @@ new Vue({
                         {"pos":-10, "uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
                         {
                             "attribution": "Oscar Wilde",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 824,
                             "pos": 0,
                             "quote": "A dirty mind is a joy forever",
@@ -196,7 +196,7 @@ new Vue({
                         },
                         {
                             "attribution": "William James",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 825,
                             "pos": 20,
                             "quote": "A great many people think they are thinking when they are merely REARRANGING THEIR PREJUDICES",
@@ -204,7 +204,7 @@ new Vue({
                         },
                         {
                             "attribution": "Robert Heinlein",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 1120,
                             "pos": 30,
                             "quote": "A human being should be able to change a diaper, plan an invasion, butcher a hog, conn a ship, design a building, write a sonnet, balance accounts, build a wall, set a bone, comfort the dying, take orders, give orders, cooperate, act alone, solve equations, analyze a new problem, pitch manure, program a computer, cook a tasty meal, fight efficiently, die gallantly. Specialization is for insects",
@@ -212,21 +212,21 @@ new Vue({
                         },
                         {
                             "attribution": "Mae West",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 833,
                             "pos": 40,
                             "quote": "A man\u0027s kiss is his signature",
                             "schema_code": "r"
                         },
                         {
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 834,
                             "pos": 60,
                             "quote": "A paper cut is a tree\u0027s last revenge",
                             "schema_code": "r"
                         },
                         {
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 835,
                             "pos": 80,
                             "quote": "Active listening is the highest form of intimacy",
@@ -234,14 +234,14 @@ new Vue({
                         },
                         {
                             "attribution": "Jack Kornfield",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 836,
                             "pos": 100,
                             "quote": "As surely as there is a voyage away, there is a journey home",
                             "schema_code": "r"
                         },
                         {
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 865,
                             "pos": 120,
                             "quote": "Comparison is the thief of joy",
@@ -249,14 +249,14 @@ new Vue({
                         },
                         {
                             "attribution": "Maria Popova",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 866,
                             "pos": 140,
                             "quote": "Critical thinking without hope is cynicism. But hope without critical thinking is naivet\u00e9. In order to thrive as individuals and as a civilization we need to bridge critical thinking with hope",
                             "schema_code": "r"
                         },
                         {
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 867,
                             "pos": 160,
                             "quote": "Depend on the rabbit\u0027s foot if you will, but remember it didn\u0027t work for the rabbit",
@@ -264,14 +264,14 @@ new Vue({
                         },
                         {
                             "attribution": "Jane Seabrook",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 868,
                             "pos": 180,
                             "quote": "Do you believe in love at first sight? Or should I walk past you again?",
                             "schema_code": "r"
                         },
                         {
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 869,
                             "pos": 200,
                             "quote": "Don\u0027t blame yourself. Let me do it",
@@ -279,7 +279,7 @@ new Vue({
                         },
                         {
                             "attribution": "Carl Sagan",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 920,
                             "pos": 220,
                             "quote": "At the heart of science is an essential balance between two seemingly contradictory attitudes \u2014 an openness to new ideas, no matter how bizarre or counterintuitive they may be, and the most ruthless skeptical scrutiny of all ideas, old and new",
@@ -287,7 +287,7 @@ new Vue({
                         },
                         {
                             "attribution": "Dante",
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 931,
                             "notes": "\"Non ragioniam di lor [coloro che visser sanza \u2019nfamia e sanza lodo], ma guarda e passa\"",
                             "pos": 240,
@@ -295,7 +295,7 @@ new Vue({
                             "schema_code": "r"
                         },
                         {
-                            "class_name": "Quotes",
+                            "class_name": "Quote",
                             "uri": 1121,
                             "pos": 260,
                             "quote": "\u2018One man\u2019s TRASH is another man\u2019s treasure\u2019... is an awesome phrase, but it\u2019s a horrible way to tell your kids they\u2019re adopted !!",
@@ -313,7 +313,7 @@ new Vue({
                            {index:4, group_size: 1, use_group: false}
                           ],
 
-        records_schema_data : {"Quotes": ["quote", "attribution", "notes"],
+        records_schema_data : {"Quote": ["quote", "attribution", "notes"],
                                "French Vocabulary": ["French", "English", "notes"],
                                "German Vocabulary": ["German", "English", "notes"],
                                "Site Link": ["url", "name", "date", "comments", "rating", "read"],
@@ -353,20 +353,20 @@ new Vue({
             Standard fields (i.e. all fields that won't appear in a tabular format) are ignored.
             TODO: simplify with Lodash
 
-            EXAMPLES (assuming that the Schema for "Quotes" is ["quote", "attribution", "notes"]):
+            EXAMPLES (assuming that the Schema for "Quote" is ["quote", "attribution", "notes"]):
                 {"pos":10, "uri":1, "extra": "some value"}
                     ->  [ "extra" ]
-                {"pos":10, "uri":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "uri":1, "extra": "some value", class_name:"Quote"}
                     ->  [ "extra" ]
-                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quote"}
                     ->  [ "notes", "extra" ]
-                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "notes", "extra" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra" ]
-                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
                 {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"UNKNOWN", "quote": "My quote"}
                     ->  [ "extra", "attribution", "notes", "extra2", "quote" ]

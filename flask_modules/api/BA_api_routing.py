@@ -579,7 +579,7 @@ class ApiRouting:
                 rel_dir             The relationship direction, from the point of view of the newly-added node
             """
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
+            post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quote,quote,attribution,notes')])
             #cls.show_post_data(post_data, "create_new_schema_class")
 
             try:
@@ -1607,9 +1607,9 @@ class ApiRouting:
             EXAMPLES of invocation:
                 http://localhost:5000/BA/api/get_filtered?label=BA&key_name=uri&key_value=123
                 http://localhost:5000/BA/api/get_filtered?label=YouTube+Channel&order_by=name&limit=5&skip=15
-                http://localhost:5000/BA/api/get_filtered?label=Quotes&order_by=attribution,quote
+                http://localhost:5000/BA/api/get_filtered?label=Quote&order_by=attribution,quote
                 http://localhost:5000/BA/api/get_filtered?label=YouTube+Channel&clause=n.name+CONTAINS+%27science%27
-                http://localhost:5000/BA/api/get_filtered?label=Quotes&clause=n.quote%20CONTAINS%20%27kiss%27&order_by=attribution,quote
+                http://localhost:5000/BA/api/get_filtered?label=Quote&clause=n.quote%20CONTAINS%20%27kiss%27&order_by=attribution,quote
 
                 Note: "+" corresponds to a blank space and "%27" corresponds to a single quote
         

@@ -457,6 +457,52 @@ class NeoSchema:
 
 
     @classmethod
+    def rename_class(cls, old_name :str, new_name :str, rename_data_fields=True) -> None:
+        """
+        Rename the specified Class.
+        If the Class is not found, an Exception is raised
+
+        :param old_name:            The current name (to be changed) of the Class of interest
+        :param new_name:            The new name to give to the above Class
+        :param rename_data_fields:  If True (default), the corresponding label in the data nodes of that Class
+                                        is renamed as well
+        :return:                    None
+        """
+        # TODO: pytest
+        assert old_name != new_name, \
+            "rename_class(): The old name and the new name cannot be the same"
+
+        assert new_name != "", \
+            "rename_class(): The new name cannot be an empty (blank) string"
+
+        if not rename_data_fields:
+            q = f'''
+                MATCH (c :CLASS {{ name: $old_name }})
+                SET c.name = $new_name
+                '''
+        else:
+            q = f'''
+                MATCH (c :CLASS {{ name: $old_name }}) <- [:SCHEMA] - (dn) 
+                SET c.name = $new_name, dn:`{new_name}`
+                REMOVE dn:`{old_name}`
+                '''
+
+        data_binding = {"old_name": old_name, "new_name": new_name}
+        cls.db.debug_query_print(q, data_binding)
+
+        result = cls.db.update_query(q, data_binding=data_binding)
+        print(result)
+
+        if not rename_data_fields:
+            assert result.get("properties_set") == 1, \
+                "rename_class(): Failed to rename the Class (may have failed to find it)"
+        else:
+            assert result.get("properties_set") >= 1 and (result.get("labels_added") == result.get("labels_removed")), \
+                "rename_class(): Failed to rename the Class (may have failed to find it)"
+
+
+
+    @classmethod
     def delete_class(cls, name: str, safe_delete=True) -> None:
         """
         Delete the given Class AND all its attached Properties.
@@ -1103,12 +1149,26 @@ class NeoSchema:
 
     @classmethod
     def get_class_properties(cls, class_node: Union[int, str],
-                             include_ancestors=False, sort_by_path_len=None, exclude_system=False) -> [str]:
+                             include_ancestors=False, sort_by_path_len="ASC", exclude_system=False) -> [str]:
         """
         Return the list of all the names of the Properties associated with the given Class
         (including those inherited thru ancestor nodes by means of "INSTANCE_OF" relationships,
         if include_ancestors is True),
         sorted by the schema-specified position (or, optionally, by path length)
+
+        EXAMPLES:
+            get_class_properties(class_node="Quote", include_ancestors=False)
+                    => ['quote', 'attribution', 'notes']
+
+            NeoSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=False)
+                    => ['quote', 'attribution', 'notes', 'uri']
+
+            NeoSchema.get_class_properties(class_node="Quote", include_ancestors=True, sort_by_path_len="DESC", exclude_system=False)
+                    => ['uri', 'quote', 'attribution', 'notes']
+
+            NeoSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
+                    => ['quote', 'attribution', 'notes']
+
 
         :param class_node:          Either an integer with the internal database ID of an existing Class node,
                                         or a string with its name
@@ -1118,21 +1178,21 @@ class NeoSchema:
                                           with their own indexing of relationships; if order matters in those cases, use the
                                           "sort_by_path_len" argument, below
         :param sort_by_path_len:    Only applicable if include_ancestors is True.
-                                    If provided, it must be either "ASC" or "DESC", and it will sort the results by path length
-                                    (either ascending or descending), before sorting by the schema-specified position for each Class.
-                                    Note: with "ASC", the immediate Properties of the given Class will be listed first
-        :param exclude_system:      (OPTIONAL) If True, Property nodes with the attribute "system" set to True will be excluded
+                                        If provided, it must be either "ASC" or "DESC", and it will sort the results by path length
+                                        (either ascending or descending), before sorting by the schema-specified position for each Class.
+                                        Note: with "ASC", the immediate Properties of the given Class will be listed first
+        :param exclude_system:      [OPTIONAL] If True, Property nodes with the attribute "system" set to True will be excluded;
+                                        default is False
 
-        :return:                    A list of the Properties of the specified Class (including indirectly, if include_ancestors is True)
+        :return:                    A list of the Properties of the specified Class
+                                        (including indirect Properties, if include_ancestors is True)
         """
-        if sort_by_path_len:
-            assert include_ancestors, \
-                "get_class_properties(): if the argument `sort_by_path_len` is provided," \
-                " then `include_ancestors` must be True"
-
+        if sort_by_path_len is not None:
             assert (sort_by_path_len == "ASC" or sort_by_path_len == "DESC"), \
                 "get_class_properties(): If the argument `sort_by_path_len` is provided, it must be either 'ASC' or 'DESC'"
-
+        else:
+            if include_ancestors:
+                raise Exception("get_class_properties(): If `include_ancestors` is True, then the argument `sort_by_path_len` must be provided")
 
         if type(class_node) == str:
             clause = "c.name = $class_node"
@@ -1148,23 +1208,13 @@ class NeoSchema:
         if include_ancestors:
             # Follow zero or more outbound "INSTANCE_OF" relationships from the given Class node;
             #   "zero" relationships means the original node itself (handy in situations when there are no such relationships)
-            if sort_by_path_len:
-                q = f'''
-                    MATCH path=(c :CLASS)-[:INSTANCE_OF*0..]->(c_ancestor)
-                                -[r:HAS_PROPERTY]->(p :PROPERTY)
-                    WHERE {clause}
-                    RETURN p.name AS prop_name
-                    ORDER BY length(path) {sort_by_path_len}, r.index
-                    '''
-            else:
-                q = f'''
-                    MATCH (c :CLASS)-[:INSTANCE_OF*0..]->(c_ancestor)
-                          -[r:HAS_PROPERTY]->(p :PROPERTY) 
-                    WHERE {clause}
-                    RETURN p.name AS prop_name
-                    ORDER BY r.index
-                    '''
-
+            q = f'''
+                MATCH path=(c :CLASS)-[:INSTANCE_OF*0..]->(c_ancestor)
+                            -[r:HAS_PROPERTY]->(p :PROPERTY)
+                WHERE {clause}
+                RETURN p.name AS prop_name
+                ORDER BY length(path) {sort_by_path_len}, r.index
+                '''
         else:
             # NOT including ancestor nodes
             q = f'''
@@ -1418,7 +1468,7 @@ class NeoSchema:
     def rename_property(cls, old_name :str, new_name :str, class_name :str, rename_data_fields=True) -> None:
         """
         Rename the specified (single) Property from the given Class.
-        If the Class or Property was not found, an Exception is raised
+        If the Class or Property is not found, an Exception is raised
 
         :param old_name:            The current name (to be changed) of the Property of interest
         :param new_name:            The new name to give to the above Property

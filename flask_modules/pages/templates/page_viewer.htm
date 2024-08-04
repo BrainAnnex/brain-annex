@@ -35,22 +35,22 @@
         records_schema_data: A dictionary of record class names, mapped into the ordered list of their property names.
                              Note that properties that have the attribute "system" set to True, are excluded
                              EXAMPLE:
-                             {"Quotes": ["quote", "attribution", "notes"],
-                              "French Vocabulary": ["French", "English", "notes"],
-                              "Site Link": ["url", "name", "date", "comments", "rating", "read"]
-                             }
+                                 {"Quote": ["quote", "attribution", "notes"],
+                                  "French Vocabulary": ["French", "English", "notes"],
+                                  "Site Link": ["url", "name", "date", "comments", "rating", "read"]
+                                 }
 
         content_items:  A list of dictionaries
                         EXAMPLE:
-                        [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
-                         {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                         {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
-                        ]
+                            [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                             {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                            ]
 
 
-    ----------------------------------------------------------------------------------
-    MIT License.  Copyright (c) 2021-2024 Julian A. West
-	----------------------------------------------------------------------------------
+    -----------------------------------------------------------------------------------
+    MIT License.  Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
+	-----------------------------------------------------------------------------------
  #}
 
 
@@ -268,7 +268,8 @@
 
             v-bind:records_types="records_types"
 
-            v-bind:schema_data="get_schema_data(item)"  Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
+            v-bind:schema_data="get_schema_data(item)"  Only used for Content Items of type Record (schema_code "r").
+                                                        A list of field names, in order.
                                                         EXAMPLE: ["French", "English", "notes"]
 
      Intercept various SIGNALS from descendant components:
@@ -619,7 +620,7 @@ new Vue({
         records_types: {{records_types | tojson}},   // Array of all the names of leaf Classes associated to records
 
         records_schema_data : {{records_schema_data | tojson }}, // EXAMPLE:
-                                                                 // {"Quotes": ["quote", "attribution", "notes"],
+                                                                 // {"Quote": ["quote", "attribution", "notes"],
                                                                  //  "French Vocabulary": ["French", "English", "notes"],
                                                                  //  "Site Link": ["url", "name", "date", "comments", "rating", "read"]}
 
@@ -1415,20 +1416,20 @@ new Vue({
             Standard fields (i.e. all fields that won't appear in a tabular format) are ignored.
             TODO: simplify with Lodash
 
-            EXAMPLES (assuming that the Schema for "Quotes" is ["quote", "attribution", "notes"]):
+            EXAMPLES (assuming that the Schema for "Quote" is ["quote", "attribution", "notes"]):
                 {"pos":10, "uri":1, "extra": "some value"}
                     ->  [ "extra" ]
-                {"pos":10, "uri":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "uri":1, "extra": "some value", class_name:"Quote"}
                     ->  [ "extra" ]
-                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quote"}
                     ->  [ "notes", "extra" ]
-                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "notes", "extra" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra" ]
-                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
                 {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"UNKNOWN", "quote": "My quote"}
                     ->  [ "extra", "attribution", "notes", "extra2", "quote" ]
