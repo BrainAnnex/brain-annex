@@ -32,8 +32,9 @@
                             Used for the addition of new records
                             (TODO: maybe obtain thru a server call, when first needed)
 
-        records_schema_data: A dictionary of record class names, mapped into the ordered list of their property names.
-                             Note that properties that have the attribute "system" set to True, are excluded
+        items_schema_data: A dictionary of record class names, mapped into the ordered list of their property names.
+                             Ancestral Properties, thru "INSTANCE_OF", are also included.
+                             However, Properties that have the attribute "system" set to True (such as "uri"), are excluded
                              EXAMPLE:
                                  {"Quote": ["quote", "attribution", "notes"],
                                   "French Vocabulary": ["French", "English", "notes"],
@@ -619,7 +620,7 @@ new Vue({
 
         records_types: {{records_types | tojson}},   // Array of all the names of leaf Classes associated to records
 
-        records_schema_data : {{records_schema_data | tojson }}, // EXAMPLE:
+        items_schema_data : {{items_schema_data | tojson }}, // EXAMPLE:
                                                                  // {"Quote": ["quote", "attribution", "notes"],
                                                                  //  "French Vocabulary": ["French", "English", "notes"],
                                                                  //  "Site Link": ["url", "name", "date", "comments", "rating", "read"]}
@@ -837,15 +838,18 @@ new Vue({
 
 
         get_schema_data(item)
-        // If the given Content Item is a record, return a list of its field names (Properties), in order
+        /*  Return a list of the field names (Properties), in their schema order, for the given Content Item.
+            EXAMPLE:  ['quote', 'attribution', 'notes']
+            If the data is missing, return an empty array instead
+         */
         {
             //if (item.schema_code != "r")
                 //return [];                      // Nothing is being done for non-record Content Items (at least for now)
 
-            const record_type = item.class_name;
+            const item_class = item.class_name;
 
-            return this.records_schema_data[record_type] || [];     // If the requested key doesn't exist, return an empty array instead
-                                                                    // TODO: if key is missing, query the server
+            return this.items_schema_data[item_class] || [];     // If the requested key doesn't exist, return an empty array instead
+                                                                  // TODO: if key is missing, query the server
         },
 
 
@@ -1443,12 +1447,12 @@ new Vue({
 
             const class_name = content_item.class_name;
 
-            if (! (class_name in this.records_schema_data))  {
+            if (! (class_name in this.items_schema_data))  {
                 console.log(`No Schema information available for class '${class_name}'`);
                 return field_list;  // No Schema information available for this class; TODO: query server
             }
 
-            const schema_list = this.records_schema_data[class_name];
+            const schema_list = this.items_schema_data[class_name];
 
             let canonical_list = [];
             // Add all the Schema fields that are in the item's field list

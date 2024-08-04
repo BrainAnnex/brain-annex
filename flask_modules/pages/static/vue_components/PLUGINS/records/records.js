@@ -16,7 +16,7 @@ Vue.component('vue-plugin-r',
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of the Record on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    A list of field names, in order.
+            schema_data:    A list of field names, in Schema order.
                                 EXAMPLE: ["French", "English", "notes"]
          */
 

@@ -3,7 +3,7 @@
 
 Vue.component('vue-plugin-rs',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
+        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_data:      EXAMPLE :    {class:"YouTube Channel"
                                           class_name:"Recordset",
                                           n_group:10,
@@ -18,6 +18,8 @@ Vue.component('vue-plugin-rs',
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Document on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
+            schema_data:    A list of field names, in Schema order.
+                                EXAMPLE: ["French", "English", "notes"]
          */
 
         template: `
@@ -90,6 +92,17 @@ Vue.component('vue-plugin-rs',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
+
+            get_fields()
+            /*  Make a server call to obtain all Schema field of the Class that this recorset is based on
+                E.g.
+                    NeoSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
+                to fetch:
+                    ['quote', 'attribution', 'notes']
+            */
+            {
+
+            },
 
             get_recordset(page)
             {
