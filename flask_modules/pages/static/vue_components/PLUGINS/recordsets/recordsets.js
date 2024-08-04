@@ -7,7 +7,7 @@ Vue.component('vue-plugin-rs',
         /*  item_data:      EXAMPLE :    {class:"YouTube Channel"
                                           class_name:"Recordset",
                                           n_group:10,
-                                          order_by:"name ASC",
+                                          order_by:"name",
                                           pos:100,
                                           schema_code:"rs",
                                           uri:"rs-1"
@@ -27,17 +27,17 @@ Vue.component('vue-plugin-rs',
 
                 <!-- Header row  -->
                 <tr>
-                    <th v-for="header_cell in this.headers">
-                        {{header_cell}}
+                    <th v-for="field_name in headers">
+                        {{field_name}}
                     </th>
                 </tr>
 
                 <!--
                     Data row
                  -->
-                <tr v-for="record in this.recordset">
-                    <td v-for="cell in record">
-                        <span v-html="render_cell(cell)"></span>
+                <tr v-for="record in recordset">
+                    <td v-for="field_name in headers">
+                        <span v-html="render_cell(record[field_name])"></span>
                     </td>
                 </tr>
 
@@ -46,7 +46,7 @@ Vue.component('vue-plugin-rs',
             <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue"> << </span>
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue"> < </span>
-            &nbsp;&nbsp;&nbsp;  Page {{current_page}}   &nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp;  Page <b>{{current_page}}</b>   &nbsp;&nbsp;&nbsp;
             <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue"> > </span>
 
             </div>		<!-- End of outer container box -->
@@ -57,12 +57,12 @@ Vue.component('vue-plugin-rs',
         // ------------------------------   DATA   ------------------------------
         data: function() {
             return {
-                headers: ["name", "url", "uri"],
+                headers: ["quote", "attribution", "uri"],   // ["name", "url", "uri"],
 
-                recordset: [ ],         // This will get loaded by querying the server when the page loads
+                recordset: [],         // This will get loaded by querying the server when the page loads
 
                 current_page: 1,
-                records_per_page: 10,
+                records_per_page: this.item_data.n_group,
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -98,11 +98,12 @@ Vue.component('vue-plugin-rs',
                 console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.item_data.uri}'`);
 
                 // Send the request to the server, using a POST
-                const url_server_api = `/BA/api/get_filtered?label=YouTube+Channel&order_by=name&limit=${this.records_per_page}&skip=${skip}`;
+                const url_server_api = `/BA/api/get_filtered?label=${this.item_data.class}&order_by=${this.item_data.order_by}&limit=${this.records_per_page}&skip=${skip}`;
 
-                const get_obj = {label: "YouTube Channel",
-                                 order_by: "name",
-                                 limit: this.records_per_page}; // TODO: not yet in use
+                const get_obj = {label: this.item_data.class,
+                                 order_by: this.item_data.order_by,
+                                 limit: this.records_per_page,
+                                 skip: skip};       // TODO: not yet in use
 
                 const my_var = page;        // Optional parameter to pass
 
