@@ -4,11 +4,18 @@
 Vue.component('vue-plugin-rs',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:      EXAMPLE TBA: {}
+        /*  item_data:      EXAMPLE :    {class:"YouTube Channel"
+                                          class_name:"Recordset",
+                                          n_group:10,
+                                          order_by:"name ASC",
+                                          pos:100,
+                                          schema_code:"rs",
+                                          uri:"rs-1"
+                                         }
                                       (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
-
+                            TODO: take "pos" and "class_name" out of item_data
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
+            category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Document on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */

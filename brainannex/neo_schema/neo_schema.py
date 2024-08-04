@@ -1385,13 +1385,18 @@ class NeoSchema:
     def remove_property_from_class(cls, class_uri :str, property_uri :str) -> None:
         """
         Take out the specified (single) Property from the given Class.
-        If the Class or Property was not found, or if the Property could not be removed, an Exception is raised
+        If the Class or Property was not found, an Exception is raised
 
         :param class_uri:   The uri of the Class node
         :param property_uri:The uri of the Property node
         :return:            None
         """
-        assert cls.class_uri_exists(class_uri), f"The schema has no Class with the requested ID of {class_uri}"
+        #TODO: switch from uri's to names
+        #TODO: offer the option to remove the property from Data Nodes
+        #TODO: if the Class is strict, property from Data Nodes must happen unless explicitly over-ridden
+
+        assert cls.class_uri_exists(class_uri), \
+            f"remove_property_from_class(): the schema has no Class with the requested ID of {class_uri}"
 
         q = f'''
             MATCH (c :CLASS {{ uri: '{class_uri}' }})
@@ -1406,6 +1411,43 @@ class NeoSchema:
         # Validate the results of the query
         assert result.get("nodes_deleted") == 1, f"Failed to find or delete the Property node (with schema_uri {property_uri})"
         assert result.get("relationships_deleted") == 1, "Failed to find or delete the relationship"
+
+
+
+    @classmethod
+    def rename_property(cls, old_name :str, new_name :str, class_name :str, rename_data_fields=True) -> None:
+        """
+        Rename the specified (single) Property from the given Class.
+        If the Class or Property was not found, an Exception is raised
+
+        :param old_name:            The current name (to be changed) of the Property of interest
+        :param new_name:            The new name to give to the above Property
+        :param class_name:          The name of the Class node to which the Property is attached
+        :param rename_data_fields:  If True (default), the field names in the data nodes of that Class
+                                        are renamed as well (NOT YET IMPLEMENTED)
+        :return:                    None
+        """
+         #TODO: implement rename_data_fields.  Pytests
+
+        assert old_name != new_name, \
+            "rename_property(): The old name and the new name cannot be the same"
+
+        assert new_name != "", \
+            "rename_property(): The new name cannot be an empty (blank) string"
+
+        q = f'''
+            MATCH (:CLASS {{ name: $class_name }})
+                  -[:HAS_PROPERTY]
+                  ->(p :PROPERTY {{ name: $old_property_name}})
+            SET p.name = $new_property_name
+            '''
+
+        data_binding = {"class_name": class_name, "old_property_name": old_name, "new_property_name": new_name}
+        #cls.db.debug_query_print(q, data_binding)
+        result = cls.db.update_query(q, data_binding=data_binding)
+
+        assert result.get("properties_set") == 1, \
+            "rename_property(): Failed to rename the Property (may have failed to find it)"
 
 
 
