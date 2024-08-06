@@ -372,7 +372,7 @@ new Vue({
                     // Note: to be used for uploads
                 },
                 credentials: 'same-origin',
-                body: post_body		// IMPORTANT: as prepare for an upload
+                post_body: {}		// IMPORTANT: as prepare for an upload
             };
 
             return fetch_options;

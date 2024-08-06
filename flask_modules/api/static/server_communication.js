@@ -54,12 +54,10 @@ class ServerCommunication
             post_obj:       If a non-empty object is passed, the method is automatically forced to POST
                                 (and it will disregard the contents of post_body)
                                 EXAMPLE:  {uri: 123, text: "Some data"}
-                                TODO: turn into an object for use with GET or POST... and optionally JSON-encode it
-
             post_body:      If a non-empty string is passed, the method is automatically forced to POST;
                                 (disregarded if a non-empty post_obj was passed,
                                  i.e. post_obj has higher priority over post_obj)
-                                 TODO: phase out
+                                 TODO: maybe phase out
 
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data:    If present, it is passed as a final argument to the callback function
@@ -117,22 +115,19 @@ class ServerCommunication
     /*  Send a request to the server at the specified URL, with a GET or POST method (depending on the presence of post_body).
         The expected eventual payload is a JSON string
 
-        post_body : if a blank string, a GET is assumed, unless method="POST" is specified  (<- TODO: ditch)
+        post_body : if a blank string, a GET is assumed, unless method="POST" is specified
             EXAMPLE of post_body: "uri=62&schema_code=r"
 
         custom_data is an OPTIONAL argument; if present, it is passed as a final argument to the callback function
 
-        TODO: rename contact_server()
-
-        TODO: factor out some parts to a new function contact_server_common()
+        TODO: factor out some parts to contact_server()
      */
     {
-        var success_flag;           // True if communication with the server succeeds, or false otherwise
+        var success_flag;           // true if communication with the server succeeds, or false otherwise
         var server_payload = "";    // Only applicable if success_flag is true
         var error_message = "";     // Only applicable if success_flag is false
         var fetch_options;
 
-        // TODO: probably move to calling method - and also take care of optional JSON encodings
         if (post_body != "" || method == "POST") {
             //console.log("About to start asynchronous call to ", url_server, " with POST body: ", post_body);
             fetch_options = ServerCommunication.prepare_POST_options(post_body);
@@ -196,7 +191,7 @@ class ServerCommunication
 
         Note: the fixed key name 'file' is used for the uploaded file.
 
-        TODO: factor out some parts to a new function contact_server_common()
+        TODO: factor out some parts to contact_server()
      */
     {
         var success_flag;           // true if communication with the server succeeds, or false otherwise
