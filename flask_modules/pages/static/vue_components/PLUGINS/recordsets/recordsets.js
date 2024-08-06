@@ -51,6 +51,12 @@ Vue.component('vue-plugin-rs',
             &nbsp;&nbsp;&nbsp;  Page <b>{{current_page}}</b>   &nbsp;&nbsp;&nbsp;
             <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue"> > </span>
 
+            <!-- Status info -->
+            <p style="padding-top: 0; margin-top: 0; text-align: right">
+                <span v-if="waiting" class="waiting">Contacting the server...</span>
+                <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
+            </p>
+
             </div>		<!-- End of outer container box -->
             `,
 
@@ -59,7 +65,7 @@ Vue.component('vue-plugin-rs',
         // ------------------------------   DATA   ------------------------------
         data: function() {
             return {
-                headers: ["quote", "attribution", "uri"],   // ["name", "url", "uri"],  TODO: generalize
+                headers: [],   //  EXAMPLES:  ["quote", "attribution", "notes"] , ["name", "url", "uri"]
 
                 recordset: [],         // This will get loaded by querying the server when the page loads
 
@@ -85,6 +91,8 @@ Vue.component('vue-plugin-rs',
             console.log(`The Recordsets component has been mounted`);
             //alert(`The Recordsets component has been mounted`);
 
+            this.get_fields();      // Fetch from the server the field names for this recordset
+
             this.get_recordset(1);  // Fetch contents of an initial recordset from the server
         },
 
@@ -101,8 +109,6 @@ Vue.component('vue-plugin-rs',
                     ['quote', 'attribution', 'notes']
             */
             {
-                // TODO: complete implementation
-
                 console.log(`In get_fields(): attempting to retrieve field names of recordset with URI '${this.item_data.uri}'`);
 
                 const url_server_api = "/BA/api/get_class_properties";
@@ -112,7 +118,44 @@ Vue.component('vue-plugin-rs',
                                   exclude_system: true
                                  };
 
+                console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+                console.log(data_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {   data_obj: data_obj,
+                                json_encode: true,
+                                callback_fn: this.finish_get_fields
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
             },
+
+            finish_get_fields(success, server_payload, error_message)
+            // Callback function to wrap up the action of get_fields() upon getting a response from the server
+            {
+                console.log("Finalizing the get_fields() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    this.headers = server_payload;
+                    //...
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    //...
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                //...
+
+            }, // finish_get_fields
+
+
 
             get_recordset(page)
             {

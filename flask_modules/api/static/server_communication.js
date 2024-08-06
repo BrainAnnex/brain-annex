@@ -168,7 +168,8 @@ class ServerCommunication
 
         if (json_encode) {
             var data_str = JSON.stringify(data_obj);
-            console.log(`contact_server_NEW(): the data object to send is being converted to JSON as ${data_str}`);
+            console.log(`contact_server_NEW(): the data object to send is being converted to JSON as '${data_str}'`);
+            data_str = "json=" + data_str;      // Start preparing a query string for the URL
         }
         else {
             var data_str = ServerCommunication.parse_data_object(data_obj);
@@ -179,19 +180,16 @@ class ServerCommunication
         if (method == "POST")  {
             console.log(`contact_server_NEW() - a POST will be used, with the following data string: "${data_str}"`);
             if (json_encode)
-                fetch_options = ServerCommunication.prepare_POST_options_JSON(data_str);    // An object
+                var fetch_options = ServerCommunication.prepare_POST_options_JSON(data_str);    // An object
             else
-                fetch_options = ServerCommunication.prepare_POST_options(data_str);         // An object
+                var fetch_options = ServerCommunication.prepare_POST_options(data_str);         // An object
         }
         else  {    // GET
             if (data_str != "")
-                if (json_encode)
-                    url_server += "/" + data_str;       // Append the JSON data to the URL with a "/" Note: alternate approach could be ?json=
-                else
-                    url_server += "?" + data_str;       // Append a query string to the URL
+                url_server += "?" + data_str;       // Append a query string to the URL
 
-            console.log(`contact_server_NEW() - a GET will be used, with the following URL: "${url_server}"`);
-            fetch_options = ServerCommunication.prepare_GET_options();              // An object
+            console.log(`contact_server_NEW() - a GET will be used, with the following URL: ${url_server}`);
+            var fetch_options = ServerCommunication.prepare_GET_options();              // An object
         }
 
         return ServerCommunication.send_data_to_server(url_server, fetch_options, callback_fn, custom_data);
