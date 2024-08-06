@@ -94,13 +94,23 @@ Vue.component('vue-plugin-rs',
         methods: {
 
             get_fields()
-            /*  Make a server call to obtain all Schema field of the Class that this recorset is based on
+            /*  Make a server call to obtain all Schema field of the Class that this recordset is based on
                 E.g.
                     NeoSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                 to fetch:
                     ['quote', 'attribution', 'notes']
             */
             {
+                // TODO: complete implementation
+
+                console.log(`In get_fields(): attempting to retrieve field names of recordset with URI '${this.item_data.uri}'`);
+
+                const url_server_api = "/BA/api/get_class_properties";
+
+                const data_obj = {class_name: this.item_data.class,
+                                  include_ancestors: true,
+                                  exclude_system: true
+                                 };
 
             },
 

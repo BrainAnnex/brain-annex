@@ -2,9 +2,7 @@
     ----------------------------------------------------------------------------------
 	MIT License
 
-    Copyright (c) 2021-24 Julian A. West
-
-    This file is part of the "Brain Annex" project (https://BrainAnnex.org)
+    Copyright (c) 2021-24 Julian A. West and the BrainAnnex.org project.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +23,7 @@
     SOFTWARE.
 	----------------------------------------------------------------------------------
 
-    TODO: maybe relocate under modules/pages/static
+    TODO: maybe relocate under flask_modules/pages/static
 
  */
 
@@ -107,7 +105,145 @@ class ServerCommunication
         */
 
         return ServerCommunication.contact_server_JSON(url_server, post_body, callback_fn, custom_data, method);
-    }
+
+    } // contact_server - TODO: phase out
+
+
+
+    static contact_server_NEW(url_server,
+                                        {
+                                            method = "GET",
+                                            data_obj = {},
+                                            json_encode = false,
+                                            callback_fn = undefined,
+                                            custom_data = undefined
+                                        } = {} )
+    /*  Send a request to the server at the specified URL.
+        The expected eventual payload is a JSON string.
+
+        url_server:     Do NOT include a final "/"
+
+            method:         Either "GET" or "POST" - optional, by default "GET"
+                                (however, ignored if a non-empty string is passed to post_body,
+                                                     or a non-empty object is passed to post_obj)
+
+            data_obj:       To be used with either GET or POST.  EXAMPLE:  {uri: 123, text: "Some data"}
+
+            json_encode:    If true, the data in data_obj will get JSON-encoded
+
+            callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
+            custom_data:    If present, it is passed as a final argument to the callback function
+
+        EXAMPLE of invocation:
+            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});
+
+        EXAMPLE of callback_fn:
+
+            function finish_get_note(success, server_payload, error_message, custom_data)
+            //  Callback function to wrap up the action of get_note() upon getting a response from the server
+            //      success:        boolean indicating whether the server call succeeded
+            //      server_payload: whatever the server returned (stripped of information about the success of the operation)
+            //      error_message:  a string only applicable in case of failure
+            //      custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
+            {
+                console.log("Finalizing the get_note operation...");
+
+                if (success)  {     // Server reported SUCCESS
+                    ...             // do something with the server_payload value
+                }
+                else  {             // Server reported FAILURE
+                    ...             // do something with the error_message value
+                }
+                ...  // Op to do at the end in either case
+            }
+
+     */
+    {
+        // TODO: more argument checking
+        if (typeof data_obj !== 'object') {
+            alert("ERROR in invocation of contact_server_NEW(): the `data_obj` argument is not an Object");
+            return;
+        }
+
+
+        if (json_encode) {
+            var data_str = JSON.stringify(data_obj);
+            console.log(`contact_server_NEW(): the data object to send is being converted to JSON as ${data_str}`);
+        }
+        else {
+            var data_str = ServerCommunication.parse_data_object(data_obj);
+            console.log(`contact_server_NEW(): the data object to send is being string-encoded as "${data_str}"`);
+        }
+
+
+        if (method == "POST")  {
+            console.log(`contact_server_NEW() - a POST will be used, with the following data string: "${data_str}"`);
+            if (json_encode)
+                fetch_options = ServerCommunication.prepare_POST_options_JSON(data_str);    // An object
+            else
+                fetch_options = ServerCommunication.prepare_POST_options(data_str);         // An object
+        }
+        else  {    // GET
+            if (data_str != "")
+                if (json_encode)
+                    url_server += "/" + data_str;       // Append the JSON data to the URL with a "/" Note: alternate approach could be ?json=
+                else
+                    url_server += "?" + data_str;       // Append a query string to the URL
+
+            console.log(`contact_server_NEW() - a GET will be used, with the following URL: "${url_server}"`);
+            fetch_options = ServerCommunication.prepare_GET_options();              // An object
+        }
+
+        return ServerCommunication.send_data_to_server(url_server, fetch_options, callback_fn, custom_data);
+
+    } // contact_server_NEW
+
+
+
+    static send_data_to_server(url_server, fetch_options, callback_fn, custom_data)
+    // TODO: this is the replacement for contact_server_JSON()
+    // TODO: utilize also for the final part of contact_server_UPLOAD()
+    {
+        var success_flag;           // true if communication with the server succeeds, or false otherwise
+        var server_payload = "";    // Only applicable if success_flag is true
+        var error_message = "";     // Only applicable if success_flag is false
+
+        console.log("send_data_to_server(): about to start asynchronous call to ", url_server);
+
+        fetch(url_server, fetch_options)
+        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
+        .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
+                                                        //      TODO: turn into a method that first logs the first part of the response
+                                                        //            (helpful in case of parsing errors)
+        .then(server_response => {                      // Manage the server response
+            console.log("Server response received by send_data_to_server(): ");
+            console.log(server_response);
+            // Check if the response indicates failure
+            const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
+            if (error_msg != "")    // If server reported failure
+                throw new Error(error_msg);   // This will take us to the .catch portion, below
+            else
+            {   // Server reported SUCCESS
+                server_payload = ServerCommunication.extract_server_data_JSON(server_response);
+                //console.log("server reported success, and returned the following payload: ", server_payload);
+                success_flag = true;
+            }
+        })
+        .catch(err => {  // All errors eventually go thru here
+            error_message = ServerCommunication.report_fetch_errors(err);
+            success_flag = false;
+        })
+        .finally(() => {  // Final operation regardless of error or success
+            //console.log("Completed the server call.  Passing control to the callback function");
+            if (callback_fn !== undefined) {
+                if (custom_data === undefined)
+                    callback_fn(success_flag, server_payload, error_message);
+                else
+                    callback_fn(success_flag, server_payload, error_message, custom_data);
+            }
+        });  // fetch
+
+    } // send_data_to_server
 
 
 
@@ -191,7 +327,7 @@ class ServerCommunication
 
         Note: the fixed key name 'file' is used for the uploaded file.
 
-        TODO: factor out some parts to contact_server()
+        TODO: utilize send_data_to_server() for the last part of this function
      */
     {
         var success_flag;           // true if communication with the server succeeds, or false otherwise
@@ -261,6 +397,46 @@ class ServerCommunication
 
 
 
+    static parse_data_object(data_object)
+    /*  Turn an object literal into a string, after transforming its attribute values with encodeURIComponent()
+
+        Any non-blank string in the values gets passed thru encodeURIComponent.
+        Any blank strings in the values are left undisturbed.
+        Note: if data_object contains no properties, or is null, then an empty string is returned.
+
+        EXAMPLE of usage:
+                data_object = {id: 123,  name: "some name"};
+                data_str = ServerCommunication.parse_data_object(data_object);
+
+                It will return the string:   "id=123&name=some%20name"
+
+        TODO: this version is for both POST and GET; it will replace parse_POST_object()
+     */
+    {
+        var data_str = "";
+        var k, val;
+
+        for (k in data_object) {    // Loop thru the keys
+            val = data_object[k];      // Get the corresponding value
+            //console.log(`    key: ${k}  |  value: ${val} `);
+
+            data_str += k + "=";
+
+            if ((val != "") && (typeof val == "string"))
+                data_str += encodeURIComponent(val);    // Safe-encode the value
+            else
+                data_str += val;                        // Pass thru the value undisturbed
+
+            data_str += "&";
+            //console.log(`data_str so far: ${data_str}`);
+        }
+
+        if (data_str == "")
+            return "";
+
+        return data_str.substring(0, data_str.length - 1);    // Zap the final "&"
+    }
+
 
     static prepare_GET_options()
     /*  Prepare and return an object to be used as a 2nd ARGUMENT TO A fetch() call, in case there's a GET method involved.
@@ -304,6 +480,25 @@ class ServerCommunication
         return fetch_options;
     }
 
+    static prepare_POST_options_JSON(post_body)
+    /*  Prepare and return an object to be used as a 2nd ARGUMENT TO A fetch() call;
+        to be used in cases when there's a POST method involved.
+
+        TODO: merge with prepare_POST_options() by passing an additional argument
+     */
+    {
+        const fetch_options = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: post_body		// IMPORTANT: the body of the POST data type must match the 'Content-Type' header
+        };
+
+        return fetch_options;
+    }
+
 
     static parse_POST_object(post_obj)
     /*  Turn an object literal into a string, after transforming attribute values with encodeURIComponent();
@@ -321,7 +516,7 @@ class ServerCommunication
                 post_obj = {id: 123,  name: "some name"};
                 post_body = ServerCommunication.parse_POST_object(post_obj);
 
-        TODO: offer an option where JSON encoding is done on all values instead
+        TODO: phase out in favor of parse_data_object()
      */
     {
         var post_body = "";
