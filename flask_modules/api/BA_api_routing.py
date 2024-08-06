@@ -337,7 +337,86 @@ class ApiRouting:
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
+
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
+        @bp.route('/get_class_properties/<json_str>')
+        @login_required
+        def get_class_properties(json_str):
+            """
+            Get all Properties of the given Class node (as specified by its name),
+            optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
+            Return a JSON object with a list of the Property names of that Class.
+
+            EXAMPLE invocations:
+                http://localhost:5000/BA/api/get_class_properties/%7B%22class_name%22%3A%20%22Quote%22%7D
+                    (passing the URL-safe version of the JSON-serialized dict {"class_name": "Quote"})
+
+                http://localhost:5000/BA/api/get_class_properties/%7B%22class_name%22%3A%20%22Quote%22%2C%20%22include_ancestors%22%3A%20true%7D
+                    (corresponding to {"class_name": "Quote", "include_ancestors": True})
+
+                http://localhost:5000/BA/api/get_class_properties/%7B%22class_name%22%3A%20%22Quote%22%2C%20%22include_ancestors%22%3A%20true%2C%20%22exclude_system%22%3A%20true%7D
+                    (corresponding to {"class_name": "Quote", "include_ancestors": True, "exclude_system": True})
+
+            Note: To generate URL-safe versions of the JSON-serialized data from d variable in Python, use
+                    import json
+                    import urllib.parse
+                    urllib.parse.quote(json.dumps(d))
+
+            KEYS in dict in passed JSON request:
+                class_name          REQUIRED
+                include_ancestors   OPTIONAL
+                sort_by_path_len    OPTIONAL
+                exclude_system      OPTIONAL
+
+            For details, see NeoSchema.get_class_properties()
+
+            :return:  A JSON with a list of the Property names of the specified Class,
+                      optionally including indirect ones that arise thru
+                      chains of outbound "INSTANCE_OF" relationships
+                         EXAMPLE:
+                            {
+                                "payload":  [
+                                              "Notes",
+                                              "English",
+                                              "French"
+                                            ],
+                                "status":   "ok"
+                            }
+            """
+            # TODO: turn a lot of the code below into a JSON-helper method
+            print("JSON string: ", json_str)
+
+            try:
+                json_data = json.loads(json_str)    # Turn the string into a Python object
+                print("Decoded JSON request: ", json_data)
+            except Exception as ex:
+                response = {"status": "error", "error_message": f"Failed parsing of incorrectly-formatted JSON string in request. {ex}"}
+                print(response["error_message"])
+                return jsonify(response)   # This function also takes care of the Content-Type header
+
+            if "class_name" not in json_data:
+                response = {"status": "error", "error_message": "Missing required value for `class_name`"}
+                print(response["error_message"])
+                return jsonify(response)   # This function also takes care of the Content-Type header
+
+            class_name =  json_data["class_name"]
+            print("class_name: ", class_name)
+            del json_data["class_name"]
+
+            try:
+                # Fetch all the Properties
+                prop_list = NeoSchema.get_class_properties(**json_data, class_node=class_name)
+                response = {"status": "ok", "payload": prop_list}
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}
+
+            print(response)
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
+        # TODO: not in use.  To ditch as soon as /get_class_properties is complete
         @bp.route('/get_properties_by_class_name', methods=['POST'])
         @login_required
         def get_properties_by_class_name():
@@ -351,7 +430,7 @@ class ApiRouting:
 
             1 POST FIELD:
                 class_name
-                TODO: add an optional extra field, "include_ancestors"
+                TODO: add a optional extra fields - "include_ancestors", exclude_system
 
             :return:  A JSON with a list of the Property names of the specified Class,
                       including indirect ones that arise thru
