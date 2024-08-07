@@ -9,6 +9,7 @@ import pandas as pd
 from neoaccess import NeoAccess
 from brainannex.neo_schema.neo_schema import NeoSchema, SchemaCache
 from tests.test_neoschema import create_sample_schema_1, create_sample_schema_2
+from brainannex.utilities.comparisons import *
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -21,18 +22,49 @@ def db():
 
 
 
-def test__scrub_dict():
-    d = {"a": 1,
-         "b": 3.5, "c": float("nan"),
-         "d": "some value", "e": "   needs  cleaning!    ",
-         "f": "", "g": "            ",
-         "h": (1, 2)}
+def test_import_pandas_nodes(db):
+    db.empty_dbase()
 
-    result = NeoSchema.scrub_dict(d)
-    assert result == {"a": 1,
-                      "b": 3.5,
-                      "d": "some value", "e": "needs  cleaning!",
-                      "h": (1, 2)}
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="State",
+                                           properties=["name"], strict=True)
+
+    df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
+    import_list_1 = NeoSchema.import_pandas_nodes(df=df, class_node="State")
+
+    assert len(import_list_1) == 3
+
+    # Verify that 3 Data Node were imported
+    assert NeoSchema.count_data_nodes_of_class(data_node="State") == 3
+
+    # Make sure our 3 states are present in the import
+    q = '''
+        UNWIND ["CA", "NY", "OR"] AS state_name
+        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        RETURN id(s) AS internal_id
+        '''
+    result = db.query(q, single_column="internal_id")
+
+    assert compare_unordered_lists(result, import_list_1)
+
+
+    # Duplicate entry: "CA"
+    df = pd.DataFrame({"name": ["NV", "CA", "WA"]})
+    import_list_2 = NeoSchema.import_pandas_nodes(df=df, class_node="State",
+                                                merge_primary_key="name")
+    print(import_list_2)
+
+    # Verify that a grand total of only 5 Data Node were imported
+    assert NeoSchema.count_data_nodes_of_class(data_node="State") == 5
+
+    q = '''
+        UNWIND ["CA", "NY", "OR", "NV", "WA"] AS state_name
+        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        RETURN id(s) AS internal_id
+        '''
+    result = db.query(q, single_column="internal_id")
+
+    assert set(result) == set(import_list_1).union(set(import_list_2))
 
 
 
@@ -771,3 +803,18 @@ def test_import_triplestore(db):
     internal_id = result[0]
     lookup = db.get_nodes(internal_id)
     assert lookup == [{'School': 'UC Berkeley', 'Semester': 'Spring 2023', 'Course Title': 'Systems Biology', 'uri': 'MCB 273'}]
+
+
+
+def test_scrub_dict():
+    d = {"a": 1,
+         "b": 3.5, "c": float("nan"),
+         "d": "some value", "e": "   needs  cleaning!    ",
+         "f": "", "g": "            ",
+         "h": (1, 2)}
+
+    result = NeoSchema.scrub_dict(d)
+    assert result == {"a": 1,
+                      "b": 3.5,
+                      "d": "some value", "e": "needs  cleaning!",
+                      "h": (1, 2)}

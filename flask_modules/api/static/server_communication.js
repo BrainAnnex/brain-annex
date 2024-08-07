@@ -159,6 +159,9 @@ class ServerCommunication
 
      */
     {
+        // TODO: more testing.  Tested so far:  * GET with JSON
+
+
         // TODO: more argument checking
         if (typeof data_obj !== 'object') {
             alert("ERROR in invocation of contact_server_NEW(): the `data_obj` argument is not an Object");

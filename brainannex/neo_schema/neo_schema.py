@@ -1971,20 +1971,33 @@ class NeoSchema:
 
 
     @classmethod
-    def data_nodes_of_class(cls, class_name :str) -> [int]:
+    def data_nodes_of_class(cls, class_name :str, return_option="uri") -> Union[List[str], List[int]]:
         """
         Return the uri's of all the Data Nodes of the given Class
 
-        :param class_name:  Name of a Schema Class
-        :return:            Return the Item ID's of all the Data Nodes of the given Class
+        :param class_name:      Name of a Schema Class
+        :param return_option:   Either "uri" or "internal_id"
+        :return:                Return the uri's or internal database ID's
+                                        of all the Data Nodes of the given Class
         """
-        # TODO: offer the option of returning the internal database ID's and/or some or all of the fields
+        # TODO: offer the option of returning some or all of the fields
         # TODO: offer to optionally pass a label?
+        # TODO: pytest the 'return_option' arg
+
+        assert return_option in ["uri", "internal_id"], \
+            "data_nodes_of_class(): the argument `return_option` must be either 'uri' or 'internal_id'"
+
         q = '''
-            MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) RETURN n.uri AS uri
+            MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) 
             '''
 
-        res = cls.db.query(q, {"class_name": class_name}, single_column="uri")
+        if return_option == "uri":
+            q += "RETURN n.uri AS uri"
+        else:
+            q += "RETURN id(n) AS internal_id"
+
+
+        res = cls.db.query(q, {"class_name": class_name}, single_column=return_option)
 
         # Alternate approach
         #match = cls.db.match(labels="CLASS", properties={"name": class_name})
@@ -1995,29 +2008,29 @@ class NeoSchema:
 
 
     @classmethod
-    def count_data_nodes_of_class(cls, class_id: Union[int, str]) -> [int]:
+    def count_data_nodes_of_class(cls, data_node: Union[int, str]) -> [int]:
         """
         Return the count of all the Data Nodes attached to the given Class
 
-        :param class_id:    Either an integer with the internal database ID of an existing Class node,
+        :param data_node:   Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
         :return:            The count of all the Data Nodes attached to the given Class
         """
         # TODO: introduce new method assert_valid_class_id()
 
-        if type(class_id) == int:
-            assert cls.class_neo_id_exists(class_id), \
-                f"NeoSchema.count_data_nodes_of_class(): no Class with an internal ID of {class_id} exists"
+        if type(data_node) == int:
+            assert cls.class_neo_id_exists(data_node), \
+                f"NeoSchema.count_data_nodes_of_class(): no Class with an internal ID of {data_node} exists"
 
             q = f'''
                 MATCH (n)-[:SCHEMA]->(cl :CLASS)
-                WHERE id(cl) = {class_id}
+                WHERE id(cl) = {data_node}
                 RETURN count(n) AS number_datanodes
                 '''
         else:
             q = f'''
                 MATCH (n)-[:SCHEMA]->(cl :CLASS)
-                WHERE cl.name = "{class_id}"
+                WHERE cl.name = "{data_node}"
                 RETURN count(n) AS number_datanodes
                 '''
 
@@ -2257,51 +2270,69 @@ class NeoSchema:
     @classmethod
     def _create_data_node_helper(cls, class_internal_id :int,
                                  labels=None, properties_to_set=None,
-                                 uri_namespace=None) -> int:
+                                 uri_namespace=None, merge_primary_key=None) -> int:
         """
         Helper function, to create a new data node, of the type indicated by specified Class,
-        with the given (possibly none) label(s) properties.
+        with the given (possibly none) label(s) and properties.
 
         IMPORTANT: all validations/schema checks are assumed to have been performed by the caller functions;
-                   this is a private method not for the end user!
+                   this is a private method not meant for the end user!
 
         :param class_internal_id:   The internal database ID of an existing Class node
         :param labels:              String, or list/tuple of strings, with label(s)
                                         to assign to the new Data node,
                                         (note: the Class name is expected to be among them)
-        :param properties_to_set:   (OPTIONAL) Dictionary with the properties of the new data node.
+        :param properties_to_set:   [OPTIONAL] Dictionary with the properties of the new data node.
                                         EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param uri_namespace:       (OPTIONAL) String with a namespace to use to auto-assign a uri value on the new node;
+        :param uri_namespace:       [OPTIONAL] String with a namespace to use to auto-assign a uri value on the new node;
                                         if not passed, no uri value gets set on the new node
+        :param merge_primary_key:   [OPTIONAL]
 
         :return:                    The internal database ID of the new Data node just created
         """
 
         if uri_namespace:
             new_uri = cls.reserve_next_uri(namespace=uri_namespace)
-            properties_to_set["uri"] = new_uri                   # Expand the dictionary
+            properties_to_set["uri"] = new_uri          # Expand the dictionary, to include the "uri" field
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
         #   to define the new node to be created
+        # TODO: labels_str ought to be handled by the calling function (likely always the same)
         labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
         (cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(properties_to_set)
         # EXAMPLE:
         #   cypher_props_str = "{`name`: $par_1, `city`: $par_2}"
         #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
 
-        # Create a new Data node, with a "SCHEMA" relationship to its Class node
-        # TODO: allow the creation of multiple nodes with a single Cypher query, with an UNWIND
-        q = f'''
-            MATCH (cl :CLASS)
-            WHERE id(cl) = {class_internal_id}           
-            CREATE (dn {labels_str} {cypher_props_str})
-            MERGE (dn)-[:SCHEMA]->(cl)           
-            RETURN id(dn) AS internal_id
-            '''
 
-        # TODO: consider switching to update_query(), for more insight;
-        #       also, unclear about what gets returned if creation fails
-        internal_id = cls.db.query(q, data_binding, single_cell="internal_id")
+        if merge_primary_key:   # TODO: test
+            q = f'''
+                MATCH (cl :CLASS)
+                WHERE id(cl) = {class_internal_id} 
+                WITH $record AS rec, cl
+                MERGE (dn {labels_str} {{{merge_primary_key}: rec['{merge_primary_key}']}}) 
+                      -[:SCHEMA]-> (cl)
+                SET dn = rec 
+                RETURN id(dn) as internal_id 
+                '''
+
+            cls.db.debug_query_print(q, data_binding={"record": properties_to_set})
+            internal_id = cls.db.query(q, data_binding={"record": properties_to_set}, single_cell="internal_id")
+
+        else:
+            # Create a new Data node, with a "SCHEMA" relationship to its Class node
+            # TODO: allow the creation of multiple nodes with a single Cypher query, with an UNWIND
+            q = f'''
+                MATCH (cl :CLASS)
+                WHERE id(cl) = {class_internal_id}           
+                CREATE (dn {labels_str} {cypher_props_str})
+                MERGE (dn)-[:SCHEMA]->(cl)           
+                RETURN id(dn) AS internal_id
+                '''
+
+            # TODO: consider switching to update_query(), for more insight;
+            #       also, unclear about what gets returned if creation fails
+            internal_id = cls.db.query(q, data_binding, single_cell="internal_id")
 
         return internal_id
 
@@ -3295,6 +3326,7 @@ class NeoSchema:
     @classmethod
     def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
                             drop=None, rename=None,
+                            merge_primary_key=None,
                             datetime_cols=None, int_cols=None,
                             extra_labels=None, uri_namespace=None,
                             schema_code=None, report_frequency=100) -> [int]:
@@ -3314,8 +3346,10 @@ class NeoSchema:
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
         :param drop:        [OPTIONAL] Name of a field, or list of names, to ignore during import
+                                (Note: original name prior to any rename, if applicable)
         :param rename:      [OPTIONAL] dictionary to rename the Pandas dataframe's columns to
                                 EXAMPLE {"current_name": "name_we_want"}
+        :param merge_primary_key:
         :param datetime_cols:[OPTIONAL] String, or list/tuple of strings, of column name(s)
                                 that contain datetime strings such as '2015-08-15 01:02:03'
                                 (compatible with the python "datetime" format)
@@ -3335,6 +3369,7 @@ class NeoSchema:
         :param report_frequency: [OPTIONAL] How often to print the status of the import-in-progress
 
         :return:            A list of the internal database ID's of the newly-created Data nodes
+                                (or updated Data nodes, if merge_primary_key is used)
         """
         # TODO: pytest uri_namespace argument, drop, rename
         # TODO: allow rename to do a drop, by using None as some values
@@ -3434,7 +3469,8 @@ class NeoSchema:
             # Perform the actual import
             new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
                                                            labels=labels, properties_to_set=d_scrubbed,
-                                                           uri_namespace=uri_namespace)
+                                                           uri_namespace=uri_namespace,
+                                                           merge_primary_key=merge_primary_key)
             #print("new_internal_id", new_internal_id)
             internal_id_list.append(new_internal_id)
 
