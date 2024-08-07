@@ -139,8 +139,14 @@ def test_get_nodes_by_filter(db):
     # No filtration
     assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22}]
     # Filtration by labels
-    assert DataManager.get_nodes_by_filter({"labels": "Test Label"}) == [{'gender': 'F', 'age': 22}]
-    assert DataManager.get_nodes_by_filter({"labels": "WRONG_Label"}) == []
+    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == [{'gender': 'F', 'age': 22}]
+    assert DataManager.get_nodes_by_filter({"label": "WRONG_Label"}) == []
+
+    with pytest.raises(Exception):
+        DataManager.get_nodes_by_filter(filter_dict=123)        # Not a dict
+
+    with pytest.raises(Exception):
+        DataManager.get_nodes_by_filter({"mystery_key": 123})   # Bad key
 
     # TODO: add more tests
     #print(DataManager.get_nodes_by_filter({}))

@@ -49,12 +49,12 @@ def test_import_pandas_nodes(db):
 
 
     # Duplicate entry: "CA"
-    df = pd.DataFrame({"name": ["NV", "CA", "WA"]})
-    import_list_2 = NeoSchema.import_pandas_nodes(df=df, class_node="State",
-                                                merge_primary_key="name")
+    df_2 = pd.DataFrame({"name": ["NV", "CA", "WA"]})
+    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="State",
+                                                  primary_key="name")
     print(import_list_2)
 
-    # Verify that a grand total of only 5 Data Node were imported
+    # Verify that a grand total of only 5 Data Node were imported (the duplicate didn't lead to an extra record)
     assert NeoSchema.count_data_nodes_of_class(data_node="State") == 5
 
     q = '''
@@ -65,6 +65,64 @@ def test_import_pandas_nodes(db):
     result = db.query(q, single_column="internal_id")
 
     assert set(result) == set(import_list_1).union(set(import_list_2))
+
+
+    # Expand the Schema
+    NeoSchema.create_class_with_properties(name="Motor Vehicle",
+                                           properties=["vehicle ID", "make", "year"], strict=True)
+
+    df = pd.DataFrame({"vehicle ID": ["c1", "c2", "c3"],
+                       "make": ["Honda", "Toyota", "Ford"],
+                       "year": [2003, 2013, 2023]})
+
+    import_list_1 = NeoSchema.import_pandas_nodes(df=df, class_node="Motor Vehicle")
+
+
+    # Note that "c2" is already present (if "vehicle ID" is a primary key),
+    # and that "color" is not the Schema
+    df_2 = pd.DataFrame({"vehicle ID": ["c4", "c2", "c5"],
+                         "make": ["Chevrolet", "BMW", "Fiat"],
+                         "color": ["red", "white", "blue"]})
+
+    with pytest.raises(Exception):      # "color" in not in the Schema
+        NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
+                                      primary_key="vehicle ID")
+
+    NeoSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
+
+    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
+                                                  primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
+
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id' # Retrieve the duplicate record
+    result = db.query(q)
+    assert len(result) == 1
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013} # The duplicate record 'c2' was updated by the new one
+                                                                                                # Notice how the Toyota became a BMW, the 'color' was added,
+                                                                                                # and the 'year' value was left untouched
+    assert result[0]["internal_id"] in import_list_2
+    assert NeoSchema.count_data_nodes_of_class(data_node="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+
+
+    # A fresh start with "Motor Vehicle" data nodes
+    db.delete_nodes_by_label(delete_labels="Motor Vehicle")
+
+    # Re-import the first 3 records
+    NeoSchema.import_pandas_nodes(df=df, class_node="Motor Vehicle")
+
+    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
+                                                  primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be replaced
+
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id' # Retrieve the duplicate record
+    result = db.query(q)
+    assert len(result) == 1
+
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white'}  # The duplicate record 'c2' was completely replaced by the new one
+                                                                                    # Notice how the Toyota became a BMW, the 'color' was added,
+                                                                                    # and the 'year' value is gone
+    assert result[0]["internal_id"] in import_list_2
+    assert NeoSchema.count_data_nodes_of_class(data_node="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+
+    # TODO: more tests; see also the tests for NeoAccess.load_pandas()
 
 
 

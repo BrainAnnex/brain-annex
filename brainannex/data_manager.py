@@ -1319,7 +1319,7 @@ class DataManager:
         Return the nodes in the database that match all the requirements spelled out in the given filter
 
         :param filter_dict: A dictionary, with keys:
-                                "label"         To name of a node label
+                                "label"         The name of a node label
                                 "key_name"      A string with the name of a node attribute;
                                                     if provided, key_value must be passed, too
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
@@ -1338,11 +1338,22 @@ class DataManager:
 
         :return:            A (possibly-empty) list of dictionaries
         """
-        #TODO: raise Exception if unknown labels are present
         #TODO: intercept and decode values such as neo4j.time.DateTime(2016, 11, 5, 23, 13, 46, 0)  , for example found in Item 'sl-1087'
         #TODO: maybe parse the filter_dict here, but move the body of the computation to NeoSchema
 
         #print(f"In get_nodes_by_filter().  filter_dict: {filter_dict}")
+
+        assert type(filter_dict) == dict, \
+            f"get_nodes_by_filter(): argument `filter_dict` must be a dictionary.  " \
+            f"The type of the passed argument was {type(filter_dict)}"
+
+        allowed_keys = ["label", "key_name", "key_value", "clause", "order_by", "skip", "limit"]
+
+        # Check the validity of the keys
+        for key in filter_dict:
+            assert key in allowed_keys, \
+                    f"get_nodes_by_filter(): unknown key ('{key}') in argument `filter_dict`.  " \
+                    f"Allowed values are: {allowed_keys})"
 
         label = filter_dict.get("label")      # It will be None if key isn't present
 
