@@ -7,6 +7,7 @@ from brainannex.media_manager import MediaManager
 from brainannex.full_text_indexing import FullTextIndexing
 from brainannex.py_graph_visual import PyGraphVisual
 from neoaccess import NeoAccess
+from neoaccess.cypher_utils import CypherUtils
 import re                               # For REGEX
 import pandas as pd
 import os
@@ -18,7 +19,7 @@ from datetime import datetime
 
 
 """
-    MIT License.  Copyright (c) 2021-2024 Julian A. West     BrainAnnex.org
+    MIT License.  Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
 """
 
 
@@ -62,7 +63,10 @@ class DataManager:
         assert type(db) == NeoAccess, \
             "NeoSchema.set_database(): argument passed isn't a valid `NeoAccess` object"
 
-        cls.db = db
+        cls.db = db     # Save the database object
+
+        # Initialize dependencies
+        Categories.set_database(db)
 
 
 
@@ -107,14 +111,17 @@ class DataManager:
     #####################################################################################################
 
     @classmethod
-    def to_int_if_possible(cls, s: str) -> Union[int, str, None]:
+    def to_int_if_possible(cls, s: str):
         """
         Convert the argument to an integer, if at all possible; otherwise, leave it as a string
         (or leave it as None, if applicable)
 
         :param s:   Value to convert to integer, if possible
-        :return:    Either an int or a string
+        :return:    Either an int version of the passed value, or that same value
         """
+        if not s:
+            return s    # This will catch None, among other things
+
         try:
             return int(s)
         except ValueError:
@@ -1307,41 +1314,146 @@ class DataManager:
 
 
     @classmethod
-    def get_nodes_by_filter(cls, filter_dict) -> [dict]:
+    def get_nodes_by_filter(cls, filter_dict :dict) -> [dict]:
         """
+        Return the nodes in the database that match all the requirements spelled out in the given filter
 
-        :param filter_dict: A dictionary.
-                            EXAMPLE: {"labels": "BA", "key_name": "uri", "key_value": 123, "limit": 25}
+        :param filter_dict: A dictionary, with keys:
+                                "label"         The name of a node label
+                                "key_name"      A string with the name of a node attribute;
+                                                    if provided, key_value must be passed, too
+                                "key_value"     The required value for the above key; if provided, key_name must be passed, too.
+                                                    Note: no requirement for the key to be primary
+                                "clause"        MUST use "n" as dummy name.
+                                                    EXAMPLE: "n.name CONTAINS 'art'"
+                                "order_by"      Field name, or comma-separated list;
+                                                    each name may optionally be followed by "DESC"
+                                "skip"          The number of initial entries (in the context of specified order) to skip
+                                "limit"         The max number of entries to return
+                            EXAMPLES:
+                                {"label": "BA", "key_name": "uri", "key_value": "sl-123"}
+                                {"label": "doctor", "limit": 25, "skip": 50}
+                                {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
+                                {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
         :return:            A (possibly-empty) list of dictionaries
         """
-        print(f"In get_nodes_by_filter().  filter_dict: {filter_dict}")
+        #TODO: intercept and decode values such as neo4j.time.DateTime(2016, 11, 5, 23, 13, 46, 0)  , for example found in Item 'sl-1087'
+        #TODO: maybe parse the filter_dict here, but move the body of the computation to NeoSchema
 
-        labels = filter_dict.get("labels")      # It will be None if key isn't present
+        #print(f"In get_nodes_by_filter().  filter_dict: {filter_dict}")
+
+        assert type(filter_dict) == dict, \
+            f"get_nodes_by_filter(): argument `filter_dict` must be a dictionary.  " \
+            f"The type of the passed argument was {type(filter_dict)}"
+
+        allowed_keys = ["label", "key_name", "key_value", "clause", "order_by", "skip", "limit"]
+
+        # Check the validity of the keys
+        for key in filter_dict:
+            assert key in allowed_keys, \
+                    f"get_nodes_by_filter(): unknown key ('{key}') in argument `filter_dict`.  " \
+                    f"Allowed values are: {allowed_keys})"
+
+        label = filter_dict.get("label")      # It will be None if key isn't present
 
         key_name = filter_dict.get("key_name")
         key_value = filter_dict.get("key_value")
 
+        clause = filter_dict.get("clause")
+        order_by = filter_dict.get("order_by")
+
+
         # Convert key_value to integer, if at all possible; otherwise, leave as string
         key_value = cls.to_int_if_possible(key_value)
 
-        limit = filter_dict.get("limit", 10)    # Default value, if not provided
+        skip = filter_dict.get("skip")
+        limit = filter_dict.get("limit", 25)    # Default value, if not provided
 
         try:
             limit = int(limit)
         except Exception:
             raise Exception(f"The parameter 'limit', if provided, must be an integer; value received: `{limit}`")
 
-        print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | limit: {limit}")
+        if limit > 1000:
+            limit = 1000     # Set a sensible upper bound
 
-        match = cls.db.match(labels=labels, key_name=key_name, key_value=key_value)
+        #print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | clause: {clause} | limit: {limit}")
 
-        if limit > 500:
-            limit = 500     # Set an upper bound
+        match = cls.db.match(labels=label, key_name=key_name, key_value=key_value, clause=clause)
 
-        result = cls.db.get_nodes(match, limit=limit)
+        #result = cls.db.get_nodes(match, order_by=order_by, limit=limit)
 
-        return result
+        match_structure = CypherUtils.process_match_structure(match, caller_method="get_nodes_by_filter")
+        # Unpack needed values from the match structure
+        (node, where, data_binding, dummy_node_name) = match_structure.unpack_match()
+
+        q = f'''
+            MATCH {node} 
+            {CypherUtils.prepare_where(where)} 
+            RETURN {dummy_node_name} 
+            '''
+
+        if order_by:
+            revised_order_by = cls._process_order_by(s=order_by, dummy_node_name=dummy_node_name)
+            q += f"ORDER BY {revised_order_by} \n"
+
+        if skip:
+            q += f"SKIP {skip} \n"
+
+        if limit:
+            q += f"LIMIT {limit}"
+
+        #cls.db.debug_query_print(q, data_binding)
+
+        result = cls.db.query(q, data_binding=data_binding)
+
+        data = []
+        for record in result:
+            data.append(record["n"])
+
+        return data
+
+
+
+    @classmethod
+    def _process_order_by(cls, s :str, dummy_node_name="n") -> str:
+        """
+        Make the names case-insensitive, and prefix each by the dummy node name
+
+        EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
+                     returns "toLower(n.John) DESC, toLower(n.Alice), toLower(n.Bob) DESC, toLower(n.Carol)"
+                     Note: "DESC" is case-insensitive
+        :param s:   A string that is expected to be a comma-separated list of field names,
+                        with each optionally followed by (spaces and) the string "DESC"
+        :return:
+        """
+        #TODO: move to NeoAccess
+
+        # Define a regular expression pattern to match each name optionally followed by "DESC"
+        pattern = re.compile(r'(\w+)\s*(DESC)?', re.IGNORECASE)
+                                                    # (\w+)     one or more of ASCII letter, digit or underscore, in a capturing group
+                                                    # \s        blank space
+                                                    # *         zero or more times
+                                                    # (DESC)?   optional literal "DESC", in a capturing group
+
+        # Split the input string by commas to separate the individual components:
+        # each component is expected to be a field name, optionally followed by DESC
+        parts = s.split(',')
+
+        # Parse each component using the pattern
+        result = []
+        for part in parts:
+            match = pattern.match(part.strip())
+            if match:
+                name = match.group(1)
+                desc = bool(match.group(2))
+                if desc:
+                    result.append(f"toLower({dummy_node_name}.{name}) DESC")
+                else:
+                    result.append(f"toLower({dummy_node_name}.{name})")
+
+        return ", ".join(result)
 
 
 

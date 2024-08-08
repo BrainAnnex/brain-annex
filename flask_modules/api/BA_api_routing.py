@@ -60,6 +60,8 @@ class ApiRouting:
     # NOTE: To test POST-based web APIs, on the Linux shell or Windows PowerShell issue commands such as:
     #            curl http://localhost:5000/BA/api/add_item_to_category -d "schema_uri=1&category_uri=60"
 
+    # TODO: provide support for API_KEY (or API_TOKEN) authentication
+
 
 
 
@@ -98,23 +100,6 @@ class ApiRouting:
     #######################################################
     #                   UTILITY methods                   #
     #######################################################
-
-    @classmethod
-    def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
-        """
-
-        :param get_data:
-        :param required_par_list:
-        :return:
-        """
-        data_dict = get_data.to_dict(flat=True)     # WARNING: if multiple identical keys occur,
-                                                    #          the values associated to the later keys will be discarded
-        if required_par_list:
-            for par in required_par_list:
-                assert par in data_dict, f"The expected parameter `{par}` is missing from the GET request (i.e. from the query string)"
-
-        return data_dict
-
 
 
     @classmethod
@@ -157,6 +142,34 @@ class ApiRouting:
 
 
     @classmethod
+    def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
+        """
+        Convert into a Python dictionary the given GET data.
+
+        EXAMPLE:
+            get_data = request.args
+            data_dict = cls.extract_get_pars(get_data, required_par_list=["name_of_some_required_field"])
+
+        :param get_data:            An ImmutableMultiDict object, which is a sub-class of Dictionary
+                                        that may contain multiple values for the same key.
+                                        EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
+        :param required_par_list:   [OPTIONAL] A list or tuple of name of GET parameters whose presence is to be enforce.
+                                        EXAMPLE: ['uri', 'rel_name']
+
+        :return:                    A dict populated with the GET data
+        """
+        data_dict = get_data.to_dict(flat=True)     # WARNING: if multiple identical keys occur,
+                                                    #          the values associated to the later keys will be discarded
+        if required_par_list:
+            for par in required_par_list:
+                assert par in data_dict, \
+                    f"The expected parameter `{par}` is missing from the GET request (i.e. from the query string at end of the URL)"
+
+        return data_dict
+
+
+
+    @classmethod
     def extract_post_pars(cls, post_data, required_par_list=None, json_decode=False) -> dict:
         """
         Convert into a Python dictionary the given POST data
@@ -166,14 +179,15 @@ class ApiRouting:
 
         EXAMPLE:
                 post_data = request.form
-                post_pars = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
+                data_dict = cls.extract_post_pars(post_data, ["name_of_some_required_field"])
 
         :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
-                                    that can contain multiple values for the same key.
-                                    EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
+                                        that may contain multiple values for the same key.
+                                        EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
 
-        :param required_par_list:   A list or tuple.  EXAMPLE: ['uri', 'rel_name']
-        :param json_decode:         If True, all values are expected to be JSON-encoded strings, and they get decoded
+        :param required_par_list:   [OPTIONAL] A list or tuple of name of POST parameters whose presence is to be enforce.
+                                        EXAMPLE: ['uri', 'rel_name']
+        :param json_decode:         If True, all values are expected to be JSON-encoded strings, which get decoded
         :return:                    A dict populated with the POST data
         """
         #TODO: return a dict whose keys are the required fields,
@@ -326,25 +340,42 @@ class ApiRouting:
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
+
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
-        @bp.route('/get_properties_by_class_name', methods=['POST'])
+        @bp.route('/get_class_properties')
         @login_required
-        def get_properties_by_class_name():
+        def get_class_properties():
             """
-            Get all Properties of the given Class node (as specified by its name passed as a POST variable),
-            including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
+            Get all Properties of the given Class node (as specified by its name),
+            optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class.
 
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/get_properties_by_class_name  -d "class_name=French Vocabulary"
+            EXAMPLE invocations:
+                http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%7D
+                    (passing the URL-safe version of the JSON-serialized dict {"class_name": "Quote"})
 
-            1 POST FIELD:
-                class_name
-                TODO: add an optional extra field, "include_ancestors"
+                http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%2C%20%22include_ancestors%22%3A%20true%7D
+                    (corresponding to {"class_name": "Quote", "include_ancestors": True})
+
+                http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%2C%20%22include_ancestors%22%3A%20true%2C%20%22exclude_system%22%3A%20true%7D
+                    (corresponding to {"class_name": "Quote", "include_ancestors": True, "exclude_system": True})
+
+            Note: To generate URL-safe versions of the JSON-serialized data from d variable in Python, use
+                    import json
+                    import urllib.parse
+                    urllib.parse.quote(json.dumps(d))
+
+            KEYS in dict in passed JSON request:
+                class_name          REQUIRED
+                include_ancestors   OPTIONAL
+                sort_by_path_len    OPTIONAL
+                exclude_system      OPTIONAL
+
+            For details, see NeoSchema.get_class_properties()
 
             :return:  A JSON with a list of the Property names of the specified Class,
-                      including indirect ones that arise thru
-                      chains of outbound "INSTANCE_OF" relationships (TODO: make optional)
+                      optionally including indirect ones that arise thru
+                      chains of outbound "INSTANCE_OF" relationships
                          EXAMPLE:
                             {
                                 "payload":  [
@@ -355,26 +386,50 @@ class ApiRouting:
                                 "status":   "ok"
                             }
             """
+            # Extract the GET values
+            get_data = request.args    # Example: ImmutableMultiDict([('json', 'some_json_string')])
 
-            # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('class_name', 'French Vocabulary')])
-            cls.show_post_data(post_data, "get_properties_by_class_name")
+            try:
+                data_dict = cls.extract_get_pars(get_data, required_par_list=["json"])
+            except Exception as ex:
+                err_details = exceptions.exception_helper(ex)
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+                print(response_data["error_message"])
+                return jsonify(response_data)    # This function also takes care of the Content-Type header
 
-            data_dict = dict(post_data)
-            if "class_name" not in data_dict:
-                response = {"status": "error", "error_message": "The expected POST parameter `class_name` is not present"}
-            else:
-                class_name = data_dict["class_name"]
-                try:
-                    # Fetch all the Properties
-                    prop_list = NeoSchema.get_class_properties(class_node=class_name, include_ancestors=True)
-                    response = {"status": "ok", "payload": prop_list}
-                except Exception as ex:
-                    response = {"status": "error", "error_message": str(ex)}
 
-            #print(f"get_properties_by_class_name() is returning: `{response}`")
+            json_str = data_dict["json"]
+            print("JSON string: ", json_str)
 
-            return jsonify(response)   # This function also takes care of the Content-Type header
+            # TODO: turn a lot of the code below into a JSON-helper method
+
+            try:
+                json_data = json.loads(json_str)    # Turn the string into a Python object
+                print("Decoded JSON request: ", json_data)
+            except Exception as ex:
+                response_data = {"status": "error", "error_message": f"Failed parsing of JSON string in request. Incorrectly formatted.  {ex}"}
+                print(response_data["error_message"])
+                return jsonify(response_data)    # This function also takes care of the Content-Type header
+
+            if "class_name" not in json_data:
+                response_data = {"status": "error", "error_message": "Missing required value for `class_name` in the JSON data"}
+                print(response_data["error_message"])
+                return jsonify(response_data)    # This function also takes care of the Content-Type header
+
+            class_name =  json_data["class_name"]
+            print("class_name: ", class_name)
+            del json_data["class_name"]
+
+            try:
+                # Fetch all the Properties
+                prop_list = NeoSchema.get_class_properties(**json_data, class_node=class_name)
+                response_data = {"status": "ok", "payload": prop_list}
+            except Exception as ex:
+                response_data = {"status": "error", "error_message": str(ex)}
+
+            print(response_data)
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 
@@ -568,7 +623,7 @@ class ApiRouting:
                 rel_dir             The relationship direction, from the point of view of the newly-added node
             """
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quotes,quote,attribution,notes')])
+            post_data = request.form     # Example: ImmutableMultiDict([('data', 'Quote,quote,attribution,notes')])
             #cls.show_post_data(post_data, "create_new_schema_class")
 
             try:
@@ -1207,7 +1262,6 @@ class ApiRouting:
             get_data = request.args     # Example: ImmutableMultiDict([('sub', '12'), ('cat', '555')])
 
             try:
-                #print(get_data)
                 data_dict = cls.extract_get_pars(get_data, required_par_list=['sub', 'cat'])
                 Categories.add_subcategory_relationship(data_dict)
                 response_data = {"status": "ok"}
@@ -1589,36 +1643,88 @@ class ApiRouting:
         
         
         
-        @bp.route('/get_filtered', methods=['POST'])
+        @bp.route('/get_filtered')
         @login_required
         def get_filtered():
             """
-            Note: a JSON version is also available
+            EXAMPLES of invocation:
+                http://localhost:5000/BA/api/get_filtered?label=BA&key_name=uri&key_value=123
+                http://localhost:5000/BA/api/get_filtered?label=YouTube+Channel&order_by=name&limit=5&skip=15
+                http://localhost:5000/BA/api/get_filtered?label=Quote&order_by=attribution,quote
+                http://localhost:5000/BA/api/get_filtered?label=YouTube+Channel&clause=n.name+CONTAINS+%27science%27
+                http://localhost:5000/BA/api/get_filtered?label=Quote&clause=n.quote%20CONTAINS%20%27kiss%27&order_by=attribution,quote
+
+                Note: "+" corresponds to a blank space and "%27" corresponds to a single quote
         
+            GET FIELDS (all optional):
+                label       To name of a node label
+                key_name    A string with the name of a node attribute;
+                                if provided, key_value must be passed, too
+                key_value   The required value for the above key; if provided, key_name must be passed, too.
+                                Note: no requirement for the key to be primary
+                clause      MUST use "n" as dummy name
+                                EXAMPLE:  n.name CONTAINS 'art'
+                order_by    Field name, or comma-separated list;
+                                each name may optionally be followed by "DESC"
+                skip        The number of initial entries (in the context of specified order) to skip
+                limit       The max number of entries to return
+            """
+            # Extract the GET values
+            get_data = request.args     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
+
+            try:
+                data_dict = cls.extract_get_pars(get_data)
+                print("/get_filtered parameters: ", data_dict)
+                result = DataManager.get_nodes_by_filter(data_dict)
+                response = {"status": "ok", "payload": result}              # Successful termination
+                #print(f"get_filtered() is returning successfully: `{response}`")
+                return jsonify(response)        # This function also takes care of the Content-Type header
+                                                #   Note: jsonify() may fail if any parts of the response are not JSON serializable
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+                print(f"get_filtered() is returning with error: `{response}`")
+                return jsonify(response)        # This function also takes care of the Content-Type header
+                # Maybe, do this instead:
+                # response = make_response(response["error_message"], 422)  # "422 Unprocessable Entity"
+                # return response
+
+
+        @bp.route('/get_filtered_OLD', methods=['POST'])
+        @login_required
+        def get_filtered_OLD():
+            """
+            Note: a JSON version is also available (but not in current use)
+
             EXAMPLES of invocation:
                 curl http://localhost:5000/BA/api/get_filtered -d "labels=BA&key_name=uri&key_value=123"
                 curl http://localhost:5000/BA/api/get_filtered -d "labels=CLASS&key_name=code&key_value=h"
-        
+
             POST FIELDS (all optional):
-                labels      To name of a single Neo4j label (TODO: for now, just 1 label)
+                labels      To name of a Neo4j label, or a list of labels
                 key_name    A string with the name of a node attribute; if provided, key_value must be present, too
                 key_value   The required value for the above key; if provided, key_name must be present, too
                                         Note: no requirement for the key to be primary
+                clause
+                order_by
+                skip
                 limit       The max number of entries to return
             """
+            #TODO: turn into GET method(?)
+
             # Extract the POST values
             post_data = request.form     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
             cls.show_post_data(post_data, "get_filtered")
-        
+
             try:
                 result = DataManager.get_nodes_by_filter(dict(post_data))
                 response = {"status": "ok", "payload": result}              # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
-        
+
             print(f"get_filtered() is returning: `{response}`")
-        
+
             return jsonify(response)        # This function also takes care of the Content-Type header
+
 
 
 

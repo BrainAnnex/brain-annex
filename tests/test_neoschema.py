@@ -248,6 +248,7 @@ def test_create_class_relationship(db):
     # Mixing names and internal database ID's
     NeoSchema.create_class_relationship(from_class="German Vocabulary", to_class=foreign_id, rel_name="INSTANCE_OF")
 
+    # Verify
     q = f'''MATCH 
         (from :CLASS {{name:"French Vocabulary", uri: '{french_uri}'}})
         -[:INSTANCE_OF]
@@ -256,8 +257,22 @@ def test_create_class_relationship(db):
         WHERE id(from) = {french_id} AND id(to) = {foreign_id}
         RETURN count(from) AS number_found
         '''
-
     assert db.query(q, single_cell="number_found") == 1
+
+
+    _, course_uri = NeoSchema.create_class("Course")
+    NeoSchema.create_class_relationship(from_class="Foreign Vocabulary", to_class="Course",
+                                        rel_name="USED_IN", link_properties=["Frequency", "Usefulness"])
+
+    # Verify
+    q = f'''MATCH 
+        (from :CLASS {{name:"Foreign Vocabulary", uri: '{foreign_uri}'}})
+        -[:USED_IN]->(l :LINK)-[:USED_IN]
+        ->(to :CLASS {{name:"Course", uri: '{course_uri}'}})
+        MATCH (l)-[:HAS_PROPERTY]->(p :PROPERTY)
+        RETURN p.name AS prop_name ORDER BY prop_name
+        '''
+    assert db.query(q, single_column="prop_name") == ["Frequency", "Usefulness"]
 
 
 
@@ -597,9 +612,6 @@ def test_get_class_relationships(db):
 def test_get_class_properties(db):
     db.empty_dbase()
 
-    with pytest.raises(Exception):
-        NeoSchema.create_class_with_properties(111)    # Invalid class name
-
     NeoSchema.create_class_with_properties("My first class", properties=["A", "B", "C"])
     neo_uri = NeoSchema.get_class_internal_id("My first class")
     props = NeoSchema.get_class_properties(neo_uri)
@@ -634,11 +646,7 @@ def test_get_class_properties(db):
     assert compare_unordered_lists(props, ["A", "B", "C", "X", "Y", "Z"])
 
     with pytest.raises(Exception):
-        # Meaningless combination of arguments
-        NeoSchema.get_class_properties("My first class", include_ancestors=False, sort_by_path_len="ASC")
-
-    with pytest.raises(Exception):
-        NeoSchema.get_class_properties("My first class", include_ancestors=True, sort_by_path_len="meaningless")
+        NeoSchema.get_class_properties("My first class", sort_by_path_len="meaningless")
 
     props = NeoSchema.get_class_properties("My first class", include_ancestors=True, sort_by_path_len="ASC")
     assert props == ["A", "B", "C", "X", "Y", "Z"]

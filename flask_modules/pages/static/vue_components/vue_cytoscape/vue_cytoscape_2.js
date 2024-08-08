@@ -9,14 +9,15 @@ Vue.component('vue_cytoscape_2',
                 1) "structure"
                         EXAMPLE:
                             [{'name': 'German Vocabulary', 'strict': False, 'uri': 'schema-1', 'internal_id': 77, 'id': 77, 'labels': ['CLASS']},
-                             {'allowed': ['der', 'die', 'das'], 'name': 'Gender', 'dtype': 'categorical', 'uri': 'schema-91', 'internal_id': 79, 'id': 79, 'labels': ['PROPERTY']}
+                             {'allowed': ['der', 'die', 'das'], 'name': 'Gender', 'dtype': 'categorical',
+                                   'uri': 'schema-91', 'internal_id': 79, 'id': 79, 'labels': ['PROPERTY']},
                              {'name': 'HAS_PROPERTY', 'source': 116602, 'target': 116618, 'id': 'edge-185'}
                             ]
 
                 2) "color_mapping"      (TODO: auto-assign if unspecified; SEE vue_curves_4.js)
                         EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
 
-                3) "caption_mapping"    (from label to property to use for caption)
+                3) "caption_mapping"    (from label name to property to use for the node's caption)
                         EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
              */
 
@@ -26,13 +27,16 @@ Vue.component('vue_cytoscape_2',
         },
 
 
+        cy_object: null,        // Component-wide metadata, available thru this.$options.cy_object
+                                // Used to store the Cytoscape object
+
 
         template: `
             <div>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
 
                 <div v-bind:id="'cy_' + component_id" class="cytoscape-container">
                     <!--
-                        ****  CYTOSCAPE.js WILL INSERT THE GRAPH HERE!  ***
+                        ******   CYTOSCAPE.js WILL INSERT THE GRAPH HERE!   ******
                       -->
                 </div>
 
@@ -46,7 +50,9 @@ Vue.component('vue_cytoscape_2',
                         </template>
 
                         <br><br><br>
-                        <i>Select a node or edge<br>on the graph</i>
+                        <span style="color: #888; font-style: italic">Select a node or edge<br>on the graph</span>
+                        <br>
+                        <span style="color: #BBB; font-style: italic">(shift-click for multiple selections)</span>
                     </p>
 
                     <p v-else>
@@ -69,25 +75,27 @@ Vue.component('vue_cytoscape_2',
 
                     <br><br>
                     <b>List of Classes:</b>
-                    <br>
+                    <p style="color: #BBB; margin-left:15px; margin-top:0px; margin-bottom:0">Click names to select; click empty space on graph to de-select</p>
                     <ul>
                         <li v-for="item in class_list" >
-                            <span style='color:#56947E'>{{item}}</span>
+                            <span @click="highlight_class_node(item)" class="clickable-icon" style='color:#56947E'>{{item}}</span>
                         </li>
                     </ul>
-                </div>
+
+                </div>      <!-- End of side box -->
 
             </div>		<!-- End of outer container -->
             `,
 
 
 
-        // ----------------  DATA  -----------------
+        // ---------------------  DATA  ----------------------
         data: function() {
             return {
-                graph_structure: this.graph_data.structure, // A list of dicts
+                graph_structure: this.graph_data.structure,     // A list of dicts
 
-                // Data of the currently-selected node
+                // Data of the currently-selected node;
+                // both variables are arrays of strings
                 node_labels: null,
                 node_info: null,
 
@@ -100,30 +108,38 @@ Vue.component('vue_cytoscape_2',
 
 
 
-        // ----------------  MOUNTED  -----------------
+        // ---------------------  MOUNTED  ----------------------
         mounted() {
-            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component
+            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
+                     waiting this late is needed.  Caution must be taken not to re-trigger it from its code.
              */
-            console.log('The component is now mounted');
+            console.log(`The 'vue_cytoscape_2' component is now mounted`);
 
-            this.create_graph('cy_' + this.component_id);    // This will let Cytoscape.js do its thing!
+            const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
+                                                            // EXAMPLE :  "cy_1"  (this name needs to match the ID given
+                                                            //                     to the DIV element containing the graph)
+            // Save the newly-created Cytoscape object, as metadata for this Vue component
+            // Note: it cannot be simply saved as component data, because doing so triggers another call to this
+            //       "mounted" Vue hook function, leading to an infinite loop!
+            this.$options.cy_object = cy_object;
 
-            // Create a list of all Class names in the Schema
+            // Create a list of all Class names in the Schema.  TODO: maybe also save the id's alongside the names
             for (node of this.graph_structure) {        // Loop over this.graph_structure
                 let labels = node.labels;
                 //console.log(`labels: ${labels}`);
                 if (labels !== undefined  &&  labels.includes('CLASS'))  {
-                        //console.log(`ADDING CLASS NAME: '${node.name}'`);
-                        this.class_list.push(node.name);
+                    //console.log(`ADDING CLASS NAME: '${node.name}'`);
+                    this.class_list.push(node.name);    // This operation is safe, because it doesn't trigger
+                                                        // a new call to this "mounted" Vue hook function!
                 }
             }
-            // Finally, sort the newly-created list
-            this.class_list.sort();
+            // Finally, sort the newly-created list of Class names
+            this.class_list.sort();                         // This operation is safe
         },
 
 
 
-        // ----------------  COMPUTED  -----------------
+        // ---------------------  COMPUTED  ----------------------
         computed: {
             assemble_element_structure()
             /*  Create and return the graph structure needed by Cytoscape.js
@@ -155,7 +171,7 @@ Vue.component('vue_cytoscape_2',
 
 
 
-        // ----------------  METHODS  -----------------
+        // ---------------------  METHODS  ----------------------
         methods: {
             flip_plot_style()
             // Re-render the graph with a changed plot style
@@ -166,20 +182,20 @@ Vue.component('vue_cytoscape_2',
                 else
                     this.plot_layout_style = "breadthfirst";
 
-                this.create_graph('cy_' + this.component_id);    // This will let Cytoscape.js re-render the plot
-
-                this.node_info = null;                          // Unset any node selection
+                var cy_object = this.create_graph('cy_' + this.component_id); // This will let Cytoscape.js re-render the plot
+                this.$options.cy_object = cy_object;        // Save the new objec
+                this.node_info = null;                      // Unset any node selection
             },
 
 
 
             create_graph(element_id)
             /*  This function needs to be invoked after this Vue component is "mounted".
-                Replace the contents of the HTML element whose id is the given element_id
+                Replace the contents of the desired HTML element (specified by the given element_id)
                 with the graphic structure created by Cytoscape
              */
             {
-                console.log(`Running create_graph() to replace page element with ID ${element_id}`);
+                console.log(`Running create_graph() to replace page element with ID '${element_id}'`);
 
                 var cy_object = cytoscape({
 
@@ -245,9 +261,13 @@ Vue.component('vue_cytoscape_2',
 
                 });
 
-                cy_object.on('click', this.clear_legend);   // Detect all click events that the core receices
-                cy_object.on('click', 'node', this.show_node_info);
-                cy_object.on('click', 'edge', this.show_edge_info);
+
+                /*
+                    Detect all click of interest, and register their handlers
+                 */
+                cy_object.on('click', this.clear_legend);           // A click on the empty space of the graph (the Cytoscape core)
+                cy_object.on('click', 'node', this.show_node_info); // A click on a node on the graph
+                cy_object.on('click', 'edge', this.show_edge_info); // A click on an edged
 
                 /*
                 // EXAMPLES of adding nodes
@@ -259,7 +279,10 @@ Vue.component('vue_cytoscape_2',
                     { data: { id: 5, labels: 'SOME_OTHER_LABELS' , name: 'Mr. Node' }, position: {x: 80, y: 200} }
                 ]);
                 */
-            },
+
+                return cy_object;         // The newly-created Cytoscape object
+
+            },  // create_graph
 
 
 
@@ -273,16 +296,35 @@ Vue.component('vue_cytoscape_2',
                 const node = ev.target;
 
                 const cyto_data_obj = node.data();      // An object with various keys, such as 'id', 'labels', 'name'
-                let info_arr = [];                      // Each of the object key/value pairs will go into an array element, as an HTML string
-                for (k in cyto_data_obj) {
-                    //console.log( k, cyto_data_obj[k] );
-                    info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);  // Data to update the UI graph legend
+
+                this.populate_legend_from_node(cyto_data_obj);
+            },
+
+
+            populate_legend_from_node(node_data_obj)
+            // Invoked when a node is to be highlighted
+            {
+                // Each of the above object's key/value pairs will go into an array element,
+                // as an HTML string
+                let info_arr = [];
+                let html_row_str = "";
+
+                for (k in node_data_obj) {
+                    //console.log( k, node_data_obj[k] );
+                    if (k == "labels")
+                        continue;       // No need to show; labels are shown elsewhere as graphic tags
+                    if (k != "name")
+                        html_row_str = `<b>${k}</b>: ${node_data_obj[k]}`;
+                    else
+                        html_row_str = `<span style='color: brown; font-weight: bold'>${k}: ${node_data_obj[k]}</span>`;
+
+                    info_arr.push(html_row_str);  // Data to update the UI graph legend
                 }
                 //console.log(info_arr);
 
                 // Update the legend
                 this.node_info = info_arr;
-                this.node_labels = cyto_data_obj.labels;
+                this.node_labels = node_data_obj.labels;
             },
 
 
@@ -314,6 +356,45 @@ Vue.component('vue_cytoscape_2',
                 // The following change will clear the plot legend
                 this.node_info = null;
                 this.node_labels = null;
+            },
+
+
+
+            highlight_class_node(class_name)
+            // Instruct Cytoscape to select the node corresponding to the given Class name
+            {
+                //console.log(`Clicked on Class "${class_name}"`);
+                //console.log(this.$options.cy_object);
+
+                // Needs to locate the 'id' of a node from this.graph_structure
+                // that has the desired Class name
+                // EXAMPLE (fragment):  {'name': class_name, 'id': 116404, 'labels': ['CLASS']}
+
+                var found = false;
+
+                for (node of this.graph_structure)  {        // Loop over this.graph_structure
+                    let labels = node.labels;
+                    //console.log(`labels: ${labels}`);
+                    //console.log(`Examining Class '${node.name}', with id=${node.id}`);
+                    if (labels !== undefined  &&  labels.includes('CLASS')  &&  node.name == class_name)  {
+                        found = true;
+                        var located_node = node;
+                        break;
+                    }
+                }
+
+                if (found)  {
+                    //console.log(`Located node with id:  ${located_node.id}`);
+                    const selector = `#${located_node.id}`   // Used to refer to a graph element in the Cytoscape object
+                    //console.log(`The following selector will be used: '${selector}'`);
+                    this.$options.cy_object.$(selector).select();   // Tell Cytoscape to select this node
+                                                                    // EXAMPLE:  cy_object.$('#116404').select()
+                    //this.node_info = ['A test'];
+                    //this.node_labels = node.labels;
+                    this.populate_legend_from_node(located_node);
+                }
+                else
+                    alert(`Class node "${class_name}" not found in the graph!  Try refreshing the page`);
             },
 
 

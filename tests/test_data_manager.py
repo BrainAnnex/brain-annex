@@ -11,9 +11,10 @@ from brainannex.collections import Collections
 @pytest.fixture(scope="module")
 def db():
     neo_obj = NeoAccess(debug=False)
-    NeoSchema.set_database(neo_obj)
-    Categories.db = neo_obj
-    Collections.set_database(neo_obj)
+    #NeoSchema.set_database(neo_obj)
+    #Categories.db = neo_obj
+    #Collections.set_database(neo_obj)
+    DataManager.set_database(neo_obj)
     yield neo_obj
 
 
@@ -125,3 +126,34 @@ def test_switch_category(db):
                  {'caption': 'photo_3', 'uri': 'photo-3',     'pos': 3 * Collections.DELTA_POS, 'class_name': 'Photo'},
                  {'caption': 'photo_4', 'uri': 'photo-4',     'pos': 4 * Collections.DELTA_POS, 'class_name': 'Photo'}]
     assert compare_recordsets(result, expected)
+
+
+
+def test_get_nodes_by_filter(db):
+    db.empty_dbase()
+
+    assert DataManager.get_nodes_by_filter({}) == []    # The database is empty
+
+    db.create_node(labels="Test Label", properties={'age': 22, 'gender': 'F'})
+
+    # No filtration
+    assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22}]
+    # Filtration by labels
+    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == [{'gender': 'F', 'age': 22}]
+    assert DataManager.get_nodes_by_filter({"label": "WRONG_Label"}) == []
+
+    with pytest.raises(Exception):
+        DataManager.get_nodes_by_filter(filter_dict=123)        # Not a dict
+
+    with pytest.raises(Exception):
+        DataManager.get_nodes_by_filter({"mystery_key": 123})   # Bad key
+
+    # TODO: add more tests
+    #print(DataManager.get_nodes_by_filter({}))
+
+
+
+def test__process_order_by():
+    s = "John DESC, Alice, Bob desc, Carol"
+    result = DataManager._process_order_by(s)
+    assert result == "toLower(n.John) DESC, toLower(n.Alice), toLower(n.Bob) DESC, toLower(n.Carol)"

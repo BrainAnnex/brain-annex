@@ -6,9 +6,10 @@ Vue.component('vue-plugin-n',
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
         /*   item_data:  EXAMPLE: {"uri":52,"pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm"}
                                   (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
-            edit_mode:  A boolean indicating whether in editing mode
-            index:          the zero-based position of the Record on the page
-            item_count:     the total number of Content Items (of all types) on the page
+            edit_mode:      A boolean indicating whether in editing mode
+            category_id:    The URI of the Category page where this Note is displayed (used when creating new documents)
+            index:          The zero-based position of this Document on the page
+            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */
 
         template: `
@@ -92,6 +93,8 @@ Vue.component('vue-plugin-n',
         }, // data
 
 
+
+        // ------------------------------------   WATCH   ------------------------------------
         watch: {
             body_of_note() {
                 console.log('The data attribute `body_of_note` has changed!');
@@ -101,14 +104,16 @@ Vue.component('vue-plugin-n',
 
 
 
-        // ---------------------------  HOOKS  ---------------------------
+        // ------------------------------------   HOOKS   ------------------------------------
 
-        mounted() {
-            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component; waiting this late is
-                     needed to make sure that the 'CKeditor_0' DIV element is present in the DOM.
-             */
+        mounted()
+        /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
+                 waiting this late is needed to make sure that the 'CKeditor_0' DIV element
+                 is present in the DOM
+         */
+        {
             console.log(`the Notes component has been mounted`);
-            //alert("the Notes component has been mounted");
+            //alert("The Notes component has been mounted");
 
             if (this.item_data.uri == -1)
                 this.create_new_editor("");     // We're dealing with an "ADD" operation; so, we start with an empty Note
@@ -134,7 +139,7 @@ Vue.component('vue-plugin-n',
 
 
 
-        // ---------------------------  METHODS  ---------------------------
+        // ------------------------------   METHODS   ------------------------------
         methods: {
 
             get_note(item_data)
@@ -144,13 +149,14 @@ Vue.component('vue-plugin-n',
                 this.waiting = true;
 
                 // Prepare a URL to communicate with the server's endpoint
-                url_server_api = "/BA/api/get_text_media/" + item_data.uri;
+                const url_server_api = "/BA/api/get_text_media/" + item_data.uri;
 
                 ServerCommunication.contact_server(url_server_api,
                                                   {callback_fn: this.finish_get_note});
 
                 console.log("    SENT REQUEST TO SERVER to retrieve Note whose URI is `" + item_data.uri + "`...");
             }, // get_note
+
 
             finish_get_note(success, server_payload, error_message, index)
             // Callback function to wrap up the action of get_note() upon getting a response from the server

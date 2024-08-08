@@ -129,11 +129,15 @@ class PagesRouting:
             siblings_categories = Categories.viewer_handler(category_uri)
 
             records_types = DataManager.get_leaf_records()
-            records_schema_data = Categories.get_items_schema_data(category_uri)
+            items_schema_data = Categories.get_items_schema_data(category_uri)
+            # dict of Schema info for the Content Items attached to this page.
+            # Keys are Class names; Values are lists of their Properties
             # EXAMPLE: {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
             #           'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
-            #           'Headers': ['text']}
-            #print("records_schema_data: ", records_schema_data)
+            #           'Headers': ['text'],
+            #           'Quote': ['quote', 'attribution', 'notes'],
+            #           'Recordset': ['class', 'order_by', 'clause', 'n_group']}
+            #print("items_schema_data: ", items_schema_data)
 
             bread_crumbs = Categories.create_bread_crumbs(category_uri) # A list with data from which to create UI "bread crumbs"
             #print("bread_crumbs: ", bread_crumbs)
@@ -160,7 +164,7 @@ class PagesRouting:
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    siblings_categories=siblings_categories,
                                    bread_crumbs=bread_crumbs, see_also_links=see_also_links,
-                                   records_types=records_types, records_schema_data=records_schema_data
+                                   records_types=records_types, items_schema_data=items_schema_data
                                    )
 
 
@@ -492,7 +496,7 @@ class PagesRouting:
 
         @bp.route('/test/hello-world')
         def test_hello_world() -> str:
-            # A very basic test
+            # A very basic test, generating a minimalist greeting page
             # EXAMPLE invocation: http://localhost:5000/BA/pages/test/hello-world
             template = "tests/hello_world.htm"
             return render_template(template)

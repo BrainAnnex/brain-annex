@@ -32,25 +32,26 @@
                             Used for the addition of new records
                             (TODO: maybe obtain thru a server call, when first needed)
 
-        records_schema_data: A dictionary of record class names, mapped into the ordered list of their property names.
-                             Note that properties that have the attribute "system" set to True, are excluded
+        items_schema_data: A dictionary of record class names, mapped into the ordered list of their property names.
+                             Ancestral Properties, thru "INSTANCE_OF", are also included.
+                             However, Properties that have the attribute "system" set to True (such as "uri"), are excluded
                              EXAMPLE:
-                             {"Quotes": ["quote", "attribution", "notes"],
-                              "French Vocabulary": ["French", "English", "notes"],
-                              "Site Link": ["url", "name", "date", "comments", "rating", "read"]
-                             }
+                                 {"Quote": ["quote", "attribution", "notes"],
+                                  "French Vocabulary": ["French", "English", "notes"],
+                                  "Site Link": ["url", "name", "date", "comments", "rating", "read"]
+                                 }
 
         content_items:  A list of dictionaries
                         EXAMPLE:
-                        [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
-                         {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                         {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
-                        ]
+                            [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
+                             {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                            ]
 
 
-    ----------------------------------------------------------------------------------
-    MIT License.  Copyright (c) 2021-2024 Julian A. West
-	----------------------------------------------------------------------------------
+    -----------------------------------------------------------------------------------
+    MIT License.  Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
+	-----------------------------------------------------------------------------------
  #}
 
 
@@ -82,6 +83,7 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
 
     <!-- JavaScript -->
@@ -267,7 +269,8 @@
 
             v-bind:records_types="records_types"
 
-            v-bind:schema_data="get_schema_data(item)"  Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
+            v-bind:schema_data="get_schema_data(item)"  Only used for Content Items of type Record (schema_code "r").
+                                                        A list of field names, in order.
                                                         EXAMPLE: ["French", "English", "notes"]
 
      Intercept various SIGNALS from descendant components:
@@ -573,6 +576,7 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js"></script>
 
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
@@ -595,10 +599,10 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
-        registered_plugins: ["n", "i", "h", "cd", "d", "sl"],  // "r" not included here, because a generic core one
-                                                               // TODO: either pass from the database, or infer from some config file
-                                                               // IMPORTANT: the items in the list MUST correspond to the folders in
-                                                               //      BrainAnnex/pages/static/vue_components/PLUGINS
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs"],  // "r" not included here, because a generic core one
+                                                                   // TODO: either pass from the database, or infer from some config file
+                                                                   // IMPORTANT: the items in the list MUST correspond to the folders in
+                                                                   //      flask_modules/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
@@ -616,8 +620,8 @@ new Vue({
 
         records_types: {{records_types | tojson}},   // Array of all the names of leaf Classes associated to records
 
-        records_schema_data : {{records_schema_data | tojson }}, // EXAMPLE:
-                                                                 // {"Quotes": ["quote", "attribution", "notes"],
+        items_schema_data : {{items_schema_data | tojson }}, // EXAMPLE:
+                                                                 // {"Quote": ["quote", "attribution", "notes"],
                                                                  //  "French Vocabulary": ["French", "English", "notes"],
                                                                  //  "Site Link": ["url", "name", "date", "comments", "rating", "read"]}
 
@@ -834,15 +838,18 @@ new Vue({
 
 
         get_schema_data(item)
-        // If the given Content Item is a record, return a list of its field names (Properties), in order
+        /*  Return a list of the field names (Properties), in their schema order, for the given Content Item.
+            EXAMPLE:  ['quote', 'attribution', 'notes']
+            If the data is missing, return an empty array instead
+         */
         {
             //if (item.schema_code != "r")
                 //return [];                      // Nothing is being done for non-record Content Items (at least for now)
 
-            const record_type = item.class_name;
+            const item_class = item.class_name;
 
-            return this.records_schema_data[record_type] || [];     // If the requested key doesn't exist, return an empty array instead
-                                                                    // TODO: if key is missing, query the server
+            return this.items_schema_data[item_class] || [];     // If the requested key doesn't exist, return an empty array instead
+                                                                  // TODO: if key is missing, query the server
         },
 
 
@@ -1413,20 +1420,20 @@ new Vue({
             Standard fields (i.e. all fields that won't appear in a tabular format) are ignored.
             TODO: simplify with Lodash
 
-            EXAMPLES (assuming that the Schema for "Quotes" is ["quote", "attribution", "notes"]):
+            EXAMPLES (assuming that the Schema for "Quote" is ["quote", "attribution", "notes"]):
                 {"pos":10, "uri":1, "extra": "some value"}
                     ->  [ "extra" ]
-                {"pos":10, "uri":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "uri":1, "extra": "some value", class_name:"Quote"}
                     ->  [ "extra" ]
-                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quote"}
                     ->  [ "notes", "extra" ]
-                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quotes", "quote": "My quote"}
+                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "notes", "extra" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra" ]
-                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quotes", "quote": "My quote"}
+                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quote", "quote": "My quote"}
                     ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
                 {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"UNKNOWN", "quote": "My quote"}
                     ->  [ "extra", "attribution", "notes", "extra2", "quote" ]
@@ -1440,12 +1447,12 @@ new Vue({
 
             const class_name = content_item.class_name;
 
-            if (! (class_name in this.records_schema_data))  {
+            if (! (class_name in this.items_schema_data))  {
                 console.log(`No Schema information available for class '${class_name}'`);
                 return field_list;  // No Schema information available for this class; TODO: query server
             }
 
-            const schema_list = this.records_schema_data[class_name];
+            const schema_list = this.items_schema_data[class_name];
 
             let canonical_list = [];
             // Add all the Schema fields that are in the item's field list

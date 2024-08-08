@@ -34,8 +34,11 @@ class Categories:
         assert type(db) == NeoAccess, \
             "Categories.set_database(): argument passed isn't a valid NeoAccess object"
 
-        cls.db = db
-        Collections.db = db
+        cls.db = db     # Save the database object
+
+        # Initialize dependencies
+        NeoSchema.set_database(db)
+        Collections.set_database(db)
 
 
 
@@ -456,6 +459,9 @@ class Categories:
                     f"add_subcategory(): invalid category uri ({category_uri})"
 
         subcategory_name = data_dict.get("subcategory_name")
+
+        #TODO: eliminate leading/trailing blanks
+
         if not subcategory_name:
             raise Exception(f"add_subcategory(): subcategory_name is missing")
 
@@ -780,6 +786,7 @@ class Categories:
             #print(s)
 
             # Find the first non-NaN index
+            #TODO: skip blank entries alongside the NaN's
             level = int(s.first_valid_index())  # Note that the index will be either "0", "1", etc.
 
             # Get the value at the first non-NaN index
@@ -983,18 +990,19 @@ class Categories:
         Add a NEW Content Item, with the given properties and Class, inserted into the given Category after the specified Item
         (in the context of the positional order encoded in the relationship attribute "pos")
 
-        TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
-              which can lead to incorrect values of the "pos" relationship attributes.
-              -> Follow the new way it is handled in add_content_at_end()
-
-        :param category_uri:    The string "uri" of the Category to which this new Content Media is to be attached
+        :param category_uri:    String with a unique "uri" identified of the Category
+                                    to which this new Content Media is to be attached
         :param item_class_name: For example, "Images"
-        :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
+        :param item_properties: A dictionary with keys specific to the new Content Item,
+                                    such as "width", "height", "caption", "basename", "suffix" (TODO: verify against schema)
         :param insert_after:    The URI of the element after which we want to insert
         :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
+        # TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
+        #       which can lead to incorrect values of the "pos" relationship attributes.
+        #       -> Follow the new way it is handled in add_content_at_end()
         new_uri = Collections.add_to_collection_after_element(collection_uri=category_uri, membership_rel_name="BA_in_category",
                                                               item_class_name=item_class_name, item_properties=item_properties,
                                                               insert_after=insert_after,
@@ -1059,23 +1067,30 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_items_schema_data(cls, category_uri :str) -> dict:
+    def get_items_schema_data(cls, category_uri :str, exclude_system=True) -> dict:
         """
-        Locate all the Classes used by Content Items attached to the given Category,
-        and return a dictionary with the Properties (in Schema order) of each,
-        including Properties of "ancestor" Classes (thru "INSTANCE_OF" relationships).
+        Locate all the schema Classes used by Content Items attached to the given Category,
+        and return a dictionary with the Properties (in the Schema order) of each,
+        including Properties of their "ancestor" Classes (ancestral thru "INSTANCE_OF" relationships)
 
-        However, Properties marked as "system" are excluded
+        Properties marked as "system" are optionally excluded (default).
 
-        :param category_uri:A string identifying the desired Category
-
+        :param category_uri:A string with the "uri" value to identify the desired Category
+        :param exclude_system: [OPTIONAL] If True, Property nodes with the attribute "system" set to True will be excluded;
+                                    default is True
         :return:            A dictionary whose keys are Class names (of Content Items attached to the given Category),
-                            and whose values are the Properties (in declared Schema order) of those Classes.
-                            Properties declared in "ancestor" Classes (thru "INSTANCE_OF" relationships) are also included.
+                            and whose values are the Properties (in their Schema order) of those Classes.
+                            Properties declared in "ancestor" Classes (thru "INSTANCE_OF" relationships)
+                            are also included.
+                            Properties regarded as "system" ones, such as "uri", are excluded.
                             EXAMPLE:
-                                {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
+                                {'Headers': ['text'],
                                  'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
-                                 'Headers': ['text']}
+                                 'Notes': ['title', 'public', 'date_created', 'basename', 'suffix']
+                                 'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
+                                 'Quote': ['quote', 'attribution', 'notes'],
+                                 'Recordset': ['class', 'order_by', 'clause', 'n_group']
+                                 }
         """
         # Locate the names of the Classes of all the Content Items attached to the given Category
         q = '''
@@ -1085,7 +1100,8 @@ class Categories:
             '''
         #cls.db.debug_query_print(q, data_binding={"category_uri": category_uri})
 
-        class_list = cls.db.query(q, data_binding={"category_uri": category_uri}, single_column="class_name")
+        class_list = cls.db.query(q, data_binding={"category_uri": category_uri},
+                                  single_column="class_name")
         # EXAMPLE: ["French Vocabulary", "Site Link"]
 
 
@@ -1094,7 +1110,7 @@ class Categories:
         for class_name in class_list:
             prop_list = NeoSchema.get_class_properties(class_node=class_name,
                                                        include_ancestors=True, sort_by_path_len="ASC",
-                                                       exclude_system=True)
+                                                       exclude_system=exclude_system)
             records_schema_data[class_name] = prop_list
 
         return records_schema_data
