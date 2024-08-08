@@ -391,7 +391,7 @@ Vue.component('vue_cytoscape_2',
                                                                     // EXAMPLE:  cy_object.$('#116404').select()
                     //this.node_info = ['A test'];
                     //this.node_labels = node.labels;
-                    this.populate_legend_from_node(located_node.id);
+                    this.populate_legend_from_node(located_node);
                 }
                 else
                     alert(`Class node "${class_name}" not found in the graph!  Try refreshing the page`);
