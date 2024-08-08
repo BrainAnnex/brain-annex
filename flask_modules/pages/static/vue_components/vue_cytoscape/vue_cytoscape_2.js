@@ -1,5 +1,3 @@
-var x = 123;
-
 Vue.component('vue_cytoscape_2',
     {
         props: {
@@ -29,7 +27,8 @@ Vue.component('vue_cytoscape_2',
         },
 
 
-        my_optional_component_metadata: 123,     // Component-wide metadata, available thru this.$options.metadata
+        cy_object: null,        // Component-wide metadata, available thru this.$options.cy_object
+                                // Used to store the Cytoscape object
 
 
         template: `
@@ -51,7 +50,9 @@ Vue.component('vue_cytoscape_2',
                         </template>
 
                         <br><br><br>
-                        <i>Select a node or edge<br>on the graph</i>
+                        <span style="color: #888; font-style: italic">Select a node or edge<br>on the graph</span>
+                        <br>
+                        <span style="color: #BBB; font-style: italic">(shift-click for multiple selections)</span>
                     </p>
 
                     <p v-else>
@@ -74,10 +75,10 @@ Vue.component('vue_cytoscape_2',
 
                     <br><br>
                     <b>List of Classes:</b>
-                    <br>
+                    <p style="color: #BBB; margin-left:15px; margin-top:0px; margin-bottom:0">Click names to select; click empty space on graph to de-select</p>
                     <ul>
                         <li v-for="item in class_list" >
-                            <span @click="highlight_class_node(item)" style='color:#56947E'>{{item}}</span>
+                            <span @click="highlight_class_node(item)" class="clickable-icon" style='color:#56947E'>{{item}}</span>
                         </li>
                     </ul>
 
@@ -91,11 +92,10 @@ Vue.component('vue_cytoscape_2',
         // ---------------------  DATA  ----------------------
         data: function() {
             return {
-                graph_structure: this.graph_data.structure, // A list of dicts
+                graph_structure: this.graph_data.structure,     // A list of dicts
 
-                junk: [],
-
-                // Data of the currently-selected node
+                // Data of the currently-selected node;
+                // both variables are arrays of strings
                 node_labels: null,
                 node_info: null,
 
@@ -111,31 +111,30 @@ Vue.component('vue_cytoscape_2',
         // ---------------------  MOUNTED  ----------------------
         mounted() {
             /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
-                     waiting this late is needed.
+                     waiting this late is needed.  Caution must be taken not to re-trigger it from its code.
              */
             console.log(`The 'vue_cytoscape_2' component is now mounted`);
 
             const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given
                                                             //                     to the DIV element containing the graph)
+            // Save the newly-created Cytoscape object, as metadata for this Vue component
+            // Note: it cannot be simply saved as component data, because doing so triggers another call to this
+            //       "mounted" Vue hook function, leading to an infinite loop!
+            this.$options.cy_object = cy_object;
 
-            // Create a list of all Class names in the Schema
+            // Create a list of all Class names in the Schema.  TODO: maybe also save the id's alongside the names
             for (node of this.graph_structure) {        // Loop over this.graph_structure
                 let labels = node.labels;
                 //console.log(`labels: ${labels}`);
                 if (labels !== undefined  &&  labels.includes('CLASS'))  {
-                        //console.log(`ADDING CLASS NAME: '${node.name}'`);
-                        this.class_list.push(node.name);
+                    //console.log(`ADDING CLASS NAME: '${node.name}'`);
+                    this.class_list.push(node.name);    // This operation is safe, because it doesn't trigger
+                                                        // a new call to this "mounted" Vue hook function!
                 }
             }
             // Finally, sort the newly-created list of Class names
-            this.class_list.sort();
-
-            //this.junk.push(cy_object);
-
-            x = cy_object;
-
-            this.$options.my_optional_component_metadata = cy_object;
+            this.class_list.sort();                         // This operation is safe
         },
 
 
@@ -183,9 +182,9 @@ Vue.component('vue_cytoscape_2',
                 else
                     this.plot_layout_style = "breadthfirst";
 
-                this.create_graph('cy_' + this.component_id);    // This will let Cytoscape.js re-render the plot
-
-                this.node_info = null;                          // Unset any node selection
+                var cy_object = this.create_graph('cy_' + this.component_id); // This will let Cytoscape.js re-render the plot
+                this.$options.cy_object = cy_object;        // Save the new objec
+                this.node_info = null;                      // Unset any node selection
             },
 
 
@@ -297,16 +296,35 @@ Vue.component('vue_cytoscape_2',
                 const node = ev.target;
 
                 const cyto_data_obj = node.data();      // An object with various keys, such as 'id', 'labels', 'name'
-                let info_arr = [];                      // Each of the above object's key/value pairs will go into an array element, as an HTML string
-                for (k in cyto_data_obj) {
-                    //console.log( k, cyto_data_obj[k] );
-                    info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);  // Data to update the UI graph legend
+
+                this.populate_legend_from_node(cyto_data_obj);
+            },
+
+
+            populate_legend_from_node(node_data_obj)
+            // Invoked when a node is to be highlighted
+            {
+                // Each of the above object's key/value pairs will go into an array element,
+                // as an HTML string
+                let info_arr = [];
+                let html_row_str = "";
+
+                for (k in node_data_obj) {
+                    //console.log( k, node_data_obj[k] );
+                    if (k == "labels")
+                        continue;       // No need to show; labels are shown elsewhere as graphic tags
+                    if (k != "name")
+                        html_row_str = `<b>${k}</b>: ${node_data_obj[k]}`;
+                    else
+                        html_row_str = `<span style='color: brown; font-weight: bold'>${k}: ${node_data_obj[k]}</span>`;
+
+                    info_arr.push(html_row_str);  // Data to update the UI graph legend
                 }
                 //console.log(info_arr);
 
                 // Update the legend
                 this.node_info = info_arr;
-                this.node_labels = cyto_data_obj.labels;
+                this.node_labels = node_data_obj.labels;
             },
 
 
@@ -343,42 +361,40 @@ Vue.component('vue_cytoscape_2',
 
 
             highlight_class_node(class_name)
+            // Instruct Cytoscape to select the node corresponding to the given Class name
             {
-                console.log(`Clicked on Class "${class_name}"`);
-                console.log(`x is ${x}`);
-                console.log(this.$options.my_optional_component_metadata);
-                //x.$('#116404').select();
+                //console.log(`Clicked on Class "${class_name}"`);
+                //console.log(this.$options.cy_object);
 
-                // Needs to locate 'id' from this.graph_structure
-                // EXAMPLE :  {'name': class_name, 'id': 116404, 'labels': ['CLASS']}
+                // Needs to locate the 'id' of a node from this.graph_structure
+                // that has the desired Class name
+                // EXAMPLE (fragment):  {'name': class_name, 'id': 116404, 'labels': ['CLASS']}
 
                 var found = false;
 
                 for (node of this.graph_structure)  {        // Loop over this.graph_structure
                     let labels = node.labels;
                     //console.log(`labels: ${labels}`);
-                    if (labels !== undefined  &&  labels.includes('CLASS'))  {
-                        //console.log(`Examining Class '${node.name}', with id=${node.id}`);
-                        if (node.name == class_name)  {
-                            found = true;
-                            var located_id = node.id;
-                            break;
-                        }
+                    //console.log(`Examining Class '${node.name}', with id=${node.id}`);
+                    if (labels !== undefined  &&  labels.includes('CLASS')  &&  node.name == class_name)  {
+                        found = true;
+                        var located_node = node;
+                        break;
                     }
                 }
 
                 if (found)  {
-                    //console.log(`Located id:  ${located_id}`);
-                    const selector = `#${located_id}`
-                    console.log(`The following selector will be used: '${selector}'`);
-                    //x.$(selector).select();
-                    this.$options.my_optional_component_metadata.$(selector).select();
+                    //console.log(`Located node with id:  ${located_node.id}`);
+                    const selector = `#${located_node.id}`   // Used to refer to a graph element in the Cytoscape object
+                    //console.log(`The following selector will be used: '${selector}'`);
+                    this.$options.cy_object.$(selector).select();   // Tell Cytoscape to select this node
+                                                                    // EXAMPLE:  cy_object.$('#116404').select()
+                    //this.node_info = ['A test'];
+                    //this.node_labels = node.labels;
+                    this.populate_legend_from_node(located_node.id);
                 }
                 else
-                    alert(`Node not found!`);
-
-
-
+                    alert(`Class node "${class_name}" not found in the graph!  Try refreshing the page`);
             },
 
 
