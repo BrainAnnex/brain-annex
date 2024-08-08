@@ -1,3 +1,5 @@
+var x = 123;
+
 Vue.component('vue_cytoscape_2',
     {
         props: {
@@ -9,14 +11,15 @@ Vue.component('vue_cytoscape_2',
                 1) "structure"
                         EXAMPLE:
                             [{'name': 'German Vocabulary', 'strict': False, 'uri': 'schema-1', 'internal_id': 77, 'id': 77, 'labels': ['CLASS']},
-                             {'allowed': ['der', 'die', 'das'], 'name': 'Gender', 'dtype': 'categorical', 'uri': 'schema-91', 'internal_id': 79, 'id': 79, 'labels': ['PROPERTY']}
+                             {'allowed': ['der', 'die', 'das'], 'name': 'Gender', 'dtype': 'categorical',
+                                   'uri': 'schema-91', 'internal_id': 79, 'id': 79, 'labels': ['PROPERTY']},
                              {'name': 'HAS_PROPERTY', 'source': 116602, 'target': 116618, 'id': 'edge-185'}
                             ]
 
                 2) "color_mapping"      (TODO: auto-assign if unspecified; SEE vue_curves_4.js)
                         EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
 
-                3) "caption_mapping"    (from label to property to use for caption)
+                3) "caption_mapping"    (from label name to property to use for the node's caption)
                         EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
              */
 
@@ -26,13 +29,15 @@ Vue.component('vue_cytoscape_2',
         },
 
 
+        my_optional_component_metadata: 123,     // Component-wide metadata, available thru this.$options.metadata
+
 
         template: `
             <div>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
 
                 <div v-bind:id="'cy_' + component_id" class="cytoscape-container">
                     <!--
-                        ****  CYTOSCAPE.js WILL INSERT THE GRAPH HERE!  ***
+                        ******   CYTOSCAPE.js WILL INSERT THE GRAPH HERE!   ******
                       -->
                 </div>
 
@@ -72,20 +77,23 @@ Vue.component('vue_cytoscape_2',
                     <br>
                     <ul>
                         <li v-for="item in class_list" >
-                            <span style='color:#56947E'>{{item}}</span>
+                            <span @click="highlight_class_node(item)" style='color:#56947E'>{{item}}</span>
                         </li>
                     </ul>
-                </div>
+
+                </div>      <!-- End of side box -->
 
             </div>		<!-- End of outer container -->
             `,
 
 
 
-        // ----------------  DATA  -----------------
+        // ---------------------  DATA  ----------------------
         data: function() {
             return {
                 graph_structure: this.graph_data.structure, // A list of dicts
+
+                junk: [],
 
                 // Data of the currently-selected node
                 node_labels: null,
@@ -100,13 +108,16 @@ Vue.component('vue_cytoscape_2',
 
 
 
-        // ----------------  MOUNTED  -----------------
+        // ---------------------  MOUNTED  ----------------------
         mounted() {
-            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component
+            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
+                     waiting this late is needed.
              */
-            console.log('The component is now mounted');
+            console.log(`The 'vue_cytoscape_2' component is now mounted`);
 
-            this.create_graph('cy_' + this.component_id);    // This will let Cytoscape.js do its thing!
+            const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
+                                                            // EXAMPLE :  "cy_1"  (this name needs to match the ID given
+                                                            //                     to the DIV element containing the graph)
 
             // Create a list of all Class names in the Schema
             for (node of this.graph_structure) {        // Loop over this.graph_structure
@@ -117,13 +128,19 @@ Vue.component('vue_cytoscape_2',
                         this.class_list.push(node.name);
                 }
             }
-            // Finally, sort the newly-created list
+            // Finally, sort the newly-created list of Class names
             this.class_list.sort();
+
+            //this.junk.push(cy_object);
+
+            x = cy_object;
+
+            this.$options.my_optional_component_metadata = cy_object;
         },
 
 
 
-        // ----------------  COMPUTED  -----------------
+        // ---------------------  COMPUTED  ----------------------
         computed: {
             assemble_element_structure()
             /*  Create and return the graph structure needed by Cytoscape.js
@@ -155,7 +172,7 @@ Vue.component('vue_cytoscape_2',
 
 
 
-        // ----------------  METHODS  -----------------
+        // ---------------------  METHODS  ----------------------
         methods: {
             flip_plot_style()
             // Re-render the graph with a changed plot style
@@ -175,11 +192,11 @@ Vue.component('vue_cytoscape_2',
 
             create_graph(element_id)
             /*  This function needs to be invoked after this Vue component is "mounted".
-                Replace the contents of the HTML element whose id is the given element_id
+                Replace the contents of the desired HTML element (specified by the given element_id)
                 with the graphic structure created by Cytoscape
              */
             {
-                console.log(`Running create_graph() to replace page element with ID ${element_id}`);
+                console.log(`Running create_graph() to replace page element with ID '${element_id}'`);
 
                 var cy_object = cytoscape({
 
@@ -245,9 +262,13 @@ Vue.component('vue_cytoscape_2',
 
                 });
 
-                cy_object.on('click', this.clear_legend);   // Detect all click events that the core receices
-                cy_object.on('click', 'node', this.show_node_info);
-                cy_object.on('click', 'edge', this.show_edge_info);
+
+                /*
+                    Detect all click of interest, and register their handlers
+                 */
+                cy_object.on('click', this.clear_legend);           // A click on the empty space of the graph (the Cytoscape core)
+                cy_object.on('click', 'node', this.show_node_info); // A click on a node on the graph
+                cy_object.on('click', 'edge', this.show_edge_info); // A click on an edged
 
                 /*
                 // EXAMPLES of adding nodes
@@ -259,7 +280,10 @@ Vue.component('vue_cytoscape_2',
                     { data: { id: 5, labels: 'SOME_OTHER_LABELS' , name: 'Mr. Node' }, position: {x: 80, y: 200} }
                 ]);
                 */
-            },
+
+                return cy_object;         // The newly-created Cytoscape object
+
+            },  // create_graph
 
 
 
@@ -273,7 +297,7 @@ Vue.component('vue_cytoscape_2',
                 const node = ev.target;
 
                 const cyto_data_obj = node.data();      // An object with various keys, such as 'id', 'labels', 'name'
-                let info_arr = [];                      // Each of the object key/value pairs will go into an array element, as an HTML string
+                let info_arr = [];                      // Each of the above object's key/value pairs will go into an array element, as an HTML string
                 for (k in cyto_data_obj) {
                     //console.log( k, cyto_data_obj[k] );
                     info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);  // Data to update the UI graph legend
@@ -314,6 +338,47 @@ Vue.component('vue_cytoscape_2',
                 // The following change will clear the plot legend
                 this.node_info = null;
                 this.node_labels = null;
+            },
+
+
+
+            highlight_class_node(class_name)
+            {
+                console.log(`Clicked on Class "${class_name}"`);
+                console.log(`x is ${x}`);
+                console.log(this.$options.my_optional_component_metadata);
+                //x.$('#116404').select();
+
+                // Needs to locate 'id' from this.graph_structure
+                // EXAMPLE :  {'name': class_name, 'id': 116404, 'labels': ['CLASS']}
+
+                var found = false;
+
+                for (node of this.graph_structure)  {        // Loop over this.graph_structure
+                    let labels = node.labels;
+                    //console.log(`labels: ${labels}`);
+                    if (labels !== undefined  &&  labels.includes('CLASS'))  {
+                        //console.log(`Examining Class '${node.name}', with id=${node.id}`);
+                        if (node.name == class_name)  {
+                            found = true;
+                            var located_id = node.id;
+                            break;
+                        }
+                    }
+                }
+
+                if (found)  {
+                    //console.log(`Located id:  ${located_id}`);
+                    const selector = `#${located_id}`
+                    console.log(`The following selector will be used: '${selector}'`);
+                    //x.$(selector).select();
+                    this.$options.my_optional_component_metadata.$(selector).select();
+                }
+                else
+                    alert(`Node not found!`);
+
+
+
             },
 
 

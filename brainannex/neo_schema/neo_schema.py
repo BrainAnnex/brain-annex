@@ -2327,7 +2327,8 @@ class NeoSchema:
 
         else:
             # Create a new Data node, with a "SCHEMA" relationship to its Class node
-            # TODO: allow the creation of multiple nodes with a single Cypher query, with an UNWIND
+            # TODO: allow the creation of multiple nodes with a single Cypher query, with an UNWIND ;
+            #       see the counterpart  NeoAccess.load_pandas()
             q = f'''
                 MATCH (cl :CLASS)
                 WHERE id(cl) = {class_internal_id}           
@@ -2340,6 +2341,8 @@ class NeoSchema:
             #       also, unclear about what gets returned if creation fails
             internal_id = cls.db.query(q, data_binding, single_cell="internal_id")
 
+
+        # TODO: provide separate counts for records created and records merged
         return internal_id
 
 
