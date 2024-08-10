@@ -882,7 +882,7 @@ class Categories:
             #       attributes named "pos" or "class_name"!
             item_record["pos"] = elem["pos"]                # Inject into the record a positional value
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
-            if "date_created" in item_record:
+            if "date_created" in item_record:   # TODO: this is a hack, to clean up!
                 del item_record["date_created"] # Datetime objects aren't serializable and lead to Flask errors
                                                 # TODO: let NeoAccess handle the conversion to string
                                                 # TODO: utilize a "type" attribute in the Schema Property node,
@@ -959,7 +959,8 @@ class Categories:
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix"
                                     NOTE: if the Class was declared as "strict",
                                           then any key not declared in the Schema gets silently ignored
-        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
+                                    but it can also be provided (Note: MUST be unique)
 
         :return:                The "uri" (passed or created) of the newly-created data node
         """

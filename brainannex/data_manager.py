@@ -8,6 +8,7 @@ from brainannex.full_text_indexing import FullTextIndexing
 from brainannex.py_graph_visual import PyGraphVisual
 from neoaccess import NeoAccess
 from neoaccess.cypher_utils import CypherUtils
+import neo4j.time                       # TODO: move to NeoAccess
 import re                               # For REGEX
 import pandas as pd
 import os
@@ -1410,7 +1411,16 @@ class DataManager:
 
         data = []
         for record in result:
-            data.append(record["n"])
+            d = record["n"]     # A dict of field names and values.
+                                # EXAMPLE: {'PatientID': 123, 'Sex': 'F', 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+
+            # Convert any DateTime values to strings; the time part is dropped.  TODO: this ought to get handled by NeoAccess!
+            for key, val in d.items():
+               if  type(val) == neo4j.time.DateTime:
+                    conv = neo4j.time.DateTime.to_native(val)   # This will be of type datetime.datetime
+                    d[key] = conv.strftime("%Y/%m/%d")          # EXAMPLE: "2000/01/31"
+
+            data.append(d)
 
         return data
 
@@ -1446,12 +1456,23 @@ class DataManager:
         for part in parts:
             match = pattern.match(part.strip())
             if match:
-                name = match.group(1)
+                field_name = match.group(1)
                 desc = bool(match.group(2))
                 if desc:
-                    result.append(f"toLower({dummy_node_name}.{name}) DESC")
+                    result.append(f"{dummy_node_name}.{field_name} DESC")     # Taken out: toLower() - it fails for non-string cases
                 else:
-                    result.append(f"toLower({dummy_node_name}.{name})")
+                    result.append(f"{dummy_node_name}.{field_name}")
+
+        #TODO: deal with making case-insensitive *if* field_name is of type 'STRING'
+        '''
+        q = f
+        WITH {dummy_node_name},
+        CASE
+        WHEN apoc.meta.type({dummy_node_name}.{field_name}) = 'STRING' THEN toLower({dummy_node_name}.{field_name})
+        ELSE {dummy_node_name}.{field_name}
+        END AS order_field
+        ORDER BY order_field
+        '''
 
         return ", ".join(result)
 

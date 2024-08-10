@@ -97,6 +97,9 @@
             <td>Key Value</td><td><input type="text" size="40" v-model="key_value"></td>
         </tr>
         <tr>
+            <td>SKIP</td><td><input type="text" size="2" v-model="skip"></td>
+        </tr>
+        <tr>
             <td>LIMIT</td><td><input type="text" size="2" v-model="limit"></td>
         </tr>
     </table>
@@ -148,7 +151,8 @@ new Vue({
         labels: "",
         key_name: "",
         key_value: "",
-        limit: "10",
+        skip: 0,
+        limit: 10,
 
         result_array: [],
 
@@ -164,22 +168,23 @@ new Vue({
         submit_query()
         //
         {
-            const url_server = "/BA/api/get_filtered_OLD"
-            console.log(`submit_query(): About to contact the server at ${url_server}`);
+            const url_server_api = "/BA/api/get_filtered
 
-            var post_obj = {labels: this.labels,
-                            key_name: this.key_name, key_value: this.key_value,
-                            limit: this.limit};
-            console.log(`post_obj:`);
-            console.log(post_obj);
+            var get_obj = {label: this.labels,
+                           key_name: this.key_name, key_value: this.key_value,
+                           skip: this.skip,
+                           limit: this.limit};
+
+            console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+            console.log(get_obj);
 
             // Initiate asynchronous contact with the server
             this.waiting = true;
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";
 
-            ServerCommunication.contact_server(url_server,
-                    {method: "POST", post_obj: post_obj, callback_fn: this.finish_submit_query});
+            ServerCommunication.contact_server_NEW(url_server_api,
+                    {method: "GET", data_obj: get_obj, callback_fn: this.finish_submit_query});
         },
 
         finish_submit_query(success, server_payload, error_message)

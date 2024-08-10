@@ -1681,49 +1681,13 @@ class ApiRouting:
                 return jsonify(response)        # This function also takes care of the Content-Type header
                                                 #   Note: jsonify() may fail if any parts of the response are not JSON serializable
             except Exception as ex:
-                response = {"status": "error", "error_message": str(ex)}    # Error termination
+                response = {"status": "error", "error_message": f"/get_filtered web API endpoint: {ex}" }    # Error termination
                 print(f"get_filtered() is returning with error: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
                 # Maybe, do this instead:
                 # response = make_response(response["error_message"], 422)  # "422 Unprocessable Entity"
                 # return response
 
-
-        @bp.route('/get_filtered_OLD', methods=['POST'])
-        @login_required
-        def get_filtered_OLD():
-            """
-            Note: a JSON version is also available (but not in current use)
-
-            EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/get_filtered -d "labels=BA&key_name=uri&key_value=123"
-                curl http://localhost:5000/BA/api/get_filtered -d "labels=CLASS&key_name=code&key_value=h"
-
-            POST FIELDS (all optional):
-                labels      To name of a Neo4j label, or a list of labels
-                key_name    A string with the name of a node attribute; if provided, key_value must be present, too
-                key_value   The required value for the above key; if provided, key_name must be present, too
-                                        Note: no requirement for the key to be primary
-                clause
-                order_by
-                skip
-                limit       The max number of entries to return
-            """
-            #TODO: turn into GET method(?)
-
-            # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
-            cls.show_post_data(post_data, "get_filtered")
-
-            try:
-                result = DataManager.get_nodes_by_filter(dict(post_data))
-                response = {"status": "ok", "payload": result}              # Successful termination
-            except Exception as ex:
-                response = {"status": "error", "error_message": str(ex)}    # Error termination
-
-            print(f"get_filtered() is returning: `{response}`")
-
-            return jsonify(response)        # This function also takes care of the Content-Type header
 
 
 
