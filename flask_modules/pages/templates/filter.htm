@@ -84,17 +84,24 @@
     <span class='title'>SELECT THE CRITERIA</span><br><br>
 
     <table border='0' cellspacing='5' cellpadding='0'>
+        <!--
         <tr>
             <td>Class Name</td><td><input type="text" size="40" v-model="class_name"></td>
         </tr>
+        -->
         <tr>
-            <td>Label Name</td><td><input type="text" size="40" v-model="labels"></td>
+            <td>Label Name</td><td><input type="text" size="50" v-model="labels"></td>
         </tr>
         <tr>
-            <td>Key Name</td><td><input type="text" size="40" v-model="key_name"></td>
+            <td>Key Name</td><td><input type="text" size="50" v-model="key_name"></td>
         </tr>
         <tr>
-            <td>Key Value</td><td><input type="text" size="40" v-model="key_value"></td>
+            <td>Key Value</td><td><input type="text" size="50" v-model="key_value">
+            <span style="color: gray">Exact match</span></td>
+        </tr>
+        <tr>
+            <td>ORDER BY</td><td><input type="text" size="50" v-model="order_by">
+            <span style="color: gray">Comma-separated values, optionally followed by DESC</span></td>
         </tr>
         <tr>
             <td>SKIP</td><td><input type="text" size="2" v-model="skip"></td>
@@ -147,10 +154,11 @@ new Vue({
         content_array: "TBA",                       // Array containing item-data objects
                                                     // EXAMPLE: [{"pos":0,"uri":5,"schema_code":"h","text":"GENERAL METHODS"},
                                                     //           {"pos":50,"uri":8,"schema_code":"i","basename":"mypix","suffix":"png"}]
-        class_name: "",
+        class_name: "",             // TODO: Not currently used
         labels: "",
         key_name: "",
         key_value: "",
+        order_by: "",
         skip: 0,
         limit: 10,
 
@@ -168,10 +176,11 @@ new Vue({
         submit_query()
         //
         {
-            const url_server_api = "/BA/api/get_filtered
+            const url_server_api = "/BA/api/get_filtered";
 
             var get_obj = {label: this.labels,
                            key_name: this.key_name, key_value: this.key_value,
+                           order_by: this.order_by,
                            skip: this.skip,
                            limit: this.limit};
 
