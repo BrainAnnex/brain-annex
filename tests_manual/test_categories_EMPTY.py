@@ -1,1 +1,0 @@
-#TODO: add automated tests (see tests_manual tests)

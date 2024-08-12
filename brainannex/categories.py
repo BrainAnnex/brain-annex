@@ -1014,7 +1014,7 @@ class Categories:
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
             new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
 
-            
+
         # TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in add_content_at_end()

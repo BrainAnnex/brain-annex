@@ -9,6 +9,7 @@ from brainannex.neo_schema.neo_schema import NeoSchema
 from PIL import Image
 
 
+
 class MediaManager:
     """
     Helper library for the management of media files (documents and images)
@@ -120,7 +121,7 @@ class MediaManager:
     @classmethod
     def get_binary_content(cls, uri :str, th) -> (str, bytes):
         """
-        Fetch and return the contents of a media item stored on a local file.
+        Fetch and return the contents of a media item stored in a local file.
         In case of error, raise an Exception
 
         :param uri: String identifier for a media item
@@ -142,6 +143,7 @@ class MediaManager:
 
         basename = content_node['basename']
         suffix = content_node['suffix']
+
         filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
 
         if th:
@@ -155,6 +157,10 @@ class MediaManager:
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
         folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
+
+        #TODO: test and switch to
+        #folder, basename, suffix = cls.lookup_media_file(uri, thumb=thumb)
+
 
         try:
             file_contents = cls.get_from_binary_file(path=folder, filename=filename)
@@ -209,6 +215,63 @@ class MediaManager:
                         print(error_msg)
                         raise Exception(error_msg)
 
+
+
+    @classmethod
+    def lookup_media_file(cls, uri :str, thumb=False) -> (str, str, str):
+        """
+
+        :param uri:
+        :param thumb:
+        :return:        The triplet (filepath, basename, suffix)
+        """
+        content_node = NeoSchema.get_data_node(uri = uri)
+        #print("content_node:", content_node)
+        if content_node is None:
+            raise Exception(f"lookup_media_file(): Metadata not found for the Media file with URI '{uri}'")
+
+        basename = content_node['basename']
+        suffix = content_node['suffix']
+
+        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
+        # Includes the final "/"
+        folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
+
+        return (folder, basename, suffix)
+
+
+
+    @classmethod
+    def before_update_content(cls, uri :str, set_dict :dict, class_name :str) -> None:
+        """
+        Invoked before a Media Item of this type gets updated in the database
+
+        :param uri:         Unique identifier for the Media Item of Interest
+        :param set_dict:    A dict of field values to eventually set into the database
+        :param class_name:  (Redundant, since implied by the uri; TODO: maybe eventually drop)
+        :return:            None
+        """
+        print(f"In before_update_content() - uri: `{uri}` | class_name: `{class_name}` | set_dict: {set_dict}")
+        basename = set_dict.get("basename")
+        suffix =   set_dict.get("suffix")
+
+        if basename or suffix:
+            if basename:
+                check = cls.check_file_name(basename)
+                assert check == "", \
+                    f"before_update_content(): Non-acceptable character found in destination file name: {check}"
+
+            _, old_basename, old_suffix = cls.lookup_media_file(uri)
+            folder = cls.lookup_file_path(class_name=class_name)
+            old_full_name = f"{folder}{old_basename}.{old_suffix}"
+
+            new_basename = basename if basename else old_basename
+            new_suffix = suffix if suffix else old_suffix
+            new_full_name = f"{folder}{new_basename}.{new_suffix}"
+
+            print(f"MediaManager.before_update_content(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
+
+            cls.move_file(src=old_full_name, dest=new_full_name)
 
 
 
@@ -270,7 +333,7 @@ class MediaManager:
         Delete the specified file
 
         :param fullname:    Full name of the file to delete, including its path
-        :return:            True if successful, or False if not found
+        :return:            True if successful, or False if file was not found
         """
 
         if os.path.exists(fullname):
@@ -278,6 +341,65 @@ class MediaManager:
             return True
         else:
             return False    # "The file does not exist"
+
+
+
+    @classmethod
+    def move_file(cls, src: str, dest: str) -> None:
+        """
+        Rename (move) the specified file.
+        An Exception is raised if the file was not found,
+        or if another file with new name already exists
+
+        :param src:    Old full name (incl. path) of the file to rename
+        :param dest:   New full name (incl. path) of the file to rename
+        :return:       None
+        """
+        assert src != dest, \
+            f"move_file(): The requested source and destination file names are the same! (`{src}`)"
+
+        assert os.path.exists(src), \
+            f"move_file(): The requested file `{src}` does not exist"
+
+        assert not os.path.exists(dest), \
+            f"move_file(): A file with the requested destination name (`{dest}`) already exists"
+
+
+        os.rename(src, dest)
+
+
+
+    @classmethod
+    def check_file_name(cls, filename :str) -> str:
+        """
+        Check the given filename against a list of acceptable filename characters, based on a slightly-expanded
+        (but still conservative) version of the POSIX portable file name character set
+        https://www.ibm.com/docs/en/zos/3.1.0?topic=locales-posix-portable-file-name-character-set
+
+        :return:    The first non-allowed character, if applicable;
+                        if all characters are good, return ""
+        """
+        allowed_chars = " .,-_()&@0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+        for character in filename:
+            if character not in allowed_chars:
+                return character
+
+        return ""
+
+
+
+    @classmethod
+    def is_media_class(cls, class_name :str) -> bool:
+        """
+        Return True if the given Class is an INSTANCE_OF the "Media" Class
+
+        :param class_name:  Name of a Schema class
+        :return:            True if the given Class is an INSTANCE_OF the "Media" Class
+        """
+        # TODO: for now hardwired; ought to instead query the Schema, to discover if the given Class
+        #       is an INSTANCE_OF the "Media" class
+        return class_name in ["Documents", "Images", "Notes"]
 
 
 

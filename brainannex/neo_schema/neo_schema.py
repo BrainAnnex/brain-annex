@@ -2322,7 +2322,7 @@ class NeoSchema:
                 RETURN id(dn) as internal_id 
                 '''
 
-            cls.db.debug_query_print(q, data_binding={"record": properties_to_set})
+            #cls.db.debug_query_print(q, data_binding={"record": properties_to_set})
             internal_id = cls.db.query(q, data_binding={"record": properties_to_set}, single_cell="internal_id")
 
         else:

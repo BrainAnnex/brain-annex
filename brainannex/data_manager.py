@@ -691,6 +691,13 @@ class DataManager:
             set_dict = Notes.before_update_content(data_binding, set_dict)        
         '''
 
+
+        if MediaManager.is_media_class(class_name):
+            # If the Content Item is a Media Item, do some special handling
+            MediaManager.before_update_content(uri=uri, set_dict=update_data, class_name=class_name)
+
+
+
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
         number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks = True,
                                                     class_name=class_name)

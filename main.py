@@ -170,15 +170,15 @@ HomeRouting.setup(app)
 # The navbar
 Navigation.setup(app)
 
-# The BrainAnnex-provided UI
+# The BrainAnnex-provided web app (UI for admin and Multimedia Content Management)
 PagesRouting.setup(app)
 
-# The BrainAnnex-provided endpoints
+# The BrainAnnex-provided web API endpoints
 ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
 ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
 ApiRouting.setup(app)
 
-# Examples of generic pages and API
+# Examples of generic pages and web API
 SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
 SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
 

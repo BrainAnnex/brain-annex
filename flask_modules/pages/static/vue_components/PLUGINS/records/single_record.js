@@ -93,7 +93,9 @@ Vue.component('vue-plugin-single-record',
 
 
             cancel_edit()
-            // Invoked when the user cancels the edit-in-progress, or when the save operation fails
+            /* Invoked when the user cancels the edit-in-progress, or when the save operation fails.
+               Revert any changes, and exit the edit mode
+             */
             {
                 // Restore the data to how it was prior to the aborted changes
                 this.record_current = Object.assign({}, this.record_pre_edit);  // Clone from record_pre_edit
@@ -195,7 +197,7 @@ Vue.component('vue-plugin-single-record',
                 if the URL is very long, show it in abbreviated form in the hyperlink text.
                 In all other cases, just return the argument.
 
-                Note: this function is also found in records.js
+                Note: this function is also found in records.js and documents.js
              */
             {
                 const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
