@@ -419,6 +419,10 @@ class ServerCommunication
 
         for (k in data_object) {    // Loop thru the keys
             val = data_object[k];      // Get the corresponding value
+
+            if (val === undefined)
+                continue;
+
             //console.log(`    key: ${k}  |  value: ${val} `);
 
             data_str += k + "=";

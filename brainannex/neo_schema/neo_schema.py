@@ -2066,17 +2066,17 @@ class NeoSchema:
 
 
     @classmethod
-    def follow_links(cls, class_name :str, node_id, links :str, id_type=None, properties=None, labels=None) -> Union[list, dict]:
+    def follow_links(cls, class_name :str, node_id, links :str, id_type=None, properties=None, labels=None) -> List:
         """
         From the given starting data node(s), follow all the relationships that have the specified name,
         from/into neighbor nodes (optionally having the given labels),
         and return some of the properties of those found nodes.
 
-        :param class_name:  String with the name of the Class of the given ddata node
+        :param class_name:  String with the name of the Class of the given data node
         :param node_id:     Either an internal database ID or a primary key value
         :param links:       A string with the name of the link(s) to follow
         :param id_type:     [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
-                                Leave blank to use the internal database ID
+                                Use None to refer to the internal database ID
         :param properties:  [OPTIONAL] String, or list of strings, with the name(s)
                                 of the properties to return on the found nodes;
                                 if not specified, an Exception is raised
@@ -2085,7 +2085,7 @@ class NeoSchema:
                                 with node labels required to be present on the located nodes
                                 TODO: not currently in use
 
-        :return:            A list of values, if properties only contains a single element (currently, the only option);
+        :return:            A (possibly empty) list of values, if properties only contains a single element;
                                 otherwise, a list of dictionaries
         """
         #TODO: pytest
@@ -2126,6 +2126,7 @@ class NeoSchema:
             WHERE {where_clause}
             RETURN {properties_cypher_str}
             '''
+        #cls.db.debug_query_print(q, data_binding={"node_id": node_id})
         result = cls.db.query(q, data_binding={"node_id": node_id})
 
         if type(properties) != str:

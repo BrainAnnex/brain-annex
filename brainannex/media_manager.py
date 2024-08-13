@@ -37,12 +37,43 @@ class MediaManager:
 
 
     @classmethod
+    def retrieve_full_path(cls, uri :str, thumb=False) -> str:
+        """
+        Return the full path for the specified media file or, if requested, for its thumbnail image.
+        Includes the final "/"
+        EXAMPLE (on Windows):  "D:/BACKUP_media/images/resized/"
+
+        :param uri:         Unique identifier for the Media Item of Interest
+        :param thumb:       If True, return the folder for the thumbnail image instead
+        :return:            EXAMPLES on Windows:
+                                "D:/media/documents/"
+                                "D:/media/images/resized/"
+        """
+        class_name = NeoSchema.class_of_data_node(node_id=uri, id_type="uri")
+
+        dir_names = NeoSchema.follow_links(class_name=class_name, node_id=uri, id_type="uri",
+                                           links="BA_stored_in", properties="name")
+        #print("dir_names: ", dir_names)
+
+        assert len(dir_names) < 2, \
+            f"retrieve_folder_name(): more than 1 directory is associated with file with uri `{uri}`"
+
+        if len(dir_names) == 0:
+            return cls.lookup_file_path(class_name=class_name, thumb=thumb)
+
+        folder_name = dir_names[0]
+        if thumb:
+            folder_name = "resized/" + folder_name
+
+        return cls.MEDIA_FOLDER + folder_name + "/"
+
+
+    @classmethod
     def lookup_file_path(cls, schema_code=None, class_name=None, thumb=False) -> str:
         """
         Return the full file path, including the final "/" of media of
         a particular type, identified by the schema_code argument
-        TODO: allow media files to have a variety of locations - not just a standard
-              one based on their type
+        TODO: being phased out in favor of retrieve_full_path()
 
         :param schema_code: String identifier used by the various plugins
         :param class_name:  An alternate way to identify the type of the media file.
@@ -136,31 +167,21 @@ class MediaManager:
         # TODO: (at least for large media) read the file in blocks
 
         #print("In get_binary_content(): uri = ", uri)
-        content_node = NeoSchema.get_data_node(uri = uri)
+        #content_node = NeoSchema.get_data_node(uri = uri)
         #print("content_node:", content_node)
-        if content_node is None:
-            raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
+        #if content_node is None:
+            #raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
 
-        basename = content_node['basename']
-        suffix = content_node['suffix']
+        #basename = content_node['basename']
+        #suffix = content_node['suffix']
 
-        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
-
-        if th:
-            thumb = True
-        else:
-            thumb = False
-
-        if suffix.lower() == "svg":
-            thumb = False   # SVG files cannot be resized
+        #folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
 
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
+        folder, basename, suffix = cls.lookup_media_file(uri, thumb=th)
 
-        #TODO: test and switch to
-        #folder, basename, suffix = cls.lookup_media_file(uri, thumb=thumb)
-
+        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
 
         try:
             file_contents = cls.get_from_binary_file(path=folder, filename=filename)
@@ -170,7 +191,7 @@ class MediaManager:
             # File I/O failed
             error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
             print(error_msg)
-            if not thumb:
+            if not th:
                 raise Exception(error_msg)
             else:
                 # We looked for a thumbnail version, and didn't find it
@@ -179,16 +200,14 @@ class MediaManager:
                 # Attempt to resize the full-sized version, and save the new thumbnail file
                 try:
                     # Get the folder for the full-size images
-                    images_folder = cls.lookup_file_path(schema_code=content_node['schema_code'],
-                                                                  thumb=False)
+                    images_folder = cls.retrieve_full_path(uri=uri, thumb=False)
                     source_full_name = images_folder + filename
                     print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
 
                     # Full-size version was found; obtain its dimensions
                     width, height = ImageProcessing.get_image_size(source_full_name)
                     # Create a thumbnail version
-                    thumb_folder = cls.lookup_file_path(schema_code=content_node['schema_code'],
-                                                                 thumb=thumb)
+                    thumb_folder = cls.retrieve_full_path(uri=uri, thumb=th)
                     # Carry out the resizing, and save the thumbnail file
                     print("    Attempting to create a thumbnail version of it")
                     #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
@@ -221,10 +240,14 @@ class MediaManager:
     def lookup_media_file(cls, uri :str, thumb=False) -> (str, str, str):
         """
 
-        :param uri:
-        :param thumb:
-        :return:        The triplet (filepath, basename, suffix)
+        :param uri:         Unique identifier for the Media Item of Interest
+        :param thumb:       If True, return the folder for the thumbnail image instead;
+                                ignored if the file suffix is "svg" (regardless of case),
+                                because SVG files cannot be resized
+        :return:            The triplet (filepath, basename, suffix)
         """
+        #TODO: maybe combine this method and retrieve_full_path()
+
         content_node = NeoSchema.get_data_node(uri = uri)
         #print("content_node:", content_node)
         if content_node is None:
@@ -233,9 +256,13 @@ class MediaManager:
         basename = content_node['basename']
         suffix = content_node['suffix']
 
+        if suffix.lower() == "svg":
+            thumb = False   # SVG files cannot be resized
+
+
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
+        folder = cls.retrieve_full_path(uri=uri, thumb=thumb)
 
         return (folder, basename, suffix)
 
@@ -261,17 +288,17 @@ class MediaManager:
                 assert check == "", \
                     f"before_update_content(): Non-acceptable character found in destination file name: {check}"
 
-            _, old_basename, old_suffix = cls.lookup_media_file(uri)
-            folder = cls.lookup_file_path(class_name=class_name)
+            folder, old_basename, old_suffix = cls.lookup_media_file(uri)
+            #folder = cls.lookup_file_path(class_name=class_name)
             old_full_name = f"{folder}{old_basename}.{old_suffix}"
 
             new_basename = basename if basename else old_basename
             new_suffix = suffix if suffix else old_suffix
             new_full_name = f"{folder}{new_basename}.{new_suffix}"
 
-            print(f"MediaManager.before_update_content(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
-
-            cls.move_file(src=old_full_name, dest=new_full_name)
+            if new_full_name != old_full_name:
+                print(f"MediaManager.before_update_content(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
+                cls.move_file(src=old_full_name, dest=new_full_name)
 
 
 
