@@ -188,8 +188,10 @@ Vue.component('vue-plugin-d',
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {post_obj: post_obj,
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: false,
                              callback_fn: this.finish_save_edit,
                              custom_data: my_var
                             });
