@@ -1985,7 +1985,8 @@ class NeoSchema:
         """
         # TODO: offer the option of returning some or all of the fields
         # TODO: offer to optionally pass a label?
-        # TODO: pytest the 'return_option' arg
+        # TODO: pytest the 'return_option' argument
+        # TODO: offer options to select only some nodes
 
         assert return_option in ["uri", "internal_id"], \
             "data_nodes_of_class(): the argument `return_option` must be either 'uri' or 'internal_id'"

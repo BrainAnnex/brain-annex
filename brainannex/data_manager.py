@@ -570,6 +570,23 @@ class DataManager:
 
 
     @classmethod
+    def get_records_by_class(cls, class_name :str, field_name :str, order_by :str) -> []:
+        """
+        Return a list of values of a particular field, of all the records of the given Class,
+        optionally sorted by the given field
+
+        :param class_name:
+        :param field_name:
+        :param order_by:
+        :return:            A list of values
+        """
+        # TODO: generalize, and move to NeoSchema
+        match = cls.db.match(labels=class_name)
+        return cls.db.get_single_field(match=match, field_name=field_name, order_by=order_by)
+
+
+
+    @classmethod
     def get_records_by_link(cls, request_data: dict) -> [dict]:
         """
         Locate and return the data of the nodes linked to the one specified by uri,

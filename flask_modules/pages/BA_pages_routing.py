@@ -154,14 +154,17 @@ class PagesRouting:
             #           {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
             #       ]
 
-            # q = "MATCH (n:Directory) RETURN n.name ORDER BY n.name"
+            upload_directories = DataManager.get_records_by_class(class_name="Directory",
+                                                                  field_name="name", order_by="name")
+            '''
+            # EXAMPLE:
             upload_directories = ["documents/Ebooks & Articles",
                                   "documents/Ebooks & Articles/Computer Science",
                                   "documents/Ebooks & Articles/Computer Science/Theoretical",
                                   "documents/Ebooks & Articles/Languages",
                                   "documents/Ebooks & Articles/Languages/Portuguese"
                                   ]
-
+            '''
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
