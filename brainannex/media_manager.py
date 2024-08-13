@@ -68,12 +68,14 @@ class MediaManager:
         return cls.MEDIA_FOLDER + folder_name + "/"
 
 
+
     @classmethod
     def lookup_file_path(cls, schema_code=None, class_name=None, thumb=False) -> str:
         """
         Return the full file path, including the final "/" of media of
         a particular type, identified by the schema_code argument
-        TODO: being phased out in favor of retrieve_full_path()
+        TODO: most function calls will be switched over to retrieve_full_path()
+        TODO: rename default_file_path()
 
         :param schema_code: String identifier used by the various plugins
         :param class_name:  An alternate way to identify the type of the media file.

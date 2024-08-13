@@ -1823,7 +1823,7 @@ class ApiRouting:
             USAGE EXAMPLE:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload_media">
                     <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
-                    <input type="submit" value="Upload file">
+                    <input type="submit" value="Upload your file">
                     <input type='hidden' name='category_id' value='123'>
                     <input type='hidden' name='pos' value='10'> <!-- TODO: NOT YET IN USE! Media is always added at END OF PAGE -->
                 </form>
@@ -1835,16 +1835,20 @@ class ApiRouting:
             """
             # TODO: move a lot of this function to MediaManager
             # TODO: media is currently added in a fixed position at the END of the Category page
+            # TODO: media is currently added to a folder determined by its media type
 
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('category_id', '3677'), ('pos', 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW')])
+            post_data = request.form    # Example: ImmutableMultiDict([('category_id', '3677'),
+                                        #                              ('pos', 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'),
+                                        #                              ('upload_folder', 'documents/Ebooks & Articles')])
         
             print("Uploading media content thru upload_media()")
             #print("Raw POST data: ", post_data)
-            print("POST variables: ", dict(post_data))  # Example: {'category_id': '3677', 'pos': 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'}
+            print("POST variables: ", dict(post_data))  # Example: {'category_id': '3677', 'pos': 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW',
+                                                        #           'upload_folder': 'documents/Ebooks & Articles'}
         
             try:
-                upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the temporary directory used for the uploads.
+                upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the *temporary* directory used for the uploads.
                                                                     #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
                 (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
                             UploadHelper.store_uploaded_file(files=request.files, upload_dir=upload_dir, key_name="file")
@@ -1869,8 +1873,13 @@ class ApiRouting:
         
             src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
 
-            dest_folder = MediaManager.lookup_file_path(class_name=class_name)
+            if post_data["upload_folder"] == "":    # If not explicitly passed
+                dest_folder = MediaManager.lookup_file_path(class_name=class_name)
+            else:
+                dest_folder = cls.config_pars["MEDIA_FOLDER"] + post_data["upload_folder"] + "/"
+
             dest_fullname = dest_folder + tmp_filename_for_upload
+
             print(f"Attempting to move `{src_fullname}` to `{dest_fullname}`")
             try:
                 shutil.move(src_fullname, dest_fullname)
@@ -1922,7 +1931,8 @@ class ApiRouting:
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Documents":
-                    Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type)
+                    Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
+                                                          upload_folder=post_data["upload_folder"])
 
                 response = ""
 

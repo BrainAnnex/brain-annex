@@ -48,6 +48,10 @@
                              {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
                             ]
 
+        upload_directories: A list of folders registered with BrainAnnex
+                            EXAMPLE:
+                                ["documents/Ebooks & Articles",
+                                "documents/Ebooks & Articles/Computer Science"]
 
     -----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
@@ -456,9 +460,16 @@
 
     <div style='border:1px solid gray; padding:10px; background-color:#DDDDDD; margin-top:5px; margin-bottom:5px; margin-right:5px'>		<!-- Maybe the DIV wrapper could be ditched? -->
 
-        <b>UPLOAD IMAGES or DOCUMENTS</b>:<br>
+        <b>UPLOAD IMAGES or DOCUMENTS</b> (if no upload directory is specified, a standard location will be used) :<br>
 
         <form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
+            <select name='upload_folder'  style='font-size:9px'>
+                <option selected value=''>[USE DEFAULT UPLOAD DIRECTORY]</option>
+
+                {% for dir in upload_directories %}
+                    <option value="{{dir}}">{{dir}}</option>
+                {% endfor %}
+            </select>
             <input type='hidden' name='category_id' value='{{category_uri}}'>
             <input type='hidden' name='pos' value='TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'>
         </form>
