@@ -113,6 +113,7 @@ class Documents:
                       (dir :Directory {name: $upload_folder}) 
                 MERGE (doc)-[:BA_stored_in]->(dir)
                 '''
+            #NeoSchema.db.debug_query_print(q, data_binding={"uri": uri, "upload_folder": upload_folder})
             NeoSchema.db.query(q, data_binding={"uri": uri, "upload_folder": upload_folder})
             path = MediaManager.MEDIA_FOLDER + upload_folder + "/"
 

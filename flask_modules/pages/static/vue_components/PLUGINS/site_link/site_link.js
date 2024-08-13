@@ -63,7 +63,7 @@ Vue.component('vue-plugin-sl',
                 <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
                     <td class="small">{{item_data.date}}</td>
                     <td class="comments">{{item_data.comments}}</td>
-                    <td>{{item_data.rating}} &#9733;</td>
+                    <td><span v-show="item_data.rating">{{item_data.rating}} &#9733;</span></td>
                 </tr>
                 <tr v-else @dblclick="enter_editing_mode">
                     <td><span class="hint">date</span><br><input type="text" size="6" v-model="current_data.date"></td>

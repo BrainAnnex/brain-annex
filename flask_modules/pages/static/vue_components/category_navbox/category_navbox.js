@@ -90,16 +90,20 @@ Vue.component('vue-category-navbox',
                     </span>
 
                     <br>
-                    <!-- Option to set a filter -->
+                    <!-- Option to set a filter when clicking on any of the letters -->
                     <a v-for="letter in alphabet"  @click.prevent="set_filter(letter)"  href="#"  class="alphabet-letters">
                         {{letter}}
                     </a>
                     <br>
 
-                    <!-- If the filter is applied, show its name (a letter) -->
-                    <template v-if="filter">
-                        <br><span style="font-weight:bold">{{filter}}:</span><br>
-                    </template>
+                    <!-- If the filter is applied, show its name (1 or more letters) -->
+                    <p v-if="filter" style="font-weight: bold; font-size: 16px; margin-bottom: 0">
+                        <span v-if="filter.length >= 3">&ndash;</span>{{filter}}&ndash;
+                        <!-- Another way to unset the filter -->
+                        <img @click="remove_filter()" class="clickable-icon" style="margin-left: 10px"
+                              title='Show ALL categories (or click on ALL)' alt='Show ALL categories (or click on ALL)'
+                              src='/BA/pages/static/graphics/filter_remove_16.gif'>
+                    </p>
                     <br>
 
                     <!-- Listing of all the categories allowed by the filter.  All but the current category will show links  -->
@@ -150,9 +154,9 @@ Vue.component('vue-category-navbox',
                 alphabet: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
                            'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
 
-                filter: false,
+                filter: false,      // Either false, or a string
 
-                categories_to_show: this.all_categories
+                categories_to_show: this.all_categories // List of Categories to show in the legend
             }
         },
 
@@ -166,10 +170,25 @@ Vue.component('vue-category-navbox',
                 this.$emit('adjust-right-sidebox', state);
             },
 
-            set_filter(l) {
-                //alert(`Filtering for category names starting with ${l} : sorry, not yet implemented!`);
-                this.categories_to_show = this.all_categories.filter( cat => cat.name[0] == l);
-                this.filter = l;
+            set_filter(l)
+            /* Invoked when the user click on a particular letter, in the alphabet of choices.
+               The argument is a capital letter
+             */
+            {
+                //alert(`Filtering for letter ${l}`);
+
+                if (!this.filter)
+                    this.filter = l;    // Start a new filter
+                else
+                    this.filter += l;   // Append to existing filter
+
+                if (this.filter.length < 3)
+                    this.categories_to_show = this.all_categories.filter( cat => cat.name.toUpperCase().startsWith(this.filter) );
+                else
+                    this.categories_to_show = this.all_categories.filter( cat => cat.name.toUpperCase().includes(this.filter) );
+
+                //this.categories_to_show = this.all_categories.filter( cat => cat.name[0] == l );
+                //this.filter = l;
             },
 
             remove_filter()
