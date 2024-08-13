@@ -1324,7 +1324,7 @@ class DataManager:
     @classmethod
     def get_nodes_by_filter(cls, filter_dict :dict) -> [dict]:
         """
-        Return the nodes in the database that match all the requirements spelled out in the given filter
+        Return the list of the database nodes that match all the requirements spelled out in the given filter
 
         :param filter_dict: A dictionary, with keys:
                                 "label"         The name of a node label
@@ -1344,7 +1344,7 @@ class DataManager:
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
                                 {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
-        :return:            A (possibly-empty) list of dictionaries
+        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node
         """
         #TODO: intercept and decode values such as neo4j.time.DateTime(2016, 11, 5, 23, 13, 46, 0)  , for example found in Item 'sl-1087'
         #TODO: maybe parse the filter_dict here, but move the body of the computation to NeoSchema

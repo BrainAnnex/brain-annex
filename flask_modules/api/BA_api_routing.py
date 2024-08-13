@@ -1675,8 +1675,13 @@ class ApiRouting:
             try:
                 data_dict = cls.extract_get_pars(get_data)
                 print("/get_filtered parameters: ", data_dict)
-                result = DataManager.get_nodes_by_filter(data_dict)
-                response = {"status": "ok", "payload": result}              # Successful termination
+                recordset = DataManager.get_nodes_by_filter(data_dict)
+                if "label" in data_dict:
+                    total_count = NeoSchema.count_data_nodes_of_class(data_node=data_dict["label"])
+                else:
+                    total_count = None
+                response = {"status": "ok",
+                            "payload": {"recordset": recordset, "total_count": total_count}}   # Successful termination
                 #print(f"get_filtered() is returning successfully: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
                                                 #   Note: jsonify() may fail if any parts of the response are not JSON serializable
