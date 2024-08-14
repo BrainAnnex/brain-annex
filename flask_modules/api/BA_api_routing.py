@@ -1870,7 +1870,7 @@ class ApiRouting:
             if mime_type.split('/')[0] == "image":  # For example, 'image/jpeg', 'image/png', etc.
                 class_name = "Images"
             else:
-                class_name = "Documents"            # Any unrecognized MIME type is treated as a Document
+                class_name = "Document"            # Any unrecognized MIME type is treated as a Document
 
 
             # Move the uploaded file from its temp location to the media folder
@@ -1935,7 +1935,7 @@ class ApiRouting:
                                                         item_class_name=class_name, item_properties=properties)
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
-                if class_name == "Documents":
+                if class_name == "Document":
                     Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
                                                           upload_folder=post_data["upload_folder"])
 

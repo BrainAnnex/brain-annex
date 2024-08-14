@@ -1,10 +1,10 @@
-/*  Vue component to display and edit Content Items of type "d" (Documents)
+/*  Vue component to display and edit Content Items of type "d" (Document)
  */
 
 Vue.component('vue-plugin-d',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:      EXAMPLE: {"class_name": "Documents",
+        /*  item_data:      EXAMPLE: {"class_name": "Document",
                                       "basename": "test", "suffix": "pdf",
                                       "caption": "My first document", "url": "https://arxiv.org/pdf/2402.09090",
                                       "uri": "4849", "schema_code": "d",
@@ -171,7 +171,7 @@ Vue.component('vue-plugin-d',
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item";
                 const post_obj = {uri: this.item_data.uri,
-                                  class_name: "Documents",
+                                  class_name: "Document",
                                   caption: this.current_metadata.caption,
                                   basename: this.current_metadata.basename,
                                   url: this.current_metadata.url,

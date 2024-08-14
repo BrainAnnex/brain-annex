@@ -116,7 +116,7 @@ MediaManager.MEDIA_FOLDER = MEDIA_FOLDER
 
 def test_retrieve_folder_name():
     result = MediaManager.retrieve_full_path(uri="6880")
-    #result = MediaManager.retrieve_folder_name(uri="d-14", class_name="Documents")
+    #result = MediaManager.retrieve_folder_name(uri="d-14", class_name="Document")
     #result = MediaManager.retrieve_full_path(uri="642")
     #result = MediaManager.retrieve_full_path(uri="687")
     #result = MediaManager.retrieve_full_path(uri="687", thumb=True)

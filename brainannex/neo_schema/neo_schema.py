@@ -2195,6 +2195,7 @@ class NeoSchema:
         """
         # TODO: "schema_code" should perhaps be responsibility of the higher layer
         # TODO: consider allowing creation of multiple nodes from one call
+        # TODO: allow a new URI to be automatically generated from a namespace
 
         # Do various validations
         cls.assert_valid_class_identifier(class_node)
@@ -4314,7 +4315,7 @@ class NeoSchema:
         If no prefix or suffix is specified, use the values provided when the namespace
         was first created.
 
-        EXAMPLES:   reserve_next_uri("Documents", "doc.", ".new") might produce "doc.3.new"
+        EXAMPLES:   reserve_next_uri("Document", "doc.", ".new") might produce "doc.3.new"
                     reserve_next_uri("Images", prefix="i-") might produce "i-123"
 
         IMPORTANT: Prefixes and suffixes only need to be passed when first using a new namespace;

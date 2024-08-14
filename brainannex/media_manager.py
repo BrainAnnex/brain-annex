@@ -428,7 +428,7 @@ class MediaManager:
         """
         # TODO: for now hardwired; ought to instead query the Schema, to discover if the given Class
         #       is an INSTANCE_OF the "Media" class
-        return class_name in ["Documents", "Images", "Notes"]
+        return class_name in ["Document", "Images", "Notes"]
 
 
 

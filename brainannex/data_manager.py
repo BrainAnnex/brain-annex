@@ -1013,7 +1013,7 @@ class DataManager:
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Notes":
             Notes.new_content_item_successful(new_uri, original_post_data)
-        elif class_name == "Documents":
+        elif class_name == "Document":
             Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
 
 
