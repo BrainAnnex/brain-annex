@@ -833,7 +833,8 @@ class DataManager:
         # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
         match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
         records = cls.db.get_nodes(match)
-        assert records != [], f"delete_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
+        assert records != [], \
+            f"delete_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
 
 
         # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
@@ -842,14 +843,14 @@ class DataManager:
             # If there's media involved, delete the media, too
             record = cls.lookup_media_record(uri)
             if record is not None:
-                MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code)
+                MediaManager.delete_media_file(uri=uri, basename=record["basename"], suffix=record["suffix"])
 
         if schema_code == "i":
             # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             record = cls.lookup_media_record(uri)
             if record is not None:
-                MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code, thumbs=True)
+                MediaManager.delete_media_file(uri=uri, basename=record["basename"], suffix=record["suffix"], thumb=True)
 
         if schema_code == "n":
             Notes.delete_content_before(uri)
@@ -1084,7 +1085,7 @@ class DataManager:
     #####################################################################################################
 
     @classmethod
-    def lookup_media_record(cls, uri: int) -> Union[dict, None]:
+    def lookup_media_record(cls, uri: str) -> Union[dict, None]:
         """
         Attempt to retrieve the metadata for the media file attached to the specified Content Item
         TODO: move to MediaManager class

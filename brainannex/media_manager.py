@@ -334,23 +334,23 @@ class MediaManager:
 
 
     @classmethod
-    def delete_media_file(cls, basename: str, suffix: str, schema_code, thumbs=False) -> bool:
+    def delete_media_file(cls, uri: str, basename: str, suffix: str, thumb=False) -> bool:
         """
         Delete the specified media file, assumed in a standard location
 
+        :param uri:         Unique identifier for the Media Item of Interest
         :param basename:    File name, exclusive of path and of suffix
         :param suffix:      String such as "htm" (don't include the dot!)
-        :param schema_code:
-        :param thumbs:
+        :param thumb:       If True, then the "thumbnail" version is returned
+                                (only applicable to some media types, such as images)
         :return:            True if successful, or False otherwise
         """
         filename = basename + "." + suffix
         #print(f"Attempting to delete file `{filename}`")
 
-        folder = cls.lookup_file_path(schema_code=schema_code, thumb=thumbs)
-        full_file_name = folder + filename
-
-        #full_file_name = cls.MEDIA_FOLDER + subfolder + filename
+        #folder = cls.lookup_file_path(schema_code=schema_code, thumb=thumbs)
+        full_path = cls.retrieve_full_path(uri=uri, thumb=thumb)
+        full_file_name = full_path + filename
 
         return cls.delete_file(full_file_name)
 
@@ -562,7 +562,7 @@ class ImageProcessing:
             image.save(resized_full_name)
         else:
             scaling_ratio = src_width / target_width    # This will be > 1 (indicative of reduction)
-            print("scaling_ratio: ", scaling_ratio)
+            #print("scaling_ratio: ", scaling_ratio)
             target_height = int(src_height / scaling_ratio)
             new_image = image.resize((target_width, target_height))
             new_image.save(resized_full_name)

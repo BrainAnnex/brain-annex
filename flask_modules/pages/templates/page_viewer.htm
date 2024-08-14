@@ -460,7 +460,7 @@
 
     <div style='border:1px solid gray; padding:10px; background-color:#DDDDDD; margin-top:5px; margin-bottom:5px; margin-right:5px'>		<!-- Maybe the DIV wrapper could be ditched? -->
 
-        <b>UPLOAD IMAGES or DOCUMENTS</b> (if no upload directory is specified, a standard location will be used) :<br>
+        <b>UPLOAD IMAGES or DOCUMENTS</b> (if no upload directory is specified, a standard location will be used - documents ONLY, for now) :<br>
 
         <form action='/BA/api/upload_media' class='dropzone' id='myDropzone_d' style='padding-top:5px; margin-bottom:8px'>
             <select name='upload_folder'  style='font-size:9px'>
@@ -1003,7 +1003,6 @@ new Vue({
 
             url_server = `/BA/api/delete/${item.uri}/${item.schema_code}`;
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_delete, custom_data: index});
-            //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_delete, index);
 
         },  // delete_content_item()
 
