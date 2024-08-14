@@ -1,9 +1,15 @@
-div.doc {		/* To display icons for documents */
+div.doc {		/* To display container for Documents */
 	box-shadow: 5px 5px 10px #333;
 	margin: 10px;
 	border:1px solid gray;
 	background-color:#ffffff;
-	width:300px;
+	width:350px;
 	padding:12px;
 	font-size: 10px;
+}
+
+
+div.doc span.label {
+    font-weight: bold;
+    color: #AAA;
 }

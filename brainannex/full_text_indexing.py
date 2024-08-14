@@ -263,7 +263,7 @@ class FullTextIndexing:
         :param content_item_class_name: (OPTIONAL) The name of the Schema Class for Content Items,
                                             i.e. the Class of the Data Items to be indexed
                                             if not found, it gets created
-                                            EXAMPLES: "Documents", "Notes", "Content Items" (default)
+                                            EXAMPLES: "Document", "Notes", "Content Items" (default)
         :return:                        None
         """
         #         TODO: manage indexing.  If done in Cypher:

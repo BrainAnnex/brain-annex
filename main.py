@@ -159,6 +159,9 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER                 # A temporary folder
 # Parameters for Continuous Data Ingestion)
 app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
 app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
+# Parameters for special folders
+app.config['MEDIA_FOLDER'] = MEDIA_FOLDER       # Expected to end with a "/"
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER     # EXAMPLE: "/tmp/"
 
 #app.config['site_pages'] = site_pages
 
@@ -170,15 +173,15 @@ HomeRouting.setup(app)
 # The navbar
 Navigation.setup(app)
 
-# The BrainAnnex-provided UI
+# The BrainAnnex-provided web app (UI for admin and Multimedia Content Management)
 PagesRouting.setup(app)
 
-# The BrainAnnex-provided endpoints
-ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER
-ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER
+# The BrainAnnex-provided web API endpoints
+ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER      # TODO: phase out in favor of the new app.config['MEDIA_FOLDER']
+ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER    # TODO: phase out in favor of the new app.config['UPLOAD_FOLDER']
 ApiRouting.setup(app)
 
-# Examples of generic pages and API
+# Examples of generic pages and web API
 SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
 SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
 

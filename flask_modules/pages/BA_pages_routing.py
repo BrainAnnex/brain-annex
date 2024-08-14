@@ -154,7 +154,17 @@ class PagesRouting:
             #           {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
             #       ]
 
-
+            upload_directories = DataManager.get_records_by_class(class_name="Directory",
+                                                                  field_name="name", order_by="name")
+            '''
+            # EXAMPLE:
+            upload_directories = ["documents/Ebooks & Articles",
+                                  "documents/Ebooks & Articles/Computer Science",
+                                  "documents/Ebooks & Articles/Computer Science/Theoretical",
+                                  "documents/Ebooks & Articles/Languages",
+                                  "documents/Ebooks & Articles/Languages/Portuguese"
+                                  ]
+            '''
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
@@ -164,7 +174,8 @@ class PagesRouting:
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    siblings_categories=siblings_categories,
                                    bread_crumbs=bread_crumbs, see_also_links=see_also_links,
-                                   records_types=records_types, items_schema_data=items_schema_data
+                                   records_types=records_types, items_schema_data=items_schema_data,
+                                   upload_directories=upload_directories
                                    )
 
 

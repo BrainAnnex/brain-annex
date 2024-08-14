@@ -570,6 +570,23 @@ class DataManager:
 
 
     @classmethod
+    def get_records_by_class(cls, class_name :str, field_name :str, order_by :str) -> []:
+        """
+        Return a list of values of a particular field, of all the records of the given Class,
+        optionally sorted by the given field
+
+        :param class_name:
+        :param field_name:
+        :param order_by:
+        :return:            A list of values
+        """
+        # TODO: generalize, and move to NeoSchema
+        match = cls.db.match(labels=class_name)
+        return cls.db.get_single_field(match=match, field_name=field_name, order_by=order_by)
+
+
+
+    @classmethod
     def get_records_by_link(cls, request_data: dict) -> [dict]:
         """
         Locate and return the data of the nodes linked to the one specified by uri,
@@ -691,6 +708,13 @@ class DataManager:
             set_dict = Notes.before_update_content(data_binding, set_dict)        
         '''
 
+
+        if MediaManager.is_media_class(class_name):
+            # If the Content Item is a Media Item, do some special handling
+            MediaManager.before_update_content(uri=uri, set_dict=update_data, class_name=class_name)
+
+
+
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
         number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks = True,
                                                     class_name=class_name)
@@ -809,7 +833,8 @@ class DataManager:
         # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
         match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
         records = cls.db.get_nodes(match)
-        assert records != [], f"delete_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
+        assert records != [], \
+            f"delete_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
 
 
         # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
@@ -818,14 +843,14 @@ class DataManager:
             # If there's media involved, delete the media, too
             record = cls.lookup_media_record(uri)
             if record is not None:
-                MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code)
+                MediaManager.delete_media_file(uri=uri, basename=record["basename"], suffix=record["suffix"])
 
         if schema_code == "i":
             # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             record = cls.lookup_media_record(uri)
             if record is not None:
-                MediaManager.delete_media_file(record["basename"], record["suffix"], schema_code, thumbs=True)
+                MediaManager.delete_media_file(uri=uri, basename=record["basename"], suffix=record["suffix"], thumb=True)
 
         if schema_code == "n":
             Notes.delete_content_before(uri)
@@ -989,7 +1014,7 @@ class DataManager:
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Notes":
             Notes.new_content_item_successful(new_uri, original_post_data)
-        elif class_name == "Documents":
+        elif class_name == "Document":
             Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
 
 
@@ -1060,7 +1085,7 @@ class DataManager:
     #####################################################################################################
 
     @classmethod
-    def lookup_media_record(cls, uri: int) -> Union[dict, None]:
+    def lookup_media_record(cls, uri: str) -> Union[dict, None]:
         """
         Attempt to retrieve the metadata for the media file attached to the specified Content Item
         TODO: move to MediaManager class
@@ -1317,7 +1342,7 @@ class DataManager:
     @classmethod
     def get_nodes_by_filter(cls, filter_dict :dict) -> [dict]:
         """
-        Return the nodes in the database that match all the requirements spelled out in the given filter
+        Return the list of the database nodes that match all the requirements spelled out in the given filter
 
         :param filter_dict: A dictionary, with keys:
                                 "label"         The name of a node label
@@ -1337,7 +1362,7 @@ class DataManager:
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
                                 {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
-        :return:            A (possibly-empty) list of dictionaries
+        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node
         """
         #TODO: intercept and decode values such as neo4j.time.DateTime(2016, 11, 5, 23, 13, 46, 0)  , for example found in Item 'sl-1087'
         #TODO: maybe parse the filter_dict here, but move the body of the computation to NeoSchema

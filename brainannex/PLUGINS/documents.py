@@ -87,19 +87,36 @@ class Documents:
 
 
     @classmethod
-    def new_content_item_successful(cls, uri :str, pars :dict, mime_type :str) -> None:
+    def new_content_item_successful(cls, uri :str, pars :dict, mime_type :str, upload_folder :str) -> None:
         """
-        Invoked after a new Content Item of this type (Documents) gets successfully added to the database
+        Invoked after a new Content Item of this type (Document) gets successfully added to the database
 
         :param uri:         A string with the URI of the Content Item
         :param pars:        Dict with the various properties of this Content Item
-                                For Documents, "basename" and "suffix" keys are expected
+                                For Document, "basename" and "suffix" keys are expected
         :param mime_type:   Standardized string representing the type of the document
                                 EXAMPLES: 'text/plain', 'application/pdf'
+        :param upload_folder:If an empty string, it means the default folder for Document;
+                                otherwise, it's the name of the folder where this Document was uploaded
+                                (*exclusive* of the common path and of the final "/")
+                                EXAMPLE: 'documents/Ebooks & Articles'
         :return:            None
         """
-        filename = pars["basename"] + "." + pars["suffix"]              # EXAMPLE: "my_file.txt"
-        path = MediaManager.lookup_file_path(class_name="Documents")    # Incl. the final "/"
+        filename = pars["basename"] + "." + pars["suffix"]      # EXAMPLE: "my_file.txt"
+
+        if upload_folder == "":     # Document was uploaded to standard location
+            path = MediaManager.retrieve_full_path(uri=uri)         # Incl. the final "/"
+        else:
+            # Link the new document to its specific directory node
+            q = '''
+                MATCH (doc :Document {uri: $uri}),
+                      (dir :Directory {name: $upload_folder}) 
+                MERGE (doc)-[:BA_stored_in]->(dir)
+                '''
+            #NeoSchema.db.debug_query_print(q, data_binding={"uri": uri, "upload_folder": upload_folder})
+            NeoSchema.db.query(q, data_binding={"uri": uri, "upload_folder": upload_folder})
+            path = MediaManager.MEDIA_FOLDER + upload_folder + "/"
+
 
         # Extract the individual words "worthy" of being indexed in the document
         if mime_type == "text/plain":

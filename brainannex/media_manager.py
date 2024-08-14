@@ -9,6 +9,7 @@ from brainannex.neo_schema.neo_schema import NeoSchema
 from PIL import Image
 
 
+
 class MediaManager:
     """
     Helper library for the management of media files (documents and images)
@@ -36,12 +37,45 @@ class MediaManager:
 
 
     @classmethod
+    def retrieve_full_path(cls, uri :str, thumb=False) -> str:
+        """
+        Return the full path for the specified media file or, if requested, for its thumbnail image.
+        Includes the final "/"
+        EXAMPLE (on Windows):  "D:/BACKUP_media/images/resized/"
+
+        :param uri:         Unique identifier for the Media Item of Interest
+        :param thumb:       If True, return the folder for the thumbnail image instead
+        :return:            EXAMPLES on Windows:
+                                "D:/media/documents/"
+                                "D:/media/images/resized/"
+        """
+        class_name = NeoSchema.class_of_data_node(node_id=uri, id_type="uri")
+
+        dir_names = NeoSchema.follow_links(class_name=class_name, node_id=uri, id_type="uri",
+                                           links="BA_stored_in", properties="name")
+        #print("dir_names: ", dir_names)
+
+        assert len(dir_names) < 2, \
+            f"retrieve_folder_name(): more than 1 directory is associated with file with uri `{uri}`"
+
+        if len(dir_names) == 0:
+            return cls.lookup_file_path(class_name=class_name, thumb=thumb)
+
+        folder_name = dir_names[0]
+        if thumb:
+            folder_name = "resized/" + folder_name
+
+        return cls.MEDIA_FOLDER + folder_name + "/"
+
+
+
+    @classmethod
     def lookup_file_path(cls, schema_code=None, class_name=None, thumb=False) -> str:
         """
         Return the full file path, including the final "/" of media of
         a particular type, identified by the schema_code argument
-        TODO: allow media files to have a variety of locations - not just a standard
-              one based on their type
+        TODO: most function calls will be switched over to retrieve_full_path()
+        TODO: rename default_file_path()
 
         :param schema_code: String identifier used by the various plugins
         :param class_name:  An alternate way to identify the type of the media file.
@@ -120,7 +154,7 @@ class MediaManager:
     @classmethod
     def get_binary_content(cls, uri :str, th) -> (str, bytes):
         """
-        Fetch and return the contents of a media item stored on a local file.
+        Fetch and return the contents of a media item stored in a local file.
         In case of error, raise an Exception
 
         :param uri: String identifier for a media item
@@ -135,26 +169,21 @@ class MediaManager:
         # TODO: (at least for large media) read the file in blocks
 
         #print("In get_binary_content(): uri = ", uri)
-        content_node = NeoSchema.get_data_node(uri = uri)
+        #content_node = NeoSchema.get_data_node(uri = uri)
         #print("content_node:", content_node)
-        if content_node is None:
-            raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
+        #if content_node is None:
+            #raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
 
-        basename = content_node['basename']
-        suffix = content_node['suffix']
-        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
+        #basename = content_node['basename']
+        #suffix = content_node['suffix']
 
-        if th:
-            thumb = True
-        else:
-            thumb = False
-
-        if suffix.lower() == "svg":
-            thumb = False   # SVG files cannot be resized
+        #folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
 
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder = cls.lookup_file_path(schema_code=content_node['schema_code'], thumb=thumb)
+        folder, basename, suffix = cls.lookup_media_file(uri, thumb=th)
+
+        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
 
         try:
             file_contents = cls.get_from_binary_file(path=folder, filename=filename)
@@ -164,7 +193,7 @@ class MediaManager:
             # File I/O failed
             error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
             print(error_msg)
-            if not thumb:
+            if not th:
                 raise Exception(error_msg)
             else:
                 # We looked for a thumbnail version, and didn't find it
@@ -173,16 +202,14 @@ class MediaManager:
                 # Attempt to resize the full-sized version, and save the new thumbnail file
                 try:
                     # Get the folder for the full-size images
-                    images_folder = cls.lookup_file_path(schema_code=content_node['schema_code'],
-                                                                  thumb=False)
+                    images_folder = cls.retrieve_full_path(uri=uri, thumb=False)
                     source_full_name = images_folder + filename
                     print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
 
                     # Full-size version was found; obtain its dimensions
                     width, height = ImageProcessing.get_image_size(source_full_name)
                     # Create a thumbnail version
-                    thumb_folder = cls.lookup_file_path(schema_code=content_node['schema_code'],
-                                                                 thumb=thumb)
+                    thumb_folder = cls.retrieve_full_path(uri=uri, thumb=th)
                     # Carry out the resizing, and save the thumbnail file
                     print("    Attempting to create a thumbnail version of it")
                     #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
@@ -209,6 +236,71 @@ class MediaManager:
                         print(error_msg)
                         raise Exception(error_msg)
 
+
+
+    @classmethod
+    def lookup_media_file(cls, uri :str, thumb=False) -> (str, str, str):
+        """
+
+        :param uri:         Unique identifier for the Media Item of Interest
+        :param thumb:       If True, return the folder for the thumbnail image instead;
+                                ignored if the file suffix is "svg" (regardless of case),
+                                because SVG files cannot be resized
+        :return:            The triplet (filepath, basename, suffix)
+        """
+        #TODO: maybe combine this method and retrieve_full_path()
+
+        content_node = NeoSchema.get_data_node(uri = uri)
+        #print("content_node:", content_node)
+        if content_node is None:
+            raise Exception(f"lookup_media_file(): Metadata not found for the Media file with URI '{uri}'")
+
+        basename = content_node['basename']
+        suffix = content_node['suffix']
+
+        if suffix.lower() == "svg":
+            thumb = False   # SVG files cannot be resized
+
+
+        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
+        # Includes the final "/"
+        folder = cls.retrieve_full_path(uri=uri, thumb=thumb)
+
+        return (folder, basename, suffix)
+
+
+
+    @classmethod
+    def before_update_content(cls, uri :str, set_dict :dict, class_name :str) -> None:
+        """
+        Invoked before a Media Item of this type gets updated in the database
+
+        :param uri:         Unique identifier for the Media Item of Interest
+        :param set_dict:    A dict of field values to eventually set into the database
+        :param class_name:  (Redundant, since implied by the uri; TODO: maybe eventually drop)
+        :return:            None
+        """
+        print(f"In before_update_content() - uri: `{uri}` | class_name: `{class_name}` | set_dict: {set_dict}")
+        basename = set_dict.get("basename")
+        suffix =   set_dict.get("suffix")
+
+        if basename or suffix:
+            if basename:
+                check = cls.check_file_name(basename)
+                assert check == "", \
+                    f"before_update_content(): Non-acceptable character found in destination file name: {check}"
+
+            folder, old_basename, old_suffix = cls.lookup_media_file(uri)
+            #folder = cls.lookup_file_path(class_name=class_name)
+            old_full_name = f"{folder}{old_basename}.{old_suffix}"
+
+            new_basename = basename if basename else old_basename
+            new_suffix = suffix if suffix else old_suffix
+            new_full_name = f"{folder}{new_basename}.{new_suffix}"
+
+            if new_full_name != old_full_name:
+                print(f"MediaManager.before_update_content(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
+                cls.move_file(src=old_full_name, dest=new_full_name)
 
 
 
@@ -242,23 +334,23 @@ class MediaManager:
 
 
     @classmethod
-    def delete_media_file(cls, basename: str, suffix: str, schema_code, thumbs=False) -> bool:
+    def delete_media_file(cls, uri: str, basename: str, suffix: str, thumb=False) -> bool:
         """
         Delete the specified media file, assumed in a standard location
 
+        :param uri:         Unique identifier for the Media Item of Interest
         :param basename:    File name, exclusive of path and of suffix
         :param suffix:      String such as "htm" (don't include the dot!)
-        :param schema_code:
-        :param thumbs:
+        :param thumb:       If True, then the "thumbnail" version is returned
+                                (only applicable to some media types, such as images)
         :return:            True if successful, or False otherwise
         """
         filename = basename + "." + suffix
         #print(f"Attempting to delete file `{filename}`")
 
-        folder = cls.lookup_file_path(schema_code=schema_code, thumb=thumbs)
-        full_file_name = folder + filename
-
-        #full_file_name = cls.MEDIA_FOLDER + subfolder + filename
+        #folder = cls.lookup_file_path(schema_code=schema_code, thumb=thumbs)
+        full_path = cls.retrieve_full_path(uri=uri, thumb=thumb)
+        full_file_name = full_path + filename
 
         return cls.delete_file(full_file_name)
 
@@ -270,7 +362,7 @@ class MediaManager:
         Delete the specified file
 
         :param fullname:    Full name of the file to delete, including its path
-        :return:            True if successful, or False if not found
+        :return:            True if successful, or False if file was not found
         """
 
         if os.path.exists(fullname):
@@ -278,6 +370,65 @@ class MediaManager:
             return True
         else:
             return False    # "The file does not exist"
+
+
+
+    @classmethod
+    def move_file(cls, src: str, dest: str) -> None:
+        """
+        Rename (move) the specified file.
+        An Exception is raised if the file was not found,
+        or if another file with new name already exists
+
+        :param src:    Old full name (incl. path) of the file to rename
+        :param dest:   New full name (incl. path) of the file to rename
+        :return:       None
+        """
+        assert src != dest, \
+            f"move_file(): The requested source and destination file names are the same! (`{src}`)"
+
+        assert os.path.exists(src), \
+            f"move_file(): The requested file `{src}` does not exist"
+
+        assert not os.path.exists(dest), \
+            f"move_file(): A file with the requested destination name (`{dest}`) already exists"
+
+
+        os.rename(src, dest)
+
+
+
+    @classmethod
+    def check_file_name(cls, filename :str) -> str:
+        """
+        Check the given filename against a list of acceptable filename characters, based on a slightly-expanded
+        (but still conservative) version of the POSIX portable file name character set
+        https://www.ibm.com/docs/en/zos/3.1.0?topic=locales-posix-portable-file-name-character-set
+
+        :return:    The first non-allowed character, if applicable;
+                        if all characters are good, return ""
+        """
+        allowed_chars = " .,-_()&@0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+        for character in filename:
+            if character not in allowed_chars:
+                return character
+
+        return ""
+
+
+
+    @classmethod
+    def is_media_class(cls, class_name :str) -> bool:
+        """
+        Return True if the given Class is an INSTANCE_OF the "Media" Class
+
+        :param class_name:  Name of a Schema class
+        :return:            True if the given Class is an INSTANCE_OF the "Media" Class
+        """
+        # TODO: for now hardwired; ought to instead query the Schema, to discover if the given Class
+        #       is an INSTANCE_OF the "Media" class
+        return class_name in ["Document", "Images", "Notes"]
 
 
 
@@ -411,7 +562,7 @@ class ImageProcessing:
             image.save(resized_full_name)
         else:
             scaling_ratio = src_width / target_width    # This will be > 1 (indicative of reduction)
-            print("scaling_ratio: ", scaling_ratio)
+            #print("scaling_ratio: ", scaling_ratio)
             target_height = int(src_height / scaling_ratio)
             new_image = image.resize((target_width, target_height))
             new_image.save(resized_full_name)

@@ -162,8 +162,8 @@ def test_new_class_with_properties(db):
                                                  ["width", "caption"], code="i"
                                                  )
     """
-    _, new_id = NeoSchema.create_class_with_properties(name="Documents",
-                                                       property_list=["caption"],
+    _, new_id = NeoSchema.create_class_with_properties(name="Document",
+                                                       properties=["caption"],
                                                        code="d",
                                                        class_to_link_to="Media"
                                                        )

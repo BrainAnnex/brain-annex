@@ -905,7 +905,7 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def add_content_at_beginning(cls, category_uri :str, item_class_name: str, item_properties: dict, new_uri=None) -> str:
+    def add_content_at_beginning(cls, category_uri :str, item_class_name: str, item_properties: dict, new_uri=None, namespace="data_node") -> str:
         """
         Add a new Content Item, with the given properties and Class, to the beginning of the specified Category.
 
@@ -916,10 +916,17 @@ class Categories:
         :param category_uri:    The string "uri" of the Category to which this new Content Media is to be attached
         :param item_class_name: For example, "Images"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
-        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-
+        :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
+                                    but it can also be provided (if provided, it MUST be unique)
+        :param namespace:       Only applicable if new_uri is None : the namespace to use for automatically generating a URI
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
+        if new_uri is None:
+            # If a URI was not provided for the newly-created node,
+            # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
+            new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
+
+
         new_uri = Collections.add_to_collection_at_beginning(collection_uri=category_uri, membership_rel_name="BA_in_category",
                                                              item_class_name=item_class_name, item_properties=item_properties,
                                                              new_uri=new_uri)
@@ -948,7 +955,7 @@ class Categories:
 
 
     @classmethod
-    def add_content_at_end(cls, category_uri :str, item_class_name: str, item_properties: dict, new_uri=None) -> str:
+    def add_content_at_end(cls, category_uri :str, item_class_name: str, item_properties: dict, new_uri=None, namespace="data_node") -> str:
         """
         Add a NEW Content Item, with the given properties and Class, to the end of the specified Category.
         First, create a new Data Node, and then link it to the given Category, positioned at the end.
@@ -960,14 +967,14 @@ class Categories:
                                     NOTE: if the Class was declared as "strict",
                                           then any key not declared in the Schema gets silently ignored
         :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
-                                    but it can also be provided (Note: MUST be unique)
-
+                                    but it can also be provided (if provided, it MUST be unique)
+        :param namespace:       Only applicable if new_uri is None : the namespace to use for automatically generating a URI
         :return:                The "uri" (passed or created) of the newly-created data node
         """
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
-            # then auto-generate it: obtain (and reserve) the next auto-increment value in the "data_node" namespace
-            new_uri = NeoSchema.reserve_next_uri(prefix="", namespace="data_node")  # Returns a string.  TODO: switch to a namespace based on the Class
+            # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
+            new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
 
 
         NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
@@ -986,7 +993,7 @@ class Categories:
 
 
     @classmethod
-    def add_content_after_element(cls, category_uri :str, item_class_name: str, item_properties: dict, insert_after :str, new_uri=None) -> str:
+    def add_content_after_element(cls, category_uri :str, item_class_name: str, item_properties: dict, insert_after :str, new_uri=None, namespace="data_node") -> str:
         """
         Add a NEW Content Item, with the given properties and Class, inserted into the given Category after the specified Item
         (in the context of the positional order encoded in the relationship attribute "pos")
@@ -997,10 +1004,17 @@ class Categories:
         :param item_properties: A dictionary with keys specific to the new Content Item,
                                     such as "width", "height", "caption", "basename", "suffix" (TODO: verify against schema)
         :param insert_after:    The URI of the element after which we want to insert
-        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-
+        :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
+                                    but it can also be provided (if provided, it MUST be unique)
+        :param namespace:       Only applicable if new_uri is None : the namespace to use for automatically generating a URI
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
+        if new_uri is None:
+            # If a URI was not provided for the newly-created node,
+            # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
+            new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
+
+
         # TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in add_content_at_end()

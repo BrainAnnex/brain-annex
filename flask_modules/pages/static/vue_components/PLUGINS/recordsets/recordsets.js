@@ -45,11 +45,11 @@ Vue.component('vue-plugin-rs',
 
             </table>
 
-            <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue"> << </span>
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue"> < </span>
-            &nbsp;&nbsp;&nbsp;  Page <b>{{current_page}}</b>   &nbsp;&nbsp;&nbsp;
-            <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue"> > </span>
+            <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
+            <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
+            <span style="margin-left:20px; margin-right:20px">Page <b>{{current_page}}</b></span>
+            <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue; font-size:16px"> > </span>
+            <span v-if="total_count" style="margin-left: 60px; color: gray">{{recordset.length}} records of total {{total_count}} </span>
 
             <!-- Status info -->
             <p style="padding-top: 0; margin-top: 0; text-align: right">
@@ -71,6 +71,8 @@ Vue.component('vue-plugin-rs',
 
                 current_page: 1,
                 records_per_page: this.item_data.n_group,
+
+                total_count: null,      // Size of the entire (un-filtered) recordset
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -124,7 +126,7 @@ Vue.component('vue-plugin-rs',
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server_NEW(url_server_api,
                             {   data_obj: data_obj,
-                                json_encode: true,
+                                json_encode_send: true,
                                 callback_fn: this.finish_get_fields
                             });
 
@@ -196,7 +198,8 @@ Vue.component('vue-plugin-rs',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    this.recordset = server_payload;
+                    this.recordset = server_payload.recordset;
+                    this.total_count = server_payload.total_count;
                     this.current_page = custom_data;
                     //...
                 }

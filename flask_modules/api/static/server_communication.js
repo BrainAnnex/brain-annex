@@ -114,7 +114,7 @@ class ServerCommunication
                                         {
                                             method = "GET",
                                             data_obj = {},
-                                            json_encode = false,
+                                            json_encode_send = false,
                                             callback_fn = undefined,
                                             custom_data = undefined
                                         } = {} )
@@ -124,12 +124,10 @@ class ServerCommunication
         url_server:     Do NOT include a final "/"
 
             method:         Either "GET" or "POST" - optional, by default "GET"
-                                (however, ignored if a non-empty string is passed to post_body,
-                                                     or a non-empty object is passed to post_obj)
 
             data_obj:       To be used with either GET or POST.  EXAMPLE:  {uri: 123, text: "Some data"}
 
-            json_encode:    If true, the data in data_obj will get JSON-encoded
+            json_encode_send:    If true, the data in data_obj will get JSON-encoded
 
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data:    If present, it is passed as a final argument to the callback function
@@ -169,7 +167,7 @@ class ServerCommunication
         }
 
 
-        if (json_encode) {
+        if (json_encode_send) {
             var data_str = JSON.stringify(data_obj);
             console.log(`contact_server_NEW(): the data object to send is being converted to JSON as '${data_str}'`);
             data_str = "json=" + data_str;      // Start preparing a query string for the URL
@@ -182,7 +180,7 @@ class ServerCommunication
 
         if (method == "POST")  {
             console.log(`contact_server_NEW() - a POST will be used, with the following data string: "${data_str}"`);
-            if (json_encode)
+            if (json_encode_send)
                 var fetch_options = ServerCommunication.prepare_POST_options_JSON(data_str);    // An object
             else
                 var fetch_options = ServerCommunication.prepare_POST_options(data_str);         // An object
@@ -403,10 +401,11 @@ class ServerCommunication
 
         Any non-blank string in the values gets passed thru encodeURIComponent.
         Any blank strings in the values are left undisturbed.
+        Any key/value with an undefined value gets completely dropped.
         Note: if data_object contains no properties, or is null, then an empty string is returned.
 
         EXAMPLE of usage:
-                data_object = {id: 123,  name: "some name"};
+                data_object = {id: 123,  name: "some name",  city: undefined};
                 data_str = ServerCommunication.parse_data_object(data_object);
 
                 It will return the string:   "id=123&name=some%20name"
@@ -419,6 +418,10 @@ class ServerCommunication
 
         for (k in data_object) {    // Loop thru the keys
             val = data_object[k];      // Get the corresponding value
+
+            if (val === undefined)
+                continue;           // Completely drop any key/value pair, if the value is undefined
+
             //console.log(`    key: ${k}  |  value: ${val} `);
 
             data_str += k + "=";
