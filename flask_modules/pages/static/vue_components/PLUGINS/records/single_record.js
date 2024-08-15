@@ -202,6 +202,9 @@ Vue.component('vue-plugin-single-record',
             {
                 const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
 
+                if (typeof cell_data != "string")
+                     return cell_data;
+
                 let dest_name = "";         // Name of the destination of the link, if applicable
 
                 if (typeof cell_data != "string")  {

@@ -225,15 +225,18 @@ Vue.component('vue-plugin-d',
 
 
             render_url(cell_data)
-            /*  If the passed argument is a string that appears to be a URL, convert it into a string with HTML code
-                for a hyperlink that opens in a new window;
+            /*  If the passed argument is a string that appears to be a URL,
+                convert it into a string with HTML code for a hyperlink that opens in a new window;
                 if the URL is very long, show it in abbreviated form in the hyperlink text.
                 In all other cases, just return the argument.
 
-                Note: this function is also found in records.js and single_record.js
+                Note: this function is also found in records.js, single_record.js and site_links.js
              */
             {
                 const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
+
+                if (typeof cell_data != "string")
+                     return cell_data;
 
                 let dest_name = "";         // Name of the destination of the link, if applicable
 

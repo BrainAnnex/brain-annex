@@ -25,7 +25,7 @@ Vue.component('vue-plugin-rs',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <b>{{item_data.class}}</b>
+                <span style="font-weight:bold; color:gray">{{item_data.class}}</span>
                 <table class='rs-main'>
 
                     <!-- Header row  -->
@@ -194,10 +194,9 @@ Vue.component('vue-plugin-rs',
             {
                 skip = (page-1) * this.records_per_page;
 
-                console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.item_data.uri}'`);
+                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.item_data.uri}'`);
 
-                // Send the request to the server, using a POST
-                //const url_server_api = `/BA/api/get_filtered?label=${this.item_data.class}&order_by=${this.item_data.order_by}&limit=${this.records_per_page}&skip=${skip}`;
+                // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get_filtered";
 
                 const get_obj = {label: this.item_data.class,
