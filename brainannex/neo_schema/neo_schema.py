@@ -469,7 +469,7 @@ class NeoSchema:
         :return:                    None
         """
         # TODO: pytest
-        # TODO: give a more clear Exception if the old Class isn't present
+        # TODO: fix bug causing an early crash if no data point of the old Class is present
         assert old_name != new_name, \
             "rename_class(): The old name and the new name cannot be the same"
 
@@ -1253,7 +1253,7 @@ class NeoSchema:
                                     If the list is empty, an Exception is raised
         :return:                The number of Properties added
         """
-        #TODO: rename "property_list" to "properties"
+        #TODO: rename "property_list" to "properties"; also allow a single string
         #TODO: Offer a way to change the order of the Properties,
         #      maybe by first deleting all Properties and then re-adding them
 

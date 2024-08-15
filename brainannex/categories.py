@@ -1313,7 +1313,7 @@ class Categories:
         :param uri_1:   A string with the uri of the 1st Content Item
         :param uri_2:   A string with the uri of the 2nd Content Item
         :param cat_id:  A string with the uri of the Category
-        :return:        None.  In case of error, raise an Exception
+        :return:        None
         """
 
         # Validate the arguments
@@ -1324,9 +1324,9 @@ class Categories:
         # Look for a Category node (c) that is connected to 2 Content Items (n1 and n2)
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
         q = '''
-            MATCH (n1:BA {uri: $uri_1})
+            MATCH (n1 {uri: $uri_1})
                         -[r1:BA_in_category]->(c:BA {schema_code:"cat", uri: $cat_id})<-[r2:BA_in_category]-
-                  (n2:BA {uri: $uri_2})
+                  (n2 {uri: $uri_2})
             WITH r1.pos AS tmp, r1, r2
             SET r1.pos = r2.pos, r2.pos = tmp
             '''
@@ -1345,7 +1345,7 @@ class Categories:
         number_properties_set = stats.get("properties_set")
 
         assert number_properties_set, \
-            f"Failure to swap content items `{uri_1}` and `{uri_2}` within Category `{cat_id}`"
+            f"Failure to swap content items `{uri_1}` and `{uri_2}` within Category `{cat_id}`. Query: {q}"
 
         assert number_properties_set == 2, \
             f"Irregularity detected in swap action: {number_properties_set} properties were set," \

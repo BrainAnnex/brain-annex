@@ -13,7 +13,7 @@ Vue.component('vue-plugin-rs',
                                           uri:"rs-1"
                                          }
                                       (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
-                            TODO: take "pos" and "class_name" out of item_data
+                            TODO: take "pos" and "class_name" out of item_data !
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Document on the page
@@ -25,39 +25,59 @@ Vue.component('vue-plugin-rs',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-            <table class='rs-main'>
+                <b>{{item_data.class}}</b>
+                <table class='rs-main'>
 
-                <!-- Header row  -->
-                <tr>
-                    <th v-for="field_name in headers">
-                        {{field_name}}
-                    </th>
-                </tr>
+                    <!-- Header row  -->
+                    <tr>
+                        <th v-for="field_name in headers">
+                            {{field_name}}
+                        </th>
+                    </tr>
 
-                <!--
-                    Data row
-                 -->
-                <tr v-for="record in recordset">
-                    <td v-for="field_name in headers">
-                        <span v-html="render_cell(record[field_name])"></span>
-                    </td>
-                </tr>
+                    <!--
+                        Data row
+                     -->
+                    <tr v-for="record in recordset">
+                        <td v-for="field_name in headers">
+                            <span v-html="render_cell(record[field_name])"></span>
+                        </td>
+                    </tr>
 
-            </table>
+                </table>
 
-            <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
-            <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
-            <span style="margin-left:20px; margin-right:20px">Page <b>{{current_page}}</b></span>
-            <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue; font-size:16px"> > </span>
-            <span v-if="total_count" style="margin-left: 60px; color: gray">{{recordset.length}} records of total {{total_count}} </span>
+                <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
+                <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
+                <span style="margin-left:20px; margin-right:20px">Page <b>{{current_page}}</b></span>
+                <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue; font-size:16px"> > </span>
+                <span v-if="total_count" style="margin-left: 60px; color: gray">{{recordset.length}} records of total {{total_count}} </span>
 
-            <!-- Status info -->
-            <p style="padding-top: 0; margin-top: 0; text-align: right">
-                <span v-if="waiting" class="waiting">Contacting the server...</span>
-                <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
-            </p>
+                <!-- Status info -->
+                <p style="padding-top: 0; margin-top: 0; text-align: right">
+                    <span v-if="waiting" class="waiting">Contacting the server...</span>
+                    <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
+                </p>
 
-            </div>		<!-- End of outer container box -->
+
+                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                      Signals from the Vue child component "vue-controls", below,
+                      get relayed to the parent of this component,
+                      but some get intercepted and handled here, namely:
+
+                              v-on:edit-content-item
+                -->
+                    <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
+
+                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                                  v-on="$listeners"
+                                  v-on:edit-content-item="edit_content_item">
+                    </vue-controls>
+
+                    <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
+
+                <!--  End of Standard Controls -->
+
+            </div>		<!-- End of outer container -->
             `,
 
 
@@ -102,6 +122,16 @@ Vue.component('vue-plugin-rs',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
+
+            edit_content_item()
+            // Enable the recordset edit mode
+            {
+                console.log(`Recordset component received signal to edit document`);
+                alert("Editing recordsets not yet implemented, sorry!");
+                //this.edit_metadata = true;
+            },
+
+
 
             get_fields()
             /*  Make a server call to obtain all Schema field of the Class that this recordset is based on
@@ -160,18 +190,20 @@ Vue.component('vue-plugin-rs',
 
 
             get_recordset(page)
+            // Fetch from the server the requested page of the recordset
             {
                 skip = (page-1) * this.records_per_page;
 
                 console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.item_data.uri}'`);
 
                 // Send the request to the server, using a POST
-                const url_server_api = `/BA/api/get_filtered?label=${this.item_data.class}&order_by=${this.item_data.order_by}&limit=${this.records_per_page}&skip=${skip}`;
+                //const url_server_api = `/BA/api/get_filtered?label=${this.item_data.class}&order_by=${this.item_data.order_by}&limit=${this.records_per_page}&skip=${skip}`;
+                const url_server_api = "/BA/api/get_filtered";
 
                 const get_obj = {label: this.item_data.class,
                                  order_by: this.item_data.order_by,
                                  limit: this.records_per_page,
-                                 skip: skip};       // TODO: not yet in use
+                                 skip: skip};
 
                 const my_var = page;        // Optional parameter to pass
 
@@ -179,9 +211,11 @@ Vue.component('vue-plugin-rs',
                 console.log(get_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {callback_fn: this.finish_get_recordset,
-                             custom_data: my_var
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {   data_obj: get_obj,
+                                json_encode_send: false,
+                                callback_fn: this.finish_get_recordset,
+                                custom_data: my_var
                             });
 
                 this.waiting = true;        // Entering a waiting-for-server mode
