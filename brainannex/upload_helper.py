@@ -6,7 +6,7 @@ import unicodedata
 
 class UploadHelper:
     """
-    Helper class to manage file uploads with Flask 1.1 (using Werkzeug 2.1)
+    Helper class to manage file uploads with Flask 1.1
     """
 
 
@@ -101,17 +101,17 @@ class UploadHelper:
     @classmethod
     def secure_filename_BA(cls, filename: str) -> str:
         """
-        ADAPTED FOR BRAIN ANNEX FROM werkzeug.utils.secure_filename(), version 0.5;
-        blank spaces are no longer transformed to underscores,
-        and round parentheses are no longer dropped.
-        See: https://flask.palletsprojects.com/en/2.0.x/patterns/fileuploads/
-
         Return a secure version of a filename.
         This filename can then safely be stored on a regular file system and passed
-        to :func:`os.path.join`.  The filename returned is an ASCII only string
+        to os.path.join.  The filename returned is an ASCII only string
         for maximum portability.
 
-        On windows systems the function also makes sure that the file is not
+        ADAPTED FOR BRAIN ANNEX FROM werkzeug.utils.secure_filename(), version 0.5;
+        blank spaces, commas, ampersand, and round parentheses are now treated as valid.
+        However, blank spaces at start/end of names are still dropped.
+        See: https://flask.palletsprojects.com/en/2.0.x/patterns/fileuploads/
+
+        On Windows, the function also makes sure that the file is not
         named after one of the special device files.
 
         EXAMPLES:   secure_filename_BA("My cool ++ movie.mov")          -> 'My cool  movie.mov'
@@ -124,11 +124,13 @@ class UploadHelper:
         to ensure that the filename is unique and that you abort or
         generate a random filename if the function returned an empty one.
 
-        :param filename:    A string with the filename to secure
+        :param filename:    A string with the "cleaned-up" filename to use
         """
-        _filename_ascii_strip_re = re.compile(r"[^A-Za-z0-9_. ()-]")  # List of allowed characters in the name;
-                                                                      # note that the blank space and the round parentheses
-                                                                      # are included
+        #TODO: pytest
+        _filename_ascii_strip_re = re.compile(r"[^A-Za-z0-9_., &()-]") # List of allowed characters in the name;
+                                                                       # BRAIN ANNEX adaptation:
+                                                                       # note that the blank space, ampersand and the round parentheses
+                                                                       # are included
         _windows_device_files = (
             "CON",
             "AUX",
@@ -149,7 +151,7 @@ class UploadHelper:
 
         #filename = "_".join(filename.split()   # Replace all blanks spaces with underscores
         filename = _filename_ascii_strip_re.sub("", filename)   # Zap all characters except the allowed ones
-        filename = filename.strip("._ ")         # Zap periods and underscores at the start or end of the string
+        filename = filename.strip("._ ")         # Zap periods, underscores and blanks at the start or end of the string
 
         # On nt (such as Windows 7, etc) a couple of special files are present in each folder.  We
         # have to ensure that the target file is not such a filename; if it is, we prepend an underline
