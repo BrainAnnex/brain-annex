@@ -555,7 +555,8 @@ class NeoSchema:
     def is_strict_class(cls, name :str) -> bool:
         """
         Return True if the given Class is of "Strict" type,
-        or False otherwise (or if the information is missing)
+        or False otherwise (or if the information is missing).
+        If no Class by that name exists, an Exception is raised
 
         :param name:    The name of a Schema Class node
         :return:        True if the Class is "strict" or False if not (i.e., if it's "lax")
@@ -565,9 +566,11 @@ class NeoSchema:
             RETURN c.strict AS strict
             '''
         result = cls.db.query(q, data_binding={"name": name},
-                                 single_cell="strict")
+                              single_row=True)
 
-        return True if (result == True) else False
+        assert result is not None, f"is_strict_class(): no schema Class named `{name}` exists"
+
+        return True if (result.get("strict")) else False
 
 
 
@@ -934,7 +937,7 @@ class NeoSchema:
             return True
 
         # If still unsuccessful, see if it's possible to find a relationship by means of
-        # an intermediary "LINK" node (NOTE: this is a new feature being rolled in)
+        # an intermediary "LINK" node
         q = f'''
             MATCH (from :CLASS)-[r:`{rel_name}`]->(:LINK)-[:`{rel_name}`]->(to :CLASS) 
             {common_query_end}
@@ -1566,11 +1569,14 @@ class NeoSchema:
 
         For a Link to be allowed, at least one of the following must hold:
 
-            A) BOTH of the Classes aren't strict (in which case any arbitrary link is allowed!
+            A) BOTH of the Classes aren't strict (in which case any arbitrary link is allowed!)
         OR
-            B) the Link has been registered with the Schema, for those Classes
+            B) the Link has been registered with the Schema, for those Classes (possibly going thru intermediate "INSTANCE_OF" hops)
 
-        It's permissible for the specified Class not to exist; in that case, False will be returned
+        Note: links being allowed is inherited from other Classes
+              that are ancestors of the given Class thru "INSTANCE_OF" relationships
+
+        If either of the specified Classes doesn't exist, an Exception is raised
 
         :param link_name:   Name of a Link (i.e. relationship) whose permissibility
                                 we want to check
@@ -1579,43 +1585,15 @@ class NeoSchema:
         :return:            True if the given Link is allowed by the specified Classes,
                                 or False otherwise
         """
-        # TODO: also ought to allow intermediate "INSTANCE_OF" hops
+        assert link_name, \
+            f"NeoSchema.is_link_allowed(): empty name was provided for the argument `link_name`"
 
-        assert link_name, f"NeoSchema.is_link_allowed(): empty name was provided for the argument `link_name`"
-
-        # Start by checking the most straightforward scenario of a direct link between the CLASS nodes
-        q = f'''
-            MATCH (from :CLASS {{name: $class_from}}) - [r :`{link_name}`] -> (to :CLASS {{name: $class_to}})
-            RETURN count(r) AS link_count
-            '''
-
-        result = cls.db.query(q, data_binding={"class_from": from_class, "class_to": to_class},
-                              single_cell="link_count")
-
-        if result > 0:
-            return True
-
-
-        # If no direct link between the Classes was found, check for an extra hop thu a "LINK" node
-        q = f'''
-            MATCH (from :CLASS {{name: $class_from}}) - [r :`{link_name}`] -> 
-                  (:LINK) - [:`{link_name}`] -> (to :CLASS {{name: $class_to}})
-            RETURN count(r) AS link_count
-            '''
-
-        result = cls.db.query(q, data_binding={"class_from": from_class, "class_to": to_class},
-                              single_cell="link_count")
-
-        if result > 0:
-            return True
-
-
-        # As a last resort, check whether both Classes aren't strict
+        # Check whether both Classes aren't strict
         if not cls.is_strict_class(from_class) and not cls.is_strict_class(to_class):
             return True     # "Letting things slide" because both end Classes are lax
 
 
-        return False    # We've exhausted all options
+        return cls.class_relationship_exists(from_class=from_class, to_class=to_class, rel_name=link_name)
 
 
 

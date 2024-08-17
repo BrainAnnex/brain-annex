@@ -53,7 +53,6 @@ def test_retrieve_full_path(db):
     NeoSchema.create_data_node(class_node="Directory", properties={"name": "images/Tahiti vacation"},
                                new_uri="dir-1")
 
-    NeoSchema.create_class_relationship(from_class="Images", to_class="Directory", rel_name="BA_stored_in")
 
     NeoSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
@@ -80,7 +79,6 @@ def test_lookup_media_file(db):
     NeoSchema.create_data_node(class_node="Directory", properties={"name": "images/Tahiti vacation"},
                                new_uri="dir-1")
 
-    NeoSchema.create_class_relationship(from_class="Images", to_class="Directory", rel_name="BA_stored_in")
 
     NeoSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
@@ -108,7 +106,6 @@ def test_get_full_filename(db):
     NeoSchema.create_data_node(class_node="Directory", properties={"name": "images/Tahiti vacation"},
                                new_uri="dir-1")
 
-    NeoSchema.create_class_relationship(from_class="Images", to_class="Directory", rel_name="BA_stored_in")
 
     NeoSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 

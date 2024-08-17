@@ -41,3 +41,4 @@ class Images:
         if not NeoSchema.class_name_exists("Directory"):
             NeoSchema.create_class_with_properties(name="Directory", strict=True,
                                                    properties=["name", "description"])
+            NeoSchema.create_class_relationship(from_class="Media", to_class="Directory", rel_name="BA_stored_in")
