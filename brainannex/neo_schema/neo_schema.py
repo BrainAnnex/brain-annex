@@ -1645,7 +1645,8 @@ class NeoSchema:
 
 
         allowed_props = {}
-        class_properties = cls.get_class_properties(class_node=class_internal_id)  # List of Properties registered with the Class
+        # Determine the list of Properties registered with the Class, or with any ancestral Class thru INSTANCE_OF relationships
+        class_properties = cls.get_class_properties(class_node=class_internal_id, include_ancestors=True)
 
         for requested_prop in requested_props.keys():
             # Check each of the requested properties

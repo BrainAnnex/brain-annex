@@ -74,7 +74,7 @@
 
 <br><br><br><br><br>
 
-<h2>Search the Database (EXPERIMENTAL!)</h2>
+<h2>Search the Database Nodes</h2>
 
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
@@ -97,7 +97,7 @@
         </tr>
         <tr>
             <td>Key Value</td><td><input type="text" size="50" v-model="key_value">
-            <span style="color: gray">Exact match</span></td>
+            <span style="color: gray">Contains</span></td>
         </tr>
         <tr>
             <td>ORDER BY</td><td><input type="text" size="50" v-model="order_by">
@@ -127,9 +127,13 @@
 
 <div style="border:1px solid #DDD; padding:10px">
 
-    <div v-for="(item, index) in result_array">
+    <p v-for="(item, index) in result_array.recordset">
         [[item]]
-    </div>
+    </p>
+
+    <p v-if="result_array.total_count" style="color:gray">
+        (Total number of items with the requested label: [[result_array.total_count]])
+    </p>
 
 </div>
 

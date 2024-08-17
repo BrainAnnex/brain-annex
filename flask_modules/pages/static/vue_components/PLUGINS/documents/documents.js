@@ -51,7 +51,7 @@ Vue.component('vue-plugin-d',
                         <p v-if="current_metadata.authors" style="margin-bottom:0; color:#555">{{current_metadata.authors}}</p>
                         <p v-if="current_metadata.comments" style="margin-bottom:0; color:#555">{{current_metadata.comments}}</p>
                         <p v-if="current_metadata.rating || current_metadata.read" style="margin-bottom:0; color:#555">
-                            {{current_metadata.rating}} &#9733;
+                            <span v-if="current_metadata.rating">{{current_metadata.rating}} &#9733;</span>
                             <span style="margin-left:45px">{{current_metadata.read}}</span>
                         </p>
                     </div>

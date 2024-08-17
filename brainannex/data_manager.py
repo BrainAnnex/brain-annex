@@ -8,6 +8,7 @@ from brainannex.full_text_indexing import FullTextIndexing
 from brainannex.py_graph_visual import PyGraphVisual
 from neoaccess import NeoAccess
 from neoaccess.cypher_utils import CypherUtils
+import brainannex.PLUGINS.plugin_support as plugin_support
 import neo4j.time                       # TODO: move to NeoAccess
 import re                               # For REGEX
 import pandas as pd
@@ -530,39 +531,33 @@ class DataManager:
     #######################     CONTENT-ITEM RELATED      #######################
 
     @classmethod
-    def get_text_media_content(cls, uri :str, schema_code, public_required = False) -> str:
+    def get_text_media_content(cls, uri :str, public_required = False) -> str:
         """
         Fetch and return the contents of a media item stored on a local file,
         optionally requiring it to be marked as "public".
-        In case of error, raise an Exception
 
         :param uri:             A string identifying the desired Content Item, which ought to be text media
-        :param schema_code:     TODO: maybe phase out
-        :param public_required: If True, the Content Item is returned only if has an the attribute "public: true"
+        :param public_required: If True, the Content Item is returned
+                                    only if its database node has an the attribute "public: true"
 
         :return:                A string with the HTML text of the requested note;
                                     or an Exception in case of failure
                                     (e.g., if public_required is True and the item isn't public)
-
         """
-        properties = {"uri": uri, "schema_code": schema_code}
+        properties = {"uri": uri}
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
-        match = cls.db.match(labels="BA", properties=properties)
+        match = cls.db.match(labels="BA", properties=properties)    # TODO: switch to NeoSchema layer, also using class_name
         content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
         if content_node is None:    # Metadata not found
-            raise Exception(f"The metadata for the Content Item (uri: `{uri}`) wasn't found, or the items is not publicly accessible")
+            raise Exception(f"The metadata for the Content Item (uri: `{uri}`) wasn't found, or the item is not publicly accessible")
 
-        basename = content_node['basename']
-        suffix = content_node['suffix']
-        filename = f"{basename}.{suffix}"
-
-        folder = MediaManager.lookup_file_path(schema_code=content_node['schema_code'])     # Includes the final "/"
+        full_filename = MediaManager.get_full_filename(uri)
 
         try:
-            file_contents = MediaManager.get_from_text_file(folder, filename, encoding="utf8")
+            file_contents = MediaManager.get_from_text_file(filename=full_filename, encoding="utf8")
             return file_contents
         except Exception as ex:
             return f"I/O failure while reading in contents of Item with URI `{uri}`. {ex}"     # File I/O failed
@@ -709,7 +704,7 @@ class DataManager:
         '''
 
 
-        if MediaManager.is_media_class(class_name):
+        if plugin_support.is_media_class(class_name):
             # If the Content Item is a Media Item, do some special handling
             MediaManager.before_update_content(uri=uri, set_dict=update_data, class_name=class_name)
 
@@ -838,19 +833,19 @@ class DataManager:
 
 
         # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
-        #       (TODO: try to infer that from the Schema)
+        #       (TODO: try to infer that from the Schema, or use plugin_support)
         if schema_code in ["n", "i", "d"]:
             # If there's media involved, delete the media, too
-            record = cls.lookup_media_record(uri)
-            if record is not None:
-                MediaManager.delete_media_file(uri=uri, basename=record["basename"], suffix=record["suffix"])
+            #record = cls.lookup_media_record(uri)
+            #if record is not None:
+            MediaManager.delete_media_file(uri=uri)
 
         if schema_code == "i":
             # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
-            record = cls.lookup_media_record(uri)
-            if record is not None:
-                MediaManager.delete_media_file(uri=uri, basename=record["basename"], suffix=record["suffix"], thumb=True)
+            #record = cls.lookup_media_record(uri)
+            #if record is not None:
+            MediaManager.delete_media_file(uri=uri, thumb=True)
 
         if schema_code == "n":
             Notes.delete_content_before(uri)
@@ -1073,34 +1068,6 @@ class DataManager:
             f"Only {number_moved} of the {number_items} requested " \
             f"Content Item(s) could be successfully moved across Categories"
 
-
-
-
-    #####################################################################################################
-
-    '''                                       ~  MEDIA-RELATED    ~                                   '''
-
-    def ________MEDIA_RELATED________(DIVIDER):
-        pass        # Used to get a better structure view in IDEs
-    #####################################################################################################
-
-    @classmethod
-    def lookup_media_record(cls, uri: str) -> Union[dict, None]:
-        """
-        Attempt to retrieve the metadata for the media file attached to the specified Content Item
-        TODO: move to MediaManager class
-
-        :param uri: An integer with the URI of the Content Item
-        :return:        If found, return a dict with the record; otherwise, return None
-        """
-        record = cls.db.get_record_by_primary_key("BA", "uri", uri)
-        if record is None:
-            return None
-
-        if ("basename" not in record) or ("suffix" not in record):
-            return None
-
-        return record
 
 
 
@@ -1350,7 +1317,8 @@ class DataManager:
                                                     if provided, key_value must be passed, too
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
                                                     Note: no requirement for the key to be primary
-                                "clause"        MUST use "n" as dummy name.
+                                "clause"        TODO: NOT CURRENTLY IMPLEMENTED
+                                                    MUST use "n" as dummy name.
                                                     EXAMPLE: "n.name CONTAINS 'art'"
                                 "order_by"      Field name, or comma-separated list;
                                                     each name may optionally be followed by "DESC"
@@ -1412,13 +1380,22 @@ class DataManager:
 
         match_structure = CypherUtils.process_match_structure(match, caller_method="get_nodes_by_filter")
         # Unpack needed values from the match structure
-        (node, where, data_binding, dummy_node_name) = match_structure.unpack_match()
+        (node, where, data_binding, dummy_node_name) = match_structure.unpack_match()   # The "node" and "where" part not currently used
+
+        labels_str = CypherUtils.prepare_labels(label)      # EXAMPLE: ":`my label`"
+        node = f"({dummy_node_name} {labels_str})"          # EXAMPLE: "(n :`my label`)"
 
         q = f'''
             MATCH {node} 
-            {CypherUtils.prepare_where(where)} 
+            '''
+
+        if key_name:
+            q += f"WHERE {dummy_node_name}.{key_name} CONTAINS $key_value"
+
+        q += f'''   
             RETURN {dummy_node_name} 
             '''
+            # Formerly using {CypherUtils.prepare_where(where)} , which won't allow for "CONTAINS"
 
         if order_by:
             revised_order_by = cls._process_order_by(s=order_by, dummy_node_name=dummy_node_name)
@@ -1430,7 +1407,8 @@ class DataManager:
         if limit:
             q += f"LIMIT {limit}"
 
-        #cls.db.debug_query_print(q, data_binding)
+        data_binding["key_value"] = key_value
+        cls.db.debug_query_print(q, data_binding)
 
         result = cls.db.query(q, data_binding=data_binding)
 

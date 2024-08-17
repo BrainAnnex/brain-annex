@@ -1216,7 +1216,7 @@ class Categories:
 
         result = cls.db.query(q, {"category_id": category_uri})  # If nothing found, this will be [{'POS_LIST': []}]
         pos_list = result[0].get("POS_LIST")    # A subset of the first sorted "pos" values
-        print("pos_list: ", pos_list)
+        #print("pos_list: ", pos_list)
 
         if pos_list == []:
             # The Category is empty (or doesn't exist)
@@ -1224,21 +1224,21 @@ class Categories:
 
         if move_after_n == 0:
             # Move to top
-            print("Moving to the top")
+            #print("Moving to the top")
             top_pos = pos_list[0]
             new_pos = top_pos - cls.DELTA_POS
         elif move_after_n >= len(pos_list):
             # Move to bottom
-            print("Moving to the bottom")
+            #print("Moving to the bottom")
             top_pos = pos_list[-1]      # The last element in the list
             new_pos = top_pos + cls.DELTA_POS
         else:
             pos_above = pos_list[move_after_n - 1]  # The "pos" value of the Item just above the insertion point
             pos_below = pos_list[move_after_n]      # The "pos" value of the Item just below
-            print(f"pos_above: {pos_above} | pos_below: {pos_below}")
+            #print(f"pos_above: {pos_above} | pos_below: {pos_below}")
             if pos_below == pos_above + 1:
                 # There's no room; shift everything that is past that position, by a count of DELTA_POS
-                print(f"********* RELOCATING ITEMS (skipping the first {move_after_n}) ***********")
+                #print(f"********* RELOCATING ITEMS (skipping the first {move_after_n}) ***********")
                 cls.relocate_positions(category_uri, n_to_skip=move_after_n, pos_shift=cls.DELTA_POS)
                 new_pos = pos_above + int(cls.DELTA_POS/2)			# This will be now be the empty halfway point
             else:
@@ -1251,11 +1251,11 @@ class Categories:
             SET r.pos = {new_pos}
             '''
 
-        print("q: ", q)
+        #print("q: ", q)
 
         result = cls.db.update_query(q, {"category_id": category_uri, "uri": uri})
         number_props_set = result.get('properties_set')
-        print("number_props_set: ", number_props_set)
+        #print("number_props_set: ", number_props_set)
         if number_props_set != 1:
             raise Exception(f"Content Item (id {uri}) not found in Category (id {category_uri}), or could not be moved")
 

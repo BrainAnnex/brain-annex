@@ -8,6 +8,27 @@ class Notes:
     Plugin-provided handlers for "notes"  (HTML-formatted text)
     """
 
+
+    @classmethod
+    def default_folder(cls):
+        """
+        Specify the desired name for the default folder to contain "notes" media
+        """
+        return "notes"
+
+
+
+    @classmethod
+    def initialize_schema(cls) -> None:
+        """
+        Initialize the Schema needed by this plugin
+
+        :return:    None
+        """
+        pass    # TODO: follow the example in Images
+
+
+
     @classmethod
     def delete_content_before(cls, uri :str) -> None:
         """
@@ -55,7 +76,7 @@ class Notes:
         print(f"Creating file named `{filename}`")
         #print("    File contents:")
         #print(body)
-        MediaManager.save_into_file(body, filename)
+        MediaManager.save_into_file(body, filename, class_name="Notes") #TODO: turn to singular
 
         # Introduce new attributes, "basename" and "suffix", to be stored in the database
         data_binding["basename"] = basename
@@ -94,12 +115,11 @@ class Notes:
                             "for the `basename` key")
 
         # Overwrite the HTML file with the body of the notes
-        #basename = f"notes-{uri}"      # Old hack!
         filename = basename + ".htm"
         print(f"Overwriting file named `{filename}`")
         #print("    File contents:")
         #print(body)
-        MediaManager.save_into_file(body, filename)
+        MediaManager.save_into_file(body, filename, class_name="Notes")     # TODO: turn to singular
 
         # Ditch the "body" attribute - which is not to be stored in the database
         #del data_binding["body"]

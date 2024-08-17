@@ -8,7 +8,7 @@ import pytest
 import pandas as pd
 from neoaccess import NeoAccess
 from brainannex.neo_schema.neo_schema import NeoSchema, SchemaCache
-from tests.test_neoschema import create_sample_schema_1, create_sample_schema_2
+from test_neoschema import create_sample_schema_1, create_sample_schema_2
 from brainannex.utilities.comparisons import *
 
 

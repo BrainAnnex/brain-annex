@@ -7,6 +7,7 @@ from brainannex.node_explorer import NodeExplorer
 from brainannex.full_text_indexing import FullTextIndexing
 from brainannex.user_manager import UserManager
 from flask_modules.home.login_manager import FlaskUserManagement
+import brainannex.PLUGINS.plugin_support as plugin_support
 
 
 
@@ -36,7 +37,7 @@ class InitializeBrainAnnex:
 
 
     @classmethod
-    def set_folders(cls, media_folder, log_folder) -> None:
+    def set_folders(cls, media_folder :str, log_folder :str) -> None:
         """
         Initialize various static classes that need folder locations from the
         configuration file
@@ -48,4 +49,6 @@ class InitializeBrainAnnex:
         """
         DataManager.LOG_FOLDER = log_folder
 
-        MediaManager.MEDIA_FOLDER = media_folder
+        MediaManager.set_media_folder(media_folder)
+
+        MediaManager.set_default_folders(plugin_support.all_default_folders())

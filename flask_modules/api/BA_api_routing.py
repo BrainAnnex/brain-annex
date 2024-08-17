@@ -11,6 +11,7 @@ from brainannex.media_manager import MediaManager, ImageProcessing
 from brainannex.neo_schema.neo_schema import NeoSchema
 from brainannex.categories import Categories
 from brainannex.PLUGINS.documents import Documents
+import brainannex.PLUGINS.plugin_support as plugin_support
 from brainannex.upload_helper import UploadHelper
 import brainannex.utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
@@ -801,7 +802,7 @@ class ApiRouting:
                             and an "error_message" key with details
             """
             try:
-                payload = DataManager.get_text_media_content(uri, "n")
+                payload = DataManager.get_text_media_content(uri)
                 #print(f"get_text_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
                 response_data = {"status": "ok", "payload": payload}                     # Successful termination
             except Exception as ex:
@@ -847,7 +848,7 @@ class ApiRouting:
         @login_required
         def serve_media(uri, th=None):
             """
-            Retrieve and return the contents of a data media item (for now, just Images or Documents.)
+            Retrieve and return the contents of a data media item (for now, just Images or Documents).
             If ANY value is specified for the argument "th", then the thumbnail version is returned (only
                 applicable to images)
 
@@ -861,7 +862,7 @@ class ApiRouting:
                             together with an error message
             """
             try:
-                (suffix, content) = MediaManager.get_binary_content(uri, th)
+                (suffix, content) = MediaManager.get_binary_content(uri, th=th)
                 response = make_response(content)
                 # Set the MIME type
                 mime_type = MediaManager.get_mime_type(suffix)
@@ -1879,7 +1880,7 @@ class ApiRouting:
             src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
 
             if post_data["upload_folder"] == "":    # If not explicitly passed
-                dest_folder = MediaManager.lookup_file_path(class_name=class_name)
+                dest_folder = MediaManager.default_file_path(class_name=class_name)
             else:
                 dest_folder = cls.config_pars["MEDIA_FOLDER"] + post_data["upload_folder"] + "/"
 
@@ -1935,7 +1936,7 @@ class ApiRouting:
                                                         item_class_name=class_name, item_properties=properties)
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
-                if class_name == "Document":
+                if class_name == "Document":    # TODO: move to plugin_support.py
                     Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
                                                           upload_folder=post_data["upload_folder"])
 
