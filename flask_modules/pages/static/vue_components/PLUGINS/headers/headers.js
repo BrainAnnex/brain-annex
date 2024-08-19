@@ -1,4 +1,5 @@
 // TODO: the special handling for "closing" Headers
+// TODO: maybe Headers should be regarded as "Page Elements", rather than "Content Items"
 
 /*  Vue component to display and edit Content Items of type "h" (Headers)
  */
@@ -33,15 +34,20 @@ Vue.component('vue-plugin-h',
 
             <span v-if="status_message!='' && !editing_mode">Status : {{status_message}}</span>
 
-            <!--  STANDARD CONTROLS
-                  (all signals from them get relayed to the parent of this component, but some get handled here)
-                  Intercept the following signal from child component:
-                        v-on:edit-content-item
+            <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                  EXCEPT for the "tag" control
+                  Signals from the Vue child component "vue-controls", below,
+                  get relayed to the parent of this component,
+                  but some get intercepted and handled here, namely:
+
+                          v-on:edit-content-item
             -->
-            <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
-                          v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item">
-            </vue-controls>
+                <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                              v-bind:controls_to_hide="['tag']"
+                              v-on="$listeners"
+                              v-on:edit-content-item="edit_content_item">
+                </vue-controls>
+            <!--  End of Standard Controls -->
 
             \n</div>\n		<!-- End of outer container box -->
             `,

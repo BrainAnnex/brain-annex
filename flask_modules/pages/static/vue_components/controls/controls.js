@@ -1,5 +1,6 @@
 /*  Standard controls for a Content Item to edit, move, etc,
-    If the 'edit_mode' prop is true, this component generates a DIV element with a row of controls;
+    If the 'edit_mode' prop is true, this component generates
+        a DIV element with a row of controls;
         the DIV is an inline-block, so that the parent component
         may easily add extra controls at the start and/or end of its standard row.
     If the 'edit_mode' prop is false, nothing is generated
@@ -7,11 +8,22 @@
 
 Vue.component('vue-controls',
     {
-        props: ['edit_mode', 'index', 'item_count'],
+        //props: ['edit_mode', 'index', 'item_count'],
+        props: {
+            edit_mode:  Boolean,
+            index:      Number,
+            item_count: Number,
+            controls_to_hide: {
+                type: Array,
+                default: () => []
+            }
+        },
         /*
             edit_mode:  A boolean indicating whether in editing mode
             index:      The zero-based position of the Content Item on the page
             item_count: The total number of Content Items on the page
+            controls_to_hide:  [OPTIONAL] Array of names of standard controls to omit;
+                                    currently supported are 'edit' and 'tag'
 
             TODO: maybe add a flag indicating whether to exclude the edit_tags control (not suitable for headers),
                   more generally, differentiate between controls for "Content Items" and controls for "Page Elements"
@@ -41,13 +53,13 @@ Vue.component('vue-controls',
                 <img @click="move_down" src="/BA/pages/static/graphics/down_arrow_16_1303877.png"
                      class="control" title="Move DOWN" alt="Move DOWN">
 
-                <img @click="edit_tags" src="/BA/pages/static/graphics/tag_16.png"
+                <img v-show="!controls_to_hide.includes('tag')" @click="edit_tags" src="/BA/pages/static/graphics/tag_16.png"
                      class="control" title="Edit TAGS/Metadata (TBA)" alt="Edit TAGS/Metadata (TBA)">
 
                 <img @click="add_content_below" src="/BA/pages/static/graphics/plusCircle3_16_183316.png"
                      class="control" title="Add new item below" alt="Add new item below">
 
-                <img @click="edit" src="/BA/pages/static/graphics/edit_16_pencil2.png"
+                <img v-show="!controls_to_hide.includes('edit')" @click="edit" src="/BA/pages/static/graphics/edit_16_pencil2.png"
                      class="control" title="EDIT" alt="EDIT">
 
             </div>		<!-- End of outer container box -->

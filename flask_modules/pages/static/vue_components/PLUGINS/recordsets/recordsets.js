@@ -26,12 +26,15 @@ Vue.component('vue-plugin-rs',
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
                 <span style="font-weight:bold; color:gray">{{item_data.class}}</span>
-                <table class='rs-main'>
+                <table class='rs-main' style='margin-top:0'>
 
                     <!-- Header row  -->
                     <tr>
                         <th v-for="field_name in headers">
                             {{field_name}}
+                        </th>
+                        <th v-show="edit_mode">
+                            EDIT
                         </th>
                     </tr>
 
@@ -41,6 +44,10 @@ Vue.component('vue-plugin-rs',
                     <tr v-for="record in recordset">
                         <td v-for="field_name in headers">
                             <span v-html="render_cell(record[field_name])"></span>
+                        </td>
+                        <td v-show="edit_mode" style="background-color: #DDD">
+                            <img src="/BA/pages/static/graphics/edit_16_pencil2.png"
+                                 class="control" title="EDIT" alt="EDIT">
                         </td>
                     </tr>
 
@@ -52,6 +59,19 @@ Vue.component('vue-plugin-rs',
                 <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue; font-size:16px"> > </span>
                 <span v-if="total_count" style="margin-left: 60px; color: gray">{{recordset.length}} records of total {{total_count}} </span>
 
+
+                <div v-if="edit_mode" style="border: 1px solid gray; background-color: white; padding: 5px">
+                    <b>RECORDSET definition</b><br>
+                    <p style="margin-left: 10px">
+                        Class: {{item_data.class}}<br>
+                        Order by: {{item_data.order_by}}<br>
+                        Number shown per page: {{item_data.n_group}}
+                        <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 50px"
+                                           class="control" title="EDIT" alt="EDIT">
+                    </p>
+                </div>
+
+
                 <!-- Status info -->
                 <p style="padding-top: 0; margin-top: 0; text-align: right">
                     <span v-if="waiting" class="waiting">Contacting the server...</span>
@@ -59,7 +79,8 @@ Vue.component('vue-plugin-rs',
                 </p>
 
 
-                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls),
+                      EXCEPT for the "edit" control
                       Signals from the Vue child component "vue-controls", below,
                       get relayed to the parent of this component,
                       but some get intercepted and handled here, namely:
@@ -69,6 +90,7 @@ Vue.component('vue-plugin-rs',
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
                     <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                                  v-bind:controls_to_hide="['edit']"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item">
                     </vue-controls>
