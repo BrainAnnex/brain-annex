@@ -77,13 +77,14 @@ Vue.component('vue-plugin-d',
                     </div>
 
 
-                    <!-- CONTROLS to edit the document metadata -->
+                    <!-- CONTROLS to edit the document metadata TODO: move this P to inside the DIV above -->
                     <p v-show="edit_metadata" style="text-align: right">
                         <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                         <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
                         <br>
                         <span v-if="waiting" class="waiting">Performing the update</span>
                     </p>
+
                     <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
 
                 </div>		<!-- End of Document container -->

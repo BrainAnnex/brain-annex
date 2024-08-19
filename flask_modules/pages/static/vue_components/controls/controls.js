@@ -1,4 +1,4 @@
-/*  Standard controls for a Content Item to edit, move, etc,
+/*  Standard controls for a Content Item to edit, move, delete, etc,
     If the 'edit_mode' prop is true, this component generates
         a DIV element with a row of controls;
         the DIV is an inline-block, so that the parent component
@@ -8,26 +8,17 @@
 
 Vue.component('vue-controls',
     {
-        //props: ['edit_mode', 'index', 'item_count'],
         props: {
-            edit_mode:  Boolean,
-            index:      Number,
-            item_count: Number,
-            controls_to_hide: {
-                type: Array,
+            edit_mode:  Boolean,        // Indicating whether in editing mode
+            index:      Number,         // The zero-based position of the Content Item on the page
+            item_count: Number,         // The total number of Content Items on the page
+            controls_to_hide: {         // [OPTIONAL] Array of names of standard controls to omit;
+                type: Array,            //            currently supported are 'edit' and 'tag'
                 default: () => []
             }
         },
-        /*
-            edit_mode:  A boolean indicating whether in editing mode
-            index:      The zero-based position of the Content Item on the page
-            item_count: The total number of Content Items on the page
-            controls_to_hide:  [OPTIONAL] Array of names of standard controls to omit;
-                                    currently supported are 'edit' and 'tag'
 
-            TODO: maybe add a flag indicating whether to exclude the edit_tags control (not suitable for headers),
-                  more generally, differentiate between controls for "Content Items" and controls for "Page Elements"
-         */
+
 
         template: `
             <div v-if="edit_mode"

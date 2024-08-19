@@ -25,7 +25,7 @@ Vue.component('vue-plugin-rs',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <span style="font-weight:bold; color:gray">{{item_data.class}}</span>
+                <span style="font-weight:bold; color:gray">{{recordset_class}}</span>
                 <table class='rs-main' style='margin-top:0'>
 
                     <!-- Header row  -->
@@ -45,9 +45,9 @@ Vue.component('vue-plugin-rs',
                         <td v-for="field_name in headers">
                             <span v-html="render_cell(record[field_name])"></span>
                         </td>
-                        <td v-show="edit_mode" style="background-color: #DDD">
+                        <td v-show="edit_mode" style="background-color: #f2f2f2">
                             <img src="/BA/pages/static/graphics/edit_16_pencil2.png"
-                                 class="control" title="EDIT" alt="EDIT">
+                                 @click="edit_record" class="control" title="EDIT" alt="EDIT">
                         </td>
                     </tr>
 
@@ -59,40 +59,65 @@ Vue.component('vue-plugin-rs',
                 <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue; font-size:16px"> > </span>
                 <span v-if="total_count" style="margin-left: 60px; color: gray">{{recordset.length}} records of total {{total_count}} </span>
 
-
-                <div v-if="edit_mode" style="border: 1px solid gray; background-color: white; padding: 5px">
-                    <b>RECORDSET definition</b><br>
-                    <p style="margin-left: 10px">
-                        Class: {{item_data.class}}<br>
-                        Order by: {{item_data.order_by}}<br>
-                        Number shown per page: {{item_data.n_group}}
-                        <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 50px"
-                                           class="control" title="EDIT" alt="EDIT">
-                    </p>
-                </div>
-
-
                 <!-- Status info -->
-                <p style="padding-top: 0; margin-top: 0; text-align: right">
+                <p style="float: right; display: inline-block; padding-top: 0; margin-top: 0; text-align: right">
                     <span v-if="waiting" class="waiting">Contacting the server...</span>
                     <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
                 </p>
 
 
+                <!-- RECORDSET EDITOR : VIEWING VERSION -->
+                <div v-if="edit_mode && !recordset_editing"
+                     style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
+                    <b>RECORDSET definition</b><br>
+                    <p style="margin-left: 10px">
+                        Class: {{item_data.class}}<br>
+                        Order by: {{item_data.order_by}}<br>
+                        Number records shown per page: {{item_data.n_group}}
+                        <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 60px"
+                             @click="edit_recordset"  class="control" title="EDIT" alt="EDIT">
+                    </p>
+                </div>
+
+
+                <!-- RECORDSET EDITOR : EDITING MODE -->
+                <div v-if="recordset_editing" style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
+                    <b>RECORDSET definition</b><br>
+                    <table>
+                        <tr>
+                            <td style="text-align: right">Class</td>
+                            <td style="text-align: right"><input v-model="recordset_class" size="35" style="font-weight: bold"></td>
+                            <td rowspan=3 style="vertical-align: bottom; padding-left: 50px">
+                                <span @click="cancel_recordset_edit" class="clickable-icon" style="color:blue">CANCEL</span>
+                                <button @click="save_recordset_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
+                                <br>
+                                <span v-if="waiting" class="waiting">Performing the update</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: right">Order by</td>
+                            <td><input v-model="recordset_order_by" size="40"></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: right">Number records shown per page</td>
+                            <td><input v-model="records_per_page" size="4"></td>
+                        </tr>
+                    </table>
+                </div>
+
+
                 <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls),
                       EXCEPT for the "edit" control
                       Signals from the Vue child component "vue-controls", below,
-                      get relayed to the parent of this component,
-                      but some get intercepted and handled here, namely:
-
-                              v-on:edit-content-item
+                      get relayed to the parent of this component;
+                      none get intercepted and handled here
                 -->
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
                     <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                                   v-bind:controls_to_hide="['edit']"
                                   v-on="$listeners"
-                                  v-on:edit-content-item="edit_content_item">
+                    >
                     </vue-controls>
 
                     <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
@@ -111,10 +136,15 @@ Vue.component('vue-plugin-rs',
 
                 recordset: [],         // This will get loaded by querying the server when the page loads
 
+                recordset_class: this.item_data.class,
+                recordset_order_by: this.item_data.order_by,
+
                 current_page: 1,
                 records_per_page: this.item_data.n_group,
 
                 total_count: null,      // Size of the entire (un-filtered) recordset
+
+                recordset_editing: false,  // If true, the definition of the recordset goes into editing mode
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -145,12 +175,29 @@ Vue.component('vue-plugin-rs',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
-            edit_content_item()
-            // Enable the recordset edit mode
+            edit_recordset()
             {
-                console.log(`Recordset component received signal to edit document`);
-                alert("Editing recordsets not yet implemented, sorry!");
-                //this.edit_metadata = true;
+                console.log(`Editing entire recordset`);
+                this.recordset_editing = true;
+            },
+
+            cancel_recordset_edit()
+            {
+                // TODO: restore the values to their original state
+                this.recordset_editing = false;
+            },
+
+            save_recordset_edit()
+            {
+                alert("NOT YET IMPLEMENTED, SORRY!");
+            },
+
+
+
+            edit_record()
+            {
+                //console.log(`Editing individual record in recordset`);
+                alert("Editing individual records not yet implemented, sorry!");
             },
 
 
