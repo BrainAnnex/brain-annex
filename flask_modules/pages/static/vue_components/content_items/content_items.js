@@ -78,9 +78,11 @@ Vue.component('vue-content-items',
                      class="control" style="float: right" title="Close" alt="Close">
 
                 <span style="margin-right:10px">Add new:</span>
+                <!-- TODO: automate these choices, based on Schema.  Merge with similar box in page_viewer.htm -->
                 <button @click="add_new_item_below('h')" style="margin-right:10px">Header</button>
                 <button @click="add_new_item_below('n')" style="margin-right:10px">Note</button>
                 <button @click="add_new_item_below('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
+                <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
                 <button @click="add_new_item_below('cd')" style="margin-right:10px">Code Documentation</button>
 
                 <!-- All leaf Classes that are instances of "Records" -->
@@ -355,8 +357,8 @@ Vue.component('vue-content-items',
              */
             {
                 console.log(`In 'vue-content-items' component, add_new_item_below().`);
-                console.log(`    Request to insert new Content Item below Item with ID ${this.item.uri}`);
-                console.log(`    New item - schema_code: ${schema_code}, class_name (optional): ${class_name}`);
+                console.log(`    Request to insert new Content Item below Item with URI ${this.item.uri}`);
+                console.log(`    New item - schema_code:' ${schema_code}', class_name (optional): '${class_name}'`);
                 console.log("    `vue-content-items` component is sending 'insert-new-item' signal to its parent");
                 // This signal will be handled in the root component
                 this.$emit('insert-new-item', {

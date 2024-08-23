@@ -119,11 +119,11 @@ Vue.component('vue-plugin-d',
             return {
                 edit_metadata: false,
 
-                // This object contains the values bound to the editing field, initially cloned from the prop data;
+                // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
                 current_metadata: Object.assign({}, this.item_data),    // Clone from the original data passed to this component
 
-                // Clone, used to restore the data in case of a Cancel or failed save
+                // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
 
 

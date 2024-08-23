@@ -168,6 +168,7 @@ class ServerCommunication
 
 
         if (json_encode_send) {
+            ServerCommunication.sanitize_data_object(data_obj);    // TODO: unclear if really necessary; JSON.stringify() seems to already ditch "undeclared" values
             var data_str = JSON.stringify(data_obj);
             console.log(`contact_server_NEW(): the data object to send is being converted to JSON as '${data_str}'`);
             data_str = "json=" + data_str;      // Start preparing a query string for the URL
@@ -396,6 +397,22 @@ class ServerCommunication
 
 
 
+    static sanitize_data_object(data_object)
+    /*  Drop any undefined or NaN values from the given object literal
+     */
+    {
+        var data_str = "";      // The string version of the object
+        var k, val;
+
+        for (k in data_object) {    // Loop thru the keys
+            val = data_object[k];      // Get the corresponding value
+
+            if (val === undefined  ||  Number.isNaN(val))
+                delete data_object[k];      // Ditch the bad values
+        }
+    }
+
+
     static parse_data_object(data_object)
     /*  Turn an object literal into a string, after transforming its attribute values with encodeURIComponent()
 
@@ -413,20 +430,20 @@ class ServerCommunication
         TODO: this version is for both POST and GET; it will replace parse_POST_object()
      */
     {
-        var data_str = "";
+        var data_str = "";      // The string version of the object
         var k, val;
 
         for (k in data_object) {    // Loop thru the keys
             val = data_object[k];      // Get the corresponding value
 
-            if (val === undefined)
-                continue;           // Completely drop any key/value pair, if the value is undefined
+            if (val === undefined  ||  Number.isNaN(val))
+                continue;           // Completely drop any key/value pair, if the value is undefined or a NaN
 
-            //console.log(`    key: ${k}  |  value: ${val} `);
+            //console.log(`    key: ${k}  |  value: ${val}   |  type of value: '${typeof val}'`);
 
             data_str += k + "=";
 
-            if ((val != "") && (typeof val == "string"))
+            if ((typeof val == "string")  &&  (val != ""))
                 data_str += encodeURIComponent(val);    // Safe-encode the value
             else
                 data_str += val;                        // Pass thru the value undisturbed

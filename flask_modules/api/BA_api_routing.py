@@ -1669,6 +1669,11 @@ class ApiRouting:
                                 each name may optionally be followed by "DESC"
                 skip        The number of initial entries (in the context of specified order) to skip
                 limit       The max number of entries to return
+
+            RETURNED JSON PAYLOAD:
+                recordset:  A list of dicts with the filtered data
+                total_count:The total number of nodes in the database with the given label;
+                                if no label was provided, None
             """
             # Extract the GET values
             get_data = request.args     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])

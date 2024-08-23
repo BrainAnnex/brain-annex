@@ -53,11 +53,14 @@ Vue.component('vue-plugin-rs',
 
                 </table>
 
-                <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
-                <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
-                <span style="margin-left:20px; margin-right:20px">Page <b>{{current_page}}</b></span>
-                <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue; font-size:16px"> > </span>
-                <span v-if="total_count" style="margin-left: 60px; color: gray">{{recordset.length}} records of total {{total_count}} </span>
+                <!-- Recordset navigation (hidden if newly-created recordset) -->
+                <template v-if="recordset_class">
+                    <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
+                    <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
+                    <span style="margin-left:20px; margin-right:20px">Page <b>{{current_page}}</b></span>
+                    <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue; font-size:16px"> > </span>
+                    <span v-if="total_count" style="margin-left: 60px; color: gray">{{recordset.length}} records of total {{total_count}} </span>
+                </template>
 
                 <!-- Status info -->
                 <p style="float: right; display: inline-block; padding-top: 0; margin-top: 0; text-align: right">
@@ -144,7 +147,16 @@ Vue.component('vue-plugin-rs',
 
                 total_count: null,      // Size of the entire (un-filtered) recordset
 
+
                 recordset_editing: false,  // If true, the definition of the recordset goes into editing mode
+
+                // This object contains the values bound to the editing fields, initially cloned from the prop data;
+                //      it'll change in the course of the edit-in-progress
+                current_metadata: Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+
+                // Clone of the above object, used to restore the data in case of a Cancel or failed save
+                pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -165,9 +177,14 @@ Vue.component('vue-plugin-rs',
             console.log(`The Recordsets component has been mounted`);
             //alert(`The Recordsets component has been mounted`);
 
-            this.get_fields();      // Fetch from the server the field names for this recordset
+            if (this.item_data.uri < 0)  {  // A negative URI is a convention to indicate a just-created Recordset
+                this.edit_recordset();
+                return;
+            }
 
-            this.get_recordset(1);  // Fetch contents of an initial recordset from the server
+            this.get_fields();      // Fetch from the server the field names for this Recordset
+
+            this.get_recordset(1);  // Fetch contents of the 1st block of the Recordset from the server
         },
 
 

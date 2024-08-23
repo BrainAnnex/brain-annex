@@ -440,9 +440,11 @@
 
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
+    <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
     <button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
     <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
     <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
+    <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
     <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
 
     <!-- Show all leaf Classes that are direct instances of "Records" -->
@@ -647,10 +649,12 @@ new Vue({
                         // EXAMPLE: [{"uri":"709","name":"English"},{"uri":"708","name":"Italian"},{"uri":"514","name":"French"}]
 
         siblings_categories: {{siblings_categories | tojson}},
-                        // EXAMPLE: [{'name': 'French', 'uri': 514, 'schema_code': 'cat', 'internal_id': 522}]
+                        // EXAMPLE: [{'name': 'French', 'uri': '514', 'schema_code': 'cat', 'internal_id': 522}]
 
         all_categories: {{all_categories | tojson}},
-                        // EXAMPLE: [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
+                        // EXAMPLE: [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
+
+        next_new_item_uri: -1,          // Auto-increment negative values as URI placeholders for new Content Items being added: -1, -2, ...
 
 
         // For bulk operations
@@ -937,7 +941,7 @@ new Vue({
         {
             //console.log(item);
             console.log(`In root component, insert_new_item_after()`);
-            console.log(`    Insert after Item ID: ${item.uri}. New item - schema_code: ${schema_code}, class_name (optional): ${class_name}`);
+            console.log(`    Insert after Item URI ${item.uri}. New item - schema_code: '${schema_code}', class_name (optional): '${class_name}'`);
 
             this.create_new_item_after(item.uri, schema_code, class_name);
         },
@@ -955,11 +959,13 @@ new Vue({
                 return;
             }
 
-            // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
+            // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)     // If a class name was passed, store it
-                blank_record = {uri: -1, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
             else                // No class name was provided
-                blank_record = {uri: -1, schema_code: schema_code, insert_after: insert_after_id};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: insert_after_id};
+
+            this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
             // Insert the newly-created record after the specified existing element
             this.content_array.splice(insert_after_index + 1, 0, blank_record);
@@ -974,14 +980,15 @@ new Vue({
             phased in for other types
          */
         {
-            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: ${class_name}`);
+            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
 
-            // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
-            // TODO: replace the -1 with an autoincrement unique number for the page
+            // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)   // If a class name was passed, store it
-                blank_record = {"uri": -1, "schema_code": schema_code, "class_name": class_name, insert_after: "BOTTOM"};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: "BOTTOM"};
             else             // No class name was provided
-                blank_record = {"uri": -1, "schema_code": schema_code, insert_after: "BOTTOM"};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: "BOTTOM"};
+
+            this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
             this.content_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
 
