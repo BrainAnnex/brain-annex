@@ -89,7 +89,9 @@ Vue.component('vue-plugin-rs',
                     <table>
                         <tr>
                             <td style="text-align: right">Class</td>
-                            <td style="text-align: right"><input v-model="recordset_class" size="35" style="font-weight: bold"></td>
+                            <td style="text-align: right">
+                                <input v-model="current_metadata.class" size="35" style="font-weight: bold">
+                                </td>
                             <td rowspan=3 style="vertical-align: bottom; padding-left: 50px">
                                 <span @click="cancel_recordset_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                                 <button @click="save_recordset_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
@@ -99,11 +101,15 @@ Vue.component('vue-plugin-rs',
                         </tr>
                         <tr>
                             <td style="text-align: right">Order by</td>
-                            <td><input v-model="recordset_order_by" size="40"></td>
+                            <td>
+                                <input v-model="current_metadata.order_by" size="40">
+                                </td>
                         </tr>
                         <tr>
                             <td style="text-align: right">Number records shown per page</td>
-                            <td><input v-model="records_per_page" size="4"></td>
+                            <td>
+                                <input v-model="current_metadata.n_group" size="4">
+                                </td>
                         </tr>
                     </table>
                 </div>
@@ -199,14 +205,52 @@ Vue.component('vue-plugin-rs',
             },
 
             cancel_recordset_edit()
+            /*   Invoked when the user cancels the edit-in-progress for the recordset definition,
+                or when the save operation fails.
+                Revert any changes, and exit the edit mode
+             */
             {
-                // TODO: restore the values to their original state
-                this.recordset_editing = false;
+                // Restore the data to how it was prior to the aborted changes
+
+                this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone from pre_edit_metadata
+
+                this.recordset_editing = false;               // Exit the editing mode for the recordset definition
             },
 
             save_recordset_edit()
+            // Send a request to the server, to update or create this Recordset's definition
             {
-                alert("NOT YET IMPLEMENTED, SORRY!");
+                console.log(`In save_recordset_edit(), for document with URI '${this.item_data.uri}'`);
+
+                // Send the request to the server, using a POST
+                if (this.item_data.uri < 1)
+                    var url_server_api = "/BA/api/create_recordset_TO_BE_IMPLEMENTED";
+                else
+                    var url_server_api = "/BA/api/update_recordset_TO_BE_IMPLEMENTED";
+
+                const post_obj = {uri: this.item_data.uri,
+                                  class_name: this.current_metadata.class_name,
+                                  class: this.current_metadata.class,
+                                  n_group: this.current_metadata.n_group,
+                                  order_by: this.current_metadata.order_by
+                                  };
+                const my_var = null;        // Optional parameter to pass, if needed
+
+                console.log(`About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(post_obj);
+                return;     // TODO: temp
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: false,
+                             callback_fn: this.finish_save_recordset_edit,
+                             custom_data: my_var
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
             },
 
 
