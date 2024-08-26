@@ -226,7 +226,7 @@ Vue.component('vue-plugin-rs',
                 if (this.item_data.uri < 1)
                     var url_server_api = "/BA/api/create_recordset_TO_BE_IMPLEMENTED";
                 else
-                    var url_server_api = "/BA/api/update_recordset_TO_BE_IMPLEMENTED";
+                    var url_server_api = "/BA/api/update_content_item";
 
                 const post_obj = {uri: this.item_data.uri,
                                   class_name: this.current_metadata.class_name,
@@ -238,7 +238,7 @@ Vue.component('vue-plugin-rs',
 
                 console.log(`About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
-                return;     // TODO: temp
+
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server_NEW(url_server_api,
                             {method: "POST",
@@ -251,6 +251,27 @@ Vue.component('vue-plugin-rs',
                 this.waiting = true;        // Entering a waiting-for-server mode
                 this.error = false;         // Clear any error from the previous operation
                 this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_save_recordset_edit(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of save_recordset_edit(() upon getting a response from the server
+            {
+                console.log("Finalizing the save_recordset_edit() operation...");
+                console.log(`Custom data passed: ${custom_data}`);
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    this.pre_edit_metadata = Object.assign({}, this.current_metadata);  // Clone
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.recordset_editing = false; // Leave the editing mode
             },
 
 

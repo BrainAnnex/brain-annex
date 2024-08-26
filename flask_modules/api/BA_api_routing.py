@@ -191,10 +191,12 @@ class ApiRouting:
         :param json_decode:         If True, all values are expected to be JSON-encoded strings, which get decoded
         :return:                    A dict populated with the POST data
         """
-        #TODO: return a dict whose keys are the required fields,
-        #      PLUS an extra key, "OTHER_FIELDS" that contains a dict with the remaining field
+        #TODO: return a dict with 2 keys: one whose value is the required fields,
+        #      PLUS an extra key, "OTHER_FIELDS" that contains a dict with the remaining fields
         '''
-        return_dict = {"OTHER_FIELDS": other_fields}
+        other_fields = {}
+        required_fields = {}
+        return_dict = {"REQUIRED: required_fields, "OTHER": other_fields}
         for k, v in data_binding.items():
             if k in required_par_list:    # Exclude some special keys
                 return_dict[k] = v
@@ -982,15 +984,18 @@ class ApiRouting:
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
+
         @bp.route('/update_content_item', methods=['POST'])
         @login_required
         def update_content_item():
             """
             Update an existing Content Item.
             THIS IS A NEWER VERSION of the old endpoint '/update', and meant to eventually replace it.
+
             Required POST variables:
                 'uri', 'class_name'
             Optional  POST variables: whichever fields are being edited
+
             NOTE: the "class_name" field in the POST data is redundant
 
             EXAMPLES of invocation:

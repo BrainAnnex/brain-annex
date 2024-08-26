@@ -202,7 +202,6 @@ Vue.component('vue-plugin-d',
                 this.status_message = "";   // Clear any message from the previous operation
             },
 
-
             finish_save_edit(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of save_edit() upon getting a response from the server
             {
@@ -223,6 +222,7 @@ Vue.component('vue-plugin-d',
                 this.waiting = false;       // Make a note that the asynchronous operation has come to an end
                 this.edit_metadata = false; // Leave the editing mode
             },
+
 
 
             render_url(cell_data)
