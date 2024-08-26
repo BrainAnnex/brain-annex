@@ -636,13 +636,15 @@ class NeoSchema:
         """
         Raise an Exception if the passed argument is not a valid name for a database relationship
 
-        :param rel_name:
+        :param rel_name:A string with the relationship (link) name whose validity we want to check
         :return:        None
         """
         assert type(rel_name) == str, \
-            "assert_valid_relationship_name(): the relationship name must be a string"
+            f"assert_valid_relationship_name(): the relationship name must be a string " \
+            f"(the passed value was of type {type(rel_name)})"
+
         assert rel_name != "", \
-            "assert_valid_relationship_name(): the relationship name must be a non-empty string"
+            "assert_valid_relationship_name(): the relationship name cannot be an empty string"
 
 
 
@@ -1839,6 +1841,41 @@ class NeoSchema:
         else:
             raise Exception(f"data_node_exists(): more than 1 node was found "
                             f"with the same URI ({data_node}), which ought to be unique")
+
+
+
+    @classmethod
+    def data_link_exists(cls, node_1_id, node_2_id, rel_name :str, id_key=None) -> bool:
+        """
+        Return True if the specified Data Link exists, or False otherwise.
+
+        :return:            True if the specified Data Node link, or False otherwise
+        """
+        # TODO: Pytest
+        # TODO: also allow to optionally pass Class names for double-check
+
+        # Prepare the clause part of a Cypher query
+        if id_key is None:
+            clause = "WHERE id(dn1) = $data_node_1 AND id(dn2) = $data_node_2"
+        else:
+            clause = f"WHERE dn1.{id_key} = $data_node_1 AND dn2.{id_key} = $data_node_2"
+
+
+        # Prepare a Cypher query to locate the link count
+        q = f'''
+            MATCH (:CLASS)<-[:SCHEMA]-(dn1) -[r :`{rel_name}`]-> (dn2)-[:SCHEMA]->(:CLASS)
+            {clause} 
+            RETURN COUNT(r) AS number_found
+            '''
+        data_dict = {"data_node_1": node_1_id, "data_node_2": node_2_id}
+        #cls.db.debug_query_print(q, data_dict)
+
+        number_found = cls.db.query(q, data_dict, single_cell="number_found")
+
+        if number_found == 0:
+            return False
+        else:
+            return True
 
 
 
@@ -3500,6 +3537,7 @@ class NeoSchema:
 
     @classmethod
     def import_pandas_links(cls, df :pd.DataFrame,
+                            class_from :str, class_to :str,
                             col_from :str, col_to :str,
                             link_name :str,
                             col_link_props=None, name_map=None,
@@ -3509,6 +3547,8 @@ class NeoSchema:
         from the rows of a Pandas dataframe, as database links between the existing Data Nodes.
 
         :param df:          A Pandas Data Frame with the data RELATIONSHIP to import
+        :param class_from:  Name of the Class of the data nodes that the relationship originates from
+        :param class_to:    Name of the Class of the data nodes that the relationship ends into
         :param col_from:    Name of the Data Frame column identifying the data nodes from which the relationship starts
                                 (the values are expected to be foreign keys)
         :param col_to:      Name of the Data Frame column identifying the data nodes to which the relationship ends
@@ -3526,7 +3566,8 @@ class NeoSchema:
 
         :return:            A list of of the internal database ID's of the created links
         """
-        # TODO: verify that the requested relationship between the Classes is registered in the Schema
+        cls.assert_valid_relationship_name(link_name)
+        # TODO: verify that the requested relationship between the Classes is allowed by the Schema
 
         cols = list(df.columns)     # List of column names in the Pandas Data Frame
         assert col_from in cols, \
@@ -3536,6 +3577,7 @@ class NeoSchema:
         assert col_to in cols, \
             f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` " \
             f"requested in the argument 'col_to'"
+
 
         # Starting with the column names in the Pandas data frame,
         # determine the name of the field names in the database if they're mapped to a different name
@@ -3563,7 +3605,7 @@ class NeoSchema:
             # For each row, in the Pandas data frame: prepare a Cypher query to link up the 2 nodes
             # TODO: turn into a whole-dataset query
 
-            rel_cypher = ""
+            rel_cypher = ""     # Portion of the Cypher query for the setting (optional) properties on the new link
             data_dict = {"value_from": d[col_from], "value_to": d[col_to]}
             is_nan = False
             if link_prop:
@@ -3575,7 +3617,7 @@ class NeoSchema:
                     data_dict["rel_prop_value"] = rel_prop_value
 
             q = f'''
-                MATCH (from_node {{`{key_from}`: $value_from}}), (to_node {{`{key_to}`: $value_to}})
+                MATCH (from_node :`{class_from}` {{`{key_from}`: $value_from}}), (to_node :`{class_to}` {{`{key_to}`: $value_to}})
                 MERGE (from_node)-[r:`{link_name}` {rel_cypher}]->(to_node)
                 RETURN id(r) AS link_id
                 '''
