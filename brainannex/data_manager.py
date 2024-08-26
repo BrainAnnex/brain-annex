@@ -923,8 +923,8 @@ class DataManager:
         else:
             schema_uri = NeoSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
             print("schema_uri looked up as: ", schema_uri)
-            if schema_uri == "":
-                raise Exception(f"Missing Schema URI for schema_code `{schema_code}`")
+            #if schema_uri == "":
+                #raise Exception(f"Missing Schema URI for schema_code `{schema_code}`")
 
         class_name = post_data.get("class_name")
         if class_name:

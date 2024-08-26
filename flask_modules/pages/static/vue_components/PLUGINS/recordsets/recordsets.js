@@ -16,7 +16,7 @@ Vue.component('vue-plugin-rs',
                             TODO: take "pos" and "class_name" out of item_data !
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
-            index:          The zero-based position of this Document on the page
+            index:          The zero-based position of this Recordset on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names, in Schema order.
                                 EXAMPLE: ["French", "English", "notes"]
@@ -25,7 +25,7 @@ Vue.component('vue-plugin-rs',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <span style="font-weight:bold; color:gray">{{this.current_metadata.class}}</span>
+                <span style="font-weight:bold; color:gray">{{this.pre_edit_metadata.class}}</span>
                 <table class='rs-main' style='margin-top:0'>
 
                     <!-- Header row  -->
@@ -54,7 +54,7 @@ Vue.component('vue-plugin-rs',
                 </table>
 
                 <!-- Recordset navigation (hidden if newly-created recordset) -->
-                <template v-if="this.current_metadata.class">
+                <template v-if="this.pre_edit_metadata.class">
                     <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
                     <span style="margin-left:20px; margin-right:20px">Page <b>{{current_page}}</b></span>
@@ -200,6 +200,7 @@ Vue.component('vue-plugin-rs',
                 this.recordset_editing = true;
             },
 
+
             cancel_recordset_edit()
             /*   Invoked when the user cancels the edit-in-progress for the recordset definition,
                 or when the save operation fails.
@@ -213,23 +214,35 @@ Vue.component('vue-plugin-rs',
                 this.recordset_editing = false;               // Exit the editing mode for the recordset definition
             },
 
+
             save_recordset_edit()
             // Send a request to the server, to update or create this Recordset's definition
             {
-                console.log(`In save_recordset_edit(), for document with URI '${this.item_data.uri}'`);
+                console.log(`In save_recordset_edit(), for document with URI '${this.current_metadata.uri}'`);
 
                 // Send the request to the server, using a POST
-                if (this.item_data.uri < 1)
-                    var url_server_api = "/BA/api/create_recordset_TO_BE_IMPLEMENTED";
-                else
+                if (this.current_metadata.uri < 1) {
+                    var url_server_api = "/BA/api/add_item_to_category";
+                    var post_obj = {category_id: this.category_id,
+                                    schema_code: "rs",
+                                    class_name: this.item_data.class_name,
+                                    insert_after: "BOTTOM",
+
+                                    class: this.current_metadata.class,
+                                    n_group: this.current_metadata.n_group,
+                                    order_by: this.current_metadata.order_by
+                                   };
+                }
+                else  {
                     var url_server_api = "/BA/api/update_content_item";
 
-                const post_obj = {uri: this.item_data.uri,
-                                  class_name: this.current_metadata.class_name,
-                                  class: this.current_metadata.class,
-                                  n_group: this.current_metadata.n_group,
-                                  order_by: this.current_metadata.order_by
-                                  };
+                    var post_obj = {uri: this.current_metadata.uri,
+                                    class_name: this.current_metadata.class_name,
+                                    class: this.current_metadata.class,
+                                    n_group: this.current_metadata.n_group,
+                                    order_by: this.current_metadata.order_by
+                                   };
+                }
                 const my_var = null;        // Optional parameter to pass, if needed
 
                 console.log(`About to contact the server at ${url_server_api} .  POST object:`);
@@ -374,7 +387,6 @@ Vue.component('vue-plugin-rs',
                 this.error = false;         // Clear any error from the previous operation
                 this.status_message = "";   // Clear any message from the previous operation
             }, // get_recordset
-
 
             finish_get_recordset(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of get_recordset() upon getting a response from the server

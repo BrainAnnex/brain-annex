@@ -1003,6 +1003,7 @@ class ApiRouting:
                 curl http://localhost:5000/BA/api/update_content_item -d "uri=62&class_name=German Vocabulary&English=Love&German=Liebe"
             """
             #TODO: maybe use a PUT or PATCH method, instead of a POST
+            #TODO: explore more Schema enforcements
 
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('class_name', 'Headers'), ('text', 'my_header')])
