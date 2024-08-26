@@ -1851,7 +1851,6 @@ class NeoSchema:
 
         :return:            True if the specified Data Node link, or False otherwise
         """
-        # TODO: Pytest
         # TODO: also allow to optionally pass Class names for double-check
 
         # Prepare the clause part of a Cypher query

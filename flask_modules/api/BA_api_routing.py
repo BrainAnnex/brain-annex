@@ -1685,7 +1685,7 @@ class ApiRouting:
 
             try:
                 data_dict = cls.extract_get_pars(get_data)
-                print("/get_filtered parameters: ", data_dict)
+                #print("/get_filtered parameters: ", data_dict)
                 recordset = DataManager.get_nodes_by_filter(data_dict)
                 if "label" in data_dict:
                     total_count = NeoSchema.count_data_nodes_of_class(data_node=data_dict["label"])
@@ -1698,7 +1698,7 @@ class ApiRouting:
                                                 #   Note: jsonify() may fail if any parts of the response are not JSON serializable
             except Exception as ex:
                 response = {"status": "error", "error_message": f"/get_filtered web API endpoint: {ex}" }    # Error termination
-                print(f"get_filtered() is returning with error: `{response}`")
+                #print(f"get_filtered() is returning with error: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
                 # Maybe, do this instead:
                 # response = make_response(response["error_message"], 422)  # "422 Unprocessable Entity"

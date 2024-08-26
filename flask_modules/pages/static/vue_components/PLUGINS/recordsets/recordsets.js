@@ -25,7 +25,7 @@ Vue.component('vue-plugin-rs',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <span style="font-weight:bold; color:gray">{{recordset_class}}</span>
+                <span style="font-weight:bold; color:gray">{{this.current_metadata.class}}</span>
                 <table class='rs-main' style='margin-top:0'>
 
                     <!-- Header row  -->
@@ -54,7 +54,7 @@ Vue.component('vue-plugin-rs',
                 </table>
 
                 <!-- Recordset navigation (hidden if newly-created recordset) -->
-                <template v-if="recordset_class">
+                <template v-if="this.current_metadata.class">
                     <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
                     <span style="margin-left:20px; margin-right:20px">Page <b>{{current_page}}</b></span>
@@ -74,9 +74,9 @@ Vue.component('vue-plugin-rs',
                      style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b><br>
                     <p style="margin-left: 10px">
-                        Class: {{item_data.class}}<br>
-                        Order by: {{item_data.order_by}}<br>
-                        Number records shown per page: {{item_data.n_group}}
+                        Class: {{current_metadata.class}}<br>
+                        Order by: {{current_metadata.order_by}}<br>
+                        Number records shown per page: {{current_metadata.n_group}}
                         <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 60px"
                              @click="edit_recordset"  class="control" title="EDIT" alt="EDIT">
                     </p>
@@ -145,11 +145,7 @@ Vue.component('vue-plugin-rs',
 
                 recordset: [],         // This will get loaded by querying the server when the page loads
 
-                recordset_class: this.item_data.class,
-                recordset_order_by: this.item_data.order_by,
-
                 current_page: 1,
-                records_per_page: this.item_data.n_group,
 
                 total_count: null,      // Size of the entire (un-filtered) recordset
 
@@ -262,6 +258,8 @@ Vue.component('vue-plugin-rs',
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
                     this.pre_edit_metadata = Object.assign({}, this.current_metadata);  // Clone
+                    this.get_fields();          // Fetch from the server the field names for this Recordset
+                    this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -290,13 +288,15 @@ Vue.component('vue-plugin-rs',
                     NeoSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                 to fetch:
                     ['quote', 'attribution', 'notes']
+
+                If successful, it will update the value for this.headers
             */
             {
-                console.log(`In get_fields(): attempting to retrieve field names of recordset with URI '${this.item_data.uri}'`);
+                console.log(`In get_fields(): attempting to retrieve field names of recordset with URI '${this.current_metadata.uri}'`);
 
                 const url_server_api = "/BA/api/get_class_properties";
 
-                const data_obj = {class_name: this.item_data.class,
+                const data_obj = {class_name: this.current_metadata.class,
                                   include_ancestors: true,
                                   exclude_system: true
                                  };
@@ -341,18 +341,20 @@ Vue.component('vue-plugin-rs',
 
 
             get_recordset(page)
-            // Fetch from the server the requested page of the recordset
+            /*  Request from the server the specified page (group of records) of the recordset.
+                If successful, it will update the values for: this.recordset, this.total_count, this.current_page
+              */
             {
-                skip = (page-1) * this.records_per_page;
+                skip = (page-1) * this.current_metadata.n_group;
 
-                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.item_data.uri}'`);
+                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.current_metadata.uri}'`);
 
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get_filtered";
 
-                const get_obj = {label: this.item_data.class,
-                                 order_by: this.item_data.order_by,
-                                 limit: this.records_per_page,
+                const get_obj = {label: this.current_metadata.class,
+                                 order_by: this.current_metadata.order_by,
+                                 limit: this.current_metadata.n_group,
                                  skip: skip};
 
                 const my_var = page;        // Optional parameter to pass

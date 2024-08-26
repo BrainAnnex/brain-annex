@@ -1408,7 +1408,7 @@ class DataManager:
             q += f"LIMIT {limit}"
 
         data_binding["key_value"] = key_value
-        cls.db.debug_query_print(q, data_binding)
+        #cls.db.debug_query_print(q, data_binding)
 
         result = cls.db.query(q, data_binding=data_binding)
 
