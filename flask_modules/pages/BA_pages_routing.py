@@ -151,7 +151,9 @@ class PagesRouting:
             #   List of dictionaries.  EXAMPLE:
             #       [
             #           {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-            #           {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+            #           {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
+            #           {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
+            #                                   'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
             #       ]
 
             upload_directories = DataManager.get_records_by_class(class_name="Directory",

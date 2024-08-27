@@ -212,12 +212,6 @@ class Categories:
              ORDER BY toLower(cat.name)
              '''
 
-        q_NO_LONGER_USED =  f'''
-             MATCH (cat:BA {{schema_code:"cat"}})
-             {clause}
-             RETURN cat.uri AS uri, cat.name AS name {remarks_subquery}
-             ORDER BY toLower(cat.name)
-             '''
         # Notes: Sorting must be done across names of consistent capitalization, or "GSK" will appear before "German"!
 
         result =  cls.db.query(q)
@@ -857,7 +851,8 @@ class Categories:
                     EXAMPLE:
                     [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
                      {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                     {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                     {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
+                     {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'uri': '6965', 'pos': 86, 'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                     ]
         """
 
@@ -866,9 +861,11 @@ class Categories:
 
         q = '''
             MATCH (cl :CLASS)<-[:SCHEMA]- (n) -[r :BA_in_category]-> (:Categories {uri:$category_id})
-            RETURN n, r.pos AS pos, cl.name AS class_name
+            RETURN n, r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code
             ORDER BY r.pos
             '''
+
+        # TODO: class_code is being phased out in favor of the new class_handler
 
         result = cls.db.query(q, data_binding={"category_id": uri})
         #cls.db.debug_query_print(q, data_binding={"category_id": uri})
@@ -880,8 +877,17 @@ class Categories:
 
             # TODO: eliminate possible conflict if the node happens to have
             #       attributes named "pos" or "class_name"!
+            #       Ought to return elements that are dictionaries such as:
+            #           {"pos": 15, "class_name": "Recordset", "class_handler": "recordsets", data: {}}
+
             item_record["pos"] = elem["pos"]                # Inject into the record a positional value
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
+
+            if ("class_handler" in elem) and (elem["class_handler"]):
+                item_record["class_handler"] = elem["class_handler"]    # Inject into the record the handler of its Class (not always present)
+            if ("schema_code" in elem) and (elem["schema_code"]) and ("schema_code" not in item_record):
+                item_record["schema_code"] = elem["schema_code"]                 # TODO: temp, during phaseout of "schema_code" in favor of "class_handler"
+
             if "date_created" in item_record:   # TODO: this is a hack, to clean up!
                 del item_record["date_created"] # Datetime objects aren't serializable and lead to Flask errors
                                                 # TODO: let NeoAccess handle the conversion to string
@@ -1151,7 +1157,7 @@ class Categories:
                             if no duplicates, return an empty string
         """
         q = '''
-            MATCH (i1:BA)-[r1:BA_in_category]->(:BA {schema_code:"cat", uri: $uri})<-[r2:BA_in_category]-(i2:BA) 
+            MATCH (i1:BA)-[r1:BA_in_category]->(:BA:Categories, uri: $uri})<-[r2:BA_in_category]-(i2:BA) 
             WHERE r1.pos = r2.pos AND i1.uri <> i2.uri
             RETURN r1.pos AS pos, i1.uri AS item1 ,i2.uri AS item2
             LIMIT 1
@@ -1206,7 +1212,7 @@ class Categories:
         # Collect a subset of the first sorted "pos" values: enough values to cover across the insertion point
         number_to_consider = move_after_n + 1
         q = f'''
-            MATCH (c:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos
             ORDER by pos
             LIMIT {number_to_consider}
@@ -1247,7 +1253,7 @@ class Categories:
 
         # Change the "pos" attribute of the relationship to the Content Item being moved
         q = f'''
-            MATCH (:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
+            MATCH (:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
             SET r.pos = {new_pos}
             '''
 
@@ -1293,7 +1299,7 @@ class Categories:
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
 
         q = f'''
-            MATCH (c:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos, r
             ORDER by pos
             SKIP {n_to_skip}
@@ -1325,7 +1331,7 @@ class Categories:
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
         q = '''
             MATCH (n1 {uri: $uri_1})
-                        -[r1:BA_in_category]->(c:BA {schema_code:"cat", uri: $cat_id})<-[r2:BA_in_category]-
+                        -[r1:BA_in_category]->(c:BA:Categories {uri: $cat_id})<-[r2:BA_in_category]-
                   (n2 {uri: $uri_2})
             WITH r1.pos AS tmp, r1, r2
             SET r1.pos = r2.pos, r2.pos = tmp

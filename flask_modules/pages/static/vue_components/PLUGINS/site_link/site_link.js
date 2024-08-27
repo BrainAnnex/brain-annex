@@ -446,6 +446,7 @@ Vue.component('vue-plugin-sl',
                 else  {
                     // Update an EXISTING record
                     post_obj["uri"] = this.item_data.uri;
+                    post_obj["class_name"] = "Site Link";
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
@@ -455,7 +456,7 @@ Vue.component('vue-plugin-sl',
                     }
                     // EXAMPLE of post_obj for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
-                    url_server_api = `/BA/api/update`;   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
 
                 this.waiting = true;        // Entering a waiting-for-server mode

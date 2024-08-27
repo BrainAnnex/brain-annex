@@ -48,9 +48,9 @@ class NeoSchema:
 
         - Data nodes are linked to their respective classes by a "SCHEMA" relationship.
 
-        - Some classes contain an attribute named "schema_code" that identifies the UI code to display/edit them [this might change!],
+        - Some classes contain an attribute named "code" that identifies the UI code to display/edit them [this might change!],
           as well as their descendants under the "INSTANCE_OF" relationships.
-          Conceptually, the "schema_code" is a relationship to an entity consisting of software code.
+          Conceptually, the "code" is a relationship to an entity consisting of software code.
 
         - Class can be of the "S" (Strict) or "L" (Lenient) type.
             A "lenient" Class will accept data nodes with any properties, whether declared in the Class Schema or not;
@@ -73,8 +73,7 @@ class NeoSchema:
           We also avoid calling them "label", as done in RDFS, because in Labeled Graph Databases
           like Neo4j, the term "label" has a very specific meaning, and is pervasively used.
 
-        - For convenience, data nodes contain a label equal to their Class name,
-          and a redundant attribute (that might be phased out) named "schema_code"
+        - For convenience, data nodes contain a label equal to their Class name
 
 
     AUTHOR:
@@ -1662,6 +1661,7 @@ class NeoSchema:
         :return:    A string with the Schema code (empty string if not found)
                     EXAMPLE: "i"
         """
+        # TODO: obsolete
         q = '''
         MATCH (c:CLASS {name: $_CLASS_NAME})-[:INSTANCE_OF*0..]->(ancestor:CLASS)
         WHERE ancestor.code IS NOT NULL 
@@ -1684,7 +1684,7 @@ class NeoSchema:
 
         :return:    A string with the Schema uri (or "" if not present)
         """
-        #TODO: create a counterpart for Data Nodes
+        #TODO: obsolete
 
         match = cls.db.match(labels="CLASS", key_name="code", key_value=schema_code)
         result = cls.db.get_nodes(match, single_cell="uri")
@@ -1804,15 +1804,16 @@ class NeoSchema:
 
 
     @classmethod
-    def data_node_exists(cls, data_node: Union[int, str]) -> bool:
+    def data_node_exists(cls, data_node: Union[int, str], class_name=None) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
 
         :param data_node:   Either an integer (representing an internal database ID),
                                 or a string (representing the value of the "uri" field)
+        :param class_name:  [OPTIONAL] Used for a stricter check
         :return:            True if the specified Data Node exists, or False otherwise
         """
-        # TODO: also allow to optionally pass a Class name for double-check
+        # TODO: switch to new system of id_key - as in data_link_exist()
 
         # Prepare the clause part of a Cypher query
         if type(data_node) == int:
@@ -1825,14 +1826,20 @@ class NeoSchema:
                             f"argument `data_node` must be an integer or a string; "
                             f"instead, it is {type(data_node)}")
 
+        if class_name:
+            node_cypher = "(:CLASS {name: $class_name})"
+        else:
+            node_cypher = "(:CLASS)"
+
         # Prepare a Cypher query to locate the number of the data nodes
         q = f'''
-            MATCH (:CLASS)<-[:SCHEMA]-(dn) 
+            MATCH {node_cypher}<-[:SCHEMA]-(dn) 
             {clause} 
             RETURN COUNT(dn) AS number_found
             '''
 
-        number_found = cls.db.query(q, {"data_node" : data_node}, single_cell="number_found")
+        number_found = cls.db.query(q, {"data_node" : data_node, "class_name": class_name},
+                                    single_cell="number_found")
 
         if number_found == 0:
             return False
@@ -2272,13 +2279,8 @@ class NeoSchema:
             #print("URI assigned to new data node: ", new_uri)
             properties_to_set["uri"] = new_uri                   # Expand the dictionary
 
-            # TODO: "schema_code" should perhaps be responsibility of the higher layer
-            schema_code = cls.get_schema_code(class_name)
-            if schema_code != "":
-                properties_to_set["schema_code"] = schema_code      # Expand the dictionary
-
             # EXAMPLE of properties_to_set at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": "123", "schema_code": "r"}
+            #       {"make": "Toyota", "color": "white", "uri": "123"}
             #       where "123" is the passed URI
 
 
@@ -2544,7 +2546,7 @@ class NeoSchema:
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
 
         :param assign_uri:  If True, the new node is given an extra attribute named "uri",
-                                    with a unique auto-increment value, as well an extra attribute named "schema_code".
+                                    with a unique auto-increment value.
                                     Default is False
                                     TODO: OBSOLETE
 
@@ -2585,12 +2587,9 @@ class NeoSchema:
             #print("New ID assigned to new data node: ", new_id)
             cypher_prop_dict["uri"] = new_id               # Expand the dictionary
 
-            schema_code = cls.get_schema_code(class_name)
-            if schema_code != "":
-                cypher_prop_dict["schema_code"] = schema_code  # Expand the dictionary
 
             # EXAMPLE of cypher_prop_dict at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": "123", "schema_code": "r"}
+            #       {"make": "Toyota", "color": "white", "uri": "123"}
             #       where "123" is the next auto-assigned uri
 
 
@@ -2687,7 +2686,7 @@ class NeoSchema:
             raise Exception(f"NeoSchema.add_data_point(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
-        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "uri" and "schema_code";
+        # In addition to the passed properties for the new node, data nodes may contain a special attributes: "uri";
         # if requested, expand cypher_prop_dict accordingly
         if assign_uri or new_uri:
             if not new_uri:
@@ -2697,12 +2696,8 @@ class NeoSchema:
             #print("New ID assigned to new data node: ", new_id)
             cypher_prop_dict["uri"] = new_id               # Expand the dictionary
 
-            schema_code = cls.get_schema_code(class_name)
-            if schema_code != "":
-                cypher_prop_dict["schema_code"] = schema_code  # Expand the dictionary
-
             # EXAMPLE of cypher_prop_dict at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": 123, "schema_code": "r"}
+            #       {"make": "Toyota", "color": "white", "uri": 123}
             #       where 123 is the next auto-assigned uri
 
 
@@ -2815,7 +2810,7 @@ class NeoSchema:
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
-        # In addition to the passed properties for the new node, data nodes contain 2 special attributes: "uri" and "schema_code";
+        # In addition to the passed properties for the new node, data nodes contain a special attributes: "uri";
         # expand cypher_props_dict accordingly
         # TODO: make this part optional
         if not new_uri:
@@ -2825,12 +2820,8 @@ class NeoSchema:
         #print("New ID assigned to new data node: ", new_id)
         cypher_props_dict["uri"] = new_id               # Expand the dictionary
 
-        schema_code = cls.get_schema_code(class_name)       # TODO: this may slow down execution
-        if schema_code != "":
-            cypher_props_dict["schema_code"] = schema_code  # Expand the dictionary
-
         # EXAMPLE of cypher_props_dict at this stage:
-        #       {"make": "Toyota", "color": "white", "uri": 123, "schema_code": "r"}
+        #       {"make": "Toyota", "color": "white", "uri": 123}
         #       where 123 is the next auto-assigned uri
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node and, if requested, also a relationship to another data node
@@ -3006,6 +2997,7 @@ class NeoSchema:
                                 Generally, redundant, as a precaution against deleting wrong node
         :return:            None
         """
+        #TODO: return the number deleted
         # Validate arguments
         CypherUtils.assert_valid_internal_id(node_id)
 
@@ -3037,8 +3029,7 @@ class NeoSchema:
         :param labels:      OPTIONAL (generally, redundant)
         :return:            The number of nodes deleted (possibly zero)
         """
-        match = cls.db.match(key_name="uri", key_value=uri, properties={"schema_code": "cat"},
-                            labels=labels)
+        match = cls.db.match(key_name="uri", key_value=uri, labels=labels)
         return cls.db.delete_nodes(match)
 
 
@@ -3048,7 +3039,7 @@ class NeoSchema:
                                     existing_neo_id=None, new_uri=None) -> int:
         """
         Register (declare to the Schema) an existing data node with the Schema Class specified by its name or ID.
-        An uri is generated for the data node and stored on it; likewise, for a schema_code (if applicable).
+        An uri is generated for the data node and stored on it.
         Return the newly-assigned uri
 
         EXAMPLES:   register_existing_data_node(class_name="Chemicals", existing_neo_id=123)
@@ -3099,13 +3090,9 @@ class NeoSchema:
         if not new_uri:
             new_uri = cls.reserve_next_uri()     # Generate, if not already provided
 
-        cls.debug_print("register_existing_data_node(). New uri to be assigned to the data node: ", new_uri)
+        #cls.debug_print("register_existing_data_node(). New uri to be assigned to the data node: ", new_uri)
 
         data_binding = {"class_name": class_name, "new_uri": new_uri, "existing_neo_id": existing_neo_id}
-
-        schema_code = cls.get_schema_code(class_name)
-        if schema_code != "":
-            data_binding["schema_code"] = schema_code   # Expand the dictionary
 
         # EXAMPLE of data_binding at this stage:
         #       {'class_name': 'Chemicals', 'new_uri': 888, 'existing_neo_id': 123, 'schema_code': 'r'}
@@ -3117,10 +3104,8 @@ class NeoSchema:
             MERGE (existing)-[:SCHEMA]->(class)
             SET existing.uri = $new_uri
             '''
-        if schema_code != "":
-            q += " , existing.schema_code = $schema_code"
 
-        cls.db.debug_query_print(q, data_binding, "register_existing_data_node") # Note: this is the special debug print for NeoAccess
+        #cls.db.debug_query_print(q, data_binding, "register_existing_data_node") # Note: this is the special debug print for NeoAccess
         result = cls.db.update_query(q, data_binding)
         #print(result)
 
@@ -3357,7 +3342,7 @@ class NeoSchema:
                             primary_key=None, duplicate_option="merge",
                             datetime_cols=None, int_cols=None,
                             extra_labels=None, uri_namespace=None,
-                            schema_code=None, report_frequency=100) -> [int]:
+                            report_frequency=100) -> [int]:
         """
         Import a group of entities (records), from the rows of a Pandas dataframe,
         as Data Nodes in the database.
@@ -3407,8 +3392,6 @@ class NeoSchema:
                                 if that namespace hasn't previously been created with create_namespace() or with reserve_next_uri(),
                                 a new one will be created with no prefix nor suffix (i.e. all uri's be numeric strings.)
                                 If not passed, no uri values will get set on the new nodes
-        :param schema_code: [OPTIONAL] Legacy element, deprecated.  Extra string to add as value
-                                to a "schema_code" property for each new data node created
         :param report_frequency: [OPTIONAL] How often to print the status of the import-in-progress
 
         :return:            A list of the internal database ID's of the newly-created Data nodes
@@ -3509,9 +3492,6 @@ class NeoSchema:
                     val_int = int(val)
                     d_scrubbed[col] = val_int       # Replace the original value
 
-
-            if schema_code:
-                d_scrubbed["schema_code"] = schema_code      # Add a legacy element, perhaps to be discontinued
 
             #print(d_scrubbed)
 
@@ -3692,7 +3672,7 @@ class NeoSchema:
                            col_names = None, uri_prefix = None,
                            datetime_cols=None, int_cols=None,
                            extra_labels=None,
-                           schema_code=None, report_frequency=100
+                           report_frequency=100
                            ) -> [int]:
         """
         Import "triplestore" data from a Pandas dataframe that contains 3 columns called:
@@ -3732,7 +3712,6 @@ class NeoSchema:
         :param datetime_cols:   [SEE import_pandas_nodes()]
         :param int_cols:        [SEE import_pandas_nodes()]
         :param extra_labels:    [SEE import_pandas_nodes()]
-        :param schema_code:     [SEE import_pandas_nodes()]
         :param report_frequency:[SEE import_pandas_nodes()]
 
         :return:                A list of the internal database ID's of the newly-created Data nodes
@@ -3761,7 +3740,7 @@ class NeoSchema:
         # Now that the data frame is transformed, do the actual import
         return cls.import_pandas_nodes(df=df_wide, class_node=class_node, uri_namespace=None,
                                        datetime_cols=datetime_cols, int_cols=int_cols,
-                                       extra_labels=extra_labels, schema_code=schema_code,
+                                       extra_labels=extra_labels,
                                        report_frequency=report_frequency)
 
 
@@ -3823,7 +3802,6 @@ class NeoSchema:
                 * LACK OF "Import Data" node (ought to be automatically created if needed)
                 * LACK OF "BA" (or "DATA"?) labels being set
                 * INABILITY TO LINK TO EXISTING NODES IN DBASE (try using: "uri": some_int  as the only property in nodes to merge)
-                * HAZY responsibility for "schema_code" (set correctly for all nodes); maybe ditch to speed up execution
                 * OFFER AN OPTION TO IGNORE BLANK STRINGS IN ATTRIBUTES
                 * INTERCEPT AND BLOCK IMPORTS FROM FILES ALREADY IMPORTED
                 * issue some report about any part of the data that doesn't match the Schema, and got silently dropped

@@ -117,9 +117,9 @@ Vue.component('vue-plugin-h',
                      url_server = `/BA/api/add_item_to_category`;    // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING header
-                    post_body += "&uri=" + this.item_data.uri;
+                    post_body += "&uri=" + this.item_data.uri + "&class_name=Headers";
 
-                    url_server = `/BA/api/update`;                   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/update_content_item`;                   // URL to communicate with the server's endpoint
                 }
 
                 // Go over each field.  TODO: generalize

@@ -348,10 +348,11 @@ Vue.component('vue-plugin-n',
                     post_obj.body = newBody;
                     post_obj.title = this.current_data['title'];
                     post_obj.basename = this.current_data['basename'];
+                    post_obj.class_name = "Notes";
                     if (post_obj.basename === undefined)
-                        alert("Attempting to call /BA/api/update with an undefined basename!");
+                        alert("Attempting to call /BA/api/update_content_item with an undefined basename!");
 
-                    var url_server = "/BA/api/update";
+                    var url_server = "/BA/api/update_content_item";
                 }
 
 

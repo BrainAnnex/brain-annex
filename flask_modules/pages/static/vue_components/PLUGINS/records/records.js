@@ -568,6 +568,7 @@ Vue.component('vue-plugin-r',
                 else  {
                     // Update an EXISTING record
                     post_obj["uri"] = this.item_data.uri;
+                    post_obj["class_name"] = "Records";
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
@@ -577,7 +578,7 @@ Vue.component('vue-plugin-r',
                         }
                     }
 
-                    var url_server_api = `/BA/api/update`;   // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
 
 

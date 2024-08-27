@@ -698,9 +698,9 @@ new Vue({
                 return;
             }
 
-            let url_server = "/BA/api/update";
+            let url_server = "/BA/api/update_content_item";
             let post_obj = {uri: this.category_uri,
-                            schema_code: "cat",
+                            class_name: "Categories",
                             name: this.category_name_current_data,
                             remarks: this.category_remarks_current_data};
             console.log(`About to contact the server at ${url_server} .  POST object:`);

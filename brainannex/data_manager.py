@@ -666,6 +666,7 @@ class DataManager:
         """
         Update an existing Content Item.
         No harm if new values are identical to the earlier old values.
+        Note: class_name is redundant
 
         Notes:
             - if a field is blank, it gets completely dropped from the node
@@ -676,9 +677,11 @@ class DataManager:
         :param update_data: A dict of data field names and their desired new values
         :return:            None
         """
+        #TODO: drop the "NEW" from the name
+
         # First, make sure that the requested Content Item exists
-        assert NeoSchema.data_node_exists(data_node=uri), \
-                    f"update_content_item_NEW(): no Content Item found with URI `{uri}`"
+        assert NeoSchema.data_node_exists(data_node=uri, class_name=class_name), \
+                    f"update_content_item_NEW(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
         # TODO: lift this limitation (see also comments below)
         assert class_name != "Notes", \
@@ -732,138 +735,53 @@ class DataManager:
 
 
     @classmethod
-    def update_content_item(cls, post_data: dict) -> None:
-        """
-        Update an existing Content Item.
-        In case of error, an Exception is raised
-
-        NOTE: the "schema_code" field is currently required, but it's redundant.  Only
-              used as a safety mechanism against incorrect values of the URI
-              (TODO: maybe ditch, or use the Class name instead)
-
-        :return:    None.  In case of error, an Exception is raised
-        """
-        #TODO: if any (non-special?) field is blank, drop it altogether from the node;
-        #      maybe add this capability to set_fields()
-
-        #print("In update_content_item(). POST dict: ", post_data)
-
-        # Validate the data
-        schema_code = post_data.get("schema_code")   # If key not present, the value will be None
-        #print("Item Type: ", schema_code)
-
-        uri = post_data.get("uri")
-        assert uri, "update_content_item(): a value for `uri` is missing from the POST data"
-
-        #print("Item Type: ", uri)
-
-
-        data_binding = post_data
-
-
-        set_dict = {}       # Dictionary of field values to set
-        for k, v in data_binding.items():
-            if k not in ("schema_code", "uri"):    # Exclude some special keys
-                set_dict[k] = v
-
-
-        # First, make sure that the requested Content Item exists.
-        # TODO: get assistance from Schema layer.  Try:
-        #       assert NeoSchema.data_node_exists(data_node=uri), f"update_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'
-        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
-        records = cls.db.get_nodes(match)
-        assert records != [], f"update_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
-
-
-        # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
-        #       TODO: try to infer them from the Schema
-        original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
-
-        # TODO: instead of passing along in the POST request things like `basename` and `suffix`
-        #       (which place a burden on the front end),
-        #       get them from the database, and just pass all the node attributes to the plugin-specific modules
-        #       Try:
-        #           db_data = NeoSchema.fetch_data_node(uri=uri)
-        #           Then pass db_data as a parameter to the plugin-specific modules
-
-
-        if schema_code == "n":
-            if data_binding.get("basename") == "undefined":
-                raise Exception("update_content_item(): attempting "
-                                "to pass a `basename` attribute to the value 'undefined'")
-            set_dict = Notes.before_update_content(data_binding, set_dict)
-
-        # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        #internal_dbase_id = NeoSchema.get_data_node_internal_id(uri)    # TODO: this will become unnecessary after switching to string uri's
-        #number_updated = NeoSchema.update_data_node(data_node=internal_dbase_id, set_dict=set_dict, drop_blanks=True)
-        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=set_dict, drop_blanks=True)
-
-        if schema_code == "n":
-            Notes.update_content_item_successful(uri, original_post_data)
-
-        # If the update was NOT for a "note" (in which case it might only be about the note's body than its metadata)
-        # verify that some fields indeed got changed
-        if schema_code != "n" and number_updated == 0:
-            raise Exception("No update performed")
-
-
-
-
-    @classmethod
-    def delete_content_item(cls, uri: str, schema_code: str) -> None:
+    def delete_content_item(cls, uri: str, class_name: str) -> None:
         """
         Delete the specified individual Content Item.
-        Note that schema_code is redundant.
-        In case of error, an Exception is raised
+        Note: class_name is redundant
 
         :param uri:         String version of the unique ID
-        :param schema_code: Redundant
-        :return:            None.  In case of error, an Exception is raised
+        :param class_name:  Name of the Schema Class of the Content Item
+        :return:            None
         """
         #print(f"In delete_content_item(). Attempting to delete URI `{uri}` of type `{schema_code}`")
 
         assert uri, "delete_content_item(): argument `uri` is missing"
 
-
-        # First, make sure that the requested Content Item exists.  TODO: get assistance from Schema layer
-        match = cls.db.match(labels="BA", properties={"uri": uri, "schema_code": schema_code})
-        records = cls.db.get_nodes(match)
-        assert records != [], \
-            f"delete_content_item(): no Content Item found with URI `{uri}` and Schema Code '{schema_code}'"
+        # Make sure that the requested Content Item exists
+        assert NeoSchema.data_node_exists(data_node=uri, class_name=class_name), \
+            f"delete_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 
         # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
-        #       (TODO: try to infer that from the Schema, or use plugin_support)
-        if schema_code in ["n", "i", "d"]:
+        if plugin_support.is_media_class(class_name):
             # If there's media involved, delete the media, too
-            #record = cls.lookup_media_record(uri)
-            #if record is not None:
             MediaManager.delete_media_file(uri=uri)
 
-        if schema_code == "i":
+        if class_name == "Images":
             # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             #record = cls.lookup_media_record(uri)
             #if record is not None:
             MediaManager.delete_media_file(uri=uri, thumb=True)
 
-        if schema_code == "n":
+        if class_name == "Notes":
             Notes.delete_content_before(uri)
 
 
         # Perform the actual deletion of the Content Item node
-        number_deleted = cls.db.delete_nodes(match)     # TODO: switch to using the Schema layer
+        number_deleted = NeoSchema.delete_data_point(uri=uri, labels=class_name)
 
 
         if number_deleted == 1:
-            if schema_code == "n":
+            if class_name == "Notes":
                 # Extra processing for the "Notes" plugin
                 Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the general system
 
             return       # Successful termination, with 1 Content Item deleted, as expected
 
         elif number_deleted == 0:
-            raise Exception(f"Unable to delete Content Item id {uri} of type `{schema_code}`")  # Error message (nothing deleted)
+            raise Exception(f"Unable to delete Content Item uri `{uri}` of class `{class_name}`")  # Error message (nothing deleted)
         else:
             raise Exception(f"{number_deleted} Content Items deleted, instead of the expected 1")    # Error message (too much deleted)
                                                                                                      # Should not happen, since uri is a primary key
@@ -896,7 +814,7 @@ class DataManager:
         # Validate the data, and extract some special attributes, while also paring down the post_data dictionary
 
         # TODO: give better error messages; for example, if the requested Category doesn't exist
-
+        # TODO: more Schema enforcement
         # TODO: possibly generalize from "Category" to "Collection"
 
         # Category-related data
@@ -912,27 +830,28 @@ class DataManager:
         del post_data["insert_after"]
 
         # Schema-related data
-        schema_code = post_data.get("schema_code")
-        if not schema_code:
-            raise Exception("Missing Schema Code (Item Type)")
-        del post_data["schema_code"]
+        #schema_code = post_data.get("schema_code")
+        #if not schema_code:
+            #raise Exception("Missing Schema Code (Item Type)")
+        if "schema_code" in post_data:
+            del post_data["schema_code"]        # TODO: completely phase out
 
         schema_uri = post_data.get("schema_uri")    # TODO: ditch using the schema_uri, in favor of class_name
         if schema_uri:
             del post_data["schema_uri"]
-        else:
-            schema_uri = NeoSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
-            print("schema_uri looked up as: ", schema_uri)
+        #else:
+            #schema_uri = NeoSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
+            #print("schema_uri looked up as: ", schema_uri)
             #if schema_uri == "":
                 #raise Exception(f"Missing Schema URI for schema_code `{schema_code}`")
 
         class_name = post_data.get("class_name")
-        if class_name:
-            del post_data["class_name"]
-        else:
+        #if class_name:
+        del post_data["class_name"]     # Note: it's now a required parameter
+        #else:
             # If not provided, look it up from the schema_uri
-            class_name = NeoSchema.get_class_name_by_schema_uri(schema_uri)
-            print(f"class_name looked up as: `{class_name}`")
+            #class_name = NeoSchema.get_class_name_by_schema_uri(schema_uri)
+            #print(f"class_name looked up as: `{class_name}`")
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
@@ -948,7 +867,8 @@ class DataManager:
         #             Note: the plugin might want to do some ops regardless of missing required Properties
         #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
-        if schema_code == "n":
+
+        if class_name == "Notes":
             post_data = Notes.add_content(new_uri, post_data)
 
 
@@ -978,7 +898,7 @@ class DataManager:
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
-        if schema_code == "n":
+        if class_name == "Notes":
             Notes.new_content_item_successful(new_uri, original_post_data)
 
 

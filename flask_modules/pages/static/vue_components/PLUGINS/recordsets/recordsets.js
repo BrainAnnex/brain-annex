@@ -224,7 +224,6 @@ Vue.component('vue-plugin-rs',
                 if (this.current_metadata.uri < 1) {
                     var url_server_api = "/BA/api/add_item_to_category";
                     var post_obj = {category_id: this.category_id,
-                                    schema_code: "rs",
                                     class_name: this.item_data.class_name,
                                     insert_after: "BOTTOM",
 
@@ -237,7 +236,7 @@ Vue.component('vue-plugin-rs',
                     var url_server_api = "/BA/api/update_content_item";
 
                     var post_obj = {uri: this.current_metadata.uri,
-                                    class_name: this.current_metadata.class_name,
+                                    class_name: this.item_data.class_name,
                                     class: this.current_metadata.class,
                                     n_group: this.current_metadata.n_group,
                                     order_by: this.current_metadata.order_by

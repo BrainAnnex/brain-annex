@@ -953,44 +953,12 @@ class ApiRouting:
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
-        @bp.route('/update', methods=['POST'])
-        @login_required
-        def update():
-            """
-            Update an existing Content Item.
-            NOTE: the "schema_code" field in the POST data is currently required, but it's redundant.  Only
-                  used as a safety mechanism against incorrect values of their uri
-
-            EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/update -d "uri=11&schema_code=h&text=my_header"
-                curl http://localhost:5000/BA/api/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
-            """
-            #TODO: maybe pass the Class name instead of the "schema_code", as a redundant field
-
-            # Extract the POST values
-            post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('schema_code', 'r')])
-            #cls.show_post_data(post_data, "update")
-
-            try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['uri'])
-                DataManager.update_content_item(data_dict)
-                response_data = {"status": "ok"}                                    # If no errors
-            except Exception as ex:
-                err_details = f"Unable to update the requested Content Item.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # Error termination
-        
-            #print(f"update() is returning: `{response_data}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
 
         @bp.route('/update_content_item', methods=['POST'])
         @login_required
         def update_content_item():
             """
             Update an existing Content Item.
-            THIS IS A NEWER VERSION of the old endpoint '/update', and meant to eventually replace it.
 
             Required POST variables:
                 'uri', 'class_name'
@@ -1150,7 +1118,7 @@ class ApiRouting:
         
             POST FIELDS:
                 category_id         URI identifying the Category to which attach the new Content Item
-                schema_code         A string to identify the Schema that the new Content Item belongs to
+                schema_code         (BEING PHASED OUT) A string to identify the Schema that the new Content Item belongs to
                 class_name          The name of the Class of the new Content Item
                 insert_after        Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
@@ -1168,7 +1136,7 @@ class ApiRouting:
         
             # Create a new Content Item with the POST data
             try:
-                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'insert_after', 'class_name'])
                 payload = DataManager.new_content_item_in_category(pars_dict)        # The URI of the newly-created Data Node
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:

@@ -141,9 +141,9 @@ Vue.component('vue-plugin-cd',
                     url_server = `/BA/api/add_item_to_category`;     // URL to communicate with the server's endpoint
                 }
                 else {   // Update an existing Content Item
-                    post_body += "&uri=" + this.item_data.uri;
+                    post_body += "&uri=" + this.item_data.uri + "&class_name=Code+Documentation";
 
-                    url_server = `/BA/api/update`;   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
 
 

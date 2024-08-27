@@ -14,9 +14,9 @@
 
         all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                     EXAMPLE:
-                                          [{"uri": 1,   "name": "HOME", "remarks": "ROOT NODE"},
-                                           {"uri: 123,  "name": "Calculus"},
-                                           {"uri": 523, "name": "Work at Acme", "pinned": True}]
+                                          [{"uri": "1",   "name": "HOME", "remarks": "ROOT NODE"},
+                                           {"uri: "123",  "name": "Calculus"},
+                                           {"uri": "523", "name": "Work at Acme", "pinned": True}]
         subcategories       EXAMPLE: [{'uri': '2', 'name': 'Work', remarks: 'outside employment', OTHER_FIELDS_NOT_USED}]
         parent_categories
         siblings_categories
@@ -45,7 +45,9 @@
                         EXAMPLE:
                             [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
                              {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
+                             {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
+                                                         'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
 
         upload_directories: A list of folders registered with BrainAnnex
@@ -612,10 +614,10 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
-        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs"],  // "r" not included here, because a generic core one
-                                                                   // TODO: either pass from the database, or infer from some config file
-                                                                   // IMPORTANT: the items in the list MUST correspond to the folders in
-                                                                   //      flask_modules/pages/static/vue_components/PLUGINS
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs"], // "r" not included here, because a generic core one
+                                                                    // TODO: either pass from the database, or infer from some config file
+                                                                    // IMPORTANT: the items in the list MUST correspond to the folders in
+                                                                    //      flask_modules/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
