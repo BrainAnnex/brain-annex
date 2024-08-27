@@ -738,7 +738,8 @@ class DataManager:
     def delete_content_item(cls, uri: str, class_name: str) -> None:
         """
         Delete the specified individual Content Item.
-        Note: class_name is redundant
+        Note:  class_name is redundant; used as a safety mechanism
+               against incorrect values of their uri
 
         :param uri:         String version of the unique ID
         :param class_name:  Name of the Schema Class of the Content Item

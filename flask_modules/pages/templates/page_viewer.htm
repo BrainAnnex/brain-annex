@@ -1001,16 +1001,16 @@ new Vue({
         delete_content_item(item)
         // Delete from the page and from the database the specified Content Item
         {
-            console.log(`Root element received signal to delete content item of type '${item.schema_code}' , id ${item.uri}`);
-            const index = this.locate_item(item.schema_code, item.uri);
-            console.log(`Content item located in position ${index}`);
+            console.log(`delete_content_item(): Root element received signal to delete content item of class '${item.class_name}' , uri '${item.uri}'`);
+            const index = this.locate_item_simplified(item.uri);
+            console.log(`delete_content_item(): Content item located in position ${index}`);
 
             if (index == -1)  {
-                alert("Unable to locate the element to delete. Maybe a change was made on a separate tab...  Try refreshing page");
+                alert("Unable to locate the Item to delete. Maybe a change was made on a separate tab...  Try refreshing the page");
                 return;
             }
 
-            url_server = `/BA/api/delete/${item.uri}/${item.schema_code}`;
+            url_server = `/BA/api/delete/${item.uri}/${item.class_name}`;
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_delete, custom_data: index});
 
         },  // delete_content_item()
@@ -1356,13 +1356,13 @@ new Vue({
         locate_item_simplified(uri)
         /*  Locate the specified Content Item in the array of Content Items.
             The item is identified by its uri.
-            If found, return its index in the array; otherwise, return -1
+            If found, return its index in the array (an int >= 0); otherwise, return -1
             (No check is done as to whether there might be more than one match; the first one is returned.)
             TODO: replace it wth call to Utilities.find_item_by_uri(uri, this.content_array);
                   also include script src="/BA/pages/static/js/utilities.js"
          */
         {
-            //console.log(`Attempting to locate content item with id ${uri}`);
+            //console.log(`Attempting to locate content item with uri '${uri}'`);
 
             const number_items = this.content_array.length;
 

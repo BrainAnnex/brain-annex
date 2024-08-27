@@ -998,18 +998,18 @@ class ApiRouting:
 
 
 
-        @bp.route('/delete/<uri>/<schema_code>')
+        @bp.route('/delete/<uri>/<class_name>')
         @login_required
-        def delete(uri, schema_code):
+        def delete(uri, class_name):
             """
             Delete the specified Content Item.
-            Note that schema_code is redundant.  Only used
-            as a safety mechanism against incorrect values of their uri
+            Note that class_name is redundant; only used as a safety mechanism
+            against incorrect values of their uri
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/n
+            EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/Document
             """
             try:
-                DataManager.delete_content_item(uri, schema_code)
+                DataManager.delete_content_item(uri=uri, class_name=class_name)
                 response_data = {"status": "ok"}              # If no errors
             except Exception as ex:
                 err_details = f"Unable to delete the requested Content Item.  {exceptions.exception_helper(ex)}"
