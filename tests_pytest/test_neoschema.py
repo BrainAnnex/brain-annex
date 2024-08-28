@@ -2042,8 +2042,8 @@ def test_class_of_data_point(db):
     NeoSchema.create_class("Person")
     uri = NeoSchema.add_data_point_OLD("Person")
 
-    assert NeoSchema.class_of_data_node(node_id=uri, id_type="uri") == "Person"
-    assert NeoSchema.class_of_data_node(node_id=uri, id_type="uri", labels="Person") == "Person"
+    assert NeoSchema.class_of_data_node(node_id=uri, id_key="uri") == "Person"
+    assert NeoSchema.class_of_data_node(node_id=uri, id_key="uri", labels="Person") == "Person"
 
     # Now locate thru the internal database ID
     internal_id = NeoSchema.get_data_node_id(uri)

@@ -107,6 +107,7 @@ Vue.component('vue-plugin-h',
             {
                 // Start the body of the POST to send to the server
                 post_body = "schema_code=" + this.current_data.schema_code;
+                post_body += "&class_name=" + this.item_data.class_name;
 
                 if (this.item_data.uri == -1)  {     // -1 is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items

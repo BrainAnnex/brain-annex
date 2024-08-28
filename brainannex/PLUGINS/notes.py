@@ -87,7 +87,7 @@ class Notes:
 
 
     @classmethod
-    def before_update_content(cls, data_binding :dict, set_dict :dict) -> dict:
+    def before_update_content(cls, item_data :dict) -> dict:
         """
         Invoked before a Content Item of this type gets updated in the database
 
@@ -99,20 +99,19 @@ class Notes:
                basename: "n-123"
                suffix: "htm"
 
-        :param data_binding:    A dict with various metadata fields
-        :param set_dict:        A dict of field values to eventually set into the database
-        :return:                The altered data_binding dictionary
+        :param item_data:   A dict with various fields for this Note
+        :return:            The altered item_data dictionary
         """
         # TODO: perhaps a special handling of a "body" for media-based Content Items
         #       could be a standard service by the Core module, based on a Schema spec
-        body = data_binding["body"]
-        basename = data_binding["basename"]
+        body = item_data["body"]
+        basename = item_data["basename"]
 
         #uri = data_binding["uri"]
 
         if basename == "undefined":
             raise Exception("before_update_content(): got passed the value 'undefined' "
-                            "for the `basename` key")
+                            "for the key `basename`")
 
         # Overwrite the HTML file with the body of the notes
         filename = basename + ".htm"
@@ -121,11 +120,12 @@ class Notes:
         #print(body)
         MediaManager.save_into_file(body, filename, class_name="Notes")     # TODO: turn to singular
 
-        # Ditch the "body" attribute - which is not to be stored in the database
-        #del data_binding["body"]
-        del set_dict["body"]
+        revised_item_data = item_data.copy()   # Clone an independent copy
 
-        return set_dict
+        # Ditch the "body" attribute - which is not to be stored in the database
+        del revised_item_data["body"]
+
+        return revised_item_data
 
 
 

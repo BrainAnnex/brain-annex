@@ -443,11 +443,11 @@
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
     <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
-    <button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
-    <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
+    <button @click="add_new_item_at_bottom('h', 'Headers')" style="margin-right:10px">Header</button>
+    <button @click="add_new_item_at_bottom('n', 'Notes')" style="margin-right:10px">Note</button>
     <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
     <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
-    <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
+    <button @click="add_new_item_at_bottom('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation</button>
 
     <!-- Show all leaf Classes that are direct instances of "Records" -->
     <br>Add new record of type:

@@ -1661,7 +1661,7 @@ class NeoSchema:
         :return:    A string with the Schema code (empty string if not found)
                     EXAMPLE: "i"
         """
-        # TODO: obsolete
+        # TODO: obsolete - still being used during the transition period
         q = '''
         MATCH (c:CLASS {name: $_CLASS_NAME})-[:INSTANCE_OF*0..]->(ancestor:CLASS)
         WHERE ancestor.code IS NOT NULL 
@@ -1942,21 +1942,21 @@ class NeoSchema:
 
 
     @classmethod
-    def class_of_data_node(cls, node_id, id_type=None, labels=None) -> str:
+    def class_of_data_node(cls, node_id, id_key=None, labels=None) -> str:
         """
         Return the name of the Class of the given data node: identified
         either by its internal database ID (default), or by a primary key (such as "uri")
         with optional label)
 
         :param node_id:     Either an internal database ID or a primary key value
-        :param id_type:     OPTIONAL - name of a primary key used to identify the data node; for example, "uri".
+        :param id_key:      OPTIONAL - name of a primary key used to identify the data node; for example, "uri".
                                 Leave blank to use the internal database ID
         :param labels:      Optional string, or list/tuple of strings, with internal database labels
                                 (DEPRECATED)
 
         :return:            A string with the name of the Class of the given data node
         """
-        match = cls.locate_node(node_id=node_id, id_type=id_type, labels=labels)
+        match = cls.locate_node(node_id=node_id, id_type=id_key, labels=labels)
         # This is an object of type "CypherMatch"
 
         node = match.node
@@ -1973,15 +1973,15 @@ class NeoSchema:
         result = cls.db.query(q, data_binding)
 
         if len(result) == 0:    # TODO: separate the 2 scenarios leading to this
-            if id_type:
-                raise Exception(f"class_of_data_node(): The given data node ({id_type}: `{node_id}`) "
+            if id_key:
+                raise Exception(f"class_of_data_node(): The given data node ({id_key}: `{node_id}`) "
                                 f"does not exist or is not associated to any Schema class")
             else:
                 raise Exception(f"The given data node (internal database id: {node_id}) "
                                 f"does not exist or is not associated to any Schema class")
         elif len(result) > 1:
-            if id_type:
-                raise Exception(f"class_of_data_node(): The given data node ({id_type}: `{node_id}`) "
+            if id_key:
+                raise Exception(f"class_of_data_node(): The given data node ({id_key}: `{node_id}`) "
                                 f"is associated to more than 1 Schema class (forbidden scenario)")
             else:
                 raise Exception(f"class_of_data_node(): The given data node (internal database id: {node_id}) "
@@ -3210,8 +3210,8 @@ class NeoSchema:
         """
         assert rel_name, f"NeoSchema.add_data_relationship(): no name was provided for the new relationship"
 
-        from_class = cls.class_of_data_node(node_id=from_id, id_type=id_type)
-        to_class = cls.class_of_data_node(node_id=to_id, id_type=id_type)
+        from_class = cls.class_of_data_node(node_id=from_id, id_key=id_type)
+        to_class = cls.class_of_data_node(node_id=to_id, id_key=id_type)
         assert cls.is_link_allowed(link_name=rel_name, from_class=from_class, to_class=to_class), \
             f"add_data_relationship(): The relationship requested to be added `{rel_name}`, " \
             f"from Class `{from_class}` to Class `{to_class}`, " \

@@ -419,7 +419,7 @@ class ApiRouting:
             try:
                 # This operation might fail - if there are problems in the JSON encoding
                 json_data = json.loads(json_str)    # Turn the string into a Python object
-                print("Decoded JSON request: ", json_data)
+                #print("Decoded JSON request: ", json_data)
             except Exception as ex:
                 response_data = {"status": "error", "error_message": f"Failed parsing of JSON string in request. Incorrectly formatted.  {ex}"}
                 print(response_data["error_message"])
@@ -431,7 +431,7 @@ class ApiRouting:
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
 
             class_name =  json_data["class_name"]
-            print("class_name: ", class_name)
+            #print("class_name: ", class_name)
             del json_data["class_name"]
 
             try:

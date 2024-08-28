@@ -4,8 +4,8 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*   item_data:  EXAMPLE: {"uri":52,"pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm"}
-                                  (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+        /*   item_data:  EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm","class_name":"Note"}
+                                  (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this Note is displayed (used when creating new documents)
             index:          The zero-based position of this Document on the page
@@ -62,9 +62,9 @@ Vue.component('vue-plugin-n',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.uri == -1 ? true : false),    // -1 means "new Item"
+                editing_mode: (this.item_data.uri < 0 ? true : false),    // Negative URI means "new Item"
 
-                body_of_note: (this.item_data.uri == -1 ? "NEW NOTE" : "Retrieving note id " + this.item_data.uri + "..."),
+                body_of_note: (this.item_data.uri < 0 ? "NEW NOTE" : "Retrieving note id " + this.item_data.uri + "..."),
 
                 note_editor: null,          // CKeditor object
                 old_note_value: "",         // The pre-edit value.  TODO: switch to using the "original_data" Object
@@ -115,7 +115,7 @@ Vue.component('vue-plugin-n',
             console.log(`the Notes component has been mounted`);
             //alert("The Notes component has been mounted");
 
-            if (this.item_data.uri == -1)
+            if (this.item_data.uri < 0)
                 this.create_new_editor("");     // We're dealing with an "ADD" operation; so, we start with an empty Note
             else
                 this.get_note(this.item_data);  // Fetch contents of existing Note from the server
@@ -274,7 +274,7 @@ Vue.component('vue-plugin-n',
 
                 /* FOR TESTING
                 newEditor.on( 'destroy', function( evt ) {
-                    alert("'destroy' notification: CKeditor got destroyed (noteID = -1, editor ID = " + evt.editor.id + ")");
+                    alert("'destroy' notification: CKeditor got destroyed (editor ID = " + evt.editor.id + ")");
                 });
                 */
 
@@ -287,7 +287,7 @@ Vue.component('vue-plugin-n',
             save_edit()
             // Invoked by clicking on the "SAVE" link (only visible in editing mode)
             {
-                noteID = this.item_data.uri;    // -1 indicates a new Note
+                noteID = this.item_data.uri;    // Negative values indicates a new Note
 
                 console.log("Inside save_edit().  noteID = " + noteID);
 
@@ -316,7 +316,7 @@ Vue.component('vue-plugin-n',
             do_box_save(noteID, newBody)
             /* 	Invoked when the "SAVE" button is pressed on the specified note.
                 Carry out, asynchronously, the record update operation.
-                If noteID = -1 then we're adding a new note; otherwise, we're editing the existing note with the specified ID
+                If noteID < 0 then we're adding a new note; otherwise, we're editing the existing note with the specified ID
              */
             {
                 var invocation;
@@ -332,12 +332,13 @@ Vue.component('vue-plugin-n',
                 // Start the body of the POST to send to the server
                 var post_obj = {schema_code: this.item_data.schema_code};
 
-                if (noteID == -1)  {	// Add NEW note
+                if (noteID < 0)  {	// Add NEW note
                     const insert_after = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     post_obj.category_id = this.category_id;
                     post_obj.body = newBody;
                     post_obj.insert_after = insert_after;
+                    post_obj.class_name = this.item_data.class_name;
                     if (this.current_data['title'] != "")
                         post_obj.title = this.current_data['title'];        // TODO: implement a title creator, if not supplied by user
 
@@ -348,7 +349,7 @@ Vue.component('vue-plugin-n',
                     post_obj.body = newBody;
                     post_obj.title = this.current_data['title'];
                     post_obj.basename = this.current_data['basename'];
-                    post_obj.class_name = "Notes";
+                    post_obj.class_name = this.item_data.class_name;
                     if (post_obj.basename === undefined)
                         alert("Attempting to call /BA/api/update_content_item with an undefined basename!");
 
@@ -391,10 +392,10 @@ Vue.component('vue-plugin-n',
 
                     console.log(`--- URI is: ${this.item_data.uri}`);
 
-                    // If this was a new item (with the temporary ID of -1),
+                    // If this was a new item (with the temporary negative ID),
                     // update its URI (in this Vue component) with the value assigned by the server;
                     // also, update its basename accordingly
-                    if (this.item_data.uri == -1)  {
+                    if (this.item_data.uri < 0)  {
                         this.current_data.uri = server_payload;
                         console.log(`updating front-end value of 'basename' to 'notes-${server_payload}'`);
                         this.current_data.basename = `notes-${server_payload}`; // TODO: change this convention
@@ -435,7 +436,7 @@ Vue.component('vue-plugin-n',
             cancel_edit()
             // Invoked by clicking on the "CANCEL" link (only visible in editing mode)
             {
-                noteID = this.item_data.uri;    // -1 indicates a new Note
+                noteID = this.item_data.uri;    // A negative value indicates a new Note
 
                 console.log("Inside cancel_edit().  noteID = " + noteID);
 
@@ -457,7 +458,7 @@ Vue.component('vue-plugin-n',
             inform_component_root_of_cancel()
             // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
             {
-                if (this.current_data.uri == -1) {
+                if (this.current_data.uri < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Headers sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');

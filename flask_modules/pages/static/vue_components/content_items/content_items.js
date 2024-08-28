@@ -79,11 +79,11 @@ Vue.component('vue-content-items',
 
                 <span style="margin-right:10px">Add new:</span>
                 <!-- TODO: automate these choices, based on Schema.  Merge with similar box in page_viewer.htm -->
-                <button @click="add_new_item_below('h')" style="margin-right:10px">Header</button>
-                <button @click="add_new_item_below('n')" style="margin-right:10px">Note</button>
+                <button @click="add_new_item_below('h', 'Headers')" style="margin-right:10px">Header</button>
+                <button @click="add_new_item_below('n', 'Notes')" style="margin-right:10px">Note</button>
                 <button @click="add_new_item_below('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
-                <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
-                <button @click="add_new_item_below('cd')" style="margin-right:10px">Code Documentation</button>
+                <button @click="add_new_item_below('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
+                <button @click="add_new_item_below('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation</button>
 
                 <!-- All leaf Classes that are instances of "Records" -->
                 <br>Add new record of type:

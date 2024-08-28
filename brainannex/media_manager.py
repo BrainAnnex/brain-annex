@@ -92,7 +92,7 @@ class MediaManager:
                                 "D:/media/documents/"
                                 "D:/media/images/resized/"
         """
-        class_name = NeoSchema.class_of_data_node(node_id=uri, id_type="uri")
+        class_name = NeoSchema.class_of_data_node(node_id=uri, id_key="uri")
 
         dir_names = NeoSchema.follow_links(class_name=class_name, node_id=uri, id_key="uri",
                                            link_name="BA_stored_in", properties="name")

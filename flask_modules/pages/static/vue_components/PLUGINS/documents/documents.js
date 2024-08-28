@@ -71,7 +71,10 @@ Vue.component('vue-plugin-d',
                         <br><br>
                         <span class="label">Authors</span> <input v-model="current_metadata.authors" size="35">
                         <br><br>
-                        <span class="label">Comments</span> <input v-model="current_metadata.comments" size="35">
+                        <span class="label">Comments</span><br>
+                        <textarea v-model="current_metadata.comments" name="myNAME" rows="3" cols="45">
+                        </textarea>
+
                         <br><br>
                         <span class="label">Rating</span> <input v-model="current_metadata.rating" size="3"> &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
                     </div>

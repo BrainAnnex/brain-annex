@@ -9,6 +9,7 @@ from flask_login import login_required, current_user
 from flask_modules.navigation.navigation import get_site_pages  # Navigation configuration
 from brainannex import DataManager, Categories, version
 from brainannex.node_explorer import NodeExplorer
+from brainannex.neo_schema.neo_schema import NeoSchema
 from datetime import datetime
 import time
 import json
@@ -363,18 +364,16 @@ class PagesRouting:
 
 
 
-        #@bp.route('/search/<search_terms>')
         @bp.route('/search')
         @login_required
         def search() -> str:
-        #def search(search_terms) -> str:
             """
             Generate a page of search results
             EXAMPLE invocation: http://localhost:5000/BA/pages/search?words=marine+biology&search_category=3775
             """
             template = "search.htm"
 
-            words = request.args.get("words", type = str)     # COULD ALSO ADD: , default = "someDefault"      Using Request data in Flask
+            words = request.args.get("words", type = str)     # COULD ALSO ADD: , default = "someDefault"    Using Request data in Flask
             search_category = request.args.get("search_category", type = str)
             #return f"{words}, {search_category}"
 
@@ -382,6 +381,14 @@ class PagesRouting:
                 return "Incorrectly-formed URL; missing query-string parameter `<b>words</b>`"
 
             content_items, page_header = DataManager.search_for_terms(words=words, search_category=search_category)
+            # "Enrich" the nodes with the Content Items with the "schema_code" field,
+            # which is being phased to being extracted from their Classes
+            for item in content_items:
+                #print(item)
+                if "schema_code" not in item:
+                    class_name = NeoSchema.class_of_data_node(node_id=item["uri"], id_key="uri")
+                    schema_code = NeoSchema.get_schema_code(class_name=class_name)
+                    item["schema_code"] = schema_code
 
             return render_template(template,
                                    site_data = cls.site_data,

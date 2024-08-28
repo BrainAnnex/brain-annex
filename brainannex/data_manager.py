@@ -679,15 +679,14 @@ class DataManager:
         """
         #TODO: drop the "NEW" from the name
 
-        # First, make sure that the requested Content Item exists
+        assert NeoSchema.class_name_exists(class_name), \
+            f"update_content_item_NEW(): the specified class `{class_name}` doesn't exist"
+
+        # Make sure that the requested Content Item exists
         assert NeoSchema.data_node_exists(data_node=uri, class_name=class_name), \
                     f"update_content_item_NEW(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
-        # TODO: lift this limitation (see also comments below)
-        assert class_name != "Notes", \
-            "update_content_item_NEW(): not currently usable with updates of `Notes` Content Items"
 
-        '''
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
         #       TODO: try to infer them from the Schema
         original_post_data = update_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
@@ -700,11 +699,7 @@ class DataManager:
         #           Then pass db_data as a parameter to the plugin-specific modules
 
         if class_name == "Notes":
-            if update_data.get("basename") == "undefined":
-                raise Exception("update_content_item(): attempting "
-                                "to pass a `basename` attribute to the value 'undefined'")
-            set_dict = Notes.before_update_content(data_binding, set_dict)        
-        '''
+            update_data = Notes.before_update_content(update_data)
 
 
         if plugin_support.is_media_class(class_name):
@@ -712,18 +707,16 @@ class DataManager:
             MediaManager.before_update_content(uri=uri, set_dict=update_data, class_name=class_name)
 
 
-
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
         number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks = True,
                                                     class_name=class_name)
 
 
-        '''
-        if schema_code == "n":
+        if class_name == "Notes":
             Notes.update_content_item_successful(uri, original_post_data)
-        '''
 
-        # If the update was NOT for a "note" (in which case it might only be about the note's body than its metadata)
+
+        # If the update was NOT for a "note" (in which case it might only be about the note's body rather than its metadata)
         # verify that some fields indeed got updated
         # Note: an update with the same value as before is considered legit, and counts as an update
         if class_name != "Notes" and number_updated == 0:
@@ -1098,7 +1091,9 @@ class DataManager:
         :param search_category: (OPTIONAL) URI of Category.  If supplied, all searching will
                                     be limited to Content Items in this Category
                                     or in any of its sub-categories
-        :return:            A list of dictionaries, each with the record data of a search result
+        :return:            A pair consisting of:
+                                1) list of dictionaries, each with the record data of a search result
+                                2) a string with a caption to describe these search results
         """
         print(f"search_for_terms(). Words: `{words}`")
         print(f"search_category: `{search_category}`")

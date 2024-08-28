@@ -446,7 +446,7 @@ Vue.component('vue-plugin-sl',
                 else  {
                     // Update an EXISTING record
                     post_obj["uri"] = this.item_data.uri;
-                    post_obj["class_name"] = "Site Link";
+                    post_obj["class_name"] = this.item_data.class_name;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {

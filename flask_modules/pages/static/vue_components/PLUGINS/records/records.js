@@ -568,7 +568,7 @@ Vue.component('vue-plugin-r',
                 else  {
                     // Update an EXISTING record
                     post_obj["uri"] = this.item_data.uri;
-                    post_obj["class_name"] = "Records";
+                    post_obj["class_name"] = this.item_data.class_name;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
