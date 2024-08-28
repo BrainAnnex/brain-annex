@@ -1041,6 +1041,7 @@ class ApiRouting:
             # See: https://flask.palletsprojects.com/en/1.1.x/api/
             print("In update_content_item_JSON() -  data_dict: ", data_dict)
 
+            # TODO: create a helper function for the unpacking/validation below
             uri = data_dict.get('uri')
             class_name = data_dict.get('class_name')
 
@@ -1190,7 +1191,6 @@ class ApiRouting:
         
             POST FIELDS:
                 category_id         URI identifying the Category to which attach the new Content Item
-                schema_code         (BEING PHASED OUT) A string to identify the Schema that the new Content Item belongs to
                 class_name          The name of the Class of the new Content Item
                 insert_after        Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
@@ -1217,6 +1217,69 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}
 
             #print(f"add_item_to_category() is returning: `{err_details}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/add_item_to_category_JSON', methods=['POST'])
+        @login_required
+        def add_item_to_category_JSON():
+            """
+            Create a new Content Item attached to a particular Category,
+            at a particular location in the "collection" (page)
+
+            This is variation of '/add_item_to_category' that expects to receive JSON data
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict
+
+            KEYS in the JSON-encoded dict:
+                category_uri        URI identifying the Category to which attach the new Content Item
+                class_name          The name of the Class of the new Content Item
+                insert_after        Either an URI of an existing Content Item attached to this Category,
+                                    or one of the special values "TOP" or "BOTTOM"
+                *PLUS* any applicable plugin-specific fields
+
+            RETURNED PAYLOAD (on success):
+                The URI of the newly-created Data Node
+            """
+            #TODO: explore more Schema enforcements
+
+            # Extract and parse the POST value
+            pars_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
+            # provided that mimetype indicates "application/json"
+            # EXAMPLE: {'category_uri': '6967', 'class_name': 'Header', 'insert_after': 'BOTTOM', 'text': 'My Header'}
+            # See: https://flask.palletsprojects.com/en/1.1.x/api/
+            #print("In add_item_to_category_JSON() -  pars_dict: ", pars_dict)
+
+            # TODO: create a helper function for the unpacking/validation below
+            category_uri = pars_dict.get('category_uri')
+            class_name = pars_dict.get('class_name')
+            insert_after = pars_dict.get('insert_after')
+
+            if not category_uri or not class_name or not insert_after:
+                err_details = f"add_item_to_category_JSON(): some required parameters are missing; " \
+                              f"'category_uri', 'class_name' and 'insert_after' are required"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            # Create a new Content Item with the POST data
+            try:
+                del pars_dict["category_uri"]
+                del pars_dict["class_name"]
+                del pars_dict["insert_after"]
+
+                payload = DataManager.add_new_content_item_to_category(category_uri=category_uri, class_name=class_name, insert_after=insert_after,
+                                                                       item_data=pars_dict)     # It returns the URI of the newly-created Data Node
+                response_data = {"status": "ok", "payload": payload}
+            except Exception as ex:
+                err_details = f"/add_item_to_category_JSON : Unable to add the requested Content Item to the specified Category.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+
+            #print(f"add_item_to_category_JSON() is returning: `{err_details}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 

@@ -789,15 +789,88 @@ class DataManager:
 
 
     @classmethod
+    def add_new_content_item_to_category(cls, category_uri :str, class_name :str, insert_after :str,
+                                         item_data: dict) -> str:
+        """
+        Create a new Content Item attached to a particular Category,
+        at a specified position on the Category page
+
+        NOTE: this is a newer version of new_content_item_in_category()
+
+        :param category_uri:    String to identify the Category that we're linking to
+        :param class_name:      Name of the Class of the new Content Item
+        :param insert_after:    Either the URI of an existing Content Item attached to this Category,
+                                    or one of the special values "TOP" or "BOTTOM"
+        :param item_data:       Dict with all applicable plugin-specific fields (all the key/values for the new Content Item)
+
+        :return:    The URI of the newly-created Data Node
+        """
+        # TODO: give better error messages; for example, if the requested Category doesn't exist
+        # TODO: more Schema enforcement
+        # TODO: possibly generalize from "Category" to "Collection"
+
+        # Generate a unique URI for the new Data Item (which is needed by some plugin-specific modules)
+        new_uri = NeoSchema.reserve_next_uri()      # TODO: switch to using specific namespaces
+        print(f"add_new_content_item_to_category() - New item will be assigned URI: '{new_uri}'")
+
+        # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
+        #       TODO: try to infer them from the Schema
+        #             E.g., the Schema indicates that 2 Properties, "basename" and "suffix" are required;
+        #               a call is made to a plugin-specific module, to produce those (and, in the process,
+        #               some files are saved,
+        #               some attributes are added to post_data, and some are whisked away)
+        #             Note: the plugin might want to do some ops regardless of missing required Properties
+        #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
+        original_post_data = item_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
+
+        if class_name == "Notes":
+            item_data = Notes.add_content(new_uri, item_data)
+
+
+        print("add_new_content_item_to_category() - Revised post_data: ", item_data)
+        # EXAMPLE:  {'text': 'My New Header'}
+        # Note that several entries got removed from the dictionary;
+        #       only the attributes that will go into the new node are still present.
+        #       Some attributes may have been added by a plugin-specific module
+
+        if item_data.get("basename") == "undefined":    # TODO: maybe extend to ALL fields being set!
+            raise Exception("add_new_content_item_to_category(): attempting "
+                            "to set a `basename` attribute to the value 'undefined'")
+
+        # Create the new node and required relationships
+        if insert_after == "TOP":
+            Categories.add_content_at_beginning(category_uri=category_uri,
+                                                item_class_name=class_name, item_properties=item_data,
+                                                new_uri=new_uri)
+        elif insert_after == "BOTTOM":
+            Categories.add_content_at_end(category_uri=category_uri,
+                                          item_class_name=class_name, item_properties=item_data,
+                                          new_uri=new_uri)
+        else:   # Insert at a position that is not the top nor bottom
+            Categories.add_content_after_element(category_uri=category_uri,
+                                                 item_class_name=class_name, item_properties=item_data,
+                                                 insert_after=insert_after, new_uri=new_uri)
+
+
+        # A final round of PLUGIN-SPECIFIC OPERATIONS
+        if class_name == "Notes":
+            Notes.new_content_item_successful(new_uri, original_post_data)
+
+
+        return new_uri     # Success
+
+
+
+    @classmethod
     def new_content_item_in_category(cls, post_data: dict) -> str:
         """
+        TODO: this method will be phased out in favor of add_new_content_item_to_category()
         Create a new Content Item attached to a particular Category,
         at a specified position on the Category page
 
         :param post_data:   A dict containing the following keys
             - "category_id"  (for the linking to a Category)
             - Schema-related keys:
-                    * schema_code (Required)
                     * schema_uri (Optional)
                     * class_name (Required only for Class Items of type "record")
 

@@ -222,9 +222,11 @@ Vue.component('vue-plugin-rs',
                 console.log(`In save_recordset_edit(), for document with URI '${this.current_metadata.uri}'`);
 
                 // Send the request to the server, using a POST
-                if (this.current_metadata.uri < 1) {
-                    var url_server_api = "/BA/api/add_item_to_category";
-                    var post_obj = {category_id: this.category_id,
+
+                if (this.current_metadata.uri < 0) {    // A negative URI is a convention to indicate a just-created Recordset
+                    // Create a new Recordset
+                    var url_server_api = "/BA/api/add_item_to_category_JSON";
+                    var post_obj = {category_uri: this.category_id,
                                     class_name: this.item_data.class_name,
                                     insert_after: "BOTTOM",
 
@@ -234,8 +236,8 @@ Vue.component('vue-plugin-rs',
                                    };
                 }
                 else  {
+                    // Update an existing Recordset
                     var url_server_api = "/BA/api/update_content_item_JSON";
-
                     var post_obj = {uri: this.current_metadata.uri,
                                     class_name: this.item_data.class_name,
                                     class: this.current_metadata.class,
