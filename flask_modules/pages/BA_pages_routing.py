@@ -155,6 +155,7 @@ class PagesRouting:
             #           {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
             #                                   'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
             #       ]
+            #print(content_items)
 
             upload_directories = DataManager.get_records_by_class(class_name="Directory",
                                                                   field_name="name", order_by="name")

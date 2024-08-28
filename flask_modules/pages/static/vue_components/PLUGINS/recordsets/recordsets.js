@@ -63,7 +63,7 @@ Vue.component('vue-plugin-rs',
                 </template>
 
                 <!-- Status info -->
-                <p style="float: right; display: inline-block; padding-top: 0; margin-top: 0; text-align: right">
+                <p style="float: right; display: inline-block; padding-top: 0; margin-top: 8px; margin-right: 5px; text-align: right">
                     <span v-if="waiting" class="waiting">Contacting the server...</span>
                     <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
                 </p>
@@ -72,13 +72,14 @@ Vue.component('vue-plugin-rs',
                 <!-- RECORDSET EDITOR : VIEWING VERSION -->
                 <div v-if="edit_mode && !recordset_editing"
                      style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
-                    <b>RECORDSET definition</b><br>
+                    <b>RECORDSET definition</b>
+                    <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 30px"
+                         @click="edit_recordset"  class="control" title="EDIT" alt="EDIT">
+
                     <p style="margin-left: 10px">
                         Class: {{current_metadata.class}}<br>
                         Order by: {{current_metadata.order_by}}<br>
                         Number records shown per page: {{current_metadata.n_group}}
-                        <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 60px"
-                             @click="edit_recordset"  class="control" title="EDIT" alt="EDIT">
                     </p>
                 </div>
 
@@ -228,17 +229,17 @@ Vue.component('vue-plugin-rs',
                                     insert_after: "BOTTOM",
 
                                     class: this.current_metadata.class,
-                                    n_group: this.current_metadata.n_group,
+                                    n_group: parseInt(this.current_metadata.n_group),
                                     order_by: this.current_metadata.order_by
                                    };
                 }
                 else  {
-                    var url_server_api = "/BA/api/update_content_item";
+                    var url_server_api = "/BA/api/update_content_item_JSON";
 
                     var post_obj = {uri: this.current_metadata.uri,
                                     class_name: this.item_data.class_name,
                                     class: this.current_metadata.class,
-                                    n_group: this.current_metadata.n_group,
+                                    n_group: parseInt(this.current_metadata.n_group),
                                     order_by: this.current_metadata.order_by
                                    };
                 }
@@ -251,7 +252,7 @@ Vue.component('vue-plugin-rs',
                 ServerCommunication.contact_server_NEW(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
-                             json_encode_send: false,
+                             json_encode_send: true,
                              callback_fn: this.finish_save_recordset_edit,
                              custom_data: my_var
                             });

@@ -883,10 +883,15 @@ class Categories:
             item_record["pos"] = elem["pos"]                # Inject into the record a positional value
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
 
-            if ("class_handler" in elem) and (elem["class_handler"]):
+            if elem.get("class_handler"):
                 item_record["class_handler"] = elem["class_handler"]    # Inject into the record the handler of its Class (not always present)
-            if ("schema_code" in elem) and (elem["schema_code"]) and ("schema_code" not in item_record):
-                item_record["schema_code"] = elem["schema_code"]                 # TODO: temp, during phaseout of "schema_code" in favor of "class_handler"
+
+            if elem.get("class_code"):
+                item_record["schema_code"] = elem["class_code"]         # Inject into the record the Class code (renamed "schema_code")
+                                                                        # TODO: temp, during phaseout of "schema_code" in favor of "class_handler"
+            #if ("schema_code" in elem) and (elem["schema_code"]) and ("schema_code" not in item_record):
+                #item_record["schema_code"] = elem["schema_code"]
+
 
             if "date_created" in item_record:   # TODO: this is a hack, to clean up!
                 del item_record["date_created"] # Datetime objects aren't serializable and lead to Flask errors

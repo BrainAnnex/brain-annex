@@ -186,9 +186,10 @@ class ApiRouting:
                                         that may contain multiple values for the same key.
                                         EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
 
-        :param required_par_list:   [OPTIONAL] A list or tuple of name of POST parameters whose presence is to be enforce.
+        :param required_par_list:   [OPTIONAL] A list or tuple of name of POST parameters whose presence is to be enforced.
+                                        If the json_decode argument is True, then these parameters may reside
                                         EXAMPLE: ['uri', 'rel_name']
-        :param json_decode:         If True, all values are expected to be JSON-encoded strings, which get decoded
+        :param json_decode:         If True, all values are expected to be JSON-encoded strings
         :return:                    A dict populated with the POST data
         """
         #TODO: return a dict with 2 keys: one whose value is the required fields,
@@ -218,6 +219,9 @@ class ApiRouting:
 
         if required_par_list:
             # Verify that all the required POST parameters are indeed present
+            if len(data_dict) == 0:
+                raise Exception(f"The POST request does not contain any data; "
+                                f"the following parameters were expected: {required_par_list}")
             for par in required_par_list:
                 assert par in data_dict, f"The expected parameter `{par}` is missing from the POST request"
 
@@ -353,6 +357,15 @@ class ApiRouting:
             optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class.
 
+            GET VARIABLE:
+                json    A JSON-encoded dict
+
+            KEYS in the JSON-encoded dict:
+                class_name          REQUIRED
+                include_ancestors   OPTIONAL
+                sort_by_path_len    OPTIONAL
+                exclude_system      OPTIONAL
+
             EXAMPLE invocations:
                 http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%7D
                     (passing the URL-safe version of the JSON-serialized dict {"class_name": "Quote"})
@@ -367,12 +380,6 @@ class ApiRouting:
                     import json
                     import urllib.parse
                     urllib.parse.quote(json.dumps(d))
-
-            KEYS in dict in passed JSON request:
-                class_name          REQUIRED
-                include_ancestors   OPTIONAL
-                sort_by_path_len    OPTIONAL
-                exclude_system      OPTIONAL
 
             For details, see NeoSchema.get_class_properties()
 
@@ -390,9 +397,10 @@ class ApiRouting:
                             }
             """
             # Extract the GET values
-            get_data = request.args    # Example: ImmutableMultiDict([('json', 'some_json_string')])
+            get_data = request.args    # Example: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
 
             try:
+                # This operation might fail - if there are problems in the JSON encoding
                 data_dict = cls.extract_get_pars(get_data, required_par_list=["json"])
             except Exception as ex:
                 err_details = exceptions.exception_helper(ex)
@@ -404,9 +412,12 @@ class ApiRouting:
             json_str = data_dict["json"]
             print("JSON string: ", json_str)
 
-            # TODO: turn a lot of the code below into a JSON-helper method
+            # TODO: turn a lot of the code below into a JSON-helper method;
+            #       in particular, add a "json_decode" arg to extract_get_pars()
+            #       See approach in '/update_content_item_JSON'
 
             try:
+                # This operation might fail - if there are problems in the JSON encoding
                 json_data = json.loads(json_str)    # Turn the string into a Python object
                 print("Decoded JSON request: ", json_data)
             except Exception as ex:
@@ -964,7 +975,8 @@ class ApiRouting:
                 'uri', 'class_name'
             Optional  POST variables: whichever fields are being edited
 
-            NOTE: the "class_name" field in the POST data is redundant
+            NOTES:  the "class_name" field in the POST data is redundant.
+                    A JSON version of this endpoint is also available
 
             EXAMPLES of invocation:
                 curl http://localhost:5000/BA/api/update_content_item -d "uri=11&class_name=Headers&text=my_header"
@@ -991,6 +1003,66 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
                 #TODO: consider a "500 Internal Server Error" in this case
                 #      or maybe a "422 Unprocessable Entity"
+
+            #print(f"update_content_item() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/update_content_item_JSON', methods=['POST'])
+        @login_required
+        def update_content_item_JSON():
+            """
+            Update an existing Content Item.
+            This is variation of '/update_content_item' that expects to receive JSON data
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict
+
+            KEYS in the JSON-encoded dict:
+                uri                 REQUIRED
+                class_name          REQUIRED
+                plus whichever fields are being edited
+
+            NOTE: the "class_name" value is redundant
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/update_content_item
+                        -d 'json={"uri":"6965","class_name":"Recordset","class":"YouTube Channel","n_group":7,"order_by":"name"}'
+            """
+            #TODO: maybe use a PUT or PATCH method, instead of a POST
+            #TODO: explore more Schema enforcements
+
+            # Extract and parse the POST value
+            data_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
+                                                # provided that mimetype indicates "application/json"
+            # EXAMPLE: {'uri': '6967', 'class_name': 'Recordset', 'class': 'University Classes', 'n_group': 12, 'order_by': 'code'}
+            # See: https://flask.palletsprojects.com/en/1.1.x/api/
+            print("In update_content_item_JSON() -  data_dict: ", data_dict)
+
+            uri = data_dict.get('uri')
+            class_name = data_dict.get('class_name')
+
+            if not uri or not class_name:
+                err_details = f"update_content_item_JSON(): some required parameters are missing; " \
+                              f"'uri' and 'class_name' are required"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                del data_dict["uri"]
+                del data_dict["class_name"]
+
+                DataManager.update_content_item_NEW(uri=uri, class_name=class_name,
+                                                    update_data=data_dict)
+                response_data = {"status": "ok"}                                    # If no errors
+            except Exception as ex:
+                err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                                        #TODO: consider a "500 Internal Server Error" in this case
+                                        #      or maybe a "422 Unprocessable Entity"
 
             #print(f"update_content_item() is returning: `{response_data}`")
 
@@ -1432,7 +1504,7 @@ class ApiRouting:
             Switch one or more Content Items from being attached to a given Category,
             to another one
 
-            POST FIELDS:
+            POST VARIABLES:
                 items   JSON-encoded list of URI's to relocate across Categories
                 from    JSON-encoded string URI of the old Category
                 to      JSON-encoded string URI of the new Category
@@ -1441,6 +1513,9 @@ class ApiRouting:
 
             EXAMPLE invocation:
                 curl http://localhost:5000/BA/api/switch_category  -d "items=[\"i-3332\", \"h-235\"]&from=\"3677\"&to=\"3676\""
+
+            TODO: consider switching to passing just 1 POST variable named "json",
+                  as done in 'get_class_properties'
             """
             # Extract the POST values
             post_data = request.form     # An ImmutableMultiDict
