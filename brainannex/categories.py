@@ -703,8 +703,8 @@ class Categories:
         """
         # TODO: perhaps restore the old feature of also storing a "description" field on the relationships
 
-        return NeoSchema.follow_links(class_name="Categories", node_id=from_category, id_type="uri",
-                                      links="BA_see_also", labels="Categories", properties=["name", "remarks", "uri"])
+        return NeoSchema.follow_links(class_name="Categories", node_id=from_category, id_key="uri",
+                                      link_name="BA_see_also", labels="Categories", properties=["name", "remarks", "uri"])
 
 
 

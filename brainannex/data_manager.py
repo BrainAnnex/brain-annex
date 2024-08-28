@@ -810,8 +810,22 @@ class DataManager:
         # TODO: possibly generalize from "Category" to "Collection"
 
         # Generate a unique URI for the new Data Item (which is needed by some plugin-specific modules)
-        new_uri = NeoSchema.reserve_next_uri()      # TODO: switch to using specific namespaces
+
+        # First, check if a specific namespace, or the general data node namespace, is to be used
+        class_id = NeoSchema.get_class_internal_id(class_name)
+        namespace_links = NeoSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
+                                        properties="namespace")
+        print("add_new_content_item_to_category() - namespace_links: ", namespace_links)
+        if len(namespace_links) == 1:
+            namespace = namespace_links[0]
+            print(f"    Using namespace '{namespace}'")
+            new_uri = NeoSchema.reserve_next_uri(namespace=namespace)
+        else:
+            print(f"    Using default namespace")
+            new_uri = NeoSchema.reserve_next_uri()
+
         print(f"add_new_content_item_to_category() - New item will be assigned URI: '{new_uri}'")
+
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
         #       TODO: try to infer them from the Schema

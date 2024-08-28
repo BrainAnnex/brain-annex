@@ -488,7 +488,7 @@ class NeoSchema:
                 '''
 
         data_binding = {"old_name": old_name, "new_name": new_name}
-        cls.db.debug_query_print(q, data_binding)
+        #cls.db.debug_query_print(q, data_binding)
 
         result = cls.db.update_query(q, data_binding=data_binding)
         print(result)
@@ -2090,23 +2090,22 @@ class NeoSchema:
 
 
     @classmethod
-    def follow_links(cls, class_name :str, node_id, links :str, id_type=None, properties=None, labels=None) -> List:
+    def follow_links(cls, class_name :str, node_id, link_name :str, id_key=None, properties=None, labels=None) -> List:
         """
-        From the given starting data node(s), follow all the relationships that have the specified name,
+        From the given starting node, follow all the relationships that have the specified name,
         from/into neighbor nodes (optionally having the given labels),
         and return some of the properties of those found nodes.
 
         :param class_name:  String with the name of the Class of the given data node
         :param node_id:     Either an internal database ID or a primary key value
-        :param links:       A string with the name of the link(s) to follow
-        :param id_type:     [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
-                                Use None to refer to the internal database ID
-        :param properties:  [OPTIONAL] String, or list of strings, with the name(s)
+        :param link_name:   A string with the name of the link(s) to follow
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri";
+                                use None to refer to the internal database ID
+        :param properties:  [OPTIONAL] String, or list/tuple of strings, with the name(s)
                                 of the properties to return on the found nodes;
-                                if not specified, an Exception is raised
-                                TODO: return all properties if unspecified
+                                if not specified, ALL properties are returned
         :param labels:      [OPTIONAL] string, or list/tuple of strings,
-                                with node labels required to be present on the located nodes
+                                with node labels required to be present on the neighbor nodes
                                 TODO: not currently in use
 
         :return:            A (possibly empty) list of values, if properties only contains a single element;
@@ -2129,38 +2128,43 @@ class NeoSchema:
             assert (type(properties) == str or type(properties) == list), \
                 "follow_links(): the argument `properties` must be a string or list of strings"
 
-        if id_type:
-            where_clause = f"from.`{id_type}` = $node_id"
+        if id_key:
+            where_clause = f"from.`{id_key}` = $node_id"
         else:
             where_clause = "id(from) = $node_id"
 
-        if type(properties) == str:
+        if properties is None:
+            properties_cypher_str = "to"    # None is interpreted as "ALL properties"
+        elif type(properties) == str:
             properties_cypher_str = f"to.`{properties}` AS `{properties}`"
-        elif type(properties) == list:
+        elif (type(properties) == list or type(properties) == tuple):
             properties_cypher_list = [f"to.`{prop}` AS `{prop}`"
                                       for prop in properties]
-            #print(properties_cypher_list)
             properties_cypher_str = ", ".join(properties_cypher_list)
         else:
-            # TODO: also handle None, to be interpreted as "all properties"
-            raise Exception("follow_links(): the argument `properties` must be a string or list of strings")
+            raise Exception(f"follow_links(): the argument `properties` must be a string, or list of strings, or None; "
+                            f"the value given was of type: {type(properties)}")
 
         q = f'''
-            MATCH (from :`{class_name}`) -[:`{links}`]-> (to)
+            MATCH (from :`{class_name}`) -[:`{link_name}`]-> (to)
             WHERE {where_clause}
             RETURN {properties_cypher_str}
             '''
-        #cls.db.debug_query_print(q, data_binding={"node_id": node_id})
+        #cls.db.debug_query_print(q, data_binding={"node_id": node_id}, method="follow_links")
         result = cls.db.query(q, data_binding={"node_id": node_id})
 
-        if type(properties) != str:
-            return result       # List of dicts
+
+        if (type(properties) == list or type(properties) == tuple):
+            return result           # List of dicts
 
         data = []
         for node in result:
+            if properties is None:
+                data.append(node["to"])     # The Cypher query is returning whole nodes
+            else:
                 data.append(node[properties])
 
-        return data             # List of values
+        return data                 # List of values
 
 
 

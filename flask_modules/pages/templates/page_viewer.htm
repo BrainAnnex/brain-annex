@@ -1148,13 +1148,13 @@ new Vue({
                      EXAMPLE: {uri: '5622', schema_code: 'r', English: 'Woman', German: 'Frau'}
          */
         {
-            //console.log("In absorb_item_updates_REVISED()");
+            console.log("In absorb_item_updates_REVISED()");
             const schema_code = new_data.schema_code;
             const uri = new_data.uri;
 
-            //console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' ,  uri '${uri}'`);
-            //console.log(`    Data for the update:`);
-            //console.log(new_data);
+            console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' ,  uri '${uri}'`);
+            console.log(`    Data for the update:`);
+            console.log(new_data);
 
             const index = this.locate_item(schema_code, uri);         // TODO: switch to internal ID's
 
@@ -1205,7 +1205,8 @@ new Vue({
             Note: this is an older version, probably to later be combined with absorb_item_updates_REVISED()
          */
         {
-            //console.log(`Root element received signal to UPDATE the Content Item of type '${item.schema_code}' , original uri '${item.uri}'`);
+            console.log(`Root element received signal to UPDATE the Content Item.  new_data:`);
+            console.log(new_data);
             if (new_data.uri)
                 console.log(`    A new current uri was passed: ${new_data.uri}`);
 

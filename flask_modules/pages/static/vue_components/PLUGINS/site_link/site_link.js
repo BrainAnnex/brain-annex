@@ -373,7 +373,7 @@ Vue.component('vue-plugin-sl',
 
 
             /*
-                SERVER CALLS
+                ---  SERVER CALLS  ---
              */
 
             get_webpage_title(url)
@@ -430,7 +430,7 @@ Vue.component('vue-plugin-sl',
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
                     post_obj["class_name"] = this.item_data.class_name;
-                    post_obj["insert_after"] = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj["insert_after"] = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data)  {
@@ -475,7 +475,7 @@ Vue.component('vue-plugin-sl',
 
             finish_save(success, server_payload, error_message, custom_data)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
 
                 success:        boolean indicating whether the server call succeeded
                 server_payload: whatever the server returned (stripped of information about the success of the operation)
@@ -483,7 +483,7 @@ Vue.component('vue-plugin-sl',
                 custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
              */
             {
-                console.log("Finalizing the SiteLink saving operation...");
+                console.log("Finalizing the SiteLink save() operation...");
 
                 if (success)  {     // Server reported SUCCESS
                     this.status_message = `Successful edit`;
@@ -502,7 +502,8 @@ Vue.component('vue-plugin-sl',
                         }
                     }
 
-                    // If this was a new item (with the temporary negative ID), update its ID with the value assigned by the server
+                    // If this was a newly-created item (with the temporary negative URI),
+                    //  update its URI with the value assigned by the server
                     if (this.item_data.uri < 0)
                         this.current_data.uri = server_payload;
 
@@ -510,7 +511,7 @@ Vue.component('vue-plugin-sl',
                     console.log("Site Links component sending `updated-item` signal to its parent");
                     this.$emit('updated-item', this.current_data);
 
-                    // Synchronize the accepted baseline data to the current one
+                    // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
 
                     this.editing_mode = false;      // Exit the editing mode

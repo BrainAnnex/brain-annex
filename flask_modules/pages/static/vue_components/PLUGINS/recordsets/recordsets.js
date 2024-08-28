@@ -4,8 +4,8 @@
 Vue.component('vue-plugin-rs',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:      EXAMPLE :    {class:"YouTube Channel"
-                                          class_name:"Recordset",
+        /*  item_data:      EXAMPLE :    {class_name:"Recordset",
+                                          class:"YouTube Channel"
                                           n_group:10,
                                           order_by:"name",
                                           pos:100,
@@ -216,10 +216,58 @@ Vue.component('vue-plugin-rs',
             },
 
 
+
+            edit_record()
+            {
+                //console.log(`Editing individual record in recordset`);
+                alert("Editing individual records not yet implemented, sorry!");
+            },
+
+
+
+            render_cell(cell_data)
+            /*  If the passed argument is a string that appears to be a URL, convert it into a string with HTML code
+                for a hyperlink that opens in a new window;
+                if the URL is very long, show it in abbreviated form in the hyperlink text.
+                In all other cases, just return the argument.
+
+                Note: this function is also found in records.js and single_records.js
+             */
+            {
+                const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
+
+                let dest_name = "";         // Name of the destination of the link, if applicable
+
+                if (typeof cell_data != "string")
+                     return cell_data;
+
+                // Do a simple-minded check as to whether the cell content appear to be a hyperlink
+                if (cell_data.substring(0, 8) == "https://")
+                    dest_name = cell_data.substring(8);
+                else if (cell_data.substring(0, 7) == "http://")
+                    dest_name = cell_data.substring(7);
+
+                if (dest_name != "")  {     // If the cell data was determined to be a URL
+                    if (dest_name.length > max_url_len)
+                        dest_name = dest_name.substring(0, max_url_len) + "..."; // Display long links in abbreviated form
+
+                    return `<a href='${cell_data}' target='_blank' style='font-size:10px'>${dest_name}<a>`;
+                }
+                else
+                    return cell_data;
+            },
+
+
+
+
+            /*
+                ---  SERVER CALLS  ---
+             */
+
             save_recordset_edit()
             // Send a request to the server, to update or create this Recordset's definition
             {
-                console.log(`In save_recordset_edit(), for document with URI '${this.current_metadata.uri}'`);
+                console.log(`In save_recordset_edit(), for Recordset with URI '${this.current_metadata.uri}'`);
 
                 // Send the request to the server, using a POST
 
@@ -228,7 +276,7 @@ Vue.component('vue-plugin-rs',
                     var url_server_api = "/BA/api/add_item_to_category_JSON";
                     var post_obj = {category_uri: this.category_id,
                                     class_name: this.item_data.class_name,
-                                    insert_after: "BOTTOM",
+                                    insert_after: this.item_data.insert_after,   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                                     class: this.current_metadata.class,
                                     n_group: parseInt(this.current_metadata.n_group),
@@ -240,12 +288,12 @@ Vue.component('vue-plugin-rs',
                     var url_server_api = "/BA/api/update_content_item_JSON";
                     var post_obj = {uri: this.current_metadata.uri,
                                     class_name: this.item_data.class_name,
+
                                     class: this.current_metadata.class,
                                     n_group: parseInt(this.current_metadata.n_group),
                                     order_by: this.current_metadata.order_by
                                    };
                 }
-                const my_var = null;        // Optional parameter to pass, if needed
 
                 console.log(`About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
@@ -255,8 +303,7 @@ Vue.component('vue-plugin-rs',
                             {method: "POST",
                              data_obj: post_obj,
                              json_encode_send: true,
-                             callback_fn: this.finish_save_recordset_edit,
-                             custom_data: my_var
+                             callback_fn: this.finish_save_recordset_edit
                             });
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -268,31 +315,37 @@ Vue.component('vue-plugin-rs',
             // Callback function to wrap up the action of save_recordset_edit(() upon getting a response from the server
             {
                 console.log("Finalizing the save_recordset_edit() operation...");
-                console.log(`Custom data passed: ${custom_data}`);
+                //console.log(`Custom data passed: ${custom_data}`);
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
-                    this.status_message = `Operation completed`;
+                    if (this.current_metadata.uri < 0)  {
+                        // If this was a newly-created item (with the temporary negative ID)
+                        this.status_message = `Recordset creation completed`;
+                        this.current_metadata.uri = server_payload;     // Update the temporary URI with the value assigned by the server
+                    }
+                    else
+                        this.status_message = `Recordset update completed`;
+
+                    // Inform the parent component of the new state of the data
+                    //TODO: get this to work, and also manage changes in URI (maybe pass original negative URI as separate arg, or extra field in object)
+                    //console.log("Recordsets component sending `updated-item` signal to its parent, with the following data:");
+                    //this.$emit('updated-item', this.current_metadata);
+
+                    // Synchronize the baseline data to the current one
                     this.pre_edit_metadata = Object.assign({}, this.current_metadata);  // Clone
+
                     this.get_fields();          // Fetch from the server the field names for this Recordset
                     this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone
+                    this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone, to restore the data to how it was prior to the failed changes
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;       // Make a note that the asynchronous operation has come to an end
                 this.recordset_editing = false; // Leave the editing mode
-            },
-
-
-
-            edit_record()
-            {
-                //console.log(`Editing individual record in recordset`);
-                alert("Editing individual records not yet implemented, sorry!");
             },
 
 
@@ -412,41 +465,7 @@ Vue.component('vue-plugin-rs',
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
                 //...
-            }, // finish_get_recordset
-
-
-
-            render_cell(cell_data)
-            /*  If the passed argument is a string that appears to be a URL, convert it into a string with HTML code
-                for a hyperlink that opens in a new window;
-                if the URL is very long, show it in abbreviated form in the hyperlink text.
-                In all other cases, just return the argument.
-
-                Note: this function is also found in records.js and single_records.js
-             */
-            {
-                const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
-
-                let dest_name = "";         // Name of the destination of the link, if applicable
-
-                if (typeof cell_data != "string")
-                     return cell_data;
-
-                // Do a simple-minded check as to whether the cell content appear to be a hyperlink
-                if (cell_data.substring(0, 8) == "https://")
-                    dest_name = cell_data.substring(8);
-                else if (cell_data.substring(0, 7) == "http://")
-                    dest_name = cell_data.substring(7);
-
-                if (dest_name != "")  {     // If the cell data was determined to be a URL
-                    if (dest_name.length > max_url_len)
-                        dest_name = dest_name.substring(0, max_url_len) + "..."; // Display long links in abbreviated form
-
-                    return `<a href='${cell_data}' target='_blank' style='font-size:10px'>${dest_name}<a>`;
-                }
-                else
-                    return cell_data;
-            }
+            } // finish_get_recordset
 
         }  // methods
 
