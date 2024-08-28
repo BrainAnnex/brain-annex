@@ -14,9 +14,9 @@
 
         all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                     EXAMPLE:
-                                          [{"uri": 1,   "name": "HOME", "remarks": "ROOT NODE"},
-                                           {"uri: 123,  "name": "Calculus"},
-                                           {"uri": 523, "name": "Work at Acme", "pinned": True}]
+                                          [{"uri": "1",   "name": "HOME", "remarks": "ROOT NODE"},
+                                           {"uri: "123",  "name": "Calculus"},
+                                           {"uri": "523", "name": "Work at Acme", "pinned": True}]
         subcategories       EXAMPLE: [{'uri': '2', 'name': 'Work', remarks: 'outside employment', OTHER_FIELDS_NOT_USED}]
         parent_categories
         siblings_categories
@@ -45,7 +45,9 @@
                         EXAMPLE:
                             [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
                              {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
+                             {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
+                                                         'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
 
         upload_directories: A list of folders registered with BrainAnnex
@@ -440,10 +442,12 @@
 
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
-    <button @click="add_new_item_at_bottom('h')" style="margin-right:10px">Header</button>
-    <button @click="add_new_item_at_bottom('n')" style="margin-right:10px">Note</button>
+    <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
+    <button @click="add_new_item_at_bottom('h', 'Headers')" style="margin-right:10px">Header</button>
+    <button @click="add_new_item_at_bottom('n', 'Notes')" style="margin-right:10px">Note</button>
     <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
-    <button @click="add_new_item_at_bottom('cd')" style="margin-right:10px">Code Documentation</button>
+    <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
+    <button @click="add_new_item_at_bottom('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation</button>
 
     <!-- Show all leaf Classes that are direct instances of "Records" -->
     <br>Add new record of type:
@@ -610,10 +614,10 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
-        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs"],  // "r" not included here, because a generic core one
-                                                                   // TODO: either pass from the database, or infer from some config file
-                                                                   // IMPORTANT: the items in the list MUST correspond to the folders in
-                                                                   //      flask_modules/pages/static/vue_components/PLUGINS
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs"], // "r" not included here, because a generic core one
+                                                                    // TODO: either pass from the database, or infer from some config file
+                                                                    // IMPORTANT: the items in the list MUST correspond to the folders in
+                                                                    //      flask_modules/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
@@ -647,10 +651,12 @@ new Vue({
                         // EXAMPLE: [{"uri":"709","name":"English"},{"uri":"708","name":"Italian"},{"uri":"514","name":"French"}]
 
         siblings_categories: {{siblings_categories | tojson}},
-                        // EXAMPLE: [{'name': 'French', 'uri': 514, 'schema_code': 'cat', 'internal_id': 522}]
+                        // EXAMPLE: [{'name': 'French', 'uri': '514', 'schema_code': 'cat', 'internal_id': 522}]
 
         all_categories: {{all_categories | tojson}},
-                        // EXAMPLE: [{"uri": 1, "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
+                        // EXAMPLE: [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
+
+        next_new_item_uri: -1,          // Auto-increment negative values as URI placeholders for new Content Items being added: -1, -2, ...
 
 
         // For bulk operations
@@ -937,7 +943,7 @@ new Vue({
         {
             //console.log(item);
             console.log(`In root component, insert_new_item_after()`);
-            console.log(`    Insert after Item ID: ${item.uri}. New item - schema_code: ${schema_code}, class_name (optional): ${class_name}`);
+            console.log(`    Insert after Item URI ${item.uri}. New item - schema_code: '${schema_code}', class_name (optional): '${class_name}'`);
 
             this.create_new_item_after(item.uri, schema_code, class_name);
         },
@@ -955,11 +961,13 @@ new Vue({
                 return;
             }
 
-            // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
+            // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)     // If a class name was passed, store it
-                blank_record = {uri: -1, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
             else                // No class name was provided
-                blank_record = {uri: -1, schema_code: schema_code, insert_after: insert_after_id};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: insert_after_id};
+
+            this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
             // Insert the newly-created record after the specified existing element
             this.content_array.splice(insert_after_index + 1, 0, blank_record);
@@ -974,14 +982,15 @@ new Vue({
             phased in for other types
          */
         {
-            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: ${class_name}`);
+            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
 
-            // Assemble the data for a new Content Item.  Using -1 as ID is a convention to indicate a NEW Content Item
-            // TODO: replace the -1 with an autoincrement unique number for the page
+            // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)   // If a class name was passed, store it
-                blank_record = {"uri": -1, "schema_code": schema_code, "class_name": class_name, insert_after: "BOTTOM"};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: "BOTTOM"};
             else             // No class name was provided
-                blank_record = {"uri": -1, "schema_code": schema_code, insert_after: "BOTTOM"};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: "BOTTOM"};
+
+            this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
             this.content_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
 
@@ -992,16 +1001,16 @@ new Vue({
         delete_content_item(item)
         // Delete from the page and from the database the specified Content Item
         {
-            console.log(`Root element received signal to delete content item of type '${item.schema_code}' , id ${item.uri}`);
-            const index = this.locate_item(item.schema_code, item.uri);
-            console.log(`Content item located in position ${index}`);
+            console.log(`delete_content_item(): Root element received signal to delete content item of class '${item.class_name}' , uri '${item.uri}'`);
+            const index = this.locate_item_simplified(item.uri);
+            console.log(`delete_content_item(): Content item located in position ${index}`);
 
             if (index == -1)  {
-                alert("Unable to locate the element to delete. Maybe a change was made on a separate tab...  Try refreshing page");
+                alert("Unable to locate the Item to delete. Maybe a change was made on a separate tab...  Try refreshing the page");
                 return;
             }
 
-            url_server = `/BA/api/delete/${item.uri}/${item.schema_code}`;
+            url_server = `/BA/api/delete/${item.uri}/${item.class_name}`;
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_delete, custom_data: index});
 
         },  // delete_content_item()
@@ -1139,13 +1148,13 @@ new Vue({
                      EXAMPLE: {uri: '5622', schema_code: 'r', English: 'Woman', German: 'Frau'}
          */
         {
-            //console.log("In absorb_item_updates_REVISED()");
+            console.log("In absorb_item_updates_REVISED()");
             const schema_code = new_data.schema_code;
             const uri = new_data.uri;
 
-            //console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' ,  uri '${uri}'`);
-            //console.log(`    Data for the update:`);
-            //console.log(new_data);
+            console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' ,  uri '${uri}'`);
+            console.log(`    Data for the update:`);
+            console.log(new_data);
 
             const index = this.locate_item(schema_code, uri);         // TODO: switch to internal ID's
 
@@ -1196,7 +1205,8 @@ new Vue({
             Note: this is an older version, probably to later be combined with absorb_item_updates_REVISED()
          */
         {
-            //console.log(`Root element received signal to UPDATE the Content Item of type '${item.schema_code}' , original uri '${item.uri}'`);
+            console.log(`Root element received signal to UPDATE the Content Item.  new_data:`);
+            console.log(new_data);
             if (new_data.uri)
                 console.log(`    A new current uri was passed: ${new_data.uri}`);
 
@@ -1347,13 +1357,13 @@ new Vue({
         locate_item_simplified(uri)
         /*  Locate the specified Content Item in the array of Content Items.
             The item is identified by its uri.
-            If found, return its index in the array; otherwise, return -1
+            If found, return its index in the array (an int >= 0); otherwise, return -1
             (No check is done as to whether there might be more than one match; the first one is returned.)
             TODO: replace it wth call to Utilities.find_item_by_uri(uri, this.content_array);
                   also include script src="/BA/pages/static/js/utilities.js"
          */
         {
-            //console.log(`Attempting to locate content item with id ${uri}`);
+            //console.log(`Attempting to locate content item with uri '${uri}'`);
 
             const number_items = this.content_array.length;
 

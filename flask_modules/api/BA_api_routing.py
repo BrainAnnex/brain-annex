@@ -11,6 +11,7 @@ from brainannex.media_manager import MediaManager, ImageProcessing
 from brainannex.neo_schema.neo_schema import NeoSchema
 from brainannex.categories import Categories
 from brainannex.PLUGINS.documents import Documents
+import brainannex.PLUGINS.plugin_support as plugin_support
 from brainannex.upload_helper import UploadHelper
 import brainannex.utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
@@ -185,15 +186,18 @@ class ApiRouting:
                                         that may contain multiple values for the same key.
                                         EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
 
-        :param required_par_list:   [OPTIONAL] A list or tuple of name of POST parameters whose presence is to be enforce.
+        :param required_par_list:   [OPTIONAL] A list or tuple of name of POST parameters whose presence is to be enforced.
+                                        If the json_decode argument is True, then these parameters may reside
                                         EXAMPLE: ['uri', 'rel_name']
-        :param json_decode:         If True, all values are expected to be JSON-encoded strings, which get decoded
+        :param json_decode:         If True, all values are expected to be JSON-encoded strings
         :return:                    A dict populated with the POST data
         """
-        #TODO: return a dict whose keys are the required fields,
-        #      PLUS an extra key, "OTHER_FIELDS" that contains a dict with the remaining field
+        #TODO: return a dict with 2 keys: one whose value is the required fields,
+        #      PLUS an extra key, "OTHER_FIELDS" that contains a dict with the remaining fields
         '''
-        return_dict = {"OTHER_FIELDS": other_fields}
+        other_fields = {}
+        required_fields = {}
+        return_dict = {"REQUIRED: required_fields, "OTHER": other_fields}
         for k, v in data_binding.items():
             if k in required_par_list:    # Exclude some special keys
                 return_dict[k] = v
@@ -215,6 +219,9 @@ class ApiRouting:
 
         if required_par_list:
             # Verify that all the required POST parameters are indeed present
+            if len(data_dict) == 0:
+                raise Exception(f"The POST request does not contain any data; "
+                                f"the following parameters were expected: {required_par_list}")
             for par in required_par_list:
                 assert par in data_dict, f"The expected parameter `{par}` is missing from the POST request"
 
@@ -350,6 +357,15 @@ class ApiRouting:
             optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class.
 
+            GET VARIABLE:
+                json    A JSON-encoded dict
+
+            KEYS in the JSON-encoded dict:
+                class_name          REQUIRED
+                include_ancestors   OPTIONAL
+                sort_by_path_len    OPTIONAL
+                exclude_system      OPTIONAL
+
             EXAMPLE invocations:
                 http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%7D
                     (passing the URL-safe version of the JSON-serialized dict {"class_name": "Quote"})
@@ -364,12 +380,6 @@ class ApiRouting:
                     import json
                     import urllib.parse
                     urllib.parse.quote(json.dumps(d))
-
-            KEYS in dict in passed JSON request:
-                class_name          REQUIRED
-                include_ancestors   OPTIONAL
-                sort_by_path_len    OPTIONAL
-                exclude_system      OPTIONAL
 
             For details, see NeoSchema.get_class_properties()
 
@@ -387,9 +397,10 @@ class ApiRouting:
                             }
             """
             # Extract the GET values
-            get_data = request.args    # Example: ImmutableMultiDict([('json', 'some_json_string')])
+            get_data = request.args    # Example: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
 
             try:
+                # This operation might fail - if there are problems in the JSON encoding
                 data_dict = cls.extract_get_pars(get_data, required_par_list=["json"])
             except Exception as ex:
                 err_details = exceptions.exception_helper(ex)
@@ -401,11 +412,14 @@ class ApiRouting:
             json_str = data_dict["json"]
             print("JSON string: ", json_str)
 
-            # TODO: turn a lot of the code below into a JSON-helper method
+            # TODO: turn a lot of the code below into a JSON-helper method;
+            #       in particular, add a "json_decode" arg to extract_get_pars()
+            #       See approach in '/update_content_item_JSON'
 
             try:
+                # This operation might fail - if there are problems in the JSON encoding
                 json_data = json.loads(json_str)    # Turn the string into a Python object
-                print("Decoded JSON request: ", json_data)
+                #print("Decoded JSON request: ", json_data)
             except Exception as ex:
                 response_data = {"status": "error", "error_message": f"Failed parsing of JSON string in request. Incorrectly formatted.  {ex}"}
                 print(response_data["error_message"])
@@ -417,7 +431,7 @@ class ApiRouting:
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
 
             class_name =  json_data["class_name"]
-            print("class_name: ", class_name)
+            #print("class_name: ", class_name)
             del json_data["class_name"]
 
             try:
@@ -801,7 +815,7 @@ class ApiRouting:
                             and an "error_message" key with details
             """
             try:
-                payload = DataManager.get_text_media_content(uri, "n")
+                payload = DataManager.get_text_media_content(uri)
                 #print(f"get_text_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
                 response_data = {"status": "ok", "payload": payload}                     # Successful termination
             except Exception as ex:
@@ -847,7 +861,7 @@ class ApiRouting:
         @login_required
         def serve_media(uri, th=None):
             """
-            Retrieve and return the contents of a data media item (for now, just Images or Documents.)
+            Retrieve and return the contents of a data media item (for now, just Images or Documents).
             If ANY value is specified for the argument "th", then the thumbnail version is returned (only
                 applicable to images)
 
@@ -861,7 +875,7 @@ class ApiRouting:
                             together with an error message
             """
             try:
-                (suffix, content) = MediaManager.get_binary_content(uri, th)
+                (suffix, content) = MediaManager.get_binary_content(uri, th=th)
                 response = make_response(content)
                 # Set the MIME type
                 mime_type = MediaManager.get_mime_type(suffix)
@@ -950,53 +964,26 @@ class ApiRouting:
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
-        @bp.route('/update', methods=['POST'])
-        @login_required
-        def update():
-            """
-            Update an existing Content Item.
-            NOTE: the "schema_code" field in the POST data is currently required, but it's redundant.  Only
-                  used as a safety mechanism against incorrect values of their uri
-
-            EXAMPLES of invocation:
-                curl http://localhost:5000/BA/api/update -d "uri=11&schema_code=h&text=my_header"
-                curl http://localhost:5000/BA/api/update -d "uri=62&schema_code=r&English=Love&German=Liebe"
-            """
-            #TODO: maybe pass the Class name instead of the "schema_code", as a redundant field
-
-            # Extract the POST values
-            post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('schema_code', 'r')])
-            #cls.show_post_data(post_data, "update")
-
-            try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['uri'])
-                DataManager.update_content_item(data_dict)
-                response_data = {"status": "ok"}                                    # If no errors
-            except Exception as ex:
-                err_details = f"Unable to update the requested Content Item.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # Error termination
-        
-            #print(f"update() is returning: `{response_data}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
 
         @bp.route('/update_content_item', methods=['POST'])
         @login_required
         def update_content_item():
             """
             Update an existing Content Item.
-            THIS IS A NEWER VERSION of the old endpoint '/update', and meant to eventually replace it.
+
             Required POST variables:
                 'uri', 'class_name'
             Optional  POST variables: whichever fields are being edited
-            NOTE: the "class_name" field in the POST data is redundant
+
+            NOTES:  the "class_name" field in the POST data is redundant.
+                    A JSON version of this endpoint is also available
 
             EXAMPLES of invocation:
                 curl http://localhost:5000/BA/api/update_content_item -d "uri=11&class_name=Headers&text=my_header"
                 curl http://localhost:5000/BA/api/update_content_item -d "uri=62&class_name=German Vocabulary&English=Love&German=Liebe"
             """
             #TODO: maybe use a PUT or PATCH method, instead of a POST
+            #TODO: explore more Schema enforcements
 
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('class_name', 'Headers'), ('text', 'my_header')])
@@ -1023,18 +1010,79 @@ class ApiRouting:
 
 
 
-        @bp.route('/delete/<uri>/<schema_code>')
+        @bp.route('/update_content_item_JSON', methods=['POST'])
         @login_required
-        def delete(uri, schema_code):
+        def update_content_item_JSON():
+            """
+            Update an existing Content Item.
+            This is variation of '/update_content_item' that expects to receive JSON data
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict
+
+            KEYS in the JSON-encoded dict:
+                uri                 REQUIRED
+                class_name          REQUIRED
+                plus whichever fields are being edited
+
+            NOTE: the "class_name" value is redundant
+
+            EXAMPLE of invocation:
+                curl http://localhost:5000/BA/api/update_content_item
+                        -d 'json={"uri":"6965","class_name":"Recordset","class":"YouTube Channel","n_group":7,"order_by":"name"}'
+            """
+            #TODO: maybe use a PUT or PATCH method, instead of a POST
+            #TODO: explore more Schema enforcements
+
+            # Extract and parse the POST value
+            data_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
+                                                # provided that mimetype indicates "application/json"
+            # EXAMPLE: {'uri': '6967', 'class_name': 'Recordset', 'class': 'University Classes', 'n_group': 12, 'order_by': 'code'}
+            # See: https://flask.palletsprojects.com/en/1.1.x/api/
+            print("In update_content_item_JSON() -  data_dict: ", data_dict)
+
+            # TODO: create a helper function for the unpacking/validation below
+            uri = data_dict.get('uri')
+            class_name = data_dict.get('class_name')
+
+            if not uri or not class_name:
+                err_details = f"update_content_item_JSON(): some required parameters are missing; " \
+                              f"'uri' and 'class_name' are required"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                del data_dict["uri"]
+                del data_dict["class_name"]
+
+                DataManager.update_content_item_NEW(uri=uri, class_name=class_name,
+                                                    update_data=data_dict)
+                response_data = {"status": "ok"}                                    # If no errors
+            except Exception as ex:
+                err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                                        #TODO: consider a "500 Internal Server Error" in this case
+                                        #      or maybe a "422 Unprocessable Entity"
+
+            #print(f"update_content_item() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/delete/<uri>/<class_name>')
+        @login_required
+        def delete(uri, class_name):
             """
             Delete the specified Content Item.
-            Note that schema_code is redundant.  Only used
-            as a safety mechanism against incorrect values of their uri
+            Note that class_name is redundant; only used as a safety mechanism
+            against incorrect values of their uri
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/n
+            EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/Document
             """
             try:
-                DataManager.delete_content_item(uri, schema_code)
+                DataManager.delete_content_item(uri=uri, class_name=class_name)
                 response_data = {"status": "ok"}              # If no errors
             except Exception as ex:
                 err_details = f"Unable to delete the requested Content Item.  {exceptions.exception_helper(ex)}"
@@ -1143,7 +1191,6 @@ class ApiRouting:
         
             POST FIELDS:
                 category_id         URI identifying the Category to which attach the new Content Item
-                schema_code         A string to identify the Schema that the new Content Item belongs to
                 class_name          The name of the Class of the new Content Item
                 insert_after        Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
@@ -1161,7 +1208,7 @@ class ApiRouting:
         
             # Create a new Content Item with the POST data
             try:
-                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'schema_code', 'insert_after'])
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'insert_after', 'class_name'])
                 payload = DataManager.new_content_item_in_category(pars_dict)        # The URI of the newly-created Data Node
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
@@ -1170,6 +1217,69 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}
 
             #print(f"add_item_to_category() is returning: `{err_details}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/add_item_to_category_JSON', methods=['POST'])
+        @login_required
+        def add_item_to_category_JSON():
+            """
+            Create a new Content Item attached to a particular Category,
+            at a particular location in the "collection" (page)
+
+            This is variation of '/add_item_to_category' that expects to receive JSON data
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict
+
+            KEYS in the JSON-encoded dict:
+                category_uri        URI identifying the Category to which attach the new Content Item
+                class_name          The name of the Class of the new Content Item
+                insert_after        Either an URI of an existing Content Item attached to this Category,
+                                    or one of the special values "TOP" or "BOTTOM"
+                *PLUS* any applicable plugin-specific fields
+
+            RETURNED PAYLOAD (on success):
+                The URI of the newly-created Data Node
+            """
+            #TODO: explore more Schema enforcements
+
+            # Extract and parse the POST value
+            pars_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
+            # provided that mimetype indicates "application/json"
+            # EXAMPLE: {'category_uri': '6967', 'class_name': 'Header', 'insert_after': 'BOTTOM', 'text': 'My Header'}
+            # See: https://flask.palletsprojects.com/en/1.1.x/api/
+            #print("In add_item_to_category_JSON() -  pars_dict: ", pars_dict)
+
+            # TODO: create a helper function for the unpacking/validation below
+            category_uri = pars_dict.get('category_uri')
+            class_name = pars_dict.get('class_name')
+            insert_after = pars_dict.get('insert_after')
+
+            if not category_uri or not class_name or not insert_after:
+                err_details = f"add_item_to_category_JSON(): some required parameters are missing; " \
+                              f"'category_uri', 'class_name' and 'insert_after' are required"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            # Create a new Content Item with the POST data
+            try:
+                del pars_dict["category_uri"]
+                del pars_dict["class_name"]
+                del pars_dict["insert_after"]
+
+                payload = DataManager.add_new_content_item_to_category(category_uri=category_uri, class_name=class_name, insert_after=insert_after,
+                                                                       item_data=pars_dict)     # It returns the URI of the newly-created Data Node
+                response_data = {"status": "ok", "payload": payload}
+            except Exception as ex:
+                err_details = f"/add_item_to_category_JSON : Unable to add the requested Content Item to the specified Category.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+
+            #print(f"add_item_to_category_JSON() is returning: `{err_details}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
@@ -1457,7 +1567,7 @@ class ApiRouting:
             Switch one or more Content Items from being attached to a given Category,
             to another one
 
-            POST FIELDS:
+            POST VARIABLES:
                 items   JSON-encoded list of URI's to relocate across Categories
                 from    JSON-encoded string URI of the old Category
                 to      JSON-encoded string URI of the new Category
@@ -1466,6 +1576,9 @@ class ApiRouting:
 
             EXAMPLE invocation:
                 curl http://localhost:5000/BA/api/switch_category  -d "items=[\"i-3332\", \"h-235\"]&from=\"3677\"&to=\"3676\""
+
+            TODO: consider switching to passing just 1 POST variable named "json",
+                  as done in 'get_class_properties'
             """
             # Extract the POST values
             post_data = request.form     # An ImmutableMultiDict
@@ -1668,13 +1781,18 @@ class ApiRouting:
                                 each name may optionally be followed by "DESC"
                 skip        The number of initial entries (in the context of specified order) to skip
                 limit       The max number of entries to return
+
+            RETURNED JSON PAYLOAD:
+                recordset:  A list of dicts with the filtered data
+                total_count:The total number of nodes in the database with the given label;
+                                if no label was provided, None
             """
             # Extract the GET values
             get_data = request.args     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
 
             try:
                 data_dict = cls.extract_get_pars(get_data)
-                print("/get_filtered parameters: ", data_dict)
+                #print("/get_filtered parameters: ", data_dict)
                 recordset = DataManager.get_nodes_by_filter(data_dict)
                 if "label" in data_dict:
                     total_count = NeoSchema.count_data_nodes_of_class(data_node=data_dict["label"])
@@ -1687,7 +1805,7 @@ class ApiRouting:
                                                 #   Note: jsonify() may fail if any parts of the response are not JSON serializable
             except Exception as ex:
                 response = {"status": "error", "error_message": f"/get_filtered web API endpoint: {ex}" }    # Error termination
-                print(f"get_filtered() is returning with error: `{response}`")
+                #print(f"get_filtered() is returning with error: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
                 # Maybe, do this instead:
                 # response = make_response(response["error_message"], 422)  # "422 Unprocessable Entity"
@@ -1879,7 +1997,7 @@ class ApiRouting:
             src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
 
             if post_data["upload_folder"] == "":    # If not explicitly passed
-                dest_folder = MediaManager.lookup_file_path(class_name=class_name)
+                dest_folder = MediaManager.default_file_path(class_name=class_name)
             else:
                 dest_folder = cls.config_pars["MEDIA_FOLDER"] + post_data["upload_folder"] + "/"
 
@@ -1935,7 +2053,7 @@ class ApiRouting:
                                                         item_class_name=class_name, item_properties=properties)
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
-                if class_name == "Document":
+                if class_name == "Document":    # TODO: move to plugin_support.py
                     Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
                                                           upload_folder=post_data["upload_folder"])
 

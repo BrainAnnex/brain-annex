@@ -51,7 +51,7 @@ Vue.component('vue-plugin-d',
                         <p v-if="current_metadata.authors" style="margin-bottom:0; color:#555">{{current_metadata.authors}}</p>
                         <p v-if="current_metadata.comments" style="margin-bottom:0; color:#555">{{current_metadata.comments}}</p>
                         <p v-if="current_metadata.rating || current_metadata.read" style="margin-bottom:0; color:#555">
-                            {{current_metadata.rating}} &#9733;
+                            <span v-if="current_metadata.rating">{{current_metadata.rating}} &#9733;</span>
                             <span style="margin-left:45px">{{current_metadata.read}}</span>
                         </p>
                     </div>
@@ -71,19 +71,23 @@ Vue.component('vue-plugin-d',
                         <br><br>
                         <span class="label">Authors</span> <input v-model="current_metadata.authors" size="35">
                         <br><br>
-                        <span class="label">Comments</span> <input v-model="current_metadata.comments" size="35">
+                        <span class="label">Comments</span><br>
+                        <textarea v-model="current_metadata.comments" name="myNAME" rows="3" cols="45">
+                        </textarea>
+
                         <br><br>
                         <span class="label">Rating</span> <input v-model="current_metadata.rating" size="3"> &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
                     </div>
 
 
-                    <!-- CONTROLS to edit the document metadata -->
+                    <!-- CONTROLS to edit the document metadata TODO: move this P to inside the DIV above -->
                     <p v-show="edit_metadata" style="text-align: right">
                         <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                         <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
                         <br>
                         <span v-if="waiting" class="waiting">Performing the update</span>
                     </p>
+
                     <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
 
                 </div>		<!-- End of Document container -->
@@ -118,11 +122,11 @@ Vue.component('vue-plugin-d',
             return {
                 edit_metadata: false,
 
-                // This object contains the values bound to the editing field, initially cloned from the prop data;
+                // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
                 current_metadata: Object.assign({}, this.item_data),    // Clone from the original data passed to this component
 
-                // Clone, used to restore the data in case of a Cancel or failed save
+                // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
 
 
@@ -201,7 +205,6 @@ Vue.component('vue-plugin-d',
                 this.status_message = "";   // Clear any message from the previous operation
             },
 
-
             finish_save_edit(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of save_edit() upon getting a response from the server
             {
@@ -224,16 +227,20 @@ Vue.component('vue-plugin-d',
             },
 
 
+
             render_url(cell_data)
-            /*  If the passed argument is a string that appears to be a URL, convert it into a string with HTML code
-                for a hyperlink that opens in a new window;
+            /*  If the passed argument is a string that appears to be a URL,
+                convert it into a string with HTML code for a hyperlink that opens in a new window;
                 if the URL is very long, show it in abbreviated form in the hyperlink text.
                 In all other cases, just return the argument.
 
-                Note: this function is also found in records.js and single_record.js
+                Note: this function is also found in records.js, single_record.js and site_links.js
              */
             {
                 const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
+
+                if (typeof cell_data != "string")
+                     return cell_data;
 
                 let dest_name = "";         // Name of the destination of the link, if applicable
 

@@ -11,6 +11,27 @@ class Documents:
     Plugin-provided custom interface for "documents"
     """
 
+
+    @classmethod
+    def default_folder(cls):
+        """
+        Specify the desired name for the default folder to contain document media
+        """
+        return "document"       # TODO: restore to "documents" (plural)
+
+
+
+    @classmethod
+    def initialize_schema(cls) -> None:
+        """
+        Initialize the Schema needed by this plugin
+
+        :return:    None
+        """
+        pass    # TODO: follow the example in Images
+
+
+
     @classmethod
     def delete_content_before(cls, uri: int) -> None:
         """
@@ -119,12 +140,13 @@ class Documents:
 
 
         # Extract the individual words "worthy" of being indexed in the document
+        full_file_name = path + filename
+
         if mime_type == "text/plain":
-            body = MediaManager.get_from_text_file(path, filename=filename)
+            body = MediaManager.get_from_text_file(full_file_name)
             unique_words = FullTextIndexing.extract_unique_good_words(body)
 
         elif mime_type == "application/pdf":    # TODO: also include EPUB
-            full_file_name = path + filename
             unique_words = cls.parse_pdf(full_file_name)
             #TODO: also store in database the doc.page_count and non-trivial values in doc.metadata
 

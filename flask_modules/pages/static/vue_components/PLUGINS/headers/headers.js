@@ -1,4 +1,5 @@
 // TODO: the special handling for "closing" Headers
+// TODO: maybe Headers should be regarded as "Page Elements", rather than "Content Items"
 
 /*  Vue component to display and edit Content Items of type "h" (Headers)
  */
@@ -33,15 +34,20 @@ Vue.component('vue-plugin-h',
 
             <span v-if="status_message!='' && !editing_mode">Status : {{status_message}}</span>
 
-            <!--  STANDARD CONTROLS
-                  (all signals from them get relayed to the parent of this component, but some get handled here)
-                  Intercept the following signal from child component:
-                        v-on:edit-content-item
+            <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                  EXCEPT for the "tag" control
+                  Signals from the Vue child component "vue-controls", below,
+                  get relayed to the parent of this component,
+                  but some get intercepted and handled here, namely:
+
+                          v-on:edit-content-item
             -->
-            <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
-                          v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item">
-            </vue-controls>
+                <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                              v-bind:controls_to_hide="['tag']"
+                              v-on="$listeners"
+                              v-on:edit-content-item="edit_content_item">
+                </vue-controls>
+            <!--  End of Standard Controls -->
 
             \n</div>\n		<!-- End of outer container box -->
             `,
@@ -101,6 +107,7 @@ Vue.component('vue-plugin-h',
             {
                 // Start the body of the POST to send to the server
                 post_body = "schema_code=" + this.current_data.schema_code;
+                post_body += "&class_name=" + this.item_data.class_name;
 
                 if (this.item_data.uri == -1)  {     // -1 is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
@@ -111,9 +118,9 @@ Vue.component('vue-plugin-h',
                      url_server = `/BA/api/add_item_to_category`;    // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING header
-                    post_body += "&uri=" + this.item_data.uri;
+                    post_body += "&uri=" + this.item_data.uri + "&class_name=Headers";
 
-                    url_server = `/BA/api/update`;                   // URL to communicate with the server's endpoint
+                    url_server = `/BA/api/update_content_item`;                   // URL to communicate with the server's endpoint
                 }
 
                 // Go over each field.  TODO: generalize

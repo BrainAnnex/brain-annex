@@ -212,12 +212,6 @@ class Categories:
              ORDER BY toLower(cat.name)
              '''
 
-        q_NO_LONGER_USED =  f'''
-             MATCH (cat:BA {{schema_code:"cat"}})
-             {clause}
-             RETURN cat.uri AS uri, cat.name AS name {remarks_subquery}
-             ORDER BY toLower(cat.name)
-             '''
         # Notes: Sorting must be done across names of consistent capitalization, or "GSK" will appear before "German"!
 
         result =  cls.db.query(q)
@@ -709,8 +703,8 @@ class Categories:
         """
         # TODO: perhaps restore the old feature of also storing a "description" field on the relationships
 
-        return NeoSchema.follow_links(class_name="Categories", node_id=from_category, id_type="uri",
-                                      links="BA_see_also", labels="Categories", properties=["name", "remarks", "uri"])
+        return NeoSchema.follow_links(class_name="Categories", node_id=from_category, id_key="uri",
+                                      link_name="BA_see_also", labels="Categories", properties=["name", "remarks", "uri"])
 
 
 
@@ -857,7 +851,8 @@ class Categories:
                     EXAMPLE:
                     [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
                      {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                     {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'}
+                     {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
+                     {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'uri': '6965', 'pos': 86, 'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                     ]
         """
 
@@ -866,9 +861,11 @@ class Categories:
 
         q = '''
             MATCH (cl :CLASS)<-[:SCHEMA]- (n) -[r :BA_in_category]-> (:Categories {uri:$category_id})
-            RETURN n, r.pos AS pos, cl.name AS class_name
+            RETURN n, r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code
             ORDER BY r.pos
             '''
+
+        # TODO: class_code is being phased out in favor of the new class_handler
 
         result = cls.db.query(q, data_binding={"category_id": uri})
         #cls.db.debug_query_print(q, data_binding={"category_id": uri})
@@ -880,8 +877,22 @@ class Categories:
 
             # TODO: eliminate possible conflict if the node happens to have
             #       attributes named "pos" or "class_name"!
+            #       Ought to return elements that are dictionaries such as:
+            #           {"pos": 15, "class_name": "Recordset", "class_handler": "recordsets", data: {}}
+
             item_record["pos"] = elem["pos"]                # Inject into the record a positional value
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
+
+            if elem.get("class_handler"):
+                item_record["class_handler"] = elem["class_handler"]    # Inject into the record the handler of its Class (not always present)
+
+            if elem.get("class_code"):
+                item_record["schema_code"] = elem["class_code"]         # Inject into the record the Class code (renamed "schema_code")
+                                                                        # TODO: temp, during phaseout of "schema_code" in favor of "class_handler"
+            #if ("schema_code" in elem) and (elem["schema_code"]) and ("schema_code" not in item_record):
+                #item_record["schema_code"] = elem["schema_code"]
+
+
             if "date_created" in item_record:   # TODO: this is a hack, to clean up!
                 del item_record["date_created"] # Datetime objects aren't serializable and lead to Flask errors
                                                 # TODO: let NeoAccess handle the conversion to string
@@ -1151,7 +1162,7 @@ class Categories:
                             if no duplicates, return an empty string
         """
         q = '''
-            MATCH (i1:BA)-[r1:BA_in_category]->(:BA {schema_code:"cat", uri: $uri})<-[r2:BA_in_category]-(i2:BA) 
+            MATCH (i1:BA)-[r1:BA_in_category]->(:BA:Categories, uri: $uri})<-[r2:BA_in_category]-(i2:BA) 
             WHERE r1.pos = r2.pos AND i1.uri <> i2.uri
             RETURN r1.pos AS pos, i1.uri AS item1 ,i2.uri AS item2
             LIMIT 1
@@ -1206,7 +1217,7 @@ class Categories:
         # Collect a subset of the first sorted "pos" values: enough values to cover across the insertion point
         number_to_consider = move_after_n + 1
         q = f'''
-            MATCH (c:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos
             ORDER by pos
             LIMIT {number_to_consider}
@@ -1216,7 +1227,7 @@ class Categories:
 
         result = cls.db.query(q, {"category_id": category_uri})  # If nothing found, this will be [{'POS_LIST': []}]
         pos_list = result[0].get("POS_LIST")    # A subset of the first sorted "pos" values
-        print("pos_list: ", pos_list)
+        #print("pos_list: ", pos_list)
 
         if pos_list == []:
             # The Category is empty (or doesn't exist)
@@ -1224,21 +1235,21 @@ class Categories:
 
         if move_after_n == 0:
             # Move to top
-            print("Moving to the top")
+            #print("Moving to the top")
             top_pos = pos_list[0]
             new_pos = top_pos - cls.DELTA_POS
         elif move_after_n >= len(pos_list):
             # Move to bottom
-            print("Moving to the bottom")
+            #print("Moving to the bottom")
             top_pos = pos_list[-1]      # The last element in the list
             new_pos = top_pos + cls.DELTA_POS
         else:
             pos_above = pos_list[move_after_n - 1]  # The "pos" value of the Item just above the insertion point
             pos_below = pos_list[move_after_n]      # The "pos" value of the Item just below
-            print(f"pos_above: {pos_above} | pos_below: {pos_below}")
+            #print(f"pos_above: {pos_above} | pos_below: {pos_below}")
             if pos_below == pos_above + 1:
                 # There's no room; shift everything that is past that position, by a count of DELTA_POS
-                print(f"********* RELOCATING ITEMS (skipping the first {move_after_n}) ***********")
+                #print(f"********* RELOCATING ITEMS (skipping the first {move_after_n}) ***********")
                 cls.relocate_positions(category_uri, n_to_skip=move_after_n, pos_shift=cls.DELTA_POS)
                 new_pos = pos_above + int(cls.DELTA_POS/2)			# This will be now be the empty halfway point
             else:
@@ -1247,15 +1258,15 @@ class Categories:
 
         # Change the "pos" attribute of the relationship to the Content Item being moved
         q = f'''
-            MATCH (:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
+            MATCH (:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
             SET r.pos = {new_pos}
             '''
 
-        print("q: ", q)
+        #print("q: ", q)
 
         result = cls.db.update_query(q, {"category_id": category_uri, "uri": uri})
         number_props_set = result.get('properties_set')
-        print("number_props_set: ", number_props_set)
+        #print("number_props_set: ", number_props_set)
         if number_props_set != 1:
             raise Exception(f"Content Item (id {uri}) not found in Category (id {category_uri}), or could not be moved")
 
@@ -1293,7 +1304,7 @@ class Categories:
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
 
         q = f'''
-            MATCH (c:BA {{schema_code: "cat", uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos, r
             ORDER by pos
             SKIP {n_to_skip}
@@ -1313,7 +1324,7 @@ class Categories:
         :param uri_1:   A string with the uri of the 1st Content Item
         :param uri_2:   A string with the uri of the 2nd Content Item
         :param cat_id:  A string with the uri of the Category
-        :return:        None.  In case of error, raise an Exception
+        :return:        None
         """
 
         # Validate the arguments
@@ -1324,9 +1335,9 @@ class Categories:
         # Look for a Category node (c) that is connected to 2 Content Items (n1 and n2)
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
         q = '''
-            MATCH (n1:BA {uri: $uri_1})
-                        -[r1:BA_in_category]->(c:BA {schema_code:"cat", uri: $cat_id})<-[r2:BA_in_category]-
-                  (n2:BA {uri: $uri_2})
+            MATCH (n1 {uri: $uri_1})
+                        -[r1:BA_in_category]->(c:BA:Categories {uri: $cat_id})<-[r2:BA_in_category]-
+                  (n2 {uri: $uri_2})
             WITH r1.pos AS tmp, r1, r2
             SET r1.pos = r2.pos, r2.pos = tmp
             '''
@@ -1345,7 +1356,7 @@ class Categories:
         number_properties_set = stats.get("properties_set")
 
         assert number_properties_set, \
-            f"Failure to swap content items `{uri_1}` and `{uri_2}` within Category `{cat_id}`"
+            f"Failure to swap content items `{uri_1}` and `{uri_2}` within Category `{cat_id}`. Query: {q}"
 
         assert number_properties_set == 2, \
             f"Irregularity detected in swap action: {number_properties_set} properties were set," \

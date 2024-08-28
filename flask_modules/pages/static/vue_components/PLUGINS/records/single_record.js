@@ -109,10 +109,11 @@ Vue.component('vue-plugin-single-record',
             // Invoked when the user asks to save the edit-in-progress
             {
                 // Send the request to the server, using a POST
-                const url_server_api = "/BA/api/update";
+                const url_server_api = "/BA/api/update_content_item";
 
                 let post_obj = {schema_code: this.record_data.schema_code,
                                 uri: this.record_data.uri,
+                                class_name: "Records"
                                 };
                 // Go over each key (field name); note that keys that aren't field names were previously eliminated
                 for (key in this.record_current) {
@@ -201,6 +202,9 @@ Vue.component('vue-plugin-single-record',
              */
             {
                 const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
+
+                if (typeof cell_data != "string")
+                     return cell_data;
 
                 let dest_name = "";         // Name of the destination of the link, if applicable
 

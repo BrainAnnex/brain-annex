@@ -507,6 +507,12 @@ def test_is_link_allowed(db):
 
     assert NeoSchema.is_link_allowed("belongs to", from_class="lax1", to_class="lax2")  # Anything goes, if both Classes are lax!
 
+    with pytest.raises(Exception):   # Classes that doesn't exist
+        NeoSchema.is_link_allowed("belongs to", from_class="nonexistent", to_class="lax2")
+
+    with pytest.raises(Exception):
+        assert not NeoSchema.is_link_allowed("belongs to", from_class="lax1", to_class="nonexistent")
+
     assert not NeoSchema.is_link_allowed("belongs to", from_class="lax1", to_class="strict")
 
     NeoSchema.create_class_relationship(from_class="lax1", to_class="strict",
@@ -522,9 +528,23 @@ def test_is_link_allowed(db):
     assert  NeoSchema.is_link_allowed("works for", from_class="strict", to_class="lax2")
 
 
+    # Now check situations involving "INSTANCE_OF" relationships
+    NeoSchema.create_class("ancestor", strict=True)
+    NeoSchema.create_class_relationship(from_class="ancestor", to_class="lax2",
+                                        rel_name="supplied by")
+    assert NeoSchema.is_link_allowed("supplied by", from_class="ancestor", to_class="lax2")
+    assert not NeoSchema.is_link_allowed("supplied by", from_class="strict", to_class="lax2")
+    NeoSchema.create_class_relationship(from_class="strict", to_class="ancestor",
+                                        rel_name="INSTANCE_OF")
+    assert NeoSchema.is_link_allowed("supplied by", from_class="strict", to_class="lax2")   # Now allowed thru 'ISTANCE_OF` ancestry
+
+
 
 def test_is_strict_class(db):
     db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.is_strict_class("I dont exist")
 
     NeoSchema.create_class("I am strict", strict=True)
     assert NeoSchema.is_strict_class("I am strict")
@@ -2022,8 +2042,8 @@ def test_class_of_data_point(db):
     NeoSchema.create_class("Person")
     uri = NeoSchema.add_data_point_OLD("Person")
 
-    assert NeoSchema.class_of_data_node(node_id=uri, id_type="uri") == "Person"
-    assert NeoSchema.class_of_data_node(node_id=uri, id_type="uri", labels="Person") == "Person"
+    assert NeoSchema.class_of_data_node(node_id=uri, id_key="uri") == "Person"
+    assert NeoSchema.class_of_data_node(node_id=uri, id_key="uri", labels="Person") == "Person"
 
     # Now locate thru the internal database ID
     internal_id = NeoSchema.get_data_node_id(uri)

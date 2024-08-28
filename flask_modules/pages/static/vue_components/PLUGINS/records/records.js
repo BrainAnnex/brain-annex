@@ -292,6 +292,9 @@ Vue.component('vue-plugin-r',
             {
                 const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
 
+                if (typeof cell_data != "string")
+                     return cell_data;
+
                 let dest_name = "";         // Name of the destination of the link, if applicable
 
                 if (typeof cell_data != "string")
@@ -565,6 +568,7 @@ Vue.component('vue-plugin-r',
                 else  {
                     // Update an EXISTING record
                     post_obj["uri"] = this.item_data.uri;
+                    post_obj["class_name"] = this.item_data.class_name;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
@@ -574,7 +578,7 @@ Vue.component('vue-plugin-r',
                         }
                     }
 
-                    var url_server_api = `/BA/api/update`;   // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
 
 

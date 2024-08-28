@@ -16,9 +16,13 @@ class MediaManager:
     """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
-                        # Example on Windows: "D:/media/"
+                        # EXAMPLE on Windows: "D:/media/"
                         #                     (notice the forward slashes, even on Windows)
                         # This class variable gets set by initialize.py
+
+    DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder (a child of MEDIA_FOLDER)
+                            # EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
+                            # This class variable gets set by initialize.py
 
 
     @classmethod
@@ -37,72 +41,36 @@ class MediaManager:
 
 
     @classmethod
-    def retrieve_full_path(cls, uri :str, thumb=False) -> str:
+    def set_default_folders(cls, folder_dict :dict) -> None:
         """
-        Return the full path for the specified media file or, if requested, for its thumbnail image.
-        Includes the final "/"
-        EXAMPLE (on Windows):  "D:/BACKUP_media/images/resized/"
 
-        :param uri:         Unique identifier for the Media Item of Interest
-        :param thumb:       If True, return the folder for the thumbnail image instead
-        :return:            EXAMPLES on Windows:
-                                "D:/media/documents/"
-                                "D:/media/images/resized/"
+        :param folder_dict:
+        :return:
         """
-        class_name = NeoSchema.class_of_data_node(node_id=uri, id_type="uri")
-
-        dir_names = NeoSchema.follow_links(class_name=class_name, node_id=uri, id_type="uri",
-                                           links="BA_stored_in", properties="name")
-        #print("dir_names: ", dir_names)
-
-        assert len(dir_names) < 2, \
-            f"retrieve_folder_name(): more than 1 directory is associated with file with uri `{uri}`"
-
-        if len(dir_names) == 0:
-            return cls.lookup_file_path(class_name=class_name, thumb=thumb)
-
-        folder_name = dir_names[0]
-        if thumb:
-            folder_name = "resized/" + folder_name
-
-        return cls.MEDIA_FOLDER + folder_name + "/"
+        cls.DEFAULT_FOLDERS = folder_dict
 
 
 
     @classmethod
-    def lookup_file_path(cls, schema_code=None, class_name=None, thumb=False) -> str:
+    def default_file_path(cls, class_name :str, thumb=False) -> str:
         """
-        Return the full file path, including the final "/" of media of
-        a particular type, identified by the schema_code argument
-        TODO: most function calls will be switched over to retrieve_full_path()
-        TODO: rename default_file_path()
+        Return the default file path, including the final "/", of the media files associated to the given schema Class
 
-        :param schema_code: String identifier used by the various plugins
-        :param class_name:  An alternate way to identify the type of the media file.
-                                If both schema_code and class_name are specified,
-                                class_name prevails
+        :param class_name:  The name of the Class of the media item of interest
         :param thumb:       If True, then the "thumbnail" version is returned
                                 (only applicable to some media types, such as images)
-        :return:            EXAMPLES on Windows:
+        :return:            The full file path, including the final "/"
+                            EXAMPLES on Windows:
                                 "D:/media/documents/"
                                 "D:/media/images/resized/"
         """
         folder = cls.MEDIA_FOLDER    # Includes the final "/"
         assert folder is not None, \
-            "lookup_file_path(): MEDIA_FOLDER must be set first"
+            "lookup_file_path(): MEDIA_FOLDER must be set first.  Call MediaManager.set_media_folder()"
 
-        if class_name is not None:
-            folder += f"{class_name.lower()}/"
-        elif schema_code is not None:
-            if schema_code == "d":
-                folder +=  "documents/"
-            elif schema_code == "i":
-                folder += "images/"
-            elif schema_code == "n":
-                folder += "notes/"
-        else:
-            raise Exception("lookup_file_path(): at least one of two arguments "
-                            "`class_name` and `schema_code` must be provided")
+        default_folder = cls.DEFAULT_FOLDERS.get(class_name)
+
+        folder += default_folder + "/"
 
         if thumb:
             folder += "resized/"
@@ -112,19 +80,110 @@ class MediaManager:
 
 
     @classmethod
-    def get_from_text_file(cls, path: str, filename: str, encoding="latin-1") -> str:
+    def retrieve_full_path(cls, uri :str, thumb=False) -> str:
+        """
+        Return the full path for the specified media file or, if requested, for its thumbnail image.
+        Includes the final "/"
+        EXAMPLE (on Windows):  "D:/BACKUP_media/images/resized/"
+
+        :param uri:         Unique identifier string for the Media Item of Interest
+        :param thumb:       If True, return the folder for the thumbnail image instead
+        :return:            EXAMPLES on Windows:
+                                "D:/media/documents/"
+                                "D:/media/images/resized/"
+        """
+        class_name = NeoSchema.class_of_data_node(node_id=uri, id_key="uri")
+
+        dir_names = NeoSchema.follow_links(class_name=class_name, node_id=uri, id_key="uri",
+                                           link_name="BA_stored_in", properties="name")
+        #print("dir_names: ", dir_names)
+
+        assert len(dir_names) < 2, \
+            f"retrieve_folder_name(): more than 1 directory is associated with file with uri `{uri}`"
+
+        if len(dir_names) == 0:     # No custom directory was specified
+            return cls.default_file_path(class_name=class_name, thumb=thumb)    # including the final "/"
+
+        folder_name = dir_names[0]
+
+        if thumb:
+            folder_name += "/resized"
+
+        return cls.MEDIA_FOLDER + folder_name + "/"
+
+
+
+    @classmethod
+    def lookup_media_file(cls, uri :str, thumb=False) -> (str, str, str):
+        """
+
+        :param uri:     Unique identifier for the Media Item of Interest
+        :param thumb:   If True, return the folder for the thumbnail image instead;
+                                ignored if the file suffix is "svg" (regardless of case),
+                                because SVG files cannot be resized
+        :return:        The triplet (filepath, basename, suffix)
+                                Notes:  filepath ends with a "/"
+                                        the basename is exclusive of path and of suffix
+                                        the suffix does NOT include the dot
+                                EXAMPLE:
+                                    ("D:/media/my_media_folder/images/", "snap1", "jpg")
+        """
+        #TODO: maybe combine this method and retrieve_full_path()
+
+        content_node = NeoSchema.get_data_node(uri = uri)
+        #print("content_node:", content_node)
+        if content_node is None:
+            raise Exception(f"lookup_media_file(): Metadata not found for the Media file with URI '{uri}'")
+
+        basename = content_node['basename']
+        suffix = content_node['suffix']
+
+        if suffix.lower() == "svg":
+            thumb = False   # SVG files cannot be resized
+
+
+        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
+        # Includes the final "/"
+        folder = cls.retrieve_full_path(uri=uri, thumb=thumb)
+
+        return (folder, basename, suffix)
+
+
+
+    @classmethod
+    def get_full_filename(cls, uri : str, thumb=False) -> str:
+        """
+
+        :param uri:     Unique identifier for the Media Item of Interest
+        :param thumb:   If True, return the folder for the thumbnail image instead;
+                                ignored if the file suffix is "svg" (regardless of case),
+                                because SVG files cannot be resized
+        :return:        EXAMPLE: "D:/media/my_media_folder/images/Tahiti vacation/"
+        """
+        (filepath, basename, suffix) = cls.lookup_media_file(uri, thumb)
+        filename = basename + "." + suffix
+
+        full_path = cls.retrieve_full_path(uri=uri, thumb=thumb)
+        full_file_name = full_path + filename
+
+        return full_file_name
+
+
+
+    @classmethod
+    def get_from_text_file(cls, filename: str, path="", encoding="latin-1") -> str:
         """
         Read in and return the contents of the specified TEXT file.
 
         Note: 'utf8' encoding at times led to problems.
                More info: https://stackoverflow.com/questions/5552555/unicodedecodeerror-invalid-continuation-byte
 
-        :param path:        String that must include a final "/", containing the full path of the file
+        :param filename:    FULL filename, INCLUDING path - unless path is passed in the following argument
                                 EXAMPLE on Windows:
-                                "D:/media/" (notice the forward slashes, even on Windows)
-        :param filename:    EXCLUSIVE of path
+                                "D:/media/my_file.txt"   (notice the forward slashes, even on Windows)
+        :param path:        [OPTIONAL] String to prefix to the filename argument, above
         :param encoding:    A string such as "latin-1" (aka "iso-8859-1") or "utf8"
-        :return:            The contents of the text file, using 'latin-1' encoding
+        :return:            The contents of the text file, using the requested encoding
         """
         full_file_name = path + filename
 
@@ -183,7 +242,7 @@ class MediaManager:
         # Includes the final "/"
         folder, basename, suffix = cls.lookup_media_file(uri, thumb=th)
 
-        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "mypic.jpg"
+        filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "my_pic.jpg"
 
         try:
             file_contents = cls.get_from_binary_file(path=folder, filename=filename)
@@ -239,38 +298,6 @@ class MediaManager:
 
 
     @classmethod
-    def lookup_media_file(cls, uri :str, thumb=False) -> (str, str, str):
-        """
-
-        :param uri:         Unique identifier for the Media Item of Interest
-        :param thumb:       If True, return the folder for the thumbnail image instead;
-                                ignored if the file suffix is "svg" (regardless of case),
-                                because SVG files cannot be resized
-        :return:            The triplet (filepath, basename, suffix)
-        """
-        #TODO: maybe combine this method and retrieve_full_path()
-
-        content_node = NeoSchema.get_data_node(uri = uri)
-        #print("content_node:", content_node)
-        if content_node is None:
-            raise Exception(f"lookup_media_file(): Metadata not found for the Media file with URI '{uri}'")
-
-        basename = content_node['basename']
-        suffix = content_node['suffix']
-
-        if suffix.lower() == "svg":
-            thumb = False   # SVG files cannot be resized
-
-
-        # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
-        # Includes the final "/"
-        folder = cls.retrieve_full_path(uri=uri, thumb=thumb)
-
-        return (folder, basename, suffix)
-
-
-
-    @classmethod
     def before_update_content(cls, uri :str, set_dict :dict, class_name :str) -> None:
         """
         Invoked before a Media Item of this type gets updated in the database
@@ -305,17 +332,18 @@ class MediaManager:
 
 
     @classmethod
-    def save_into_file(cls, contents: str, filename: str) -> None:
+    def save_into_file(cls, contents: str, filename: str, class_name :str) -> None:
         """
         Save the given data into the specified file in the class-wide media folder.  UTF8 encoding is used.
         In case of error, detailed Exceptions are raised
 
         :param contents:    String to store into the file
         :param filename:    EXCLUSIVE of file path
+        :param class_name:  Needed to determine the default folder location (which is based on class_name)
         :return:            None.  In case of errors, detailed Exceptions are raised
         """
 
-        folder = cls.lookup_file_path(schema_code="n")                  # TODO: pass schema_code as an argument, instead of being hardwired
+        folder = cls.default_file_path(class_name=class_name)
         full_file_name = folder + filename
 
         try:
@@ -334,23 +362,16 @@ class MediaManager:
 
 
     @classmethod
-    def delete_media_file(cls, uri: str, basename: str, suffix: str, thumb=False) -> bool:
+    def delete_media_file(cls, uri: str, thumb=False) -> bool:
         """
         Delete the specified media file, assumed in a standard location
 
         :param uri:         Unique identifier for the Media Item of Interest
-        :param basename:    File name, exclusive of path and of suffix
-        :param suffix:      String such as "htm" (don't include the dot!)
-        :param thumb:       If True, then the "thumbnail" version is returned
+        :param thumb:       If True, then the "thumbnail" version is deleted
                                 (only applicable to some media types, such as images)
         :return:            True if successful, or False otherwise
         """
-        filename = basename + "." + suffix
-        #print(f"Attempting to delete file `{filename}`")
-
-        #folder = cls.lookup_file_path(schema_code=schema_code, thumb=thumbs)
-        full_path = cls.retrieve_full_path(uri=uri, thumb=thumb)
-        full_file_name = full_path + filename
+        full_file_name = cls.get_full_filename(uri, thumb)
 
         return cls.delete_file(full_file_name)
 
@@ -415,20 +436,6 @@ class MediaManager:
                 return character
 
         return ""
-
-
-
-    @classmethod
-    def is_media_class(cls, class_name :str) -> bool:
-        """
-        Return True if the given Class is an INSTANCE_OF the "Media" Class
-
-        :param class_name:  Name of a Schema class
-        :return:            True if the given Class is an INSTANCE_OF the "Media" Class
-        """
-        # TODO: for now hardwired; ought to instead query the Schema, to discover if the given Class
-        #       is an INSTANCE_OF the "Media" class
-        return class_name in ["Document", "Images", "Notes"]
 
 
 
@@ -583,7 +590,6 @@ class ImageProcessing:
 
 
 
-
     @classmethod
     def process_uploaded_image(cls, media_folder :str, basename :str, suffix :str) -> dict:
         """
@@ -627,7 +633,6 @@ class ImageProcessing:
 
 
         return properties    # A dictionary of additional image-specific properties that will go in the database
-
 
 
 

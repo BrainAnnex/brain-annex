@@ -168,9 +168,11 @@ class ServerCommunication
 
 
         if (json_encode_send) {
+            ServerCommunication.sanitize_data_object(data_obj);    // TODO: unclear if really necessary; JSON.stringify() seems to already ditch "undeclared" values
             var data_str = JSON.stringify(data_obj);
             console.log(`contact_server_NEW(): the data object to send is being converted to JSON as '${data_str}'`);
-            data_str = "json=" + data_str;      // Start preparing a query string for the URL
+            if (method == "GET")
+                data_str = "json=" + data_str;      // Start preparing a query string for the URL
         }
         else {
             var data_str = ServerCommunication.parse_data_object(data_obj);
@@ -179,11 +181,14 @@ class ServerCommunication
 
 
         if (method == "POST")  {
-            console.log(`contact_server_NEW() - a POST will be used, with the following data string: "${data_str}"`);
-            if (json_encode_send)
+            if (json_encode_send)  {
+                console.log(`contact_server_NEW() - a POST will be used, with the following JSON data string: ${data_str}`);
                 var fetch_options = ServerCommunication.prepare_POST_options_JSON(data_str);    // An object
-            else
+            }
+            else  {
+                console.log(`contact_server_NEW() - a POST will be used, with the following data string: "${data_str}"`);
                 var fetch_options = ServerCommunication.prepare_POST_options(data_str);         // An object
+            }
         }
         else  {    // GET
             if (data_str != "")
@@ -208,9 +213,10 @@ class ServerCommunication
         var error_message = "";     // Only applicable if success_flag is false
 
         console.log("send_data_to_server(): about to start asynchronous call to ", url_server);
+        console.log("    using the following fetch_options: ", fetch_options);
 
         fetch(url_server, fetch_options)
-        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
+        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors_JSON(fetch_resp_obj))    // Deal with fetch() errors
         .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
                                                         //      TODO: turn into a method that first logs the first part of the response
                                                         //            (helpful in case of parsing errors)
@@ -255,6 +261,7 @@ class ServerCommunication
 
         custom_data is an OPTIONAL argument; if present, it is passed as a final argument to the callback function
 
+        TODO: being obsoleted by send_data_to_server()
         TODO: factor out some parts to contact_server()
      */
     {
@@ -274,7 +281,7 @@ class ServerCommunication
         }
 
         fetch(url_server, fetch_options)
-        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
+        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors_JSON(fetch_resp_obj))    // Deal with fetch() errors
         .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
                                                         //      TODO: turn into a method that first logs the first part of the response
                                                         //            (helpful in case of parsing errors)
@@ -396,6 +403,22 @@ class ServerCommunication
 
 
 
+    static sanitize_data_object(data_object)
+    /*  Drop any undefined or NaN values from the given object literal
+     */
+    {
+        var data_str = "";      // The string version of the object
+        var k, val;
+
+        for (k in data_object) {    // Loop thru the keys
+            val = data_object[k];      // Get the corresponding value
+
+            if (val === undefined  ||  Number.isNaN(val))
+                delete data_object[k];      // Ditch the bad values
+        }
+    }
+
+
     static parse_data_object(data_object)
     /*  Turn an object literal into a string, after transforming its attribute values with encodeURIComponent()
 
@@ -413,20 +436,20 @@ class ServerCommunication
         TODO: this version is for both POST and GET; it will replace parse_POST_object()
      */
     {
-        var data_str = "";
+        var data_str = "";      // The string version of the object
         var k, val;
 
         for (k in data_object) {    // Loop thru the keys
             val = data_object[k];      // Get the corresponding value
 
-            if (val === undefined)
-                continue;           // Completely drop any key/value pair, if the value is undefined
+            if (val === undefined  ||  Number.isNaN(val))
+                continue;           // Completely drop any key/value pair, if the value is undefined or a NaN
 
-            //console.log(`    key: ${k}  |  value: ${val} `);
+            //console.log(`    key: ${k}  |  value: ${val}   |  type of value: '${typeof val}'`);
 
             data_str += k + "=";
 
-            if ((val != "") && (typeof val == "string"))
+            if ((typeof val == "string")  &&  (val != ""))
                 data_str += encodeURIComponent(val);    // Safe-encode the value
             else
                 data_str += val;                        // Pass thru the value undisturbed
@@ -551,7 +574,8 @@ class ServerCommunication
     static handle_fetch_errors(resp_obj)
     /*  If the given response object - returned by a fetch() calls - indicates success,
             just pass thru the response object:
-            it will get caught by the next ".then()" statement of the original fetch() call.
+            it will get caught by the next ".then()" statement of the original fetch() call
+            .
         In case of HTTP error status (such as 404), log the error to the console,
             and raise an exception with error details - meant to be caught by a
             ".catch()" statement in the original fetch() call.
@@ -577,7 +601,42 @@ class ServerCommunication
         const error_info = "HTTP error status received from the server. Error status: " + resp_obj.status
                                 + ". Error details: " + resp_obj.statusText + ". \nURL: " + resp_obj.url;
 
-        throw new Error(error_info);
+        throw new Error(error_info);    // This will get intercepted by the ".catch()" statement in the original fetch() call
+    }
+
+
+    static handle_fetch_errors_JSON(resp_obj)
+    /*  In case of HTTP error status (such as 404), log the error to the console
+
+        In all cases, always pass thru the response object:
+            it will get caught by the next ".then()" statement of the original fetch() call
+
+        Example of response object:
+            { type: "basic", url: "http://localhost:5000/BA/api/create_new_schema_class", redirected: false,
+              status: 200, ok: true, statusText: "OK", headers: Headers, body: ReadableStream, bodyUsed: false }
+     */
+    {
+        if (resp_obj.ok)  {
+            // FOR DEBUGGING:
+            console.log(`Received response object from server: `, resp_obj);
+            console.log('    Content-Type of response: ', resp_obj.headers.get('Content-Type'));
+            //console.log('    Date: ', resp_obj.headers.get('Date'));
+            // END OF DEBUGGING
+
+            return resp_obj;	// Just pass thru the response object
+        }
+
+        // If the above "ok" attribute is false, then there was an HTTP error status - for example a 404 (page not found)
+        //console.error('Error: HTTP error status received from the server. Response object below:', resp_obj);
+
+        const error_info = "HTTP error status received from the server. Error status: " + resp_obj.status
+                                + ". Error details: " + resp_obj.statusText + ". \nURL: " + resp_obj.url;
+        console.error(error_info);
+
+        console.error('Response object below:', resp_obj);
+
+        return resp_obj;	// Just pass thru the response object
+        //throw new Error(error_info);    // This will get intercepted by the ".catch()" statement in the original fetch() call
     }
 
 
@@ -596,7 +655,7 @@ class ServerCommunication
                   See https://stackoverflow.com/questions/9156176/what-is-the-difference-between-throw-new-error-and-throw-someobject
       */
     {
-        console.error('Error during the fetch() operation');
+        //console.error('Error during the fetch() operation');
         console.log(err);   // Note: this may not immediately show up on the console, if there
                             //       is an alert box (which needs to be dismissed first)
 
@@ -635,14 +694,17 @@ class ServerCommunication
 		If an error was detected, return an error message; otherwise, return an empty string.
 	 */
 	{
-	    const SUCCESS_STATUS = "ok";        // This value for the "status" JSON flag is indicative of a successful operation
+	    const SUCCESS_STATUS = "ok";        // If the server returns a dict with this value for the "status" key
+	                                        // then it's taken to mean a successful operation
 
 		var server_error_msg;
 
-		if (server_response == "")  {       // Irregular situation where the server response is blank
-			server_error_msg = "Possible Error: the server didn't return any data (try again)"
-			return server_error_msg;
-		}
+		if (server_response == "")        // Irregular situation where the server response is blank
+			return "Possible Error: the server didn't return any data (try again)"
+
+
+        if (! ('status' in server_response))
+            return "Likely Error: the server didn't return a 'status' value in its response"
 
 	    const server_status = server_response.status;
         //console.log(`In check_for_server_error_JSON(): server response status was '${server_status}'`);

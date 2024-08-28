@@ -1,4 +1,4 @@
-__version__ = "5.0.0-beta.45"
+__version__ = "5.0.0-beta.46"
 
 
 from brainannex.neo_schema.neo_schema import NeoSchema
@@ -7,6 +7,7 @@ from brainannex.user_manager import UserManager
 from brainannex.categories import Categories
 from brainannex.collections import Collections
 from brainannex.full_text_indexing import FullTextIndexing
+import brainannex.PLUGINS.plugin_support as plugin_support
 
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     'Categories',
     'Collections',
     'FullTextIndexing',
+    'plugin_support',
     'version'
 ]
 

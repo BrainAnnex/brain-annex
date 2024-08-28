@@ -8,6 +8,27 @@ class Notes:
     Plugin-provided handlers for "notes"  (HTML-formatted text)
     """
 
+
+    @classmethod
+    def default_folder(cls):
+        """
+        Specify the desired name for the default folder to contain "notes" media
+        """
+        return "notes"
+
+
+
+    @classmethod
+    def initialize_schema(cls) -> None:
+        """
+        Initialize the Schema needed by this plugin
+
+        :return:    None
+        """
+        pass    # TODO: follow the example in Images
+
+
+
     @classmethod
     def delete_content_before(cls, uri :str) -> None:
         """
@@ -55,7 +76,7 @@ class Notes:
         print(f"Creating file named `{filename}`")
         #print("    File contents:")
         #print(body)
-        MediaManager.save_into_file(body, filename)
+        MediaManager.save_into_file(body, filename, class_name="Notes") #TODO: turn to singular
 
         # Introduce new attributes, "basename" and "suffix", to be stored in the database
         data_binding["basename"] = basename
@@ -66,7 +87,7 @@ class Notes:
 
 
     @classmethod
-    def before_update_content(cls, data_binding :dict, set_dict :dict) -> dict:
+    def before_update_content(cls, item_data :dict) -> dict:
         """
         Invoked before a Content Item of this type gets updated in the database
 
@@ -78,34 +99,33 @@ class Notes:
                basename: "n-123"
                suffix: "htm"
 
-        :param data_binding:    A dict with various metadata fields
-        :param set_dict:        A dict of field values to eventually set into the database
-        :return:                The altered data_binding dictionary
+        :param item_data:   A dict with various fields for this Note
+        :return:            The altered item_data dictionary
         """
         # TODO: perhaps a special handling of a "body" for media-based Content Items
         #       could be a standard service by the Core module, based on a Schema spec
-        body = data_binding["body"]
-        basename = data_binding["basename"]
+        body = item_data["body"]
+        basename = item_data["basename"]
 
         #uri = data_binding["uri"]
 
         if basename == "undefined":
             raise Exception("before_update_content(): got passed the value 'undefined' "
-                            "for the `basename` key")
+                            "for the key `basename`")
 
         # Overwrite the HTML file with the body of the notes
-        #basename = f"notes-{uri}"      # Old hack!
         filename = basename + ".htm"
         print(f"Overwriting file named `{filename}`")
         #print("    File contents:")
         #print(body)
-        MediaManager.save_into_file(body, filename)
+        MediaManager.save_into_file(body, filename, class_name="Notes")     # TODO: turn to singular
+
+        revised_item_data = item_data.copy()   # Clone an independent copy
 
         # Ditch the "body" attribute - which is not to be stored in the database
-        #del data_binding["body"]
-        del set_dict["body"]
+        del revised_item_data["body"]
 
-        return set_dict
+        return revised_item_data
 
 
 

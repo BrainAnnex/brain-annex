@@ -613,7 +613,7 @@ class FullTextIndexing:
             node_int_id = cls.db.query(q, single_cell="node_int_id")
             #print("    node's integer ID: ", node_int_id)
             path = "TBA"
-            file_contents = MediaManager.get_from_text_file(path, filename)
+            file_contents = MediaManager.get_from_text_file(filename, path)
             #print(file_contents)
             word_list = FullTextIndexing.extract_unique_good_words(file_contents)
             #print(word_list)

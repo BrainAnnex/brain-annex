@@ -37,7 +37,7 @@ def initialize_categories(db):
 
 # ********************  THE ACTUAL TESTS  ********************
 
-def test_update_content_item_NEW(db):
+def test_update_content_item(db):
 
     _, root_uri = initialize_categories(db)
 
@@ -107,6 +107,7 @@ def test_switch_category(db):
     result = Categories.get_content_items_by_category(uri=greece_uri)
     expected = [{'caption': 'photo_1', 'uri': 'photo-1', 'pos': 0, 'class_name': 'Photo'},
                 {'caption': 'photo_2', 'uri': 'photo-2', 'pos': Collections.DELTA_POS, 'class_name': 'Photo'}]
+
     assert compare_recordsets(result, expected)
 
 

@@ -216,11 +216,18 @@ Vue.component('vue-plugin-sl',
 
 
             render_cell(cell_data)
-            /*  If the passed string appears to be a URL, convert it into a hyperlink, opening in a new window;
-                and if the URL is very long, show it in abbreviated form
+            /*  If the passed argument is a string that appears to be a URL,
+                convert it into a string with HTML code for a hyperlink that opens in a new window;
+                if the URL is very long, show it in abbreviated form in the hyperlink text.
+                In all other cases, just return the argument.
+
+                Note: this function is also found in records.js, single_record.js and site_links.js
              */
             {
                 const max_url_len = 35;     // NOT counting the protocol part (such as "https://")
+
+                if (typeof cell_data != "string")
+                     return cell_data;
 
                 let dest_name = "";         // Name of the destination of the link, if applicable
                 // Do a simple-minded check as to whether the cell content appear to be a hyperlink
@@ -366,7 +373,7 @@ Vue.component('vue-plugin-sl',
 
 
             /*
-                SERVER CALLS
+                ---  SERVER CALLS  ---
              */
 
             get_webpage_title(url)
@@ -423,7 +430,7 @@ Vue.component('vue-plugin-sl',
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
                     post_obj["class_name"] = this.item_data.class_name;
-                    post_obj["insert_after"] = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj["insert_after"] = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data)  {
@@ -439,6 +446,7 @@ Vue.component('vue-plugin-sl',
                 else  {
                     // Update an EXISTING record
                     post_obj["uri"] = this.item_data.uri;
+                    post_obj["class_name"] = this.item_data.class_name;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {
@@ -448,7 +456,7 @@ Vue.component('vue-plugin-sl',
                     }
                     // EXAMPLE of post_obj for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
 
-                    url_server_api = `/BA/api/update`;   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -467,7 +475,7 @@ Vue.component('vue-plugin-sl',
 
             finish_save(success, server_payload, error_message, custom_data)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
 
                 success:        boolean indicating whether the server call succeeded
                 server_payload: whatever the server returned (stripped of information about the success of the operation)
@@ -475,7 +483,7 @@ Vue.component('vue-plugin-sl',
                 custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
              */
             {
-                console.log("Finalizing the SiteLink saving operation...");
+                console.log("Finalizing the SiteLink save() operation...");
 
                 if (success)  {     // Server reported SUCCESS
                     this.status_message = `Successful edit`;
@@ -494,7 +502,8 @@ Vue.component('vue-plugin-sl',
                         }
                     }
 
-                    // If this was a new item (with the temporary negative ID), update its ID with the value assigned by the server
+                    // If this was a newly-created item (with the temporary negative URI),
+                    //  update its URI with the value assigned by the server
                     if (this.item_data.uri < 0)
                         this.current_data.uri = server_payload;
 
@@ -502,7 +511,7 @@ Vue.component('vue-plugin-sl',
                     console.log("Site Links component sending `updated-item` signal to its parent");
                     this.$emit('updated-item', this.current_data);
 
-                    // Synchronize the accepted baseline data to the current one
+                    // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
 
                     this.editing_mode = false;      // Exit the editing mode
