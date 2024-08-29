@@ -48,36 +48,36 @@ def test_update_content_item(db):
                                   item_properties={"caption": "beach at sunrise"}, new_uri="photo_1")
 
     # Alter the Content Item
-    DataManager.update_content_item_NEW(uri="photo_1", class_name="Photo",
-                                        update_data={"caption": "beach at sunrise"})    # No actual change
+    DataManager.update_content_item(uri="photo_1", class_name="Photo",
+                                    update_data={"caption": "beach at sunrise"})    # No actual change
     result = NeoSchema.get_data_node(uri="photo_1")
     assert result.get("caption") == "beach at sunrise"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter the Content Item
-    DataManager.update_content_item_NEW(uri="photo_1", class_name="Photo",
-                                        update_data={"caption": "    beach under full moon  "})
+    DataManager.update_content_item(uri="photo_1", class_name="Photo",
+                                    update_data={"caption": "    beach under full moon  "})
     result = NeoSchema.get_data_node(uri="photo_1")
     assert result.get("caption") == "beach under full moon"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter again the Content Item
-    DataManager.update_content_item_NEW(uri="photo_1", class_name="Photo",
-                                        update_data={"caption": "      "})
+    DataManager.update_content_item(uri="photo_1", class_name="Photo",
+                                    update_data={"caption": "      "})
     result = NeoSchema.get_data_node(uri="photo_1")
     assert result.get("caption") is None        # That field is now gone altogether
     assert result.get("remarks") is None
 
     # Alter yet again the Content Item
-    DataManager.update_content_item_NEW(uri="photo_1", class_name="Photo",
-                                        update_data={"remarks": "3 is a charm!  ", "caption": "  beach in the late afternoon"})
+    DataManager.update_content_item(uri="photo_1", class_name="Photo",
+                                    update_data={"remarks": "3 is a charm!  ", "caption": "  beach in the late afternoon"})
     result = NeoSchema.get_data_node(uri="photo_1")
     assert result.get("caption") == "beach in the late afternoon"
     assert result.get("remarks") == "3 is a charm!"
 
     with pytest.raises(Exception):
-        DataManager.update_content_item_NEW(uri="photo_1", class_name="I_DONT_EXIST",
-                                            update_data={"remarks": "this will blow up!"})
+        DataManager.update_content_item(uri="photo_1", class_name="I_DONT_EXIST",
+                                        update_data={"remarks": "this will blow up!"})
 
 
 

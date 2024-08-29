@@ -995,8 +995,8 @@ class ApiRouting:
                 class_name=data_dict["class_name"]
                 del data_dict["uri"]
                 del data_dict["class_name"]
-                DataManager.update_content_item_NEW(uri=uri, class_name=class_name,
-                                                    update_data=data_dict)
+                DataManager.update_content_item(uri=uri, class_name=class_name,
+                                                update_data=data_dict)
                 response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
                 err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
@@ -1056,8 +1056,8 @@ class ApiRouting:
                 del data_dict["uri"]
                 del data_dict["class_name"]
 
-                DataManager.update_content_item_NEW(uri=uri, class_name=class_name,
-                                                    update_data=data_dict)
+                DataManager.update_content_item(uri=uri, class_name=class_name,
+                                                update_data=data_dict)
                 response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
                 err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
