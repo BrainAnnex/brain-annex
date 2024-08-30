@@ -1381,8 +1381,6 @@ class NeoSchema:
         :param name:            String with name to assign to the new class
         :param properties:      List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            Optional string indicative of the software handler for this Class and its subclasses.
-                                    TODO: deprecate
-
         :param strict:          If True, the Class will be of the "Strict" type;
                                     otherwise, it'll be of the "Lenient" type
 
@@ -1392,15 +1390,19 @@ class NeoSchema:
         :param link_name:       Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
         :param link_dir:        Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
-        :return:                If successful, the pair (internal ID, string "schema_uri" assigned to the new Class);
+        :return:                If successful, the pair (internal database ID, string "schema_uri" assigned to the new Class);
                                 otherwise, raise an Exception
         """
+        # TODO: possibly deprecate argument "code" in favor of the new (not-yet-used) "handler"
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
         #       adding a new Class and then leaving it without properties or links, in case of mid-operation error
 
         # TODO: merge with create_class()
 
-        # TODO: add argument 'extra_labels'
+        # TODO: provide an option to link up to an existing AutoIncrement node of a given namespace
+        #       (with a "HAS_URI_GENERATOR" relationship)
+
+        # TODO: maybe add argument 'extra_labels'
 
         if class_to_link_to:
             assert link_name, \
