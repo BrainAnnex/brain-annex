@@ -259,7 +259,8 @@
      Original version, to be used when the EDITING CONTROLS are SHOWN.
      This version separates all the Content Items into individual entities.
 
-     For each Content Item on this page, make use of the appropriate Vue component (picked dynamically).
+     For each Content Item on this page, make use of the 'vue-content-items' Vue component,
+     which in turn dispatches to the appropriate Vue component (picked dynamically based on the Content Item's type).
      Handle here some UI operations common to all types, such as moves around the page.
      Type-specific operations, such as editing, are handled by the individual components
 
@@ -438,6 +439,7 @@
 <br><br>
 
 
+<!-- BOX FOR INSERTION OF NEW CONTENT AT BOTTOM OF THIS PAGE -->
 <div v-show="expose_controls && !bulk_operations">
 
     <h3>Add at the bottom of page</h3>
@@ -475,12 +477,12 @@
                 {% endfor %}
             </select>
             <input type='hidden' name='category_id' value='{{category_uri}}'>
-            <input type='hidden' name='pos' value='TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'>
+            <input type='hidden' name='insert_after' value='INSERT_AT_BOTTOM'>
         </form>
 
         <!--  The "DONE" button simply reloads the viewer page -->
-        <a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Close</a>
-        <span style='color:gray; margin-left:20px; font-size:10px'>The "Close" button not yet implemented: currently, it refreshes the page (use when uploads complete)</span><br>
+        <a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Done</a>
+        <span style='color:gray; margin-left:20px; font-size:10px'>Press the "Done" button when all uploads are complete, to reload the page</span><br>
 
     </div>	<!--  Terminate the wrapper DIV for uploads -->
 
@@ -937,13 +939,12 @@ new Vue({
 
 
         insert_new_item_after(item, {schema_code, class_name})
-        /*  Add a new Content Item of the specified type, placed after the specified Item;
-            class_name is an OPTIONAL argument, only used for Content Item of type 'r' (but possibly being phased in for other types)
+        /*  Add a new Content Item of the specified type, placed after the specified Item
          */
         {
             //console.log(item);
             console.log(`In root component, insert_new_item_after()`);
-            console.log(`    Insert after Item URI ${item.uri}. New item - schema_code: '${schema_code}', class_name (optional): '${class_name}'`);
+            console.log(`    Insert after Item URI '${item.uri}'. New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
 
             this.create_new_item_after(item.uri, schema_code, class_name);
         },

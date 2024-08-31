@@ -72,7 +72,10 @@ Vue.component('vue-content-items',
                 <button button @click="cancel_delete" class='cancel-button'>Cancel</button>
             </p>
 
-            <p v-if="insert_box" class="insert-box">
+
+
+            <!-- BOX FOR INSERTION OF NEW CONTENT BELOW -->
+            <div v-if="insert_box" class="item-insert-box">
                 <!-- TODO: should be merged with counterpart ("Add at the bottom of page") on page_viewer.htm -->
                 <img @click="insert_box = false" src="/BA/pages/static/graphics/close_box_16_red.png"
                      class="control" style="float: right" title="Close" alt="Close">
@@ -93,7 +96,27 @@ Vue.component('vue-content-items',
                     v-bind:style="{'color': color_picker(index)}">
                     {{class_name}}
                 </button>
-            </p>
+
+
+                <br><br>
+                <b>UPLOAD IMAGES or DOCUMENTS</b>:<br>
+
+                <!-- Provide a drag-and-drop area, which makes use of the "Dropzone" module.
+                    The id and the class of the FORM element are meant for "Dropzone" -->
+                <form v-bind:id="'myDropzone_' + item.uri" class='dropzone' action='/BA/api/upload_media' style='padding-top:5px; margin-bottom:8px'>
+                    <input v-bind:value="category_uri" type='hidden' name='category_id'>
+                    <input v-bind:value="item.uri" type='hidden' name='insert_after'>
+                </form>
+
+
+                <!--  The "DONE" button simply reloads the viewer page -->
+                <a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Done</a>
+                <span style='color:gray; margin-left:20px; font-size:10px'>Press the "Done" button when all uploads bars are gone, to reload the page</span><br>
+                <!-- TODO:  Uploads started: 0   completed: 0   errors: 0 -->
+
+            </div>
+
+
 
             <div v-if="tag_edit_box" class="insert-box">
                 <img @click="tag_edit_box = false" src="/BA/pages/static/graphics/close_box_16_red.png"
@@ -180,6 +203,81 @@ Vue.component('vue-content-items',
 
         // ---------------------------  METHODS  ---------------------------
         methods: {
+
+            insert_dropzone_element()
+            // Creating dropzone must be done programmatically, because the form was not present at page load
+            {
+                console.log(`About to dynamically create a 'Dropzone' element, immediately below Content Item '${this.item.uri}'`);
+                var myDropzone = new Dropzone("form#myDropzone_" + this.item.uri);
+
+                /*
+                TODO - see file D:/Docs/DreamWeaver/DreamHost/brainannex/core/viewer.js :
+                myDropzone.on("addedfile", dropzoneHandler_addedfile);
+                myDropzone.on("success", dropzoneHandler_success);
+                myDropzone.on("queuecomplete", dropzoneHandler_queuecomplete);
+                myDropzone.on("error", dropzoneHandler_error);
+                */
+            },
+
+
+            /***********************************
+                    DROPZONE-RELATED
+             ***********************************/
+
+            /*	TODO: use in the future, to provide a listing of the files being uploaded - and a handy way to change their metadata */
+            dropzoneHandler_addedfile(evt)
+            // TODO: This handler is invoked by the Dropzone object whenever a new file gets added to the to-upload list
+            {
+                alert("Dropzone event: 'addedfile'.  File name: '" + evt.name + "' | size:  " + evt.size + " bytes");
+                // Look up the "Done" link
+                linkElement = document.getElementById("image_upload_done");
+                linkElement.innerHTML = "Upload in progress. WAITING until all uploads are complete...";
+                linkElement.style.backgroundColor = "gray";
+
+                // Update the number of "Uploads started"
+                spanElement = document.getElementById("image_upload_started");
+                currentValue = Number(spanElement.innerHTML);
+                spanElement.innerHTML = currentValue + 1;
+            },
+
+
+            dropzoneHandler_error(evt)
+            // TODO: Display the server message in case of Dropzone upload errors
+            {
+                alert("***ERROR: FAILED UPLOAD of file \"" + evt.name + "\".  Reason: " + evt.xhr.responseText);
+
+                // Update the number of "Upload errors"
+                spanElement = document.getElementById("image_upload_errors");
+                currentValue = Number(spanElement.innerHTML);
+                spanElement.innerHTML = currentValue + 1;
+
+                //alert("Dropzone event: error.  File name: '" + evt.name + "' | Size:  " + evt.size + " bytes");
+                //alert("XHR data about the error. Status: '" + evt.xhr.status + "' | Status text:  '" + evt.xhr.statusText + "' | Response text:  '" + evt.xhr.responseText + "'");
+            },
+
+            dropzoneHandler_success(evt)
+            // TODO: Display the server message in case of Dropzone upload errors
+            {
+                alert("Dropzone event: 'success'");
+                // Update the number of "Uploads completed"
+                spanElement = document.getElementById("image_upload_completed");
+                currentValue = Number(spanElement.innerHTML);
+                spanElement.innerHTML = currentValue + 1;
+            },
+
+            dropzoneHandler_queuecomplete(evt)
+            // TODO: This handler is invoked by the Dropzone object whenever ALL pending uploads are complete
+            {
+                alert("Dropzone event: 'queuecomplete'");
+                // Look up the "Done" link
+                linkElement = document.getElementById("image_upload_done");
+                linkElement.innerHTML = "Done";
+                linkElement.style.backgroundColor = "green";
+            },
+
+
+
+
             color_picker(index)
             // Rotate among a pre-picked color palette based on the given index
             {
@@ -198,6 +296,7 @@ Vue.component('vue-content-items',
             {
                 console.log(`'vue-content-items' component received Event 'add-content'. Showing box to adding new content below Item with URI: ${this.item.uri}`);
                 this.insert_box = true;
+                this.insert_dropzone_element();
             },
 
 
@@ -357,8 +456,8 @@ Vue.component('vue-content-items',
              */
             {
                 console.log(`In 'vue-content-items' component, add_new_item_below().`);
-                console.log(`    Request to insert new Content Item below Item with URI ${this.item.uri}`);
-                console.log(`    New item - schema_code:' ${schema_code}', class_name (optional): '${class_name}'`);
+                console.log(`    Request to insert new Content Item below Item with URI '${this.item.uri}'`);
+                console.log(`    New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
                 console.log("    `vue-content-items` component is sending 'insert-new-item' signal to its parent");
                 // This signal will be handled in the root component
                 this.$emit('insert-new-item', {
