@@ -1888,7 +1888,47 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
+    def get_data_node(cls, class_name :str, node_id, id_key=None) -> Union[dict, None]:
+        """
+        Locate a Data Node from its Class name, and a unique identifier
+
+        :param class_name:
+        :param node_id:     Either an internal database ID or a primary key value
+        :param id_key:      OPTIONAL - name of a primary key used to identify the data node; for example, "uri".
+                                Leave blank to use the internal database ID
+        :return:
+        """
+        #TODO: pytest
+
+        if id_key is None:
+            where_clause = "WHERE id(n) = $node_id "
+        else:
+            where_clause = f"WHERE n.`{id_key}` = $node_id "
+
+        q = f'''
+            MATCH (:CLASS {{name: $class_name}}) <-[:SCHEMA]- (n)
+            {where_clause}
+            RETURN n
+            '''
+
+        data_binding = {"class_name": class_name, "node_id": node_id}
+
+        #cls.db.debug_query_print(q, data_binding, "class_of_data_node")
+
+        result = cls.db.query(q, data_binding, single_row=True)
+
+        if result is None:
+            return None
+
+        assert len(result) == 1, \
+            f"get_data_node(): the specified key ({id_key}) is not unique - multiple records were located"
+
+        return result["n"]
+
+
+
+    @classmethod
+    def search_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data node
 

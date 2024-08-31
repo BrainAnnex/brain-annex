@@ -72,7 +72,7 @@ class Categories:
 
 
 
-        #####################################################################################################
+    #####################################################################################################
 
     '''                                 ~   LOOKUP CATEGORY DATA   ~                                  '''
 
@@ -83,15 +83,16 @@ class Categories:
     @classmethod
     def get_category_info(cls, category_uri :str) -> dict:
         """
-        Return the Name and Remarks attached to the given Category.  If not found, return None
+        Return the Name and Remarks field values attached to the given Category
 
-        :param category_uri:A string identifying the desired Category
-        :return:            The Category's name (or a blank dictionary if not found)
-                                 EXAMPLE:  {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
+        :param category_uri:    A string identifying the desired Category
+        :return:                The Category's name (or a blank dictionary if not found)
+                                    EXAMPLE:  {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
         """
         # Note: since the category_uri is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
-        return NeoSchema.get_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
+        #return NeoSchema.search_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
+        return NeoSchema.get_data_node(class_name="Categories", node_id=category_uri, id_key="uri")
 
 
 
@@ -473,7 +474,7 @@ class Categories:
                                 links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
                                 assign_uri=True)
 
-        new_data_point = NeoSchema.get_data_node(internal_id = new_internal_id)
+        new_data_point = NeoSchema.search_data_node(internal_id = new_internal_id)
         assert new_data_point is not None, \
             "add_subcategory(): failure to fetch data node for the newly created subcategory"
 
@@ -681,7 +682,7 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True or False
         """
-        all_props = NeoSchema.get_data_node(uri=uri, labels="Categories")    # Returns a dict, or None
+        all_props = NeoSchema.search_data_node(uri=uri, labels="Categories")    # Returns a dict, or None
         assert all_props, "is_pinned(): unable to locate the specified Category node"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't

@@ -1111,7 +1111,7 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_name = NeoSchema.get_data_node(uri=search_category).get("name")
+            category_name = NeoSchema.search_data_node(uri=search_category).get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
         return (content_items, caption)

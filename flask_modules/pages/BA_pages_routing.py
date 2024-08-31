@@ -113,7 +113,7 @@ class PagesRouting:
                     return f"<b>No Home Category found!</b> Maybe the Schema hasn't been imported yet? " \
                            f"<a href='/BA/pages/admin'>Go to the Admin page</a>"
                 else:                   # Requesting a (non-home) Category that doesn't exist
-                    return f"<b>No such Category ID ({category_uri}) exists!</b> Maybe that category got deleted? " \
+                    return f"<b>No such Category URI ({category_uri}) exists!</b> Maybe that category got deleted? " \
                            f"<a href='/BA/pages/viewer/1'>Go to top (HOME) category</a>"
 
             # TODO: catch errors, and provide a graceful error page

@@ -130,7 +130,7 @@ class MediaManager:
         """
         #TODO: maybe combine this method and retrieve_full_path()
 
-        content_node = NeoSchema.get_data_node(uri = uri)
+        content_node = NeoSchema.search_data_node(uri = uri)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception(f"lookup_media_file(): Metadata not found for the Media file with URI '{uri}'")
