@@ -1,0 +1,7 @@
+.dragscroll  {
+    /* overflow: auto; */
+	cursor : -webkit-grab;
+    cursor : -moz-grab;
+    cursor : -o-grab;
+    cursor : grab;
+}

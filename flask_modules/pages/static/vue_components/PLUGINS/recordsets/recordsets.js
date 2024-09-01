@@ -23,36 +23,40 @@ Vue.component('vue-plugin-rs',
          */
 
         template: `
-            <div style="max-width: 99%; overflow: auto">	<!-- Outer container box, serving as Vue-required template root  -->
+            <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
                 <span style="font-weight:bold; color:gray">{{this.pre_edit_metadata.class}}</span>
 
-                <table class='rs-main' style='margin-top: 0'>
+                <!-- For the max-width attribute to work, there must not be a 'display: inline-block' in any of its ancestors -->
+                <div class="dragscroll" style="margin-top: 0; max-width: 99%; overflow: auto">
+                    <table class='rs-main'>
 
-                    <!-- Header row  -->
-                    <tr>
-                        <th v-for="field_name in headers">
-                            {{field_name}}
-                        </th>
-                        <th v-show="edit_mode">
-                            EDIT
-                        </th>
-                    </tr>
+                        <!-- Header row  -->
+                        <tr>
+                            <th v-for="field_name in headers">
+                                {{insert_blanks(field_name)}}
+                            </th>
+                            <th v-show="edit_mode">
+                                EDIT
+                            </th>
+                        </tr>
 
-                    <!--
-                        Data row
-                     -->
-                    <tr v-for="record in recordset">
-                        <td v-for="field_name in headers">
-                            <span v-html="render_cell(record[field_name])"></span>
-                        </td>
-                        <td v-show="edit_mode" style="background-color: #f2f2f2">
-                            <img src="/BA/pages/static/graphics/edit_16_pencil2.png"
-                                 @click="edit_record" class="control" title="EDIT" alt="EDIT">
-                        </td>
-                    </tr>
+                        <!--
+                            Data row
+                         -->
+                        <tr v-for="record in recordset">
+                            <td v-for="field_name in headers">
+                                <span v-html="render_cell(record[field_name])"></span>
+                            </td>
+                            <td v-show="edit_mode" style="background-color: #f2f2f2">
+                                <img src="/BA/pages/static/graphics/edit_16_pencil2.png"
+                                     @click="edit_record" class="control" title="EDIT" alt="EDIT">
+                            </td>
+                        </tr>
 
-                </table>
+                    </table>
+                </div>
+
 
                 <!-- Recordset navigation (hidden if newly-created recordset) -->
                 <template v-if="this.pre_edit_metadata.class">
@@ -195,6 +199,21 @@ Vue.component('vue-plugin-rs',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
+
+            insert_blanks(str)
+            /*  For the purpose of facilitating the breakup by the browser
+                of long headers into multiple lines,
+                insert a blank space after each underscore and each "/".
+                EXAMPLE: "max_temp/safe_temp" will be returned as "max_ temp/ safe_ temp"
+             */
+            {
+                var transformed = str.replace(/_/g, '_ ');      // Insert a blank after each of the underscores in the string
+
+                return transformed.replace(/\//g, '/ ');        // Insert a blank after each of the forward slashes in the string
+            },
+
+
+
 
             edit_recordset()
             {

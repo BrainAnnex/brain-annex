@@ -3,7 +3,7 @@ Router/generator for navigation pages:
     CSS static pages, and HTML pages that get included into other Flask files
 """
 
-from flask import Blueprint, render_template, request, session      # Not used: redirect
+from flask import Blueprint, render_template, request, session, send_from_directory
 from flask_modules.home.login_manager import FlaskUserManagement, User
 from brainannex import UserManager
 import flask_login
@@ -95,6 +95,19 @@ class HomeRouting:
             # Serve a top-level page
             template = "index.htm"
             return render_template(template)
+
+
+
+        @bp.route('/favicon.ico')
+        def favicon():
+            """
+            Serve the "favicon" graphics
+            """
+            return bp.send_static_file("favicon.ico")
+            # Alt approach that didn't work:
+            #return send_from_directory(directory='static/', filename='favicon.ico',
+                                       #mimetype='image/vnd.microsoft.icon')
+
 
 
 

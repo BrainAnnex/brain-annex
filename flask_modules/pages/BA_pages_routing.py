@@ -3,8 +3,8 @@
     MIT License.  Copyright (c) 2021-2024 Julian A. West
 """
 
-from flask import Blueprint, render_template, current_app, make_response, request   # The "request" package
-                                                                                    # makes available a GLOBAL request object
+from flask import Blueprint, render_template, current_app, make_response, request
+                                                    # Note: the "request" package makes available a GLOBAL request object
 from flask_login import login_required, current_user
 from flask_modules.navigation.navigation import get_site_pages  # Navigation configuration
 from brainannex import DataManager, Categories, version
@@ -87,6 +87,7 @@ class PagesRouting:
         :param bp:  The Flask "Blueprint" object that was created for this module
         :return:    None
         """
+
 
         ##################  START OF ROUTING DEFINITIONS  ##################
 
