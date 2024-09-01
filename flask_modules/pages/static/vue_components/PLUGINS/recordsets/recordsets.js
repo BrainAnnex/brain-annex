@@ -23,10 +23,11 @@ Vue.component('vue-plugin-rs',
          */
 
         template: `
-            <div>	<!-- Outer container box, serving as Vue-required template root  -->
+            <div style="max-width: 99%; overflow: auto">	<!-- Outer container box, serving as Vue-required template root  -->
 
                 <span style="font-weight:bold; color:gray">{{this.pre_edit_metadata.class}}</span>
-                <table class='rs-main' style='margin-top:0'>
+
+                <table class='rs-main' style='margin-top: 0'>
 
                     <!-- Header row  -->
                     <tr>
@@ -117,7 +118,7 @@ Vue.component('vue-plugin-rs',
 
 
                 <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls),
-                      EXCEPT for the "edit" control
+                      EXCEPT for the "edit" control, which is provided by this Vue component itself.
                       Signals from the Vue child component "vue-controls", below,
                       get relayed to the parent of this component;
                       none get intercepted and handled here

@@ -1,6 +1,6 @@
 /*  Vue component to display and edit Content Items of ANY type.
-    Depending on the specific type,
-    it DISPATCHES to Vue components specialized for that type.
+    Depending on its specific type,
+    it DISPATCHES to Vue components customized for that type.
 
     IMPORTANT: if no handler is registered - as described by the argument 'registered_plugins' -
                it will default to be treated as a generic record, managed by the general "r" handler
@@ -11,21 +11,21 @@ Vue.component('vue-content-items',
         props: ['item', 'expose_controls', 'category_uri', 'index', 'item_count',
                 'registered_plugins', 'records_types', 'schema_data', 'all_categories'],
         /*  item:           EXAMPLE: {uri:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Headers"}
-                                     (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+                                     (if uri is a negative number, it means that it's a newly-created Content Item, not yet registered with the server)
                             Maybe rename to item_data
 
-            expose_controls:Flag indicating whether in edit mode
-            category_uri:   A string indicating which Category-viewer page is using this component
-            index:          The zero-based position of this Content Items on the above Category-specific page
-            item_count:     The total number of Content Items (of all types) on the above Category-specific page
+            expose_controls:    Flag indicating whether in edit mode
+            category_uri:       A string indicating which Category-viewer page is using this component
+            index:              The zero-based position of this Content Items on the above Category-specific page
+            item_count:         The total number of Content Items (of all types) on the above Category-specific page
             registered_plugins: A list of codes of Content Items that have a dedicated Vue plugin
-                                    EXAMPLE: ["n", "i", "h", "cd", "d"]
-            records_types:  A list of all the Classes that can be used for new Records
-                                (i.e. classes that are INSTANCE_OF the "Records" class)
-            schema_data:    Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
-                                EXAMPLE: ["French", "English", "notes"]
-            all_categories: A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
-                                EXAMPLE:
+                                    EXAMPLE: ["n", "i", "h", "cd", "d", "sl", "rs"]
+            records_types:      A list of all the Classes that can be used for new Records
+                                    (i.e. classes that are INSTANCE_OF the "Records" class)
+            schema_data:        Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
+                                    EXAMPLE: ["French", "English", "notes"]
+            all_categories:     A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
+                                    EXAMPLE:
                                       [{"uri": 1, "name": "HOME"},
                                        {"uri": 523, "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]
 
@@ -67,7 +67,7 @@ Vue.component('vue-content-items',
             >
             </component>
 
-            <p v-if="show_button" class="confirm-question">Confirm DELETE (item {{item.uri}})?
+            <p v-if="show_button" class="confirm-question">Confirm DELETE (item URI '{{item.uri}}')?
                 <button button @click="confirm_delete" class='confirm-button'>OK</button>
                 <button button @click="cancel_delete" class='cancel-button'>Cancel</button>
             </p>
@@ -190,12 +190,15 @@ Vue.component('vue-content-items',
 
 
             use_separate_line()
-            // Return true if the current Content Item is meant to be shown on its own separate line
+            /*  Return true if the current Content Item is meant to be shown on its own separate line -
+                as opposed to possibly fitting multiple ones on a line, if the page is wide enough
+             */
             {
                 // TODO: make more general; store the "separate_line" flag in the Schema Class nodes
                 //       Currently, we're covering some specific class, and the general "records" (which
                 //       lack registered plugins)
                 return (this.item.class_name == "Headers") || (this.item.class_name == "Site Link")
+                            || (this.item.class_name == "Recordset")
                             || !this.registered_plugins.includes(this.item.schema_code);
             }
         },

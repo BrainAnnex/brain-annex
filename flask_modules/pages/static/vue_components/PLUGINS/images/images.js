@@ -4,9 +4,10 @@
 Vue.component('vue-plugin-i',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:  EXAMPLE: {"uri":52,"pos":10,"schema_code":"i","basename":"my pic","suffix":"jpg",
+        /*  item_data:  EXAMPLE: {"uri":52,"pos":10,"schema_code":"i","basename":"my pic","suffix":"jpg","class_name":"Image",
                                                     "caption":"my 1st pic", width:450, height:760}
                                  (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+                                 TODO: take "pos" and "class_name" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
@@ -18,48 +19,48 @@ Vue.component('vue-plugin-i',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-            <!-- Image container -->
-            <div v-bind:class="{'edit': edit_metadata}">
-                <a class='i-image-link' v-bind:href="image_url(item_data)" target="_blank">
-                    <img v-bind:src="image_url_thumb(item_data)" width=300>
-                </a>
+                <!-- Image container -->
+                <div v-bind:class="{'edit': edit_metadata}">
+                    <a class='i-image-link' v-bind:href="image_url(item_data)" target="_blank">
+                        <img v-bind:src="image_url_thumb(item_data)" width=300>
+                    </a>
 
-                <!-- Image caption (or editable version) -->
-                <p v-show="!edit_metadata" class='i-line'>
-                    <span v-if="'caption' in item_data"class='i-caption'>{{current_caption}}</span>
-                </p>
-                <p v-show="edit_metadata">
-                    <input v-model="current_caption" size="40">
-                    <!-- File name -->
-                    <br><br><span style="color:#888">File: &ldquo;{{item_data.basename}}.{{item_data.suffix}}&rdquo;</span>
-                </p>
+                    <!-- Image caption (or editable version) -->
+                    <p v-show="!edit_metadata" class='i-line'>
+                        <span v-if="'caption' in item_data"class='i-caption'>{{current_caption}}</span>
+                    </p>
+                    <p v-show="edit_metadata">
+                        <input v-model="current_caption" size="40">
+                        <!-- File name -->
+                        <br><br><span style="color:#888">File: &ldquo;{{item_data.basename}}.{{item_data.suffix}}&rdquo;</span>
+                    </p>
 
-                <!-- Controls to edit the image metadata -->
-                <p v-show="edit_metadata" style="text-align: right">
-                    <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
-                    <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
-                    <br>
-                    <span v-if="waiting" class="waiting">Performing the update</span>
-                </p>
-                <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
-            </div>		<!-- End of Image container -->
+                    <!-- Controls to edit the image metadata -->
+                    <p v-show="edit_metadata" style="text-align: right">
+                        <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
+                        <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
+                        <br>
+                        <span v-if="waiting" class="waiting">Performing the update</span>
+                    </p>
+                    <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
+                </div>		<!-- End of Image container -->
 
 
-            <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
-                  Signals from the Vue child component "vue-controls", below,
-                  get relayed to the parent of this component,
-                  but some get intercepted and handled here, namely:
+                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                      Signals from the Vue child component "vue-controls", below,
+                      get relayed to the parent of this component,
+                      but some get intercepted and handled here, namely:
 
-                        v-on:edit-content-item
-            -->
-            <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
+                            v-on:edit-content-item
+                -->
+                <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
-                          v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item(item_data)">
-            </vue-controls>
+                <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                              v-on="$listeners"
+                              v-on:edit-content-item="edit_content_item(item_data)">
+                </vue-controls>
 
-            <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
+                <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
 
             </div>		<!-- End of outer container box -->
             `,

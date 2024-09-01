@@ -4515,6 +4515,30 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def assign_namespace_to_class(cls, class_name :str, namespace :str) -> None:
+        """
+        Link up a Class node to the node of a namespace to be used for data nodes of that Class
+
+        :param class_name:
+        :param namespace:
+        :return:            None
+        """
+        #TODO: pytest
+
+        #TODO: verify that the match is unique
+        q = '''
+            MATCH (c:CLASS {name: $class_name}),
+            (a:`Schema Autoincrement` {namespace: $namespace})
+            MERGE (c)-[:HAS_URI_GENERATOR]->(a) 
+            RETURN c, a
+            '''
+
+        cls.db.query(q, data_binding={"class_name": class_name, "namespace": namespace})
+
+
+
+
 
     #####################################################################################################
 
