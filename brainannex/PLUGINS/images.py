@@ -7,7 +7,7 @@ class Images:
     Plugin-provided custom interface for "images"
     """
 
-    CLASS_NAME = "Images"   # TODO: turn to singular
+    SCHEMA_CLASS_NAME = "Images"   # TODO: turn to singular
 
 
 
@@ -27,14 +27,14 @@ class Images:
 
         :return:    None
         """
-        assert NeoSchema.is_valid_class_name(cls.CLASS_NAME), \
-            f"initialize_schema(): attempting to create a Schema Class with invalid name: {cls.CLASS_NAME}"
+        assert NeoSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
+            f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
         if not NeoSchema.class_name_exists("Media"):
             NeoSchema.create_class_with_properties(name="Media", strict=True,
                                                properties=["basename", "suffix"])
 
-        NeoSchema.create_class_with_properties(name=cls.CLASS_NAME, strict=True,
+        NeoSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="i",
                                                properties=["width", "height", "caption", "date_created"],
                                                class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
 

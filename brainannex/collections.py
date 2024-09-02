@@ -522,7 +522,7 @@ class Collections:
         if result is None:
             # An empty find is indicative of either an "insert at the end" (no n_after found),
             #       or a bad insert_after value that matches no node
-            node = NeoSchema.get_data_node(uri = insert_after)
+            node = NeoSchema.search_data_node(uri = insert_after)
             if node is None:
                 raise Exception(f"There is no node with the `uri` value ({insert_after}) passed by `insert_after`")
 

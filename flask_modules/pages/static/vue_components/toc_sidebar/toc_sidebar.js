@@ -1,6 +1,6 @@
 /*  Left sidebar (with the page's Table of Contents)
     Used by page_viewer.htm and search.htm
-    Show the headers, and varying details of some of Content Items under them
+    Show the headers, and varying details of some of the Content Items under them
  */
 
 Vue.component('vue-toc-sidebar',
@@ -8,8 +8,8 @@ Vue.component('vue-toc-sidebar',
         props: {
 
             /*  Array containing item-data objects.  EXAMPLE:
-                                [{pos:0,"uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                                 {pos:50,"uri":8,schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
+                                [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
+                                 {pos:50,"uri":"8",schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
                                 ]
              */
             content_array: {
@@ -26,12 +26,7 @@ Vue.component('vue-toc-sidebar',
             }
         },
 
-        /*  content_array:  Array containing item-data objects.  EXAMPLE:
-                            [{pos:0,"uri":5,schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                             {pos:50,"uri":8,schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
-                            ]
-            show_left_sidebar: Flag indicating whether this sidebar is to be shown
-         */
+
 
         template: `
             <div>
@@ -68,18 +63,24 @@ Vue.component('vue-toc-sidebar',
 
                                 <p v-if="item.schema_code == 'i'">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
-                                    <img src='/BA/pages/static/graphics/image_14_1814111.png'>
+                                    <img src='/BA/pages/static/graphics/image_14_1814111.png' title="image" alt="image">
                                     <br>
                                 </p>
 
                                 <p v-if="item.schema_code == 'd'">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
-                                    <img src='/BA/pages/static/graphics/document_14_2124302.png'>
+                                    <img src='/BA/pages/static/graphics/document_14_2124302.png' title="document" alt="document">
                                     <br>
                                 </p>
 
                                 <p v-if="item.schema_code == 'n' && item.title">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.title}}</a>
+                                    <br>
+                                </p>
+
+                                <p v-if="item.schema_code == 'rs' && item.class">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.class}}</a>
+                                    <img src='/BA/pages/static/graphics/tabular_16_9040670.png' title="recordset" alt="recordset">
                                     <br>
                                 </p>
                             </template>

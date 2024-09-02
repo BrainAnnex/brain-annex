@@ -662,7 +662,7 @@ class DataManager:
     ##############   MODIFYING CONTENT ITEMS   ##############
 
     @classmethod
-    def update_content_item_NEW(cls, uri :str, class_name :str, update_data: dict) -> None:
+    def update_content_item(cls, uri :str, class_name :str, update_data: dict) -> None:
         """
         Update an existing Content Item.
         No harm if new values are identical to the earlier old values.
@@ -677,14 +677,13 @@ class DataManager:
         :param update_data: A dict of data field names and their desired new values
         :return:            None
         """
-        #TODO: drop the "NEW" from the name
 
         assert NeoSchema.class_name_exists(class_name), \
-            f"update_content_item_NEW(): the specified class `{class_name}` doesn't exist"
+            f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
         assert NeoSchema.data_node_exists(data_node=uri, class_name=class_name), \
-                    f"update_content_item_NEW(): no Content Item found with URI `{uri}` and class `{class_name}`"
+                    f"update_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
@@ -721,9 +720,9 @@ class DataManager:
         # Note: an update with the same value as before is considered legit, and counts as an update
         if class_name != "Notes" and number_updated == 0:
             if not NeoSchema.class_name_exists(class_name):
-                raise Exception(f"update_content_item_NEW(): Requested Class ({class_name}) doesn't exist; no update performed")
+                raise Exception(f"update_content_item(): Requested Class ({class_name}) doesn't exist; no update performed")
             else:
-                raise Exception("update_content_item_NEW(): No update performed")
+                raise Exception("update_content_item(): No update performed")
 
 
 
@@ -1112,7 +1111,7 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_name = NeoSchema.get_data_node(uri=search_category).get("name")
+            category_name = NeoSchema.search_data_node(uri=search_category).get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
         return (content_items, caption)

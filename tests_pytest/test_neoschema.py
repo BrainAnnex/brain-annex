@@ -1626,7 +1626,7 @@ def test_add_data_column_merge(db):
     assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
 
     id_green_car = result["new_nodes"][0]
-    data_point = NeoSchema.get_data_node(internal_id=id_green_car, labels="Car")
+    data_point = NeoSchema.search_data_node(internal_id=id_green_car, labels="Car")
     assert data_point["color"] == "green"
 
 
@@ -1847,18 +1847,18 @@ def test_delete_data_point(db):
     patient_data_uri = NeoSchema.create_data_node(class_node="patient",
                                                  properties={"name": "Val", "age": 22})
 
-    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
-    patient = NeoSchema.get_data_node(internal_id=patient_data_uri)
+    patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
     assert patient == {'name': 'Val', 'age': 22}
 
     NeoSchema.delete_data_node(node_id=doctor_data_uri)
 
-    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None   # The doctor got deleted
 
-    patient = NeoSchema.get_data_node(internal_id=patient_data_uri)
+    patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
     assert patient == {'name': 'Val', 'age': 22}    # The patient is still there
 
     with pytest.raises(Exception):
@@ -1869,27 +1869,27 @@ def test_delete_data_point(db):
 
     NeoSchema.delete_data_node(node_id=patient_data_uri, labels="patient")
 
-    patient = NeoSchema.get_data_node(internal_id=patient_data_uri)
+    patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
     assert patient is None    # The patient is now gone
 
 
     doctor_data_uri = NeoSchema.create_data_node(class_node="doctor", extra_labels="employee",
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
-    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
     NeoSchema.delete_data_node(node_id=doctor_data_uri, labels="employee")
-    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None   # The doctor got deleted
 
     doctor_data_uri = NeoSchema.create_data_node(class_node="doctor", extra_labels=["doctor", "employee"],
                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
                                                 # No harm in re-specifying the "doctor" label
-    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
     NeoSchema.delete_data_node(node_id=doctor_data_uri, labels=["employee", "doctor"])
-    doctor = NeoSchema.get_data_node(internal_id=doctor_data_uri)
+    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None       # The doctor got deleted
 
 

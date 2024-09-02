@@ -10,9 +10,10 @@ Vue.component('vue-plugin-h',
         /*  item_data:      An object with the relevant data about this Header item;
                                 if the "uri" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
-                            EXAMPLE: {"uri":52,"pos":10,"schema_code":"h","text":"MY NEW SECTION"}
+                                EXAMPLE: {"uri":"52","pos":10,"schema_code":"h","text":"MY NEW SECTION","class_name":"Header"}
+                                TODO: take "pos" and "class_name" out of item_data !
 
-            edit_mode:  A boolean indicating whether in editing mode
+            edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this Header is displayed (used when creating new records)
             index:          The zero-based position of this Header item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -21,35 +22,34 @@ Vue.component('vue-plugin-h',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-            <div class='h-text'  @dblclick="enter_editing_mode">
-                <span v-if="!editing_mode" class='h-text'>{{ current_data.text }}</span>
-                <span v-else><input type="text" size="40" v-model="current_data.text">
-                    <button @click="save">SAVE</button>
-                    <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
-                </span>
-                <span v-if="waiting" style="margin-left:15px">saving...</span>
-                <br>
-                <!-- In the PHP version, the controls were placed here -->
-            </div>
+                <div class='h-text'  @dblclick="enter_editing_mode">
+                    <span v-if="!editing_mode" class='h-text'>{{ current_data.text }}</span>
+                    <span v-else><input type="text" size="40" v-model="current_data.text">
+                        <button @click="save">SAVE</button>
+                        <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
+                    </span>
+                    <span v-if="waiting" style="margin-left:15px">saving...</span>
+                    <br>
+                </div>
 
-            <span v-if="status_message!='' && !editing_mode">Status : {{status_message}}</span>
+                <span v-if="status_message!='' && !editing_mode">Status : {{status_message}}</span>
 
-            <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
-                  EXCEPT for the "tag" control
-                  Signals from the Vue child component "vue-controls", below,
-                  get relayed to the parent of this component,
-                  but some get intercepted and handled here, namely:
+                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                      EXCEPT for the "tag" control
+                      Signals from the Vue child component "vue-controls", below,
+                      get relayed to the parent of this component,
+                      but some get intercepted and handled here, namely:
 
-                          v-on:edit-content-item
-            -->
-                <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
-                              v-bind:controls_to_hide="['tag']"
-                              v-on="$listeners"
-                              v-on:edit-content-item="edit_content_item">
-                </vue-controls>
-            <!--  End of Standard Controls -->
+                              v-on:edit-content-item
+                -->
+                    <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                                  v-bind:controls_to_hide="['tag']"
+                                  v-on="$listeners"
+                                  v-on:edit-content-item="edit_content_item">
+                    </vue-controls>
+                <!--  End of Standard Controls -->
 
-            \n</div>\n		<!-- End of outer container box -->
+            </div>		<!-- End of outer container box -->
             `,
 
 

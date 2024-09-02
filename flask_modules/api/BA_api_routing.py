@@ -995,8 +995,8 @@ class ApiRouting:
                 class_name=data_dict["class_name"]
                 del data_dict["uri"]
                 del data_dict["class_name"]
-                DataManager.update_content_item_NEW(uri=uri, class_name=class_name,
-                                                    update_data=data_dict)
+                DataManager.update_content_item(uri=uri, class_name=class_name,
+                                                update_data=data_dict)
                 response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
                 err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
@@ -1056,8 +1056,8 @@ class ApiRouting:
                 del data_dict["uri"]
                 del data_dict["class_name"]
 
-                DataManager.update_content_item_NEW(uri=uri, class_name=class_name,
-                                                    update_data=data_dict)
+                DataManager.update_content_item(uri=uri, class_name=class_name,
+                                                update_data=data_dict)
                 response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
                 err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
@@ -1948,7 +1948,8 @@ class ApiRouting:
                     <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
                     <input type="submit" value="Upload your file">
                     <input type='hidden' name='category_id' value='123'>
-                    <input type='hidden' name='pos' value='10'> <!-- TODO: NOT YET IN USE! Media is always added at END OF PAGE -->
+                    <input type='hidden' name='insert_after' value='rs-2'>
+                    <input type='hidden' name='upload_folder' value='documents/Ebooks & Articles'>      <!-- OPTIONAL -->
                 </form>
         
             (Note: the "Dropzone" front-end module invokes this handler in a similar way)
@@ -1962,20 +1963,21 @@ class ApiRouting:
 
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('category_id', '3677'),
-                                        #                              ('pos', 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW'),
+                                        #                              ('insert_after', 'rs-2'),
                                         #                              ('upload_folder', 'documents/Ebooks & Articles')])
         
             print("Uploading media content thru upload_media()")
             #print("Raw POST data: ", post_data)
-            print("POST variables: ", dict(post_data))  # Example: {'category_id': '3677', 'pos': 'TBA_insert_after_JUST_ADDING_AT_END_FOR_NOW',
+            print("POST variables: ", dict(post_data))  # EXAMPLE: {'category_id': '3677', 'insert_after': 'rs-2',
                                                         #           'upload_folder': 'documents/Ebooks & Articles'}
+                                                        # Note that 'upload_folder' is optional
         
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the *temporary* directory used for the uploads.
                                                                     #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
                 (tmp_filename_for_upload, full_filename, original_name, mime_type) = \
                             UploadHelper.store_uploaded_file(files=request.files, upload_dir=upload_dir, key_name="file")
-                print(f"Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
+                print(f"    Upload successful so far for file: `{tmp_filename_for_upload}` .  Full name: `{full_filename}`")
             except Exception as ex:
                 err_status = f"<b>ERROR in upload</b>: {ex}"
                 print("upload_media(): ", err_status)
@@ -1996,14 +1998,14 @@ class ApiRouting:
         
             src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
 
-            if post_data["upload_folder"] == "":    # If not explicitly passed
+            if not post_data.get("upload_folder"):    # If not explicitly passed
                 dest_folder = MediaManager.default_file_path(class_name=class_name)
             else:
                 dest_folder = cls.config_pars["MEDIA_FOLDER"] + post_data["upload_folder"] + "/"
 
             dest_fullname = dest_folder + tmp_filename_for_upload
 
-            print(f"Attempting to move `{src_fullname}` to `{dest_fullname}`")
+            print(f"    Attempting to move `{src_fullname}` to `{dest_fullname}`")
             try:
                 shutil.move(src_fullname, dest_fullname)
             except Exception as ex:
@@ -2046,16 +2048,24 @@ class ApiRouting:
             #print("upload_media(): properties: ", properties)
 
 
-            # Update the database (for now, the media is added AT THE END of the Category page)
+            # Update the database
             # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
             try:
-                new_uri = Categories.add_content_at_end(category_uri=category_uri,
-                                                        item_class_name=class_name, item_properties=properties)
+                insertion_location = post_data.get('insert_after')
+                if insertion_location == "INSERT_AT_BOTTOM" or not insertion_location:
+                    print(f"    Inserting new Media Item at bottom of Category page")
+                    new_uri = Categories.add_content_at_end(category_uri=category_uri,
+                                                            item_class_name=class_name, item_properties=properties)
+                else:
+                    print(f"    Inserting new Media Item after Category page element with URI `{insertion_location}`")
+                    new_uri = Categories.add_content_after_element(category_uri=category_uri,
+                                                                   item_class_name=class_name, item_properties=properties,
+                                                                   insert_after=insertion_location)
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Document":    # TODO: move to plugin_support.py
                     Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
-                                                          upload_folder=post_data["upload_folder"])
+                                                          upload_folder=post_data.get("upload_folder"))
 
                 response = ""
 

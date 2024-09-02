@@ -1381,8 +1381,6 @@ class NeoSchema:
         :param name:            String with name to assign to the new class
         :param properties:      List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            Optional string indicative of the software handler for this Class and its subclasses.
-                                    TODO: deprecate
-
         :param strict:          If True, the Class will be of the "Strict" type;
                                     otherwise, it'll be of the "Lenient" type
 
@@ -1392,15 +1390,19 @@ class NeoSchema:
         :param link_name:       Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
         :param link_dir:        Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
-        :return:                If successful, the pair (internal ID, string "schema_uri" assigned to the new Class);
+        :return:                If successful, the pair (internal database ID, string "schema_uri" assigned to the new Class);
                                 otherwise, raise an Exception
         """
+        # TODO: possibly deprecate argument "code" in favor of the new (not-yet-used) "handler"
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
         #       adding a new Class and then leaving it without properties or links, in case of mid-operation error
 
         # TODO: merge with create_class()
 
-        # TODO: add argument 'extra_labels'
+        # TODO: provide an option to link up to an existing AutoIncrement node of a given namespace
+        #       (with a "HAS_URI_GENERATOR" relationship)
+
+        # TODO: maybe add argument 'extra_labels'
 
         if class_to_link_to:
             assert link_name, \
@@ -1886,7 +1888,47 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
+    def get_data_node(cls, class_name :str, node_id, id_key=None) -> Union[dict, None]:
+        """
+        Locate a Data Node from its Class name, and a unique identifier
+
+        :param class_name:
+        :param node_id:     Either an internal database ID or a primary key value
+        :param id_key:      OPTIONAL - name of a primary key used to identify the data node; for example, "uri".
+                                Leave blank to use the internal database ID
+        :return:
+        """
+        #TODO: pytest
+
+        if id_key is None:
+            where_clause = "WHERE id(n) = $node_id "
+        else:
+            where_clause = f"WHERE n.`{id_key}` = $node_id "
+
+        q = f'''
+            MATCH (:CLASS {{name: $class_name}}) <-[:SCHEMA]- (n)
+            {where_clause}
+            RETURN n
+            '''
+
+        data_binding = {"class_name": class_name, "node_id": node_id}
+
+        #cls.db.debug_query_print(q, data_binding, "class_of_data_node")
+
+        result = cls.db.query(q, data_binding, single_row=True)
+
+        if result is None:
+            return None
+
+        assert len(result) == 1, \
+            f"get_data_node(): the specified key ({id_key}) is not unique - multiple records were located"
+
+        return result["n"]
+
+
+
+    @classmethod
+    def search_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
         """
         Return a dictionary with all the key/value pairs of the attributes of given data node
 
@@ -4470,6 +4512,30 @@ class NeoSchema:
         :return:     A string based on unique auto-increment values, used for Schema nodes
         """
         return cls.reserve_next_uri(namespace="schema_node", prefix="schema-")
+
+
+
+    @classmethod
+    def assign_namespace_to_class(cls, class_name :str, namespace :str) -> None:
+        """
+        Link up a Class node to the node of a namespace to be used for data nodes of that Class
+
+        :param class_name:
+        :param namespace:
+        :return:            None
+        """
+        #TODO: pytest
+
+        #TODO: verify that the match is unique
+        q = '''
+            MATCH (c:CLASS {name: $class_name}),
+            (a:`Schema Autoincrement` {namespace: $namespace})
+            MERGE (c)-[:HAS_URI_GENERATOR]->(a) 
+            RETURN c, a
+            '''
+
+        cls.db.query(q, data_binding={"class_name": class_name, "namespace": namespace})
+
 
 
 

@@ -117,7 +117,7 @@ class Documents:
                                 For Document, "basename" and "suffix" keys are expected
         :param mime_type:   Standardized string representing the type of the document
                                 EXAMPLES: 'text/plain', 'application/pdf'
-        :param upload_folder:If an empty string, it means the default folder for Document;
+        :param upload_folder:If an empty string or None, it means the default folder for Document;
                                 otherwise, it's the name of the folder where this Document was uploaded
                                 (*exclusive* of the common path and of the final "/")
                                 EXAMPLE: 'documents/Ebooks & Articles'
@@ -125,7 +125,7 @@ class Documents:
         """
         filename = pars["basename"] + "." + pars["suffix"]      # EXAMPLE: "my_file.txt"
 
-        if upload_folder == "":     # Document was uploaded to standard location
+        if not upload_folder:     # Document was uploaded to standard location
             path = MediaManager.retrieve_full_path(uri=uri)         # Incl. the final "/"
         else:
             # Link the new document to its specific directory node

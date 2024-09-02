@@ -3,8 +3,8 @@
     MIT License.  Copyright (c) 2021-2024 Julian A. West
 """
 
-from flask import Blueprint, render_template, current_app, make_response, request   # The "request" package
-                                                                                    # makes available a GLOBAL request object
+from flask import Blueprint, render_template, current_app, make_response, request
+                                                    # Note: the "request" package makes available a GLOBAL request object
 from flask_login import login_required, current_user
 from flask_modules.navigation.navigation import get_site_pages  # Navigation configuration
 from brainannex import DataManager, Categories, version
@@ -88,6 +88,7 @@ class PagesRouting:
         :return:    None
         """
 
+
         ##################  START OF ROUTING DEFINITIONS  ##################
 
         @bp.route('/viewer')
@@ -113,7 +114,7 @@ class PagesRouting:
                     return f"<b>No Home Category found!</b> Maybe the Schema hasn't been imported yet? " \
                            f"<a href='/BA/pages/admin'>Go to the Admin page</a>"
                 else:                   # Requesting a (non-home) Category that doesn't exist
-                    return f"<b>No such Category ID ({category_uri}) exists!</b> Maybe that category got deleted? " \
+                    return f"<b>No such Category URI ({category_uri}) exists!</b> Maybe that category got deleted? " \
                            f"<a href='/BA/pages/viewer/1'>Go to top (HOME) category</a>"
 
             # TODO: catch errors, and provide a graceful error page

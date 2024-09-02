@@ -26,13 +26,15 @@ p.confirm-question {
     font-weight: bold;
 }
 
-p.insert-box {
+
+div.item-insert-box {
     background-color: white;
     border: 1px solid gray;
     margin: 5px;
     margin-right:15px;
     padding: 10px;
 }
+
 
 div.insert-box {
     background-color: #F1EAD1;
