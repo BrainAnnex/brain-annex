@@ -1,4 +1,4 @@
-__version__ = "5.0.0-beta.46.1"
+__version__ = "5.0.0-beta.46.2"
 
 
 from brainannex.neo_schema.neo_schema import NeoSchema

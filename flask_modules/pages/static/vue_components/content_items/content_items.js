@@ -75,7 +75,7 @@ Vue.component('vue-content-items',
 
 
             <!-- BOX FOR INSERTION OF NEW CONTENT BELOW -->
-            <div v-if="insert_box" class="item-insert-box">
+            <div v-show="insert_box" class="item-insert-box">
                 <!-- TODO: should be merged with counterpart ("Add at the bottom of page") on page_viewer.htm -->
                 <img @click="insert_box = false" src="/BA/pages/static/graphics/close_box_16_red.png"
                      class="control" style="float: right" title="Close" alt="Close">
@@ -154,7 +154,7 @@ Vue.component('vue-content-items',
                 <span v-if="waiting" class="waiting">Performing the requested operation...</span>
                 <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
             </div>
-            
+
             </div>		<!-- End of outer container -->
             `,
 
@@ -212,6 +212,9 @@ Vue.component('vue-content-items',
             {
                 console.log(`About to dynamically create a 'Dropzone' element, immediately below Content Item '${this.item.uri}'`);
                 var myDropzone = new Dropzone("form#myDropzone_" + this.item.uri);
+
+                // IMPORTANT: for the above line to work, the DIV element that contains it, must do
+                //            Vue conditional rendering with "v-show" rather than "v-if"
 
                 /*
                 TODO - see file D:/Docs/DreamWeaver/DreamHost/brainannex/core/viewer.js :

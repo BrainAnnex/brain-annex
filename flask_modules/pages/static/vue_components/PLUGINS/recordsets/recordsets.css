@@ -10,18 +10,21 @@ table.rs-main td, th {
     padding:5px;
 }
 
+/* For the header row */
 table.rs-main th {
     background-color: #444;
     color:#DDD;
     font-size:12px;
 }
 
+/* For the header row repeated at bottom of table */
 table.rs-main th.repeated {
     background-color: #777;
     color:#BBB;
     font-size:12px;
 }
 
+/* Table cells */
 table.rs-main td {
     border:1px solid #DDD;
     padding:5px;
