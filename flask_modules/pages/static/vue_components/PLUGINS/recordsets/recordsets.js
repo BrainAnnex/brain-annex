@@ -54,6 +54,16 @@ Vue.component('vue-plugin-rs',
                             </td>
                         </tr>
 
+                        <!-- Header row, repeated at bottom of table  -->
+                        <tr>
+                            <th v-for="field_name in headers" class="repeated">
+                                {{insert_blanks(field_name)}}
+                            </th>
+                            <th v-show="edit_mode">
+                                EDIT
+                            </th>
+                        </tr>
+
                     </table>
                 </div>
 

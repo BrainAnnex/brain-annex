@@ -16,6 +16,12 @@ table.rs-main th {
     font-size:12px;
 }
 
+table.rs-main th.repeated {
+    background-color: #777;
+    color:#BBB;
+    font-size:12px;
+}
+
 table.rs-main td {
     border:1px solid #DDD;
     padding:5px;
