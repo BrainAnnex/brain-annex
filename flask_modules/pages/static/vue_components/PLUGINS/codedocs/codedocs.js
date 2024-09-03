@@ -4,9 +4,9 @@
 Vue.component('vue-plugin-cd',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  index:          the zero-based position of the Record on the page
-            edit_mode:  A boolean indicating whether in editing mode
-            item_count:     the total number of Content Items (of all types) on the page
+        /*  index:          The zero-based position of the Record on the page
+            edit_mode:      A boolean indicating whether in editing mode
+            item_count:     The total number of Content Items (of all types) on the page
          */
 
         template: `
@@ -71,7 +71,7 @@ Vue.component('vue-plugin-cd',
 
         data: function() {
             return {
-                editing_mode: (this.item_data.uri == -1 ? true : false),    // -1 means "new Item"
+                editing_mode: (this.item_data.uri < 0 ? true : false),    // Negative URI means "new Item"
                 /*
                 fun_name: this.item_data.fun,
                 fun_args: this.item_data.args,
@@ -132,7 +132,7 @@ Vue.component('vue-plugin-cd',
                 // Start the body of the POST to send to the server
                 post_body = "schema_code=" + this.current_data.schema_code;
 
-                if (this.item_data.uri == -1)  {     // The -1 is a convention indicating a new Content Item to create
+                if (this.item_data.uri < 0)  {     // The negative URI is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
                     post_body += "&category_id=" + this.category_id;
                     const insert_after = this.item_data.insert_after;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
@@ -186,8 +186,8 @@ Vue.component('vue-plugin-cd',
                 if (success)  {     // Server reported SUCCESS
                     this.status = `Successful edit`;
 
-                    // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.uri == -1)
+                    // If this was a new item (with the temporary negative URI), update its ID with the value assigned by the server
+                    if (this.item_data.uri < 0)
                         this.current_data.uri = server_payload;
 
                     // Inform the parent component of the new state of the data
@@ -214,7 +214,7 @@ Vue.component('vue-plugin-cd',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.uri == -1) {
+                if (this.current_data.uri < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("CodeDocs sending `cancel-edit` signal to the parent component");
                     this.$emit('cancel-edit');

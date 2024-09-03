@@ -109,22 +109,16 @@ Vue.component('vue-plugin-h',
                 var post_obj = {schema_code: this.current_data.schema_code,
                                 class_name: this.item_data.class_name
                 };
-                //post_body = "schema_code=" + this.current_data.schema_code;
-                //post_body += "&class_name=" + this.item_data.class_name;
 
                 if (this.item_data.uri < 0)  {     // Negative URI is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
                      post_obj.category_id = this.category_id;
-                     //post_body += "&category_id=" + this.category_id;
-                     //const insert_after = this.item_data.insert_after;  // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                     //post_body += "&insert_after=" + insert_after;
                      post_obj.insert_after = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                      url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING header
                     post_obj.uri = this.item_data.uri;
-                    //post_body += "&uri=" + this.item_data.uri + "&class_name=Headers";
 
                     url_server_api = `/BA/api/update_content_item`;             // URL to communicate with the server's endpoint
                 }
@@ -132,7 +126,6 @@ Vue.component('vue-plugin-h',
                 // Go over each field.  TODO: generalize
                 if ('text' in this.current_data)
                     post_obj.text = this.current_data.text;
-                    //post_body += "&text=" + encodeURIComponent(this.current_data.text);
                 else  {
                     alert("Cannot save an empty header text. If you want to get rid of this header, delete it instead");
                     return;
@@ -146,7 +139,6 @@ Vue.component('vue-plugin-h',
                              json_encode_send: false,
                              callback_fn: this.finish_save
                             });
-                //ServerCommunication.contact_server(url_server_api, {post_body: post_body, callback_fn: this.finish_save});
 
                 this.waiting = true;        // Entering a waiting-for-server mode
                 this.error = false;         // Clear any error from the previous operation

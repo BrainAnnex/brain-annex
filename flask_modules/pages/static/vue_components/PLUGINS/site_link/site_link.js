@@ -360,7 +360,7 @@ Vue.component('vue-plugin-sl',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.uri == -1) {
+                if (this.current_data.uri < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Records component sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
