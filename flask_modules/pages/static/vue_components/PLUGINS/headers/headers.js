@@ -57,7 +57,7 @@ Vue.component('vue-plugin-h',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.uri == -1 ? true : false),    // -1 means "new Item" (automatically placed in editing mode)
+                editing_mode: (this.item_data.uri < 0 ? true : false),    // Negative URI means "new Item" (automatically placed in editing mode)
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -106,39 +106,52 @@ Vue.component('vue-plugin-h',
             save()
             {
                 // Start the body of the POST to send to the server
-                post_body = "schema_code=" + this.current_data.schema_code;
-                post_body += "&class_name=" + this.item_data.class_name;
+                var post_obj = {schema_code: this.current_data.schema_code,
+                                class_name: this.item_data.class_name
+                };
+                //post_body = "schema_code=" + this.current_data.schema_code;
+                //post_body += "&class_name=" + this.item_data.class_name;
 
-                if (this.item_data.uri == -1)  {     // -1 is a convention indicating a new Content Item to create,
+                if (this.item_data.uri < 0)  {     // Negative URI is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
-                     post_body += "&category_id=" + this.category_id;
-                     const insert_after = this.item_data.insert_after;      // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                     post_body += "&insert_after=" + insert_after;
+                     post_obj.category_id = this.category_id;
+                     //post_body += "&category_id=" + this.category_id;
+                     //const insert_after = this.item_data.insert_after;  // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                     //post_body += "&insert_after=" + insert_after;
+                     post_obj.insert_after = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
-                     url_server = `/BA/api/add_item_to_category`;    // URL to communicate with the server's endpoint
+                     url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING header
-                    post_body += "&uri=" + this.item_data.uri + "&class_name=Headers";
+                    post_obj.uri = this.item_data.uri;
+                    //post_body += "&uri=" + this.item_data.uri + "&class_name=Headers";
 
-                    url_server = `/BA/api/update_content_item`;                   // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/update_content_item`;             // URL to communicate with the server's endpoint
                 }
 
                 // Go over each field.  TODO: generalize
                 if ('text' in this.current_data)
-                    post_body += "&text=" + encodeURIComponent(this.current_data.text);
+                    post_obj.text = this.current_data.text;
+                    //post_body += "&text=" + encodeURIComponent(this.current_data.text);
                 else  {
-                    alert("Cannot save an empty header. If you want to get rid of it, delete it instead");
+                    alert("Cannot save an empty header text. If you want to get rid of this header, delete it instead");
                     return;
                 }
 
-                this.waiting = true;
-                this.status_message = "";                    // Clear any message from the previous operation
-                this.error = false;       // Clear any error from the previous operation
+                console.log(`In 'vue-plugin-h', save().  About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(post_obj);
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: false,
+                             callback_fn: this.finish_save
+                            });
+                //ServerCommunication.contact_server(url_server_api, {post_body: post_body, callback_fn: this.finish_save});
 
-                console.log("In 'vue-plugin-h', save().  post_body: ", post_body);
-                ServerCommunication.contact_server(url_server, {post_body: post_body, callback_fn: this.finish_save});
-                //ServerCommunication.contact_server_TEXT(url_server, post_body, this.finish_save);
-            }, // save
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+             }, // save
 
 
             finish_save(success, server_payload, error_message)
@@ -150,8 +163,8 @@ Vue.component('vue-plugin-h',
                 if (success)  {     // Server reported SUCCESS
                     this.status_message = `Successful edit`;
 
-                    // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.uri == -1)
+                    // If this was a new item (with the temporary negative URI), update its URI with the value assigned by the server
+                    if (this.item_data.uri < 0)
                         this.current_data.uri = server_payload;
 
                     // Inform the parent component of the new state of the data
@@ -179,7 +192,7 @@ Vue.component('vue-plugin-h',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.uri == -1) {
+                if (this.current_data.uri < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Headers sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');

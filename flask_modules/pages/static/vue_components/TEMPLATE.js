@@ -96,8 +96,10 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {post_obj: post_obj,
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: false,  /* OR true, as desired */
                              callback_fn: this.finish_server_communication,
                              custom_data: my_var
                             });
@@ -119,8 +121,9 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 console.log(`About to contact the server at ${url_server_api}`);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {callback_fn: this.finish_server_communication,
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "GET",
+                             callback_fn: this.finish_server_communication,
                              custom_data: my_var
                             });
 
