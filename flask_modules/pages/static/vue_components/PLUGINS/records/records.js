@@ -204,7 +204,7 @@ Vue.component('vue-plugin-r',
                 rel_dir: 'IN',
 
                 // Note that we have 2 different "wait for server" flags
-                waiting_for_server: ((this.item_data.uri != -1) ? false : this.get_fields_from_server(this.item_data)), // -1 means "new Item"
+                waiting_for_server: (!(this.item_data.uri < 0) ? false : this.get_fields_from_server(this.item_data)), // Negative URI means "new Item"
 
                 waiting_mode: false,
                 status: "",
@@ -220,7 +220,7 @@ Vue.component('vue-plugin-r',
             {
                 const record_id = this.item_data.uri;
 
-                console.log(`Show the records linked to record ID ${record_id} by the ${dir}-bound relationship '${rel_name}'`);
+                console.log(`Show the records linked to record URI '${record_id}' by the ${dir}-bound relationship '${rel_name}'`);
                 this.get_linked_records_from_server(record_id, rel_name, dir);
             },
 
@@ -549,7 +549,7 @@ Vue.component('vue-plugin-r',
                 // Start the body of the POST to send to the server
                 var post_obj = {schema_code: this.item_data.schema_code};
 
-                if (this.item_data.uri == -1)  {     // The -1 is a convention indicating a new Content Item to create
+                if (this.item_data.uri < 0)  {     // The negative URI is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
                     post_obj["class_name"] = this.item_data.class_name;
@@ -617,8 +617,8 @@ Vue.component('vue-plugin-r',
                         }
                     }
 
-                    // If this was a new item (with the temporary ID of -1), update its ID with the value assigned by the server
-                    if (this.item_data.uri == -1)
+                    // If this was a new item (with the temporary negative URI), update its ID with the value assigned by the server
+                    if (this.item_data.uri < 0)
                         this.current_data.uri = server_payload;
 
                     // Inform the ancestral root component of the new state of the data
@@ -648,7 +648,7 @@ Vue.component('vue-plugin-r',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.uri == -1) {
+                if (this.current_data.uri < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Records component sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
