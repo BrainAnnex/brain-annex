@@ -10,9 +10,9 @@ Vue.component('vue-plugin-rs',
                                           order_by:"name",
                                           pos:100,
                                           schema_code:"rs",
-                                          uri:"rs-1"
+                                          uri:"rs-7"
                                          }
-                                      (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+                                      (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
                             TODO: take "pos" and "class_name" out of item_data !
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
@@ -60,15 +60,24 @@ Vue.component('vue-plugin-rs',
                                 {{insert_blanks(field_name)}}
                             </th>
                             <th v-show="edit_mode">
-                                EDIT
+                                NEW RECORD
                             </th>
                         </tr>
 
+                        <!-- Row for entry of new data, if in editing mode  -->
+                        <tr v-if="edit_mode">
+                            <td v-for="field_name in headers">
+                                <input>
+                            </td>
+                            <td v-show="edit_mode">
+                                SAVE Cancel (TBA)
+                            </td>
+                        </tr>
                     </table>
                 </div>
 
 
-                <!-- Recordset navigation (hidden if newly-created recordset) -->
+                <!-- Recordset NAVIGATION (hidden if newly-created recordset) -->
                 <template v-if="this.pre_edit_metadata.class">
                     <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
@@ -107,7 +116,7 @@ Vue.component('vue-plugin-rs',
                             <td style="text-align: right">Class</td>
                             <td style="text-align: right">
                                 <input v-model="current_metadata.class" size="35" style="font-weight: bold">
-                                </td>
+                            </td>
                             <td rowspan=3 style="vertical-align: bottom; padding-left: 50px">
                                 <span @click="cancel_recordset_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                                 <button @click="save_recordset_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>

@@ -410,7 +410,7 @@ class ApiRouting:
 
 
             json_str = data_dict["json"]
-            print("JSON string: ", json_str)
+            #print("get_class_properties() - JSON string: ", json_str)
 
             # TODO: turn a lot of the code below into a JSON-helper method;
             #       in particular, add a "json_decode" arg to extract_get_pars()
@@ -441,7 +441,7 @@ class ApiRouting:
             except Exception as ex:
                 response_data = {"status": "error", "error_message": str(ex)}
 
-            print(response_data)
+            #print("get_class_properties() - response_data: ", response_data)
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
