@@ -660,7 +660,7 @@ new Vue({
         all_categories: {{all_categories | tojson}},
                         // EXAMPLE: [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
 
-        next_new_item_uri: -1,          // Auto-increment negative values as URI placeholders for new Content Items being added: -1, -2, ...
+        next_new_item_uri: -1,      // Auto-increment negative values as URI placeholders for new Content Items being added: -1, -2, ...
 
 
         // For bulk operations
@@ -952,23 +952,29 @@ new Vue({
         },
 
 
-        create_new_item_after(insert_after_id, schema_code, class_name)
+        create_new_item_after(insert_after_uri, schema_code, class_name)
+        /*  Create an empty new record (JS object), with the given schema_code and class_name,
+            to be placed after the specified Content Item on the current Category-viewer page.
+            Insert the newly-created record in the appropriate location on the global this.content_array ;
+            this insertion will trigger a Vue re-draw across the page and its components.
+         */
         {
-            console.log(`In root component, create_new_item_after().  insert_after_id: ${insert_after_id} | schema_code: ${schema_code} |  class_name: ${class_name}`);
+            console.log(`In root component, create_new_item_after().  insert_after_uri: '${insert_after_uri}' | schema_code: '${schema_code}' |  class_name: '${class_name}'`);
 
-            const insert_after_index = this.locate_item_simplified(insert_after_id);
-            console.log(`    Content item located in position ${insert_after_index}`);
+            const insert_after_index = this.locate_item_simplified(insert_after_uri);
+            console.log(`    Content Item located in position ${insert_after_index}`);
 
             if (insert_after_index == -1)  {
-                alert("Unable to locate the element after which to insert. Maybe a change was made on a separate tab...  Try refreshing page");
+                alert("Unable to locate the element after which to insert. Maybe a change was made on a separate tab...  Try refreshing the page");
                 return;
             }
 
-            // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
+            // Assemble the data for a new Content Item.
+            // Using an auto-incremented negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)     // If a class name was passed, store it
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: insert_after_id};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: insert_after_uri};
             else                // No class name was provided
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: insert_after_id};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: insert_after_uri};
 
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 

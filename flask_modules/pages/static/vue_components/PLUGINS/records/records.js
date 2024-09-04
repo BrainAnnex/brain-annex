@@ -9,10 +9,10 @@ Vue.component('vue-plugin-r',
                         EXAMPLE: {class_name:"German Vocabulary",
                                   "uri":"52", "pos":10, "schema_code":"r",
                                   "German":"Tier", "English":"animal"}
-                                 (if uri is a negative number, it means that it's a newly-created header,
+                                  (if uri is a negative number, it means that it's a newly-created header,
                                   not yet registered with the server)
 
-            edit_mode:  A boolean indicating whether in editing mode
+            edit_mode:      A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of the Record on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -204,7 +204,7 @@ Vue.component('vue-plugin-r',
                 rel_dir: 'IN',
 
                 // Note that we have 2 different "wait for server" flags
-                waiting_for_server: (!(this.item_data.uri < 0) ? false : this.get_fields_from_server(this.item_data)), // Negative URI means "new Item"
+                waiting_for_server: (this.item_data.uri < 0) ? this.get_fields_from_server(this.item_data) : false, // Negative URI means "new Item"
 
                 waiting_mode: false,
                 status: "",
@@ -234,7 +234,11 @@ Vue.component('vue-plugin-r',
 
 
             determine_headers()
-            /* Note: this is quite similar to the canonical_field_list() method in the
+            /*  Return a list of field names for this Content Item.
+                The Item's fields in the schema go first, in the schema order,
+                followed by any other field not in the Schema, in order of appearance.
+
+                Note: this is quite similar to the canonical_field_list() method in the
                      Vue root component.  TODO: eventually merge
              */
             {
@@ -486,7 +490,7 @@ Vue.component('vue-plugin-r',
 
 
             clone_and_standardize(obj)
-            // Clone first; then remove some keys that shouldn't get shown nor edited
+            // Clone the passed object; then remove some keys that shouldn't get shown nor edited
             {
                 clone_obj = Object.assign({}, obj);     // Clone the object
 
@@ -499,6 +503,7 @@ Vue.component('vue-plugin-r',
 
                 return clone_obj;
             },
+
 
             manage_newlines(text)   // NOT IN CURRENT USE
             // Replace all newlines in the text with the HTML newline tag "<br>"

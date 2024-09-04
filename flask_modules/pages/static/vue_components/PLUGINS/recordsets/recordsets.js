@@ -18,8 +18,8 @@ Vue.component('vue-plugin-rs',
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Recordset on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    A list of field names, in Schema order.
-                                EXAMPLE: ["French", "English", "notes"]
+            schema_data:    A list of field names (for the Recordset entity, not its records!), in Schema order.
+                                EXAMPLE: ["class", "order_by", "clause", "n_group", "caption"]
          */
 
         template: `
@@ -67,12 +67,14 @@ Vue.component('vue-plugin-rs',
                         <!-- Row for entry of new data, if in editing mode  -->
                         <tr v-if="edit_mode">
                             <td v-for="field_name in headers">
-                                <input>
+                                <input v-model="new_record[field_name]">
                             </td>
                             <td v-show="edit_mode">
-                                SAVE Cancel (TBA)
+                                <button @click="save_new_record" style="">SAVE</button>
+                                Cancel
                             </td>
                         </tr>
+
                     </table>
                 </div>
 
@@ -166,9 +168,9 @@ Vue.component('vue-plugin-rs',
         // ------------------------------   DATA   ------------------------------
         data: function() {
             return {
-                headers: [],   //  EXAMPLES:  ["quote", "attribution", "notes"] , ["name", "url", "uri"]
+                headers: [],            // EXAMPLE:  ["quote", "attribution", "notes"]
 
-                recordset: [],         // This will get loaded by querying the server when the page loads
+                recordset: [],          // This will get loaded by querying the server when the page loads
 
                 current_page: 1,
 
@@ -183,6 +185,11 @@ Vue.component('vue-plugin-rs',
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+
+
+                new_record: {},         // Used for the addition of new record; note that it's valid
+                                        // to do a Vue <<input v-models="obj[key]"> to non-existing keys of an object;
+                                        // Vue will automatically add the key/value pairs as they get entered in the form
 
 
                 waiting: false,         // Whether any server request is still pending
@@ -302,6 +309,29 @@ Vue.component('vue-plugin-rs',
             /*
                 ---  SERVER CALLS  ---
              */
+
+            save_new_record()
+            // Send a request to the server, to save a record newly entered thru a form
+            {
+                console.log(`In save_new_record(), for Recordset with URI '${this.current_metadata.uri}'`);
+
+                var url_server_api = "/BA/api/TBA";
+                var post_obj = {class_name: this.current_metadata.class};       // Class of the records
+
+                //console.log("New record just entered:");
+                //console.log(this.new_record);
+
+                for (k in this.new_record ) {
+                    //console.log(`key: '${k}' , value: ${this.new_record[k]}`);
+                    post_obj[k] = this.new_record[k];
+                }
+
+                console.log(`About to contact the server at '${url_server_api}' .  POST object:`);
+                console.log(post_obj);      // EXAMPLE:  {class_name: "Quote", quote: "Inspiration exists, but it has to find us working", attribution: "Pablo Picasso"}
+
+            },
+
+
 
             save_recordset_edit()
             // Send a request to the server, to update or create this Recordset's definition
