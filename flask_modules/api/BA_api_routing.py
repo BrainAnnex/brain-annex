@@ -965,6 +965,83 @@ class ApiRouting:
         #####################################################################################################
 
 
+        @bp.route('/create_data_node_JSON', methods=['POST'])
+        @login_required
+        def create_data_node_JSON():
+            """
+            Create a new Data Node
+
+            RESTRICTION: currently, not to be used for any Content Item that
+                         requires plugin-specific actions
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict
+
+            EXPECTED Content-Type for the request:  "application/json"
+
+            KEYS in the JSON-encoded dict:
+                class_name          The name of the Class of the new Data Node
+                *PLUS* any applicable plugin-specific fields
+
+            RETURNED PAYLOAD (on success):
+                A JSON-encoded dict of the Internal Database ID and the URI assigned to the newly-created Data Node
+
+            EXAMPLE:
+                Send to  localhost:5000/BA/api/create_data_node_JSON ,
+                with Content-Type for the request:  "application/json",
+                a POST request with the following body:
+                {"class_name": "Quote", "quote": "Inspiration exists, but it has to find us working", "attribution": "Pablo Picasso"}
+
+                The response body will be something like:
+                    {
+                      "payload": {
+                        "internal_id": 1234,
+                        "uri": "q-88"
+                      },
+                      "status": "ok"
+                    }
+
+            """
+            #TODO: explore more Schema enforcements
+            #TODO: make the generation of the URI optional
+            #TODO: lift restriction against plugin-specific actions
+
+            # Extract and parse the POST value
+            pars_dict = request.get_json()  # This parses the JSON-encoded string in the POST message,
+                                            # provided that mimetype indicates "application/json"
+                                            # EXAMPLE: {"class_name": "Quote",
+                                            #           "quote": "Inspiration exists, but it has to find us working",
+                                            #           "attribution": "Pablo Picasso"}
+
+            print("In create_data_node_JSON() -  pars_dict: ", pars_dict)
+
+
+            # TODO: create a helper function for the unpacking/validation below
+            class_name = pars_dict.get('class_name')
+
+
+            # Create a new Content Item with the POST data
+            try:
+                del pars_dict["class_name"]
+
+
+                payload = DataManager.create_data_node(class_name=class_name,
+                                                       item_data=pars_dict)
+                # It returns the internal database ID and the URI of the newly-created Data Node
+                # EXAMPLE: {"internal_id": 123, "uri": "rs-8"}
+
+                response_data = {"status": "ok", "payload": payload}
+            except Exception as ex:
+                err_details = f"/create_data_node_JSON : Unable to add the requested Content Item to the specified Category.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+
+            #print(f"create_data_node_JSON() is returning: `{err_details}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
         @bp.route('/update_content_item', methods=['POST'])
         @login_required
         def update_content_item():
@@ -1793,6 +1870,15 @@ class ApiRouting:
             try:
                 data_dict = cls.extract_get_pars(get_data)
                 #print("/get_filtered parameters: ", data_dict)
+
+                # The following validation is to remedy a Cypher/Neo4j bug
+                # about unexpected results when using "skip" and "limit" together with a sort by an unknown field
+                if ("order_by" in data_dict) and ("label" in data_dict):
+                    order_by_str = data_dict["order_by"]
+                    if "," not in order_by_str:     # The ORDER BY doesn't contain multiple parts
+                        assert order_by_str in NeoSchema.get_class_properties(class_node=data_dict["label"], include_ancestors=True), \
+                            f"cannot sort recordset ({data_dict['label']}) by unknown property `{order_by_str}`"
+
                 recordset = DataManager.get_nodes_by_filter(data_dict)
                 if "label" in data_dict:
                     total_count = NeoSchema.count_data_nodes_of_class(data_node=data_dict["label"])

@@ -315,7 +315,7 @@ Vue.component('vue-plugin-rs',
             {
                 console.log(`In save_new_record(), for Recordset with URI '${this.current_metadata.uri}'`);
 
-                var url_server_api = "/BA/api/TBA";
+                var url_server_api = "/BA/api/create_data_node_JSON";
                 var post_obj = {class_name: this.current_metadata.class};       // Class of the records
 
                 //console.log("New record just entered:");
@@ -329,6 +329,37 @@ Vue.component('vue-plugin-rs',
                 console.log(`About to contact the server at '${url_server_api}' .  POST object:`);
                 console.log(post_obj);      // EXAMPLE:  {class_name: "Quote", quote: "Inspiration exists, but it has to find us working", attribution: "Pablo Picasso"}
 
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_new_record
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_save_new_record(success, server_payload, error_message)
+            // Callback function to wrap up the action of save_new_record() upon getting a response from the server
+            {
+                console.log("Finalizing the save_new_record() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `New record added`;
+                    //...
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    //...
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.new_record = {};       // Clear the data-entry fields
             },
 
 
@@ -413,7 +444,7 @@ Vue.component('vue-plugin-rs',
                 }
 
                 // Final wrap-up, regardless of error or success
-                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.waiting = false;           // Make a note that the asynchronous operation has come to an end
                 this.recordset_editing = false; // Leave the editing mode
             },
 

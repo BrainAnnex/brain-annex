@@ -780,6 +780,33 @@ class DataManager:
                                                                                                      # Should not happen, since uri is a primary key
 
 
+
+    @classmethod
+    def create_data_node(cls, class_name :str, item_data: dict) -> dict:
+        """
+        Create a new Data Node.
+
+        RESTRICTION: currently, not to be used for any Content Item that
+                     requires plugin-specific actions
+
+        :param class_name:
+        :param item_data:
+
+        :return:            A dict with the internal database ID and uri
+                                assigned to the newly-created node
+                                EXAMPLE: {"internal_id": 123, "uri": "rs-8"}
+        """
+        # TODO: more Schema enforcement
+        # TODO: make the generation of the URI optional
+        new_uri = NeoSchema.generate_uri(class_name)
+        print(f"create_new_content_item() - New item will be assigned URI: '{new_uri}'")
+
+        internal_id = NeoSchema.create_data_node(class_node=class_name, properties=item_data, new_uri=new_uri)
+
+        return {"internal_id": internal_id, "uri": new_uri}
+
+
+
     @classmethod
     def add_new_content_item_to_category(cls, category_uri :str, class_name :str, insert_after :str,
                                          item_data: dict) -> str:
@@ -803,6 +830,8 @@ class DataManager:
 
         # Generate a unique URI for the new Data Item (which is needed by some plugin-specific modules)
 
+        # TODO: switch to using:
+        #       new_uri = NeoSchema.generate_uri(class_name)
         # First, check if a specific namespace, or the general data node namespace, is to be used
         class_id = NeoSchema.get_class_internal_id(class_name)
         namespace_links = NeoSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
@@ -815,6 +844,7 @@ class DataManager:
         else:
             print(f"    Using default namespace")
             new_uri = NeoSchema.reserve_next_uri()
+        # TODO: --- end of portion to replace
 
         print(f"add_new_content_item_to_category() - New item will be assigned URI: '{new_uri}'")
 
@@ -1315,6 +1345,7 @@ class DataManager:
 
         :param filter_dict: A dictionary, with keys:
                                 "label"         The name of a node label
+                                "class_name"    TODO: NOT CURRENTLY IMPLEMENTED
                                 "key_name"      A string with the name of a node attribute;
                                                     if provided, key_value must be passed, too
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
@@ -1324,6 +1355,8 @@ class DataManager:
                                                     EXAMPLE: "n.name CONTAINS 'art'"
                                 "order_by"      Field name, or comma-separated list;
                                                     each name may optionally be followed by "DESC"
+                                                    NOTE: if ordering by a non-existing field, "skip" may not work as expected;
+                                                          this seems to be a Cypher/Neo4j bug
                                 "skip"          The number of initial entries (in the context of specified order) to skip
                                 "limit"         The max number of entries to return
                             EXAMPLES:
