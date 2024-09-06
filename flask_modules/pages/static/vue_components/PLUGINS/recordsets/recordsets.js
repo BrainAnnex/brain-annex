@@ -10,16 +10,16 @@ Vue.component('vue-plugin-rs',
                                           order_by:"name",
                                           pos:100,
                                           schema_code:"rs",
-                                          uri:"rs-1"
+                                          uri:"rs-7"
                                          }
-                                      (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+                                      (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
                             TODO: take "pos" and "class_name" out of item_data !
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Recordset on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    A list of field names, in Schema order.
-                                EXAMPLE: ["French", "English", "notes"]
+            schema_data:    A list of field names (for the Recordset entity, not its records!), in Schema order.
+                                EXAMPLE: ["class", "order_by", "clause", "n_group", "caption"]
          */
 
         template: `
@@ -60,15 +60,26 @@ Vue.component('vue-plugin-rs',
                                 {{insert_blanks(field_name)}}
                             </th>
                             <th v-show="edit_mode">
-                                EDIT
+                                NEW RECORD
                             </th>
+                        </tr>
+
+                        <!-- Row for entry of new data, if in editing mode  -->
+                        <tr v-if="edit_mode">
+                            <td v-for="field_name in headers">
+                                <input v-model="new_record[field_name]">
+                            </td>
+                            <td v-show="edit_mode">
+                                <button @click="save_new_record" style="">SAVE</button>
+                                Cancel
+                            </td>
                         </tr>
 
                     </table>
                 </div>
 
 
-                <!-- Recordset navigation (hidden if newly-created recordset) -->
+                <!-- Recordset NAVIGATION (hidden if newly-created recordset) -->
                 <template v-if="this.pre_edit_metadata.class">
                     <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
@@ -107,7 +118,7 @@ Vue.component('vue-plugin-rs',
                             <td style="text-align: right">Class</td>
                             <td style="text-align: right">
                                 <input v-model="current_metadata.class" size="35" style="font-weight: bold">
-                                </td>
+                            </td>
                             <td rowspan=3 style="vertical-align: bottom; padding-left: 50px">
                                 <span @click="cancel_recordset_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                                 <button @click="save_recordset_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
@@ -157,9 +168,9 @@ Vue.component('vue-plugin-rs',
         // ------------------------------   DATA   ------------------------------
         data: function() {
             return {
-                headers: [],   //  EXAMPLES:  ["quote", "attribution", "notes"] , ["name", "url", "uri"]
+                headers: [],            // EXAMPLE:  ["quote", "attribution", "notes"]
 
-                recordset: [],         // This will get loaded by querying the server when the page loads
+                recordset: [],          // This will get loaded by querying the server when the page loads
 
                 current_page: 1,
 
@@ -174,6 +185,11 @@ Vue.component('vue-plugin-rs',
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+
+
+                new_record: {},         // Used for the addition of new record; note that it's valid
+                                        // to do a Vue <<input v-models="obj[key]"> to non-existing keys of an object;
+                                        // Vue will automatically add the key/value pairs as they get entered in the form
 
 
                 waiting: false,         // Whether any server request is still pending
@@ -294,6 +310,60 @@ Vue.component('vue-plugin-rs',
                 ---  SERVER CALLS  ---
              */
 
+            save_new_record()
+            // Send a request to the server, to save a record newly entered thru a form
+            {
+                console.log(`In save_new_record(), for Recordset with URI '${this.current_metadata.uri}'`);
+
+                var url_server_api = "/BA/api/create_data_node_JSON";
+                var post_obj = {class_name: this.current_metadata.class};       // Class of the records
+
+                //console.log("New record just entered:");
+                //console.log(this.new_record);
+
+                for (k in this.new_record ) {
+                    //console.log(`key: '${k}' , value: ${this.new_record[k]}`);
+                    post_obj[k] = this.new_record[k];
+                }
+
+                console.log(`About to contact the server at '${url_server_api}' .  POST object:`);
+                console.log(post_obj);      // EXAMPLE:  {class_name: "Quote", quote: "Inspiration exists, but it has to find us working", attribution: "Pablo Picasso"}
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_new_record
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_save_new_record(success, server_payload, error_message)
+            // Callback function to wrap up the action of save_new_record() upon getting a response from the server
+            {
+                console.log("Finalizing the save_new_record() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `New record added`;
+                    //...
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    //...
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.new_record = {};       // Clear the data-entry fields
+            },
+
+
+
             save_recordset_edit()
             // Send a request to the server, to update or create this Recordset's definition
             {
@@ -374,7 +444,7 @@ Vue.component('vue-plugin-rs',
                 }
 
                 // Final wrap-up, regardless of error or success
-                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.waiting = false;           // Make a note that the asynchronous operation has come to an end
                 this.recordset_editing = false; // Leave the editing mode
             },
 

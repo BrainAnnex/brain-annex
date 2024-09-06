@@ -4291,7 +4291,7 @@ class NeoSchema:
     @classmethod
     def assign_uri(cls, internal_id :int, namespace="data_node") -> str:
         """
-        Given a Data Node that lacks a URI value, assign one to it (and save it in the database.)
+        Given an existing Data Node that lacks a URI value, assign one to it (and save it in the database.)
         If a URI value already exists on the node, an Exception is raised
 
         :param internal_id: Internal database ID to identify a Data Node tha currently lack a URI value
@@ -4535,6 +4535,54 @@ class NeoSchema:
             '''
 
         cls.db.query(q, data_binding={"class_name": class_name, "namespace": namespace})
+
+
+
+    @classmethod
+    def lookup_class_namespace(cls, class_name :str) -> Union[str, None]:
+        """
+        Look up the namespace, if any, assigned to the given Class,
+        by means of a standard "HAS_URI_GENERATOR" relationship.
+        If not found, return None
+
+        :param class_name:  Name of a Schema Class
+        :return:
+        """
+        # TODO: Pytest
+
+        # Check if a namespace has been assigned to the given Class
+        class_id = NeoSchema.get_class_internal_id(class_name)
+        namespace_links = NeoSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
+                                                 properties="namespace")
+        #print("lookup_class_namespace() - namespace_links: ", namespace_links)
+        if len(namespace_links) == 1:
+            return namespace_links[0]
+        else:
+            return None
+
+
+
+    @classmethod
+    def generate_uri(cls, class_name :str) -> str:
+        """
+        Use, as appropriate for the given Class,
+        a specific namespace - or the general data node namespace - to generate a URI
+        to use on a newly-create Data Node
+
+        :param class_name:  Name of a Schema Class
+        :return:
+        """
+        # TODO: Pytest
+
+        # Check if a specific namespace has been assigned to the given Class
+        namespace = cls.lookup_class_namespace(class_name)
+
+        if namespace:
+            print(f"generate_uri(): Using namespace '{namespace}'")
+            return cls.reserve_next_uri(namespace=namespace)
+        else:
+            print(f"generate_uri(): Using default datanodes namespace")
+            return cls.reserve_next_uri()
 
 
 
