@@ -93,10 +93,11 @@ def test_add_subcategory_relationship(db):
     Categories.add_subcategory_relationship(subcategory_id=3, category_id=526)
 
 
+
 def test_check_for_duplicates(db):
-    result = Categories.check_for_duplicates(category_uri=985)  # 814
+    result = Categories.check_for_duplicates(category_name="some name")
     print(result)
-    assert result == ""
+    assert result == []
 
 
 def test_check_all_categories_for_duplicates(db):

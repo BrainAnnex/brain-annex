@@ -191,7 +191,7 @@ class Collections:
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    None
         """
-        # TODO: use this function as a ***ROLE MODEL*** for linking at the start
+        # TODO: use this function as a ***ROLE MODEL*** for linking at the start, or after an existing Item
         # TODO: (optionally?) enforce that the respective Classes of the Data Nodes are a relationship named membership_rel_name;
         #       use NeoSchema.class_relationship_exists()
 

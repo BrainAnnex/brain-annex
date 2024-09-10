@@ -1153,33 +1153,45 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def check_for_duplicates(cls, category_uri :str) -> str:
+    def check_for_duplicates(cls, category_name :str) -> [str]:
         """
-        Look for duplicates values in the "pos" attributes
-        of the "BA_in_category" relationships ending in the specified Category node (specified by its uri)
+        This is a diagnostic method to check for problems.
 
-        :param category_uri:A string identifying the desired Category
-        :return:            In case of duplicates, return a text with an explanation;
-                            if no duplicates, return an empty string
+        Look for duplicates values in the "pos" attributes
+        of the "BA_in_category" links ending in the specified Category node
+
+        :param category_name:   To identifying the Category of interest
+        :return:                In case of duplicates, return a list of texts with error reports;
+                                    if no duplicates, return an empty list
         """
         q = '''
-            MATCH (i1:BA)-[r1:BA_in_category]->(:BA:Categories, uri: $uri})<-[r2:BA_in_category]-(i2:BA) 
-            WHERE r1.pos = r2.pos AND i1.uri <> i2.uri
-            RETURN r1.pos AS pos, i1.uri AS item1 ,i2.uri AS item2
-            LIMIT 1
+            MATCH (ci1)-[r1:BA_in_category] -> (:Categories {name: $name}) <- [r2:BA_in_category]-(ci2) 
+            WHERE r1.pos = r2.pos AND id(ci1) > id(ci2)
+            RETURN r1.pos AS pos, ci1.uri AS item1, ci2.uri AS item2
             '''
-        data_binding = {"uri": category_uri}
+
+        data_binding = {"name": category_name}
+
+        #cls.db.debug_query_print(q, data_binding)
         duplicates = cls.db.query(q, data_binding)
-        if duplicates == []:
-            return ""
+
+        if not duplicates:
+            return []           # No problems found
         else:
-            first_record = duplicates[0]
-            return f"Duplicate pos value ({first_record['pos']}, shared by relationships to items with IDs {first_record['item1']} and {first_record['item2']})"
+            problem_list = []
+            for record in duplicates:
+                problem = f"Problem found: Duplicate 'pos' value ({record['pos']}), " \
+                          f"shared by links to Content Items with URIs `{record['item1']}` and `{record['item2']}`"
+                problem_list.append(problem)
+
+            return problem_list
+
 
 
     @classmethod
     def check_all_categories_for_duplicates(cls) -> str:
         """
+        This is a diagnostic method to check for problems.
 
         :return:            In case of duplicates, return a text with an explanation;
                             if no duplicates, return an empty string
