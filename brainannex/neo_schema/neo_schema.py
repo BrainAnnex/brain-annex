@@ -4378,8 +4378,8 @@ class NeoSchema:
         The middle part of the generated URI is a unique auto-increment value
         (separately maintained for various groups, or "namespaces").
 
-        If the requested namespace is missing - use create_namespace() to first create it,
-        an exception is generated.
+        If the requested namespace is not the default one, make sure to first create it
+        with create_namespace()
 
         If no prefix or suffix is specified, use the values provided when the namespace
         was first created.
@@ -4387,14 +4387,8 @@ class NeoSchema:
         EXAMPLES:   reserve_next_uri("Document", "doc.", ".new") might produce "doc.3.new"
                     reserve_next_uri("Images", prefix="i-") might produce "i-123"
 
-        IMPORTANT: Prefixes and suffixes only need to be passed when first using a new namespace;
-                   if they're passed in later calls, they over-ride their stored counterparts.
-
-        An ATOMIC database operation is utilized to both read AND advance the autoincrement counter,
-        based on a (single) node with label `Schema Autoincrement`
-        as well as an attribute indicating the desired namespace (group);
-        if no such node exists (for example, after a new installation), it gets created,
-        and 1 is used as the reserved autoincrement count.
+        IMPORTANT: Prefixes and suffixes only need to be passed when first creating a new namespace;
+                   if they're passed in here, they over-ride their stored counterparts.
 
         Note that the returned uri is de-facto "permanently reserved" on behalf of the calling function,
         and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
@@ -4438,6 +4432,8 @@ class NeoSchema:
 
         # Assemble the URI
         uri = f"{prefix}{autoincrement_to_use}{suffix}"
+        #print(f"***++ GENERATING NEW URI: `{uri}`")
+
         return uri
 
 
@@ -4449,7 +4445,11 @@ class NeoSchema:
         based on a (single) node that:
             1) contains the label `Schema Autoincrement`
             2) and also contains, as an attribute, the desired namespace (group);
-        if no such node exists (for example, after a new installation), it gets created, and 1 is returned.
+        if no such node exists (for example, after a new installation), an Exception is  raised.
+
+        An ATOMIC database operation is utilized to both read AND advance the autoincrement counter,
+        based on a (single) node with label `Schema Autoincrement`
+        as well as an attribute indicating the desired namespace (group)
 
         Note that the returned number (or the last of an implied sequence of numbers, if advance > 1)
         is de-facto "permanently reserved" on behalf of the calling function,
@@ -4463,7 +4463,7 @@ class NeoSchema:
         :return:            An integer that is a unique auto-increment for the specified namespace
                                 (starting with 1); it's ready-to-use and "reserved", i.e. could be used
                                 at any future time.
-                                If advance > 1, the first of the reversed numbers is returned
+                                If advance > 1, the first of the reserved numbers is returned
         """
         assert type(namespace) == str, \
             "advance_autoincrement(): the argument `namespace` is required and must be a string"
@@ -4480,10 +4480,13 @@ class NeoSchema:
 
 
         # Attempt to retrieve a `Schema Autoincrement` node for our given namespace (it might be absent)
-        # TODO: add a DATA LOCK to protect against multiple concurrent calls
+        # Notice the DATA LOCK to protect against multiple concurrent calls
+        #   Info: https://neo4j.com/docs/java-reference/4.4/transaction-management/
         q = f'''
             MATCH (n: `Schema Autoincrement` {{namespace: $namespace}})
+            SET n._LOCK_ = true
             SET n.next_count = n.next_count + {advance}
+            REMOVE n._LOCK_
             RETURN n.next_count AS next_count, n.prefix AS stored_prefix, n.suffix AS stored_suffix
             '''
         result = cls.db.query(q, data_binding={"namespace": namespace}, single_row=True)

@@ -28,7 +28,7 @@ def test_default_file_path():
     MediaManager.set_default_folders(plugin_support.all_default_folders())
 
 
-    assert MediaManager.default_file_path(class_name="Document") == "D:/media/my_media_folder/document/"
+    assert MediaManager.default_file_path(class_name="Document") == "D:/media/my_media_folder/documents/"
 
     assert MediaManager.default_file_path(class_name="Images", thumb=False) == "D:/media/my_media_folder/images/"
     assert MediaManager.default_file_path(class_name="Images", thumb=True) == "D:/media/my_media_folder/images/resized/"
