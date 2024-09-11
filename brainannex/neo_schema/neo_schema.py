@@ -228,8 +228,8 @@ class NeoSchema:
         :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes
 
-        :return:            An (int, str) pair of integers with the internal database ID and the unique uri assigned to the node just created,
-                                if it was created;
+        :return:            An (int, str) pair of integers with the internal database ID and the unique uri
+                                assigned to the node just created, if it was created;
                                 an Exception is raised if a class by that name already exists
         """
         #TODO: offer the option to link to an existing Class, like create_class_with_properties() does
@@ -1806,27 +1806,27 @@ class NeoSchema:
 
 
     @classmethod
-    def data_node_exists(cls, data_node: Union[int, str], class_name=None) -> bool:
+    def data_node_exists(cls, node_id: Union[int, str], id_key=None, class_name=None) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
 
-        :param data_node:   Either an integer (representing an internal database ID),
-                                or a string (representing the value of the "uri" field)
+        :param node_id:     Either an internal database ID or a primary key value
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+                                Leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Used for a stricter check
         :return:            True if the specified Data Node exists, or False otherwise
         """
-        # TODO: switch to new system of id_key - as in data_link_exist()
+        #TODO: pytest
 
         # Prepare the clause part of a Cypher query
-        if type(data_node) == int:
-            clause = "WHERE id(dn) = $data_node"
-        elif type(data_node) == str:
-            clause = "WHERE dn.uri = $data_node"
-
+        if id_key is None:
+            clause = "WHERE id(dn) = $node_id"
+        elif type(node_id) == str:
+            clause = f"WHERE dn.`{id_key}` = $node_id"
         else:
             raise Exception(f"data_node_exists(): "
-                            f"argument `data_node` must be an integer or a string; "
-                            f"instead, it is {type(data_node)}")
+                            f"argument `node_id` must be None or a string; "
+                            f"instead, it is {type(node_id)}")
 
         if class_name:
             node_cypher = "(:CLASS {name: $class_name})"
@@ -1840,7 +1840,8 @@ class NeoSchema:
             RETURN COUNT(dn) AS number_found
             '''
 
-        number_found = cls.db.query(q, {"data_node" : data_node, "class_name": class_name},
+        #cls.db.debug_query_print(q, {"node_id" : node_id, "class_name": class_name})
+        number_found = cls.db.query(q, {"node_id" : node_id, "class_name": class_name},
                                     single_cell="number_found")
 
         if number_found == 0:
@@ -1849,7 +1850,7 @@ class NeoSchema:
             return True
         else:
             raise Exception(f"data_node_exists(): more than 1 node was found "
-                            f"with the same URI ({data_node}), which ought to be unique")
+                            f"with the same URI ({node_id}), which ought to be unique")
 
 
 
@@ -4325,10 +4326,7 @@ class NeoSchema:
     @classmethod
     def create_namespace(cls, name :str, prefix="", suffix="") -> None:
         """
-        Set up a new namespace
-
-        Note: If you want to create, and immediately start using, a new namespace,
-              you may simply call reserve_next_uri()
+        Set up a new namespace for URI's.
 
         :param name:    A string used to maintain completely separate groups of auto-increment values;
                             leading/trailing blanks are ignored
@@ -4338,12 +4336,36 @@ class NeoSchema:
                             it will be stored in the database
         :return:        None
         """
-        # TODO: pytest
-        next_uri = cls.reserve_next_uri(namespace=name, prefix=prefix, suffix=suffix)
+        assert type(name) == str, \
+            f"create_namespace(): the argument `name` must be a string.  " \
+            f"The value passed was of type {type(name)}"
 
-        assert next_uri == f"{prefix}1{suffix}", \
-            f"create_namespace(): namespace named `{name}` already exists, or otherwise failed to be created"
-            # TODO: carry out some investigation, prior to generating the error message
+        assert name != "", \
+            f"create_namespace(): the argument `name` cannot be an empty string"
+
+        assert not cls.namespace_exists(name), \
+            f"create_namespace(): a namespace called `{name}` already exists"
+
+        properties={"namespace": name, "next_count": 1}
+        if prefix:
+            properties["prefix"] = prefix
+        if suffix:
+            properties["suffix"] = suffix
+
+        cls.db.create_node(labels="Schema Autoincrement", properties=properties)
+
+
+
+    @classmethod
+    def namespace_exists(cls, name :str) -> bool:
+        """
+        Return True if the specified namespace already exists, or False otherwise
+
+        :param name:
+        :return:
+        """
+        return cls.db.exists_by_key(labels="Schema Autoincrement",
+                                    key_name="namespace", key_value=name)
 
 
 
@@ -4356,7 +4378,8 @@ class NeoSchema:
         The middle part of the generated URI is a unique auto-increment value
         (separately maintained for various groups, or "namespaces").
 
-        A namespace is automatically created if this is the first call using that name.
+        If the requested namespace is missing - use create_namespace() to first create it,
+        an exception is generated.
 
         If no prefix or suffix is specified, use the values provided when the namespace
         was first created.
@@ -4377,7 +4400,9 @@ class NeoSchema:
         and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
 
         :param namespace:   A string used to maintain completely separate groups of auto-increment values;
-                                leading/trailing blanks are ignored
+                                leading/trailing blanks are ignored.
+                                It must exist, unless the default value is accepted (in which case,
+                                it gets created as needed)
         :param prefix:      (OPTIONAL) String to prefix to the auto-increment number.
                                 If it's the 1st call for the given namespace, store it in the database;
                                 otherwise, if a value is passed, use it to over-ride the stored one
@@ -4391,16 +4416,7 @@ class NeoSchema:
                                 at any future time
         """
         # TODO: provide a function reserve_next_uri_GROUP()
-        # TODO: maybe require namespaces to be created ahead of time, to reduce confusion,
-        #       and also to reduce risk of accidentally creating new namespace from a typo!
 
-        assert type(namespace) == str, \
-            "reserve_next_uri(): the argument `namespace` and must be a string"
-
-        namespace = namespace.strip()       # Zap leading/trailing blanks
-
-        assert namespace != "", \
-            "reserve_next_uri(): the argument `namespace` cannot be an empty or blank string"
 
         assert (type(prefix) == str) or (prefix is None), \
             f"reserve_next_uri(): the argument `prefix` must be a string or None; " \
@@ -4409,49 +4425,25 @@ class NeoSchema:
             f"reserve_next_uri(): the argument `suffix` must be a string or None;" \
             f" value passed was of type {type(suffix)}"
 
+        if namespace=="data_node":
+            if not cls.namespace_exists("data_node"):
+                NeoSchema.create_namespace("data_node", prefix=prefix, suffix=suffix)
 
-        # TODO: simplify by making use of _advance_autoincrement()
+        (autoincrement_to_use, stored_prefix, stored_suffix) = cls.advance_autoincrement(namespace)
 
-        # Attempt to retrieve a `Schema Autoincrement` node for our namespace (it might be absent);
-        # if found, advance its autoincrement counter, and also retrieve the stored prefix and suffix
-        q = f'''
-            MATCH (n: `Schema Autoincrement` {{namespace: $namespace}})
-            SET n.next_count = n.next_count + 1
-            RETURN n.next_count AS next_count, n.prefix AS stored_prefix, n.suffix AS stored_suffix
-            '''
-        result = cls.db.query(q, data_binding={"namespace": namespace}, single_row=True)
+        if not prefix:      # Use the database value, if not passed as argument
+            prefix = stored_prefix
+        if not suffix:      # Use the database value, if not passed as argument
+            suffix = stored_suffix
 
-        if result is None:     # If no Autoincrement node found, create it - and also store the prefix and suffix, if provided
-            properties={"namespace": namespace, "next_count": 2}
-            if prefix:
-                properties["prefix"] = prefix
-            if suffix:
-                properties["suffix"] = suffix
-
-            cls.db.create_node(labels="Schema Autoincrement", properties=properties)
-            autoincrement_to_use = 1       # Start a new count for this namespace
-        else:
-            # Unpack the dictionary of data from the Autoincrement node
-            (next_count, stored_prefix, stored_suffix) = [result.get(key) for key in ("next_count", "stored_prefix", "stored_suffix")]
-            # Note that stored_prefix and stored_suffix will be None if not found in the database
-            autoincrement_to_use = next_count - 1
-            if not prefix:      # Use the database value, if not passed as argument
-                prefix = stored_prefix
-            if not suffix:
-                suffix = stored_suffix
-
-        if prefix is None:
-            prefix = ""
-        if suffix is None:
-            suffix = ""
-
+        # Assemble the URI
         uri = f"{prefix}{autoincrement_to_use}{suffix}"
         return uri
 
 
 
     @classmethod
-    def advance_autoincrement(cls, namespace :str, advance=1) -> int:
+    def advance_autoincrement(cls, namespace :str, advance=1) -> (int, str, str):
         """
         Utilize an ATOMIC database operation to both read AND advance the autoincrement counter,
         based on a (single) node that:
@@ -4487,19 +4479,33 @@ class NeoSchema:
             "advance_autoincrement(): the argument `advance` must be an integer >= 1"
 
 
+        # Attempt to retrieve a `Schema Autoincrement` node for our given namespace (it might be absent)
+        # TODO: add a DATA LOCK to protect against multiple concurrent calls
         q = f'''
             MATCH (n: `Schema Autoincrement` {{namespace: $namespace}})
             SET n.next_count = n.next_count + {advance}
-            RETURN n.next_count AS next_count
+            RETURN n.next_count AS next_count, n.prefix AS stored_prefix, n.suffix AS stored_suffix
             '''
-        next_count = cls.db.query(q, data_binding={"namespace": namespace}, single_cell="next_count")
+        result = cls.db.query(q, data_binding={"namespace": namespace}, single_row=True)
 
-        if next_count is None:     # If no node found
-            cls.db.create_node(labels="Schema Autoincrement",
-                               properties={"namespace": namespace, "next_count": 1+advance})
-            return 1       # Start a new count for this namespace
-        else:
-            return next_count - advance
+        # If no Autoincrement node found, raise an Exception
+        assert result, \
+            f"reserve_next_uri(): no namespace named '{namespace}' was found.  " \
+            f"Make sure to first create the namespace with a call to create_namespace()"
+
+        # Unpack the dictionary of data from the Autoincrement node
+        (next_count, stored_prefix, stored_suffix) = [result.get(key) for key in ("next_count", "stored_prefix", "stored_suffix")]
+        # Note that stored_prefix and stored_suffix will be None if not found in the database
+
+        if stored_prefix is None:
+            stored_prefix = ""
+
+        if stored_suffix is None:
+            stored_suffix = ""
+
+        autoincrement_to_use = next_count - advance
+
+        return (autoincrement_to_use, stored_prefix, stored_suffix)
 
 
 
@@ -4511,6 +4517,9 @@ class NeoSchema:
 
         :return:     A string based on unique auto-increment values, used for Schema nodes
         """
+        if not cls.namespace_exists("schema_node"):
+            NeoSchema.create_namespace("schema_node")
+
         return cls.reserve_next_uri(namespace="schema_node", prefix="schema-")
 
 

@@ -36,13 +36,79 @@ def create_sample_collections_class(db):
 
 
 def create_sample_collection_item_class():
+    # Creates a "Photo" Class
     NeoSchema.create_class_with_properties(name="Photo",
                                            properties=["caption", "uri"])
 
 
 
+def setup_test_collection(db):
+    # Creates a "Photo Album" Class, a "Photo Album" named "Brazil vacation", and a "Photo" Class
+    create_sample_collections_class(db)     # Creates a "Photo Album" Class
+    create_sample_collection_item_class()   # Creates a "Photo" Class
+
+    # Create a Collection: a "Photo Album" named "Brazil vacation"
+    new_uri = NeoSchema.reserve_next_uri(prefix="album-")
+    NeoSchema.create_data_node(class_node="Photo Album", properties ={"name": "Brazil vacation"}, new_uri=new_uri)
+
+    return new_uri
+
+
+
+
 
 # ************  THE ACTUAL TESTS  ************
+
+def test_link_to_collection_at_end(db):
+    brazil_album_uri = setup_test_collection(db)
+
+    # Create a 1st Collection Item : a Carnaval photo
+    NeoSchema.create_namespace(name="PHOTOS", prefix="photo-")
+    carnaval_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
+    NeoSchema.create_data_node(class_node="Photo",
+                               properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
+
+    Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
+                                          collection_uri=brazil_album_uri,
+                                          membership_link_name="in_album")
+
+    # Verify that the "Dancers at Carnaval" photo is linked to the "Brazil vacation", with position 0
+    q = '''
+        MATCH p=(:Photo {uri: $photo_uri, caption: "Dancers at Carnaval"})
+                -[:in_album {pos: 0}]->
+                (:`Photo Album` {name: "Brazil vacation"}) 
+        RETURN COUNT(p) AS number_paths
+        '''
+    #db.debug_query_print(q, data_binding={"carnaval_photo_uri": carnaval_photo_uri})
+    result = db.query(q, data_binding={"photo_uri": carnaval_photo_uri}, single_cell="number_paths")
+    assert result == 1
+
+
+    # Create a 2nd Collection Item : a canoeing photo
+    canoe_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
+    NeoSchema.create_data_node(class_node="Photo",
+                               properties ={"caption": "canoeing on the Amazon"}, new_uri=canoe_photo_uri)
+
+    Collections.link_to_collection_at_end(item_uri=canoe_photo_uri,
+                                          collection_uri=brazil_album_uri,
+                                          membership_link_name="in_album")
+
+    # Repeat the earlier check for the 1st photo
+    result = db.query(q, data_binding={"photo_uri": carnaval_photo_uri}, single_cell="number_paths")
+    assert result == 1
+    # And now check for the 2nd photo
+    q = f'''
+        MATCH p=(:Photo {{uri: $photo_uri, caption: "canoeing on the Amazon"}})
+                -[:in_album {{pos: {Collections.DELTA_POS}}}]->
+                (:`Photo Album` {{name: "Brazil vacation"}}) 
+        RETURN COUNT(p) AS number_paths
+        '''
+    result = db.query(q, data_binding={"photo_uri": canoe_photo_uri}, single_cell="number_paths")
+    assert result == 1
+
+    # NOTE: here we're not testing correctness under multiple concurrent calls
+
+
 
 def test_is_collection(db):
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
@@ -59,7 +125,8 @@ def test_is_collection(db):
     # Create something that is NOT a collection
     NeoSchema.create_class_with_properties(name="Car",
                                            properties=["color", "uri"])
-    car_uri = NeoSchema.reserve_next_uri(namespace="cars", prefix="c-")
+    NeoSchema.create_namespace(name="cars", prefix="c-")
+    car_uri = NeoSchema.reserve_next_uri(namespace="cars")
     NeoSchema.create_data_node(class_node="Car", properties ={"color": "white"}, new_uri=car_uri)
     assert not Collections.is_collection(collection_uri=car_uri)
 
@@ -69,7 +136,8 @@ def test_relocate_to_other_collection_at_end(db):
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
     # Create 2 Collections : "Jamaica" and a "Brazil" photo albums
-    jamaica_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS", prefix="album-")
+    NeoSchema.create_namespace(name="ALBUMS", prefix="album-")
+    jamaica_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
     NeoSchema.create_data_node(class_node="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
     brazil_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
     NeoSchema.create_data_node(class_node="Photo Album",
@@ -77,13 +145,14 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Create a Collection Item : a Carnaval photo "accidentally" placed in the Jamaica album
     create_sample_collection_item_class()
-    carnaval_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
+    NeoSchema.create_namespace(name="PHOTOS", prefix="photo-")
+    carnaval_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
     NeoSchema.create_data_node(class_node="Photo",
                                properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
                                           collection_uri=jamaica_uri,
-                                          membership_rel_name="in_album")
+                                          membership_link_name="in_album")
 
 
     # Fail the attempt to relocate the carnaval photo from the Jamaica album to the Brazil album,
@@ -144,10 +213,10 @@ def test_relocate_to_other_collection_at_end(db):
                                properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
-                                          membership_rel_name="in_album")
+                                          membership_link_name="in_album")
 
-    Collections.link_to_collection_at_end(item_uri=resort_photo_uri,collection_uri=brazil_uri,
-                                          membership_rel_name="in_album")
+    Collections.link_to_collection_at_end(item_uri=resort_photo_uri, collection_uri=brazil_uri,
+                                          membership_link_name="in_album")
 
     # At this point we have 3 photos ("Collection Items") - all of them in the Brazil album
 
@@ -186,7 +255,8 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
     # Create 2 Collections : "Jamaica" and a "Brazil" photo albums
-    jamaica_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS", prefix="album-")
+    NeoSchema.create_namespace(name="ALBUMS", prefix="album-")
+    jamaica_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
     NeoSchema.create_data_node(class_node="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
     brazil_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
     NeoSchema.create_data_node(class_node="Photo Album",
@@ -194,13 +264,14 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Create a Collection Item : a Carnaval photo "accidentally" placed in the Jamaica album
     create_sample_collection_item_class()
+    NeoSchema.create_namespace(name="PHOTOS", prefix="photo-")
     carnaval_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
     NeoSchema.create_data_node(class_node="Photo",
                                properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
                                           collection_uri=jamaica_uri,
-                                          membership_rel_name="in_album")
+                                          membership_link_name="in_album")
 
 
     # Fail the attempt to relocate the carnaval photo from the Jamaica album to the Brazil album,
@@ -264,10 +335,10 @@ def test_bulk_relocate_to_other_collection_at_end(db):
                                properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
-                                          membership_rel_name="in_album")
+                                          membership_link_name="in_album")
 
-    Collections.link_to_collection_at_end(item_uri=resort_photo_uri,collection_uri=brazil_uri,
-                                          membership_rel_name="in_album")
+    Collections.link_to_collection_at_end(item_uri=resort_photo_uri, collection_uri=brazil_uri,
+                                          membership_link_name="in_album")
 
     # At this point we have 3 photos ("Collection Items") - all of them in the Brazil album
 
@@ -303,8 +374,8 @@ def test_bulk_relocate_to_other_collection_at_end(db):
         all_photo_uris[i] = photo_uri
         NeoSchema.create_data_node(class_node="Photo",
                                    properties ={"caption": f"photo_{i}"}, new_uri=photo_uri)
-        Collections.link_to_collection_at_end(item_uri=photo_uri,collection_uri=brazil_uri,
-                                              membership_rel_name="in_album")
+        Collections.link_to_collection_at_end(item_uri=photo_uri, collection_uri=brazil_uri,
+                                              membership_link_name="in_album")
 
     #print("**************", all_photo_uris)
     # Now, relocate those 2 photos to the Jamaica album

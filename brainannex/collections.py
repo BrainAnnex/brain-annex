@@ -177,17 +177,19 @@ class Collections:
 
 
     @classmethod
-    def link_to_collection_at_end(cls, item_uri :str, collection_uri :str, membership_rel_name :str) -> None:
+    def link_to_collection_at_end(cls, item_uri :str, collection_uri :str, membership_link_name :str) -> None:
         """
-        Given an existing data node (meant to be a "Collection Item"),
+        Given an existing Data Node (regarded as a "Collection Item"),
         link it to the end of the specified Collection data node,
         using the requested relationship name.
 
         If a link already exists, an Exception is raised.
 
+        Note: a database lock is used to deal with multiple concurrent calls.
+
         :param item_uri:            The URI of an existing Data Node representing a "Collection Item"
         :param collection_uri:      The URI of an existing Collection Data Node
-        :param membership_rel_name: The name to give to the relationship
+        :param membership_link_name:The name to give to the new relationship to be created
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    None
         """
@@ -202,19 +204,22 @@ class Collections:
         assert collection_uri, \
             "link_to_collection_at_end: Missing `collection_uri` argument"
 
-        assert membership_rel_name, \
+        assert membership_link_name, \
             "link_to_collection_at_end: Missing `item_uri` membership_rel_name"
 
-        # ATOMIC database update that locates the next-available "pos" number, and creates a relationship using it
+        # Database update, with a DATA LOCK to protect against multiple concurrent calls,
+        # that locates the next-available "pos" number, and creates a relationship using it.
+        # Info on using a lock this way: https://neo4j.com/docs/java-reference/4.4/transaction-management/
         # The "OPTIONAL MATCH" is used to compute a new positional value
         q = f'''
             MATCH (ci), (collection) 
             WHERE ci.uri = $item_uri 
               AND collection.uri = $collection_uri
-              AND NOT ( (ci) -[:`{membership_rel_name}`]-> (collection) )
+              AND NOT ( (ci) -[:`{membership_link_name}`]-> (collection) )
+            SET collection._LOCK_ = true
             WITH ci, collection
             
-            OPTIONAL MATCH (old_ci) -[r :`{membership_rel_name}`]-> (collection)
+            OPTIONAL MATCH (existing_ci) -[r :`{membership_link_name}`]-> (collection)
             WITH r.pos AS pos, collection, ci
             WITH 
                 CASE WHEN pos IS NULL THEN
@@ -223,23 +228,28 @@ class Collections:
                     max(pos) + {cls.DELTA_POS}
                 END AS new_pos, collection, ci
             
-            MERGE (ci) -[:`{membership_rel_name}` {{pos: new_pos}}]-> (collection)
+            MERGE (ci) -[:`{membership_link_name}` {{pos: new_pos}}]-> (collection)
+            
+            REMOVE collection._LOCK_
             '''
-        #cls.db.debug_query_print(q, data_binding={"collection_uri": collection_uri, "item_uri": item_uri})
 
-        status = cls.db.update_query(q,
-                                     data_binding={"collection_uri": collection_uri, "item_uri": item_uri})
+        data_binding={"collection_uri": collection_uri, "item_uri": item_uri}
+
+        #cls.db.debug_query_print(q, data_binding=data_binding)
+
+        status = cls.db.update_query(q, data_binding=data_binding)
         #print("link_to_collection_at_end(): status is ", status)
+        # status should be contain {'relationships_created': 1, 'properties_set': 3}
 
-        # status should be contain {'relationships_created': 1, 'properties_set': 1}
+        # NOTE: the 3 derives from the "pos" attribute set on the newly-created link,
+        #       plus the 2 temp properties set and cleared for the lock
+        assert status.get('properties_set') == 3, \
+            f"link_to_collection_at_end(): failed to set the positional value to the new link " \
+            f"to the Collection with URI '{collection_uri}'"
 
         assert status.get('relationships_created') == 1, \
             f"link_to_collection_at_end(): failed to create a new link " \
             f"to a Collection with URI '{collection_uri}'"
-
-        assert status.get('properties_set') == 1, \
-            f"link_to_collection_at_end(): failed to set the positional value to the new link " \
-            f"to the Collection with URI '{collection_uri}'"
 
 
 

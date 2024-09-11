@@ -682,7 +682,7 @@ class DataManager:
             f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
-        assert NeoSchema.data_node_exists(data_node=uri, class_name=class_name), \
+        assert NeoSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
                     f"update_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 
@@ -742,7 +742,7 @@ class DataManager:
         assert uri, "delete_content_item(): argument `uri` is missing"
 
         # Make sure that the requested Content Item exists
-        assert NeoSchema.data_node_exists(data_node=uri, class_name=class_name), \
+        assert NeoSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
             f"delete_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 

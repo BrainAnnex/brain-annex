@@ -92,9 +92,10 @@ def test_switch_category(db):
     NeoSchema.create_class_with_properties(name="Photo",
                                            properties=["name", "uri"])
 
+    NeoSchema.create_namespace(name="PHOTOS", prefix="photo-")
     all_photo_uris = []
     for i in range(4):
-        photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
+        photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
         all_photo_uris.append(photo_uri)
         Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
                                       item_properties={"caption": "photo_"+str(i+1)}, new_uri=photo_uri)
