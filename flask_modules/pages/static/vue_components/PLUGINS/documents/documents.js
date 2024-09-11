@@ -60,20 +60,27 @@ Vue.component('vue-plugin-d',
                     <!-- EDITABLE version -->
                     <div v-show="edit_metadata">
                         <br><br>
-                        <span class="label">Caption</span> <input v-model="current_metadata.caption" size="40" style="font-weight: bold">
+                        <span class="label">Caption</span>
+                        <textarea v-model="current_metadata.caption" rows="2" cols="40" style="font-weight: bold"></textarea>
                         <br><br>
-                        <span class="label">Filename</span> <input v-model="current_metadata.basename" size="40" style="color:#666"><b>.{{item_data.suffix}}</b>
+
+                        <span class="label">Filename</span>
+                        <textarea v-model="current_metadata.basename" rows="2" cols="40" style="color:#666"></textarea>
+                        <b>.{{item_data.suffix}}</b>
                         <br><br>
+
                         <span class="label">URL</span> <input v-model="current_metadata.url" size="40">
                         <br><br>
+
                         <span class="label">Month</span> <input v-model="current_metadata.month" size="2">
                             &nbsp;&nbsp; <span class="label">Year</span> <input v-model="current_metadata.year" size="4">
                         <br><br>
+
                         <span class="label">Authors</span> <input v-model="current_metadata.authors" size="35">
                         <br><br>
+
                         <span class="label">Comments</span><br>
-                        <textarea v-model="current_metadata.comments" name="myNAME" rows="3" cols="45">
-                        </textarea>
+                        <textarea v-model="current_metadata.comments" name="myNAME" rows="3" cols="45"></textarea>
 
                         <br><br>
                         <span class="label">Rating</span> <input v-model="current_metadata.rating" size="3"> &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">

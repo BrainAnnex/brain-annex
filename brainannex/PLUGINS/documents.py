@@ -17,7 +17,7 @@ class Documents:
         """
         Specify the desired name for the default folder to contain document media
         """
-        return "document"       # TODO: restore to "documents" (plural)
+        return "documents"
 
 
 

@@ -50,6 +50,8 @@ class UserManager:
         NeoSchema.set_property_attribute(class_name="User", prop_name="username", attribute_name="required", attribute_value=True)
         NeoSchema.set_property_attribute(class_name="User", prop_name="password", attribute_name="required", attribute_value=True)
 
+        NeoSchema.create_namespace(name="user")
+
 
 
     @classmethod
@@ -79,7 +81,7 @@ class UserManager:
 
         hashed_password = cls.create_hashed_password(password)
 
-        user_id = NeoSchema.advance_autoincrement(namespace="user")     # Reserve a unique integer ID for this new user
+        user_id, _, _ = NeoSchema.advance_autoincrement(namespace="user")     # Reserve a unique integer ID for this new user
 
         # Attempt to create a new data node for the user,
         # if no other node with the same given username already exists

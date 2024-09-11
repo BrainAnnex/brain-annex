@@ -1220,7 +1220,8 @@ def test_update_data_node(db):
     create_sample_schema_1()    # Schema with patient/result/doctor
 
     # Create a "doctor" data node
-    uri = NeoSchema.reserve_next_uri(prefix ="doc-", namespace="doctor")
+    NeoSchema.create_namespace(name="doctor", prefix ="doc-")
+    uri = NeoSchema.reserve_next_uri(namespace="doctor")
     internal_id = NeoSchema.create_data_node(class_node="doctor",
                                              properties={"name": "Dr. Watson", "specialty": "pediatrics"},
                                              new_uri=uri)
@@ -2074,41 +2075,49 @@ def test_class_of_data_point(db):
 
 ###############   URI'S   ###############
 
-def test_advance_autoincrement(db):
+def test_namespace_exists(db):
     db.empty_dbase()
-    assert NeoSchema.advance_autoincrement("a") == 1
-    assert NeoSchema.advance_autoincrement("a") == 2
-    assert NeoSchema.advance_autoincrement("schema") == 1
-    assert NeoSchema.advance_autoincrement("schema") == 2
-    assert NeoSchema.advance_autoincrement("a") == 3
-    assert NeoSchema.advance_autoincrement("documents") == 1
-    assert NeoSchema.advance_autoincrement("documents") == 2
 
-    # The following line will "reserve" the values 3 and 4
-    assert NeoSchema.advance_autoincrement("documents", advance=2) == 3
-    assert NeoSchema.advance_autoincrement("documents") == 5
+    assert not NeoSchema.namespace_exists("image")
+    NeoSchema.create_namespace(name="junk")
+    assert not NeoSchema.namespace_exists("image")
 
-    # The following line will "reserve" the values 1 thru 10
-    assert NeoSchema.advance_autoincrement("image", advance=10) == 1
-    assert NeoSchema.advance_autoincrement("image") == 11
-    assert NeoSchema.advance_autoincrement("          image   ") == 12 # Leading/trailing blanks are ignored
+    NeoSchema.create_namespace(name="image")
+    assert NeoSchema.namespace_exists("image")
+
+
+
+def test_create_namespace(db):
+    db.empty_dbase()
 
     with pytest.raises(Exception):
-        assert NeoSchema.advance_autoincrement(123)    # Not a string
+        NeoSchema.create_namespace(name=123)
 
     with pytest.raises(Exception):
-        assert NeoSchema.advance_autoincrement("        ")
+        NeoSchema.create_namespace(name="")
+
+    NeoSchema.create_namespace(name="photo")
+    q = "MATCH (n:`Schema Autoincrement`) RETURN n"
+    result = db.query(q)
+    assert len(result) == 1
+    assert result[0]["n"] == {"namespace": "photo", "next_count": 1}
 
     with pytest.raises(Exception):
-        assert NeoSchema.advance_autoincrement(namespace ="a", advance ="not an integer")
+        NeoSchema.create_namespace(name="photo")    # Already exists
 
-    with pytest.raises(Exception):
-        assert NeoSchema.advance_autoincrement(namespace ="a", advance = 0)  # Advance isn't >= 1
+
+    NeoSchema.create_namespace(name="note", prefix="n-", suffix=".new")
+    q = "MATCH (n:`Schema Autoincrement` {namespace: 'note'}) RETURN n"
+    result = db.query(q)
+    assert len(result) == 1
+    assert result[0]["n"] == {"namespace": "note", "next_count": 1, "prefix": "n-", "suffix": ".new"}
 
 
 
 def test_reserve_next_uri(db):
     db.empty_dbase()
+
+    NeoSchema.create_namespace(name="data_node")   # Accept default blank prefix/suffix
     assert NeoSchema.reserve_next_uri(namespace="data_node") == "1"   # Accept default blank prefix/suffix
     assert NeoSchema.reserve_next_uri("data_node") == "2"
     assert NeoSchema.reserve_next_uri("data_node") == "3"
@@ -2117,16 +2126,24 @@ def test_reserve_next_uri(db):
     assert NeoSchema.reserve_next_uri("data_node") == "6"
     assert NeoSchema.reserve_next_uri() == "7"    # default namespace
 
-    assert NeoSchema.reserve_next_uri(namespace="notes", prefix="n-") == "n-1"
+    with pytest.raises(Exception):
+        NeoSchema.reserve_next_uri(namespace="notes")   # Namespace doesn't exist yet
+
+    NeoSchema.create_namespace(name="notes", prefix="n-")
+    assert NeoSchema.reserve_next_uri(namespace="notes") == "n-1"
     assert NeoSchema.reserve_next_uri(namespace="notes", prefix="n-") == "n-2"    # Redundant specification of prefix
     assert NeoSchema.reserve_next_uri(namespace="notes") == "n-3"                 # No need to specify the prefix (stored)
 
-    assert NeoSchema.reserve_next_uri(namespace="schema_node", prefix="schema-") == "schema-1"
+    NeoSchema.create_namespace(name="schema_node", prefix="schema-")
+    assert NeoSchema.reserve_next_uri(namespace="schema_node") == "schema-1"
     assert NeoSchema.reserve_next_uri(namespace="schema_node") == "schema-2"
 
+    NeoSchema.create_namespace(name="documents", prefix="d-", suffix="")
     assert NeoSchema.reserve_next_uri("documents", prefix="d-", suffix="") == "d-1"
     assert NeoSchema.reserve_next_uri("documents", prefix="d-") == "d-2"
     assert NeoSchema.reserve_next_uri("documents", prefix="doc.", suffix=".new") == "doc.3.new"
+
+    NeoSchema.create_namespace(name="images", prefix="i_", suffix=".jpg")
     assert NeoSchema.reserve_next_uri("images", prefix="i_", suffix=".jpg") == "i_1.jpg"
     assert NeoSchema.reserve_next_uri("images", prefix="i_") == "i_2.jpg"
     assert NeoSchema.reserve_next_uri("documents") == "d-4"     # It remembers the original prefix
@@ -2150,6 +2167,48 @@ def test_reserve_next_uri(db):
 
     with pytest.raises(Exception):
         NeoSchema.reserve_next_uri(namespace="schema_node", suffix=["what is this"])
+
+
+
+def test_advance_autoincrement(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.reserve_next_uri(namespace="a")   # Namespace doesn't exist yet
+
+    NeoSchema.create_namespace("a")
+    NeoSchema.create_namespace("schema", suffix=".test")
+    NeoSchema.create_namespace("documents", prefix="d-")
+    NeoSchema.create_namespace("image", prefix="im-", suffix="-large")
+
+    assert NeoSchema.advance_autoincrement("a") == (1, "", "")
+    assert NeoSchema.advance_autoincrement("a") == (2, "", "")
+    assert NeoSchema.advance_autoincrement("schema") == (1, "", ".test")
+    assert NeoSchema.advance_autoincrement("schema") == (2, "", ".test")
+    assert NeoSchema.advance_autoincrement("a") == (3, "", "")
+    assert NeoSchema.advance_autoincrement("documents") == (1, "d-", "")
+    assert NeoSchema.advance_autoincrement("documents") == (2, "d-", "")
+
+    # The following line will "reserve" the values 3 and 4
+    assert NeoSchema.advance_autoincrement("documents", advance=2) == (3, "d-", "")
+    assert NeoSchema.advance_autoincrement("documents") == (5, "d-", "")
+
+    # The following line will "reserve" the values 1 thru 10
+    assert NeoSchema.advance_autoincrement("image", advance=10) == (1, "im-", "-large")
+    assert NeoSchema.advance_autoincrement("image") == (11, "im-", "-large")
+    assert NeoSchema.advance_autoincrement("          image   ") == (12, "im-", "-large") # Leading/trailing blanks are ignored
+
+    with pytest.raises(Exception):
+        assert NeoSchema.advance_autoincrement(123)    # Not a string
+
+    with pytest.raises(Exception):
+        assert NeoSchema.advance_autoincrement("        ")
+
+    with pytest.raises(Exception):
+        assert NeoSchema.advance_autoincrement(namespace ="a", advance ="not an integer")
+
+    with pytest.raises(Exception):
+        assert NeoSchema.advance_autoincrement(namespace ="a", advance = 0)  # Advance isn't >= 1
 
 
 

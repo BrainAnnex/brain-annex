@@ -415,8 +415,8 @@ class Categories:
 
         data_dict["root"] = True        # Flag to mark this node as the root of the Category graph
 
-        new_uri = NeoSchema.reserve_next_uri(namespace="Categories", prefix="cat-")
-        # TODO: maybe use a special URI, such as "cat-root", instead?
+        #new_uri = NeoSchema.reserve_next_uri(namespace="Categories", prefix="cat-")
+        new_uri = "cat-root"    # use a special URI
 
         internal_id = NeoSchema.create_data_node(class_node="Categories",
                                                  properties = data_dict,
@@ -962,14 +962,14 @@ class Categories:
 
         # Link the Content Item to the end of the Category
         Collections.link_to_collection_at_end(item_uri=item_uri, collection_uri=category_uri,
-                                              membership_rel_name="BA_in_category")
+                                              membership_link_name="BA_in_category")
 
 
 
     @classmethod
     def add_content_at_end(cls, category_uri :str, item_class_name: str, item_properties: dict, new_uri=None, namespace="data_node") -> str:
         """
-        Add a NEW Content Item, with the given properties and Class, to the end of the specified Category.
+        Add a NEW Content Item, with the given properties and Class, to the end of the specified Category collection.
         First, create a new Data Node, and then link it to the given Category, positioned at the end.
 
         :param category_uri:    A string to identify the Category
@@ -1153,46 +1153,86 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def check_for_duplicates(cls, category_uri :str) -> str:
+    def check_for_duplicates(cls, category_name :str) -> [str]:
         """
-        Look for duplicates values in the "pos" attributes
-        of the "BA_in_category" relationships ending in the specified Category node (specified by its uri)
+        This is a diagnostic method to check for problems.
 
-        :param category_uri:A string identifying the desired Category
-        :return:            In case of duplicates, return a text with an explanation;
-                            if no duplicates, return an empty string
+        Look for duplicates values in the "pos" attributes
+        of the "BA_in_category" links ending in the specified Category node
+
+        :param category_name:   To identifying the Category of interest
+        :return:                In case of duplicates, return a list of texts with error reports;
+                                    if no duplicates, return an empty list
         """
         q = '''
-            MATCH (i1:BA)-[r1:BA_in_category]->(:BA:Categories, uri: $uri})<-[r2:BA_in_category]-(i2:BA) 
-            WHERE r1.pos = r2.pos AND i1.uri <> i2.uri
-            RETURN r1.pos AS pos, i1.uri AS item1 ,i2.uri AS item2
-            LIMIT 1
+            MATCH (ci1)-[r1:BA_in_category] -> (:Categories {name: $name}) <- [r2:BA_in_category]-(ci2) 
+            WHERE r1.pos = r2.pos AND id(ci1) < id(ci2)
+            RETURN r1.pos AS pos, ci1.uri AS item1, ci2.uri AS item2
+            ORDER BY r1.pos
             '''
-        data_binding = {"uri": category_uri}
+
+        data_binding = {"name": category_name}
+
+        #cls.db.debug_query_print(q, data_binding)
         duplicates = cls.db.query(q, data_binding)
-        if duplicates == []:
-            return ""
+
+        if not duplicates:
+            return []           # No problems found
         else:
-            first_record = duplicates[0]
-            return f"Duplicate pos value ({first_record['pos']}, shared by relationships to items with IDs {first_record['item1']} and {first_record['item2']})"
+            problem_list = []
+            for record in duplicates:
+                problem = f"Problem found: Duplicate 'pos' value ({record['pos']}), " \
+                          f"shared by links to Content Items with URIs `{record['item1']}` and `{record['item2']}`"
+                problem_list.append(problem)
+
+            return problem_list
+
 
 
     @classmethod
-    def check_all_categories_for_duplicates(cls) -> str:
+    def check_all_categories_for_duplicates(cls) -> [dict]:
         """
+        This is a diagnostic method to check for problems.
 
-        :return:            In case of duplicates, return a text with an explanation;
-                            if no duplicates, return an empty string
+        :return:    A (possibly-empty) list of dicts, detailing all located duplicates
         """
-        all_category_ids = NeoSchema.data_nodes_of_class("Categories")
+        q = '''
+            MATCH (ci1)-[r1 :BA_in_category]->(c :Categories)<-[r2 :BA_in_category]-(ci2)
+            WHERE r1.pos = r2.pos AND id(ci1) < id(ci2)
+            RETURN c.name AS category_name, r1.pos AS pos, ci1.uri AS uri1, ci2.uri AS uri2
+            ORDER BY category_name, pos
+            '''
+        return cls.db.query(q)
 
-        duplicate_info = ""
-        for category_id in all_category_ids:
-            status = cls.check_for_duplicates(category_id)
-            if status:
-                duplicate_info += f"Duplicate found for Category {category_id}: {status}\n"
 
-        return duplicate_info
+
+    @classmethod
+    def reassign_positional_values(cls, category_name :str) -> None:
+        """
+        To re-assign positional values of Content Items within the given Category
+        (starting at 0 and proceeding in increments of Collections.DELTA_POS):
+
+        :param category_name:
+        :return:                None
+        """
+        q = f'''       
+            MATCH (ci)-[r :BA_in_category]->(n :Categories {{name: $category_name}})           
+            WITH r.pos AS POS, id(ci) AS NODE_ID           
+            ORDER by r.pos
+            
+            WITH collect(NODE_ID) AS ID_LIST           
+            WITH size(ID_LIST) AS TOT, ID_LIST           
+            WITH range(0, TOT-1) AS INDEX_LIST, ID_LIST
+            
+            UNWIND INDEX_LIST AS i
+            
+            MATCH (x)-[newr :BA_in_category]->(n :Categories {{name: $category_name}}) WHERE id(x) = ID_LIST[i]
+            
+            SET newr.pos = i * {Collections.DELTA_POS}
+            
+            RETURN x.uri, i, newr.pos
+        '''
+        cls.db.query(q, data_binding={"category_name": category_name})
 
 
 
