@@ -2078,33 +2078,25 @@ class NeoSchema:
 
 
     @classmethod
-    def count_data_nodes_of_class(cls, data_node: Union[int, str]) -> [int]:
+    def count_data_nodes_of_class(cls, class_name: str) -> [int]:
         """
-        Return the count of all the Data Nodes attached to the given Class
+        Return the count of all the Data Nodes attached to the given Class.
+        If the Class doesn't exist, an Exception is raised
 
-        :param data_node:   Either an integer with the internal database ID of an existing Class node,
-                                or a string with its name
+        :param class_name:  The name of the Schema Class of interest
         :return:            The count of all the Data Nodes attached to the given Class
         """
-        # TODO: introduce new method assert_valid_class_id()
+        assert cls.class_name_exists(class_name), \
+            f"count_data_nodes_of_class(): there is no Class named `{class_name}`"
 
-        if type(data_node) == int:
-            assert cls.class_neo_id_exists(data_node), \
-                f"NeoSchema.count_data_nodes_of_class(): no Class with an internal ID of {data_node} exists"
-
-            q = f'''
-                MATCH (n)-[:SCHEMA]->(cl :CLASS)
-                WHERE id(cl) = {data_node}
-                RETURN count(n) AS number_datanodes
-                '''
-        else:
-            q = f'''
-                MATCH (n)-[:SCHEMA]->(cl :CLASS)
-                WHERE cl.name = "{data_node}"
-                RETURN count(n) AS number_datanodes
-                '''
-
-        res = cls.db.query(q, single_cell="number_datanodes")
+        q = '''
+            MATCH (n)-[:SCHEMA]->(cl :CLASS)
+            WHERE cl.name = $class_name
+            RETURN count(n) AS number_datanodes
+            '''
+        print(q)
+        res = cls.db.query(q, data_binding={"class_name": class_name},
+                           single_cell="number_datanodes")
 
         return res
 

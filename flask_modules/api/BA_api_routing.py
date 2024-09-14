@@ -1881,7 +1881,7 @@ class ApiRouting:
 
                 recordset = DataManager.get_nodes_by_filter(data_dict)
                 if "label" in data_dict:
-                    total_count = NeoSchema.count_data_nodes_of_class(data_node=data_dict["label"])
+                    total_count = NeoSchema.count_data_nodes_of_class(data_dict["label"])
                 else:
                     total_count = None
                 response = {"status": "ok",

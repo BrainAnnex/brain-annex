@@ -35,7 +35,7 @@ def test_import_pandas_nodes(db):
     assert len(import_list_1) == 3
 
     # Verify that 3 Data Node were imported
-    assert NeoSchema.count_data_nodes_of_class(data_node="State") == 3
+    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
 
     # Make sure our 3 states are present in the import
     q = '''
@@ -55,7 +55,7 @@ def test_import_pandas_nodes(db):
     print(import_list_2)
 
     # Verify that a grand total of only 5 Data Node were imported (the duplicate didn't lead to an extra record)
-    assert NeoSchema.count_data_nodes_of_class(data_node="State") == 5
+    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 5
 
     q = '''
         UNWIND ["CA", "NY", "OR", "NV", "WA"] AS state_name
@@ -100,7 +100,7 @@ def test_import_pandas_nodes(db):
                                                                                                 # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                                 # and the 'year' value was left untouched
     assert result[0]["internal_id"] in import_list_2
-    assert NeoSchema.count_data_nodes_of_class(data_node="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
     # A fresh start with "Motor Vehicle" data nodes
@@ -120,7 +120,7 @@ def test_import_pandas_nodes(db):
                                                                                     # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                     # and the 'year' value is gone
     assert result[0]["internal_id"] in import_list_2
-    assert NeoSchema.count_data_nodes_of_class(data_node="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
     # TODO: more tests; see also the tests for NeoAccess.load_pandas()
 

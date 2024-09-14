@@ -903,32 +903,32 @@ def test_data_points_of_class(db):
 
 
 
-def test_count_data_points_of_class(db):
+def test_count_data_nodes_of_class(db):
 
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        NeoSchema.count_data_nodes_of_class(666)   # Non-existent Class
+        NeoSchema.count_data_nodes_of_class("unknown")   # Non-existent Class
 
     class_internal_id_1 , _ = NeoSchema.create_class("Some class")
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 0
+    assert NeoSchema.count_data_nodes_of_class("Some class") == 0
 
     NeoSchema.create_data_node(class_node=class_internal_id_1)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 1
+    assert NeoSchema.count_data_nodes_of_class("Some class") == 1
 
     NeoSchema.create_data_node(class_node=class_internal_id_1)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 2
+    assert NeoSchema.count_data_nodes_of_class("Some class") == 2
 
 
     class_internal_id_2 , _ = NeoSchema.create_class("Another class")
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_2) == 0
+    assert NeoSchema.count_data_nodes_of_class("Another class") == 0
 
     NeoSchema.create_data_node(class_node=class_internal_id_2)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_2) == 1
+    assert NeoSchema.count_data_nodes_of_class("Another class") == 1
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id_1) == 2   # Where we left it off
+    assert NeoSchema.count_data_nodes_of_class("Some class") == 2   # Where we left it off
 
 
 
@@ -1088,11 +1088,11 @@ def test_create_data_node_3(db):
 
     class_internal_id , class_schema_uri = NeoSchema.create_class("Car", strict=True)
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
+    assert NeoSchema.count_data_nodes_of_class("Car") == 0
 
     # Successfully adding the first data point
     new_datanode_uri = NeoSchema.create_data_node(class_node=class_internal_id)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1
+    assert NeoSchema.count_data_nodes_of_class("Car") == 1
 
     # Locate the data point just added
     q = f'''
@@ -1116,7 +1116,7 @@ def test_create_data_node_3(db):
                                                     properties={"color": "No properties allowed"},
                                                     silently_drop=True)
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 2
+    assert NeoSchema.count_data_nodes_of_class("Car") == 2
 
     # Locate the data point just added
     q = f'''
@@ -1135,7 +1135,7 @@ def test_create_data_node_3(db):
     new_datanode_uri = NeoSchema.create_data_node(class_node=class_internal_id,
                                                     properties={"color": "white"})
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
+    assert NeoSchema.count_data_nodes_of_class("Car") == 3
 
     # Locate the data point just added
     q = f'''
@@ -1162,7 +1162,7 @@ def test_create_data_node_3(db):
                                                     properties={"color": "red", "make": "VW"},
                                                     silently_drop=True)
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
+    assert NeoSchema.count_data_nodes_of_class("Car") == 4
 
     # Locate the data point just added
     q = f'''
@@ -1180,7 +1180,7 @@ def test_create_data_node_3(db):
                                                     properties={"color": "blue", "make": "Fiat", "year": 2000},
                                                     silently_drop=True)
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 5
+    assert NeoSchema.count_data_nodes_of_class("Car") == 5
 
     # Locate the data point just added
     q = f'''
@@ -1199,7 +1199,7 @@ def test_create_data_node_3(db):
                                                     properties={"color": "green", "year": 2022},
                                                     silently_drop=False)
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6
+    assert NeoSchema.count_data_nodes_of_class("Car") == 6
 
     # Locate the data point just added
     q = f'''
@@ -1407,7 +1407,7 @@ def test_add_data_node_merge(db):
                                       properties={"junk": 123})   # The Class doesn't allow data nodes
 
     class_internal_id , class_schema_uri = NeoSchema.create_class("Car", strict=True)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
+    assert NeoSchema.count_data_nodes_of_class("Car") == 0
 
     with pytest.raises(Exception):
         NeoSchema.add_data_node_merge(class_name="Car", properties={})  # Properties are required
@@ -1422,7 +1422,7 @@ def test_add_data_node_merge(db):
     # Successfully adding the first data point
     new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car", properties={"color": "white"})
     assert status == True    # A new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1
+    assert NeoSchema.count_data_nodes_of_class("Car") == 1
 
     # Locate the data point just added
     q = f'''
@@ -1444,7 +1444,7 @@ def test_add_data_node_merge(db):
     new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car", properties={"color": "white"})
     assert status == False    # No new node was created
 
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 1     # STILL at 1 datapoint
+    assert NeoSchema.count_data_nodes_of_class("Car") == 1     # STILL at 1 datapoint
 
     # Locate the data point just added
     q = f'''
@@ -1461,7 +1461,7 @@ def test_add_data_node_merge(db):
     new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
                                                             properties={"color": "red"})
     assert status == True    # A new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 2
+    assert NeoSchema.count_data_nodes_of_class("Car") == 2
 
     # Locate the data point just added
     q = f'''
@@ -1485,7 +1485,7 @@ def test_add_data_node_merge(db):
     new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
                                                             properties={"color": "blue", "year": 2023})
     assert status == True    # A new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
+    assert NeoSchema.count_data_nodes_of_class("Car") == 3
 
     # Locate the data point just added
     q = f'''
@@ -1502,7 +1502,7 @@ def test_add_data_node_merge(db):
     new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
                                                             properties={"color": "blue", "year": 2000})
     assert status == True    # A new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
+    assert NeoSchema.count_data_nodes_of_class("Car") == 4
 
     # Locate the data point just added
     q = f'''
@@ -1520,21 +1520,21 @@ def test_add_data_node_merge(db):
     _ , status = NeoSchema.add_data_node_merge(class_name="Car",
                                                properties={"color": "blue", "year": 2000})
     assert status == False    # No new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4     # UNCHANGED
+    assert NeoSchema.count_data_nodes_of_class("Car") == 4     # UNCHANGED
 
 
     # Likewise, nothing gets added now, because a "red" car already exists
     _ , status = NeoSchema.add_data_node_merge(class_name="Car",
                                                properties={"color": "red"})
     assert status == False    # No new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4     # UNCHANGED
+    assert NeoSchema.count_data_nodes_of_class("Car") == 4     # UNCHANGED
 
 
     # By contrast, a new data node gets added now, because the "mileage" field will now be kept, and there's no "red car from 1999"
     new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
                                                             properties={"color": "red", "year": 1999})
     assert status == True    # A new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 5     # Increased
+    assert NeoSchema.count_data_nodes_of_class("Car") == 5     # Increased
 
     # Locate the data point just added
     q = f'''
@@ -1551,7 +1551,7 @@ def test_add_data_node_merge(db):
     _ , status = NeoSchema.add_data_node_merge(class_name="Car",
                                                properties={"color": "red", "year": 1999})
     assert status == False    # No new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 5     # UNCHANGED
+    assert NeoSchema.count_data_nodes_of_class("Car") == 5     # UNCHANGED
 
 
     NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["make"])
@@ -1559,7 +1559,7 @@ def test_add_data_node_merge(db):
     new_datanode_id, status = NeoSchema.add_data_node_merge(class_name="Car",
                                                             properties={"color": "red", "year": 1999, "make": "Toyota"})
     assert status == True    # A new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6     # Increased
+    assert NeoSchema.count_data_nodes_of_class("Car") == 6     # Increased
 
     # Locate the data point just added
     q = f'''
@@ -1579,7 +1579,7 @@ def test_add_data_node_merge(db):
     db.create_node(labels="Car", properties={"color": "yellow"})
     _, status = NeoSchema.add_data_node_merge(class_name="Car", properties={"color": "yellow"})
     assert status == True    # A new node was created
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 7     # Increased
+    assert NeoSchema.count_data_nodes_of_class("Car") == 7     # Increased
 
 
 
@@ -1590,10 +1590,9 @@ def test_add_data_column_merge(db):
         # No such class exists
         NeoSchema.add_data_column_merge(class_name="Car", property_name="color", value_list=["white"])
 
-    class_internal_id , class_schema_uri = NeoSchema.create_class_with_properties("Car",
-                                                                                 properties=["color", "year"],
-                                                                                 strict=True)
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 0
+    NeoSchema.create_class_with_properties("Car", properties=["color", "year"],
+                                           strict=True)
+    assert NeoSchema.count_data_nodes_of_class("Car") == 0
 
     with pytest.raises(Exception):
         NeoSchema.add_data_column_merge(class_name="Car", property_name=123, value_list=["white"])      # property_name isn't a string
@@ -1616,7 +1615,7 @@ def test_add_data_column_merge(db):
     # Successfully add 3 data points
     assert len(result["new_nodes"]) == 3
     assert len(result["old_nodes"]) == 0
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 3
+    assert NeoSchema.count_data_nodes_of_class("Car") == 3
 
 
     # Only 1 of the following 3 data points isn't already in the database
@@ -1624,7 +1623,7 @@ def test_add_data_column_merge(db):
                                              property_name="color", value_list=["red", "green", "blue"])
     assert len(result["new_nodes"]) == 1
     assert len(result["old_nodes"]) == 2
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 4
+    assert NeoSchema.count_data_nodes_of_class("Car") == 4
 
     id_green_car = result["new_nodes"][0]
     data_point = NeoSchema.search_data_node(internal_id=id_green_car, labels="Car")
@@ -1636,7 +1635,7 @@ def test_add_data_column_merge(db):
                                              property_name="year", value_list=[2003, 2022, 2022])
     assert len(result["new_nodes"]) == 2
     assert len(result["old_nodes"]) == 1
-    assert NeoSchema.count_data_nodes_of_class(class_internal_id) == 6
+    assert NeoSchema.count_data_nodes_of_class("Car") == 6
 
 
 
