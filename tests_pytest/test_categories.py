@@ -22,21 +22,15 @@ def db():
 
 def initialize_categories(db):
     # Clear the dbase, create the Category Schema, and creates a ROOT Category node;
-    # return the pair (internal database ID, URI) of that newly-created node
+    # return the pair (internal database ID, URI) of that newly-created root node
 
     db.empty_dbase()
 
-    #TODO: replace the next 3 lines with Categories.initialize_categories()
-
     Categories.initialize_categories()
-    '''
-    NeoSchema.create_class_with_properties(name="Categories",
-                                           properties=["name", "remarks", "uri", "root"], strict=True)
-    NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories", rel_name="BA_subcategory_of")
-    NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories", rel_name="BA_see_also")
-    '''
 
     return Categories.create_categories_root()  # Returns a pair (int, str)
+                                                # The root node contains the properties:
+                                                # {"name": "HOME", "remarks": "top level", "uri": "cat-root", "root": True}
 
 
 
@@ -77,8 +71,105 @@ def test_get_all_categories(db):
 
 
 
-def test_get_sibling_categories(db):
+def test_get_parent_categories(db):
+    root_internal_id, root_uri = initialize_categories(db)
+    result = Categories.get_parent_categories(root_uri)
+    assert result == []     # The root node has no parents
 
+    # Add a sub-category ("Languages") to the root
+    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
+                                               "subcategory_remarks": "Common node for all languages"})
+
+    result = Categories.get_parent_categories(language_uri)
+    assert result == [{"name": "HOME", "remarks": "top level", "uri": root_uri, "root": True}]
+    # The "Languages" node has 1 parent (the root)
+
+    # Add a 2nd sub-category ("Courses") to the root
+    courses_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Courses"})
+
+    result = Categories.get_parent_categories(courses_uri)
+    assert result == [{"name": "HOME", "remarks": "top level", "uri": root_uri, "root": True}]
+    # The "Courses" node has 1 parent (the root)
+
+    # Add a sub-category ("French") to "Languages"
+    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
+    result = Categories.get_parent_categories(french_uri)
+    assert result == [{"name": "Languages", "remarks": "Common node for all languages", "uri": language_uri}]
+    # The "French" node has 1 parent ("Languages")
+
+    # Make the "French" also a child of "Courses"
+    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
+    # The "French" node will now have 2 parents ("Languages" and "Courses)
+    result = Categories.get_parent_categories(french_uri)
+    expected = [{"name": "Languages", "remarks": "Common node for all languages", "uri": language_uri},
+                {"name": "Courses", "uri": courses_uri}]
+    assert compare_recordsets(result, expected)
+
+
+
+def test_count_parent_categories(db):
+    root_internal_id, root_uri = initialize_categories(db)
+    result = Categories.get_parent_categories(root_uri)
+    assert result == []     # The root node has no parents
+
+    # Add a sub-category ("Languages") to the root
+    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
+                                               "subcategory_remarks": "Common node for all languages"})
+
+    assert Categories.count_parent_categories(language_uri) == 1    # The "Languages" node has 1 parent (the root)
+
+    # Add a 2nd sub-category ("Courses") to the root
+    courses_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Courses"})
+
+    assert Categories.count_parent_categories(courses_uri) == 1     # The "Courses" node has 1 parent (the root)
+
+    # Add a sub-category ("French") to "Languages"
+    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
+    assert Categories.count_parent_categories(french_uri) == 1      # The "French" node has 1 parent ("Languages")
+
+    # Make the "French" also a child of "Courses"
+    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
+    # The "French" node will now have 2 parents ("Languages" and "Courses)
+    assert Categories.count_parent_categories(french_uri) == 2
+
+
+
+def test_count_subcategories(db):
+    root_internal_id, root_uri = initialize_categories(db)
+    result = Categories.get_parent_categories(root_uri)
+    assert result == []     # The root node has no children yet
+
+    # Add a sub-category ("Languages") to the root
+    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
+                                               "subcategory_remarks": "Common node for all languages"})
+
+    assert Categories.count_subcategories(root_uri) == 1
+    assert Categories.count_subcategories(language_uri) == 0    # The "Languages" node has no children
+
+    # Add a 2nd sub-category ("Courses") to the root
+    courses_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Courses"})
+
+    assert Categories.count_subcategories(root_uri) == 2
+    assert Categories.count_subcategories(language_uri) == 0
+    assert Categories.count_subcategories(courses_uri) == 0
+
+    # Add a sub-category ("French") to "Languages"
+    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
+    assert Categories.count_subcategories(root_uri) == 2
+    assert Categories.count_subcategories(language_uri) == 1    # Now has a child
+    assert Categories.count_subcategories(courses_uri) == 0
+    assert Categories.count_subcategories(french_uri) == 0
+
+    # Make the "French" also a child of "Courses"
+    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
+    assert Categories.count_subcategories(root_uri) == 2
+    assert Categories.count_subcategories(language_uri) == 1
+    assert Categories.count_subcategories(courses_uri) == 1        # Now has a child
+    assert Categories.count_subcategories(french_uri) == 0
+
+
+
+def test_get_sibling_categories(db):
     root_internal_id, root_uri = initialize_categories(db)
     result = Categories.get_sibling_categories(root_internal_id)
     assert result == []     # The root node has no siblings
@@ -161,7 +252,6 @@ def test_create_see_also(db):
 
 
 
-
 def test_remove_see_also(db):
     root_internal_id, root_uri = initialize_categories(db)
 
@@ -186,7 +276,6 @@ def test_remove_see_also(db):
 
 
 ##########  VIEW ITEMS IN CATEGORIES  ##########
-
 
 
 def test_get_items_schema_data(db):

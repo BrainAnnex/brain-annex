@@ -3158,7 +3158,7 @@ class NeoSchema:
 
     @classmethod
     def add_data_relationship_hub(cls, center_id :int, periphery_ids :[int], periphery_class :str,
-                                    rel_name :str, rel_dir = "OUT") -> int:
+                                  rel_name :str, rel_dir = "OUT") -> int:
         """
         Add a group of relationships between a single Data Node ("center")
         and each of the Data Nodes in the given list ("periphery"),
@@ -3259,9 +3259,9 @@ class NeoSchema:
         # upon finding such a path, join the data nodes with a relationship
 
         if id_type:
-            where_clause = f"from_data_node.{id_type} = $from_neo_id  AND  to_data_node.{id_type} = $to_neo_id"
+            where_clause = f"from_data_node.{id_type} = $from_id  AND  to_data_node.{id_type} = $to_id"
         else:
-            where_clause = "id(from_data_node) = $from_neo_id  AND  id(to_data_node) = $to_neo_id"
+            where_clause = "id(from_data_node) = $from_id  AND  id(to_data_node) = $to_id"
 
         q = f'''
             MATCH (from_data_node :`{from_class}`), (to_data_node :`{to_class}`)
@@ -3269,13 +3269,14 @@ class NeoSchema:
             MERGE (from_data_node)-[:`{rel_name}`]->(to_data_node)
             '''
 
-        result = cls.db.update_query(q, {"from_neo_id": from_id, "to_neo_id": to_id})
+        result = cls.db.update_query(q, {"from_id": from_id, "to_id": to_id})
         number_relationships_added = result.get("relationships_created", 0)   # If key isn't present, use a value of 0
 
         if number_relationships_added != 1:
             # TODO: double-check that the following reported problem is indeed what caused the failure
-            raise Exception(f"NeoSchema.add_data_relationship(): Failed to add the relationship `{rel_name}` between the data nodes, "
-                            f"respectively of Class `{from_class}` and Class` {to_class}`")
+            raise Exception(f"NeoSchema.add_data_relationship(): Failed to add the relationship `{rel_name}` "
+                            f"from data node ({from_id}, of Class `{from_class}`), "
+                            f"to data node ({to_id}, of Class `{to_class}`)")
 
 
 

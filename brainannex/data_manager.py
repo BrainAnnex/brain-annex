@@ -35,7 +35,9 @@ class DataManager:
     This library is primarily a common entry point for data requests:
     many specific operations get delegated to other, more specialized, libraries.
 
-    This class does NOT get instantiated.
+    Static class that does NOT get instantiated;
+    however, it must be initialized with a call to set_database()
+
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 

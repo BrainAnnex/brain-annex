@@ -114,77 +114,6 @@ class Categories:
 
 
     @classmethod
-    def count_subcategories(cls, category_uri :str) -> int:
-        """
-        Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Categories")
-
-        :param category_uri:A string identifying the desired Category
-        :return:            The number of (direct) Subcategories of the given Category; possibly, zero
-        """
-
-        match = cls.db.match(labels="BA",
-                             properties={"uri": category_uri, "schema_code": "cat"})
-
-        return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="IN")
-
-
-    @classmethod
-    def count_parent_categories(cls, category_uri :str) -> int:
-        """
-        Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Categories")
-
-        :param category_uri:A string identifying the desired Category
-        :return:            The number of (direct) parent categories of the given Category; possibly, zero
-        """
-
-        match = cls.db.match(labels="BA",
-                             properties={"uri": category_uri, "schema_code": "cat"})
-
-        return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="OUT")
-
-
-
-    @classmethod
-    def get_subcategories(cls, category_uri :str) -> [dict]:
-        """
-        Return all the (immediate) subcategories of the given category,
-        as a list of dictionaries with all the keys of the Category Class
-        EXAMPLE:
-            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'},
-             {'uri': '3', 'name': 'Hobbies'}]
-
-        :param category_uri:A string identifying the desired Category
-        :return:            A list of dictionaries
-        """
-        match = cls.db.match(labels="Categories", key_name="uri", key_value=category_uri)
-
-        return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
-                                   neighbor_labels="Categories")
-
-
-
-    @classmethod
-    def get_parent_categories(cls, category_uri :str) -> [dict]:
-        """
-        Return all the (immediate) parent categories of the given Category,
-        as a list of dictionaries with all the keys of the Category Class
-        EXAMPLE:
-            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'}, {'uri': '3', 'name': 'Hobbies'}]
-
-        :param category_uri:A string identifying the desired Category
-        :return:            A list of dictionaries
-        """
-        match = cls.db.match(labels="BA",
-                             properties={"uri": category_uri, "schema_code": "cat"})
-
-        return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
-                                   neighbor_labels="BA")
-
-
-
-    @classmethod
     def get_all_categories(cls, exclude_root=True, include_remarks=False) -> [dict]:
         """
         Return all the existing Categories - possibly except the root -
@@ -229,6 +158,78 @@ class Categories:
                     del item["remarks"]     # To avoid a dictionary entry of the type  'remarks': None
 
         return result
+
+
+
+    @classmethod
+    def count_subcategories(cls, category_uri :str) -> int:
+        """
+        Return the number of (direct) Subcategories of the given Category
+        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Categories")
+
+        :param category_uri:A string identifying the desired Category
+        :return:            The number of (direct) Subcategories of the given Category; possibly, zero
+        """
+
+        match = cls.db.match(labels="Categories",
+                             properties={"uri": category_uri})
+
+        return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="IN")
+
+
+    @classmethod
+    def count_parent_categories(cls, category_uri :str) -> int:
+        """
+        Return the number of (direct) Subcategories of the given Category
+        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Categories")
+
+        :param category_uri:A string identifying the desired Category
+        :return:            The number of (direct) parent categories of the given Category; possibly, zero
+        """
+
+        match = cls.db.match(labels="Categories",
+                             properties={"uri": category_uri})
+
+        return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="OUT")
+
+
+
+    @classmethod
+    def get_subcategories(cls, category_uri :str) -> [dict]:
+        """
+        Return all the (immediate) subcategories of the given category,
+        as a list of dictionaries with all the keys of the Category Class
+        EXAMPLE:
+            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'},
+             {'uri': '3', 'name': 'Hobbies'}]
+
+        :param category_uri:A string identifying the desired Category
+        :return:            A list of dictionaries
+        """
+        match = cls.db.match(labels="Categories", key_name="uri", key_value=category_uri)
+
+        return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
+                                   neighbor_labels="Categories")
+
+
+
+    @classmethod
+    def get_parent_categories(cls, category_uri :str) -> [dict]:
+        """
+        Return all the (immediate) parent categories of the given Category,
+        as a list of dictionaries with all the keys of the Category Class
+        EXAMPLE:
+            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'},
+             {'uri': '3', 'name': 'Hobbies'}]
+
+        :param category_uri:A string identifying the desired Category
+        :return:            A list of dictionaries
+        """
+        match = cls.db.match(labels="Categories",
+                             properties={"uri": category_uri})
+
+        return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
+                                   neighbor_labels="Categories")
 
 
 

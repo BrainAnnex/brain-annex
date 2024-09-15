@@ -213,6 +213,8 @@ class DocumentationGenerator:
         :param s:   String with a list of arguments of a python class method
         :return:    Cleanup-up version, stripped of leading "cls" or "self"
         """
+        #TODO: also manage cases where s is simply "cls" or "self" (i.e, no args)
+
         pos_first_comma = s.find(",")       # Position in the string of the first comma
         if pos_first_comma == -1:           # If not found
             return s.strip()

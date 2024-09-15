@@ -1,4 +1,4 @@
-﻿/* LAST MODIFIED 8/25/2016
+﻿/* LAST MODIFIED 8/25/2016, plus 9/14/2024 modification by Julian West
  *
  * @license Copyright (c) 2003-2016, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
@@ -21,7 +21,8 @@ CKEDITOR.editorConfig = function( config ) {
 	
 	
 	// Needed by "mathjax" plugin; contains URL of JavaScript to render TeX
-	config.mathJaxLib = '//cdn.mathjax.org/mathjax/2.6-latest/MathJax.js?config=TeX-AMS_HTML';
+	//config.mathJaxLib = '//cdn.mathjax.org/mathjax/2.6-latest/MathJax.js?config=TeX-AMS_HTML';  // It stopped working!
+	config.mathJaxLib = '//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML';
 	
 	
 	// The toolbar groups arrangement, optimized for two toolbar rows

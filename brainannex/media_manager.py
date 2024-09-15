@@ -13,6 +13,9 @@ from PIL import Image
 class MediaManager:
     """
     Helper library for the management of media files (documents and images)
+
+    Static class that does NOT get instantiated;
+    however, it must be initialized with calls to set_media_folder() and set_default_folders()
     """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
@@ -23,6 +26,7 @@ class MediaManager:
     DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder (a child of MEDIA_FOLDER)
                             # EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
                             # This class variable gets set by initialize.py
+
 
 
     @classmethod
