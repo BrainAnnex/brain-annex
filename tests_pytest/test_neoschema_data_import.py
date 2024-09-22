@@ -22,15 +22,20 @@ def db():
 
 
 
+
 def test_import_pandas_nodes(db):
     db.empty_dbase()
+
+    df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
+
+    with pytest.raises(Exception):
+        NeoSchema.import_pandas_nodes(df=df, class_name="State")    # Undefined Class
 
     # Set up the Schema
     NeoSchema.create_class_with_properties(name="State",
                                            properties=["name"], strict=True)
 
-    df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
-    import_list_1 = NeoSchema.import_pandas_nodes(df=df, class_node="State")
+    import_list_1 = NeoSchema.import_pandas_nodes(df=df, class_name="State")
 
     assert len(import_list_1) == 3
 
@@ -48,9 +53,9 @@ def test_import_pandas_nodes(db):
     assert compare_unordered_lists(result, import_list_1)
 
 
-    # Duplicate entry: "CA"
+    # Duplicate entry: "CA" (from new dataset to be added to the previous one)
     df_2 = pd.DataFrame({"name": ["NV", "CA", "WA"]})
-    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="State",
+    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="State",
                                                   primary_key="name")
     print(import_list_2)
 
@@ -75,7 +80,7 @@ def test_import_pandas_nodes(db):
                        "make": ["Honda", "Toyota", "Ford"],
                        "year": [2003, 2013, 2023]})
 
-    import_list_1 = NeoSchema.import_pandas_nodes(df=df, class_node="Motor Vehicle")
+    import_list_1 = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle")
 
 
     # Note that "c2" is already present (if "vehicle ID" is a primary key),
@@ -85,12 +90,12 @@ def test_import_pandas_nodes(db):
                          "color": ["red", "white", "blue"]})
 
     with pytest.raises(Exception):      # "color" in not in the Schema
-        NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
+        NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
                                       primary_key="vehicle ID")
 
     NeoSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
 
-    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
+    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
                                                   primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
 
     q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id' # Retrieve the duplicate record
@@ -107,9 +112,9 @@ def test_import_pandas_nodes(db):
     db.delete_nodes_by_label(delete_labels="Motor Vehicle")
 
     # Re-import the first 3 records
-    NeoSchema.import_pandas_nodes(df=df, class_node="Motor Vehicle")
+    NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle")
 
-    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
+    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
                                                   primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be replaced
 
     q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id' # Retrieve the duplicate record
@@ -147,10 +152,10 @@ def test_import_pandas_links(db):
     state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4]})
 
     # Import the data nodes
-    city_node_ids = NeoSchema.import_pandas_nodes(df=city_df, class_node="City")
+    city_node_ids = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
     assert len(city_node_ids) == 4
 
-    state_node_ids = NeoSchema.import_pandas_nodes(df=state_df, class_node="State")
+    state_node_ids = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
     assert len(state_node_ids) == 3
 
     # Now import the links
@@ -303,6 +308,7 @@ def test_create_tree_from_list_2(db):
     actual_root_ids_list = [actual_root_ids_dict['id_1'], actual_root_ids_dict['id_2']]
     assert actual_root_ids_list == root_neo_id_list \
            or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
+
 
 
 ####################################################################################################

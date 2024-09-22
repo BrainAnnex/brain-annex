@@ -9,4 +9,4 @@
 set PYTHONPATH=\Docs\- MY CODE (Win11)\Brain Annex\BA develop
 
 :: Start Jupyter Lab (if a port other than the default 8888 is desired, use the option --port YOUR_PORT_NUMBER)
-jupyter-lab
+.\venv\Scripts\jupyter-lab

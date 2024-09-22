@@ -272,11 +272,11 @@ class NeoSchema:
         match = cls.db.match(labels="CLASS", key_name="name", key_value=class_name)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
-        if not result:
-            raise Exception(f"NeoSchema.get_class_internal_id(): no Class node named `{class_name}` was found")
+        assert result, \
+            f"NeoSchema.get_class_internal_id(): no Class node named `{class_name}` was found in the Schema"
 
-        if len(result) > 1:
-            raise Exception(f"NeoSchema.get_class_internal_id(): more than 1 Class node named `{class_name}` was found")
+        assert len(result) <= 1, \
+            f"NeoSchema.get_class_internal_id(): more than 1 Class node named `{class_name}` was found in the Schema"
 
         return result[0]["internal_id"]
 
@@ -3377,8 +3377,8 @@ class NeoSchema:
 
 
     @classmethod
-    def import_pandas_nodes(cls, df :pd.DataFrame, class_node :Union[int, str],
-                            drop=None, rename=None,
+    def import_pandas_nodes(cls, df :pd.DataFrame, class_name: str, class_node=None,
+                            select=None, drop=None, rename=None,
                             primary_key=None, duplicate_option="merge",
                             datetime_cols=None, int_cols=None,
                             extra_labels=None, uri_namespace=None,
@@ -3396,11 +3396,14 @@ class NeoSchema:
                                 each row represents a record - to be turned into a graph-database node.
                                 Each column represents a Property of the data node, and it must have been
                                 previously declared in the Schema
-        :param class_node:  Either an integer with the internal database ID of an existing Class node,
-                                or a string with its name
+        :param class_name:  The name of a Class node already present in the Schema
+        :param class_node:  OBSOLETED
 
+        :param select:      [OPTIONAL] Name of the field, or list of names, to import; all others will be ignored
+                                (Note: original name prior to any rename, if applicable)
         :param drop:        [OPTIONAL] Name of a field, or list of names, to ignore during import
                                 (Note: original name prior to any rename, if applicable)
+                                If both arguments "select" and "drop" are passed, an Exception gets raised
         :param rename:      [OPTIONAL] dictionary to rename the Pandas dataframe's columns to
                                 EXAMPLE {"current_name": "name_we_want"}
 
@@ -3432,7 +3435,7 @@ class NeoSchema:
                                 if that namespace hasn't previously been created with create_namespace() or with reserve_next_uri(),
                                 a new one will be created with no prefix nor suffix (i.e. all uri's be numeric strings.)
                                 If not passed, no uri values will get set on the new nodes
-        :param report_frequency: [OPTIONAL] How often to print the status of the import-in-progress
+        :param report_frequency: [OPTIONAL] How often to print the status of the import-in-progress (default 100)
 
         :return:            A list of the internal database ID's of the newly-created Data nodes
                                 (or updated Data nodes, if merge_primary_key is used)
@@ -3441,11 +3444,18 @@ class NeoSchema:
         # TODO: bring in more elements from the counterpart  NeoAccess.load_pandas()
         # TODO: allow rename to do a drop, by using None as some values
 
+        if class_node is not None:
+            print("******** OBSOLETED ARGUMENT: the argument name in import_pandas_nodes() is now called 'class_name', not 'class_node'")
+            return
+
         # Do various validations
-        cls.assert_valid_class_identifier(class_node)
+        cls.assert_valid_class_name(class_name)
 
         assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
-            "NeoSchema.import_pandas_nodes(): argument `extra_labels`, if passed, must be a string, or list/tuple of strings"
+            "NeoSchema.import_pandas_nodes(): the argument `extra_labels`, if passed, must be a string, or list/tuple of strings"
+
+        assert (select is None) or (drop is None), \
+            "NeoSchema.import_pandas_nodes(): cannot specify both arguments `select` and `drop`"
 
         if duplicate_option:
             assert duplicate_option in ["merge", "replace"], \
@@ -3453,13 +3463,8 @@ class NeoSchema:
                 "if passed, must be either 'merge' or 'replace'"
 
 
-        # Obtain both the Class name and its internal database ID
-        if type(class_node) == str:
-            class_name = class_node
-            class_internal_id = cls.get_class_internal_id(class_node)
-        else:
-            class_name = cls.get_class_name(class_node)
-            class_internal_id = class_node
+        # Obtain the internal database ID of the Class node
+        class_internal_id = cls.get_class_internal_id(class_name)
 
 
         # Make sure that the Class accepts Data Nodes
@@ -3489,6 +3494,11 @@ class NeoSchema:
         elif int_cols is None:
             int_cols = []
 
+        if select is not None:
+            if type(select) == str:
+                df = df[[select]]
+            else:
+                df = df[select]
 
         if drop is not None:
             df = df.drop(drop, axis=1)      # Drop a column, or list of columns
@@ -3500,8 +3510,9 @@ class NeoSchema:
         # Verify whether all properties are allowed
         # TODO: consider using allowable_props()
         cols = list(df.columns)     # List of column names in the Pandas Data Frame
-        class_properties = cls.get_class_properties(class_node=class_node, include_ancestors=True)
+        class_properties = cls.get_class_properties(class_node=class_name, include_ancestors=True)
 
+        # TODO: this assertion should only happen if the Class is strict
         assert set(cols) <= set(class_properties), \
             f"import_pandas(): attempting to import Pandas dataframe columns " \
             f"not declared in the Schema:  {set(cols) - set(class_properties)}"
@@ -3778,7 +3789,7 @@ class NeoSchema:
         df_wide = df_wide.rename(columns={"subject": "uri"})
 
         # Now that the data frame is transformed, do the actual import
-        return cls.import_pandas_nodes(df=df_wide, class_node=class_node, uri_namespace=None,
+        return cls.import_pandas_nodes(df=df_wide, class_name=class_node, uri_namespace=None,
                                        datetime_cols=datetime_cols, int_cols=int_cols,
                                        extra_labels=extra_labels,
                                        report_frequency=report_frequency)

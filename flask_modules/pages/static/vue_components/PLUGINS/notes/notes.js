@@ -4,7 +4,8 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*   item_data:  EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm","class_name":"Note"}
+        /*   item_data:  EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm",
+                                   "class_name":"Note","title":"My TO-DO list"}
                                   (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this Note is displayed (used when creating new documents)
@@ -458,7 +459,7 @@ Vue.component('vue-plugin-n',
             inform_component_root_of_cancel()
             // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
             {
-                if (this.current_data.uri < 0) {
+                if (this.current_data.uri < 0) {    // A negative number indicates a new Note, by convention
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Headers sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
