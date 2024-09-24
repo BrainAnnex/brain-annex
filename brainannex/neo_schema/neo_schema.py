@@ -241,8 +241,9 @@ class NeoSchema:
         #TODO: maybe an option to add multiple Classes of the same type at once???
         #TODO: maybe stop returning the uri ?
 
-        name = name.strip()     # Strip any whitespace at the ends
-        assert name != "", "NeoSchema.create_class(): Unacceptable Class name that is empty or blank"
+        name = name.strip()     # Strip any leading/trailing whitespace at the ends
+        assert name != "", \
+            "NeoSchema.create_class(): Unacceptable Class name that is empty or blank"
 
         if cls.class_name_exists(name):
             raise Exception(f"NeoSchema.create_class(): A class named `{name}` ALREADY exists")
@@ -2310,16 +2311,8 @@ class NeoSchema:
             class_internal_id = class_node
 
 
-        labels = class_name     # By default, use the Class name as a label
-
-        if (type(extra_labels) == str) and (extra_labels.strip() != class_name):
-            labels = [extra_labels, class_name]
-
-        elif isinstance(extra_labels, (list, tuple)):
-            # If we get thus far, labels is a list or tuple
-            labels = list(extra_labels)
-            if class_name not in extra_labels:
-                labels += [class_name]
+        # Prepare the list of labels to use on the new Data Node
+        labels = cls._prepare_data_node_labels(class_name=class_name, extra_labels=extra_labels)
 
 
         # Make sure that the Class accepts Data Nodes
@@ -3775,16 +3768,9 @@ class NeoSchema:
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
-        labels = class_name     # By default, use the Class name as a label
+        # Prepare the list of labels to use on the new Data Nodes
+        labels = cls._prepare_data_node_labels(class_name=class_name, extra_labels=extra_labels)
 
-        if (type(extra_labels) == str) and (extra_labels.strip() != class_name):
-            labels = [extra_labels, class_name]
-
-        elif isinstance(extra_labels, (list, tuple)):
-            # If we get thus far, labels is a list or tuple
-            labels = list(extra_labels)
-            if class_name not in extra_labels:
-                labels += [class_name]
 
         if type(datetime_cols) == str:
             datetime_cols = [datetime_cols]
