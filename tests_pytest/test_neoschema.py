@@ -1214,6 +1214,31 @@ def test_create_data_node_3(db):
 
 
 
+def test__prepare_data_node_labels(db):
+    with pytest.raises(Exception):
+        NeoSchema._prepare_data_node_labels(class_name=123)     # Bad name
+
+    with pytest.raises(Exception):
+        NeoSchema._prepare_data_node_labels(class_name="  Leading_Trailing_Blanks  ")
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car") == ["Car"]
+
+    with pytest.raises(Exception):
+        NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=123)  # Bad extra_labels
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=" BA ") == ["Car", "BA"]
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=[" Motor Vehicle"]) \
+                == ["Car", "Motor Vehicle"]
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=(" Motor Vehicle", "  Object    ") ) \
+                == ["Car", "Motor Vehicle", "Object"]
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=[" Motor Vehicle", "  Object    ", "Motor Vehicle"] ) \
+                == ["Car", "Motor Vehicle", "Object"]
+
+
+
 def test_update_data_node(db):
     db.empty_dbase()
 
