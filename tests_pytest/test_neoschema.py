@@ -1856,13 +1856,13 @@ def test_delete_data_point(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node(node_id = 1)     # Non-existing node (database just got cleared)
+        NeoSchema.delete_data_node_OLD(node_id = 1)     # Non-existing node (database just got cleared)
 
 
     create_sample_schema_1()    # Schema with patient/result/doctor
 
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node(node_id = -1)    # Invalid node ID
+        NeoSchema.delete_data_node_OLD(node_id = -1)    # Invalid node ID
 
 
     # Create new data nodes
@@ -1878,7 +1878,7 @@ def test_delete_data_point(db):
     patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
     assert patient == {'name': 'Val', 'age': 22}
 
-    NeoSchema.delete_data_node(node_id=doctor_data_uri)
+    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri)
 
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None   # The doctor got deleted
@@ -1887,12 +1887,12 @@ def test_delete_data_point(db):
     assert patient == {'name': 'Val', 'age': 22}    # The patient is still there
 
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node(node_id=patient_data_uri, labels="not_present")   # Nothing gets deleted; hence, error
+        NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels="not_present")   # Nothing gets deleted; hence, error
 
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node(node_id=patient_data_uri, labels=["patient", "extra label"])   # Nothing gets deleted; hence, error
+        NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels=["patient", "extra label"])   # Nothing gets deleted; hence, error
 
-    NeoSchema.delete_data_node(node_id=patient_data_uri, labels="patient")
+    NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels="patient")
 
     patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
     assert patient is None    # The patient is now gone
@@ -1903,7 +1903,7 @@ def test_delete_data_point(db):
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
-    NeoSchema.delete_data_node(node_id=doctor_data_uri, labels="employee")
+    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri, labels="employee")
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None   # The doctor got deleted
 
@@ -1913,7 +1913,7 @@ def test_delete_data_point(db):
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
-    NeoSchema.delete_data_node(node_id=doctor_data_uri, labels=["employee", "doctor"])
+    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri, labels=["employee", "doctor"])
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None       # The doctor got deleted
 

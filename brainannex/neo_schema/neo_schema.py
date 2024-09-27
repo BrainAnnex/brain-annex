@@ -2124,7 +2124,7 @@ class NeoSchema:
             WHERE cl.name = $class_name
             RETURN count(n) AS number_datanodes
             '''
-        print(q)
+        #print(q)
         res = cls.db.query(q, data_binding={"class_name": class_name},
                            single_cell="number_datanodes")
 
@@ -3106,9 +3106,34 @@ class NeoSchema:
 
 
     @classmethod
-    def delete_data_node(cls, node_id=None, uri=None, class_node=None, labels=None) -> None:
+    def delete_data_nodes(cls, class_name :str) -> int:
         """
-        Delete the given data node.
+        Delete all the Data Nodes of the given Schema Class
+
+        :param class_name:  The name of a Schema Class
+        :return:            The number of deleted Data Nodes
+        """
+        #TODO: pytest
+        #TODO: permit some restrictions
+
+        cls.assert_valid_class_name(class_name)
+
+        q = '''
+        
+            MATCH (dn)-[:SCHEMA]->(:CLASS {name: $class_name})
+            DETACH DELETE dn
+            '''
+        #print(q)
+        stats = cls.db.update_query(q, data_binding={"class_name": class_name})
+
+        return stats.get("nodes_deleted", 0)    # Number of nodes deleted
+
+
+
+    @classmethod
+    def delete_data_node_OLD(cls, node_id=None, uri=None, class_node=None, labels=None) -> None:
+        """
+        Delete the given data node.  TODO: obsolete in favor of delete_data_nodes()
         If no node gets deleted, or if more than 1 get deleted, an Exception is raised
 
         :param node_id:     An integer with the internal database ID of an existing data node
@@ -3146,7 +3171,7 @@ class NeoSchema:
     @classmethod
     def delete_data_point(cls, uri: str, labels=None) -> int:
         """
-        Delete the given data point.  TODO: obsolete in favor of delete_data_node()
+        Delete the given data point.  TODO: obsolete in favor of delete_data_nodes()
 
         :param uri:
         :param labels:      OPTIONAL (generally, redundant)
@@ -3662,12 +3687,13 @@ class NeoSchema:
 
 
     @classmethod
-    def import_pandas_nodes_NEW(cls, df :pd.DataFrame, class_name: str, class_node=None,
-                            select=None, drop=None, rename=None,
-                            primary_key=None, duplicate_option="merge",
-                            datetime_cols=None, int_cols=None,
-                            extra_labels=None, uri_namespace=None,
-                            report_frequency=100, max_chunk_size=1000) -> [int]:
+    def import_pandas_nodes_NEW(cls, df :pd.DataFrame, class_name: str,
+                                select=None, drop=None, rename=None,
+                                primary_key=None, duplicate_option="merge",
+                                datetime_cols=None, int_cols=None,
+                                extra_labels=None, uri_namespace=None,
+                                report=True, report_frequency=1,
+                                max_batch_size=1000) -> dict:
         """
         Import a group of entities (records), from the rows of a Pandas dataframe,
         as Data Nodes in the database.
@@ -3682,7 +3708,6 @@ class NeoSchema:
                                 Each column represents a Property of the data node, and it must have been
                                 previously declared in the Schema
         :param class_name:  The name of a Class node already present in the Schema
-        :param class_node:  OBSOLETED
 
         :param select:      [OPTIONAL] Name of the Pandas field, or list of names, to import; all others will be ignored
                                 (Note: original name prior to any rename, if applicable)
@@ -3715,33 +3740,36 @@ class NeoSchema:
                                             Notice that the only difference between the 2 option
                                             is fields present in the original record but not in the imported one.
 
-        :param datetime_cols:[OPTIONAL] String, or list/tuple of strings, of column name(s)
-                                that contain datetime strings such as '2015-08-15 01:02:03'
-                                (compatible with the python "datetime" format)
-        :param int_cols:    [OPTIONAL] String, or list/tuple of strings, of column name(s)
-                                that contain integers, or that are to be converted to integers
-                                (typically necessary because numeric Pandas columns with NaN's
-                                 are automatically turned into floats;
-                                 this argument will cast them to int's, and drop the NaN's)
-        :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
-                                IN ADDITION TO the Class name (which is always used as label)
-        :param uri_namespace:[OPTIONAL] String with a namespace to use to auto-assign uri values on the new Data nodes;
-                                if that namespace hasn't previously been created with create_namespace() or with reserve_next_uri(),
-                                a new one will be created with no prefix nor suffix (i.e. all uri's be numeric strings.)
-                                If not passed, no uri values will get set on the new nodes
-        :param report_frequency: [OPTIONAL] How often to print the status of the import-in-progress (default 100)
+        :param datetime_cols:   [OPTIONAL] String, or list/tuple of strings, of column name(s)
+                                    that contain datetime strings such as '2015-08-15 01:02:03'
+                                    (compatible with the python "datetime" format)
+        :param int_cols:        [OPTIONAL] String, or list/tuple of strings, of column name(s)
+                                    that contain integers, or that are to be converted to integers
+                                    (typically necessary because numeric Pandas columns with NaN's
+                                     are automatically turned into floats;
+                                     this argument will cast them to int's, and drop the NaN's)
+        :param extra_labels:    [OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
+                                    IN ADDITION TO the Class name (which is always used as label)
+        :param uri_namespace:   [OPTIONAL] String with a namespace to use to auto-assign uri values on the new Data nodes;
+                                    if that namespace hasn't previously been created with create_namespace() or with reserve_next_uri(),
+                                    a new one will be created with no prefix nor suffix (i.e. all uri's be numeric strings.)
+                                    If not passed, no uri values will get set on the new nodes
+        :param report:          [OPTIONAL] If True (default), print the status of the import-in-progress
+                                    at the end of each batch round
+        :param report_frequency: [OPTIONAL] Only applicable if report is True
 
-        :param max_chunk_size:  To limit the number of Pandas rows loaded into the database at one time
+        :param max_batch_size:  To limit the number of Pandas rows loaded into the database at one time
 
-        :return:            A list of the internal database ID's of the newly-created Data nodes
+        :return:                A dict with 2 keys:
+                                    'number_nodes_created': the number of newly-created nodes
+                                    'affected_nodes_ids'    list of the internal database ID's nodes that were created or updated,
+                                                            in the import order ("updated" doesn't necessarily mean changed).
+                                                            Note that ID's might occur more than once when the "primary_key" arg
+                                                            is specified, because imports might then refer to existing,
+                                                            or previously-created. nodes.
         """
         # TODO: more pytests; in particular for args uri_namespace, drop, rename
         # TODO: maybe return a separate list of internal database ID's of any updated node
-
-        if class_node is not None:
-            print("******** OBSOLETED ARGUMENT: the argument name in import_pandas_nodes() is now called 'class_name', not 'class_node'")
-            return
-
 
         # Validations
         cls.assert_valid_class_name(class_name)
@@ -3756,6 +3784,16 @@ class NeoSchema:
             assert duplicate_option in ["merge", "replace"], \
                 "NeoSchema.import_pandas_nodes(): argument `extra_labels`, " \
                 "if passed, must be either 'merge' or 'replace'"
+
+        if primary_key is not None:
+            assert primary_key in list(df.columns), \
+                f"NeoSchema.import_pandas_nodes(): the requested primary_key (`{primary_key}`) " \
+                f"is not present among the column of the given Pandas dataframe"
+
+            if drop is not None:
+                assert (primary_key != drop) and  (primary_key not in drop), \
+                    f"NeoSchema.import_pandas_nodes(): the requested primary_key (`{primary_key}`) " \
+                    f"cannot be one of the dropped columns ({drop})"
 
 
         # Obtain the internal database ID of the Class node
@@ -3804,7 +3842,7 @@ class NeoSchema:
 
         # TODO: this assertion should only happen if the Class is strict
         assert set(cols) <= set(class_properties), \
-            f"import_pandas(): attempting to import Pandas dataframe columns " \
+            f"import_pandas_nodes(): attempting to import Pandas dataframe columns " \
             f"not declared in the Schema:  {set(cols) - set(class_properties)}"
 
 
@@ -3812,20 +3850,20 @@ class NeoSchema:
         #df = cls.db.pd_datetime_to_neo4j_datetime(df)
 
 
+        internal_id_list = []       # Running list of the internal database ID's of the created or updated nodes
+                                    # (noted: "updated" doesn't necessarily entail changed)
 
-
-        internal_id_list = []       # Running list of the internal database ID's of the created nodes
+        created_node_count = 0      # Running list of the number of new nodes created
 
         # Determine the number of needed batches (always at least 1)
-        number_batches = math.ceil(len(df) / max_chunk_size)    # Note that if the max_chunk_size equals the size of df
+        number_batches = math.ceil(len(df) / max_batch_size)    # Note that if the max_chunk_size equals the size of df
                                                                 # then we'll just use 1 batch
-        print(f"import_pandas_nodes(): getting ready to import {len(df)} records in {number_batches} batch(es)...")
+        print(f"import_pandas_nodes(): importing {len(df)} records in {number_batches} batch(es) of max size {max_batch_size}...")
 
         batch_list = np.array_split(df, number_batches)         # List of Pandas Data Frames, each resulting from split of original Data Frame
                                                                 # from groups of rows
 
         labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
-        imported_count = 0
 
         # Process the primary keys, if any
         primary_key_s = ''
@@ -3837,8 +3875,14 @@ class NeoSchema:
 
 
         # Import each batch of records (Pandas dataframe rows) in turn
-        for df_chunk in batch_list:         # Split the import operation into batches
+        if report:
+            print()
+
+        for batch_count, df_chunk in enumerate(batch_list):         # Split the import operation into batches
             # df_chunk is a Pandas Data Frame, with the same columns, but fewer rows, as the original df
+            if report and ((batch_count+1) % report_frequency == 0):
+                print(f"   Importing batch # {batch_count+1} : {len(df_chunk)} row(s)")
+
             record_list = df_chunk.to_dict(orient='records')    # Turn the Pandas dataframe into a list of dicts;
                                                                 # each dict contains the data for 1 row, with the properties to import
                                                                 # EXAMPLE: [{'col1': 1, 'col2': 0.5}, {'col1': 2, 'col2': 0.75}]
@@ -3867,8 +3911,7 @@ class NeoSchema:
                 scrubbed_record_list.append(d_scrubbed)
 
 
-            # Perform the actual import
-            #(cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(d_scrubbed)
+            # PERFORM THE ACTUAL BATCH IMPORT
 
             if not primary_key:     # Simpler scenario; just creation of new nodes
                 q = f'''
@@ -3880,12 +3923,9 @@ class NeoSchema:
                     SET dn = record 
                     MERGE (dn)-[:SCHEMA]->(cl)
                     RETURN id(dn) as internal_id 
-                    '''         # ALT: CREATE (n {labels_str} {cypher_props_str})
+                    '''
 
-                cypher_dict = {'data': record_list}
-
-
-            else:   # More complex scenario possibly involving existing nodes
+            else:                   # More complex scenario possibly involving existing nodes
                 set_operator = "" if duplicate_option == "replace" else "+"
 
                 q = f'''
@@ -3898,64 +3938,29 @@ class NeoSchema:
                     SET dn {set_operator}= record 
                     RETURN id(dn) as internal_id 
                     '''
-                cypher_dict = {'data': record_list}
 
-            result = cls.db.update_query(q, data_binding={"record": scrubbed_record_list})
-            cls.db.debug_query_print(q, data_binding={"record": scrubbed_record_list})
+
+            result = cls.db.update_query(q, data_binding={"data": scrubbed_record_list})
+            #cls.db.debug_query_print(q, data_binding={"data": scrubbed_record_list})
+            #print("    result of running batch =", result)
+
+            if result.get('nodes_created'):
+                created_node_count += result.get('nodes_created')
+
+            import_data = result['returned_data']
+            for import_item in import_data:
+                internal_id_list.append(import_item['internal_id'])  # The internal database ID of the created or updated nodes
+
+            if report and ((batch_count+1) % report_frequency == 0):
+                print(f"     Interim status: at the end of this batch, imported a grand total of {len(internal_id_list)} record(s), and created a grand total of {created_node_count} new node(s)")
 
         # END for
 
-        if report_frequency:
-            print(f"    FINISHED importing {imported_count} records, and created {len(internal_id_list)} new nodes in the process")
 
-        return internal_id_list
+        print(f"    FINISHED importing {len(internal_id_list)} record(s), and created {created_node_count} new node(s) in the process")
 
-        '''
-        # Import each row ("recordset") in turn
+        return {'number_nodes_created': created_node_count, 'affected_nodes_ids': internal_id_list}
 
-        imported_count = 0
-        for d in recordset:       # d is a dictionary
-            d_scrubbed = cls.scrub_dict(d)          # Zap NaN's, blank strings, leading/trailing spaces
-
-            for dt_col in datetime_cols:
-                if dt_col in d_scrubbed:
-                    dt_str = d_scrubbed[dt_col]     # EXAMPLE: '2015-08-15 01:02:03'
-                    dt_python = datetime.fromisoformat(dt_str)  # As a python "datetime" object
-                    # EXAMPLE: datetime.datetime(2015, 8, 15, 1, 2, 3)
-                    # TODO: maybe do a dataframe-wide op such as df = db.pd_datetime_to_neo4j_datetime(df) done in NeoAccess
-                    dt_neo = DateTime.from_native(dt_python)    # In Neo4j format; TODO: let NeoAccess handle this
-                    # EXAMPLE: neo4j.time.DateTime(2015, 8, 15, 1, 2, 3, 0)
-                    d_scrubbed[dt_col] = dt_neo     # Replace the original string value
-
-            for col in int_cols:
-                if col in d_scrubbed:
-                    val = d_scrubbed[col]           # This might be a float
-                    val_int = int(val)
-                    d_scrubbed[col] = val_int       # Replace the original value
-
-
-            #print(d_scrubbed)
-
-            # Perform the actual import
-            new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
-                                                           labels=labels, properties_to_set=d_scrubbed,
-                                                           uri_namespace=uri_namespace,
-                                                           primary_key=primary_key, duplicate_option=duplicate_option)
-            #print("new_internal_id", new_internal_id)
-            if new_internal_id is not None:     # If a new Data node was created
-                internal_id_list.append(new_internal_id)
-
-            imported_count += 1
-
-            if report_frequency  and  (imported_count % report_frequency == 0):
-                print(f"    ...imported {imported_count} so far  (and created a total of {len(internal_id_list)} new nodes)")
-        # END for
-
-        if report_frequency:
-            print(f"    FINISHED importing {imported_count} records, and created {len(internal_id_list)} new nodes in the process")
-
-        return internal_id_list
-        '''
 
 
     @classmethod
