@@ -3486,13 +3486,15 @@ class NeoSchema:
 
 
     @classmethod
-    def import_pandas_nodes(cls, df :pd.DataFrame, class_name: str, class_node=None,
-                            select=None, drop=None, rename=None,
-                            primary_key=None, duplicate_option="merge",
-                            datetime_cols=None, int_cols=None,
-                            extra_labels=None, uri_namespace=None,
-                            report_frequency=100) -> [int]:
+    def import_pandas_nodes_NO_BATCH(cls, df :pd.DataFrame, class_name: str, class_node=None,
+                                     select=None, drop=None, rename=None,
+                                     primary_key=None, duplicate_option="merge",
+                                     datetime_cols=None, int_cols=None,
+                                     extra_labels=None, uri_namespace=None,
+                                     report_frequency=100) -> [int]:
         """
+        OLD VERSION of the much-faster import_pandas_nodes(), largely obsoleted by it!
+
         Import a group of entities (records), from the rows of a Pandas dataframe,
         as Data Nodes in the database.
 
@@ -3687,13 +3689,13 @@ class NeoSchema:
 
 
     @classmethod
-    def import_pandas_nodes_NEW(cls, df :pd.DataFrame, class_name: str,
-                                select=None, drop=None, rename=None,
-                                primary_key=None, duplicate_option="merge",
-                                datetime_cols=None, int_cols=None,
-                                extra_labels=None, uri_namespace=None,
-                                report=True, report_frequency=1,
-                                max_batch_size=1000) -> dict:
+    def import_pandas_nodes(cls, df :pd.DataFrame, class_name: str,
+                            select=None, drop=None, rename=None,
+                            primary_key=None, duplicate_option="merge",
+                            datetime_cols=None, int_cols=None,
+                            extra_labels=None,
+                            report=True, report_frequency=1,
+                            max_batch_size=1000) -> dict:
         """
         Import a group of entities (records), from the rows of a Pandas dataframe,
         as Data Nodes in the database.
@@ -3750,10 +3752,6 @@ class NeoSchema:
                                      this argument will cast them to int's, and drop the NaN's)
         :param extra_labels:    [OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
                                     IN ADDITION TO the Class name (which is always used as label)
-        :param uri_namespace:   [OPTIONAL] String with a namespace to use to auto-assign uri values on the new Data nodes;
-                                    if that namespace hasn't previously been created with create_namespace() or with reserve_next_uri(),
-                                    a new one will be created with no prefix nor suffix (i.e. all uri's be numeric strings.)
-                                    If not passed, no uri values will get set on the new nodes
         :param report:          [OPTIONAL] If True (default), print the status of the import-in-progress
                                     at the end of each batch round
         :param report_frequency: [OPTIONAL] Only applicable if report is True
@@ -3768,7 +3766,7 @@ class NeoSchema:
                                                             is specified, because imports might then refer to existing,
                                                             or previously-created. nodes.
         """
-        # TODO: more pytests; in particular for args uri_namespace, drop, rename
+        # TODO: restore uri_namespace , present in the old version
         # TODO: maybe return a separate list of internal database ID's of any updated node
 
         # Validations
@@ -4187,10 +4185,10 @@ class NeoSchema:
         df_wide = df_wide.rename(columns={"subject": "uri"})
 
         # Now that the data frame is transformed, do the actual import
-        return cls.import_pandas_nodes(df=df_wide, class_name=class_node, uri_namespace=None,
-                                       datetime_cols=datetime_cols, int_cols=int_cols,
-                                       extra_labels=extra_labels,
-                                       report_frequency=report_frequency)
+        return cls.import_pandas_nodes_NO_BATCH(df=df_wide, class_name=class_node, uri_namespace=None,
+                                                datetime_cols=datetime_cols, int_cols=int_cols,
+                                                extra_labels=extra_labels,
+                                                report_frequency=report_frequency)
 
 
 
