@@ -26,8 +26,8 @@ Vue.component('vue-plugin-d',
                     <img src="/BA/pages/static/graphics/document_48_8168668.png" style="float: left; margin-right: 5px">
 
 
-                    <!-- VIEW-ONLY version -->
-                    <div v-show="!edit_metadata">
+                    <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
+                    <div v-show="!edit_metadata"   @dblclick="edit_metadata=true">
                         <span style='font-weight:bold; font-size:12px'>&ldquo;{{current_metadata.caption}}&rdquo;</span>
                         <br><br>
 
@@ -57,7 +57,7 @@ Vue.component('vue-plugin-d',
                     </div>
 
 
-                    <!-- EDITABLE version -->
+                    <!----------  EDITABLE version (show when in editing mode)  ---------->
                     <div v-show="edit_metadata">
                         <br><br>
                         <span class="label">Caption</span>
@@ -83,19 +83,22 @@ Vue.component('vue-plugin-d',
                         <textarea v-model="current_metadata.comments" name="myNAME" rows="3" cols="45"></textarea>
 
                         <br><br>
-                        <span class="label">Rating</span> <input v-model="current_metadata.rating" size="3"> &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
+                        <span class="label">Rating</span> <input v-model="current_metadata.rating" size="3">
+                        &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
+                        &nbsp;&nbsp; <span style="color: gray">URI: &#96;{{current_metadata.uri}}&#96;</span>
+
+                        <!-- CONTROLS to edit the document metadata -->
+                        <p v-show="edit_metadata" style="text-align: right">
+                            <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
+                            <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
+                            <br>
+                            <span v-if="waiting" class="waiting">Performing the update</span>
+                        </p>
+
+                        <!-- STATUS line -->
+                        <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
                     </div>
 
-
-                    <!-- CONTROLS to edit the document metadata TODO: move this P to inside the DIV above -->
-                    <p v-show="edit_metadata" style="text-align: right">
-                        <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
-                        <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
-                        <br>
-                        <span v-if="waiting" class="waiting">Performing the update</span>
-                    </p>
-
-                    <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
 
                 </div>		<!-- End of Document container -->
 

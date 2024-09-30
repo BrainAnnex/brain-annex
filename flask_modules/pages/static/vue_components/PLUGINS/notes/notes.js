@@ -16,14 +16,14 @@ Vue.component('vue-plugin-n',
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
-            <!-- Show when NOT in editing mode  -->
+            <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
             <div class="notes" v-if="!editing_mode" v-html="body_of_note"   @dblclick="enter_editing_mode">
                 <!-- Body of Note, and status of last edit  -->
                 <span v-bind:class="{'n-waiting': waiting}">{{status_message}}</span>
             </div>
 
 
-            <!-- Show when in editing mode  -->
+            <!----------  EDITABLE version (show when in editing mode)  ---------->
             <div v-show="editing_mode" class='note-editor'>
                 <!-- CK Editor, and edit controls  -->
                 <div ref="julian"></div>  <!-- The content of this <div> gets replaced by the HTML online editor CKeditor when fired up
