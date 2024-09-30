@@ -49,7 +49,8 @@ Vue.component('vue-plugin-d',
                         </span>
 
                         <p v-if="current_metadata.authors" style="margin-bottom:0; color:#555">{{current_metadata.authors}}</p>
-                        <p v-if="current_metadata.comments" style="margin-bottom:0; color:#555">{{current_metadata.comments}}</p>
+                        <p v-if="current_metadata.comments" v-html="render_newlines(current_metadata.comments)" style="margin-bottom:0; color:#555"></p>
+
                         <p v-if="current_metadata.rating || current_metadata.read" style="margin-bottom:0; color:#555">
                             <span v-if="current_metadata.rating">{{current_metadata.rating}} &#9733;</span>
                             <span style="margin-left:45px">{{current_metadata.read}}</span>
@@ -103,23 +104,23 @@ Vue.component('vue-plugin-d',
                 </div>		<!-- End of Document container -->
 
 
-                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
+                <!--  Start of STANDARD CONTROLS (inline elements that can be extended with extra controls)
                       Signals from the Vue child component "vue-controls", below,
                       get relayed to the parent of this component,
                       but some get intercepted and handled here, namely:
 
                               v-on:edit-content-item
+
+                      Optional EXTRA controls may be placed before (will appear to the left)
+                      or after (will appear to the right) of the standard controls
                 -->
-                    <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
                     <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item">
                     </vue-controls>
 
-                    <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
-
-                <!--  End of Standard Controls -->
+                <!--  End of STANDARD CONTROLS -->
 
 
             </div>		<!-- End of outer container -->
@@ -238,6 +239,14 @@ Vue.component('vue-plugin-d',
 
 
 
+            render_newlines(text)
+            // Return all the newlines in the given text replaced as HTML line breaks: "<br>"
+            {
+                return text.replace(/\n/g, "<br>");
+            },
+
+
+
             render_url(cell_data)
             /*  If the passed argument is a string that appears to be a URL,
                 convert it into a string with HTML code for a hyperlink that opens in a new window;
@@ -253,11 +262,6 @@ Vue.component('vue-plugin-d',
                      return cell_data;
 
                 let dest_name = "";         // Name of the destination of the link, if applicable
-
-                if (typeof cell_data != "string")  {
-                    //console.log(`Argument passed to render_cell() is not a string.  Value passed: ${cell_data}`);
-                    return cell_data;
-                }
 
                 // Do a simple-minded check as to whether the cell content appear to be a hyperlink
                 if (cell_data.substring(0, 8) == "https://")

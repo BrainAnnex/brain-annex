@@ -40,22 +40,24 @@ Vue.component('vue-plugin-n',
             </div>  <!--  Terminate the wrapper DIV "note-editor" -->
 
 
-            <!--  STANDARD CONTROLS (inline elements that can be extended with extra controls)
+            <!--  Start of STANDARD CONTROLS (inline elements that can be extended with extra controls)
                   Signals from the Vue child component "vue-controls" below
                   get relayed to the parent of this component,
                   but some get intercepted and handled here, namely:
 
                           v-on:edit-content-item
             -->
-            <img v-if="edit_mode" src="/BA/pages/static/graphics/copy_16_172587.png"
-                 class="control" title="COPY TO CLIPBOARD (Not yet implemented)" alt="COPY TO CLIPBOARD (Not yet implemented)">
+                <img v-if="edit_mode" src="/BA/pages/static/graphics/copy_16_172587.png"
+                     class="control" title="COPY TO CLIPBOARD (Not yet implemented)" alt="COPY TO CLIPBOARD (Not yet implemented)">
 
-            <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
-                          v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item(item_data)">
-            </vue-controls>
+                <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                              v-on="$listeners"
+                              v-on:edit-content-item="edit_content_item(item_data)">
+                </vue-controls>
 
-            \n</div>\n		<!-- End of outer container box -->
+            <!--  End of STANDARD CONTROLS -->
+
+            </div>		<!-- End of outer container box -->
             `,
 
 
