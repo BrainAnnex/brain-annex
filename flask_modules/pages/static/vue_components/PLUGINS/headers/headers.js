@@ -10,8 +10,11 @@ Vue.component('vue-plugin-h',
         /*  item_data:      An object with the relevant data about this Header item;
                                 if the "uri" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
-                                EXAMPLE: {"uri":"52","pos":10,"schema_code":"h","text":"MY NEW SECTION","class_name":"Header"}
-                                TODO: take "pos" and "class_name" out of item_data !
+                                EXAMPLE of existing Header: {"uri":"h-7", "pos":10, "schema_code":"h", "class_name":"Header",
+                                                             "text":"SOME SECTION"}
+                                EXAMPLE of newly-created Header: {"uri":-2, "insert_after":"h-7", "schema_code":"h", "class_name":"Header",
+                                                             "text":"SOME SECTION"}
+                                TODO: maybe take "pos" and "class_name" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this Header is displayed (used when creating new records)

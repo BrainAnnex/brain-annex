@@ -314,7 +314,7 @@
         v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
         v-on:relocate-content-item="relocate_content_item(item, $event)"
         v-on:cancel-edit="cancel_edit(item)"
-        v-on:updated-item="absorb_item_updates(item, $event)"
+        v-on:updated-item="absorb_item_updates_NEWEST(item, $event)"
         v-on:insert-new-item="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
@@ -411,7 +411,7 @@
             v-on:move-up-content-item="move_up_content_item(content_array[group.index])"  v-on:move-down-content-item="move_down_content_item(content_array[group.index])"
             v-on:relocate-content-item="relocate_content_item(content_array[group.index], $event)"
             v-on:cancel-edit="cancel_edit(content_array[group.index])"
-            v-on:updated-item="absorb_item_updates(content_array[group.index], $event)"
+            v-on:updated-item="absorb_item_updates_NEWEST(content_array[group.index], $event)"
             v-on:insert-new-item="insert_new_item_after(content_array[group.index], $event)"
     >
     </vue-content-items>
@@ -1158,53 +1158,65 @@ new Vue({
 
            The special keys "schema_code" and "pos" are not changed.
 
-           EXAMPLE of new_data: {uri: '5622', schema_code: 'r', English: 'Woman', German: 'Frau'}
+           EXAMPLE of item, for a newly-created one:
+                                {uri: -2,
+                                 schema_code: "h", class_name: "Headers", pos: -12}
+           EXAMPLE of new_data: {uri: "h-243",
+                                 schema_code: "h", class_name: "Headers", pos: -12,
+                                 text: "Some Header"}
          */
         {
             console.log("In absorb_item_updates_NEWEST()");
+            console.log(`    Original data of Content Item being updated:`);
+            console.log(item);
 
-            const old_uri = item.uri;
+            const old_uri = item.uri;               // This will be a negative number if it was a temporary value for a newly-created Content Item
 
             const schema_code = item.schema_code;   // This will never be affected by edits
             const class_name = item.class_name;     // This will never be affected by edits
-            const pos = item.pos;                   // Not changed thru edits (a separate mechanism is used to reposition items)
 
-            console.log(`    Root element received signal to UPDATE the Content Item that originally had uri '${uri}'`);
-            console.log(`    Original data of Content Ite:`);
-            console.log(item);
+            console.log(`    Root element received signal to UPDATE the Content Item that originally had uri: ${old_uri}`);
+
             console.log(`    Data for the update:`);
             console.log(new_data);
 
             if (old_uri < 0)
-                console.log(`    A temporary URI of {old_uri} is being replaced by the newly-assigned permanent URI '${new_data.uri}'`);
-            elseif (old_uri != new_data.uri)  {
+                console.log(`    A temporary URI of ${old_uri} is being replaced by the newly-assigned permanent URI '${new_data.uri}'`);
+            else if (old_uri != new_data.uri)  {
                 console.error(`    Unexpected attempt to update a permanent URI ('{old_uri}'), with a different value ('${new_data.uri}')`);
                 alert("Attempting to update a permanent URI on the display.  Save your work and refresh the page");
                 return;
             }
 
             // Locate the Content Item to update
-            const index = this.locate_item(schema_code, uri);         // TODO: switch to internal ID's
+            const index = this.locate_item(schema_code, old_uri);         // TODO: switch to internal dbase ID's
 
             if (index == -1)  {    // If the Item is not found on the page
-                console.log(`    Failed to locate Content Item with schema_code '${schema_code}', uri '${uri}'`);
+                console.log(`    Failed to locate Content Item with schema_code '${schema_code}', uri '${old_uri}'`);
                 alert("Unable to update the display.  Save your work and refresh the page");
                 return;
             }
 
             // Bring the frontend up-to-date with the new data
-            console.log(`   Updating the Content Item found in content_array at index: ${index}`);
-
 
             let updated_record = Object.assign({}, new_data);      // Start with a clone of the record with the new data
             // This object will replace the element in content_array at our index position
             // (to later do a complete array element replacement for Vue reactivity)
 
-            // Restore the special unchangeable keys "schema_code", "pos" and "class_name"
+            // Restore the special unchangeable keys "schema_code" and "class_name"
             // [this should not be necessary, unless the plugin component messed up]
             updated_record["schema_code"] = schema_code;
             updated_record["class_name"] = class_name;
-            updated_record["pos"] = pos;
+
+            // Note about the special key "pos":
+            //      1) existing records will have a value not changed thru edits (a separate mechanism is used to reposition items)
+            //      2) newly-created Items will lack it; currently, it's created in the server, but not returned to the plugin components
+
+            if ("insert_after" in updated_record)
+                delete updated_record.insert_after;    // Ditch ("insert_after" is a temporary value, not to be saved)
+
+            console.log(`   Updating the Content Item found in content_array at index: ${index}, with the following record:`);
+            console.log(updated_record);
 
             Vue.set(this.content_array, index, updated_record);     // Vue-reactive change (affecting the UI)
                                                                     // in the specified element of this.content_array
@@ -1213,10 +1225,11 @@ new Vue({
 
 
 
+
         absorb_item_updates_REVISED(new_data)
         /* Update the appropriate entry in this.content_array, with the new data passed by a component
            (generally done at the end of an update on the server.)
-           NOT to be used for newly-added records: use absorb_item_updates() for those.
+           NOT to be used for newly-added records: use absorb_item_updates_NEWEST() for those.
            
            new_data: object containing the special keys "uri" and "schema_code" (TODO: later replace with the internal_dbase_id),
                      used to identify the entry in this.content_array,

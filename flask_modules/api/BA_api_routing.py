@@ -1277,6 +1277,7 @@ class ApiRouting:
                 The URI of the newly-created Data Node
             """
             # TODO: switch from "category_id" to "category_uri"
+            # TODO: also return the newly-assigned "pos" value
             # Extract the POST values
             post_data = request.form
             # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('class_name', 'Headers'),
