@@ -1145,6 +1145,74 @@ new Vue({
 
 
 
+
+        absorb_item_updates_NEWEST(item, new_data)
+        /* Update the appropriate entry in this.content_array, with the new data passed by a component
+           (generally done at the end of an update on the server.)
+
+           item:       pre-edit record
+           new_data:   post-edit record
+
+           Note that the values of the special key "uri" on the item and the new_data will differ if this is a
+           newly-created Content Item, which was tentatively assigned an autoincr negative value as temp uri.
+
+           The special keys "schema_code" and "pos" are not changed.
+
+           EXAMPLE of new_data: {uri: '5622', schema_code: 'r', English: 'Woman', German: 'Frau'}
+         */
+        {
+            console.log("In absorb_item_updates_NEWEST()");
+
+            const old_uri = item.uri;
+
+            const schema_code = item.schema_code;   // This will never be affected by edits
+            const class_name = item.class_name;     // This will never be affected by edits
+            const pos = item.pos;                   // Not changed thru edits (a separate mechanism is used to reposition items)
+
+            console.log(`    Root element received signal to UPDATE the Content Item that originally had uri '${uri}'`);
+            console.log(`    Original data of Content Ite:`);
+            console.log(item);
+            console.log(`    Data for the update:`);
+            console.log(new_data);
+
+            if (old_uri < 0)
+                console.log(`    A temporary URI of {old_uri} is being replaced by the newly-assigned permanent URI '${new_data.uri}'`);
+            elseif (old_uri != new_data.uri)  {
+                console.error(`    Unexpected attempt to update a permanent URI ('{old_uri}'), with a different value ('${new_data.uri}')`);
+                alert("Attempting to update a permanent URI on the display.  Save your work and refresh the page");
+                return;
+            }
+
+            // Locate the Content Item to update
+            const index = this.locate_item(schema_code, uri);         // TODO: switch to internal ID's
+
+            if (index == -1)  {    // If the Item is not found on the page
+                console.log(`    Failed to locate Content Item with schema_code '${schema_code}', uri '${uri}'`);
+                alert("Unable to update the display.  Save your work and refresh the page");
+                return;
+            }
+
+            // Bring the frontend up-to-date with the new data
+            console.log(`   Updating the Content Item found in content_array at index: ${index}`);
+
+
+            let updated_record = Object.assign({}, new_data);      // Start with a clone of the record with the new data
+            // This object will replace the element in content_array at our index position
+            // (to later do a complete array element replacement for Vue reactivity)
+
+            // Restore the special unchangeable keys "schema_code", "pos" and "class_name"
+            // [this should not be necessary, unless the plugin component messed up]
+            updated_record["schema_code"] = schema_code;
+            updated_record["class_name"] = class_name;
+            updated_record["pos"] = pos;
+
+            Vue.set(this.content_array, index, updated_record);     // Vue-reactive change (affecting the UI)
+                                                                    // in the specified element of this.content_array
+
+        }, // absorb_item_updates_NEWEST
+
+
+
         absorb_item_updates_REVISED(new_data)
         /* Update the appropriate entry in this.content_array, with the new data passed by a component
            (generally done at the end of an update on the server.)
@@ -1161,14 +1229,14 @@ new Vue({
             const schema_code = new_data.schema_code;
             const uri = new_data.uri;
 
-            console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' ,  uri '${uri}'`);
+            console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' , with original uri '${uri}'`);
             console.log(`    Data for the update:`);
             console.log(new_data);
 
             const index = this.locate_item(schema_code, uri);         // TODO: switch to internal ID's
 
             if (index == -1)  {    // If the Item is not found on the page
-                console.log(`    Failed to locate schema_code ${schema_code}, uri ${uri}`);
+                console.log(`    Failed to locate schema_code ${schema_code}, uri '${uri}'`);
                 alert("Unable to update the display.  Save your work and refresh the page");
             }
 
@@ -1203,18 +1271,24 @@ new Vue({
 
 
         absorb_item_updates(item, new_data)
-        /*  Update the entry for the specified item in this.content_array, with the new data passed by a component
+        /*  Update the entry for the specified Item in this.content_array,
+            using the new data passed by a component
             (generally done at the end of an update on the server.)
+
+            item:       pre-edit record
+            new_data:   post-edit record
+
             In terms of item's attributes:
-                * "uri" in new_data can be different if it was a newly-added item (which is assigned a temporary value of -1)
+                * The "uri" in new_data can be different if it was a newly-added item
+                    (which is assigned a negative number as a temporary value)
                 * "schema_code" doesn't vary under normal edits
                 * "pos" is not changed thru edits (it uses separate mechanisms to reposition items)
                 * everything else will be updated
 
-            Note: this is an older version, probably to later be combined with absorb_item_updates_REVISED()
+            Note: this is an older version, probably to later be replaced by absorb_item_updates_NEWEST()
          */
         {
-            console.log(`Root element received signal to UPDATE the Content Item.  new_data:`);
+            console.log(`Root element received signal to UPDATE the Content Item that originally had URI '${item.uri}'.  new_data:`);
             console.log(new_data);
             if (new_data.uri)
                 console.log(`    A new current uri was passed: ${new_data.uri}`);
@@ -1222,24 +1296,25 @@ new Vue({
             //if (item.uri != -1)
                 //alert("Attempting to modify an existing ID.  Request ignored...  Save your work and refresh the page");
 
-            // **********  TODO:  The following will NOT work if there's more than one NEW item of the same type!!!!!
-            // 2 strategy ideas: 1) for new items, assign temp ID's of -1, -2, -3, etc. (instead of giving -1 to all)
+            // **********  TODO: [SHOULD WORK NOW] The following used NOT work if there was more than one NEW item of the same type
+            // 2 strategy ideas: 1) for new items, assign temp ID's of -1, -2, -3, etc. (instead of giving -1 to all) <- DONE!
             //                   2) search by ID (-1) AND by pos
-            const index = this.locate_item(item.schema_code, item.uri);         // TODO: switch to internal ID's
 
+            // Locate the Content Item to update
+            const index = this.locate_item(item.schema_code, item.uri);         // TODO: switch to internal ID's
             if (index == -1)    // If the Item is not found on the page
-                alert("Unable to update the display so as to set the ID of the newly-added Content Item.  Save your work and refresh the page");
+                alert(`Unable to refresh the Content Item that had URI '${item.uri}'.  Save your work and refresh the page`);
 
             // Bring the frontend up-to-date with the new data (possibly including the URI just assigned by the server for new Items)
-            //console.log(`Updating the Content Item found in content_array at index: ${index}`);
-            //console.log("The original Content Item is:");
-            //console.log(item);
+            console.log(`Updating the Content Item found in content_array at index: ${index}`);
+            console.log("The original Content Item is:");
+            console.log(item);
 
-            //console.log("The current value of content_array at index: ${index}` is:");
-            //console.log(this.content_array[index]);
+            console.log("The current value of content_array at index: ${index}` is:");
+            console.log(this.content_array[index]);
 
-            //console.log("The new data (sent thru the Vue signal) is:");
-            //console.log(new_data);
+            console.log("The new data (sent thru the Vue signal) is:");
+            console.log(new_data);
             
             
             let updated_record = Object.assign({}, this.content_array[index]);      // Start with a clone of the Content Item object

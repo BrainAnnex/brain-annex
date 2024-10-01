@@ -34,20 +34,25 @@ Vue.component('vue-plugin-h',
 
                 <span v-if="status_message!='' && !editing_mode">Status : {{status_message}}</span>
 
-                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls)
-                      EXCEPT for the "tag" control
+
+                <!--  Start of STANDARD CONTROLS (inline elements that can be extended with extra controls),
+                      EXCEPT for the "tag" control, which is omitted.
+
                       Signals from the Vue child component "vue-controls", below,
                       get relayed to the parent of this component,
                       but some get intercepted and handled here, namely:
 
                               v-on:edit-content-item
+
+                      Optional EXTRA controls may be placed before (will appear to the left)
+                      or after (will appear to the right) of the standard controls
                 -->
                     <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
                                   v-bind:controls_to_hide="['tag']"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item">
                     </vue-controls>
-                <!--  End of Standard Controls -->
+                <!--  End of STANDARD CONTROLS -->
 
             </div>		<!-- End of outer container box -->
             `,
@@ -118,7 +123,7 @@ Vue.component('vue-plugin-h',
                 else {   // Update an EXISTING header
                     post_obj.uri = this.item_data.uri;
 
-                    url_server_api = `/BA/api/update_content_item`;             // URL to communicate with the server's endpoint
+                    url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
 
                 // Go over each field.  TODO: generalize
@@ -129,8 +134,10 @@ Vue.component('vue-plugin-h',
                     return;
                 }
 
-                console.log(`In 'vue-plugin-h', save().  About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(`In 'vue-plugin-h'.  About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server_NEW(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
@@ -146,11 +153,12 @@ Vue.component('vue-plugin-h',
 
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
              */
             {
-                console.log("Finalizing the Header save operation...");
+                console.log("Finalizing the Header save() operation...");
                 if (success)  {     // Server reported SUCCESS
+                    //console.log("    server call was successful");
                     this.status_message = `Successful edit`;
 
                     // If this was a new item (with the temporary negative URI), update its URI with the value assigned by the server
@@ -171,8 +179,8 @@ Vue.component('vue-plugin-h',
                 }
 
                 // Final wrap-up, regardless of error or success
-                this.editing_mode = false;      // Exit the editing mode
                 this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+                this.editing_mode = false;      // Exit the editing mode
 
             }, // finish_save
 

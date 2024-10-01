@@ -199,7 +199,7 @@ Vue.component('vue-plugin-d',
                                   };
                 const my_var = null;        // Optional parameter to pass, if needed
 
-                console.log(`About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(`In 'vue-plugin-d'.  About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
@@ -216,6 +216,7 @@ Vue.component('vue-plugin-d',
                 this.status_message = "";   // Clear any message from the previous operation
             },
 
+
             finish_save_edit(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of save_edit() upon getting a response from the server
             {
@@ -224,6 +225,12 @@ Vue.component('vue-plugin-d',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
+
+                    // Inform the parent component of the new state of the document's metadata
+                    console.log("Documents component sending `updated-item` signal to its parent");
+                    this.$emit('updated-item', this.current_metadata);
+
+                    // Synchronize the baseline data to the finalized current data
                     this.pre_edit_metadata = Object.assign({}, this.current_metadata);  // Clone
                 }
                 else  {             // Server reported FAILURE
@@ -244,7 +251,6 @@ Vue.component('vue-plugin-d',
             {
                 return text.replace(/\n/g, "<br>");
             },
-
 
 
             render_url(cell_data)
