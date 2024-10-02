@@ -88,7 +88,7 @@ Vue.component('vue-plugin-d',
                         &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
                         &nbsp;&nbsp; <span style="color: gray">URI: &#96;{{current_metadata.uri}}&#96;</span>
 
-                        <!-- CONTROLS to edit the document metadata -->
+                        <!-- CONTROLS to edit the document METADATA -->
                         <p v-show="edit_metadata" style="text-align: right">
                             <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                             <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
@@ -131,7 +131,7 @@ Vue.component('vue-plugin-d',
         // ------------------------------   DATA   ------------------------------
         data: function() {
             return {
-                edit_metadata: false,
+                edit_metadata: false,   // Editing mode for the metadata
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -161,7 +161,7 @@ Vue.component('vue-plugin-d',
             edit_content_item()
             // Enable the document edit mode
             {
-                //console.log(`Documents component received signal to edit document`);
+                //console.log(`Documents component received signal to edit document's metadata`);
                 this.edit_metadata = true;
             },
 
@@ -179,9 +179,9 @@ Vue.component('vue-plugin-d',
 
 
             save_edit()
-            // Send a request to the server, to update the document's caption
+            // Send a request to the server, to update the document's metadata
             {
-                //console.log(`In save_edit(): attempting to save the new caption (${this.current_metadata.caption}) , for document with URI '${this.item_data.uri}'`);
+                //console.log(`In save_edit(): attempting to save the new metadata, for document with URI '${this.item_data.uri}'`);
 
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item";
@@ -236,6 +236,7 @@ Vue.component('vue-plugin-d',
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
+                    // Revert to pre-edit data
                     this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone
                 }
 
