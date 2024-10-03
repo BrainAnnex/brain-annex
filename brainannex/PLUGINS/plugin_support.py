@@ -13,10 +13,10 @@ def default_folder(class_name :str) -> str:
     if class_name == "Document":
         return Documents.default_folder()
 
-    if class_name == "Images":  # TODO: change to singular
+    if class_name == "Image":
         return Images.default_folder()
 
-    if class_name == "Notes":   # TODO: change to singular
+    if class_name == "Note":
         return Notes.default_folder()
 
     raise Exception(f"plugin_support.default_folder(): unknown or missing value for "
@@ -33,8 +33,8 @@ def all_default_folders() -> dict:
     d = {}
 
     d["Document"] = Documents.default_folder()
-    d["Images"] = Images.default_folder()           # TODO: change to singular
-    d["Notes"] = Notes.default_folder()             # TODO: change to singular
+    d["Image"] = Images.default_folder()
+    d["Note"] = Notes.default_folder()
 
     return d
 
@@ -49,4 +49,4 @@ def is_media_class(class_name :str) -> bool:
     """
     # TODO: for now hardwired; ought to instead query the Schema, to discover if the given Class
     #       is an INSTANCE_OF the "Media" class
-    return class_name in ["Document", "Images", "Notes"]    # TODO: change to singular
+    return class_name in ["Document", "Image", "Note"]

@@ -136,7 +136,7 @@ class PagesRouting:
             # Keys are Class names; Values are lists of their Properties
             # EXAMPLE: {'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
             #           'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
-            #           'Headers': ['text'],
+            #           'Header': ['text'],
             #           'Quote': ['quote', 'attribution', 'notes'],
             #           'Recordset': ['class', 'order_by', 'clause', 'n_group']}
             #print("items_schema_data: ", items_schema_data)
@@ -152,7 +152,7 @@ class PagesRouting:
             content_items = Categories.get_content_items_by_category(category_uri)
             #   List of dictionaries.  EXAMPLE:
             #       [
-            #           {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
+            #           {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
             #           {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
             #           {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
             #                                   'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}

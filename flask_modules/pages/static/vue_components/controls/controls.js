@@ -4,6 +4,8 @@
         the DIV is an inline-block, so that the parent component
         may easily add extra controls at the start and/or end of its standard row.
     If the 'edit_mode' prop is false, nothing is generated
+
+    TODO: maybe rename 'vue-standard-controls'
  */
 
 Vue.component('vue-controls',

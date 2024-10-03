@@ -65,14 +65,14 @@ def test_bread_crumbs(db):
 
 def test_add_content_at_end(db):
     new_uri = Categories.add_content_at_end(category_uri=708,
-                                            item_class_name="Headers",
+                                            item_class_name="Header",
                                             item_properties={"text": "This is a New Caption, added at the end"})
     print("new_uri:", new_uri)
 
 
 def test_add_content_at_beginning(db):
     new_uri = Categories.add_content_at_beginning(category_uri=708,
-                                                  item_class_name="Headers",
+                                                  item_class_name="Header",
                                                   item_properties={"text": "This is a New Caption, added before anything else"})
     print("new_uri:", new_uri)
 
@@ -80,7 +80,7 @@ def test_add_content_at_beginning(db):
 def test_add_content_after_element(db):
     new_uri = \
         Categories.add_content_after_element(category_uri=708,
-                                             item_class_name="Headers", item_properties={"text": "Caption 4, inserted 'after element'"},
+                                             item_class_name="Header", item_properties={"text": "Caption 4, inserted 'after element'"},
                                              insert_after=729)
     print("new_uri: ", new_uri)
 

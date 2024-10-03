@@ -30,8 +30,8 @@ def test_default_file_path():
 
     assert MediaManager.default_file_path(class_name="Document") == "D:/media/my_media_folder/documents/"
 
-    assert MediaManager.default_file_path(class_name="Images", thumb=False) == "D:/media/my_media_folder/images/"
-    assert MediaManager.default_file_path(class_name="Images", thumb=True) == "D:/media/my_media_folder/images/resized/"
+    assert MediaManager.default_file_path(class_name="Image", thumb=False) == "D:/media/my_media_folder/images/"
+    assert MediaManager.default_file_path(class_name="Image", thumb=True) == "D:/media/my_media_folder/images/resized/"
 
 
 
@@ -40,7 +40,7 @@ def test_retrieve_full_path(db):
     Images.initialize_schema()
 
     # Create an Image node, with the default folder for its type    TODO: turn all the various sample setup into a utility function
-    NeoSchema.create_data_node(class_node="Images", properties={"basename": "snap1", "suffix": "jpg"},
+    NeoSchema.create_data_node(class_node="Image", properties={"basename": "snap1", "suffix": "jpg"},
                                new_uri="image-1")
 
     assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/"
@@ -66,7 +66,7 @@ def test_lookup_media_file(db):
     Images.initialize_schema()
 
     # Create an Image node, with the default folder for its type
-    NeoSchema.create_data_node(class_node="Images", properties={"basename": "snap1", "suffix": "jpg"},
+    NeoSchema.create_data_node(class_node="Image", properties={"basename": "snap1", "suffix": "jpg"},
                                new_uri="image-1")
 
     assert MediaManager.lookup_media_file(uri="image-1") == ("D:/media/my_media_folder/images/", "snap1", "jpg")
@@ -93,7 +93,7 @@ def test_get_full_filename(db):
     Images.initialize_schema()
 
     # Create an Image node, with the default folder for its type
-    NeoSchema.create_data_node(class_node="Images", properties={"basename": "snap1", "suffix": "jpg"},
+    NeoSchema.create_data_node(class_node="Image", properties={"basename": "snap1", "suffix": "jpg"},
                                new_uri="image-1")
 
     assert MediaManager.get_full_filename("image-1") == "D:/media/my_media_folder/images/snap1.jpg"

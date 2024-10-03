@@ -134,7 +134,7 @@ class Collections:
         and add it at the beginning of the specified Collection, linked by the specified relationship
 
         EXAMPLE:  new_uri = add_to_collection_at_beginning(collection_id=708, membership_rel_name="BA_in_category",
-                                                        item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
+                                                        item_class_name="Header", item_properties={"text": "New Caption, at the end"})
         <SEE add_to_collection_at_end>
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
@@ -419,7 +419,7 @@ class Collections:
         and add it at the end of the specified Collection, linked by the specified relationship
 
         EXAMPLE:  new_uri = add_to_collection_at_end(collection_id=708, membership_rel_name="BA_in_category",
-                                                     item_class_name="Headers", item_properties={"text": "New Caption, at the end"}
+                                                     item_class_name="Header", item_properties={"text": "New Caption, at the end"}
 
         :param collection_uri:      The uri of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name:

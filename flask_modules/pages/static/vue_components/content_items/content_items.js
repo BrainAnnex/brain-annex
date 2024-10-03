@@ -10,7 +10,7 @@ Vue.component('vue-content-items',
     {
         props: ['item', 'expose_controls', 'category_uri', 'index', 'item_count',
                 'registered_plugins', 'records_types', 'schema_data', 'all_categories'],
-        /*  item:           EXAMPLE: {uri:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Headers"}
+        /*  item:           EXAMPLE: {uri:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Header"}
                                      (if uri is a negative number, it means that it's a newly-created Content Item, not yet registered with the server)
                             Maybe rename to item_data
 
@@ -82,8 +82,8 @@ Vue.component('vue-content-items',
 
                 <span style="margin-right:10px">Add new:</span>
                 <!-- TODO: automate these choices, based on Schema.  Merge with similar box in page_viewer.htm -->
-                <button @click="add_new_item_below('h', 'Headers')" style="margin-right:10px">Header</button>
-                <button @click="add_new_item_below('n', 'Notes')" style="margin-right:10px">Note</button>
+                <button @click="add_new_item_below('h', 'Header')" style="margin-right:10px">Header</button>
+                <button @click="add_new_item_below('n', 'Note')" style="margin-right:10px">Note</button>
                 <button @click="add_new_item_below('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
                 <button @click="add_new_item_below('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
                 <button @click="add_new_item_below('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation</button>
@@ -197,7 +197,7 @@ Vue.component('vue-content-items',
                 // TODO: make more general; store the "separate_line" flag in the Schema Class nodes
                 //       Currently, we're covering some specific class, and the general "records" (which
                 //       lack registered plugins)
-                return (this.item.class_name == "Headers") || (this.item.class_name == "Site Link")
+                return (this.item.class_name == "Header") || (this.item.class_name == "Site Link")
                             || (this.item.class_name == "Recordset")
                             || !this.registered_plugins.includes(this.item.schema_code);
             }

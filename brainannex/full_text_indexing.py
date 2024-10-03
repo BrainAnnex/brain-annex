@@ -263,7 +263,7 @@ class FullTextIndexing:
         :param content_item_class_name: (OPTIONAL) The name of the Schema Class for Content Items,
                                             i.e. the Class of the Data Items to be indexed
                                             if not found, it gets created
-                                            EXAMPLES: "Document", "Notes", "Content Items" (default)
+                                            EXAMPLES: "Document", "Note", "Content Items" (default)
         :return:                        None
         """
         #         TODO: manage indexing.  If done in Cypher:
@@ -485,7 +485,7 @@ class FullTextIndexing:
             f"remove_indexing(): unable to find an index for the given Content Item node" \
             f" (internal id {content_uri}).  Maybe you already removed it?"
 
-        NeoSchema.delete_data_node(node_id=indexer_id, labels="Indexer", class_node="Indexer")
+        NeoSchema.delete_data_node_OLD(node_id=indexer_id, labels="Indexer", class_node="Indexer")
 
 
 
@@ -609,7 +609,7 @@ class FullTextIndexing:
         for filename in file_list:
             #print(f"\n {i} -------------------------\n", filename)
             (basename, suffix) = os.path.splitext(filename)
-            q = f"MATCH (n:Notes) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN ID(n) AS node_int_id"
+            q = f"MATCH (n:Note) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN ID(n) AS node_int_id"
             node_int_id = cls.db.query(q, single_cell="node_int_id")
             #print("    node's integer ID: ", node_int_id)
             path = "TBA"
@@ -681,7 +681,7 @@ class FullTextIndexing:
 
         if search_category:
             #print("Restricting search to Content Items under Category with URI: ", search_category)
-            additional_matching = "-[:BA_in_category]->(:Categories)-[:BA_subcategory_of*0..]->(cat:Categories)"
+            additional_matching = "-[:BA_in_category]->(:Category)-[:BA_subcategory_of*0..]->(cat:Category)"
             where_additional_clause += " AND cat.uri = $search_category"
             data_binding["search_category"] = search_category
 

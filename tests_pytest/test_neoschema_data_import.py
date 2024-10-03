@@ -22,19 +22,446 @@ def db():
 
 
 
-def test_import_pandas_nodes(db):
+def test_import_pandas_nodes_1(db):
+    db.empty_dbase()
+
+    df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
+
+    with pytest.raises(Exception):
+        NeoSchema.import_pandas_nodes(df=df, class_name="State")    # Undefined Class
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="State",
+                                           properties=["name"], strict=True)
+
+
+    # Import all state with a particular batch size
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=1)
+    assert import_result["number_nodes_created"] == 3
+    import_state_list = import_result["affected_nodes_ids"]
+
+    # Verify that 3 Data Node were imported
+    assert len(import_state_list) == 3
+    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    # Make sure our 3 states are present in the import
+    q = '''
+        UNWIND ["CA", "NY", "OR"] AS state_name
+        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        RETURN id(s) AS internal_id
+        '''
+    result = db.query(q, single_column="internal_id")
+    assert compare_unordered_lists(result, import_state_list)
+
+
+    # Delete all state Data Nodes, and re-do import with a different batch size
+    NeoSchema.delete_data_nodes(class_name="State")
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=2)
+    assert import_result["number_nodes_created"] == 3
+    import_state_list = import_result["affected_nodes_ids"]
+
+    # Verify that 3 Data Node were imported
+    assert len(import_state_list) == 3
+    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    # Make sure our 3 states are present in the import
+    q = '''
+        UNWIND ["CA", "NY", "OR"] AS state_name
+        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        RETURN id(s) AS internal_id
+        '''
+    result = db.query(q, single_column="internal_id")
+    assert compare_unordered_lists(result, import_state_list)
+
+
+    # Delete all state Data Nodes, and re-do import with a different batch size
+    NeoSchema.delete_data_nodes(class_name="State")
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=3)
+    assert import_result["number_nodes_created"] == 3
+    import_state_list = import_result["affected_nodes_ids"]
+
+    # Verify that 3 Data Node were imported
+    assert len(import_state_list) == 3
+    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    # Make sure our 3 states are present in the import
+    q = '''
+        UNWIND ["CA", "NY", "OR"] AS state_name
+        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        RETURN id(s) AS internal_id
+        '''
+    result = db.query(q, single_column="internal_id")
+    assert compare_unordered_lists(result, import_state_list)
+
+
+    # Delete all state Data Nodes, and re-do import with a different batch size
+    NeoSchema.delete_data_nodes(class_name="State")
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=100)
+    assert import_result["number_nodes_created"] == 3
+    import_state_list = import_result["affected_nodes_ids"]
+
+    # Verify that 3 Data Node were imported
+    assert len(import_state_list) == 3
+    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    # Make sure our 3 states are present in the import
+    q = '''
+        UNWIND ["CA", "NY", "OR"] AS state_name
+        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        RETURN id(s) AS internal_id
+        '''
+    result = db.query(q, single_column="internal_id")
+    assert compare_unordered_lists(result, import_state_list)
+
+
+
+def test_import_pandas_nodes_2(db):
     db.empty_dbase()
 
     # Set up the Schema
     NeoSchema.create_class_with_properties(name="State",
                                            properties=["name"], strict=True)
 
-    df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
-    import_list_1 = NeoSchema.import_pandas_nodes(df=df, class_node="State")
 
-    assert len(import_list_1) == 3
+    df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
+
+    # Import all states with a large batch size, as done in test_import_pandas_nodes_1()
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=100)
+    assert import_result["number_nodes_created"] == 3
+
+
+    # Prepare, and import, a second dataset
+    df_2 = pd.DataFrame({"name": ["FL", "CA", "TX", "FL"]})    # Notice that "CA" is a duplicate from the earlier dataframe
+                                                                # and that "FL" occurs twice
+
+    # Import this second dataset with a medium batch size - and treat "name" as a unique primary key
+    import_result = NeoSchema.import_pandas_nodes(df=df_2, class_name="State", primary_key="name",
+                                                  max_batch_size=2)
+    assert import_result["number_nodes_created"] == 2       # 2 of the 4 imports already existed
+
+
+
+def test_import_pandas_nodes_3(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="Motor Vehicle",
+                                           properties=["vehicle ID", "make", "year"], strict=True)
+
+    df = pd.DataFrame({"vehicle ID": ["c1",    "c2",     "c3"],
+                             "make": ["Honda", "Toyota", "Ford"],
+                             "year": [2003,    2013,     2023]})
+
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                  max_batch_size=2)
+    assert import_result["number_nodes_created"] == 3
+    assert len(import_result["affected_nodes_ids"]) == 3
+
+
+    # Add more imports.  Note that "c2" is already present (if "vehicle ID" is a primary key),
+    # and that "color" is not the Schema
+    df_2 = pd.DataFrame({"vehicle ID": ["c4",        "c2",    "c5"],
+                               "make": ["Chevrolet", "BMW",   "Fiat"],
+                              "color": ["red",       "white", "blue"]})
+
+    with pytest.raises(Exception):      # "color" in not in the Schema
+        NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
+                                      primary_key="vehicle ID")
+
+    # Expand the Schema, to also include "color"
+    NeoSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
+
+    import_result_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
+                                                    max_batch_size=2,
+                                                    primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
+    assert import_result_2["number_nodes_created"] == 2         # One of the 3 imports doesn't lead to node creation
+    assert len(import_result_2["affected_nodes_ids"]) == 3      # 3 nodes were either created or updated
+
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'         # Retrieve the record that was in both dataframes
+    result = db.query(q)
+    assert len(result) == 1
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013} # The duplicate record 'c2' was updated by the new one
+                                                                                                # Notice how the Toyota became a BMW, the 'color' was added,
+                                                                                                # and the 'year' value was left untouched
+    assert result[0]["internal_id"] in import_result_2["affected_nodes_ids"]
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+
+
+    # A fresh start with "Motor Vehicle" data nodes
+    db.delete_nodes_by_label(delete_labels="Motor Vehicle")
+
+    # Re-import the first 3 records
+    import_result_1 = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle", max_batch_size=2)
+    assert import_result_1["number_nodes_created"] == 3
+    assert len(import_result_1["affected_nodes_ids"]) == 3
+
+    # Re-import the next 3 records (one of which has a duplicate)
+    import_result_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
+                                                    max_batch_size=2,
+                                                    primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be REPLACED (not "merged") this time
+    assert import_result_2["number_nodes_created"] == 2         # One of the 3 imports doesn't lead to node creation
+    assert len(import_result_2["affected_nodes_ids"]) == 3      # 3 nodes were either created or updated
+
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'     # Retrieve the record that was in both dataframes
+    result = db.query(q)
+    assert len(result) == 1
+
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white'}  # The duplicate record 'c2' was completely replaced by the new one
+                                                                                    # Notice how the Toyota became a BMW, the 'color' was added,
+                                                                                    # and (unlike before) the 'year' value is gone
+    assert result[0]["internal_id"] in import_result_2["affected_nodes_ids"]
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+
+
+
+def test_import_pandas_nodes_4(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="Motor Vehicle",
+                                           properties=["VID", "manufacturer", "year", "color"], strict=True)
+
+    df = pd.DataFrame({"vehicle ID": ["c1",    "c2",     "c3"],
+                             "make": ["Honda", "Toyota", "Ford"],
+                             "year": [2003,    2013,     2023]})
+
+    import_result_1 = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                    max_batch_size=2,
+                                                    rename={"vehicle ID": "VID", "make": "manufacturer"})
+    assert import_result_1['number_nodes_created'] == 3
+    import_car_list_1 = import_result_1['affected_nodes_ids']
+    assert len(import_car_list_1) == 3
+
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'neo4j_labels': ['Motor Vehicle']}
+               ]
+    assert compare_recordsets(result, expected)
+
+
+    # Note that "c2" is already present (if "vehicle ID" is a primary key)
+    df_2 = pd.DataFrame({"vehicle ID": ["c4",        "c2",    "c5"],
+                               "make": ["Chevrolet", "BMW",   "Fiat"],
+                               "year": [2005,        2015,    2025],
+                              "color": ["red",       "white", "blue"]
+                        })
+
+    import_result_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
+                                                    primary_key="vehicle ID", duplicate_option="merge",
+                                                    rename={"vehicle ID": "VID", "make": "manufacturer"},
+                                                    max_batch_size=2)
+    assert import_result_2['number_nodes_created'] == 2     # Only 2 of the 3 records imported led to the creation of a new node
+    import_car_list_2 = import_result_2['affected_nodes_ids']
+    assert len(import_car_list_2) == 3                      # 3 nodes were either created or updated
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], 'neo4j_labels': ['Motor Vehicle'], 'color': 'white'},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'neo4j_labels': ['Motor Vehicle']},
+
+                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[2], 'neo4j_labels': ['Motor Vehicle']}
+               ]    # Notice how the 'c2' record got updated
+
+    assert compare_recordsets(result, expected)
+
+    assert import_car_list_1[1] == import_car_list_2[1]     # The "c2" record import (first created, then updated)
+
+
+
+def test_import_pandas_nodes_5(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="Motor Vehicle",
+                                           properties=["VID", "make", "year", "color"], strict=True)
+
+    # Notice that "c2" is a duplicate
+    df = pd.DataFrame({  "VID":   ["c1",    "c2",     "c3",     "c4",        "c2",     "c5"],
+                         "make":  ["Honda", "Toyota", "Ford",   "Chevrolet", "BMW",    "Fiat"],
+                         "year":  [2003,    2013,     2023,     2005,        2015,     2025],
+                         "color": ["red",  "white",   "black",  "pink",      "yellow", "blue"]})
+
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                  primary_key="VID", duplicate_option="merge",
+                                                  max_batch_size=3, drop="year")
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert import_result['number_nodes_created'] == 5
+    import_car_list = import_result['affected_nodes_ids']
+    assert len(import_car_list) == 6                        # 6 nodes were either created or updated
+    assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
+
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+               ]    # Notice how the 'c2' record got updated
+
+    assert compare_recordsets(result, expected)
+
+
+    # A fresh start with "Motor Vehicle" data nodes
+    db.delete_nodes_by_label(delete_labels="Motor Vehicle")
+
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                  primary_key="VID", duplicate_option="merge",
+                                                  max_batch_size=2, select=["VID", "make", "color"])
+    # Notice that the 3 fields we're selected have the identical effect as the dropping of "year" we did before;
+    # also, changing the max_chunk_size.  All the results will be identical to before
+
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert import_result['number_nodes_created'] == 5
+    import_car_list = import_result['affected_nodes_ids']
+    assert len(import_car_list) == 6                        # 6 nodes were either created or updated
+    assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
+
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+               ]    # Notice how the 'c2' record got updated
+
+    assert compare_recordsets(result, expected)
+
+
+
+def test_import_pandas_nodes_6(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="Motor Vehicle",
+                                           properties=["VID", "make", "year", "color"], strict=True)
+
+    # Notice that "c2" is a duplicate
+    df = pd.DataFrame({  "VID":   ["c1",    "c2",     "c3",     "c4",        "c2",     "c5"],
+                         "make":  ["Honda", "Toyota", "Ford",   "Chevrolet", "BMW",    "Fiat"],
+                         "year":  [2003,    2013,     2023,     2005,        2015,     2025],
+                         "color": ["red",  "white",   "black",  "pink",      "yellow", "blue"]})
+
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                  primary_key="VID", duplicate_option="merge",
+                                                  max_batch_size=4, drop=["make", "color"])
+
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert import_result['number_nodes_created'] == 5
+    import_car_list = import_result['affected_nodes_ids']
+    assert len(import_car_list) == 6                        # 6 nodes were either created or updated
+    assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
+
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'year': 2003, 'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'year': 2005, 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'year': 2025, 'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+               ]    # Notice how the 'c2' record got updated
+
+    assert compare_recordsets(result, expected)
+
+
+    # A fresh start with "Motor Vehicle" data nodes
+    db.delete_nodes_by_label(delete_labels="Motor Vehicle")
+
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                  primary_key="VID", duplicate_option="merge",
+                                                  max_batch_size=10, select="VID")
+
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert import_result['number_nodes_created'] == 5
+    import_car_list = import_result['affected_nodes_ids']
+    assert len(import_car_list) == 6                        # 6 nodes were either created or updated
+    assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
+
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+               ]
+
+    assert compare_recordsets(result, expected)
+
+
+    # Another fresh start with "Motor Vehicle" data nodes
+    db.delete_nodes_by_label(delete_labels="Motor Vehicle")
+
+    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                  max_batch_size=10, select="VID")
+    # This time, NOT specifying a primary_key
+
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 6      # Verify that ALL Data Nodes were imported this time
+    assert import_result['number_nodes_created'] == 6
+    import_car_list = import_result['affected_nodes_ids']
+    assert len(import_car_list) == 6                        # 6 nodes were either created or updated
+    assert len(set(import_car_list)) == 6                   # 6 unique values (the internal ID for node "c2" repeats twice)
+
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[4], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+               ]
+
+    assert compare_recordsets(result, expected)
+
+
+
+def test_import_pandas_nodes_7(db):
+    db.empty_dbase()
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="Motor Vehicle",
+                                           properties=["VID", "manufacturer", "year", "color"], strict=True)
+
+    df = pd.DataFrame({"VID": ["c1",    "c2",     "c3"],
+                      "make": ["Honda", "Toyota", "Ford"],
+                      "year": [2003,    2013,     2023]})
+
+    with pytest.raises(Exception):
+        NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                      primary_key="non_existent")     # Primary key not in the dataframe
+
+    with pytest.raises(Exception):
+        NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                      primary_key="VID", drop="VID")     # Primary key is a dropped column
+
+    with pytest.raises(Exception):
+        NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                      primary_key="VID", drop=["VID", "year"])     # Primary key is a dropped column
+
+
+
+
+
+
+def test_import_pandas_nodes_1_OLD(db):
+    db.empty_dbase()
+
+    df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
+
+    with pytest.raises(Exception):
+        NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="State")    # Undefined Class
+
+    # Set up the Schema
+    NeoSchema.create_class_with_properties(name="State",
+                                           properties=["name"], strict=True)
+
+    import_state_list_1 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="State")
 
     # Verify that 3 Data Node were imported
+    assert len(import_state_list_1) == 3
     assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
 
     # Make sure our 3 states are present in the import
@@ -45,16 +472,18 @@ def test_import_pandas_nodes(db):
         '''
     result = db.query(q, single_column="internal_id")
 
-    assert compare_unordered_lists(result, import_list_1)
+    assert compare_unordered_lists(result, import_state_list_1)
 
 
-    # Duplicate entry: "CA"
+    # Duplicate entry: "CA" (from new dataset to be added to the previous one)
     df_2 = pd.DataFrame({"name": ["NV", "CA", "WA"]})
-    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="State",
-                                                  primary_key="name")
-    print(import_list_2)
 
-    # Verify that a grand total of only 5 Data Node were imported (the duplicate didn't lead to an extra record)
+    import_state_list_2 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="State",
+                                                                 primary_key="name")
+
+    # Verify that a grand total of only 5 Data Node were imported (i.e.,
+    # the duplicate didn't lead to an extra record)
+    assert len(import_state_list_2) == 2
     assert NeoSchema.count_data_nodes_of_class(class_name="State") == 5
 
     q = '''
@@ -64,42 +493,45 @@ def test_import_pandas_nodes(db):
         '''
     result = db.query(q, single_column="internal_id")
 
-    assert set(result) == set(import_list_1).union(set(import_list_2))
+    assert set(result) == set(import_state_list_1).union(set(import_state_list_2))
 
 
-    # Expand the Schema
+    # Expand the Schema with a new Class
     NeoSchema.create_class_with_properties(name="Motor Vehicle",
                                            properties=["vehicle ID", "make", "year"], strict=True)
 
-    df = pd.DataFrame({"vehicle ID": ["c1", "c2", "c3"],
-                       "make": ["Honda", "Toyota", "Ford"],
-                       "year": [2003, 2013, 2023]})
+    df = pd.DataFrame({"vehicle ID": ["c1",    "c2",     "c3"],
+                             "make": ["Honda", "Toyota", "Ford"],
+                             "year": [2003,    2013,     2023]})
 
-    import_list_1 = NeoSchema.import_pandas_nodes(df=df, class_node="Motor Vehicle")
+    import_car_list_1 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle")
 
+
+    assert len(import_car_list_1) == 3
 
     # Note that "c2" is already present (if "vehicle ID" is a primary key),
     # and that "color" is not the Schema
-    df_2 = pd.DataFrame({"vehicle ID": ["c4", "c2", "c5"],
-                         "make": ["Chevrolet", "BMW", "Fiat"],
-                         "color": ["red", "white", "blue"]})
+    df_2 = pd.DataFrame({"vehicle ID": ["c4",        "c2",    "c5"],
+                               "make": ["Chevrolet", "BMW",   "Fiat"],
+                              "color": ["red",       "white", "blue"]})
 
     with pytest.raises(Exception):      # "color" in not in the Schema
-        NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
-                                      primary_key="vehicle ID")
+        NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
+                                               primary_key="vehicle ID")
 
     NeoSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
 
-    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
-                                                  primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
+    import_car_list_2 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
+                                                               primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
+    assert len(import_car_list_2) == 2
 
-    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id' # Retrieve the duplicate record
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'         # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
     assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013} # The duplicate record 'c2' was updated by the new one
                                                                                                 # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                                 # and the 'year' value was left untouched
-    assert result[0]["internal_id"] in import_list_2
+    assert result[0]["internal_id"] in import_car_list_1
     assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
@@ -107,20 +539,79 @@ def test_import_pandas_nodes(db):
     db.delete_nodes_by_label(delete_labels="Motor Vehicle")
 
     # Re-import the first 3 records
-    NeoSchema.import_pandas_nodes(df=df, class_node="Motor Vehicle")
+    import_car_list_1 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle")
+    assert len(import_car_list_1) == 3
 
-    import_list_2 = NeoSchema.import_pandas_nodes(df=df_2, class_node="Motor Vehicle",
-                                                  primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be replaced
+    # Re-import the next 3 records (one of which has a duplicate)
+    import_car_list_2 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
+                                                               primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be REPLACED (not "merged") this time
+    assert len(import_car_list_2) == 2
 
-    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id' # Retrieve the duplicate record
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'     # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
 
     assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white'}  # The duplicate record 'c2' was completely replaced by the new one
                                                                                     # Notice how the Toyota became a BMW, the 'color' was added,
-                                                                                    # and the 'year' value is gone
-    assert result[0]["internal_id"] in import_list_2
+                                                                                    # and (unlike before) the 'year' value is gone
+    assert result[0]["internal_id"] in import_car_list_1
     assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+
+
+def test_import_pandas_nodes_2_OLD(db):
+    db.empty_dbase()
+
+    # Populate the Schema
+    NeoSchema.create_class_with_properties(name="Motor Vehicle",
+                                           properties=["VID", "manufacturer", "year", "color"], strict=True)
+
+    df = pd.DataFrame({"vehicle ID": ["c1",    "c2",     "c3"],
+                             "make": ["Honda", "Toyota", "Ford"],
+                             "year": [2003,    2013,     2023]})
+
+    import_car_list_1 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle",
+                                                               rename={"vehicle ID": "VID", "make": "manufacturer"})
+    assert len(import_car_list_1) == 3
+
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'neo4j_labels': ['Motor Vehicle']}
+               ]
+    assert compare_recordsets(result, expected)
+
+
+    # Note that "c2" is already present (if "vehicle ID" is a primary key)
+    df_2 = pd.DataFrame({"vehicle ID": ["c4",        "c2",    "c5"],
+                               "make": ["Chevrolet", "BMW",   "Fiat"],
+                               "year": [2005,        2015,    2025],
+                              "color": ["red",       "white", "blue"]
+                        })
+
+    import_car_list_2 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
+                                                               primary_key="vehicle ID", duplicate_option="merge",
+                                                               rename={"vehicle ID": "VID", "make": "manufacturer"})
+    assert len(import_car_list_2) == 2
+    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    expected = [
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], 'neo4j_labels': ['Motor Vehicle'], 'color': 'white'},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'neo4j_labels': ['Motor Vehicle']},
+
+                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[1], 'neo4j_labels': ['Motor Vehicle']}
+               ]    # Notice how the 'c2' record got updated
+
+    assert compare_recordsets(result, expected)
+
+    # TODO: test "drop", "select"
+
+    q = f'''
+        MATCH (n :`Motor Vehicle`) WHERE id(n) IN {import_car_list_2}
+        RETURN n
+        '''
 
     # TODO: more tests; see also the tests for NeoAccess.load_pandas()
 
@@ -147,10 +638,10 @@ def test_import_pandas_links(db):
     state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4]})
 
     # Import the data nodes
-    city_node_ids = NeoSchema.import_pandas_nodes(df=city_df, class_node="City")
+    city_node_ids = NeoSchema.import_pandas_nodes_NO_BATCH(df=city_df, class_name="City")
     assert len(city_node_ids) == 4
 
-    state_node_ids = NeoSchema.import_pandas_nodes(df=state_df, class_node="State")
+    state_node_ids = NeoSchema.import_pandas_nodes_NO_BATCH(df=state_df, class_name="State")
     assert len(state_node_ids) == 3
 
     # Now import the links
@@ -184,7 +675,7 @@ def test_create_tree_from_dict_1(db):
 
     # This import will result in the creation of a new node, with 2 attributes, named "state" and "city"
     root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="address", cache=cache)
-    print(root_neo_id)
+    #print(root_neo_id)
     assert root_neo_id is not None
 
     q = '''
@@ -217,7 +708,7 @@ def test_create_tree_from_dict_2(db):
     # This import will result in the creation of 2 nodes, namely the tree root (with a single attribute "name"), with
     # an outbound link named "address" to another node (the subtree) that has the "state" and "city" attributes
     root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="person", cache=cache)
-    print(root_neo_id)
+    #print(root_neo_id)
 
     assert root_neo_id is not None
 
@@ -251,7 +742,7 @@ def test_create_tree_from_list_1(db):
 
     # This import will result in the creation of two new nodes, each with 2 attributes, named "state" and "city"
     root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address", cache=cache)
-    print(root_neo_id_list)
+    #print(root_neo_id_list)
 
     assert root_neo_id_list is not None
 
@@ -285,7 +776,7 @@ def test_create_tree_from_list_2(db):
 
     # This import will result in the creation of two new nodes, each with a property by default named "value"
     root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address", cache=cache)
-    print("root_neo_id_list: ", root_neo_id_list)
+    #print("root_neo_id_list: ", root_neo_id_list)
 
     assert len(root_neo_id_list) == 2
 
@@ -297,12 +788,13 @@ def test_create_tree_from_list_2(db):
     '''
 
     result = db.query(q)
-    print(result)   # EXAMPLE: [{'id_1': 8, 'id_2': 9}]
+    #print(result)   # EXAMPLE: [{'id_1': 8, 'id_2': 9}]
 
     actual_root_ids_dict = result[0]
     actual_root_ids_list = [actual_root_ids_dict['id_1'], actual_root_ids_dict['id_2']]
     assert actual_root_ids_list == root_neo_id_list \
            or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
+
 
 
 ####################################################################################################
@@ -632,7 +1124,7 @@ def test_create_data_nodes_from_python_data_6(db):
 def test_create_data_nodes_from_python_data_7(db):
     db.empty_dbase()
 
-    create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "categories"
+    create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "Category"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
@@ -647,7 +1139,7 @@ def test_create_data_nodes_from_python_data_7(db):
 
     # Import
     node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="quotes")
-    print("node_id_list: ", node_id_list)
+    #print("node_id_list: ", node_id_list)
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
@@ -681,7 +1173,7 @@ def test_create_data_nodes_from_python_data_8(db):
     # and introducing non-Schema data
     db.empty_dbase()
 
-    create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "categories"
+    create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "Category"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
@@ -702,7 +1194,7 @@ def test_create_data_nodes_from_python_data_8(db):
 
     # Import
     node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="quotes")
-    print("node_id_list: ", node_id_list)
+    #print("node_id_list: ", node_id_list)
     assert len(node_id_list) == 2
 
     # Locate the "Import Data" data node
@@ -722,7 +1214,6 @@ def test_create_data_nodes_from_python_data_8(db):
             RETURN q, cl_q, cl_i
             '''
         result = db.query(q, data_binding={"quote_id": root_id})
-        print(result)
         assert len(result) == 1
 
         # Locate the "quotes" data node, and count the links in/out of it
@@ -732,12 +1223,12 @@ def test_create_data_nodes_from_python_data_8(db):
 
 
 def test_create_data_nodes_from_python_data_9(db):
-    # Similar to test_create_data_nodes_from_python_data_8, but also using the class "categories"
+    # Similar to test_create_data_nodes_from_python_data_8, but also using the class "Category"
     db.empty_dbase()
 
-    create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "categories"
+    create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "Category"
 
-    # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
+    # Add to the Schema the "Import Data" Class node, and a link to the Class of the import's root
     NeoSchema.create_class_with_properties(name="Import Data",
                                            properties=["source", "date"])
     NeoSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
@@ -759,7 +1250,7 @@ def test_create_data_nodes_from_python_data_9(db):
 
     # Import
     node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="quotes")
-    print("node_id_list: ", node_id_list)
+    #print("node_id_list: ", node_id_list)
     assert len(node_id_list) == 2
 
     # Locate the "Import Data" data node
@@ -771,7 +1262,7 @@ def test_create_data_nodes_from_python_data_9(db):
         # Locate the "quotes" data node, and count the links in/out of it
         assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
         assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
-        assert db.count_links(match=root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="categories") == 1
+        assert db.count_links(match=root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Category") == 1
 
         # Traverse a loop in the graph, from the `quotes` data node, back to itself,
         # going thru the data and schema nodes
@@ -790,14 +1281,15 @@ def test_create_data_nodes_from_python_data_9(db):
         # Traverse a longer loop in the graph, again from the `quotes` data node to itself,
         # but this time also passing thru the category data and schema nodes
         q = '''
-            MATCH (q :quotes)-[:in_category]->(cat :categories)
-                -[:SCHEMA]->(cl_c :CLASS {name:"categories"})<-[:in_category]-
+            MATCH (q :quotes)-[:in_category]->(cat :Category)
+                -[:SCHEMA]->(cl_c :CLASS {name:"Category"})<-[:in_category]-
                 (cl_q :CLASS {name:"quotes"})
                 <-[:imported_data]-(cl_i :CLASS {name:"Import Data"})<-[:SCHEMA]-(i: `Import Data`)
                 -[:imported_data]->(q)
             WHERE i.date = date() AND id(q) = $quote_id
             RETURN q, cat, cl_q, cl_i
             '''
+        #print(q)
         result = db.query(q, data_binding={"quote_id": root_id})
         #print(result)
         assert len(result) == 1
@@ -836,21 +1328,20 @@ def test_create_data_nodes_from_python_data_9(db):
 
     # Locate the latest "quotes" data node, and count the links in/out of it
     assert db.count_links(match=new_root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
-    assert db.count_links(match=new_root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="categories") == 2
+    assert db.count_links(match=new_root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Category") == 2
     assert db.count_links(match=new_root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Traverse a loop in the graph, from the `quotes` data node back to itself,
     # going thru the 2 category data nodes and their shared Schema node
     q = '''
-            MATCH (q :quotes)-[:in_category]->(cat1 :categories {name: "French Literature"})
-            -[:SCHEMA]->(cl_c :CLASS {name:"categories"})
-            <-[:SCHEMA]-(cat2 :categories {name: "Philosophy"})
+            MATCH (q :quotes)-[:in_category]->(cat1 :Category {name: "French Literature"})
+            -[:SCHEMA]->(cl_c :CLASS {name:"Category"})
+            <-[:SCHEMA]-(cat2 :Category {name: "Philosophy"})
             <-[:in_category]-(q)
             WHERE id(q) = $quote_id
             RETURN q, cat1, cl_c, cat2
             '''
     result = db.query(q, data_binding={"quote_id": new_root_id})
-    #print(result)
     assert len(result) == 1
     record = result[0]
     assert record["q"]["attribution"] == "Proust"

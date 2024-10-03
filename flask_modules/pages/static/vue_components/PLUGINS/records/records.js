@@ -457,7 +457,7 @@ Vue.component('vue-plugin-r',
                      */
 
                     let properties = server_payload["properties"];
-                    // EXAMPLE:  [ "Notes", "English", "French" ]
+                    // EXAMPLE:  [ "Note", "English", "French" ]
 
                     // Create new cloned objects (if one just alters existing objects, Vue doesn't detect the change!)
                     new_current_data = Object.assign({}, this.current_data);    // Clone the object

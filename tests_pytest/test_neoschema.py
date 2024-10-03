@@ -39,17 +39,17 @@ def create_sample_schema_1():
 
 
 def create_sample_schema_2():
-    # Class "quotes" with relationship named "in_category" to Class "categories";
+    # Class "quotes" with relationship named "in_category" to Class "Category";
     # each Class has some properties
     _, sch_1 = NeoSchema.create_class_with_properties(name="quotes",
                                                       properties=["quote", "attribution", "verified"])
 
-    _, sch_2 = NeoSchema.create_class_with_properties(name="categories",
+    _, sch_2 = NeoSchema.create_class_with_properties(name="Category",
                                                       properties=["name", "remarks"])
 
-    NeoSchema.create_class_relationship(from_class="quotes", to_class="categories", rel_name="in_category")
+    NeoSchema.create_class_relationship(from_class="quotes", to_class="Category", rel_name="in_category")
 
-    return {"quotes": sch_1, "categories": "sch_2"}
+    return {"quotes": sch_1, "category": "sch_2"}
 
 
 
@@ -480,9 +480,9 @@ def test_delete_class(db):
     NeoSchema.add_data_point_OLD(class_name="quotes",
                                  data_dict={"quote": "Comparison is the thief of joy"})
 
-    NeoSchema.delete_class("categories")    # No problem in deleting this Class with no attached data nodes
+    NeoSchema.delete_class("Category")    # No problem in deleting this Class with no attached data nodes
     assert NeoSchema.class_name_exists("quotes")
-    assert not NeoSchema.class_name_exists("categories")
+    assert not NeoSchema.class_name_exists("Category")
 
     with pytest.raises(Exception):
         NeoSchema.delete_class("quotes")    # But cannot by default delete Classes with data nodes
@@ -1214,6 +1214,31 @@ def test_create_data_node_3(db):
 
 
 
+def test__prepare_data_node_labels(db):
+    with pytest.raises(Exception):
+        NeoSchema._prepare_data_node_labels(class_name=123)     # Bad name
+
+    with pytest.raises(Exception):
+        NeoSchema._prepare_data_node_labels(class_name="  Leading_Trailing_Blanks  ")
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car") == ["Car"]
+
+    with pytest.raises(Exception):
+        NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=123)  # Bad extra_labels
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=" BA ") == ["Car", "BA"]
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=[" Motor Vehicle"]) \
+                == ["Car", "Motor Vehicle"]
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=(" Motor Vehicle", "  Object    ") ) \
+                == ["Car", "Motor Vehicle", "Object"]
+
+    assert NeoSchema._prepare_data_node_labels(class_name="Car", extra_labels=[" Motor Vehicle", "  Object    ", "Motor Vehicle"] ) \
+                == ["Car", "Motor Vehicle", "Object"]
+
+
+
 def test_update_data_node(db):
     db.empty_dbase()
 
@@ -1831,13 +1856,13 @@ def test_delete_data_point(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node(node_id = 1)     # Non-existing node (database just got cleared)
+        NeoSchema.delete_data_node_OLD(node_id = 1)     # Non-existing node (database just got cleared)
 
 
     create_sample_schema_1()    # Schema with patient/result/doctor
 
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node(node_id = -1)    # Invalid node ID
+        NeoSchema.delete_data_node_OLD(node_id = -1)    # Invalid node ID
 
 
     # Create new data nodes
@@ -1853,7 +1878,7 @@ def test_delete_data_point(db):
     patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
     assert patient == {'name': 'Val', 'age': 22}
 
-    NeoSchema.delete_data_node(node_id=doctor_data_uri)
+    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri)
 
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None   # The doctor got deleted
@@ -1862,12 +1887,12 @@ def test_delete_data_point(db):
     assert patient == {'name': 'Val', 'age': 22}    # The patient is still there
 
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node(node_id=patient_data_uri, labels="not_present")   # Nothing gets deleted; hence, error
+        NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels="not_present")   # Nothing gets deleted; hence, error
 
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node(node_id=patient_data_uri, labels=["patient", "extra label"])   # Nothing gets deleted; hence, error
+        NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels=["patient", "extra label"])   # Nothing gets deleted; hence, error
 
-    NeoSchema.delete_data_node(node_id=patient_data_uri, labels="patient")
+    NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels="patient")
 
     patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
     assert patient is None    # The patient is now gone
@@ -1878,7 +1903,7 @@ def test_delete_data_point(db):
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
-    NeoSchema.delete_data_node(node_id=doctor_data_uri, labels="employee")
+    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri, labels="employee")
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None   # The doctor got deleted
 
@@ -1888,7 +1913,7 @@ def test_delete_data_point(db):
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
-    NeoSchema.delete_data_node(node_id=doctor_data_uri, labels=["employee", "doctor"])
+    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri, labels=["employee", "doctor"])
     doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
     assert doctor is None       # The doctor got deleted
 

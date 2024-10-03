@@ -4,7 +4,8 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*   item_data:  EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm","class_name":"Note"}
+        /*   item_data:  EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm",
+                                   "class_name":"Note","title":"My TO-DO list"}
                                   (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this Note is displayed (used when creating new documents)
@@ -15,14 +16,14 @@ Vue.component('vue-plugin-n',
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
-            <!-- Show when NOT in editing mode  -->
+            <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
             <div class="notes" v-if="!editing_mode" v-html="body_of_note"   @dblclick="enter_editing_mode">
                 <!-- Body of Note, and status of last edit  -->
                 <span v-bind:class="{'n-waiting': waiting}">{{status_message}}</span>
             </div>
 
 
-            <!-- Show when in editing mode  -->
+            <!----------  EDITABLE version (show when in editing mode)  ---------->
             <div v-show="editing_mode" class='note-editor'>
                 <!-- CK Editor, and edit controls  -->
                 <div ref="julian"></div>  <!-- The content of this <div> gets replaced by the HTML online editor CKeditor when fired up
@@ -39,22 +40,24 @@ Vue.component('vue-plugin-n',
             </div>  <!--  Terminate the wrapper DIV "note-editor" -->
 
 
-            <!--  STANDARD CONTROLS (inline elements that can be extended with extra controls)
+            <!--  Start of STANDARD CONTROLS (inline elements that can be extended with extra controls)
                   Signals from the Vue child component "vue-controls" below
                   get relayed to the parent of this component,
                   but some get intercepted and handled here, namely:
 
                           v-on:edit-content-item
             -->
-            <img v-if="edit_mode" src="/BA/pages/static/graphics/copy_16_172587.png"
-                 class="control" title="COPY TO CLIPBOARD (Not yet implemented)" alt="COPY TO CLIPBOARD (Not yet implemented)">
+                <img v-if="edit_mode" src="/BA/pages/static/graphics/copy_16_172587.png"
+                     class="control" title="COPY TO CLIPBOARD (Not yet implemented)" alt="COPY TO CLIPBOARD (Not yet implemented)">
 
-            <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
-                          v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item(item_data)">
-            </vue-controls>
+                <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                              v-on="$listeners"
+                              v-on:edit-content-item="edit_content_item(item_data)">
+                </vue-controls>
 
-            \n</div>\n		<!-- End of outer container box -->
+            <!--  End of STANDARD CONTROLS -->
+
+            </div>		<!-- End of outer container box -->
             `,
 
 
@@ -458,7 +461,7 @@ Vue.component('vue-plugin-n',
             inform_component_root_of_cancel()
             // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
             {
-                if (this.current_data.uri < 0) {
+                if (this.current_data.uri < 0) {    // A negative number indicates a new Note, by convention
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Headers sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');

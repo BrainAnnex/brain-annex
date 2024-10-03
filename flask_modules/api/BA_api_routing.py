@@ -389,7 +389,7 @@ class ApiRouting:
                          EXAMPLE:
                             {
                                 "payload":  [
-                                              "Notes",
+                                              "Note",
                                               "English",
                                               "French"
                                             ],
@@ -585,7 +585,7 @@ class ApiRouting:
             :return:    A JSON object with a list of the Properties of the specified Class
                             EXAMPLE:
                                     [
-                                      "Notes",
+                                      "Note",
                                       "English",
                                       "French"
                                     ]
@@ -798,7 +798,7 @@ class ApiRouting:
         @login_required
         def get_text_media(uri):
             """
-            Retrieve and return the contents of a TEXT media item (for now, just "Notes")
+            Retrieve and return the contents of a TEXT media item (for now, just "notes")
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_text_media/123
 
@@ -1063,7 +1063,7 @@ class ApiRouting:
             #TODO: explore more Schema enforcements
 
             # Extract the POST values
-            post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('class_name', 'Headers'), ('text', 'my_header')])
+            post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('class_name', 'Header'), ('text', 'my_header')])
             #cls.show_post_data(post_data, "update_content_item")
 
             try:
@@ -1277,9 +1277,10 @@ class ApiRouting:
                 The URI of the newly-created Data Node
             """
             # TODO: switch from "category_id" to "category_uri"
+            # TODO: also return the newly-assigned "pos" value
             # Extract the POST values
             post_data = request.form
-            # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('class_name', 'Headers'),
+            # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('class_name', 'Header'),
             #                              ('insert_after', '5'), ('text', 'My Header')])
             #cls.show_post_data(post_data, "add_item_to_category")
         
@@ -2074,7 +2075,7 @@ class ApiRouting:
             # Map the MIME type of the uploaded file into a schema_code
             # TODO: maybe store the MIME type in the database?
             if mime_type.split('/')[0] == "image":  # For example, 'image/jpeg', 'image/png', etc.
-                class_name = "Images"
+                class_name = "Image"
             else:
                 class_name = "Document"            # Any unrecognized MIME type is treated as a Document
 
@@ -2111,7 +2112,7 @@ class ApiRouting:
             properties = {"basename": basename, "suffix": suffix}
 
             # TODO: turn into a call to a plugin-provided method, prior to database add
-            if class_name == "Images":
+            if class_name == "Image":
                 # This is specifically for Images
                 try:
                     extra_properties = ImageProcessing.process_uploaded_image(media_folder=dest_folder,

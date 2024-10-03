@@ -7,7 +7,7 @@ class Images:
     Plugin-provided custom interface for "images"
     """
 
-    SCHEMA_CLASS_NAME = "Images"   # TODO: turn to singular
+    SCHEMA_CLASS_NAME = "Image"
 
 
 

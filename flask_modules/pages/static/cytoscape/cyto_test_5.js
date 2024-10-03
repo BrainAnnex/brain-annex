@@ -78,7 +78,7 @@ Vue.component('vue-cyto',  <!-- NOTE:  Only lower cases in component names! -->
 
                     elements: [ // list of graph elements (nodes & edges)
                         {
-                            data: { id: 1, name: 'Headers', label: 'CLASS'}
+                            data: { id: 1, name: 'Header', label: 'CLASS'}
                         },
                         {
                             data: { id: 2, name: 'text', label: 'PROPERTY'}
