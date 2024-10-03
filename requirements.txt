@@ -20,7 +20,7 @@ pytest==6.2.5
 pillow==10.3.0
 
 jsonschema==4.17.3
-jupyterlab==3.6.8
+jupyterlab==3.4.8
 
 pymupdf==1.23.5
 
