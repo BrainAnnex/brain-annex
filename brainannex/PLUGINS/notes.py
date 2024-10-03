@@ -76,7 +76,7 @@ class Notes:
         print(f"Creating file named `{filename}`")
         #print("    File contents:")
         #print(body)
-        MediaManager.save_into_file(body, filename, class_name="Notes") #TODO: turn to singular
+        MediaManager.save_into_file(body, filename, class_name="Note")
 
         # Introduce new attributes, "basename" and "suffix", to be stored in the database
         data_binding["basename"] = basename
@@ -118,7 +118,7 @@ class Notes:
         print(f"Overwriting file named `{filename}`")
         #print("    File contents:")
         #print(body)
-        MediaManager.save_into_file(body, filename, class_name="Notes")     # TODO: turn to singular
+        MediaManager.save_into_file(body, filename, class_name="Note")
 
         revised_item_data = item_data.copy()   # Clone an independent copy
 

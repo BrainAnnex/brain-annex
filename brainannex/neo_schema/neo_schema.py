@@ -4785,7 +4785,7 @@ class NeoSchema:
         was first created.
 
         EXAMPLES:   reserve_next_uri("Document", "doc.", ".new") might produce "doc.3.new"
-                    reserve_next_uri("Images", prefix="i-") might produce "i-123"
+                    reserve_next_uri("Image", prefix="i-") might produce "i-123"
 
         IMPORTANT: Prefixes and suffixes only need to be passed when first creating a new namespace;
                    if they're passed in here, they over-ride their stored counterparts.

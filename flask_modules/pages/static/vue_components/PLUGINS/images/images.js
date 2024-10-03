@@ -149,7 +149,7 @@ Vue.component('vue-plugin-i',
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item";
                 const post_obj = {uri: this.item_data.uri,
-                                  class_name: "Images",
+                                  class_name: "Image",
                                   basename: this.current_metadata.basename,
                                   caption: this.current_metadata.caption,
                                   comments: this.current_metadata.comments

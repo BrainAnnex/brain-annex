@@ -43,9 +43,9 @@
 
         content_items:  A list of dictionaries
                         EXAMPLE:
-                            [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
-                             {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
+                            [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
+                             {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Header'},
+                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
                              {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
                                                          'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
@@ -447,8 +447,8 @@
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
     <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
-    <button @click="add_new_item_at_bottom('h', 'Headers')" style="margin-right:10px">Header</button>
-    <button @click="add_new_item_at_bottom('n', 'Notes')" style="margin-right:10px">Note</button>
+    <button @click="add_new_item_at_bottom('h', 'Header')" style="margin-right:10px">Header</button>
+    <button @click="add_new_item_at_bottom('n', 'Note')" style="margin-right:10px">Note</button>
     <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
     <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
     <button @click="add_new_item_at_bottom('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation</button>
@@ -625,8 +625,8 @@ new Vue({
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
-                                    // EXAMPLE: [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                                    //           {pos:50,"uri":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Images"}
+                                    // EXAMPLE: [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
+                                    //           {pos:50,"uri":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Image"}
                                     //          ]
                                     // TODO: component-editable fields and non-editable ones ("pos", "uri", "schema_code", "class_name") ought to be treated differently
 
@@ -1158,9 +1158,9 @@ new Vue({
 
            EXAMPLE of item, for a newly-created one:
                                 {uri: -2,
-                                 schema_code: "h", class_name: "Headers", pos: -12}
+                                 schema_code: "h", class_name: "Header", pos: -12}
            EXAMPLE of new_data: {uri: "h-243",
-                                 schema_code: "h", class_name: "Headers", pos: -12,
+                                 schema_code: "h", class_name: "Header", pos: -12,
                                  text: "Some Header"}
          */
         {

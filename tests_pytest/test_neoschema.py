@@ -39,17 +39,17 @@ def create_sample_schema_1():
 
 
 def create_sample_schema_2():
-    # Class "quotes" with relationship named "in_category" to Class "categories";
+    # Class "quotes" with relationship named "in_category" to Class "Category";
     # each Class has some properties
     _, sch_1 = NeoSchema.create_class_with_properties(name="quotes",
                                                       properties=["quote", "attribution", "verified"])
 
-    _, sch_2 = NeoSchema.create_class_with_properties(name="categories",
+    _, sch_2 = NeoSchema.create_class_with_properties(name="Category",
                                                       properties=["name", "remarks"])
 
-    NeoSchema.create_class_relationship(from_class="quotes", to_class="categories", rel_name="in_category")
+    NeoSchema.create_class_relationship(from_class="quotes", to_class="Category", rel_name="in_category")
 
-    return {"quotes": sch_1, "categories": "sch_2"}
+    return {"quotes": sch_1, "category": "sch_2"}
 
 
 
@@ -480,9 +480,9 @@ def test_delete_class(db):
     NeoSchema.add_data_point_OLD(class_name="quotes",
                                  data_dict={"quote": "Comparison is the thief of joy"})
 
-    NeoSchema.delete_class("categories")    # No problem in deleting this Class with no attached data nodes
+    NeoSchema.delete_class("Category")    # No problem in deleting this Class with no attached data nodes
     assert NeoSchema.class_name_exists("quotes")
-    assert not NeoSchema.class_name_exists("categories")
+    assert not NeoSchema.class_name_exists("Category")
 
     with pytest.raises(Exception):
         NeoSchema.delete_class("quotes")    # But cannot by default delete Classes with data nodes

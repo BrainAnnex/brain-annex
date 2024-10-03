@@ -699,7 +699,7 @@ class DataManager:
         #           db_data = NeoSchema.fetch_data_node(uri=uri)
         #           Then pass db_data as a parameter to the plugin-specific modules
 
-        if class_name == "Notes":
+        if class_name == "Note":
             update_data = Notes.before_update_content(update_data)
 
 
@@ -713,14 +713,14 @@ class DataManager:
                                                     class_name=class_name)
 
 
-        if class_name == "Notes":
+        if class_name == "Note":
             Notes.update_content_item_successful(uri, original_post_data)
 
 
         # If the update was NOT for a "note" (in which case it might only be about the note's body rather than its metadata)
         # verify that some fields indeed got updated
         # Note: an update with the same value as before is considered legit, and counts as an update
-        if class_name != "Notes" and number_updated == 0:
+        if class_name != "Note" and number_updated == 0:
             if not NeoSchema.class_name_exists(class_name):
                 raise Exception(f"update_content_item(): Requested Class ({class_name}) doesn't exist; no update performed")
             else:
@@ -753,14 +753,14 @@ class DataManager:
             # If there's media involved, delete the media, too
             MediaManager.delete_media_file(uri=uri)
 
-        if class_name == "Images":
+        if class_name == "Image":
             # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             #record = cls.lookup_media_record(uri)
             #if record is not None:
             MediaManager.delete_media_file(uri=uri, thumb=True)
 
-        if class_name == "Notes":
+        if class_name == "Note":
             Notes.delete_content_before(uri)
 
 
@@ -769,8 +769,8 @@ class DataManager:
 
 
         if number_deleted == 1:
-            if class_name == "Notes":
-                # Extra processing for the "Notes" plugin
+            if class_name == "Note":
+                # Extra processing for the "Note" plugin
                 Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the general system
 
             return       # Successful termination, with 1 Content Item deleted, as expected
@@ -861,7 +861,7 @@ class DataManager:
         #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
         original_post_data = item_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
 
-        if class_name == "Notes":
+        if class_name == "Note":
             item_data = Notes.add_content(new_uri, item_data)
 
 
@@ -891,7 +891,7 @@ class DataManager:
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
-        if class_name == "Notes":
+        if class_name == "Note":
             Notes.new_content_item_successful(new_uri, original_post_data)
 
 
@@ -980,7 +980,7 @@ class DataManager:
         #       TODO: invoke the plugin-specified code PRIOR to removing fields from the POST data
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
 
-        if class_name == "Notes":
+        if class_name == "Note":
             post_data = Notes.add_content(new_uri, post_data)
 
 
@@ -1010,7 +1010,7 @@ class DataManager:
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
-        if class_name == "Notes":
+        if class_name == "Note":
             Notes.new_content_item_successful(new_uri, original_post_data)
 
 
@@ -1039,7 +1039,7 @@ class DataManager:
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
-        if class_name == "Notes":
+        if class_name == "Note":
             Notes.new_content_item_successful(new_uri, original_post_data)
         elif class_name == "Document":
             Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
@@ -1168,8 +1168,8 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1179,7 +1179,7 @@ class DataManager:
 
             # TODO: generalize the following line, to other types of links
             neighbor_props = cls.db.follow_links(match=internal_id,
-                                                rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Categories")
+                                                rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Category")
             # EXAMPLE of neighbor_props:
             #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)
@@ -1201,7 +1201,7 @@ class DataManager:
             # All the above lines would be un-necessary if FullTextIndexing.search_word returned a DataNode object!
             
             for neighbor_data in neighbor_props:
-                neighbor_node = NeoSchema.DataNode(internal_id=None, labels="Categories", properties=neighbor_data)
+                neighbor_node = NeoSchema.DataNode(internal_id=None, labels="Category", properties=neighbor_data)
                 dn.add_relationship(link_name="BA_in_category", link_direction="OUT", link_properties=None, node_obj=neighbor_node)
                 
             new_result.append(dn)
@@ -1250,8 +1250,8 @@ class DataManager:
 
         result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Notes']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Notes']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1261,7 +1261,7 @@ class DataManager:
 
             # TODO: generalize the following line, to other types of links; for now, just used to extract the Categories
             neighbor_props = cls.db.follow_links(match=internal_id,
-                                                 rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Categories")
+                                                 rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Category")
             # EXAMPLE of neighbor_props:
             #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)

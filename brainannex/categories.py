@@ -51,19 +51,19 @@ class Categories:
         :return:    An (int, str) pair of integers with the internal database ID
                         and the unique uri assigned to the new Class node
         """
-        (int_dbase_id, uri) = NeoSchema.create_class_with_properties(name="Categories",
+        (int_dbase_id, uri) = NeoSchema.create_class_with_properties(name="Category",
                                                         properties=["name", "remarks", "uri", "root"],
                                                         strict=True)
 
-        NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories",
+        NeoSchema.create_class_relationship(from_class="Category", to_class="Category",
                                             rel_name="BA_subcategory_of", use_link_node=False)
 
-        NeoSchema.create_class_relationship(from_class="Categories", to_class="Categories",
+        NeoSchema.create_class_relationship(from_class="Category", to_class="Category",
                                             rel_name="BA_see_also", use_link_node=False)
 
         if not NeoSchema.class_name_exists("Collections"):
             Collections.initialize_collections()
-            NeoSchema.create_class_relationship(from_class="Categories", to_class="Collections",
+            NeoSchema.create_class_relationship(from_class="Category", to_class="Collections",
                                                 rel_name="INSTANCE_OF", use_link_node=False)
 
         return (int_dbase_id, uri)
@@ -92,7 +92,7 @@ class Categories:
         # Note: since the category_uri is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
         #return NeoSchema.search_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
-        return NeoSchema.get_data_node(class_name="Categories", node_id=category_uri, id_key="uri")
+        return NeoSchema.get_data_node(class_name="Category", node_id=category_uri, id_key="uri")
 
 
 
@@ -136,7 +136,7 @@ class Categories:
 
         # TODO: switch to using the Schema library datanode operations
         q =  f'''
-             MATCH (cat:Categories)-[:SCHEMA]->(:CLASS {{name:"Categories"}}) 
+             MATCH (cat:Category)-[:SCHEMA]->(:CLASS {{name:"Category"}}) 
              {clause}
              RETURN cat.uri AS uri, cat.name AS name, cat.pinned AS pinned {remarks_subquery}
              ORDER BY toLower(cat.name)
@@ -165,13 +165,13 @@ class Categories:
     def count_subcategories(cls, category_uri :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Categories")
+        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) Subcategories of the given Category; possibly, zero
         """
 
-        match = cls.db.match(labels="Categories",
+        match = cls.db.match(labels="Category",
                              properties={"uri": category_uri})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="IN")
@@ -181,13 +181,13 @@ class Categories:
     def count_parent_categories(cls, category_uri :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Categories")
+        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
         """
 
-        match = cls.db.match(labels="Categories",
+        match = cls.db.match(labels="Category",
                              properties={"uri": category_uri})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="OUT")
@@ -206,10 +206,10 @@ class Categories:
         :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
         """
-        match = cls.db.match(labels="Categories", key_name="uri", key_value=category_uri)
+        match = cls.db.match(labels="Category", key_name="uri", key_value=category_uri)
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
-                                   neighbor_labels="Categories")
+                                   neighbor_labels="Category")
 
 
 
@@ -225,11 +225,11 @@ class Categories:
         :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
         """
-        match = cls.db.match(labels="Categories",
+        match = cls.db.match(labels="Category",
                              properties={"uri": category_uri})
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
-                                   neighbor_labels="Categories")
+                                   neighbor_labels="Category")
 
 
 
@@ -243,7 +243,7 @@ class Categories:
                                             each element contains the 'internal_id' and 'neo4j_labels' keys,
                                             plus whatever attributes are stored on that node.
                                             EXAMPLE of single element:
-                                            {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories', 'BA']}
+                                            {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Category', 'BA']}
         """
 
         #TODO: switch to this after the next update of NeoAccess
@@ -295,8 +295,8 @@ class Categories:
         #       where the child c is any ancestor node of the given Category node.
         #       A limit is imposed on the max length of the path
         q = '''
-            MATCH (start :BA:Categories {uri:$category_uri})-[:BA_subcategory_of*0..9]->
-                  (c :Categories)-[:BA_subcategory_of]->(p :Categories)
+            MATCH (start :BA:Category {uri:$category_uri})-[:BA_subcategory_of*0..9]->
+                  (c :Category)-[:BA_subcategory_of]->(p :Category)
             WITH c, collect(DISTINCT p.uri) AS all_parents
             RETURN c.uri AS uri, all_parents
             '''
@@ -416,10 +416,10 @@ class Categories:
 
         data_dict["root"] = True        # Flag to mark this node as the root of the Category graph
 
-        #new_uri = NeoSchema.reserve_next_uri(namespace="Categories", prefix="cat-")
+        #new_uri = NeoSchema.reserve_next_uri(namespace="Category", prefix="cat-")
         new_uri = "cat-root"    # use a special URI
 
-        internal_id = NeoSchema.create_data_node(class_node="Categories",
+        internal_id = NeoSchema.create_data_node(class_node="Category",
                                                  properties = data_dict,
                                                  new_uri=new_uri)
         return (internal_id, new_uri)
@@ -470,8 +470,8 @@ class Categories:
         parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_uri, key_name="uri")
 
         new_internal_id = NeoSchema.add_data_node_with_links(
-                                class_name = "Categories",
-                                properties = data_dict, labels = ["BA", "Categories"],
+                                class_name = "Category",
+                                properties = data_dict, labels = ["BA", "Category"],
                                 links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
                                 assign_uri=True)
 
@@ -683,7 +683,7 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True or False
         """
-        all_props = NeoSchema.search_data_node(uri=uri, labels="Categories")    # Returns a dict, or None
+        all_props = NeoSchema.search_data_node(uri=uri, labels="Category")    # Returns a dict, or None
         assert all_props, "is_pinned(): unable to locate the specified Category node"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
@@ -705,8 +705,8 @@ class Categories:
         """
         # TODO: perhaps restore the old feature of also storing a "description" field on the relationships
 
-        return NeoSchema.follow_links(class_name="Categories", node_id=from_category, id_key="uri",
-                                      link_name="BA_see_also", labels="Categories", properties=["name", "remarks", "uri"])
+        return NeoSchema.follow_links(class_name="Category", node_id=from_category, id_key="uri",
+                                      link_name="BA_see_also", labels="Category", properties=["name", "remarks", "uri"])
 
 
 
@@ -735,7 +735,7 @@ class Categories:
         :return:                None
         """
         NeoSchema.remove_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
-                                           rel_name="BA_see_also", labels="Categories")
+                                           rel_name="BA_see_also", labels="Category")
 
 
 
@@ -834,7 +834,7 @@ class Categories:
                                 any missing value will appear as None
         """
         q = '''
-            MATCH (:BA {uri: $item_uri}) - [:BA_in_category] -> (cat :Categories)
+            MATCH (:BA {uri: $item_uri}) - [:BA_in_category] -> (cat :Category)
             RETURN cat.uri AS uri, cat.name AS name, cat.remarks AS remarks
             '''
         result = cls.db.query(q, data_binding={"item_uri": item_uri})
@@ -851,9 +851,9 @@ class Categories:
         :param uri: A string identifying the desired Category
         :return:    A list of dictionaries
                     EXAMPLE:
-                    [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Images'},
-                     {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Headers'},
-                     {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
+                    [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
+                     {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
+                     {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
                      {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'uri': '6965', 'pos': 86, 'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                     ]
         """
@@ -862,7 +862,7 @@ class Categories:
         # TODO: switch to using one of the Collections methods
 
         q = '''
-            MATCH (cl :CLASS)<-[:SCHEMA]- (n) -[r :BA_in_category]-> (:Categories {uri:$category_id})
+            MATCH (cl :CLASS)<-[:SCHEMA]- (n) -[r :BA_in_category]-> (:Category {uri:$category_id})
             RETURN n, r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code
             ORDER BY r.pos
             '''
@@ -927,7 +927,7 @@ class Categories:
               -> Follow the new way it is handled in add_content_at_end()
 
         :param category_uri:    The string "uri" of the Category to which this new Content Media is to be attached
-        :param item_class_name: For example, "Images"
+        :param item_class_name: For example, "Image"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
                                     but it can also be provided (if provided, it MUST be unique)
@@ -975,7 +975,7 @@ class Categories:
 
         :param category_uri:    A string to identify the Category
                                     to which this Content Media being newly-created is to be attached
-        :param item_class_name: For example, "Images"
+        :param item_class_name: For example, "Image"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix"
                                     NOTE: if the Class was declared as "strict",
                                           then any key not declared in the Schema gets silently ignored
@@ -1013,7 +1013,7 @@ class Categories:
 
         :param category_uri:    String with a unique "uri" identified of the Category
                                     to which this new Content Media is to be attached
-        :param item_class_name: For example, "Images"
+        :param item_class_name: For example, "Image"
         :param item_properties: A dictionary with keys specific to the new Content Item,
                                     such as "width", "height", "caption", "basename", "suffix" (TODO: verify against schema)
         :param insert_after:    The URI of the element after which we want to insert
@@ -1051,7 +1051,7 @@ class Categories:
         :return:                None
         """
         match_from = cls.db.match(key_name="uri", key_value=item_uri)
-        match_to = cls.db.match(labels="Categories")
+        match_to = cls.db.match(labels="Category")
         assert cls.db.number_of_links(match_from=match_from, match_to=match_to, rel_name="BA_in_category") > 1, \
             f"detach_from_category(): Cannot delete the only remaining 'BA_in_category' link " \
             f"from Content Item (URI: '{item_uri}') to Categories"
@@ -1112,9 +1112,9 @@ class Categories:
                             are also included.
                             Properties regarded as "system" ones, such as "uri", are excluded.
                             EXAMPLE:
-                                {'Headers': ['text'],
+                                {'Header': ['text'],
                                  'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
-                                 'Notes': ['title', 'public', 'date_created', 'basename', 'suffix']
+                                 'Note': ['title', 'public', 'date_created', 'basename', 'suffix']
                                  'German Vocabulary': ['Gender', 'German', 'English', 'notes'],
                                  'Quote': ['quote', 'attribution', 'notes'],
                                  'Recordset': ['class', 'order_by', 'clause', 'n_group']
@@ -1122,7 +1122,7 @@ class Categories:
         """
         # Locate the names of the Classes of all the Content Items attached to the given Category
         q = '''
-            MATCH   (CLASS {name: "Categories"}) <-[:SCHEMA]- (cat :Categories {uri: $category_uri}) 
+            MATCH   (CLASS {name: "Category"}) <-[:SCHEMA]- (cat :Category {uri: $category_uri}) 
                     <-[:BA_in_category]- (content_item) -[:SCHEMA]-> (cl:CLASS) 
             RETURN DISTINCT cl.name AS class_name
             '''
@@ -1166,7 +1166,7 @@ class Categories:
                                     if no duplicates, return an empty list
         """
         q = '''
-            MATCH (ci1)-[r1:BA_in_category] -> (:Categories {name: $name}) <- [r2:BA_in_category]-(ci2) 
+            MATCH (ci1)-[r1:BA_in_category] -> (:Category {name: $name}) <- [r2:BA_in_category]-(ci2) 
             WHERE r1.pos = r2.pos AND id(ci1) < id(ci2)
             RETURN r1.pos AS pos, ci1.uri AS item1, ci2.uri AS item2
             ORDER BY r1.pos
@@ -1198,7 +1198,7 @@ class Categories:
         :return:    A (possibly-empty) list of dicts, detailing all located duplicates
         """
         q = '''
-            MATCH (ci1)-[r1 :BA_in_category]->(c :Categories)<-[r2 :BA_in_category]-(ci2)
+            MATCH (ci1)-[r1 :BA_in_category]->(c :Category)<-[r2 :BA_in_category]-(ci2)
             WHERE r1.pos = r2.pos AND id(ci1) < id(ci2)
             RETURN c.name AS category_name, r1.pos AS pos, ci1.uri AS uri1, ci2.uri AS uri2
             ORDER BY category_name, pos
@@ -1217,7 +1217,7 @@ class Categories:
         :return:                None
         """
         q = f'''       
-            MATCH (ci)-[r :BA_in_category]->(n :Categories {{name: $category_name}})           
+            MATCH (ci)-[r :BA_in_category]->(n :Category {{name: $category_name}})           
             WITH r.pos AS POS, id(ci) AS NODE_ID           
             ORDER by r.pos
             
@@ -1227,7 +1227,7 @@ class Categories:
             
             UNWIND INDEX_LIST AS i
             
-            MATCH (x)-[newr :BA_in_category]->(n :Categories {{name: $category_name}}) WHERE id(x) = ID_LIST[i]
+            MATCH (x)-[newr :BA_in_category]->(n :Category {{name: $category_name}}) WHERE id(x) = ID_LIST[i]
             
             SET newr.pos = i * {Collections.DELTA_POS}
             
@@ -1259,7 +1259,7 @@ class Categories:
         # Collect a subset of the first sorted "pos" values: enough values to cover across the insertion point
         number_to_consider = move_after_n + 1
         q = f'''
-            MATCH (c:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:BA:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos
             ORDER by pos
             LIMIT {number_to_consider}
@@ -1300,7 +1300,7 @@ class Categories:
 
         # Change the "pos" attribute of the relationship to the Content Item being moved
         q = f'''
-            MATCH (:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
+            MATCH (:BA:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
             SET r.pos = {new_pos}
             '''
 
@@ -1346,7 +1346,7 @@ class Categories:
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
 
         q = f'''
-            MATCH (c:BA:Categories {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:BA:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos, r
             ORDER by pos
             SKIP {n_to_skip}
@@ -1378,7 +1378,7 @@ class Categories:
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
         q = '''
             MATCH (n1 {uri: $uri_1})
-                        -[r1:BA_in_category]->(c:BA:Categories {uri: $cat_id})<-[r2:BA_in_category]-
+                        -[r1:BA_in_category]->(c:BA:Category {uri: $cat_id})<-[r2:BA_in_category]-
                   (n2 {uri: $uri_2})
             WITH r1.pos AS tmp, r1, r2
             SET r1.pos = r2.pos, r2.pos = tmp
@@ -1425,7 +1425,7 @@ class Categories:
                                 each element contains the 'internal_id' and 'neo4j_labels' keys,
                                 plus whatever attributes are stored on that node.
                                 EXAMPLE of single element:
-                                {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories', 'BA']}
+                                {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Category', 'BA']}
         """
         # TODO: expand to cover all the data needs of BA_pages_routing.py
         # TODO: maybe move to DataManager layer

@@ -104,7 +104,7 @@ def test_create_tree_from_dict(db):
 
 
 def test_data_points_of_class(db):
-    all_category_ids = NeoSchema.data_nodes_of_class("Categories")
+    all_category_ids = NeoSchema.data_nodes_of_class("Category")
     print(all_category_ids)
     assert len(all_category_ids) == 27
 
@@ -118,7 +118,7 @@ def test_allows_datanodes(db):
 
 
 def test_add_root_category(db):
-    NeoSchema.add_data_point_OLD(class_name="Categories",
+    NeoSchema.add_data_point_OLD(class_name="Category",
                                  data_dict={"name": "ROOT (Home)", "remarks": "EVERYTHING - top level"},
                                  labels="BA")
 
@@ -158,7 +158,7 @@ def test_get_class_instances(db):
 
 def test_new_class_with_properties(db):
     """
-    _, new_id = NeoSchema.create_class_with_properties("Images",
+    _, new_id = NeoSchema.create_class_with_properties("Image",
                                                  ["width", "caption"], code="i"
                                                  )
     """
@@ -231,7 +231,7 @@ def test_get_schema_code(db):
     assert NeoSchema.get_schema_code("Records") == "r"
     assert NeoSchema.get_schema_code("Foreign Vocabulary") == "r"
     assert NeoSchema.get_schema_code("French Vocabulary") == "r"
-    assert NeoSchema.get_schema_code("Notes") == "n"
+    assert NeoSchema.get_schema_code("Note") == "n"
     assert NeoSchema.get_schema_code("Category") == "cat"
     assert NeoSchema.get_schema_code("Media") == ""
 

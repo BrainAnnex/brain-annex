@@ -499,7 +499,7 @@ class MediaManager:
         for filename in file_list:
             #print(filename)
             (basename, suffix) = os.path.splitext(filename)
-            q = f"MATCH (n:Notes) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN COUNT(n) AS number_nodes"
+            q = f"MATCH (n:Note) WHERE n.basename='{basename}' AND n.suffix='htm' RETURN COUNT(n) AS number_nodes"
             n = db.query(q, single_cell="number_nodes")
             if n == 0:
                 print(f"Notes record for file `{filename}`  NOT FOUND!")

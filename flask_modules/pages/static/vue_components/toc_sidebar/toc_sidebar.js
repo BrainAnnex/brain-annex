@@ -8,8 +8,8 @@ Vue.component('vue-toc-sidebar',
         props: {
 
             /*  Array containing item-data objects.  EXAMPLE:
-                                [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Headers"},
-                                 {pos:50,"uri":"8",schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Images"}
+                                [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
+                                 {pos:50,"uri":"8",schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Image"}
                                 ]
              */
             content_array: {
