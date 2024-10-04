@@ -8,7 +8,7 @@ Vue.component('vue-plugin-sl',
             item_data:      An object with the relevant data about this Site Link item;
                                 if the "uri" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
-            edit_mode:  A boolean indicating whether in editing mode
+            edit_mode:      A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of this Site Link item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -16,11 +16,9 @@ Vue.component('vue-plugin-sl',
                                 EXAMPLE: ["url","name","date","comments","rating","read"]
 
             EXAMPLE: {"item_data": {class_name:"Site Link",
-                                            uri: 4912, position: 20,  schema_code: "sl"
-
-                                            [whatever other fields were set in this item; for example]
-                                            url:"http://example.com",
-                                            name:"test"
+                                            uri: "4912", position: 20,  schema_code: "sl"
+                                            url: "http://example.com",
+                                            name:"test", rating: 4.5
                                            },
                               "edit_mode": false, "category_id": 123,
                               "index": 2, "item_count": 10,
@@ -35,11 +33,11 @@ Vue.component('vue-plugin-sl',
             <table class='sl-main'>
 
                 <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
-                    <td rowspan=2 class="no-borders">
+                    <td rowspan=2 class="no-borders" style="width: 5%">
                         <img src="/BA/pages/static/graphics/bookmark_32_60162.png">
                     </td>
 
-                    <td v-html="render_cell(item_data.url)"></td>
+                    <td v-html="render_cell(item_data.url)" style="width: 25%"></td>
                     <td class="name">{{item_data.name}}</td>
                     <td class="small">{{item_data.read}}</td>
                 </tr>
@@ -63,7 +61,7 @@ Vue.component('vue-plugin-sl',
                 <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
                     <td class="small">{{item_data.date}}</td>
                     <td class="comments">{{item_data.comments}}</td>
-                    <td><span v-show="item_data.rating">{{item_data.rating}} &#9733;</span></td>
+                    <td><span v-show="item_data.rating">{{item_data.rating}}&#9733;</span></td>
                 </tr>
                 <tr v-else @dblclick="enter_editing_mode">
                     <td><span class="hint">date</span><br><input type="text" size="6" v-model="current_data.date"></td>
@@ -107,45 +105,17 @@ Vue.component('vue-plugin-sl',
             return {
                 editing_mode: (this.item_data.uri < 0  ? true : false), // Negative uri means "new Item"
 
-                /*  Comparison of 3 fundamental objects -
-
-                    "PROP" DATA PASSED BY THE PARENT COMPONENT (NOT copied to component variables):
-                        item_data:      The FULL data passed by the parent component
-
-                    COMPONENT VARIABLES:
-                        current_data:   Object with the values bound to the editing fields,
-                                        initially cloned from (part of) the "prop" data;
-                                        it'll change in the course of the edit-in-progress
-
-                        original_data:  Object with pre-edit data, initially cloned from (part of) the "prop" data;
-                                        used to restore the data in case of an edit Cancel or failed save
-
-                    EXAMPLE of item_data (a PROP, not a variable of this component!):
-                        {
-                            class_name:"Site Link",
-                            uri: 4912,
-
-                            [whatever other fields were set in this item; for example]
-                            url:"http://example.com",
-                            name:"some website",
-
-                            position: 20,
-                            schema_code: "sl"
-                       }
-
-                    EXAMPLE of current_data and original_data:
-                        {
-                            url:"http://example.com",
-                            name:"some website"
-                        }
-
-                    Note that the objects may lack some of the fields specified by the Schema
-                 */
-
-
                 // Note: negative uri means "new Item"
-                current_data: (this.item_data.uri < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
-                original_data: (this.item_data.uri < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
+                //current_data: (this.item_data.uri < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
+                //original_data: (this.item_data.uri < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
+
+                // This object contains the values bound to the editing fields, initially cloned from the prop data;
+                //      it'll change in the course of the edit-in-progress
+                current_data:   Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+
+                // Clone of the above object, used to restore the data in case of a Cancel or failed save
+                original_data:  Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -171,46 +141,6 @@ Vue.component('vue-plugin-sl',
 
                 this.current_data.name = "[Fetching the page title...]";
                 this.get_webpage_title(url);
-            },
-
-
-            determine_headers()
-            /* Note: this is quite similar to the canonical_field_list() method in the
-                     Vue root component.  TODO: eventually merge
-                     TODO: maybe un-necessary now that we have the "schema_data" prop
-             */
-            {
-                if (this.schema_data.length == 0)
-                    return Object.keys(this.current_data);      // Fallback, if Schema info isn't available
-
-                //console.log("In determine_headers(): schema_data = ", this.schema_data);
-                //console.log("this.current_data = ", this.current_data);
-                //console.log("All keys of the above: ", Object.keys(this.current_data));
-                let all_keys = [];
-
-                for (let i = 0; i < this.schema_data.length; i++) { // Loop thru all field names prescribed by the Schema...
-                    key_in_schema = this.schema_data[i];
-                    if (key_in_schema in this.current_data)         // ... if the field name is actually present, add it to the all_keys array
-                        all_keys.push(key_in_schema);
-                }
-
-                let field_list = Object.keys(this.current_data);     // All the fields in record (pre-scrubbed for special ones)
-                // Add all the item's fields that aren't in its Schema (non-standard fields, if any)
-                for (let i = 0; i < field_list.length; i++)
-                    if (! this.schema_data.includes(field_list[i]))
-                        all_keys.push(field_list[i]);
-
-                //console.log("   all_keys = ", all_keys);
-
-                //return Object.keys(this.current_data);
-                return all_keys;
-            },
-
-            determine_cells()
-            {
-                //return this.current_data;
-                //return Object.keys(this.current_data);
-                return this.determine_headers();        // TODO: maybe save, to avoid re-computing
             },
 
 
@@ -247,79 +177,6 @@ Vue.component('vue-plugin-sl',
             },
 
 
-            prepare_blank_record()
-            /*  Meant to be invoked upon entering Editing mode with a new record
-             */
-            {
-                console.log("In prepare_blank_record()");
-
-                let properties = this.schema_data;
-                console.log("    properties looked up: " , properties);
-                // EXAMPLE:  ['url', 'name', 'date', 'comments', 'rating', 'read']
-
-                // Create a new  object based on the schema data
-                new_blank_record = {};    // Empty object
-
-                for (let i = 0; i < properties.length; i++) {
-                    field_name = properties[i];
-
-                    console.log("    Adding field from Schema: ", field_name);
-                    new_blank_record[field_name] = "";
-                }
-
-                return new_blank_record;
-            },
-
-
-            display_all_fields()
-            /*  Meant to be invoked upon entering Editing mode:
-                present all the fields declared in the Schema (including any hidden before because it lacked data.)
-
-                Modify the "current_data" property, to also include any fields in the Schema.
-                Perform this operation in a matter than will be detected by Vue
-             */
-            {
-                console.log("In show_all_fields()");
-
-                let properties = this.schema_data;
-                console.log("    properties looked up: " , properties);
-                // EXAMPLE:  ['url', 'name', 'date', 'comments', 'rating', 'read']
-
-                // Create a new cloned object based on the current record data
-                // (that's because if one just alters existing objects, Vue doesn't detect the change!)
-                new_current_data = Object.assign({}, this.current_data);    // Clone the current_data object
-
-                for (let i = 0; i < properties.length; i++) {
-                    field_name = properties[i];
-
-                    /* Only add fields not already present
-                     */
-                    if (!(field_name in this.current_data))  {
-                        console.log("    Adding missing field: ", field_name);
-                        new_current_data[field_name] = "";
-                    }
-                }
-
-                this.current_data = new_current_data;   // This assignment will get Vue's attention!
-            },
-
-
-            clone_and_standardize(obj)
-            // Clone first; then remove some keys that shouldn't get shown nor edited
-            {
-                clone_obj = Object.assign({}, obj);     // Clone the object
-
-                // Scrub some data, so that it won't show up in the tabular format
-                delete clone_obj.uri;
-                delete clone_obj.schema_code;
-                delete clone_obj.class_name;
-                delete clone_obj.insert_after;
-                delete clone_obj.pos;           // TODO: this might be getting phased out
-
-                return clone_obj;
-            },
-
-
 
             enter_editing_mode()
             // Switch to the editing mode of this Vue component
@@ -337,8 +194,8 @@ Vue.component('vue-plugin-sl',
 
                 this.editing_mode = true;       // Enter editing mode
 
-                this.display_all_fields();      // This will set the "current_data" property
-                this.original_data = this.clone_and_standardize(this.item_data);
+                //this.display_all_fields();      // This will set the "current_data" property
+                //this.original_data = this.clone_and_standardize(this.item_data);
             },
 
 
@@ -348,9 +205,10 @@ Vue.component('vue-plugin-sl',
              */
             {
                 console.log(`'Site Links' component received Event to edit its contents`);
-                this.editing_mode = true;
+                //this.editing_mode = true;
+                this.enter_editing_mode();
 
-                this.display_all_fields();      // Consult the schema
+                //this.display_all_fields();      // Consult the schema
             },
 
 
@@ -404,103 +262,70 @@ Vue.component('vue-plugin-sl',
 
 
             save()
+            // Conclude an EDIT operation
             {
-                /*  EXAMPLE of this.current_data and this.original_data:
-                        {
-                            "English": "Love",
-                            "German": "Liebe"
-                        }
+                // Enforce required field
+                if (! 'url' in this.current_data) {
+                    post_obj.text = this.current_data.text;
+                    alert("Cannot save an empty URL. If you want to get rid of this Site Link (bookmark), delete it instead");
+                    return;
+                }
 
-                    EXAMPLE of this.item_data:
-                        {
-                            "English": "Love",
-                            "German": "Liebe",
-                            "uri": 61,
-                            "schema_code": "r",
-                            "insert_after": 123,
-                            "class_name": "German Vocabulary",
-                            "pos": 0
-                        }
-                */
-                console.log(`In 'vue-plugin-sl', save()`);
+                // Start the body of the POST to send to the server
+                let post_obj = {class_name: this.item_data.class_name,
 
-                let post_obj = {schema_code: this.item_data.schema_code};
+                                url:        this.current_data.url,
+                                name:       this.current_data.name,
+                                date:       this.current_data.date,
+                                comments:   this.current_data.comments,
+                                rating:     this.current_data.rating,
+                                read:       this.current_data.read
+                               };
+
 
                 if (this.item_data.uri < 0)  {     // Negative uri is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
-                    post_obj["category_id"] = this.category_id;
-                    post_obj["class_name"] = this.item_data.class_name;
-                    post_obj["insert_after"] = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-
-                    // Go over each key (field name); note that keys that aren't field names were previously eliminated
-                    for (key in this.current_data)  {
-                        // Only pass non-blank values
-                        if (this.current_data[key] != "")
-                            post_obj[key] = this.current_data[key];
-                    }
-                    // EXAMPLE of post_obj for a NEW record:
-                    //          "schema_code=r&category_id=12&class_name=German%20Vocabulary&insert_after=123&German=Liebe"
+                    post_obj.category_id = this.category_id;
+                    post_obj.insert_after = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
-                else  {
-                    // Update an EXISTING record
-                    post_obj["uri"] = this.item_data.uri;
-                    post_obj["class_name"] = this.item_data.class_name;
-
-                    // Go over each key (field name); note that keys that aren't field names were previously eliminated
-                    for (key in this.current_data) {
-                        if ( (this.current_data[key] != "")  ||  (key in this.original_data) )
-                            // Non-blanks always lead to updates; blanks only if the field was originally present
-                            post_obj[key] = this.current_data[key];
-                    }
-                    // EXAMPLE of post_obj for an EXISTING record: "schema_code=r&uri=62&English=Love&German=Liebe"
+                else  {     // Update an EXISTING Site Link
+                    post_obj.uri = this.item_data.uri;
 
                     url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
 
-                this.waiting = true;        // Entering a waiting-for-server mode
-                this.error = false;         // Clear any error from the previous operation
-                this.status_message = "";   // Clear any message from the previous operation
 
-                console.log(`About to contact the server at ${url_server_api}.  POST object:`);
+                console.log(`In 'vue-plugin-sl', save().  About to contact the server at ${url_server_api}.  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server, using POST data
-                ServerCommunication.contact_server(url_server_api,
-                            {post_obj: post_obj,
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: false,
                              callback_fn: this.finish_save});
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
             }, // save
 
 
-            finish_save(success, server_payload, error_message, custom_data)
+            finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
 
                 success:        boolean indicating whether the server call succeeded
                 server_payload: whatever the server returned (stripped of information about the success of the operation)
                 error_message:  a string only applicable in case of failure
-                custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
              */
             {
                 console.log("Finalizing the SiteLink save() operation...");
 
                 if (success)  {     // Server reported SUCCESS
                     this.status_message = `Successful edit`;
-
-                    // Eliminate some un-needed fields from the display
-                    for (field in this.current_data)  {
-                        if (this.current_data[field] != "")
-                            console.log("Field still needed because non-empty: ", field);
-                        else if (field in this.original_data)  {
-                            console.log("Field blank but was in original data [deleted anyway]: ", field);
-                            delete this.current_data[field];     // Zap b/c blank
-                        }
-                        else {
-                            console.log("Eliminating field no longer in need to display: ", field);
-                            delete this.current_data[field];    // Zap b/c blank [NO LONGER DONE:, and not present before edit]
-                        }
-                    }
 
                     // If this was a newly-created item (with the temporary negative URI),
                     //  update its URI with the value assigned by the server
@@ -513,8 +338,6 @@ Vue.component('vue-plugin-sl',
 
                     // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
-
-                    this.editing_mode = false;      // Exit the editing mode
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -524,6 +347,7 @@ Vue.component('vue-plugin-sl',
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                this.editing_mode = false;      // Exit the editing mode
 
             } // finish_save
 

@@ -2,21 +2,15 @@ table.sl-main {
     border-collapse: collapse;
     margin-top:10px;
     margin-bottom:5px;
+    width: 95%;
 }
 
-table.sl-main td, th {
-    padding:5px;
-}
-
-table.sl-main th {
-    background-color: #333;
-    color:#DDD;
-    font-size:11px;
-}
 
 table.sl-main td {
-    border:1px solid #DDD;
+    background-color: #f0ffff42;
     font-size:12px;
+    border:1px solid #DDD;
+    padding:5px;
 }
 
 

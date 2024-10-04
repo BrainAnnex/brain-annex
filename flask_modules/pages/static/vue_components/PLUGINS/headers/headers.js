@@ -69,10 +69,10 @@ Vue.component('vue-plugin-h',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: Object.assign({}, this.item_data),
+                current_data:   Object.assign({}, this.item_data),
 
-                // Clone, used to restore the data in case of a Cancel or failed save
-                original_data: Object.assign({}, this.item_data),
+                // Clone of the above object, used to restore the data in case of a Cancel or failed save
+                original_data:  Object.assign({}, this.item_data),
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -111,12 +111,17 @@ Vue.component('vue-plugin-h',
 
 
 
+            /*
+                ---  SERVER CALLS  ---
+             */
+
             save()
+            // Conclude an EDIT operation
             {
                 // Start the body of the POST to send to the server
                 var post_obj = {class_name: this.item_data.class_name};
 
-                if (this.item_data.uri < 0)  {     // Negative URI is a convention indicating a new Content Item to create,
+                if (this.item_data.uri < 0)  {     // Negative uri is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
                      post_obj.category_id = this.category_id;
                      post_obj.insert_after = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
@@ -129,7 +134,7 @@ Vue.component('vue-plugin-h',
                     url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
 
-                // Go over each field.  TODO: generalize
+                // Enforce required field
                 if ('text' in this.current_data)
                     post_obj.text = this.current_data.text;
                 else  {
@@ -137,7 +142,7 @@ Vue.component('vue-plugin-h',
                     return;
                 }
 
-                console.log(`In 'vue-plugin-h'.  About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(`In 'vue-plugin-h', save().  About to contact the server at ${url_server_api} .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
