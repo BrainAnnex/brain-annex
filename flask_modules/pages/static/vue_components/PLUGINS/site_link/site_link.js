@@ -277,6 +277,8 @@ Vue.component('vue-plugin-sl',
 
                 Modify the "current_data" property, to also include any fields in the Schema.
                 Perform this operation in a matter than will be detected by Vue
+
+                TODO: most likely, no longer needed!
              */
             {
                 console.log("In show_all_fields()");
@@ -306,6 +308,7 @@ Vue.component('vue-plugin-sl',
 
             clone_and_standardize(obj)
             // Clone first; then remove some keys that shouldn't get shown nor edited
+            // TODO: scrubbing the data is almost certainly completely unnecessary; a relic of old versions, or of the record editor
             {
                 clone_obj = Object.assign({}, obj);     // Clone the object
 

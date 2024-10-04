@@ -1180,8 +1180,8 @@ new Vue({
 
             if (old_uri < 0)
                 console.log(`    A temporary URI of ${old_uri} is being replaced by the newly-assigned permanent URI '${new_data.uri}'`);
-            else if (old_uri != new_data.uri)  {
-                console.error(`    Unexpected attempt to update a permanent URI ('{old_uri}'), with a different value ('${new_data.uri}')`);
+            else if (new_data.uri !== undefined  &&  new_data.uri != old_uri)  {
+                console.error(`    Unexpected attempt to update a permanent URI ('${old_uri}'), with a different value ('${new_data.uri}')`);
                 alert("Attempting to update a permanent URI on the display.  Save your work and refresh the page");
                 return;
             }
