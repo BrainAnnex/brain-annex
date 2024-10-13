@@ -61,7 +61,8 @@ Vue.component('vue-plugin-sl',
                 <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
                     <td class="small">{{item_data.date}}</td>
                     <td class="comments">{{item_data.comments}}</td>
-                    <td><span v-show="item_data.rating">{{item_data.rating}}&#9733;</span></td>
+                    <td><span v-show="item_data.rating">{{item_data.rating}}</span><span v-show="item_data.rating" class="star-yellow">&#9733;</span>
+                    </td>
                 </tr>
                 <tr v-else @dblclick="enter_editing_mode">
                     <td><span class="hint">date</span><br><input type="text" size="6" v-model="current_data.date"></td>
@@ -70,7 +71,22 @@ Vue.component('vue-plugin-sl',
                         <textarea rows="4" cols="60"  v-model="current_data.comments">
                         </textarea>
                     </td>
-                    <td><span class="hint">rating</span><br><input type="text" size="1" v-model="current_data.rating"></td>
+                    <td><span class="hint">rating</span><br>
+                        <select v-model="current_data.rating">
+                            <option disabled value='-1'>[&#9733;]</option>
+                            <option value=5>5</option>
+                            <option value=4.5>4.5</option>
+                            <option value=4>4</option>
+                            <option value=3.5>3.5</option>
+                            <option value=3 selected>3</option>
+                            <option value=2.5>2.5</option>
+                            <option value=2>2</option>
+                            <option value=1.5>1.5</option>
+                            <option value=1>1</option>
+                            <option value=0.5>0.5</option>
+                            <option value=0>0</option>
+                        </select>
+                    </td>
                 </tr>
 
             </table>

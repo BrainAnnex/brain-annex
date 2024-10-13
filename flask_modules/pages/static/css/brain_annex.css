@@ -32,6 +32,11 @@ span.waiting {
 }
 
 
+span.star-yellow {          /* Used to display star ratings */
+    color: #a6a606;
+}
+
+
 
 /*
     Form box

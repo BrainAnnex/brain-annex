@@ -52,7 +52,7 @@ Vue.component('vue-plugin-d',
                         <p v-if="current_metadata.comments" v-html="render_newlines(current_metadata.comments)" style="margin-bottom:0; color:#555"></p>
 
                         <p v-if="current_metadata.rating || current_metadata.read" style="margin-bottom:0; color:#555">
-                            <span v-if="current_metadata.rating">{{current_metadata.rating}} &#9733;</span>
+                            <span v-if="current_metadata.rating">{{current_metadata.rating}}</span><span v-if="current_metadata.rating" class="star-yellow">&#9733;</span>
                             <span style="margin-left:45px">{{current_metadata.read}}</span>
                         </p>
                     </div>
@@ -84,7 +84,22 @@ Vue.component('vue-plugin-d',
                         <textarea v-model="current_metadata.comments" name="myNAME" rows="3" cols="45"></textarea>
 
                         <br><br>
-                        <span class="label">Rating</span> <input v-model="current_metadata.rating" size="3">
+                        <span class="label">Rating</span>
+                        <select v-model="current_metadata.rating">
+                            <option disabled value='-1'>[&#9733;]</option>
+                            <option value=5>5</option>
+                            <option value=4.5>4.5</option>
+                            <option value=4>4</option>
+                            <option value=3.5>3.5</option>
+                            <option value=3 selected>3</option>
+                            <option value=2.5>2.5</option>
+                            <option value=2>2</option>
+                            <option value=1.5>1.5</option>
+                            <option value=1>1</option>
+                            <option value=0.5>0.5</option>
+                            <option value=0>0</option>
+                        </select>
+
                         &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
                         &nbsp;&nbsp; <span style="color: gray">URI: &#96;{{current_metadata.uri}}&#96;</span>
 
