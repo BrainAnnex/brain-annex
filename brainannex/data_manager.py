@@ -80,15 +80,15 @@ class DataManager:
     @classmethod
     def get_node_labels(cls) -> [str]:
         """
-        Look up and return a list of all the node labels in the database.
+        Look up and return a list, sorted alphabetically,
+        of all the node labels in the database.
         EXAMPLE: ["my_label_1", "my_label_2"]
 
-        :return:    A list of strings
+        :return:    A list of strings, sorted alphabetically
         """
+        label_list = cls.db.get_labels()    # Fetch all the node labels in the database
 
-        label_list = cls.db.get_labels()        # Fetch all the node labels in the database
-
-        return label_list
+        return sorted(label_list)
 
 
 

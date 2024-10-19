@@ -3,14 +3,18 @@
 
     Flask-passed parameters:
 
+        site_data
         current_page
-        site_pages
+        username
+
+        all_labels          List of all the node labels present in the database
+                                EXAMPLE: ["my_label_1", "my_label_2"]
 
         all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                 EXAMPLE:
-                                    [{"uri": 1,   "name": "HOME", "remarks": "ROOT NODE"},
-                                    {"uri: 123,  "name": "Calculus"},
-                                    {"uri": 523, "name": "Work at Acme", "pinned": True}]
+                                    [{"uri": "1",   "name": "HOME", "remarks": "ROOT NODE"},
+                                     {"uri: "123",  "name": "Calculus"},
+                                     {"uri": "523", "name": "Work at Acme", "pinned": True}]
  #}
 
 <html lang="en">
@@ -55,7 +59,7 @@
         <br><br><br>
 
         <select name='search_category'  style='font-size:14px'>
-            <option value=''>[OPTIONALLY, select category to restrict search under]</option>
+            <option value=''>[OPTIONALLY, select Category to restrict search under]</option>
             {% for category in all_categories %}
             <option value='{{category.uri}}'>
                 {{category.name}}
@@ -90,7 +94,18 @@
         </tr>
         -->
         <tr>
-            <td>Label Name</td><td><input type="text" size="50" v-model="labels"></td>
+            <td>Label Name</td>
+
+            <td>
+                <select v-model="labels">
+                    <option disabled value=''>[Choose a label]</option>
+                       <option v-for="label in {{all_labels}}" v-bind:value="label">
+                       [[label]]
+                       </option>
+                </select>
+                <span style="color: gray">REQUIRED</span>
+            </td>
+
         </tr>
         <tr>
             <td>Key Name</td><td><input type="text" size="50" v-model="key_name"></td>
