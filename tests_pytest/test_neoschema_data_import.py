@@ -617,7 +617,7 @@ def test_import_pandas_nodes_2_OLD(db):
 
 
 
-def test_import_pandas_links(db):
+def test_import_pandas_links_NO_BATCH(db):
     db.empty_dbase()
     NeoSchema.set_database(db)
 
@@ -645,7 +645,7 @@ def test_import_pandas_links(db):
     assert len(state_node_ids) == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
+    link_ids = NeoSchema.import_pandas_links_NO_BATCH(df=state_city_links_df,
                                              class_from="City", class_to="State",
                                              col_from="City ID", col_to="State ID",
                                              link_name="IS_IN")
@@ -659,6 +659,137 @@ def test_import_pandas_links(db):
     q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
+
+
+
+
+def test_import_pandas_links(db):
+    db.empty_dbase()
+    NeoSchema.set_database(db)
+
+    # Create "City" and "State" Class node - together with their respective Properties, based on the data to import
+    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+
+    # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
+    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+
+    # Now import some data
+    city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
+    state_df = pd.DataFrame({"State ID": [1, 2, 3], "name": ["California", "Illinois", "New York"], "2-letter abbr": ["CA", "IL", "NY"]})
+
+    # In this example, we assume a separate table ("join table") with the data about the relationships;
+    # this would always be the case for many-to-many relationships;
+    # 1-to-many relationships, like we have here, could also be stored differently
+    state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4]})
+
+    # Import the data nodes
+    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
+    assert result["number_nodes_created"] == 4
+
+    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
+    assert result["number_nodes_created"] == 3
+
+    # Now import the links
+    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
+                                             class_from="City", class_to="State",
+                                             col_from="City ID", col_to="State ID",
+                                             link_name="IS_IN",
+                                             max_batch_size=4)      # This will lead to 1 batch
+    assert len(link_ids) == 4
+
+    assert NeoSchema.data_link_exists(node_1_id="Berkeley", node_2_id="California", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="San Francisco", node_2_id="California", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="New York City", node_2_id="New York", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="Chicago", node_2_id="Illinois", id_key="name", rel_name="IS_IN")
+
+    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
+    result = db.query(q, single_column="rel_id")
+    assert compare_unordered_lists(result, link_ids)
+
+
+    # Repeat the entire link creation with a different batch size
+    q = "MATCH (:City)-[r :IS_IN]-(:State) DETACH DELETE r"     # Det rid of existing links
+    result = db.update_query(q)
+    assert result["relationships_deleted"] == 4
+
+    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
+                                             class_from="City", class_to="State",
+                                             col_from="City ID", col_to="State ID",
+                                             link_name="IS_IN",
+                                             max_batch_size=3)      # This will lead to 2 batches
+    assert len(link_ids) == 4
+
+    assert NeoSchema.data_link_exists(node_1_id="Berkeley", node_2_id="California", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="San Francisco", node_2_id="California", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="New York City", node_2_id="New York", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="Chicago", node_2_id="Illinois", id_key="name", rel_name="IS_IN")
+
+    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
+    result = db.query(q, single_column="rel_id")
+    assert compare_unordered_lists(result, link_ids)
+
+
+    # Repeat the entire link creation with a different batch size
+    q = "MATCH (:City)-[r :IS_IN]-(:State) DETACH DELETE r"     # Det rid of existing links
+    result = db.update_query(q)
+    assert result["relationships_deleted"] == 4
+
+    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
+                                             class_from="City", class_to="State",
+                                             col_from="City ID", col_to="State ID",
+                                             link_name="IS_IN",
+                                             max_batch_size=1)      # This will lead to 4 batches
+    assert len(link_ids) == 4
+
+    assert NeoSchema.data_link_exists(node_1_id="Berkeley", node_2_id="California", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="San Francisco", node_2_id="California", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="New York City", node_2_id="New York", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node_1_id="Chicago", node_2_id="Illinois", id_key="name", rel_name="IS_IN")
+
+    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
+    result = db.query(q, single_column="rel_id")
+    assert compare_unordered_lists(result, link_ids)
+
+
+
+def test_import_pandas_links_2(db):
+    db.empty_dbase()
+    NeoSchema.set_database(db)
+
+    # Create "City" and "State" Class node - together with their respective Properties, based on the data to import
+    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+
+    # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
+    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+
+    # Now import some node data
+    city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
+    state_df = pd.DataFrame({"State ID": [1, 2, 3], "name": ["California", "Illinois", "New York"], "2-letter abbr": ["CA", "IL", "NY"]})
+
+    # In this example, we assume a separate table ("join table") with the data about the relationships;
+    # this would always be the case for many-to-many relationships;
+    # 1-to-many relationships, like we have here, could also be stored differently
+    state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4], "Rank": [10, 11, 12, 13]})
+
+    # Import the data nodes
+    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
+    assert result["number_nodes_created"] == 4
+
+    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
+    assert result["number_nodes_created"] == 3
+
+    # Now import the links
+    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
+                                             class_from="City", class_to="State",
+                                             col_from="City ID", col_to="State ID",
+                                             link_name="IS_IN", col_link_props="Rank",
+                                             max_batch_size=4)      # This will lead to 1 batch
+    assert len(link_ids) == 4
+
+
+
 
 
 
