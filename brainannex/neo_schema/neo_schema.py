@@ -1860,13 +1860,25 @@ class NeoSchema:
 
 
     @classmethod
-    def data_link_exists(cls, node_1_id, node_2_id, rel_name :str, id_key=None) -> bool:
+    def data_link_exists(cls, node1_id, node2_id, link_name :str, id_key=None) -> bool:
         """
-        Return True if the specified Data Link exists, or False otherwise.
+        Return True if the specified link exists, in the direction from the Data Node node_1 to node_2,
+        or False otherwise.
+        Note that more than 1 link by the same name may exist between any two given nodes, if
+        the links have different properties; as long as at least 1 link exists, True is returned
+
+        :param node1_id:    A unique value to identify the 1st data node:
+                                either an internal database ID or a primary key value
+        :param node2_id:    A unique value to identify the 1st data node:
+                                either an internal database ID or a primary key value
+        :param link_name:   The name of the link (relationship) to look for
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
+                                Leave blank to use the internal database ID
 
         :return:            True if the specified Data Node link, or False otherwise
         """
-        # TODO: also allow to optionally pass Class names for double-check
+        # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
+        # TODO: maybe make a version of this function for NeoAccess
 
         # Prepare the clause part of a Cypher query
         if id_key is None:
@@ -1877,19 +1889,80 @@ class NeoSchema:
 
         # Prepare a Cypher query to locate the link count
         q = f'''
-            MATCH (:CLASS)<-[:SCHEMA]-(dn1) -[r :`{rel_name}`]-> (dn2)-[:SCHEMA]->(:CLASS)
+            MATCH (:CLASS)<-[:SCHEMA]-(dn1) -[r :`{link_name}`]-> (dn2)-[:SCHEMA]->(:CLASS)
             {clause} 
             RETURN COUNT(r) AS number_found
             '''
-        data_dict = {"data_node_1": node_1_id, "data_node_2": node_2_id}
+        data_dict = {"data_node_1": node1_id, "data_node_2": node2_id}
         #cls.db.debug_query_print(q, data_dict)
 
         number_found = cls.db.query(q, data_dict, single_cell="number_found")
 
         if number_found == 0:
             return False
-        else:
+        else:   # 1 link, or possibly more, found
             return True
+
+
+
+    @classmethod
+    def get_data_link_properties(cls, node1_id, node2_id, link_name :str, id_key=None, include_internal_id=False) -> [dict]:
+        """
+        Return all the properties of the link(s), of the specified name, between the two given Data nodes.
+
+        Note that more than 1 link by the same name may exist between any two given nodes, if
+        the links have different properties; as long as at least 1 link exists, True is returned
+
+        :param node1_id:   A unique value to identify the 1st data node:
+                                either an internal database ID or a primary key value
+        :param node2_id:   A unique value to identify the 1st data node:
+                                either an internal database ID or a primary key value
+        :param link_name:   The name of the link (relationship) to look for
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
+                                Leave blank to use the internal database ID
+        :param include_internal_id: [OPTIONAL] If True, then the internal database ID of the relationships is also
+                                        included in the dict's, using the key "internal_id"
+
+        :return:            A list of dict, with key/values for the properties of each link.
+                                If include_internal_id is True, an extra key named "internal_id" will be present.
+                                EXAMPLE, with include_internal_id = False:
+                                    [{'Rank': 99}, {'Rank': 123}, {}]     (Two links with properties, and one without)
+{}
+        """
+        # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
+        # TODO: maybe make a version of this function for NeoAccess
+        # TODO: pytest
+
+        # Prepare the clause part of a Cypher query
+        if id_key is None:
+            clause = "WHERE id(dn1) = $data_node_1 AND id(dn2) = $data_node_2"
+        else:
+            clause = f"WHERE dn1.{id_key} = $data_node_1 AND dn2.{id_key} = $data_node_2"
+
+
+        data_dict = {"data_node_1": node1_id, "data_node_2": node2_id}
+
+        # Prepare a Cypher query to locate the link count
+        if include_internal_id:
+            q = f'''
+                MATCH (:CLASS)<-[:SCHEMA]-(dn1) -[r :`{link_name}`]-> (dn2)-[:SCHEMA]->(:CLASS)
+                {clause} 
+                RETURN r
+                '''
+            result = cls.db.query_extended(q, data_dict, flatten=True,
+                fields_to_exclude=['neo4j_start_node', 'neo4j_end_node', 'neo4j_type'])
+        else:
+            q = f'''
+                MATCH (:CLASS)<-[:SCHEMA]-(dn1) -[r :`{link_name}`]-> (dn2)-[:SCHEMA]->(:CLASS)
+                {clause} 
+                RETURN properties(r) AS props
+                '''
+
+            result = cls.db.query(q, data_dict, single_column="props")
+
+        #cls.db.debug_query_print(q, data_dict)
+
+        return result
 
 
 
@@ -3754,7 +3827,9 @@ class NeoSchema:
                                     IN ADDITION TO the Class name (which is always used as label)
         :param report:          [OPTIONAL] If True (default), print the status of the import-in-progress
                                     at the end of each batch round
-        :param report_frequency: [OPTIONAL] Only applicable if report is True
+        :param report_frequency: [OPTIONAL] Only applicable if report is True;
+                                    how often (in terms of number of batches)
+                                    to print out the status of the import-in-progress
 
         :param max_batch_size:  To limit the number of Pandas rows loaded into the database at one time
 
@@ -4089,7 +4164,7 @@ class NeoSchema:
                             class_from :str, class_to :str,
                             col_from :str, col_to :str,
                             link_name :str,
-                            col_link_props=None, name_map=None,
+                            col_link_props=None, rename=None,
                             skip_errors = False,
                             report=True, report_frequency=100,
                             max_batch_size=1000) -> [int]:
@@ -4104,20 +4179,27 @@ class NeoSchema:
                                           to link up existing States and Cities
         :param class_from:  Name of the Class of the data nodes that the relationship originates from
         :param class_to:    Name of the Class of the data nodes that the relationship ends into
-        :param col_from:    Name of the Data Frame column identifying the data nodes from which the relationship starts
-                                (the values play the role of foreign keys)
-        :param col_to:      Name of the Data Frame column identifying the data nodes to which the relationship ends
-                                (the values play the role of foreign keys)
+        :param col_from:    Name of the Data Frame column (prior to any optional renaming)
+                                identifying the data nodes from which the link starts;
+                                note that these values play the role of foreign keys
+        :param col_to:      Name of the Data Frame column (prior to any optional renaming)
+                                identifying the data nodes to which the link ends;
+                                note that these values play the role of foreign keys
         :param link_name:   Name of the new relationship being created
         :param col_link_props: [OPTIONAL] Name of a property to assign to the relationships;
                                 it must match up the name of the Data Frame column, which contains the value.
                                 Any NaN values are ignored (no property set on that relationship.)
-        :param name_map:    [OPTIONAL] Dict with mapping from Pandas column names
-                                to Property names in the data nodes in the database
+        :param rename:      [OPTIONAL] Dict with mapping from Pandas column names
+                                to the names of Properties in the data nodes and/or in their links
         :param skip_errors: [OPTIONAL] If True, the import continues even in the presence of errors;
                                 default is False
-        :param report_frequency: [OPTIONAL] How often to print out the status of the import-in-progress
-                                    (in terms of number of imported links)
+        :param report:      [OPTIONAL] If True (default), print the status of the import-in-progress
+                                    at the end of each batch round
+        :param report_frequency: [OPTIONAL] Only applicable if report is True;
+                                    how often (in terms of number of batches)
+                                    to print out the status of the import-in-progress
+
+        :param max_batch_size:  To limit the number of Pandas rows loaded into the database at one time
 
         :return:            A list of of the internal database ID's of the created links
         """
@@ -4134,20 +4216,24 @@ class NeoSchema:
             f"requested in the argument 'col_to'"
 
 
+        # Manage column renaming, if applicable
+        if rename is not None:
+            df = df.rename(rename, axis=1)          # Rename the affected columns in the Pandas data frame
+
         # Starting with the column names in the Pandas data frame,
         # determine the name of the field names in the database if they're mapped to a different name
-        if name_map and col_from in name_map:
-            key_from = name_map[col_from]
+        if rename and col_from in rename:
+            key_from = rename[col_from]
         else:
             key_from = col_from
 
-        if name_map and col_to in name_map:
-            key_to = name_map[col_to]
+        if rename and col_to in rename:
+            key_to = rename[col_to]
         else:
             key_to = col_to
 
-        if name_map and col_link_props in name_map:
-            link_prop = name_map[col_link_props]
+        if rename and col_link_props in rename:
+            link_prop = rename[col_link_props]
         else:
             link_prop = col_link_props
 
@@ -4189,26 +4275,36 @@ class NeoSchema:
                 UNWIND $link_list AS link_dict
                 WITH link_dict
                 MATCH (from_node :`{class_from}` {{`{key_from}`: link_dict["{key_from}"]}}), 
-                      (to_node :`{class_to}` {{`{key_to}`: link_dict["{key_to}"]}})
+                      (to_node :`{class_to}` {{`{key_to}`: link_dict["{key_to}"]}})             
                 MERGE (from_node)-[r:`{link_name}`]->(to_node)
+                WITH r, link_dict["{link_prop}"] AS prop_value
+                SET (CASE WHEN TOSTRING(prop_value) <> 'NaN' THEN r END).`{link_prop}` = prop_value
                 RETURN id(r) AS link_id
                 '''
-            # EXAMPLE:
+
+            # EXAMPLE of query:
             '''
                 UNWIND $link_list AS link_dict
                 WITH link_dict
                 MATCH (from_node :`City` {`City ID`: link_dict["City ID"]}), 
                       (to_node :`State` {`State ID`: link_dict["State ID"]})
                 MERGE (from_node)-[r:`IS_IN`]->(to_node)
+                WITH r, link_dict["Rank"] AS prop_value
+                SET (CASE WHEN TOSTRING(prop_value) <> 'NaN' THEN r END).`Rank` = prop_value
                 RETURN id(r) AS link_id
             '''
-            # with data_binding={'link_list': [{'State ID': 1, 'City ID': 18}, {'State ID': 1, 'City ID': 19}]}
+            # EXAMPLE of data_binding:  {'link_list': [{'State ID': 1, 'City ID': 18}, {'State ID': 1, 'City ID': 19}]}
+
+            # NOTE -  SET (CASE WHEN TOSTRING(prop_value) <> 'NaN' THEN r END).`Rank` = prop_value
+            #         has the effect of setting the `Rank` property of the new relationship r *only* if prop_value isn't NaN ;
+            #         if not a NaN, then that line simply becomes:  SET r.`Rank` = prop_value
+            #         See:  https://neo4j.com/docs/cypher-manual/4.4/clauses/set/#set-set-a-property
 
             data_binding={"link_list": link_list}
-            cls.db.debug_query_print(q, data_binding)
+            #cls.db.debug_query_print(q, data_binding)
 
             result = cls.db.update_query(q, data_binding)
-            print("    Result of running batch : ", result)
+            #print("    Result of running batch : ", result)
             # EXAMPLE :  {'_contains_updates': True, 'relationships_created': 2, 'returned_data': [{'link_id': 89345}, {'link_id': 89346}]}
 
 
@@ -4220,7 +4316,7 @@ class NeoSchema:
 
             else:                                                       # If fewer links than expected were created
                 error_msg = f"import_pandas_links(): in this batch import, " \
-                            f"only created {result.get('relationships_created')} links, instead of the expected {len(link_list)}"
+                            f"only created {result.get('relationships_created', 0)} links, instead of the expected {len(link_list)}"
                 if skip_errors:
                     print(error_msg)
                 else:
@@ -4235,9 +4331,6 @@ class NeoSchema:
             print(f"    FINISHED importing a total of {len(link_id_list)} links")
 
         return link_id_list
-
-
-
 
 
 

@@ -651,15 +651,14 @@ def test_import_pandas_links_NO_BATCH(db):
                                              link_name="IS_IN")
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node_1_id="Berkeley", node_2_id="California", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="San Francisco", node_2_id="California", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="New York City", node_2_id="New York", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="Chicago", node_2_id="Illinois", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
     q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
-
 
 
 
@@ -698,12 +697,12 @@ def test_import_pandas_links(db):
                                              max_batch_size=4)      # This will lead to 1 batch
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node_1_id="Berkeley", node_2_id="California", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="San Francisco", node_2_id="California", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="New York City", node_2_id="New York", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="Chicago", node_2_id="Illinois", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
-    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
+    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"  # Get the dbase IDs of all the "IS_IN" links created
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
 
@@ -720,12 +719,12 @@ def test_import_pandas_links(db):
                                              max_batch_size=3)      # This will lead to 2 batches
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node_1_id="Berkeley", node_2_id="California", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="San Francisco", node_2_id="California", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="New York City", node_2_id="New York", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="Chicago", node_2_id="Illinois", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
-    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
+    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id" # Get the dbase IDs of all the "IS_IN" links created
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
 
@@ -742,12 +741,12 @@ def test_import_pandas_links(db):
                                              max_batch_size=1)      # This will lead to 4 batches
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node_1_id="Berkeley", node_2_id="California", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="San Francisco", node_2_id="California", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="New York City", node_2_id="New York", id_key="name", rel_name="IS_IN")
-    assert NeoSchema.data_link_exists(node_1_id="Chicago", node_2_id="Illinois", id_key="name", rel_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
-    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
+    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id" # Get the dbase IDs of all the "IS_IN" links created
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
 
@@ -771,7 +770,8 @@ def test_import_pandas_links_2(db):
     # In this example, we assume a separate table ("join table") with the data about the relationships;
     # this would always be the case for many-to-many relationships;
     # 1-to-many relationships, like we have here, could also be stored differently
-    state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4], "Rank": [10, 11, 12, 13]})
+    state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4], "Rank": [10, None, 12, 13]})
+    # The None value in the "Rank" will appear as a NaN in the data frame
 
     # Import the data nodes
     result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
@@ -788,8 +788,140 @@ def test_import_pandas_links_2(db):
                                              max_batch_size=4)      # This will lead to 1 batch
     assert len(link_ids) == 4
 
+    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                link_name="IS_IN", include_internal_id=True)
+    assert len(result) == 1
+    assert result[0]["Rank"] == 10
+    assert result[0]["internal_id"] in link_ids
+
+    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                link_name="IS_IN", include_internal_id=True)
+    assert len(result) == 1
+    assert result[0]["Rank"] == 12
+    assert result[0]["internal_id"] in link_ids
+
+    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                link_name="IS_IN", include_internal_id=True)
+    assert len(result) == 1
+    assert result[0]["Rank"] == 13
+    assert result[0]["internal_id"] in link_ids
+
+    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                link_name="IS_IN", include_internal_id=True)
+    assert len(result) == 1
+    assert "Rank" not in result[0]      # No value got set, because it was a missing value (NaN) in the imported dataframe
+    assert result[0]["internal_id"] in link_ids
 
 
+
+def test_import_pandas_links_3(db):
+    db.empty_dbase()
+    NeoSchema.set_database(db)
+
+    # Create "City" and "State" Class node - together with their respective Properties, based on the data to import
+    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+
+    # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
+    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+
+    # Now import some node data
+    city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
+    state_df = pd.DataFrame({"State ID": [1, 2, 3],  "name": ["California", "Illinois", "New York"], "2-letter abbr": ["CA", "IL", "NY"]})
+
+    # In this example, we assume a separate table ("join table") with the data about the relationships;
+    # this would always be the case for many-to-many relationships;
+    # 1-to-many relationships, like we have here, could also be stored differently
+    state_city_links_df = pd.DataFrame({"state_id": [1, 1, 2, 3], "city_id": [1, 3, 2, 4]})
+    # The None value in the "Rank" will appear as a NaN in the data frame
+
+    # Import the data nodes
+    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
+    assert result["number_nodes_created"] == 4
+
+    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
+    assert result["number_nodes_created"] == 3
+
+    # Now import the links
+    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
+                                             class_from="City", class_to="State",
+                                             col_from="city_id", col_to="state_id",
+                                             rename={"city_id": "City ID", "state_id": "State ID"},
+                                             link_name="IS_IN",
+                                             max_batch_size=4)      # This will lead to 1 batch
+    assert len(link_ids) == 4
+
+    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
+
+    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"  # Get the dbase IDs of all the "IS_IN" links created
+    result = db.query(q, single_column="rel_id")
+    assert compare_unordered_lists(result, link_ids)
+
+
+
+def test_import_pandas_links_4(db):
+    db.empty_dbase()
+    NeoSchema.set_database(db)
+
+    # Create "City" and "State" Class node - together with their respective Properties, based on the data to import
+    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+
+    # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
+    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+
+    # Now import some node data
+    city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
+    state_df = pd.DataFrame({"State ID": [1, 2, 3],  "name": ["California", "Illinois", "New York"], "2-letter abbr": ["CA", "IL", "NY"]})
+
+    # In this example, we assume a separate table ("join table") with the data about the relationships;
+    # this would always be the case for many-to-many relationships;
+    # 1-to-many relationships, like we have here, could also be stored differently
+    state_city_links_df = pd.DataFrame({"state_id": [1, 1, 2, 3], "city_id": [1, 3, 2, 4], "rank_value": [10, None, 12, 13]})
+    # The None value in the "Rank" will appear as a NaN in the data frame
+
+    # Import the data nodes
+    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
+    assert result["number_nodes_created"] == 4
+
+    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
+    assert result["number_nodes_created"] == 3
+
+    # Now import the links
+    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
+                                             class_from="City", class_to="State",
+                                             col_from="city_id", col_to="state_id",
+                                             link_name="IS_IN", col_link_props="rank_value",
+                                             rename={"city_id": "City ID", "state_id": "State ID", "rank_value": "Rank"},
+                                             max_batch_size=2)      # This will lead to 2 batches
+    assert len(link_ids) == 4
+
+    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                link_name="IS_IN", include_internal_id=True)
+    assert len(result) == 1
+    assert result[0]["Rank"] == 10
+    assert result[0]["internal_id"] in link_ids
+
+    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                link_name="IS_IN", include_internal_id=True)
+    assert len(result) == 1
+    assert result[0]["Rank"] == 12
+    assert result[0]["internal_id"] in link_ids
+
+    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                link_name="IS_IN", include_internal_id=True)
+    assert len(result) == 1
+    assert result[0]["Rank"] == 13
+    assert result[0]["internal_id"] in link_ids
+
+    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                link_name="IS_IN", include_internal_id=True)
+    assert len(result) == 1
+    assert "Rank" not in result[0]      # No value got set, because it was a missing value (NaN) in the imported dataframe
+    assert result[0]["internal_id"] in link_ids
 
 
 
