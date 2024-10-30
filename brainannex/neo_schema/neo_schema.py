@@ -4051,12 +4051,14 @@ class NeoSchema:
         from the rows of a Pandas dataframe, as database links between the existing Data Nodes.
 
         :param df:          A Pandas Data Frame with the data RELATIONSHIP to import
-        :param class_from:  Name of the Class of the data nodes that the relationship originates from
-        :param class_to:    Name of the Class of the data nodes that the relationship ends into
+
+        :param class_from:  Name of the Class of the data nodes that the links originate from
+        :param class_to:    Name of the Class of the data nodes that the links end into
         :param col_from:    Name of the Data Frame column identifying the data nodes from which the relationship starts
                                 (the values are expected to be foreign keys)
         :param col_to:      Name of the Data Frame column identifying the data nodes to which the relationship ends
                                 (the values are expected to be foreign keys)
+
         :param link_name:   Name of the new relationship being created
         :param col_link_props: [OPTIONAL] Name of a property to assign to the relationships,
                                 as well as name of the Data Frame column containing the values.
@@ -4177,20 +4179,23 @@ class NeoSchema:
                                 This data frame plays the role of a "join table".
                                 EXAMPLE - a data frame with 2 columns "State ID" and "City ID",
                                           to link up existing States and Cities
-        :param class_from:  Name of the Class of the data nodes that the relationship originates from
-        :param class_to:    Name of the Class of the data nodes that the relationship ends into
+
+        :param class_from:  Name of the Class of the data nodes that the links originate from
+        :param class_to:    Name of the Class of the data nodes that the links end into
         :param col_from:    Name of the Data Frame column (prior to any optional renaming)
                                 identifying the data nodes from which the link starts;
                                 note that these values play the role of foreign keys
         :param col_to:      Name of the Data Frame column (prior to any optional renaming)
                                 identifying the data nodes to which the link ends;
                                 note that these values play the role of foreign keys
+
         :param link_name:   Name of the new relationship being created
         :param col_link_props: [OPTIONAL] Name of a property to assign to the relationships;
                                 it must match up the name of the Data Frame column, which contains the value.
                                 Any NaN values are ignored (no property set on that relationship.)
         :param rename:      [OPTIONAL] Dict with mapping from Pandas column names
                                 to the names of Properties in the data nodes and/or in their links
+                                
         :param skip_errors: [OPTIONAL] If True, the import continues even in the presence of errors;
                                 default is False
         :param report:      [OPTIONAL] If True (default), print the status of the import-in-progress
