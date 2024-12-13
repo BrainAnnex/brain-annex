@@ -1285,11 +1285,28 @@ class DataManager:
 
         :param url: URL of the website whose title we want to fetch.
                         EXAMPLE:  "https://brainannex.org"
+
         :return:    The "Title" of the website.
                         In case unable to locate the web page, or unable to extract its Title,
                         raise an Exception
         """
-        response = requests.get(url, allow_redirects=True)
+        # Create headers to mimic a browser; unclear if it helps combat occasional error messages 403
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Priority": "u=0, i",
+            "TE": "trailers"
+        }
+
+        response = requests.get(url, headers=headers, allow_redirects=True)
 
         if response.status_code == 200:     # Normal response code from remote website
             #print(response.text[:800])     # Show the early part of the file
@@ -1314,13 +1331,25 @@ class DataManager:
                 raise Exception(err_status)     # Found the web page, but couldn't extract its title
 
             '''
-            # Alternate approach using BeautifulSoup (untested):
+            # Alternate approach using BeautifulSoup (untested; unknown if it does a more sophisticated parsing):
             
                 from bs4 import BeautifulSoup
-                # Parse the HTML content
+                # Parse the HTML content, after calling requests.get()
                 soup = BeautifulSoup(response.text, 'html.parser')                  
                 # Extract the title element and its text
                 title = soup.title.string if soup.title else 'No Title Found
+            
+            # Another alternate approach (also untested):
+            # If the website uses JavaScript to load content dynamically, requests won't be able to fetch it directly. 
+            # In such cases, use a tool like Selenium or Playwright that can execute JavaScript.
+
+                from selenium import webdriver
+                
+                driver = webdriver.Chrome()
+                driver.get(url)
+                page_source = driver.page_source
+                print(page_source)
+                driver.quit()                
             '''
 
         else:   # Response status other that 200

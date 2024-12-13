@@ -121,10 +121,6 @@ Vue.component('vue-plugin-sl',
             return {
                 editing_mode: (this.item_data.uri < 0  ? true : false), // Negative uri means "new Item"
 
-                // Note: negative uri means "new Item"
-                //current_data: (this.item_data.uri < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
-                //original_data: (this.item_data.uri < 0  ? this.prepare_blank_record() : this.clone_and_standardize(this.item_data)),
-
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
                 current_data:   Object.assign({}, this.item_data),    // Clone from the original data passed to this component
@@ -146,8 +142,9 @@ Vue.component('vue-plugin-sl',
         methods: {
 
             set_name()
-            /* Invoked whenever a change of the URL field is detected while in editing mode
-                (upon the user clicking away from that field);
+            /*  Invoked whenever a change of the URL field is detected while in editing mode
+                (when the user clicks away from that field);
+                if no name field is already present,
                 it attempts to retrieve the webpage title of the URL just entered by the user,
                 and it sets the "name" field (on the editing form) to it
              */
@@ -155,8 +152,16 @@ Vue.component('vue-plugin-sl',
                 const url = this.current_data.url;
                 console.log(`Detected change in the URL ; new value: ${url}`);
 
-                this.current_data.name = "[Fetching the page title...]";
-                this.get_webpage_title(url);
+                const current_name = this.current_data.name;
+
+                if (current_name === null || current_name === undefined
+                        ||  (typeof current_name === 'string' && current_name.trim() === '') )
+                {
+                    this.current_data.name = "[Fetching the page title...]";    // Temporary name assignment
+                    this.get_webpage_title(url);    // Query the server to find out the page title, and sets the "name" field to it
+                }
+                else
+                    console.log(`We already have a name for this webpage; no action taken`);
             },
 
 
@@ -251,7 +256,8 @@ Vue.component('vue-plugin-sl',
              */
 
             get_webpage_title(url)
-            /*  Query the server to find out the title of the webpage identified by the given URL.
+            /*  Asynchronously query the server to find out the title of the webpage identified by the given URL,
+                and, upon fetching the result, set the data field this.current_data.name to it.
                 (Note: letting the server handle this, to avoid running afoul of CORS.)
              */
             {
@@ -270,6 +276,8 @@ Vue.component('vue-plugin-sl',
 
                 if (success)  {     // Server reported SUCCESS
                     this.current_data.name = server_payload;
+                    // Note: if the user has already saved the record by the time this fetch terminates,
+                    //       then the modified field won't get saved in the database, nor shown in the UI
                 }
                 else  {             // Server reported FAILURE
                     this.current_data.name = "Unable to extract webpage title";
