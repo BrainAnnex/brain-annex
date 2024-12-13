@@ -1862,7 +1862,7 @@ class ApiRouting:
 
             RETURNED JSON PAYLOAD:
                 recordset:  A list of dicts with the filtered data
-                total_count:The total number of nodes in the database with the given label;
+                total_count:The total number of nodes in the database with the given label - NOT considering the remainder of the filter
                                 if no label was provided, None
             """
             # Extract the GET values
@@ -1871,14 +1871,16 @@ class ApiRouting:
             try:
                 data_dict = cls.extract_get_pars(get_data)
                 #print("/get_filtered parameters: ", data_dict)
+                # EXAMPLE: {'label': 'Image', 'key_name': 'caption', 'key_value': 'history', 'order_by': '', 'skip': '0', 'limit': '10'}
 
                 # The following validation is to remedy a Cypher/Neo4j bug
-                # about unexpected results when using "skip" and "limit" together with a sort by an unknown field
+                # about unexpected results when using "SKIP" and "LIMIT" together with a "ORDER BY" by an unknown field
                 if ("order_by" in data_dict) and ("label" in data_dict):
                     order_by_str = data_dict["order_by"]
-                    if "," not in order_by_str:     # The ORDER BY doesn't contain multiple parts
+                    if (order_by_str) and ("," not in order_by_str):    # "ORDER BY" is present and doesn't contain multiple parts
+                                                                        # (i.e. we're sorting by just one field)
                         assert order_by_str in NeoSchema.get_class_properties(class_node=data_dict["label"], include_ancestors=True), \
-                            f"cannot sort recordset ({data_dict['label']}) by unknown property `{order_by_str}`"
+                            f"cannot sort recordset (`{data_dict['label']}`) by the unknown property `{order_by_str}`"
 
                 recordset = DataManager.get_nodes_by_filter(data_dict)
                 if "label" in data_dict:
@@ -1894,9 +1896,9 @@ class ApiRouting:
                 response = {"status": "error", "error_message": f"/get_filtered web API endpoint: {ex}" }    # Error termination
                 #print(f"get_filtered() is returning with error: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
-                # Maybe, do this instead:
-                # response = make_response(response["error_message"], 422)  # "422 Unprocessable Entity"
-                # return response
+                                                # Maybe, do this instead:
+                                                # response = make_response(response["error_message"], 422)  # "422 Unprocessable Entity"
+                                                # return response
 
 
 

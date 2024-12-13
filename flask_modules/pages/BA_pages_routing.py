@@ -351,16 +351,18 @@ class PagesRouting:
         @login_required
         def filter_page() -> str:
             """
-            # General filter page, including full-text searches
+            # General filter page, including form to do full-text searches
             # EXAMPLE invocation: http://localhost:5000/BA/pages/filter
             """
             template = "filter.htm"
 
+            all_labels = DataManager.get_node_labels()      # EXAMPLE: EXAMPLE: ["my_label_1", "my_label_2"]
             all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)
 
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
+                                   all_labels=all_labels,
                                    all_categories=all_categories)
 
 

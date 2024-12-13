@@ -96,9 +96,11 @@ Vue.component('vue-category-navbox',
                     </a>
                     <br>
 
-                    <!-- If the filter is applied, show its name (1 or more letters) -->
+                    <!-- If the filter is applied, show its name, followed by a dash
+                         (if it is at least 2 chars, prefix it with a dash as well);
+                         the dashes indicate the pattern matching -->
                     <p v-if="filter" style="font-weight: bold; font-size: 16px; margin-bottom: 0">
-                        <span v-if="filter.length >= 3">&ndash;</span>{{filter}}&ndash;
+                        <span v-if="filter.length >= 2">&ndash;</span>{{filter}}&ndash;
                         <!-- Another way to unset the filter -->
                         <img @click="remove_filter()" class="clickable-icon" style="margin-left: 10px"
                               title='Show ALL categories (or click on ALL)' alt='Show ALL categories (or click on ALL)'
@@ -182,7 +184,7 @@ Vue.component('vue-category-navbox',
                 else
                     this.filter += l;   // Append to existing filter
 
-                if (this.filter.length < 3)
+                if (this.filter.length < 2)
                     this.categories_to_show = this.all_categories.filter( cat => cat.name.toUpperCase().startsWith(this.filter) );
                 else
                     this.categories_to_show = this.all_categories.filter( cat => cat.name.toUpperCase().includes(this.filter) );
