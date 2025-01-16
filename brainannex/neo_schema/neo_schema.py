@@ -2065,8 +2065,8 @@ class NeoSchema:
     @classmethod
     def get_all_data_nodes_of_class(cls, class_name :str) -> list[dict]:
         """
-        Return all the values stored all all the Data Nodes in the specified Class.
-        The values comprise all node fields, the internal database ID and the node labels.
+        Return all the values stored at all the Data Nodes in the specified Class.
+        Each values comprises all the node fields, the internal database ID and the node labels.
 
         EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'neo4j_labels': ['Motor Vehicle']},
                   {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'neo4j_labels': ['Motor Vehicle']}

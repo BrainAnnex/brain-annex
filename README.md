@@ -1,10 +1,10 @@
 # Brain Annex
 
 **Version 5** of is a *complete overhaul* of Brain Annex's internal structure.  
-This major new release is in a *late Beta* stage, approaching "release candidate".
+This major new release is in a *release candidate* stage.
 
-However, the bottom layer (the `NeoAccess` library) is NOT in Beta: it's stable,
-and is released independently.
+The bottom layer (the `NeoAccess` library) is stable,
+and is being released independently.
 
 The version number can be found in the `brainannex/__init__.py` file.
 
