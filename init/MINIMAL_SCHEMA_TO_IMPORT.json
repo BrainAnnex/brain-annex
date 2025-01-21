@@ -57,6 +57,9 @@
  {"type":"node","id":"70","labels":["PROPERTY","SCHEMA"],"properties":{"name":"clause","uri":"schema-72"}},
  {"type":"node","id":"71","labels":["PROPERTY","SCHEMA"],"properties":{"name":"n_group","uri":"schema-73"}},
  {"type":"node","id":"72","labels":["PROPERTY","SCHEMA"],"properties":{"name":"caption","uri":"schema-74"}},
+ {"type":"node","id":"73","labels":["Schema Autoincrement"],"properties":{"namespace":"schema_node","next_count":100,"prefix":"schema-"}},
+ {"type":"node","id":"74","labels":["Schema Autoincrement"],"properties":{"namespace":"data_node","next_count":2}},
+ {"type":"node","id":"80","labels":["BA","Category"],"properties":{"uri":"1","root":true,"name":"HOME","remarks":"ROOT NODE"}},
  {"type":"relationship","id":"7","label":"HAS_PROPERTY","properties":{"index":2},"start":{"id":"9","labels":["CLASS","SCHEMA"],"properties":{"code":"i","name":"Image","strict":false,"uri":"schema-9"}},"end":{"id":"11","labels":["PROPERTY","SCHEMA"],"properties":{"name":"caption","uri":"schema-11"}}},
  {"type":"relationship","id":"8","label":"INSTANCE_OF","start":{"id":"9","labels":["CLASS","SCHEMA"],"properties":{"code":"i","name":"Image","strict":false,"uri":"schema-9"}},"end":{"id":"14","labels":["CLASS","SCHEMA"],"properties":{"name":"Media","strict":false,"uri":"schema-14","no_datanodes":true}}},
  {"type":"relationship","id":"9","label":"HAS_PROPERTY","properties":{"index":1},"start":{"id":"27","labels":["CLASS","SCHEMA"],"properties":{"name":"Import Data","strict":false,"uri":"schema-27"}},"end":{"id":"28","labels":["PROPERTY","SCHEMA"],"properties":{"name":"date","uri":"schema-28"}}},
@@ -116,5 +119,6 @@
  {"type":"relationship","id":"65","label":"HAS_PROPERTY","properties":{"index":3},"start":{"id":"67","labels":["CLASS","SCHEMA"],"properties":{"name":"Recordset","strict":false,"uri":"schema-69"}},"end":{"id":"70","labels":["PROPERTY","SCHEMA"],"properties":{"name":"clause","uri":"schema-72"}}},
  {"type":"relationship","id":"66","label":"HAS_PROPERTY","properties":{"index":4},"start":{"id":"67","labels":["CLASS","SCHEMA"],"properties":{"name":"Recordset","strict":false,"uri":"schema-69"}},"end":{"id":"71","labels":["PROPERTY","SCHEMA"],"properties":{"name":"n_group","uri":"schema-73"}}},
  {"type":"relationship","id":"67","label":"HAS_PROPERTY","properties":{"index":5},"start":{"id":"67","labels":["CLASS","SCHEMA"],"properties":{"name":"Recordset","strict":false,"uri":"schema-69"}},"end":{"id":"72","labels":["PROPERTY","SCHEMA"],"properties":{"name":"caption","uri":"schema-74"}}},
- {"type":"relationship","id":"68","label":"INSTANCE_OF","start":{"id":"67","labels":["CLASS","SCHEMA"],"properties":{"name":"Recordset","strict":false,"uri":"schema-69"}},"end":{"id":"52","labels":["CLASS","SCHEMA"],"properties":{"name":"Content Item","strict":false,"uri":"schema-52","no_datanodes":true}}}
+ {"type":"relationship","id":"68","label":"SCHEMA","start":{"id":"80","labels":["BA","Category"],"properties":{"uri":"1","root":true,"name":"HOME","remarks":"ROOT NODE"}},"end":{"id":"4","labels":["CLASS","SCHEMA"],"properties":{"code":"cat","name":"Category","strict":false,"uri":"schema-4"}}},
+ {"type":"relationship","id":"69","label":"INSTANCE_OF","start":{"id":"67","labels":["CLASS","SCHEMA"],"properties":{"name":"Recordset","strict":false,"uri":"schema-69"}},"end":{"id":"52","labels":["CLASS","SCHEMA"],"properties":{"name":"Content Item","strict":false,"uri":"schema-52","no_datanodes":true}}}
 ]

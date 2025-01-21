@@ -1,5 +1,6 @@
-# Prompt to create a new admin user.  The `User` Schema gets created if needed.
-# At a future date, this script might be generalized to a broader initialization process.
+# If the database is empty, attempt to read in the Schema file "init/MINIMAL_SCHEMA_TO_IMPORT.json"
+# Then prompt to create a new admin user.  The `User` Schema gets created if needed.
+# At a future date, this script will probably be generalized to a broader initialization process.
 
 # It will connect to the Neo4j database from the credentials
 # in config file(s) variables NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD
@@ -17,7 +18,8 @@ from neoaccess import NeoAccess
 from brainannex import NeoSchema, UserManager
 
 
-print("Reading the credentials STORED in the configuration file(s)...\n")
+print("--- INITIALIZING (if needed) the BrainAnnex web app, and creating a new admin user...\n\n")
+print("Reading the credentials STORED in the configuration file(s)\n")
 
 
 ###  IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS  ###
@@ -47,7 +49,7 @@ else:                               # Local deployment
 
 
 found_files = config.read(['config.defaults.ini', 'config.ini'])
-print(f"The following configuration files were found: {found_files}\n\n")    # This will be a list of the names of the files that were found
+print(f"The following configuration files were found: {found_files}\n")    # This will be a list of the names of the files that were found
 
 if found_files == []:
     raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
@@ -99,10 +101,34 @@ db = NeoAccess(host=NEO4J_HOST,
 
 print("Version of the Neo4j driver: ", db.version())
 
-print("\nThe stored credentials were successfully validated; now checking the Schema for creating new users...")
+print("\nThe stored credentials were successfully validated; now checking if data is already present in the database")
 
 NeoSchema.set_database(db)
 UserManager.set_database(db)
+
+number_nodes = db.count_nodes()
+
+if number_nodes > 0:
+    print(f"\nData already present in the database ({number_nodes} nodes found); "
+          f"the Schema is assumed to be present, and will NOT be imported")
+else:
+    print("\nThe database is empty; now importing/creating the Schema...")
+
+    schema_datafile = "init/MINIMAL_SCHEMA_TO_IMPORT.json"
+    try:
+        with open(schema_datafile, 'r') as fh:
+            file_contents = fh.read()
+            #print(f"Contents of schema file to import:\n{file_contents}")
+    except Exception:
+        raise Exception(f"File I/O failure to read schema datafile `{schema_datafile}`.  Make sure the file is present.")
+
+    print(f"The schema datafile `{schema_datafile}` was found and successfully read")
+    try:
+        details = db.import_json_dump(file_contents)    # THE ACTUAL IMPORT TAKES PLACE HERE
+    except Exception as ex:
+       raise Exception("Import of JSON schema data file `{schema_datafile}` failed: {ex}")
+
+    print(f"The schema data was successfully imported into the database")
 
 
 # Attempt to create the Schema for the `User` class.  If it already exists, no action will be taken
