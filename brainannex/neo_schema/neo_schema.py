@@ -115,7 +115,7 @@ class NeoSchema:
 
 
     class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;
-                                        # TODO: maybe double label it with "SCHEMA", in part to avoid potential conflicts with other modules
+                                        # TODO: being phased out; it's now hardwired in... and all Schema nodes has a 2nd label: "SCHEMA"
 
     property_label = "PROPERTY"         # Neo4j label to be used with Property nodes managed by this class  TODO: no longer used
 
@@ -257,7 +257,7 @@ class NeoSchema:
             attributes["no_datanodes"] = True
 
         #print(f"create_class(): about to call db.create_node with parameters `{cls.class_label}` and `{attributes}`")
-        internal_id = cls.db.create_node(cls.class_label, attributes)
+        internal_id = cls.db.create_node(labels=["CLASS", "SCHEMA"], properties=attributes)
         return (internal_id, schema_uri)
 
 
@@ -1308,12 +1308,12 @@ class NeoSchema:
             q = f'''
                 MATCH (c: `{cls.class_label}` {{ uri: '{class_uri}' }})
                 MERGE (c)-[:{cls.class_prop_rel} {{ index: {new_index} }}]
-                         ->(p: `{cls.property_label}` {{ uri: '{new_schema_uri}', name: $property_name }})
+                         ->(p :PROPERTY:SCHEMA {{ uri: '{new_schema_uri}', name: $property_name }})
                 '''
             # EXAMPLE:
             '''
             MATCH (c:`CLASS` {uri: 'schema-3'})
-            MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p: `PROPERTY` {uri: 'schema-8', name: $property_name})
+            MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p :PROPERTY:SCHEMA {uri: 'schema-8', name: $property_name})
             '''
             #print(q)
             result = cls.db.update_query(q, {"property_name": property_name})
@@ -2065,8 +2065,8 @@ class NeoSchema:
     @classmethod
     def get_all_data_nodes_of_class(cls, class_name :str) -> list[dict]:
         """
-        Return all the values stored all all the Data Nodes in the specified Class.
-        The values comprise all node fields, the internal database ID and the node labels.
+        Return all the values stored at all the Data Nodes in the specified Class.
+        Each values comprises all the node fields, the internal database ID and the node labels.
 
         EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'neo4j_labels': ['Motor Vehicle']},
                   {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'neo4j_labels': ['Motor Vehicle']}
