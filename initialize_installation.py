@@ -42,12 +42,12 @@ config = ConfigParser()
 
 if os.environ.get("FLASK_APP"):     # Remote deployment
     print("This is a REMOTE deployment")
-    found_files = config.read(['config.defaults.ini', 'config.ini'])     # For server
 else:                               # Local deployment
     print("This is a LOCAL deployment")
-    found_files = config.read(['config.defaults.ini', 'config.ini'])     # For local machine
 
-#print("found_files: ", found_files)    # This will be a list of the names of the files that were found
+
+found_files = config.read(['config.defaults.ini', 'config.ini'])
+print(f"The following configuration files were found: {found_files}\n\n")    # This will be a list of the names of the files that were found
 
 if found_files == []:
     raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
@@ -62,6 +62,8 @@ else:
 
 
 #print ("Sections found in config file(s): ", config.sections())
+
+# Extract the various configurable settings from the config files
 
 if "SETTINGS" not in config:
     raise Exception("Incorrectly set up configuration file - the following line should be present at the top: [SETTINGS]")
@@ -97,7 +99,7 @@ db = NeoAccess(host=NEO4J_HOST,
 
 print("Version of the Neo4j driver: ", db.version())
 
-print("\nThe stored credentials were successfully validated; now checking the Schema...")
+print("\nThe stored credentials were successfully validated; now checking the Schema for creating new users...")
 
 NeoSchema.set_database(db)
 UserManager.set_database(db)
