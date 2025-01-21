@@ -1594,7 +1594,7 @@ class DataManager:
                                     where 'imported_datafile' originates from <input type="file" name="imported_datafile">
                                     and the name after FileStorage is the name of the file being uploaded
         :param upload_dir:  Name of a temporary folder for file uploads.  EXAMPLE: "D:/tmp/"
-        :param return_url:
+        :param return_url:  [OPTIONAL] String with URL to provide to the user upon completing the import
         :param verbose:
         :return:            Status string (error or success message)
         """
