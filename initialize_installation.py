@@ -18,7 +18,7 @@ from neoaccess import NeoAccess
 from brainannex import NeoSchema, UserManager
 
 
-print("--- INITIALIZING (if needed) the BrainAnnex web app, and creating a new admin user...\n\n")
+print("\n--- INITIALIZING (if needed) the BrainAnnex web app, and creating a new admin user...\n")
 print("Reading the credentials STORED in the configuration file(s)\n")
 
 
