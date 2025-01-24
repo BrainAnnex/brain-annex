@@ -4321,9 +4321,9 @@ class NeoSchema:
 
             if result.get('relationships_created') == len(link_list):   # If the expected number of links was created
                 import_data = result.get('returned_data')
-                # EXAMPLE of import_data': [{'link_id': 89345}, {'link_id': 89346}]}
+                # EXAMPLE of import_data: [{'link_id': 89345}, {'link_id': 89346}]}
                 for import_item in import_data:
-                    link_id_list.append(import_item['link_id'])  # The internal database ID of the created or updated nodes
+                    link_id_list.append(import_item['link_id'])  # The internal database ID of the created links
 
             else:                                                       # If fewer links than expected were created
                 error_msg = f"import_pandas_links(): in this batch import, " \
@@ -4448,11 +4448,15 @@ class NeoSchema:
         batch_list = np.array_split(df, number_batches)     # List of Pandas data frames,
                                                             # each resulting from splitting the original data frame
                                                             # into groups of rows
-        # EXAMPLE of ONE ELEMENT in the batch_list
-        #    State ID  City ID
-        # 0         1       18
-        # 1         1       19
 
+        # EXAMPLE of *ONE* ELEMENT in the batch_list (batch_list is a list of them):
+        #       a Pandas data frame, with the same columns, but fewer rows, as the original data frame df
+        #print("batch_list[0]: \n", batch_list[0])
+        '''
+            city_id  state_id  rank region
+        0        1         1    53  north
+        1        3         1     4  north
+        '''
 
         # Import each batch of records (Pandas dataframe rows) in turn
         if report:
@@ -4462,16 +4466,21 @@ class NeoSchema:
 
         for batch_count, df_chunk in enumerate(batch_list):         # Split the import operation into batches
             # df_chunk is a Pandas data frame, with the same columns, but fewer rows, as the original data frame df
+            '''
+                city_id  state_id  rank region
+            0        1         1    53  north
+            1        3         1     4  north            
+            '''
             if report and ((batch_count+1) % report_frequency == 0):
                 print(f"   Importing batch # {batch_count+1} : {len(df_chunk)} row(s)")
 
             link_list = cls._restructure_df(df=df_chunk, col_from=key_from, col_to=key_to, cols_other=link_props)
-                                                 # Turn the Pandas dataframe into a list of dicts;
-                                                 # each dict (originating from 1 row of the dataframe)
-                                                 # contains the data for 1 link
-                                                 # EXAMPLE: [{'FROM': 18, 'TO': 1, OTHER_FIELDS': {'rank': 10.0, 'region': None},
-                                                 #           {'FROM': 19, 'TO': 1, OTHER_FIELDS': {'rank': NaN, 'region': 'South'}]
-            print(link_list)    # TODO: HIDE
+                                # Turn the Pandas dataframe into a list of dicts;
+                                # each dict (originating from 1 row of the dataframe)
+                                # contains the data for 1 link
+                                # EXAMPLE: [{'FROM': 1, 'TO': 1, 'OTHER_FIELDS': {'rank': 53, 'region': 'north'}},
+                                #           {'FROM': 3, 'TO': 1, 'OTHER_FIELDS': {'rank': 4, 'region': 'north'}}]
+            print("link_list:\n", link_list)    # TODO: HIDE
 
 
             # *** PERFORM THE ACTUAL BATCH IMPORT ***
@@ -4481,40 +4490,59 @@ class NeoSchema:
                 UNWIND $link_list AS link_dict
                 WITH link_dict
                 MATCH (from_node :`{class_from}` {{`{key_from}`: link_dict["FROM"]}}), 
-                      (to_node :`{class_to}` {{`{key_to}`: link_dict["TO"]}})             
+                      (to_node   :`{class_to}`   {{`{key_to}`  : link_dict["TO"]}})             
                 MERGE (from_node)-[r:`{link_name}`]->(to_node)
                 WITH r, link_dict["OTHER_FIELDS"] AS link_props
                 SET r = link_props
                 RETURN id(r) AS link_id
                 '''
 
+            data_binding={"link_list": link_list}
+
             # EXAMPLE of query:
             '''
                 UNWIND $link_list AS link_dict
                 WITH link_dict
-                MATCH (from_node :`City` {`City ID`: link_dict["City ID"]}), 
-                      (to_node :`State` {`State ID`: link_dict["State ID"]})
+                MATCH (from_node :`City`  {`city_id` : link_dict["FROM"]}), 
+                      (to_node   :`State` {`state_id`: link_dict["TO"]})             
                 MERGE (from_node)-[r:`IS_IN`]->(to_node)
-                WITH r, link_dict["Rank"] AS prop_value
-                SET (CASE WHEN TOSTRING(prop_value) <> 'NaN' THEN r END).`Rank` = prop_value
+                WITH r, link_dict["OTHER_FIELDS"] AS link_props
+                SET r = link_props
                 RETURN id(r) AS link_id
             '''
-            # EXAMPLE of data_binding:  {'link_list': [{'City ID': 18, 'State ID': 1, 'Rank': 10},
-            #                                          {'City ID': 19, 'State ID': 1, 'Rank': NaN}
-            #                                         ]
-            #                            }
+            # EXAMPLE of data_binding:
+            '''
+                {'link_list': [
+                                {'FROM': 1, 'TO': 1, 'OTHER_FIELDS': {'rank': 53, 'region': 'north'}}, 
+                                {'FROM': 3, 'TO': 1, 'OTHER_FIELDS': {'rank': 4,  'region': 'north'}}
+                              ]
+                }
+            '''
 
-            # NOTE -  the line  "SET (CASE WHEN TOSTRING(prop_value) <> 'NaN' THEN r END).`Rank` = prop_value"
-            #         has the effect of setting the `Rank` property of the new relationship r *only* if prop_value isn't NaN ;
-            #         if not a NaN, then that line simply becomes:  SET r.`Rank` = prop_value
-            #         See:  https://neo4j.com/docs/cypher-manual/4.4/clauses/set/#set-set-a-property
-
-            data_binding={"link_list": link_list}
             cls.db.debug_query_print(q, data_binding)
 
             result = cls.db.update_query(q, data_binding)
             print("    Result of running batch : ", result)
-            # EXAMPLE :  {'_contains_updates': True, 'relationships_created': 1, 'properties_set': 2, 'returned_data': [{'link_id': 60}]}
+            # EXAMPLE :  {'_contains_updates': True,
+            #             'relationships_created': 2, 'properties_set': 4,
+            #             'returned_data': [{'link_id': 11}, {'link_id': 12}]}
+
+            if result.get('relationships_created') == len(link_list):   # If the expected number of links was created
+                import_data = result.get('returned_data')
+                # EXAMPLE of import_data:   [{'link_id': 11}, {'link_id': 12}]}
+                for import_item in import_data:
+                    link_id_list.append(import_item['link_id'])  # The internal database ID of the created links
+
+            else:                                                       # If fewer links than expected were created
+                error_msg = f"import_pandas_links(): in this batch import, " \
+                            f"only created {result.get('relationships_created', 0)} links, instead of the expected {len(link_list)}"
+                if skip_errors:
+                    print(error_msg)
+                else:
+                    raise Exception(error_msg)
+
+            if report and ((batch_count+1) % report_frequency == 0):
+                print(f"     Interim status: at the end of this batch, imported a grand total of {len(link_id_list)} link(s)")
 
         # END for
 
@@ -4535,7 +4563,8 @@ class NeoSchema:
         Each dictionary contains 3 key/value pairs:
             1) "FROM", with the value from the column identified by col_from
             2) "TO", with the value from the column identified by to_from
-            3) "OTHER_FIELDS, with a dict with the names/values from all the columns identified by cols_other
+            3) "OTHER_FIELDS, with a dict with the names/values from all the columns identified by cols_other;
+                        Pairs with values that are None, blanks strings and Numpy Nan's are dropped
 
         EXAMPLE - given the following dataframe df:
                A  B   C    D     E
@@ -4552,19 +4581,37 @@ class NeoSchema:
         :param cols_other:  A (possibly-empty) list of other column names in the dataframe
         :return:            A list of dicts, derived from the rows of the dataframe
         """
-        #TODO: strip off NaN (and maybe None; the latter might not be necessary)
         # Transforming the DataFrame
         data_list = [
             {
                 "FROM": row[col_from],
                 "TO": row[col_to],
-                "OTHER_FIELDS": {col: row[col] for col in cols_other}
+                "OTHER_FIELDS": {col: row[col] for col in cols_other
+                                                if cls._not_junk(row[col])}     # Strip off "junk" values
             }
             for _, row in df.iterrows()     # iterrows() allows iterating over each row of the DataFrame
         ]
 
         return data_list
 
+
+
+    @classmethod
+    def _not_junk(cls, v) -> bool:
+        """
+        Return True if the value of v is not "junk", or False otherwise.
+        "Junk" is defined as None, empty strings and Numpy NaN
+
+        :param v:   A value that we want to establish whether worthy of being stored in database
+        :return:    True if the passed value is considered "worthwhile" to store, or False otherwise
+        """
+        if not v:
+            return False        # This covers None and ""
+
+        if (type(v) == float) and np.isnan(v):
+            return False       # This covers Numpy NaN
+
+        return True
 
 
 
