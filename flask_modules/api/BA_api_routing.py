@@ -1,6 +1,6 @@
 """
     Web API endpoint
-    MIT License.  Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
+    MIT License.  Copyright (c) 2021-2025 Julian A. West and the BrainAnnex.org project
 """
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
@@ -2299,7 +2299,7 @@ class ApiRouting:
             #    <input type="hidden" name="return_url" value="my_return_url">
             #print("return_url: ", return_url)
 
-            status_msg = "<a href='{return_url}' style='margin-left:10px; font-weight:bold'>GO BACK</a><br><br>"
+            status_msg = f"<a href='{return_url}' style='margin-left:10px; font-weight:bold'>GO BACK</a><br><br>"
             status_msg += DocumentationGenerator.import_python_file(tmp_filename_for_upload, full_filename)
 
             # Provide a return link

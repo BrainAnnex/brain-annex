@@ -85,7 +85,7 @@ class NeoSchema:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
+        Copyright (c) 2021-2025 Julian A. West and the BrainAnnex.org project
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -4162,51 +4162,54 @@ class NeoSchema:
 
 
     @classmethod
-    def import_pandas_links(cls, df :pd.DataFrame,
-                            class_from :str, class_to :str,
-                            col_from :str, col_to :str,
-                            link_name :str,
-                            col_link_props=None, rename=None,
-                            skip_errors = False,
-                            report=True, report_frequency=100,
-                            max_batch_size=1000) -> [int]:
+    def import_pandas_links_OLD(cls, df :pd.DataFrame,
+                                class_from :str, class_to :str,
+                                col_from :str, col_to :str,
+                                link_name :str,
+                                col_link_props=None, rename=None,
+                                skip_errors = False,
+                                report=True, report_frequency=100,
+                                max_batch_size=1000) -> [int]:
         """
+        TODO: Obsolete in favor of the new import_pandas_links()
+
         Import a group of relationships between existing database Data Nodes,
-        from the rows of a Pandas dataframe, as database links between  existing Data Nodes.
+        from the rows of a Pandas dataframe, as database links between existing Data Nodes.
         All relationships must be between data nodes of two given Classes.
 
-        :param df:          A Pandas Data Frame with the data RELATIONSHIP to import.
-                                This data frame plays the role of a "join table".
-                                EXAMPLE - a data frame with 2 columns "State ID" and "City ID",
-                                          to link up existing States and Cities
+        :param df:          A Pandas Dataframe with the data RELATIONSHIP to import.
+                                This dataframe plays the role of a "join table".
+                                EXAMPLE - adata frame with 2 columns "City ID" and "State ID",
+                                          to link up existing Cities and States with "IS_IN" relationships
 
         :param class_from:  Name of the Class of the data nodes that the links originate from
         :param class_to:    Name of the Class of the data nodes that the links end into
-        :param col_from:    Name of the Data Frame column (prior to any optional renaming)
+        :param col_from:    Name of the Dataframe column (prior to any optional renaming) that contains values
                                 identifying the data nodes from which the link starts;
                                 note that these values play the role of foreign keys
-        :param col_to:      Name of the Data Frame column (prior to any optional renaming)
+        :param col_to:      Name of the Dataframe column (prior to any optional renaming) that contains values
                                 identifying the data nodes to which the link ends;
                                 note that these values play the role of foreign keys
 
-        :param link_name:   Name of the new relationship being created
+        :param link_name:   Name to assign to the new relationships being created
         :param col_link_props: [OPTIONAL] Name of a property to assign to the relationships;
-                                it must match up the name of the Data Frame column, which contains the value.
-                                Any NaN values are ignored (no property set on that relationship.)
+                                it must match up the name of the Dataframe column, which contains the value.
+                                Any NaN values are ignored (no property will be set on that relationship)
+
         :param rename:      [OPTIONAL] Dict with mapping from Pandas column names
                                 to the names of Properties in the data nodes and/or in their links
                                 
         :param skip_errors: [OPTIONAL] If True, the import continues even in the presence of errors;
                                 default is False
         :param report:      [OPTIONAL] If True (default), print the status of the import-in-progress
-                                    at the end of each batch round
+                                at the end of each batch round
         :param report_frequency: [OPTIONAL] Only applicable if report is True;
                                     how often (in terms of number of batches)
-                                    to print out the status of the import-in-progress
+                                    to print out a status of the import-in-progress
 
-        :param max_batch_size:  To limit the number of Pandas rows loaded into the database at one time
+        :param max_batch_size:  [OPTIONAL]  To limit the number of Pandas rows loaded into the database at one time
 
-        :return:            A list of of the internal database ID's of the created links
+        :return:                A list of the internal database ID's of the created links
         """
         cls.assert_valid_relationship_name(link_name)
         # TODO: verify that the requested relationship between the Classes is allowed by the Schema
@@ -4240,12 +4243,12 @@ class NeoSchema:
         if rename and col_link_props in rename:
             link_prop = rename[col_link_props]
         else:
-            link_prop = col_link_props
+            link_prop = col_link_props  # Note that this could be None
 
 
         # Determine the number of needed batches (always at least 1)
         number_batches = math.ceil(len(df) / max_batch_size)    # Note that if the max_chunk_size equals the size of recordset
-                                                                            # then we'll just use 1 batch
+                                                                # then we'll just use 1 batch
         print(f"import_pandas_links(): importing {len(df)} links in {number_batches} batch(es) of max size {max_batch_size}...")
 
         batch_list = np.array_split(df, number_batches)     # List of Pandas data frames,
@@ -4269,8 +4272,10 @@ class NeoSchema:
                 print(f"   Importing batch # {batch_count+1} : {len(df_chunk)} row(s)")
 
             link_list = df_chunk.to_dict(orient='records')      # Turn the Pandas dataframe into a list of dicts;
-                                                                # each dict contains the data for 1 linl
-                                                                # EXAMPLE: [{'State ID': 1, 'City ID': 18}, {'State ID': 1, 'City ID': 19}]
+                                                                # each dict (originating from 1 row of the dataframe)
+                                                                # contains the data for 1 link
+                                                                # EXAMPLE: [{'City ID': 18, 'State ID': 1, 'Rank': 10},
+                                                                #           {'City ID': 19, 'State ID': 1, 'Rank': NaN}]
             #print(link_list)
 
             # PERFORM THE ACTUAL BATCH IMPORT
@@ -4298,9 +4303,12 @@ class NeoSchema:
                 SET (CASE WHEN TOSTRING(prop_value) <> 'NaN' THEN r END).`Rank` = prop_value
                 RETURN id(r) AS link_id
             '''
-            # EXAMPLE of data_binding:  {'link_list': [{'State ID': 1, 'City ID': 18}, {'State ID': 1, 'City ID': 19}]}
+            # EXAMPLE of data_binding:  {'link_list': [{'City ID': 18, 'State ID': 1, 'Rank': 10},
+            #                                          {'City ID': 19, 'State ID': 1, 'Rank': NaN}
+            #                                         ]
+            #                            }
 
-            # NOTE -  SET (CASE WHEN TOSTRING(prop_value) <> 'NaN' THEN r END).`Rank` = prop_value
+            # NOTE -  the line  "SET (CASE WHEN TOSTRING(prop_value) <> 'NaN' THEN r END).`Rank` = prop_value"
             #         has the effect of setting the `Rank` property of the new relationship r *only* if prop_value isn't NaN ;
             #         if not a NaN, then that line simply becomes:  SET r.`Rank` = prop_value
             #         See:  https://neo4j.com/docs/cypher-manual/4.4/clauses/set/#set-set-a-property
@@ -4315,9 +4323,9 @@ class NeoSchema:
 
             if result.get('relationships_created') == len(link_list):   # If the expected number of links was created
                 import_data = result.get('returned_data')
-                # EXAMPLE of import_data': [{'link_id': 89345}, {'link_id': 89346}]}
+                # EXAMPLE of import_data: [{'link_id': 89345}, {'link_id': 89346}]}
                 for import_item in import_data:
-                    link_id_list.append(import_item['link_id'])  # The internal database ID of the created or updated nodes
+                    link_id_list.append(import_item['link_id'])  # The internal database ID of the created links
 
             else:                                                       # If fewer links than expected were created
                 error_msg = f"import_pandas_links(): in this batch import, " \
@@ -4336,6 +4344,258 @@ class NeoSchema:
             print(f"    FINISHED importing a total of {len(link_id_list)} links")
 
         return link_id_list
+
+
+
+    @classmethod
+    def import_pandas_links(cls, df :pd.DataFrame,
+                            class_from :str, class_to :str,
+                            col_from :str, col_to :str,
+                            link_name :str, cols_link_props=None,
+                            skip_errors = False,
+                            report=True, report_frequency=100,
+                            max_batch_size=1000) -> [int]:
+        """
+        Import a group of relationships between existing database Data Nodes,
+        from the rows of a Pandas dataframe, as database links between existing Data Nodes.
+        All relationships must be between data nodes of two given Classes.
+
+        :param df:          A Pandas Dataframe with the data RELATIONSHIP to import.
+                                This dataframe plays the role of a "join table".
+                                EXAMPLE - adata frame with 2 columns "City ID" and "State ID",
+                                          to link up existing Cities and States with "IS_IN" relationships
+
+        :param class_from:  Name of the Class of the data nodes that the links originate from
+        :param class_to:    Name of the Class of the data nodes that the links end into
+        :param col_from:    Name of the Dataframe column that contains values
+                                identifying the data nodes from which the link starts;
+                                note that these values play the role of foreign keys
+        :param col_to:      Name of the Dataframe column that contains values
+                                identifying the data nodes to which the link ends;
+                                note that these values play the role of foreign keys
+
+        :param link_name:   Name to assign to the new relationships being created
+        :param cols_link_props: [OPTIONAL] Name, or list of names, of properties to assign to the new relationships;
+                                it must match up the name(s) of the Dataframe column(s) that contain(s) the value(s).
+                                Any NaN values are ignored (no property will be set on that relationship)
+
+        :param skip_errors:     [OPTIONAL] If True, the import continues even in the presence of errors;
+                                    default is False
+        :param report:          [OPTIONAL] If True (default), print the status of the import-in-progress
+                                    at the end of each batch round
+        :param report_frequency: [OPTIONAL] Only applicable if report is True;
+                                    how often (in terms of number of batches)
+                                    to print out a status of the import-in-progress
+
+        :param max_batch_size:  [OPTIONAL] To limit the number of Pandas rows loaded into the database at one time
+
+        :return:                A list of the internal database ID's of the created links
+        """
+        cls.assert_valid_relationship_name(link_name)
+        # TODO: verify that the requested relationship between the Classes is allowed by the Schema
+
+        # Validate the presence of the expected column names in the Pandas Data Frame
+        cols = list(df.columns)     # List of column names in the Pandas Data Frame
+        assert col_from in cols, \
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` " \
+            f"requested in the argument 'col_from'"
+
+        assert col_to in cols, \
+            f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_to}` " \
+            f"requested in the argument 'col_to'"
+
+
+        key_from = col_from
+        key_to = col_to
+
+        if type(cols_link_props) == list:
+            link_props = cols_link_props
+        else:
+            link_props = [cols_link_props]
+
+        # Determine the number of needed batches (always at least 1)
+        number_batches = math.ceil(len(df) / max_batch_size)    # Note that if the max_chunk_size equals the size of recordset
+                                                                # then we'll just use 1 batch
+        print(f"import_pandas_links(): importing {len(df)} links in {number_batches} batch(es) of max size {max_batch_size}...")
+
+        batch_list = np.array_split(df, number_batches)     # List of Pandas data frames,
+                                                            # each resulting from splitting the original data frame
+                                                            # into groups of rows
+
+        # EXAMPLE of *ONE* ELEMENT in the batch_list (batch_list is a list of them):
+        #       a Pandas data frame, with the same columns, but fewer rows, as the original data frame df
+        #print("batch_list[0]: \n", batch_list[0])
+        '''
+            city_id  state_id  rank region
+        0        1         1    53  north
+        1        3         1     4  north
+        '''
+
+        # Import each batch of records (Pandas dataframe rows) in turn
+        if report:
+            print()
+
+        link_id_list = []
+
+        for batch_count, df_chunk in enumerate(batch_list):         # Split the import operation into batches
+            # df_chunk is a Pandas data frame, with the same columns, but fewer rows, as the original data frame df
+            '''
+                city_id  state_id  rank region
+            0        1         1    53  north
+            1        3         1     4  north            
+            '''
+            if report and ((batch_count+1) % report_frequency == 0):
+                print(f"   Importing batch # {batch_count+1} : {len(df_chunk)} row(s)")
+
+            link_list = cls._restructure_df(df=df_chunk, col_from=key_from, col_to=key_to, cols_other=link_props)
+                                # Turn the Pandas dataframe into a list of dicts;
+                                # each dict (originating from 1 row of the dataframe)
+                                # contains the data for 1 link
+                                # EXAMPLE: [{'FROM': 1, 'TO': 1, 'OTHER_FIELDS': {'rank': 53, 'region': 'north'}},
+                                #           {'FROM': 3, 'TO': 1, 'OTHER_FIELDS': {'rank': 4, 'region': 'north'}}]
+            #print("link_list:\n", link_list)
+
+
+            # *** PERFORM THE ACTUAL BATCH IMPORT ***
+
+            # For each element in the list prepare a Cypher query to link up a pairs of nodes
+            q = f'''
+                UNWIND $link_list AS link_dict
+                WITH link_dict
+                MATCH (from_node :`{class_from}` {{`{key_from}`: link_dict["FROM"]}}), 
+                      (to_node   :`{class_to}`   {{`{key_to}`  : link_dict["TO"]}})             
+                MERGE (from_node)-[r:`{link_name}`]->(to_node)
+                WITH r, link_dict["OTHER_FIELDS"] AS link_props
+                SET r = link_props
+                RETURN id(r) AS link_id
+                '''
+
+            data_binding={"link_list": link_list}
+
+            # EXAMPLE of query:
+            '''
+                UNWIND $link_list AS link_dict
+                WITH link_dict
+                MATCH (from_node :`City`  {`city_id` : link_dict["FROM"]}), 
+                      (to_node   :`State` {`state_id`: link_dict["TO"]})             
+                MERGE (from_node)-[r:`IS_IN`]->(to_node)
+                WITH r, link_dict["OTHER_FIELDS"] AS link_props
+                SET r = link_props
+                RETURN id(r) AS link_id
+            '''
+            # EXAMPLE of data_binding:
+            '''
+                {'link_list': [
+                                {'FROM': 1, 'TO': 1, 'OTHER_FIELDS': {'rank': 53, 'region': 'north'}}, 
+                                {'FROM': 3, 'TO': 1, 'OTHER_FIELDS': {'rank': 4,  'region': 'north'}}
+                              ]
+                }
+            '''
+
+            cls.db.debug_query_print(q, data_binding)
+
+            result = cls.db.update_query(q, data_binding)
+            print("    Result of running batch : ", result)
+            # EXAMPLE :  {'_contains_updates': True,
+            #             'relationships_created': 2, 'properties_set': 4,
+            #             'returned_data': [{'link_id': 11}, {'link_id': 12}]}
+
+            if result.get('relationships_created') == len(link_list):   # If the expected number of links was created
+                import_data = result.get('returned_data')
+                # EXAMPLE of import_data:   [{'link_id': 11}, {'link_id': 12}]}
+                for import_item in import_data:
+                    link_id_list.append(import_item['link_id'])  # The internal database ID of the created links
+
+            else:                                                       # If fewer links than expected were created
+                error_msg = f"import_pandas_links(): in this batch import, " \
+                            f"only created {result.get('relationships_created', 0)} links, instead of the expected {len(link_list)}"
+                if skip_errors:
+                    print(error_msg)
+                else:
+                    raise Exception(error_msg)
+
+            if report and ((batch_count+1) % report_frequency == 0):
+                print(f"     Interim status: at the end of this batch, imported a grand total of {len(link_id_list)} link(s)")
+
+        # END for
+
+        if report_frequency:
+            print(f"    FINISHED importing a total of {len(link_id_list)} links")
+
+        return link_id_list
+
+
+
+    @classmethod
+    def _restructure_df(cls, df, col_from :str, col_to :str, cols_other :list[str]) -> list[dict]:
+        """
+        Take a Pandas dataframe with at least 2 columns,
+        whose names are respectively given by col_from and col_to,
+        and turn it into a list of dicts.
+
+        Each dictionary contains 3 key/value pairs:
+            1) "FROM", with the value from the column identified by col_from
+            2) "TO", with the value from the column identified by to_from
+            3) "OTHER_FIELDS, with a dict with the names/values from all the columns identified by cols_other;
+                        Pairs with values that are None, blanks strings and Numpy Nan's are dropped
+
+        EXAMPLE - given the following dataframe df:
+               A  B   C    D     E
+            0  1  x  10  100  1000
+            1  2  y  20  200  2000
+        then   _restructure_df(df=df, col_from="A", col_to="B", cols_other=["C","E"]) gives:
+                         [{'FROM': 1, 'TO': 'x', 'OTHER_FIELDS': {'C': 10, 'E': 1000}},
+                          {'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {'C': 20, 'E': 2000}}]
+
+        :param df:          A Pandas dataframe with at least 2 columns,
+                                whose names are specified in the next 2 fields
+        :param col_from:    The name of a column in the above Pandas dataframe
+        :param col_to:      The name of another column in the above Pandas dataframe
+        :param cols_other:  A (possibly-empty) list of other column names in the dataframe
+        :return:            A list of dicts, derived from the rows of the dataframe
+        """
+        # Transforming the DataFrame
+        data_list = [
+            {
+                "FROM": row[col_from],
+                "TO": row[col_to],
+                "OTHER_FIELDS": {col: row[col] for col in cols_other
+                                                if cls._not_junk(row[col])}     # Strip off "junk" values
+            }
+            for _, row in df.iterrows()     # iterrows() allows iterating over each row of the DataFrame
+        ]
+
+        return data_list
+
+
+
+    @classmethod
+    def _not_junk(cls, v) -> bool:
+        """
+        Return True if the value of v is not "junk", or False otherwise.
+        "Junk" is defined as None, empty strings and Numpy NaN
+
+        :param v:   A value that we want to establish whether worthy of being stored in database
+        :return:    True if the passed value is considered "worthwhile" to store, or False otherwise
+        """
+        if not v:
+            return False        # This covers None and ""
+
+        if (type(v) == float) and np.isnan(v):
+            return False       # This covers Numpy NaN
+
+        return True
+
+
+
+
+
+
+
+
+
+
+
 
 
 

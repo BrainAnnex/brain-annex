@@ -4,7 +4,7 @@ import pandas as pd
 
 
 """
-    MIT License.  Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
+    MIT License.  Copyright (c) 2021-2025 Julian A. West and the BrainAnnex.org project
 """
 
 
@@ -13,7 +13,7 @@ class DocumentationGenerator:
     """
     To generate the HTML for a documentation page, from a python file
     (for best results, it's expected to be a file following some styling conventions
-    as done in the BrainAnnex project)
+    as done in the source code for the  BrainAnnex project)
     """
 
 
@@ -28,7 +28,7 @@ class DocumentationGenerator:
         :return:                HTML code to populate a documentation page
         """
         # Read in the python file
-        n_chars_to_show = 400
+        n_chars_to_show = 400       # Number of initial characters in the file to show to the user
         try:
             with open(full_filename, 'r') as fh:
                 file_contents = fh.read()
@@ -41,9 +41,11 @@ class DocumentationGenerator:
         print("Pattern used for the matches: ", pattern)
 
         all_matches = re.findall(pattern, file_contents, re.DOTALL)
-        # It returns (possibly-empty) list of tuples
-        # OR a list of strings (if there's only 1 capture group in pattern)
-        print(f"\n-- {len(all_matches)} MATCHES --")
+        # It returns a (possibly-empty) list of tuples of capture groups
+        # [Note: it could also be a list of strings, if there was only 1 capture group in pattern, but that's not what we do here]
+
+        # The following is just to provide a printout of the results of the match
+        print(f"\n-- {len(all_matches)} MATCHES found--")
         for m in all_matches:
             abridged_match = []
             for el in m:
@@ -52,26 +54,30 @@ class DocumentationGenerator:
 
 
         if all_matches:     # If the list is not empty, i.e. if matches were found
-            #print(f"{len(all_matches)} MATCH(ES) found")
-            # Produce a simple table to present the various matches that were found
-            scan_results = "<table border='1' style='border-collapse: collapse'>"
-            for match_instance in all_matches:   # Consider each match in turn
-                #print("Overall Single Match: " , match_instance) # This would normally be a tuple of capture groups
-                # (which we previously turned to list, with 2 field added)
-                scan_results += "<tr>"
-                for item in match_instance:
-                    scan_results += f"<td>{item}</td>"
-                scan_results += "</tr>"
-
-            scan_results += f"</table>"
+            # Produce a simple HTML table to present to the user the various matches that were found.
+            # Each match will be presented on a separate row; each matched pattern (within a match) will appear as a separate column
+            scan_results = cls.prepare_preview_table(all_matches)
         else:
             print("NO MATCHES found")
             return f"File `{basename}` uploaded successfully, but <b>NO MATCHES</b> found"
 
 
+        # Zap all private methods, as well as methods whose names contain "_OLD" or "_OBSOLETE"
+        all_matches_pared_down = []
+        for match in all_matches:
+            method_name = match[0]
+            args = match[1]
+            if method_name and method_name[0] == "_" and method_name != "__init__" and args != "DIVIDER":
+                print(f"Dropping private method `{method_name}()`")
+            elif ("_OLD" in method_name) or ("_OBSOLETE" in method_name):
+                print(f"Dropping deprecated method `{method_name}()`")
+            else:
+                all_matches_pared_down.append(match)
+
+
         # Put together the parsing data as a Pandas dataframe
         column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
-        df = pd.DataFrame(all_matches, columns = column_names)
+        df = pd.DataFrame(all_matches_pared_down, columns = column_names)
         #print("Number of records matched:", df.count())
         '''
         print(df.head(10))
@@ -96,6 +102,33 @@ class DocumentationGenerator:
         return f"File `{basename}` uploaded successfully.  <b>{len(all_matches)} MATCH(ES)</b> found.  Nothing added to database.  " \
                f"Scan results:<br><br>{scan_results}<br><br>" \
                f"<b>HTML:</b><br><br><pre>{safe_htm}</pre>"
+
+
+
+    @classmethod
+    def prepare_preview_table(cls, data :[tuple]) -> str:
+        """
+        Produce and return a simple HTML table from a list of row data;
+        each element of the list should be a tuple with the data for the cells on that row
+
+        :param data:    A list of tuples (for example, originating as a tuple of RegEx capture groups)
+        :return:        HTML code to define a simple table
+        """
+        assert type(data) == list, \
+                "prepare_preview_table(): incorrect format of argument, which should be a list of tuples"
+
+        scan_results = "<table border='1' style='border-collapse: collapse'>"
+        for match_instance in data:   # Consider each match in turn
+            assert type(match_instance) == tuple, \
+                "prepare_preview_table(): incorrect format of argument, which should be a list of tuples"
+            scan_results += "<tr>"
+            for item in match_instance:
+                scan_results += f"<td>{item}</td>"
+            scan_results += "</tr>"
+
+        scan_results += f"</table>"
+
+        return scan_results
 
 
 
@@ -205,7 +238,8 @@ class DocumentationGenerator:
         """
         Strip off the leading "cls" or "self", together with the comma after it,
         from a string that is meant to represent the arguments of a python class method declaration.
-        Leading/trailing blanks are also eliminated
+        Leading/trailing blanks are also eliminated.
+        If s is simply "cls" or "self" (i.e, no args), then return a blank string
 
         EXAMPLES:   "   cls, r, x    "                  gives  "r, x"
                     "   self   , r:int,  x :list    "   gives  "r:int,  x :list"
@@ -213,17 +247,19 @@ class DocumentationGenerator:
         :param s:   String with a list of arguments of a python class method
         :return:    Cleanup-up version, stripped of leading "cls" or "self"
         """
-        #TODO: also manage cases where s is simply "cls" or "self" (i.e, no args)
+        s = s.strip()
+        if s == "cls" or s == "self":
+            return ""
 
         pos_first_comma = s.find(",")       # Position in the string of the first comma
         if pos_first_comma == -1:           # If not found
-            return s.strip()
+            return s
 
         first_arg = s[:pos_first_comma]
         first_arg = first_arg.strip()       # Cleaned-up version of the 1st argument (the expected "cls" or "self")
 
         if (first_arg != "cls") and (first_arg != "self"):      # If not found
-            return s.strip()
+            return s
 
         abridged = s[pos_first_comma+1 :]   # Ditch the early part of the string, up to - and including - the first comma
         return abridged.strip()             # Eliminate lading/trailing blanks
