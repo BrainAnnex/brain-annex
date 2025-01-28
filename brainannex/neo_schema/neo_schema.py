@@ -4162,15 +4162,17 @@ class NeoSchema:
 
 
     @classmethod
-    def import_pandas_links(cls, df :pd.DataFrame,
-                            class_from :str, class_to :str,
-                            col_from :str, col_to :str,
-                            link_name :str,
-                            col_link_props=None, rename=None,
-                            skip_errors = False,
-                            report=True, report_frequency=100,
-                            max_batch_size=1000) -> [int]:
+    def import_pandas_links_OLD(cls, df :pd.DataFrame,
+                                class_from :str, class_to :str,
+                                col_from :str, col_to :str,
+                                link_name :str,
+                                col_link_props=None, rename=None,
+                                skip_errors = False,
+                                report=True, report_frequency=100,
+                                max_batch_size=1000) -> [int]:
         """
+        TODO: Obsolete in favor of the new import_pandas_links()
+
         Import a group of relationships between existing database Data Nodes,
         from the rows of a Pandas dataframe, as database links between existing Data Nodes.
         All relationships must be between data nodes of two given Classes.
@@ -4345,27 +4347,14 @@ class NeoSchema:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
     @classmethod
-    def import_pandas_links_EXPERIMENTAL(cls, df :pd.DataFrame,
-                                         class_from :str, class_to :str,
-                                         col_from :str, col_to :str,
-                                         link_name :str,
-                                         cols_link_props=None, rename=None,
-                                         skip_errors = False,
-                                         report=True, report_frequency=100,
-                                         max_batch_size=1000) -> [int]:
+    def import_pandas_links(cls, df :pd.DataFrame,
+                            class_from :str, class_to :str,
+                            col_from :str, col_to :str,
+                            link_name :str, cols_link_props=None,
+                            skip_errors = False,
+                            report=True, report_frequency=100,
+                            max_batch_size=1000) -> [int]:
         """
         Import a group of relationships between existing database Data Nodes,
         from the rows of a Pandas dataframe, as database links between existing Data Nodes.
@@ -4378,10 +4367,10 @@ class NeoSchema:
 
         :param class_from:  Name of the Class of the data nodes that the links originate from
         :param class_to:    Name of the Class of the data nodes that the links end into
-        :param col_from:    Name of the Dataframe column (prior to any optional renaming) that contains values
+        :param col_from:    Name of the Dataframe column that contains values
                                 identifying the data nodes from which the link starts;
                                 note that these values play the role of foreign keys
-        :param col_to:      Name of the Dataframe column (prior to any optional renaming) that contains values
+        :param col_to:      Name of the Dataframe column that contains values
                                 identifying the data nodes to which the link ends;
                                 note that these values play the role of foreign keys
 
@@ -4389,9 +4378,6 @@ class NeoSchema:
         :param cols_link_props: [OPTIONAL] Name, or list of names, of properties to assign to the relationships;
                                 it must match up the name of the Dataframe columns, which contains the values.
                                 Any NaN values are ignored (no property will be set on that relationship)
-
-        :param rename:      [OPTIONAL] Dict with mapping from Pandas column names
-                                to the names of Properties in the data nodes and/or in their links
 
         :param skip_errors: [OPTIONAL] If True, the import continues even in the presence of errors;
                                 default is False
@@ -4408,6 +4394,7 @@ class NeoSchema:
         cls.assert_valid_relationship_name(link_name)
         # TODO: verify that the requested relationship between the Classes is allowed by the Schema
 
+        # Validate the presence of the expected column names in the Pandas Data Frame
         cols = list(df.columns)     # List of column names in the Pandas Data Frame
         assert col_from in cols, \
             f"import_pandas_links(): the given Data Frame doesn't have the column named `{col_from}` " \
@@ -4418,26 +4405,9 @@ class NeoSchema:
             f"requested in the argument 'col_to'"
 
 
-        # Manage column renaming, if applicable
-        if rename is not None:
-            df = df.rename(rename, axis=1)          # Rename the affected columns in the Pandas data frame
-
-        # Starting with the column names in the Pandas data frame,
-        # determine the name of the field names in the database if they're mapped to a different name
-        if rename and col_from in rename:
-            key_from = rename[col_from]
-        else:
-            key_from = col_from
-
-        if rename and col_to in rename:
-            key_to = rename[col_to]
-        else:
-            key_to = col_to
-
-        if rename and cols_link_props in rename:
-            link_props = rename[cols_link_props]
-        else:
-            link_props = cols_link_props
+        key_from = col_from
+        key_to = col_to
+        link_props = cols_link_props
 
 
         # Determine the number of needed batches (always at least 1)
@@ -4480,7 +4450,7 @@ class NeoSchema:
                                 # contains the data for 1 link
                                 # EXAMPLE: [{'FROM': 1, 'TO': 1, 'OTHER_FIELDS': {'rank': 53, 'region': 'north'}},
                                 #           {'FROM': 3, 'TO': 1, 'OTHER_FIELDS': {'rank': 4, 'region': 'north'}}]
-            print("link_list:\n", link_list)    # TODO: HIDE
+            #print("link_list:\n", link_list)
 
 
             # *** PERFORM THE ACTUAL BATCH IMPORT ***

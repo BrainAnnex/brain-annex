@@ -691,7 +691,7 @@ def test_import_pandas_links_NO_BATCH(db):
 
 
 
-def test_import_pandas_links(db):
+def test_import_pandas_links_OLD_1(db):
     db.empty_dbase()
     NeoSchema.set_database(db)
 
@@ -719,11 +719,11 @@ def test_import_pandas_links(db):
     assert result["number_nodes_created"] == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
-                                             class_from="City", class_to="State",
-                                             col_from="City ID", col_to="State ID",
-                                             link_name="IS_IN",
-                                             max_batch_size=4)      # This will lead to 1 batch
+    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                 class_from="City", class_to="State",
+                                                 col_from="City ID", col_to="State ID",
+                                                 link_name="IS_IN",
+                                                 max_batch_size=4)      # This will lead to 1 batch
     assert len(link_ids) == 4
 
     assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
@@ -741,11 +741,11 @@ def test_import_pandas_links(db):
     result = db.update_query(q)
     assert result["relationships_deleted"] == 4
 
-    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
-                                             class_from="City", class_to="State",
-                                             col_from="City ID", col_to="State ID",
-                                             link_name="IS_IN",
-                                             max_batch_size=3)      # This will lead to 2 batches
+    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                 class_from="City", class_to="State",
+                                                 col_from="City ID", col_to="State ID",
+                                                 link_name="IS_IN",
+                                                 max_batch_size=3)      # This will lead to 2 batches
     assert len(link_ids) == 4
 
     assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
@@ -763,11 +763,11 @@ def test_import_pandas_links(db):
     result = db.update_query(q)
     assert result["relationships_deleted"] == 4
 
-    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
-                                             class_from="City", class_to="State",
-                                             col_from="City ID", col_to="State ID",
-                                             link_name="IS_IN",
-                                             max_batch_size=1)      # This will lead to 4 batches
+    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                 class_from="City", class_to="State",
+                                                 col_from="City ID", col_to="State ID",
+                                                 link_name="IS_IN",
+                                                 max_batch_size=1)      # This will lead to 4 batches
     assert len(link_ids) == 4
 
     assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
@@ -781,7 +781,7 @@ def test_import_pandas_links(db):
 
 
 
-def test_import_pandas_links_2(db):
+def test_import_pandas_links_OLD_2(db):
     db.empty_dbase()
     NeoSchema.set_database(db)
 
@@ -810,11 +810,11 @@ def test_import_pandas_links_2(db):
     assert result["number_nodes_created"] == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
-                                             class_from="City", class_to="State",
-                                             col_from="City ID", col_to="State ID",
-                                             link_name="IS_IN", col_link_props="Rank",
-                                             max_batch_size=4)      # This will lead to 1 batch
+    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                 class_from="City", class_to="State",
+                                                 col_from="City ID", col_to="State ID",
+                                                 link_name="IS_IN", col_link_props="Rank",
+                                                 max_batch_size=4)      # This will lead to 1 batch
     assert len(link_ids) == 4
 
     result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
@@ -843,7 +843,7 @@ def test_import_pandas_links_2(db):
 
 
 
-def test_import_pandas_links_3(db):
+def test_import_pandas_links_OLD_3(db):
     db.empty_dbase()
     NeoSchema.set_database(db)
 
@@ -872,12 +872,12 @@ def test_import_pandas_links_3(db):
     assert result["number_nodes_created"] == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
-                                             class_from="City", class_to="State",
-                                             col_from="city_id", col_to="state_id",
-                                             rename={"city_id": "City ID", "state_id": "State ID"},
-                                             link_name="IS_IN",
-                                             max_batch_size=4)      # This will lead to 1 batch
+    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                 class_from="City", class_to="State",
+                                                 col_from="city_id", col_to="state_id",
+                                                 rename={"city_id": "City ID", "state_id": "State ID"},
+                                                 link_name="IS_IN",
+                                                 max_batch_size=4)      # This will lead to 1 batch
     assert len(link_ids) == 4
 
     assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
@@ -891,12 +891,7 @@ def test_import_pandas_links_3(db):
 
 
 
-
-
-
-
-
-def test_import_pandas_links_EXPERIMENTAL_1(db):
+def test_import_pandas_links_1(db):
     create_sample_city_state_dbase(db)      # 4 cities and 3 states
 
     # A separate dataframe ("join table") with the data about the relationships;
@@ -914,12 +909,12 @@ def test_import_pandas_links_EXPERIMENTAL_1(db):
     '''
 
     # Import in batches of 1
-    link_ids = NeoSchema.import_pandas_links_EXPERIMENTAL(df=city_state_df,
-                                               class_from="City", class_to="State",
-                                               col_from="city_id", col_to="state_id",
-                                               link_name="IS_IN",
-                                               cols_link_props=["rank", "region"],
-                                               report=False, max_batch_size=1)
+    link_ids = NeoSchema.import_pandas_links(df=city_state_df,
+                                             class_from="City", class_to="State",
+                                             col_from="city_id", col_to="state_id",
+                                             link_name="IS_IN",
+                                             cols_link_props=["rank", "region"],
+                                             report=False, max_batch_size=1)
 
     assert len(link_ids) == 4       # Verify the number of the links reported to have been imported
     # Verify the values of the imported links' internal dbase ID's
@@ -945,7 +940,7 @@ def test_import_pandas_links_EXPERIMENTAL_1(db):
 
 
 
-def test_import_pandas_links_EXPERIMENTAL_2(db):
+def test_import_pandas_links_2(db):
     # Same as version 1, but with a different import batch size
     create_sample_city_state_dbase(db)  # 4 cities and 3 states
 
@@ -964,12 +959,12 @@ def test_import_pandas_links_EXPERIMENTAL_2(db):
     '''
 
     # Import in batches of 2
-    link_ids = NeoSchema.import_pandas_links_EXPERIMENTAL(df=city_state_df,
-                                               class_from="City", class_to="State",
-                                               col_from="city_id", col_to="state_id",
-                                               link_name="IS_IN",
-                                               cols_link_props=["rank", "region"],
-                                               report=False, max_batch_size=2)
+    link_ids = NeoSchema.import_pandas_links(df=city_state_df,
+                                             class_from="City", class_to="State",
+                                             col_from="city_id", col_to="state_id",
+                                             link_name="IS_IN",
+                                             cols_link_props=["rank", "region"],
+                                             report=False, max_batch_size=2)
 
     assert len(link_ids) == 4       # Verify the number of the links reported to have been imported
     # Verify the values of the imported links' internal dbase ID's
@@ -995,7 +990,7 @@ def test_import_pandas_links_EXPERIMENTAL_2(db):
 
 
 
-def test_import_pandas_links_EXPERIMENTAL_3(db):
+def test_import_pandas_links_3(db):
     # Similar versions 1 and 2, but with a different import batch size: all data at once,
     # and some values are None, or empty strings or Numpy NaN (all to be dropped)
     create_sample_city_state_dbase(db)  # 4 cities and 3 states
@@ -1016,12 +1011,12 @@ def test_import_pandas_links_EXPERIMENTAL_3(db):
     '''
 
     # Import in batches of 4, i.e. all the data at once
-    link_ids = NeoSchema.import_pandas_links_EXPERIMENTAL(df=city_state_df,
-                                               class_from="City", class_to="State",
-                                               col_from="city_id", col_to="state_id",
-                                               link_name="IS_IN",
-                                               cols_link_props=["rank", "region"],
-                                               report=False, max_batch_size=4)
+    link_ids = NeoSchema.import_pandas_links(df=city_state_df,
+                                             class_from="City", class_to="State",
+                                             col_from="city_id", col_to="state_id",
+                                             link_name="IS_IN",
+                                             cols_link_props=["rank", "region"],
+                                             report=False, max_batch_size=4)
 
     assert len(link_ids) == 4       # Verify the number of the links reported to have been imported
     # Verify the values of the imported links' internal dbase ID's
@@ -1044,9 +1039,6 @@ def test_import_pandas_links_EXPERIMENTAL_3(db):
     result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
                                                 link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 1.0}]
-
-
-
 
 
 
@@ -1142,12 +1134,12 @@ def test_import_pandas_links_4(db):
     assert result["number_nodes_created"] == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links(df=state_city_links_df,
-                                             class_from="City", class_to="State",
-                                             col_from="city_id", col_to="state_id",
-                                             link_name="IS_IN", col_link_props="rank_value",
-                                             rename={"city_id": "City ID", "state_id": "State ID", "rank_value": "Rank"},
-                                             max_batch_size=2)      # This will lead to 2 batches
+    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                 class_from="City", class_to="State",
+                                                 col_from="city_id", col_to="state_id",
+                                                 link_name="IS_IN", col_link_props="rank_value",
+                                                 rename={"city_id": "City ID", "state_id": "State ID", "rank_value": "Rank"},
+                                                 max_batch_size=2)      # This will lead to 2 batches
     assert len(link_ids) == 4
 
     result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
