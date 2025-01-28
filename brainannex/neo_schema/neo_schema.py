@@ -85,7 +85,7 @@ class NeoSchema:
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2024 Julian A. West and the BrainAnnex.org project
+        Copyright (c) 2021-2025 Julian A. West and the BrainAnnex.org project
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org)
 
@@ -4375,19 +4375,19 @@ class NeoSchema:
                                 note that these values play the role of foreign keys
 
         :param link_name:   Name to assign to the new relationships being created
-        :param cols_link_props: [OPTIONAL] Name, or list of names, of properties to assign to the relationships;
-                                it must match up the name of the Dataframe columns, which contains the values.
+        :param cols_link_props: [OPTIONAL] Name, or list of names, of properties to assign to the new relationships;
+                                it must match up the name(s) of the Dataframe column(s) that contain(s) the value(s).
                                 Any NaN values are ignored (no property will be set on that relationship)
 
-        :param skip_errors: [OPTIONAL] If True, the import continues even in the presence of errors;
-                                default is False
-        :param report:      [OPTIONAL] If True (default), print the status of the import-in-progress
-                                at the end of each batch round
+        :param skip_errors:     [OPTIONAL] If True, the import continues even in the presence of errors;
+                                    default is False
+        :param report:          [OPTIONAL] If True (default), print the status of the import-in-progress
+                                    at the end of each batch round
         :param report_frequency: [OPTIONAL] Only applicable if report is True;
                                     how often (in terms of number of batches)
                                     to print out a status of the import-in-progress
 
-        :param max_batch_size:  [OPTIONAL]  To limit the number of Pandas rows loaded into the database at one time
+        :param max_batch_size:  [OPTIONAL] To limit the number of Pandas rows loaded into the database at one time
 
         :return:                A list of the internal database ID's of the created links
         """
@@ -4407,8 +4407,11 @@ class NeoSchema:
 
         key_from = col_from
         key_to = col_to
-        link_props = cols_link_props
 
+        if type(cols_link_props) == list:
+            link_props = cols_link_props
+        else:
+            link_props = [cols_link_props]
 
         # Determine the number of needed batches (always at least 1)
         number_batches = math.ceil(len(df) / max_batch_size)    # Note that if the max_chunk_size equals the size of recordset

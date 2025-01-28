@@ -7,6 +7,7 @@ from brainannex.user_manager import UserManager
 from brainannex.categories import Categories
 from brainannex.collections import Collections
 from brainannex.full_text_indexing import FullTextIndexing
+from brainannex.documentation_generator import DocumentationGenerator
 import brainannex.PLUGINS.plugin_support as plugin_support
 
 
@@ -17,6 +18,7 @@ __all__ = [
     'Categories',
     'Collections',
     'FullTextIndexing',
+    'DocumentationGenerator',
     'plugin_support',
     'version'
 ]

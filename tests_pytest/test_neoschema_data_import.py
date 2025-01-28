@@ -991,7 +991,7 @@ def test_import_pandas_links_2(db):
 
 
 def test_import_pandas_links_3(db):
-    # Similar versions 1 and 2, but with a different import batch size: all data at once,
+    # Similar to versions 1 and 2, but with a different import batch size: all data at once,
     # and some values are None, or empty strings or Numpy NaN (all to be dropped)
     create_sample_city_state_dbase(db)  # 4 cities and 3 states
 
@@ -1039,6 +1039,56 @@ def test_import_pandas_links_3(db):
     result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
                                                 link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 1.0}]
+
+
+
+def test_import_pandas_links_4(db):
+    # Very similar to versions 2, but importing only 1 property on the new links, rather than 2
+    create_sample_city_state_dbase(db)  # 4 cities and 3 states
+
+    # A separate dataframe ("join table") with the data about the relationships;
+    city_state_df = pd.DataFrame({"city_id": [1,         3,       2,       4],
+                                 "state_id": [1,         1,       2,       3],
+                                 "rank":     [53,        4,       1,       1],
+                                 "region":   ["north", "north", "north", "south"]
+                                 })
+    '''
+                                           city_id  state_id  rank region
+                                    0            1         1    53  north
+                                    1            3         1     4  north
+                                    2            2         2     1  north
+                                    3            4         3     1  south
+    '''
+
+    # Import in batches of 2  (Note: the "rank" column is NOT imported)
+    link_ids = NeoSchema.import_pandas_links(df=city_state_df,
+                                             class_from="City", class_to="State",
+                                             col_from="city_id", col_to="state_id",
+                                             link_name="IS_IN",
+                                             cols_link_props="region",
+                                             report=False, max_batch_size=2)
+
+    assert len(link_ids) == 4       # Verify the number of the links reported to have been imported
+    # Verify the values of the imported links' internal dbase ID's
+    q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"  # Get the dbase IDs of all the "IS_IN" links created
+    result = db.query(q, single_column="rel_id")
+    assert compare_unordered_lists(result, link_ids)
+
+    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                link_name="IS_IN", include_internal_id=False)
+    assert result == [{"region": "north"}]
+
+    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                link_name="IS_IN", include_internal_id=False)
+    assert result == [{"region": "north"}]
+
+    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                link_name="IS_IN", include_internal_id=False)
+    assert result == [{"region": "north"}]
+
+    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                link_name="IS_IN", include_internal_id=False)
+    assert result == [{"region": "south"}]
 
 
 
