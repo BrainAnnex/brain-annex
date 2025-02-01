@@ -7,7 +7,13 @@ class Navigation:
     Router/generator for navigation pages:
         CSS static pages, and HTML pages that get included into other Flask files
 
-    Setup, and routing, for all the web pages
+    Setup, and routing, for all the web pages.
+    This class doesn't need to get initialized.
+
+    EXAMPLES of static files served by this module:
+            /navigation/static/navbar_top.css
+
+    No URI routing managed by this module
     """
 
     # Module-specific parameters (as class variables)
@@ -15,6 +21,7 @@ class Navigation:
     url_prefix = "/navigation"      # Prefix for all URL's handled by this module
     template_folder = "templates"   # Relative to this module's location
     static_folder = "static"        # Relative to this module's location
+    #static_url_path = "/assets"    # Not used by this module
     config_pars = {}                # Dict with all the app configuration parameters [NOT USED IN THIS MODULE]
 
 
@@ -37,7 +44,8 @@ class Navigation:
         :return:				None
         """
         flask_blueprint = Blueprint(cls.blueprint_name, __name__,
-                                    template_folder=cls.template_folder, static_folder=cls.static_folder)
+                                    template_folder=cls.template_folder,
+                                    static_folder=cls.static_folder)
 
         # Define the Flask routing (mapping URLs to Python functions) for all the web pages served by this module
         #cls.set_routing(flask_blueprint)       # NOT USED IN THIS MODULE

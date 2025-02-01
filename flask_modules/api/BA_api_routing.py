@@ -25,6 +25,13 @@ class ApiRouting:
     """
     Setup, routing and endpoints for all the web pages served by this module.
     Note that this class does not directly interact with the database.
+    This class doesn't need to get initialized.
+
+    EXAMPLE of static files served by this module:
+            /BA/api/static/server_communication.js
+
+    EXAMPLE of web endpoint provided by this module:
+            /BA/api/get_text_media/123
 
     SECTIONS:
         - UTILITY methods
@@ -47,6 +54,7 @@ class ApiRouting:
     url_prefix = "/BA/api"          # Prefix for all URL's handled by this module
     template_folder = "templates"   # Relative to this module's location
     static_folder = "static"        # Relative to this module's location
+    #static_url_path = "/assets"    # Not used by this module
     config_pars = {}                # Dict with all the app configuration parameters
 
 
@@ -84,7 +92,8 @@ class ApiRouting:
         :return:				None
         """
         flask_blueprint = Blueprint(cls.blueprint_name, __name__,
-                                    template_folder=cls.template_folder, static_folder=cls.static_folder)
+                                    template_folder=cls.template_folder,
+                                    static_folder=cls.static_folder)
 
         # Define the Flask routing (mapping URLs to Python functions) for all the web pages served by this module
         cls.set_routing(flask_blueprint)

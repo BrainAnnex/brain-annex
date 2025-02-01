@@ -18,7 +18,14 @@ import json
 
 class PagesRouting:
     """
-    Setup and routing for all the Flask-based web pages served by this module
+    Setup and routing for all the Flask-based web pages served by this module.
+    This class doesn't need to get initialized.
+
+    EXAMPLES of static files served by this module:
+            /BA/pages/static/modules/dragscroll/dragscroll.js
+
+    EXAMPLE of dynamic page served by this module:
+            /BA/pages/viewer/3
     """
     
     # Module-specific parameters (as class variables)
@@ -26,6 +33,7 @@ class PagesRouting:
     url_prefix = "/BA/pages"            # Prefix for all URL's handled by this module
     template_folder = "templates"       # Location of HTML templates (Relative to this module's location)
     static_folder = "static"            # Location of website's static content (Relative to this module's location)
+    #static_url_path = "/assets"        # Not used by this module
     config_pars = {}                    # Dict with all the app configuration parameters
 
     site_data = {}                      # Dict of general site data to pass to most or all of the Flask templates;

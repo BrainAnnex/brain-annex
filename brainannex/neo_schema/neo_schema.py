@@ -4362,7 +4362,7 @@ class NeoSchema:
 
         :param df:          A Pandas Dataframe with the data RELATIONSHIP to import.
                                 This dataframe plays the role of a "join table".
-                                EXAMPLE - adata frame with 2 columns "City ID" and "State ID",
+                                EXAMPLE - a data frame with 2 columns "City ID" and "State ID",
                                           to link up existing Cities and States with "IS_IN" relationships
 
         :param class_from:  Name of the Class of the data nodes that the links originate from

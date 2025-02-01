@@ -13,8 +13,18 @@ import flask_login
 class HomeRouting:
     """
     Setup, and routing, for all the web pages served by this module.
+    This class doesn't need to get initialized.
 
-    This is a STATIC class that doesn't get initialized
+    EXAMPLES of static files served by this module:
+            /assets/favicon.ico
+            /assets/login/login.css
+
+    EXAMPLES of dynamic web pages served by this module:
+            /
+            /login
+
+    EXAMPLE of web endpoint provided by this module:
+            /do-login
     """
 
     # Module-specific parameters (as class variables)
@@ -22,6 +32,7 @@ class HomeRouting:
     #url_prefix = ""                # NOT USED FOR THIS TOP-LEVEL MODULE.  Prefix for all URL's handled by this module
     template_folder = "templates"   # Relative to this module's location
     static_folder = "static"        # Relative to this module's location
+    static_url_path = "/assets"     # Needed because url_prefix is not specified
     config_pars = {}                # Dict with all the app configuration parameters
 
 
@@ -52,7 +63,7 @@ class HomeRouting:
         """
         flask_blueprint = Blueprint(cls.blueprint_name, __name__,
                                     template_folder=cls.template_folder,
-                                    static_folder=cls.static_folder, static_url_path='/assets')
+                                    static_folder=cls.static_folder, static_url_path=cls.static_url_path)
 
         login_manager_obj = flask_login.LoginManager(app=flask_app_obj) # Object of type "LoginManager"
         login_manager_obj.login_view = "/login"     # Specify a page to redirect to whenever an attempt is made
