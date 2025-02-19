@@ -4353,7 +4353,7 @@ class NeoSchema:
                             col_from :str, col_to :str,
                             link_name :str, cols_link_props=None,
                             skip_errors = False,
-                            report=True, report_frequency=100,
+                            report=True, report_frequency=5,
                             max_batch_size=1000) -> [int]:
         """
         Import a group of relationships between existing database Data Nodes,
@@ -4381,10 +4381,11 @@ class NeoSchema:
 
         :param skip_errors:     [OPTIONAL] If True, the import continues even in the presence of errors;
                                     default is False
-        :param report:          [OPTIONAL] If True (default), print the status of the import-in-progress
-                                    at the end of each batch round
+        :param report:          [OPTIONAL, DEPRECATED] If True (default), print the status of the import-in-progress
+                                    periodically at the end of a subset of imported batch, as often as specified
+                                    by the next argument
         :param report_frequency: [OPTIONAL] Only applicable if report is True;
-                                    how often (in terms of number of batches)
+                                    how often (in terms of number of batches imported)
                                     to print out a status of the import-in-progress
 
         :param max_batch_size:  [OPTIONAL] To limit the number of Pandas rows loaded into the database at one time
@@ -4492,10 +4493,10 @@ class NeoSchema:
                 }
             '''
 
-            cls.db.debug_query_print(q, data_binding)
+            #cls.db.debug_query_print(q, data_binding)
 
             result = cls.db.update_query(q, data_binding)
-            print("    Result of running batch : ", result)
+            #print("    Result of running batch : ", result)
             # EXAMPLE :  {'_contains_updates': True,
             #             'relationships_created': 2, 'properties_set': 4,
             #             'returned_data': [{'link_id': 11}, {'link_id': 12}]}
