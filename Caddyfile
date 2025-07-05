@@ -17,6 +17,7 @@ example.com {
                 file_server
         }
 
-        # All other requests are reverse-proxied to Flask
-        reverse_proxy localhost:5000
+        # All other requests are reverse-proxied to Flask (port 5000) or gunicorn (port 8000)
+        # reverse_proxy localhost:5000
+        reverse_proxy localhost:8000
 }

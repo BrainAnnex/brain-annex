@@ -4392,6 +4392,9 @@ class NeoSchema:
 
         :return:                A list of the internal database ID's of the created links
         """
+        # TODO: obsolete arg "report"
+        # TODO: if "report_frequency" isn't specified by the user (None), select a value dynamically based on the import size and max_batch_size
+
         cls.assert_valid_relationship_name(link_name)
         # TODO: verify that the requested relationship between the Classes is allowed by the Schema
 
