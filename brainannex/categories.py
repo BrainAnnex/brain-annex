@@ -91,7 +91,6 @@ class Categories:
         """
         # Note: since the category_uri is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
-        #return NeoSchema.search_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
         return NeoSchema.get_data_node(class_name="Category", node_id=category_uri, id_key="uri")
 
 
@@ -683,7 +682,7 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True or False
         """
-        all_props = NeoSchema.search_data_node(uri=uri, labels="Category")    # Returns a dict, or None
+        all_props = NeoSchema.search_data_node(uri=uri)    # Returns a dict, or None.   # labels="Category"
         assert all_props, "is_pinned(): unable to locate the specified Category node"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
