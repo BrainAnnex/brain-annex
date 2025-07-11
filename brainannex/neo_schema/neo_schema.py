@@ -2158,7 +2158,7 @@ class NeoSchema:
 
 
     @classmethod
-    def get_all_data_nodes_of_class(cls, class_name :str, hide_schema=True) -> list[dict]:
+    def get_all_data_nodes_of_class(cls, class_name :str, hide_schema=True) -> [dict]:
         """
         Return all the values stored at all the Data Nodes of the specified Class.
         Each values comprises all the node fields, the internal database ID and the node labels.
@@ -2358,7 +2358,7 @@ class NeoSchema:
 
 
     @classmethod
-    def remove_schema_info(cls, dataset :list[dict]) -> None:
+    def remove_schema_info(cls, dataset :[dict]) -> None:
         """
         Given a "databaset", i.e. a list of dictionaries with key/value from node properties,
         remove-in-place (scrub out) any Schema-related info that higher layers may not want to see
@@ -4583,7 +4583,7 @@ class NeoSchema:
 
 
     @classmethod
-    def _restructure_df(cls, df, col_from :str, col_to :str, cols_other :list[str]) -> list[dict]:
+    def _restructure_df(cls, df, col_from :str, col_to :str, cols_other :[str]) -> [dict]:
         """
         Take a Pandas dataframe with at least 2 columns,
         whose names are respectively given by col_from and col_to,
