@@ -69,17 +69,9 @@ class Collections:
         :return:                True if the given data node is a Collection, or False otherwise
         """
 
-        #TODO: maybe allow the scenario where there's a longer chain of "INSTANCE_OF" relationships??
-        q = '''
-            MATCH p=({uri: $collection_uri}) -[:SCHEMA]-> (:CLASS) 
-                    -[:INSTANCE_OF]-> 
-                    (:CLASS {name: "Collections"})
-            RETURN count(p) AS number_paths
-            '''
-        data_binding = {"collection_uri": collection_uri}
-        number_paths = cls.db.query(q, data_binding, single_cell="number_paths")
-
-        return True if number_paths > 0 else False
+        # Locate the Schema Class of the given Data Node
+        class_name = NeoSchema.class_of_data_node(node_id=collection_uri, id_key="uri")
+        return NeoSchema.is_instance_of(class1=class_name, class2="Collections")
 
 
 

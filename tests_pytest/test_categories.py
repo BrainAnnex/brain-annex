@@ -325,13 +325,10 @@ def test_link_content_at_end(db):
 
     # Verify that all nodes and links are in place
     q = f'''
-        MATCH p=(:CLASS {{name:"Image"}})
-        <-[:SCHEMA]-
-        (:Image {{caption:"my_pic", uri:"i-100"}})
+        MATCH p=
+        (:Image {{caption:"my_pic", uri:"i-100", `_SCHEMA`:"Image"}})
         -[:BA_in_category]->
-        (:Category {{uri: "{root_uri}"}})
-        -[:SCHEMA]->
-        (:CLASS {{name:"Category"}}) 
+        (:Category {{uri: "{root_uri}", `_SCHEMA`:"Category"}})
         RETURN COUNT(p) AS path_count
         '''
     result = db.query(q, single_cell="path_count")
@@ -373,13 +370,10 @@ def test_detach_from_category(db):
 
     # Verify that nodes and links are in place
     q = f'''
-        MATCH p=(:CLASS {{name:"Image"}})
-        <-[:SCHEMA]-
-        (:Image {{caption:"my_pic", uri:"i-100"}})
+        MATCH p=
+        (:Image {{caption:"my_pic", uri:"i-100", `_SCHEMA`:"Image"}})
         -[:BA_in_category]->
-        (:Category {{uri: "{new_cat_uri}"}})
-        -[:SCHEMA]->
-        (:CLASS {{name:"Category"}}) 
+        (:Category {{uri: "{new_cat_uri}", `_SCHEMA`:"Category"}})
         RETURN COUNT(p) AS path_count
         '''
     result = db.query(q, single_cell="path_count")

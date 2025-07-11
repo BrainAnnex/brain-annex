@@ -50,7 +50,7 @@ def test_create_user(db):
     user_id = UserManager.create_user(username="julian", password="top_secret!!", email="me@you.com", admin=True)
 
     q = '''
-        MATCH (:CLASS {name:"User"})<-[:SCHEMA]-(u :User {user_id: $user_id, username: $username, email: $email, admin: $admin}) 
+        MATCH (u :User {user_id: $user_id, username: $username, email: $email, admin: $admin, `_SCHEMA`: "User"}) 
         RETURN count(u) AS number_users
         '''
     result = db.query(q, data_binding={"user_id": user_id, "username": "julian", "email": "me@you.com", "admin": True},
@@ -64,7 +64,7 @@ def test_create_user(db):
     user_id = UserManager.create_user(username="einstein", password="e=mc^2", email="", admin=False, min_pass_len=6)
 
     q = '''
-        MATCH (:CLASS {name:"User"})<-[:SCHEMA]-(u :User {user_id: $user_id, username: $username, admin: $admin}) 
+        MATCH (u :User {user_id: $user_id, username: $username, admin: $admin, `_SCHEMA`: "User"}) 
         RETURN count(u) AS number_users
         '''
     result = db.query(q, data_binding={"user_id": user_id, "username": "einstein", "admin": False},

@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 from neoaccess import NeoAccess
 from brainannex.neo_schema.neo_schema import NeoSchema, SchemaCache
-from test_neoschema import create_sample_schema_1, create_sample_schema_2
+from tests_pytest.test_neoschema import create_sample_schema_1, create_sample_schema_2
 from brainannex.utilities.comparisons import *
 
 
@@ -75,7 +75,7 @@ def test_import_pandas_nodes_1(db):
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -83,7 +83,9 @@ def test_import_pandas_nodes_1(db):
 
 
     # Delete all state Data Nodes, and re-do import with a different batch size
-    NeoSchema.delete_data_nodes(class_name="State")
+    n_deleted = NeoSchema.delete_data_nodes(class_name="State")
+    assert n_deleted == 3
+
     import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=2)
     assert import_result["number_nodes_created"] == 3
     import_state_list = import_result["affected_nodes_ids"]
@@ -94,7 +96,7 @@ def test_import_pandas_nodes_1(db):
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -113,7 +115,7 @@ def test_import_pandas_nodes_1(db):
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -132,7 +134,7 @@ def test_import_pandas_nodes_1(db):
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -205,7 +207,7 @@ def test_import_pandas_nodes_3(db):
     q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'         # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
-    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013} # The duplicate record 'c2' was updated by the new one
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013, '_SCHEMA': 'Motor Vehicle'} # The duplicate record 'c2' was updated by the new one
                                                                                                 # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                                 # and the 'year' value was left untouched
     assert result[0]["internal_id"] in import_result_2["affected_nodes_ids"]
@@ -231,7 +233,7 @@ def test_import_pandas_nodes_3(db):
     result = db.query(q)
     assert len(result) == 1
 
-    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white'}  # The duplicate record 'c2' was completely replaced by the new one
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', '_SCHEMA': 'Motor Vehicle'}  # The duplicate record 'c2' was completely replaced by the new one
                                                                                     # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                     # and (unlike before) the 'year' value is gone
     assert result[0]["internal_id"] in import_result_2["affected_nodes_ids"]
@@ -474,7 +476,6 @@ def test_import_pandas_nodes_7(db):
 
 
 
-
 def test_import_pandas_nodes_1_OLD(db):
     db.empty_dbase()
 
@@ -496,7 +497,7 @@ def test_import_pandas_nodes_1_OLD(db):
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -517,7 +518,7 @@ def test_import_pandas_nodes_1_OLD(db):
 
     q = '''
         UNWIND ["CA", "NY", "OR", "NV", "WA"] AS state_name
-        MATCH (s :State {name:state_name})-[:SCHEMA]-(:CLASS {name: "State"})
+        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -557,7 +558,7 @@ def test_import_pandas_nodes_1_OLD(db):
     q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'         # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
-    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013} # The duplicate record 'c2' was updated by the new one
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013, '_SCHEMA': 'Motor Vehicle'} # The duplicate record 'c2' was updated by the new one
                                                                                                 # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                                 # and the 'year' value was left untouched
     assert result[0]["internal_id"] in import_car_list_1
@@ -580,11 +581,12 @@ def test_import_pandas_nodes_1_OLD(db):
     result = db.query(q)
     assert len(result) == 1
 
-    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white'}  # The duplicate record 'c2' was completely replaced by the new one
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', '_SCHEMA': 'Motor Vehicle'}  # The duplicate record 'c2' was completely replaced by the new one
                                                                                     # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                     # and (unlike before) the 'year' value is gone
     assert result[0]["internal_id"] in import_car_list_1
     assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+
 
 
 def test_import_pandas_nodes_2_OLD(db):
@@ -1235,14 +1237,13 @@ def test_create_tree_from_dict_1(db):
     assert root_neo_id is not None
 
     q = '''
-    MATCH (root :address {state: "California", city: "Berkeley"})
-    -[:SCHEMA]->(c : CLASS {name: "address"})
-    WHERE id(root) = $root_neo_id
-    RETURN root
+        MATCH (root :address {state: "California", city: "Berkeley", `_SCHEMA`: "address"})
+        WHERE id(root) = $root_neo_id
+        RETURN root
     '''
 
     root_node = db.query(q, data_binding={"root_neo_id": root_neo_id})
-    assert root_node == [{'root': {'city': 'Berkeley', 'state': 'California'}}]
+    assert root_node == [{'root': {'city': 'Berkeley', 'state': 'California', '_SCHEMA': 'address'}}]
 
 
 
@@ -1259,7 +1260,7 @@ def test_create_tree_from_dict_2(db):
 
     # Import a data dictionary
     data = {"name": "Julian", "address": {"state": "California", "city": "Berkeley"}}
-    cache = SchemaCache()   # All needed Schema-related data will be automatically queried and cached here
+    cache = SchemaCache()    # All needed Schema-related data will be automatically queried and cached here
 
     # This import will result in the creation of 2 nodes, namely the tree root (with a single attribute "name"), with
     # an outbound link named "address" to another node (the subtree) that has the "state" and "city" attributes
@@ -1270,16 +1271,15 @@ def test_create_tree_from_dict_2(db):
 
 
     q = '''
-    MATCH (c1 :CLASS {name: "person"})<-[:SCHEMA]-
-    (root :person {name: "Julian"})-[:address]->
-    (a :address {state: "California", city: "Berkeley"})
-    -[:SCHEMA]->(c2 :CLASS {name: "address"})
-    WHERE id(root) = $root_neo_id
-    RETURN root
+        MATCH (root :person {name: "Julian", `_SCHEMA`: "person"})-[:address]->
+        (a :address {state: "California", city: "Berkeley", `_SCHEMA`: "address"})
+        WHERE id(root) = $root_neo_id
+        RETURN root
     '''
 
     root_node = db.query(q, data_binding={"root_neo_id": root_neo_id})
-    assert root_node == [{'root': {'name': 'Julian'}}]
+    assert root_node == [{'root': {'name': 'Julian', '_SCHEMA': 'person'}}]
+
 
 
 
@@ -1294,7 +1294,8 @@ def test_create_tree_from_list_1(db):
 
     # Import a data dictionary
     data = [{"state": "California", "city": "Berkeley"}, {"state": "Texas", "city": "Dallas"}]
-    cache = SchemaCache()       # All needed Schema-related data will be automatically queried and cached here
+    cache = SchemaCache()    # All needed Schema-related data will be automatically queried and cached here
+
 
     # This import will result in the creation of two new nodes, each with 2 attributes, named "state" and "city"
     root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address", cache=cache)
@@ -1303,9 +1304,9 @@ def test_create_tree_from_list_1(db):
     assert root_neo_id_list is not None
 
     q = '''
-    MATCH (root1 :address {state: "California", city: "Berkeley"})
-    -[:SCHEMA]->(c : CLASS {name: "address"})
-    <-[:SCHEMA]-(root2 :address {state: "Texas", city: "Dallas"})
+    MATCH 
+        (root1 :address {state: "California", city: "Berkeley", `_SCHEMA`: "address"}),
+        (root2 :address {state: "Texas", city: "Dallas", `_SCHEMA`: "address"})
     RETURN id(root1) as id_1, id(root2) as id_2
     '''
 
@@ -1328,7 +1329,8 @@ def test_create_tree_from_list_2(db):
 
     # Import a data dictionary
     data = ["California", "Texas"]
-    cache = SchemaCache()       # All needed Schema-related data will be automatically queried and cached here
+    cache = SchemaCache()    # All needed Schema-related data will be automatically queried and cached here
+
 
     # This import will result in the creation of two new nodes, each with a property by default named "value"
     root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address", cache=cache)
@@ -1337,10 +1339,10 @@ def test_create_tree_from_list_2(db):
     assert len(root_neo_id_list) == 2
 
     q = '''
-    MATCH (root1 :address {value: "California"})
-    -[:SCHEMA]->(c : CLASS {name: "address"})
-    <-[:SCHEMA]-(root2 :address {value: "Texas"})
-    RETURN id(root1) as id_1, id(root2) as id_2
+        MATCH 
+            (root1 :address {value: "California", `_SCHEMA`: "address"}),
+            (root2 :address {value: "Texas", `_SCHEMA`: "address"})
+        RETURN id(root1) as id_1, id(root2) as id_2
     '''
 
     result = db.query(q)
@@ -1350,6 +1352,8 @@ def test_create_tree_from_list_2(db):
     actual_root_ids_list = [actual_root_ids_dict['id_1'], actual_root_ids_dict['id_2']]
     assert actual_root_ids_list == root_neo_id_list \
            or actual_root_ids_list == root_neo_id_list.reverse()   # The order isn't guaranteed
+
+
 
 
 
@@ -1378,9 +1382,9 @@ def test_create_data_nodes_from_python_data_1(db):
     root_id = node_id_list[0]
 
     q = '''
-        MATCH (c1:CLASS {name:"Import Data"})<-[:SCHEMA]-
-              (n1:`Import Data`)-[:imported_data]->(n2:my_class_1)
-              -[:SCHEMA]->(c2:CLASS {name:"my_class_1"})
+        MATCH (n1:`Import Data` {`_SCHEMA`: "Import Data"})
+            -[:imported_data]->
+            (n2:my_class_1 {`_SCHEMA`: "my_class_1"})
         WHERE id(n2) = $uri
         RETURN n2
         '''
@@ -1388,7 +1392,7 @@ def test_create_data_nodes_from_python_data_1(db):
 
     root_record = root_node["n2"]
     assert root_record["legit"] == 123
-    #assert "uri" in root_record            # Not currently is use
+    #assert "uri" in root_record                # Not currently is use
     assert "unexpected" not in root_record      # Only the key in the Schema gets imported
 
 
@@ -1446,9 +1450,10 @@ def test_create_data_nodes_from_python_data_3(db):
     root_id = node_id_list[0]
 
     q = '''
-        MATCH (c1:CLASS {name:"Import Data"})<-[:SCHEMA]-
-              (n1:`Import Data`)-[:imported_data]->(n2:patient)
-              -[:SCHEMA]->(c2:CLASS {name:"patient"})
+        MATCH 
+            (n1:`Import Data` {`_SCHEMA`: "Import Data"})
+            -[:imported_data]->
+            (n2:patient {`_SCHEMA`: "patient"})
         WHERE id(n2) = $uri
         RETURN n2
         '''
@@ -1458,8 +1463,9 @@ def test_create_data_nodes_from_python_data_3(db):
     root_record = root_node["n2"]
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
+    assert root_record["_SCHEMA"] == "patient"
     #assert "uri" in root_record            # Not currently is use
-    assert len(root_record) == 2     # Only the keys in the Schema gets imported
+    assert len(root_record) == 3            # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
     res = db.query(q)
@@ -1496,9 +1502,10 @@ def test_create_data_nodes_from_python_data_4(db):
     root_id = node_id_list[0]
 
     q = '''
-        MATCH (c1:CLASS {name:"Import Data"})<-[:SCHEMA]-
-              (n1:`Import Data`)-[:imported_data]->(n2:patient)
-              -[:SCHEMA]->(c2:CLASS {name:"patient"})
+        MATCH 
+            (n1:`Import Data` {`_SCHEMA`: "Import Data"})
+            -[:imported_data]->
+            (n2:patient {`_SCHEMA`: "patient"})
         WHERE id(n2) = $root_id
         RETURN n2
         '''
@@ -1510,15 +1517,15 @@ def test_create_data_nodes_from_python_data_4(db):
     assert root_record["name"] == "Stephanie"
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
+    assert root_record["_SCHEMA"] == "patient"
     #assert "uri" in root_record        # Not currently is use
-    assert len(root_record) == 3            # Only the keys in the Schema gets imported
+    assert len(root_record) == 4            # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
     res = db.query(q)
     assert len(res) == 0    # the relationship "result" is not in the Schema
 
     # Count the links from the "patient" data node (the root)
-    assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
     assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
     assert db.count_links(match=root_id, rel_name="result", rel_dir="BOTH") == 0
 
@@ -1558,15 +1565,13 @@ def test_create_data_nodes_from_python_data_5(db):
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
-
-    # Traverse a loop in the graph, from the patient data node, back to itself,
-    # and finally to the `Import Data` node - going thru data and schema nodes
     q = '''
-        MATCH (p:patient {name: "Stephanie", age: 23, balance: 150.25})-[:HAS_RESULT]->
-            (r:result {biomarker:"insulin", value: 123.0})-[:SCHEMA]->(cl_r:CLASS {name:"result"})
-            <-[:HAS_RESULT]-(cl_p:CLASS {name:"patient"})<-[:SCHEMA]-(p)<-[:imported_data]-(i: `Import Data`)
+        MATCH 
+            (i: `Import Data`)-[:imported_data]->
+            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_SCHEMA`: "patient"})-[:HAS_RESULT]->
+            (r:result {biomarker:"insulin", value: 123.0, `_SCHEMA`: "result"})
         WHERE i.date = date() AND id(p) = $root_id
-        RETURN p, r, cl_r, cl_p, i
+        RETURN p, r, i
         '''
     result = db.query(q, data_binding={"root_id": root_id})
 
@@ -1581,14 +1586,13 @@ def test_create_data_nodes_from_python_data_5(db):
 
     # Count the links from the "patient" data node (the root)
     assert db.count_links(match=root_id, rel_name="HAS_RESULT", rel_dir="OUT", neighbor_labels="result") == 1
-    assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
     assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
     assert db.count_links(match=root_id, rel_name="WRONG_LINK_TO_DOCTOR", rel_dir="BOTH") == 0
 
     # Locate the "result" data node, and count the links in/out of it
     match = db.match(labels="result")
     assert db.count_links(match=match, rel_name="HAS_RESULT", rel_dir="IN", neighbor_labels="patient") == 1
-    assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
+
 
 
 
@@ -1627,27 +1631,26 @@ def test_create_data_nodes_from_python_data_6(db):
     root_id = node_id_list[0]
 
 
-    # Traverse a loop in the graph, from the patient data node, back to itself,
-    # and finally to the `Import Data` node - going thru data and schema nodes
     q = '''
-        MATCH (p:patient {name: "Stephanie", age: 23, balance: 150.25})-[:HAS_RESULT]->
-            (r:result {biomarker:"insulin", value: 123.0})-[:SCHEMA]->(cl_r:CLASS {name:"result"})
-            <-[:HAS_RESULT]-(cl_p:CLASS {name:"patient"})<-[:SCHEMA]-(p)<-[:imported_data]-(i: `Import Data`)
+        MATCH 
+            (i: `Import Data`)-[:imported_data]->
+            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_SCHEMA`: "patient"})-[:HAS_RESULT]->
+            (r:result {biomarker:"insulin", value: 123.0, `_SCHEMA`: "result"})
         WHERE i.date = date() AND id(p) = $root_id
-        RETURN p, r, cl_r, cl_p, i
+        RETURN p, r, i
         '''
     result = db.query(q, data_binding={"root_id": root_id})
     #print(result)
     assert len(result) == 1
 
-    # Again, traverse a loop in the graph, from the patient data node, back to itself,
-    # but this time going thru the `doctor` data and schema nodes
+    # Again, traverse the graph,
+    # but this time going thru the `doctor` data node
     q = '''
-        MATCH (p:patient {name: "Stephanie", age: 23, balance: 150.25})-[:IS_ATTENDED_BY]->
-            (d:doctor {name:"Dr. Kane", specialty: "OB/GYN"})-[:SCHEMA]->(cl_d:CLASS {name:"doctor"})
-            <-[:IS_ATTENDED_BY]-(cl_p:CLASS {name:"patient"})<-[:SCHEMA]-(p)
+        MATCH 
+            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_SCHEMA`: "patient"})-[:IS_ATTENDED_BY]->
+            (d:doctor {name:"Dr. Kane", specialty: "OB/GYN", `_SCHEMA`: "doctor"})
         WHERE id(p) = $root_id
-        RETURN p, d, cl_d, cl_p
+        RETURN p, d
         '''
     result = db.query(q, data_binding={"root_id": root_id})
     #print(result)
@@ -1657,23 +1660,19 @@ def test_create_data_nodes_from_python_data_6(db):
     # Count the links from the "patient" data node (the root)
     assert db.count_links(match=root_id, rel_name="HAS_RESULT", rel_dir="OUT", neighbor_labels="result") == 1
     assert db.count_links(match=root_id, rel_name="IS_ATTENDED_BY", rel_dir="OUT", neighbor_labels="doctor") == 1
-    assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
     assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
 
     # Locate the "result" data node, and count the links in/out of it
     match = db.match(labels="result")
     assert db.count_links(match=match, rel_name="HAS_RESULT", rel_dir="IN", neighbor_labels="patient") == 1
-    assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Locate the "doctor" data node, and count the links in/out of it
     match = db.match(labels="doctor")
     assert db.count_links(match=match, rel_name="IS_ATTENDED_BY", rel_dir="IN", neighbor_labels="patient") == 1
-    assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Locate the "Import Data" data node, and count the links in/out of it
     match = db.match(labels="Import Data")
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="patient") == 1
-    assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
 
 
@@ -1702,12 +1701,11 @@ def test_create_data_nodes_from_python_data_7(db):
     # Traverse a loop in the graph, from the `quotes` data node, back to itself,
     # going thru the data and schema nodes
     q = '''
-        MATCH (q :quotes {attribution: "Chico Marx", quote: "I wasn't kissing her. I was whispering in her mouth"})
-              -[:SCHEMA]->(cl_q :CLASS {name:"quotes"})
-              <-[:imported_data]-(cl_i :CLASS {name:"Import Data"})<-[:SCHEMA]-(i: `Import Data`)
-              -[:imported_data]->(q)
+        MATCH 
+            (i: `Import Data` {`_SCHEMA`: "Import Data"})-[:imported_data]->
+            (q :quotes {attribution: "Chico Marx", quote: "I wasn't kissing her. I was whispering in her mouth", `_SCHEMA`: "quotes"})
         WHERE i.date = date() AND id(q) = $quote_id
-        RETURN q, cl_q, cl_i
+        RETURN q
         '''
     result = db.query(q, data_binding={"quote_id": root_id})
     #print(result)
@@ -1716,10 +1714,8 @@ def test_create_data_nodes_from_python_data_7(db):
     # Locate the "Import Data" data node, and count the links in/out of it
     match = db.match(labels="Import Data")
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="quotes") == 1
-    assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Locate the "quotes" data node (the root), and count the links in/out of it
-    assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
     assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
 
 
@@ -1756,24 +1752,20 @@ def test_create_data_nodes_from_python_data_8(db):
     # Locate the "Import Data" data node
     match = db.match(labels="Import Data")
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="quotes") == 2
-    assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     for root_id in node_id_list:
         # Traverse a loop in the graph, from the `quotes` data node, back to itself,
         # going thru the data and schema nodes
         q = '''
-            MATCH (q :quotes)
-                  -[:SCHEMA]->(cl_q :CLASS {name:"quotes"})
-                  <-[:imported_data]-(cl_i :CLASS {name:"Import Data"})<-[:SCHEMA]-(i: `Import Data`)
-                  -[:imported_data]->(q)
+            MATCH (i: `Import Data` {`_SCHEMA`: "Import Data"})
+                  -[:imported_data]->(q :quotes {`_SCHEMA`: "quotes"})
             WHERE i.date = date() AND id(q) = $quote_id
-            RETURN q, cl_q, cl_i
+            RETURN q
             '''
         result = db.query(q, data_binding={"quote_id": root_id})
         assert len(result) == 1
 
         # Locate the "quotes" data node, and count the links in/out of it
-        assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
         assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
 
 
@@ -1812,38 +1804,29 @@ def test_create_data_nodes_from_python_data_9(db):
     # Locate the "Import Data" data node
     match = db.match(labels="Import Data")
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="quotes") == 2
-    assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     for root_id in node_id_list:
         # Locate the "quotes" data node, and count the links in/out of it
-        assert db.count_links(match=root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
         assert db.count_links(match=root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
         assert db.count_links(match=root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Category") == 1
 
-        # Traverse a loop in the graph, from the `quotes` data node, back to itself,
-        # going thru the data and schema nodes
         q = '''
-            MATCH (q :quotes)
-                -[:SCHEMA]->(cl_q :CLASS {name:"quotes"})
-                <-[:imported_data]-(cl_i :CLASS {name:"Import Data"})<-[:SCHEMA]-(i: `Import Data`)
-                -[:imported_data]->(q)
+            MATCH (i: `Import Data` {`_SCHEMA`: "Import Data"})
+                  -[:imported_data]->(q :quotes {`_SCHEMA`: "quotes"})
             WHERE i.date = date() AND id(q) = $quote_id
-            RETURN q, cl_q, cl_i
+            RETURN q
             '''
         result = db.query(q, data_binding={"quote_id": root_id})
         #print(result)
         assert len(result) == 1
 
-        # Traverse a longer loop in the graph, again from the `quotes` data node to itself,
-        # but this time also passing thru the category data and schema nodes
+        # Traverse the graph, but this time also passing thru the category data and schema nodes
         q = '''
-            MATCH (q :quotes)-[:in_category]->(cat :Category)
-                -[:SCHEMA]->(cl_c :CLASS {name:"Category"})<-[:in_category]-
-                (cl_q :CLASS {name:"quotes"})
-                <-[:imported_data]-(cl_i :CLASS {name:"Import Data"})<-[:SCHEMA]-(i: `Import Data`)
-                -[:imported_data]->(q)
+            MATCH (i: `Import Data` {`_SCHEMA`: "Import Data"})
+                  -[:imported_data]->(q :quotes {`_SCHEMA`: "quotes"})
+                  -[:in_category]->(cat :Category {`_SCHEMA`: "Category"})
             WHERE i.date = date() AND id(q) = $quote_id
-            RETURN q, cat, cl_q, cl_i
+            RETURN q, cat 
             '''
         #print(q)
         result = db.query(q, data_binding={"quote_id": root_id})
@@ -1885,17 +1868,14 @@ def test_create_data_nodes_from_python_data_9(db):
     # Locate the latest "quotes" data node, and count the links in/out of it
     assert db.count_links(match=new_root_id, rel_name="imported_data", rel_dir="IN", neighbor_labels="Import Data") == 1
     assert db.count_links(match=new_root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Category") == 2
-    assert db.count_links(match=new_root_id, rel_name="SCHEMA", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
-    # Traverse a loop in the graph, from the `quotes` data node back to itself,
-    # going thru the 2 category data nodes and their shared Schema node
+    # Traverse the graph, going thru the 2 category data nodes
     q = '''
-            MATCH (q :quotes)-[:in_category]->(cat1 :Category {name: "French Literature"})
-            -[:SCHEMA]->(cl_c :CLASS {name:"Category"})
-            <-[:SCHEMA]-(cat2 :Category {name: "Philosophy"})
-            <-[:in_category]-(q)
+            MATCH 
+                (cat2 :Category {name: "Philosophy", `_SCHEMA`: "Category"})
+                <-[:in_category]-(q :quotes)-[:in_category]->(cat1 :Category {name: "French Literature", `_SCHEMA`: "Category"})
             WHERE id(q) = $quote_id
-            RETURN q, cat1, cl_c, cat2
+            RETURN q, cat1, cat2
             '''
     result = db.query(q, data_binding={"quote_id": new_root_id})
     assert len(result) == 1
@@ -1906,7 +1886,6 @@ def test_create_data_nodes_from_python_data_9(db):
 
     # Locate the data node for the Class "Import Data", and count the links in/out of it
     match = db.match(labels="CLASS", key_name="name", key_value="Import Data")
-    assert db.count_links(match=match, rel_name="SCHEMA", rel_dir="IN", neighbor_labels="Import Data") == 2
     assert db.count_links(match=match, rel_name="imported_data", rel_dir="OUT", neighbor_labels="CLASS") == 1
 
     # Verify the data types  (Note: APOC must be installed, and enabled in the Neo4j config file)
@@ -1917,7 +1896,7 @@ def test_create_data_nodes_from_python_data_9(db):
     '''
     data_types = db.query(q, data_binding={"quote_id": new_root_id}, single_cell="data_types")
     #print(data_types)
-    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING'}    # 'uri': 'INTEGER' (not in current use)
+    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING', '_SCHEMA': 'STRING'}    # 'uri': 'INTEGER' (not in current use)
 
 
 
@@ -1939,7 +1918,7 @@ def test_import_triplestore(db):
 
     internal_id = result[0]
     lookup = db.get_nodes(internal_id)
-    assert lookup == [{'School': 'New York University', 'Semester': 'Fall 2024', 'Course Title': 'Advanced Graph Databases', 'uri': 'r-57'}]
+    assert lookup == [{'School': 'New York University', 'Semester': 'Fall 2024', 'Course Title': 'Advanced Graph Databases', 'uri': 'r-57', '_SCHEMA': 'Course'}]
 
 
     # A second 1-entity import
@@ -1952,7 +1931,7 @@ def test_import_triplestore(db):
 
     internal_id = result[0]
     lookup = db.get_nodes(internal_id)
-    assert lookup == [{'School': 'UC Berkeley', 'Semester': 'Spring 2023', 'Course Title': 'Systems Biology', 'uri': 'MCB 273'}]
+    assert lookup == [{'School': 'UC Berkeley', 'Semester': 'Spring 2023', 'Course Title': 'Systems Biology', 'uri': 'MCB 273', '_SCHEMA': 'Course'}]
 
 
 

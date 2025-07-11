@@ -298,7 +298,7 @@ class FullTextIndexing:
         An Exception is raised if the "Indexer" node already exists
 
         Details:
-        1) Create a data node of type "Indexer",
+        1) Create a data node of class "Indexer",
             with inbound relationships named "occurs" from "Word" data nodes
             (pre-existing or newly-created as needed)
             for all the words in the given list
@@ -345,7 +345,7 @@ class FullTextIndexing:
         # Validate indexer_id
         CypherUtils.assert_valid_internal_id(indexer_id)
         q = '''
-            MATCH (i :Indexer)-[:SCHEMA]->(:CLASS {name: "Indexer"})
+            MATCH (i :Indexer {`_SCHEMA`: "Indexer"})
             WHERE id(i) = $indexer_id 
             RETURN count(i) AS number_of_nodes
             '''
@@ -367,16 +367,17 @@ class FullTextIndexing:
         # Note: any already-existing "Word" data node ALREADY possess a link to the common Class node;
         #       hence, the line   "MERGE (w :`Word` {name : word})-[:SCHEMA]->(wcl)"
         q = '''
-            MATCH (ind :`Indexer`), (wcl :`CLASS` {name: "Word"})
+            MATCH (ind :`Indexer`)
             WHERE id(ind) = $indexer_id
-            WITH ind, wcl
+            WITH ind
             UNWIND $word_list AS word
-            MERGE (w :`Word` {name : word})-[:SCHEMA]->(wcl)
+            MERGE (w :`Word` {name : word, `_SCHEMA`: "Word"})
             MERGE (ind)<-[:occurs]-(w)
             '''
 
         data_binding = {"indexer_id": indexer_id, "word_list": unique_words}
         #print("add_words_to_index(): about to run the query to update the index")
+        #cls.db.debug_query_print(q, data_binding)
         result = cls.db.update_query(q, data_binding)
         #print(result)
         # EXAMPLE of result:
@@ -385,17 +386,18 @@ class FullTextIndexing:
         number_word_nodes_found = len(unique_words) - number_word_nodes_added
 
         assert result.get('labels_added', 0) == number_word_nodes_added, \
-            "add_words_to_index(): internal consistency error; " \
-            "the number of labels created should have equaled the number of nodes created"
+            f"add_words_to_index(): internal consistency error; " \
+            f"the number of labels created ({result.get('labels_added', 0)}) should be equal the number of nodes created ({number_word_nodes_added})"
 
-        assert result.get('properties_set', 0) == number_word_nodes_added, \
-            "add_words_to_index(): internal consistency error; " \
-            "the number of properties being set should have equaled the number of nodes created"
+        assert result.get('properties_set', 0) == 2 * number_word_nodes_added, \
+            f"add_words_to_index(): internal consistency error; " \
+            f"the number of properties being set ({result.get('properties_set', 0)}) should be equal to twice the number of nodes created ({number_word_nodes_added})"
+            # Note: this check requires a knowledge of the Schema layer internal organization!  Each new 'Word' node has 2 properties set: `name` and `_SCHEMA`
 
         # To determine a lower and upper bound on the the number of relationships added,
-        # consider that ech newly-create Word data node adds 2 relationships (to the "Word" Class and to the "Indexer" node);
+        # consider that ech newly-create Word data node adds 1 relationship (to the "Indexer" node);
         # by contrast, each found node only adds at most 1 relationship (to the "Indexer" node)
-        lb = 2 * number_word_nodes_added
+        lb = number_word_nodes_added
         ub =  lb + + number_word_nodes_found
         assert lb <= result.get('relationships_created', 0) <= ub, \
             f"add_words_to_index(): internal consistency error; " \
@@ -460,7 +462,7 @@ class FullTextIndexing:
         """
         # Prepare a Cypher query
         q = '''
-            MATCH (ci)-[:has_index]->(i:Indexer)-[:SCHEMA]->(:CLASS {name: "Indexer"})
+            MATCH (ci)-[:has_index]->(i:Indexer {`_SCHEMA`: "Indexer"})
             WHERE id(ci) = $content_uri
             RETURN id(i) AS indexer_id
             '''
@@ -512,8 +514,7 @@ class FullTextIndexing:
             raise Exception("number_of_indexed_words(): at least one argument must be specified")
 
         q = f'''
-            MATCH (wc :CLASS {{name:"Word"}})<-[:SCHEMA]-
-            (w :Word)-[:occurs]->(i :Indexer)<-[:has_index]-(ci) 
+            MATCH (w :Word {{`_SCHEMA`: "Word"}})-[:occurs]->(i :Indexer)<-[:has_index]-(ci) 
             {clause}
             RETURN count(w) AS word_count
             '''
@@ -629,7 +630,7 @@ class FullTextIndexing:
     def search_word(cls, word :str, all_properties=False,
                     restrict_search=None, search_category=None) -> Union[List[int], List[dict]]:
         """
-        Look up any stored words that contains the requested string
+        Look up any database-stored words that contains the requested string
         (ignoring case and leading/trailing blanks.)
 
         Then locate the Content nodes that are indexed by any of those words.
@@ -687,8 +688,7 @@ class FullTextIndexing:
 
 
         q = f'''
-            MATCH (:CLASS {{name:"Word"}})<-[:SCHEMA]-
-            (w:Word)-[:occurs]->(:Indexer)<-[:has_index]-(ci)
+            MATCH (w:Word {{`_SCHEMA`: "Word"}})-[:occurs]->(:Indexer)<-[:has_index]-(ci)
             {additional_matching}
             WHERE w.name CONTAINS toLower('{clean_term}')
             {where_additional_clause}
@@ -700,6 +700,7 @@ class FullTextIndexing:
 
         if all_properties:
             result = cls.db.query_extended(q, data_binding=data_binding, flatten=True)
+            NeoSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
         else:
             result = cls.db.query(q, data_binding=data_binding, single_column="content_id")
 

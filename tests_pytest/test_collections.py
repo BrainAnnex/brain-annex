@@ -114,12 +114,16 @@ def test_is_collection(db):
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
     # Create a Collection
-    new_uri = NeoSchema.reserve_next_uri(prefix="album-")
-    NeoSchema.create_data_node(class_node="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=new_uri)
+    new_uri = NeoSchema.reserve_next_uri(prefix="album-")   # This starts a namespace with autoincrement
+    assert new_uri == "album-1"
+
+    NeoSchema.create_data_node(class_node="Photo Album",
+                               properties ={"name": "Jamaica vacation"}, new_uri=new_uri)
 
     assert Collections.is_collection(collection_uri=new_uri)
 
-    assert not Collections.is_collection(collection_uri="some random string that is not a URI")
+    with pytest.raises(Exception):
+        Collections.is_collection(collection_uri="some random string that is not a URI")
 
 
     # Create something that is NOT a collection

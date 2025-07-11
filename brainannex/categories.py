@@ -115,7 +115,7 @@ class Categories:
     @classmethod
     def get_all_categories(cls, exclude_root=True, include_remarks=False) -> [dict]:
         """
-        Return all the existing Categories - possibly except the root -
+        Return all the existing Categories - optionally except the root Category -
         as a list of dictionaries with keys 'uri', 'name', 'pinned' and, optionally, 'remarks',
         sorted by name.
 
@@ -135,7 +135,7 @@ class Categories:
 
         # TODO: switch to using the Schema library datanode operations
         q =  f'''
-             MATCH (cat:Category)-[:SCHEMA]->(:CLASS {{name:"Category"}}) 
+             MATCH (cat :Category {{`_SCHEMA`: "Category"}})
              {clause}
              RETURN cat.uri AS uri, cat.name AS name, cat.pinned AS pinned {remarks_subquery}
              ORDER BY toLower(cat.name)
@@ -227,8 +227,13 @@ class Categories:
         match = cls.db.match(labels="Category",
                              properties={"uri": category_uri})
 
-        return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
+        result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                    neighbor_labels="Category")
+
+        # Ditch unneeded attributes
+        NeoSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
+
+        return result
 
 
 
@@ -257,8 +262,7 @@ class Categories:
         result = cls.db.query_extended(q, flatten=True)
 
         # Ditch unneeded attributes
-        #for item in result:
-        #    del item["neo4j_labels"]
+        NeoSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
 
         return result
 
@@ -445,7 +449,7 @@ class Categories:
 
         # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
         #       a Category to have multiple "children" with the same name)
-        if not category_uri:
+        if category_uri is None:
             category_uri = data_dict.get("category_uri")
             assert category_uri is not None, \
                         "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
@@ -861,7 +865,9 @@ class Categories:
         # TODO: switch to using one of the Collections methods
 
         q = '''
-            MATCH (cl :CLASS)<-[:SCHEMA]- (n) -[r :BA_in_category]-> (:Category {uri:$category_id})
+            MATCH (n) -[r :BA_in_category]-> (:Category {uri:$category_id}),
+            (cl :CLASS)
+            WHERE cl.name = n.`_SCHEMA`
             RETURN n, r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code
             ORDER BY r.pos
             '''
@@ -902,7 +908,9 @@ class Categories:
 
             content_item_list.append(item_record)
 
-        #print(content_item_list)
+        #print(f"****** content_item_list: ", content_item_list)
+        NeoSchema.remove_schema_info(content_item_list)    # Zap any low-level Schema-related data
+
         return content_item_list
 
 
@@ -1121,8 +1129,10 @@ class Categories:
         """
         # Locate the names of the Classes of all the Content Items attached to the given Category
         q = '''
-            MATCH   (CLASS {name: "Category"}) <-[:SCHEMA]- (cat :Category {uri: $category_uri}) 
-                    <-[:BA_in_category]- (content_item) -[:SCHEMA]-> (cl:CLASS) 
+            MATCH  (cat :Category {uri: $category_uri, `_SCHEMA`: "Category"}) 
+                    <-[:BA_in_category]- (content_item),
+                    (cl:CLASS)
+            WHERE cl.name = content_item.`_SCHEMA`
             RETURN DISTINCT cl.name AS class_name
             '''
         #cls.db.debug_query_print(q, data_binding={"category_uri": category_uri})
@@ -1141,6 +1151,7 @@ class Categories:
             records_schema_data[class_name] = prop_list
 
         return records_schema_data
+
 
 
 

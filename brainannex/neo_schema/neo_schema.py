@@ -11,6 +11,7 @@ import numpy as np
 
 class NeoSchema:
     """
+    Note: major implementation changes introduced in version 5 Release Candidate 2
 
     A layer above the class NeoAccess (or, in principle, another library providing a compatible interface),
     to provide an optional schema to the underlying database.
@@ -113,19 +114,7 @@ class NeoSchema:
                         # Database-interface object is a CLASS variable, accessible as cls.db
                         # For use with the NeoAccess library
 
-
-    class_label = "CLASS"               # Neo4j label to be used with Class nodes managed by this class;
-                                        # TODO: being phased out; it's now hardwired in... and all Schema nodes has a 2nd label: "SCHEMA"
-
-    property_label = "PROPERTY"         # Neo4j label to be used with Property nodes managed by this class  TODO: no longer used
-
-    class_prop_rel = "HAS_PROPERTY"     # The name to use for the relationships from `Class` to `Property` nodes TODO: no longer used
-
-    data_class_rel = "SCHEMA"           # The name to use for the relationships from data nodes to `Property` nodes
-                                        #       Alt. name ideas: "IS", "HAS_CLASS", "HAS_SCHEMA", "TYPE", "TYPE_OF"
-                                        #       TODO: no longer used
-
-    debug = False                       # Flag indicating whether a debug mode is to be used by all methods of this class
+    debug = False       # Flag indicating whether a debug mode is to be used by the methods of this class
 
 
     #TODO:   - continue the process of making the methods more efficient,
@@ -256,7 +245,7 @@ class NeoSchema:
         if no_datanodes:
             attributes["no_datanodes"] = True
 
-        #print(f"create_class(): about to call db.create_node with parameters `{cls.class_label}` and `{attributes}`")
+        #print(f"create_class(): about to call db.create_node with parameters `CLASS` and `{attributes}`")
         internal_id = cls.db.create_node(labels=["CLASS", "SCHEMA"], properties=attributes)
         return (internal_id, schema_uri)
 
@@ -455,7 +444,7 @@ class NeoSchema:
 
         :return:    A list of all the existing Class names
         """
-        match = cls.db.match(labels=cls.class_label)
+        match = cls.db.match(labels="CLASS")
         return cls.db.get_single_field(match=match, field_name="name", order_by="name")
 
 
@@ -480,15 +469,23 @@ class NeoSchema:
         assert new_name != "", \
             "rename_class(): The new name cannot be an empty (blank) string"
 
-        if not rename_data_fields:
+        q = f'''
+            MATCH (c :CLASS {{ name: $old_name }})
+            SET c.name = $new_name
+            '''
+
+        data_binding = {"old_name": old_name, "new_name": new_name}
+        #cls.db.debug_query_print(q, data_binding)
+
+        result = cls.db.update_query(q, data_binding=data_binding)
+
+
+
+        if rename_data_fields:
             q = f'''
-                MATCH (c :CLASS {{ name: $old_name }})
-                SET c.name = $new_name
-                '''
-        else:
-            q = f'''
-                MATCH (c :CLASS {{ name: $old_name }}) <- [:SCHEMA] - (dn) 
-                SET c.name = $new_name, dn:`{new_name}`
+                MATCH (dn) 
+                WHERE dn._SCHEMA = `{old_name}`
+                SET dn._SCHEMA = $new_name, dn:`{new_name}`
                 REMOVE dn:`{old_name}`
                 '''
 
@@ -496,14 +493,17 @@ class NeoSchema:
         #cls.db.debug_query_print(q, data_binding)
 
         result = cls.db.update_query(q, data_binding=data_binding)
-        print(result)
+        #print(result)
 
+        '''
+        #TODO: revisit
         if not rename_data_fields:
             assert result.get("properties_set") == 1, \
                 "rename_class(): Failed to rename the Class (may have failed to find it)"
         else:
             assert result.get("properties_set") >= 1 and (result.get("labels_added") == result.get("labels_removed")), \
                 "rename_class(): Failed to rename the Class (may have failed to find it)"
+        '''
 
 
 
@@ -526,14 +526,18 @@ class NeoSchema:
         #       (e.g. no class by that name vs. class has data points still attached to it)
         #       and give a more specific error message
 
-        if safe_delete:     # A clause is added in this branch: "WHERE NOT EXISTS (()-[:SCHEMA]->(c))"
+        # Delete classes and property nodes; TODO: also delete "LINK" nodes
+        if safe_delete:     # A clause is added in this branch, in the form of a subquery
             q = '''
             MATCH (c :CLASS {name: $name})
-            WHERE NOT EXISTS (()-[:SCHEMA]->(c))
+            WHERE NOT EXISTS {
+                MATCH (dn {`_SCHEMA`: $name})
+            }
             WITH c
             OPTIONAL MATCH (c)-[:HAS_PROPERTY]->(p :PROPERTY)         
             DETACH DELETE c, p
             '''
+
         else:
             q = '''
             MATCH (c :CLASS {name: $name})
@@ -572,49 +576,44 @@ class NeoSchema:
         result = cls.db.query(q, data_binding={"name": name},
                               single_row=True)
 
-        assert result is not None, f"is_strict_class(): no schema Class named `{name}` exists"
+        assert result is not None, \
+            f"is_strict_class(): no schema Class named `{name}` exists"
 
         return True if (result.get("strict")) else False
 
 
 
     @classmethod
-    def is_strict_class_fast(cls, class_internal_id: int, schema_cache=None) -> bool:
+    def is_strict_class_fast(cls, class_internal_id: int) -> bool:
         """
         Return True if the given Class is of "Strict" type,
         or False otherwise (or if the information is missing)
 
         :param class_internal_id:   The internal ID of a Schema Class node
-        :param schema_cache:        (OPTIONAL) "SchemaCache" object
         :return:                    True if the Class is "strict" or False if not (i.e., if it's "lax")
         """
-        if schema_cache:
-            class_attrs = schema_cache.get_cached_class_data(class_internal_id, request="class_attributes")
-        else:
-            class_attrs = cls.get_class_attributes(class_internal_id)
+        class_attrs = cls.get_class_attributes(class_internal_id)
 
         return class_attrs.get('strict', False)    # True if a "Strict" Class
 
 
 
     @classmethod
-    def allows_data_nodes(cls, class_name = None, class_internal_id = None, schema_cache=None) -> bool:
+    def allows_data_nodes(cls, class_name = None, class_internal_id = None) -> bool:
         """
         Determine if the given Class allows data nodes directly linked to it
 
         :param class_name:      Name of the Class
         :param class_internal_id :(OPTIONAL) Alternate way to specify the class; if both specified, this one prevails
-        :param schema_cache:    (OPTIONAL) "SchemaCache" object
         :return:                True if allowed, or False if not
                                     If the Class doesn't exist, raise an Exception
         """
         if class_internal_id is None:    # Note: class_neo_id might legitimately be zero
             class_internal_id = cls.get_class_internal_id(class_name)
 
-        if schema_cache is None:
-            class_node_dict = cls.db.get_nodes(match=class_internal_id, single_row=True)
-        else:
-            class_node_dict = schema_cache.get_cached_class_data(class_internal_id, request="class_attributes")
+
+        class_node_dict = cls.db.get_nodes(match=class_internal_id, single_row=True)
+
 
         if class_node_dict is None:
             raise Exception(f"NeoSchema.allows_data_nodes(): Class named `{class_name}` not found in the Schema")
@@ -623,6 +622,7 @@ class NeoSchema:
             return not class_node_dict["no_datanodes"]
 
         return True    # If key is not in dictionary, then it defaults to True
+
 
 
 
@@ -777,9 +777,9 @@ class NeoSchema:
                             otherwise, False
         """
         q = f'''
-            MATCH (from :`{cls.class_label}` {{ uri: '{from_class}' }})
+            MATCH (from :`CLASS` {{ uri: '{from_class}' }})
                   -[rel]
-                  ->(to :`{cls.class_label}` {{ uri: '{to_class}' }})
+                  ->(to :`CLASS` {{ uri: '{to_class}' }})
             MERGE (from)-[:{new_rel_name}]->(to)
             DELETE rel 
             '''
@@ -886,7 +886,7 @@ class NeoSchema:
 
 
     @classmethod
-    def class_relationship_exists(cls, from_class: str, to_class: str, rel_name) -> bool:
+    def class_relationship_exists(cls, from_class: str, to_class: str, rel_name :str) -> bool:
         """
         Return True if a relationship with the specified name exists between the two given Classes,
         in the specified direction.
@@ -899,10 +899,9 @@ class NeoSchema:
 
         SEE ALSO:  is_link_allowed()
 
-        :param from_class:  Name of an existing Class node (blanks allowed in name)
-        :param to_class:    Name of another existing Class node (blanks allowed in name)
-        :param rel_name:    Name of the relationship(s) to delete,
-                                if found in the from -> to direction (blanks allowed in name)
+        :param from_class:  Name of an existing Class node
+        :param to_class:    Name of another existing Class node
+        :param rel_name:    Name of the relationship being sought between the above classes
         :return:            True if the Class relationship exists, or False otherwise
         """
 
@@ -1002,9 +1001,24 @@ class NeoSchema:
         return cls.db.query(q, data_binding={"class_name": class_name}, single_column="NAME")
 
 
+    @classmethod
+    def is_instance_of(cls, class1 :str, class2 :str) -> bool:
+        """
+        Return True if class1 is an instance, directly or indirectly, of class2;
+        False otherwise.
+
+        :param class1:
+        :param class2:
+        :return:
+        """
+        # TODO: perform a more direct Cypher query
+        instance_list = cls.get_class_instances(class2)
+        return (class1 in instance_list)
+
+
 
     @classmethod
-    def get_linked_class_names(cls, class_name: str, rel_name: str, enforce_unique=False) -> Union[str, List[str]]:
+    def get_linked_class_names(cls, class_name :str, rel_name :str, enforce_unique=False) -> Union[str, List[str]]:
         """
         Given a Class, specified by its name, locate and return the name(s) of the other Class(es)
         that it's linked to by means of the relationship with the specified name.
@@ -1306,8 +1320,8 @@ class NeoSchema:
         for property_name in clean_property_list:
             new_schema_uri = cls._next_available_schema_uri()
             q = f'''
-                MATCH (c: `{cls.class_label}` {{ uri: '{class_uri}' }})
-                MERGE (c)-[:{cls.class_prop_rel} {{ index: {new_index} }}]
+                MATCH (c: `CLASS` {{ uri: '{class_uri}' }})
+                MERGE (c)-[:HAS_PROPERTY {{ index: {new_index} }}]
                          ->(p :PROPERTY:SCHEMA {{ uri: '{new_schema_uri}', name: $property_name }})
                 '''
             # EXAMPLE:
@@ -1606,7 +1620,7 @@ class NeoSchema:
 
 
     @classmethod
-    def allowable_props(cls, class_internal_id: int, requested_props: dict, silently_drop: bool, schema_cache=None) -> dict:
+    def allowable_props(cls, class_internal_id: int, requested_props: dict, silently_drop: bool) -> dict:
         """
         If any of the properties in the requested list of properties is not a declared (and thus allowed) Schema property,
         then:
@@ -1617,7 +1631,6 @@ class NeoSchema:
         :param requested_props:     A dictionary of properties one wishes to assign to a new data node, if the Schema allows
         :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped;
                                         otherwise, an Exception is raised if any property isn't allowed
-        :param schema_cache:        (OPTIONAL) "SchemaCache" object
 
         :return:                    A possibly pared-down version of the requested_props dictionary
         """
@@ -1626,7 +1639,7 @@ class NeoSchema:
         if requested_props == {} or requested_props is None:
             return {}     # It's a moot point, if not attempting to set any property
 
-        if not cls.is_strict_class_fast(class_internal_id, schema_cache=schema_cache):
+        if not cls.is_strict_class_fast(class_internal_id):
             return requested_props      # Any properties are allowed if the Class isn't strict
 
 
@@ -1704,6 +1717,7 @@ class NeoSchema:
 
 
 
+
     #####################################################################################################
 
     '''                         ~   DATA NODES : READING  ~                                           '''
@@ -1717,13 +1731,13 @@ class NeoSchema:
     def all_properties(cls, label :str, primary_key_name :str, primary_key_value) -> [str]:
         """
         Return the list of the *names* of all the Properties associated with the specified DATA node,
-        based on the Schema it is associated with, sorted their by schema-specified position.
+        based on the Schema it is associated with, sorted their by position stored in the Schema.
         The desired node is identified by specifying which one of its attributes is a primary key,
         and providing a value for it.
 
         IMPORTANT : this function returns the NAMES of the Properties; not their values
 
-        :param label:
+        :param label:               Required label on the node to look up
         :param primary_key_name:    A field name used to identify our desired Data Node
         :param primary_key_value:   The corresponding field value to identify our desired Data Node
         :return:                    A list of the names of the Properties associated
@@ -1731,16 +1745,18 @@ class NeoSchema:
         """
         q = f'''
             MATCH  (d :`{label}` {{ {primary_key_name}: $primary_key_value}})
-                  -[:{cls.data_class_rel}]->(c :`{cls.class_label}`)
-                  -[r :{cls.class_prop_rel}]->(p :`{cls.property_label}`)        
+            WITH dn.`_SCHEMA` AS schema_name
+            MATCH (c :`CLASS` {{name: schema_name}})
+                  -[r :HAS_PROPERTY]->(p :`PROPERTY`)        
             RETURN p.name AS prop_name
             ORDER BY r.index
             '''
 
         # EXAMPLE:
         '''
-        MATCH (d: `my data label` {uri: $primary_key_value})
-              -[:SCHEMA]->(c :`CLASS`)
+        MATCH (dn: `my data label` {uri: $primary_key_value})
+        WITH dn._SCHEMA AS schema_name
+        MATCH (c :`CLASS` {name: schema_name})
               -[r :HAS_PROPERTY]->(p :`PROPERTY`)
         RETURN p.name AS prop_name
         ORDER BY r.index
@@ -1834,14 +1850,16 @@ class NeoSchema:
                             f"instead, it is {type(node_id)}")
 
         if class_name:
-            node_cypher = "(:CLASS {name: $class_name})"
+            schema_clause = "AND dn._SCHEMA = $class_name"
         else:
-            node_cypher = "(:CLASS)"
+            schema_clause = ""
+
+
 
         # Prepare a Cypher query to locate the number of the data nodes
         q = f'''
-            MATCH {node_cypher}<-[:SCHEMA]-(dn) 
-            {clause} 
+            MATCH (dn) 
+            {clause} {schema_clause}
             RETURN COUNT(dn) AS number_found
             '''
 
@@ -1889,7 +1907,7 @@ class NeoSchema:
 
         # Prepare a Cypher query to locate the link count
         q = f'''
-            MATCH (:CLASS)<-[:SCHEMA]-(dn1) -[r :`{link_name}`]-> (dn2)-[:SCHEMA]->(:CLASS)
+            MATCH (dn1) -[r :`{link_name}`]-> (dn2)
             {clause} 
             RETURN COUNT(r) AS number_found
             '''
@@ -1927,7 +1945,6 @@ class NeoSchema:
                                 If include_internal_id is True, an extra key named "internal_id" will be present.
                                 EXAMPLE, with include_internal_id = False:
                                     [{'Rank': 99}, {'Rank': 123}, {}]     (Two links with properties, and one without)
-{}
         """
         # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
         # TODO: maybe make a version of this function for NeoAccess
@@ -1945,7 +1962,7 @@ class NeoSchema:
         # Prepare a Cypher query to locate the link count
         if include_internal_id:
             q = f'''
-                MATCH (:CLASS)<-[:SCHEMA]-(dn1) -[r :`{link_name}`]-> (dn2)-[:SCHEMA]->(:CLASS)
+                MATCH (dn1) -[r :`{link_name}`]-> (dn2)
                 {clause} 
                 RETURN r
                 '''
@@ -1953,7 +1970,7 @@ class NeoSchema:
                 fields_to_exclude=['neo4j_start_node', 'neo4j_end_node', 'neo4j_type'])
         else:
             q = f'''
-                MATCH (:CLASS)<-[:SCHEMA]-(dn1) -[r :`{link_name}`]-> (dn2)-[:SCHEMA]->(:CLASS)
+                MATCH (dn1) -[r :`{link_name}`]-> (dn2)
                 {clause} 
                 RETURN properties(r) AS props
                 '''
@@ -1967,27 +1984,28 @@ class NeoSchema:
 
 
     @classmethod
-    def get_data_node(cls, class_name :str, node_id, id_key=None) -> Union[dict, None]:
+    def get_data_node(cls, class_name :str, node_id, id_key=None, hide_schema=True) -> Union[dict, None]:
         """
-        Locate a Data Node from its Class name, and a unique identifier
+        Return a dictionary with all the key/value pairs of the attributes of given Data Node,
+        specified by its Class name, and a unique identifier
 
         :param class_name:  The name of the Schema Class that this Data Node is associated to
         :param node_id:     Either an internal database ID or a primary key value
-        :param id_key:      OPTIONAL - name of a primary key used to identify the data node; for example, "uri".
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
                                 Leave blank to use the internal database ID
-        :return:
+        :param hide_schema: [OPTIONAL] By default (True), the special schema field `_SCHEMA` is omitted
+        :return:            If not found, return None;
+                                otherwise, return a dict with the name/values of the node's properties
         """
-        #TODO: pytest
-
         if id_key is None:
-            where_clause = "WHERE id(n) = $node_id "
+            where_clause = "WHERE (id(dn) = $node_id)"
         else:
-            where_clause = f"WHERE n.`{id_key}` = $node_id "
+            where_clause = f"WHERE (dn.`{id_key}` = $node_id)"
 
         q = f'''
-            MATCH (:CLASS {{name: $class_name}}) <-[:SCHEMA]- (n)
-            {where_clause}
-            RETURN n
+            MATCH (dn)
+            {where_clause} AND (dn.`_SCHEMA` = $class_name)
+            RETURN dn
             '''
 
         data_binding = {"class_name": class_name, "node_id": node_id}
@@ -2002,36 +2020,59 @@ class NeoSchema:
         assert len(result) == 1, \
             f"get_data_node(): the specified key ({id_key}) is not unique - multiple records were located"
 
-        return result["n"]
+        d = result["dn"]    # EXAMPLE:  {'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+        if hide_schema:
+            del d["_SCHEMA"]
+
+        return d
 
 
 
     @classmethod
-    def search_data_node(cls, uri = None, internal_id = None, labels=None, properties=None) -> Union[dict, None]:
+    def search_data_node(cls, uri = None, internal_id = None, hide_schema=True) -> Union[dict, None]:
         """
-        Return a dictionary with all the key/value pairs of the attributes of given data node
+        Return a dictionary with all the key/value pairs of the attributes of given (single) data node
 
-        See also locate_node()
+        See also get_data_node() and locate_node()
 
-        :param uri:         The "uri" field to uniquely identify the data node
-        :param internal_id: OPTIONAL alternate way to specify the data node;
-                                if present, it takes priority
-        :param labels:      OPTIONAL (generally redundant) ways to locate the data node
-        :param properties:  OPTIONAL (generally redundant) ways to locate the data node
+        :param uri:         The "uri" field value to uniquely identify the data node
+        :param internal_id: Alternate way to specify the data node;
+                                cannot specify both `uri` and `internal_id` arguments
+
+        :param hide_schema: [OPTIONAL] By default (True),
+                                the special schema field `_SCHEMA` is omitted from the results
 
         :return:            A dictionary with all the key/value pairs, if node is found; or None if not
         """
+        # TODO: merge with get_data_node() and perhaps also with locate_node()
         # TODO: add function that only returns a specified single Property, or specified list of Properties
-        if internal_id is None:
-            assert uri is not None, \
-                "NeoSchema.fetch_data_node(): arguments `uri` and `internal_id` cannot both be None"
+        # TODO: optionally also return node label
 
-            match = cls.db.match(key_name="uri", key_value=uri,
-                                 labels=labels, properties=properties)
-        else:
-            match = cls.db.match(internal_id=internal_id, labels=labels, properties=properties)
+        if uri is not None:
+            assert internal_id is None, \
+                "NeoSchema.search_data_node(): arguments `uri` and `internal_id` cannot both be specified"
 
-        return cls.db.get_nodes(match, single_row=True)
+            match = cls.db.match(key_name="uri", key_value=uri)
+        else:   # uri is None
+            assert internal_id is not None, \
+                "NeoSchema.search_data_node(): one of arguments `uri` and `internal_id` must be specified"
+
+            match = cls.db.match(internal_id=internal_id)
+
+
+        d = cls.db.get_nodes(match, single_row=True)    # EXAMPLE:  {'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+        if d is None:               # No matching node found
+            return  None
+
+        if "_SCHEMA" not in d:      # If not a Data Node
+            return None
+
+        if hide_schema:
+            del d["_SCHEMA"]
+
+        return d
 
 
 
@@ -2063,43 +2104,18 @@ class NeoSchema:
 
 
     @classmethod
-    def get_all_data_nodes_of_class(cls, class_name :str) -> list[dict]:
-        """
-        Return all the values stored at all the Data Nodes in the specified Class.
-        Each values comprises all the node fields, the internal database ID and the node labels.
-
-        EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'neo4j_labels': ['Motor Vehicle']},
-                  {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'neo4j_labels': ['Motor Vehicle']}
-                 ]
-
-        :param class_name:  The name of a Class in the Schema
-        :return:            A list of dicts; each list item contains data from a node
-        """
-        #TODO: pytest
-        cls.assert_valid_class_name(class_name)
-
-        q = f'''
-            MATCH (dn :`{class_name}`)-[:SCHEMA]->(cl :CLASS {{name: "{class_name}"}})
-            RETURN dn
-            '''
-        return cls.db.query_extended(q, flatten=True)
-
-
-
-    @classmethod
     def class_of_data_node(cls, node_id, id_key=None, labels=None) -> str:
         """
         Return the name of the Class of the given data node: identified
         either by its internal database ID (default), or by a primary key (such as "uri")
-        with optional label)
 
         :param node_id:     Either an internal database ID or a primary key value
         :param id_key:      OPTIONAL - name of a primary key used to identify the data node; for example, "uri".
                                 Leave blank to use the internal database ID
         :param labels:      Optional string, or list/tuple of strings, with internal database labels
-                                (DEPRECATED)
 
-        :return:            A string with the name of the Class of the given data node
+        :return:            A string with the name of the Class of the given Data Node, if found;
+                                if not found, an Exception is raised
         """
         match = cls.locate_node(node_id=node_id, id_type=id_key, labels=labels)
         # This is an object of type "CypherMatch"
@@ -2107,37 +2123,72 @@ class NeoSchema:
         node = match.node
         where_clause = CypherUtils.prepare_where([match.where])
         data_binding = match.data_binding
+        dummy_node_name = match.dummy_node_name
 
         q = f'''
-            MATCH  {node} -[:SCHEMA]-> (class_node :CLASS)
+            MATCH  {node}
             {where_clause}
-            RETURN class_node.name AS name
+            RETURN {dummy_node_name}.`_SCHEMA` AS class_name
             '''
         #cls.db.debug_query_print(q, data_binding, "class_of_data_node")
 
         result = cls.db.query(q, data_binding)
+        #print(result)
 
         if len(result) == 0:    # TODO: separate the 2 scenarios leading to this
             if id_key:
-                raise Exception(f"class_of_data_node(): The given data node ({id_key}: `{node_id}`) "
-                                f"does not exist or is not associated to any Schema class")
+                raise Exception(f"class_of_data_node(): The requested data node ({id_key}: `{node_id}`) "
+                                f"does not exist")
             else:
-                raise Exception(f"The given data node (internal database id: {node_id}) "
-                                f"does not exist or is not associated to any Schema class")
-        elif len(result) > 1:
-            if id_key:
-                raise Exception(f"class_of_data_node(): The given data node ({id_key}: `{node_id}`) "
-                                f"is associated to more than 1 Schema class (forbidden scenario)")
-            else:
-                raise Exception(f"class_of_data_node(): The given data node (internal database id: {node_id}) "
-                                f"is associated to more than 1 Schema class (forbidden scenario)")
+                raise Exception(f"The requested data node (internal database id: {node_id}) "
+                                f"does not exist")
 
-        class_node = result[0]
+        # Note: if the `_SCHEMA` field was missing, result = [{'class_name': None}]
+        class_name = result[0].get("class_name")
 
-        if "name" not in class_node:
-            raise Exception("class_of_data_node(): The associate schema class node lacks a name")
+        assert class_name is not None, \
+            "class_of_data_node(): The given data node ({id_key}: `{node_id}`) lacks a `_SCHEMA` field"
 
-        return class_node["name"]
+        assert type(class_name) == str, \
+            f"class_of_data_node(): The given data node ({id_key}: `{node_id}`) has a `_SCHEMA` value ({class_name}) that isn't valid, " \
+            f"of type {type(class_name)} rather than a string"
+
+        return class_name
+
+
+
+    @classmethod
+    def get_all_data_nodes_of_class(cls, class_name :str, hide_schema=True) -> list[dict]:
+        """
+        Return all the values stored at all the Data Nodes of the specified Class.
+        Each values comprises all the node fields, the internal database ID and the node labels.
+
+        EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'neo4j_labels': ['Motor Vehicle']},
+                  {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'neo4j_labels': ['Motor Vehicle']}
+                 ]
+
+        See also: data_nodes_of_class()
+
+        :param class_name:  The name of a Class in the Schema
+        :param hide_schema: [OPTIONAL] By default (True),
+                                the special schema field `_SCHEMA` is omitted from the results
+        :return:            A (possibly-empty) list of dicts; each list item contains data from a node
+        """
+        #TODO: add new arguments `clause` (eg, "dn.root <> true OR dn.root is NULL"),
+        #      `fields` and `order_by` (eg "toLower(dn.name)")
+        cls.assert_valid_class_name(class_name)
+
+        q = '''
+            MATCH (dn {_SCHEMA: $class_name})
+            RETURN dn
+            '''
+        node_list = cls.db.query_extended(q, data_binding={"class_name": class_name}, flatten=True)
+
+        if not hide_schema:
+            return node_list
+
+        filtered_list = [{k: v for k, v in d.items() if k != '_SCHEMA'} for d in node_list]
+        return filtered_list
 
 
 
@@ -2145,7 +2196,9 @@ class NeoSchema:
     def data_nodes_of_class(cls, class_name :str, return_option="uri") -> Union[List[str], List[int]]:
         """
         Return the uri's, or alternatively the internal database ID's,
-        of all the Data Nodes of the given Class
+        of all the Data Nodes of the given schema Class.
+
+        See also: get_all_data_nodes_of_class()
 
         :param class_name:      Name of a Schema Class
         :param return_option:   Either "uri" or "internal_id"
@@ -2161,7 +2214,7 @@ class NeoSchema:
             "data_nodes_of_class(): the argument `return_option` must be either 'uri' or 'internal_id'"
 
         q = '''
-            MATCH (n)-[:SCHEMA]->(c:CLASS {name: $class_name}) 
+            MATCH (n {_SCHEMA: $class_name}) 
             '''
 
         if return_option == "uri":
@@ -2193,9 +2246,8 @@ class NeoSchema:
             f"count_data_nodes_of_class(): there is no Class named `{class_name}`"
 
         q = '''
-            MATCH (n)-[:SCHEMA]->(cl :CLASS)
-            WHERE cl.name = $class_name
-            RETURN count(n) AS number_datanodes
+            MATCH (dn {_SCHEMA: $class_name})
+            RETURN count(dn) AS number_datanodes
             '''
         #print(q)
         res = cls.db.query(q, data_binding={"class_name": class_name},
@@ -2206,21 +2258,20 @@ class NeoSchema:
 
 
     @classmethod
-    def data_nodes_lacking_schema(cls, label :str) -> [dict]:
+    def data_nodes_lacking_schema(cls, label :str) -> [int]:
         """
         Locate and return all nodes with the given label
         that aren't associated to any Schema Class
 
         :label:     A string with a graph-database label
-        :return:    A list containing a single dictionary, with key 'n';
-                        the value is a dict with all the properties of the located nodes
+        :return:    A (possibly empty) list of internal database id's of the located nodes
         """
-        #  TODO: change the return value; test
+        #  TODO: test
 
         q = f'''
             MATCH  (n :`{label}`)
-            WHERE  not exists ( (n)-[:SCHEMA]-> (:CLASS) )
-            RETURN n
+            WHERE  n._SCHEMA IS NULL
+            RETURN id(n)
             '''
 
         return cls.db.query(q)
@@ -2306,6 +2357,22 @@ class NeoSchema:
 
 
 
+    @classmethod
+    def remove_schema_info(cls, dataset :list[dict]) -> None:
+        """
+        Given a "databaset", i.e. a list of dictionaries with key/value from node properties,
+        remove-in-place (scrub out) any Schema-related info that higher layers may not want to see
+
+        :param dataset:
+        :return:        None
+        """
+        # Ditch Schema-related attributes in each dict in the list
+        for item in dataset:
+            if "_SCHEMA" in item:
+                del item["_SCHEMA"]
+
+
+
 
 
     #####################################################################################################
@@ -2343,15 +2410,12 @@ class NeoSchema:
 
         :param class_node:  Either an integer with the internal database ID of an existing Class node,
                                 or a string with its name
-        :param properties:  (OPTIONAL) Dictionary with the properties of the new data node.
+        :param properties:  [OPTIONAL] Dictionary with the properties of the new data node.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param extra_labels:(OPTIONAL) String, or list/tuple of strings, with label(s) to assign to the new data node,
+        :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
-        :param new_uri:     (OPTIONAL)  If new_uri is provided, then a field called "uri"
-                                is set to that value;
-                                also, an extra attribute named "schema_code" gets set
-                                (based on the Class to use for this Data Node);
-                                this extra attribute might eventually get obsoleted
+        :param new_uri:     [OPTIONAL]  If a string is passed as `new_uri`, then a field (node property) called "uri"
+                                is set to that value
         :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
                                 Note: only applicable for "Strict" schema - with a "Lenient" schema anything goes
@@ -2359,9 +2423,8 @@ class NeoSchema:
         :return:            The internal database ID of the new data node just created, if created;
                                 or None if not created
         """
-        # TODO: "schema_code" should perhaps be responsibility of the higher layer
         # TODO: consider allowing creation of multiple nodes from one call
-        # TODO: allow a new URI to be automatically generated from a namespace
+        # TODO: allow a new URI to be automatically generated from a namespace?
 
         # Do various validations
         cls.assert_valid_class_identifier(class_node)
@@ -2407,10 +2470,12 @@ class NeoSchema:
                                                 silently_drop=silently_drop)
 
 
-        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes:
-        # "uri" and "schema_code";
+        # In addition to the passed properties for the new node, data nodes may contain a special attribute: "uri"
         # if a value for new_uri was provided, expand properties_to_set accordingly
-        if new_uri:
+        if new_uri is not None:
+            assert type(new_uri) == str, \
+                "create_data_node(): argument `new_uri`, if provided, must be a string"
+
             #print("URI assigned to new data node: ", new_uri)
             properties_to_set["uri"] = new_uri                   # Expand the dictionary
 
@@ -2487,7 +2552,7 @@ class NeoSchema:
         :param class_internal_id:   The internal database ID of an existing Class node in the Schema
         :param labels:              String, or list/tuple of strings, with label(s)
                                         to assign to the new Data node,
-                                        (note: the Class name is expected to be among the labels)
+                                        (note: the Class name should be among the labels to assign)
         :param properties_to_set:   [OPTIONAL] Dictionary with the properties of the new data node.
                                         EXAMPLE: {"make": "Toyota", "color": "white"}
         :param uri_namespace:       [OPTIONAL] String with a namespace to use to auto-assign a uri value on the new data node;
@@ -2499,13 +2564,16 @@ class NeoSchema:
         :return:                    If a new Data node gets created, return its internal database ID;
                                         otherwise (in case of a duplicate node already present) return None
         """
+        #TODO: pass the class name as argument
+        class_name = cls.get_class_name(class_internal_id)
+
         if uri_namespace:
             new_uri = cls.reserve_next_uri(namespace=uri_namespace)
             properties_to_set["uri"] = new_uri          # Expand the dictionary, to include the "uri" field
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
         #   to define the new node to be created
-        # TODO: labels_str ought to be handled by the calling function (likely always the same)
+        # TODO: labels_str ought to be handled by the calling function (for efficiency; likely always the same)
         labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
         (cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(properties_to_set)
         # EXAMPLE:
@@ -2517,23 +2585,19 @@ class NeoSchema:
             set_operator = "" if duplicate_option == "replace" else "+"
 
             q = f'''
-                MATCH (cl :CLASS)
-                WHERE id(cl) = {class_internal_id} 
-                WITH cl, $record AS rec
+                WITH $record AS rec
                 MERGE (dn {labels_str} {{`{primary_key}`: rec['{primary_key}']}}) 
-                      -[:SCHEMA]-> (cl)
                 SET dn {set_operator}= rec 
+                SET dn.`_SCHEMA` = "{class_name}" 
                 RETURN id(dn) as internal_id 
                 '''
             # EXAMPLE, with data_binding {'record': {'name': 'CA'}},
             #          assuming the dbase internal ID of the Class node "State" is 123:
             '''
-                MATCH (cl :CLASS)
-                WHERE id(cl) = 123 
-                WITH cl, $record AS rec
+                WITH $record AS rec
                 MERGE (dn :`State` {`name`: rec['name']}) 
-                      -[:SCHEMA]-> (cl)
                 SET dn += rec 
+                SET dn.`_SCHEMA` = "my class name" 
                 RETURN id(dn) as internal_id 
             '''
 
@@ -2544,11 +2608,9 @@ class NeoSchema:
             # Create a new Data node, with a "SCHEMA" relationship to its Class node
             # TODO: allow the creation of multiple nodes with a single Cypher query, with an UNWIND ;
             #       see the counterpart  NeoAccess.load_pandas()
-            q = f'''
-                MATCH (cl :CLASS)
-                WHERE id(cl) = {class_internal_id}           
+            q = f'''          
                 CREATE (dn {labels_str} {cypher_props_str})
-                MERGE (dn)-[:SCHEMA]->(cl)           
+                SET dn.`_SCHEMA` = "{class_name}"        
                 RETURN id(dn) AS internal_id
                 '''
 
@@ -2604,15 +2666,14 @@ class NeoSchema:
 
         # From the dictionary of attribute names/values,
         #       create a part of a Cypher query, with its accompanying data dictionary
+        properties["_SCHEMA"] = class_name
         (attributes_str, data_dictionary) = CypherUtils.dict_to_cypher(properties)
-        # EXAMPLE - if properties is {'cost': 65.99, 'item description': 'the "red" button'} then:
-        #       attributes_str = '{`cost`: $par_1, `item description`: $par_2}'
-        #       data_dictionary = {'par_1': 65.99, 'par_2': 'the "red" button'}
+        # EXAMPLE - if properties is {'cost': 1.99, 'item description': 'the "red" button', '_SCHEMA': 'accessories'} then:
+        #       attributes_str = '{`cost`: $par_1, `item description`: $par_2, `item _SCHEMA`: $par_3}'
+        #       data_dictionary = {'par_1': 1.99, 'par_2': 'the "red" button', par_3': 'accessories'}
 
         q = f'''
-            MATCH (cl :CLASS)
-            WHERE id(cl) = {class_internal_id}
-            MERGE (n :`{class_name}` {attributes_str})-[:SCHEMA]->(cl)           
+            MERGE (n :`{class_name}` {attributes_str})       
             RETURN id(n) AS internal_id
             '''
 
@@ -2661,7 +2722,7 @@ class NeoSchema:
         new_id_list = []
         existing_id_list = []
         for value in value_list:
-            properties = {property_name : value}
+            properties = {property_name : value, "_SCHEMA": class_name}
             # From the dictionary of attribute names/values,
             #       create a part of a Cypher query, with its accompanying data dictionary
             (attributes_str, data_dictionary) = CypherUtils.dict_to_cypher(properties)
@@ -2670,9 +2731,7 @@ class NeoSchema:
             #       data_dictionary = {'par_1': 65.99, 'par_2': 'the "red" button'}
 
             q = f'''
-                MATCH (cl :CLASS)
-                WHERE id(cl) = {class_internal_id}
-                MERGE (n :`{class_name}` {attributes_str})-[:SCHEMA]->(cl)           
+                MERGE (n :`{class_name}` {attributes_str})     
                 RETURN id(n) AS internal_id
                 '''
 
@@ -2721,7 +2780,7 @@ class NeoSchema:
         TODO: invoke special plugin-code, if applicable???
         TODO: maybe rename to add_data_node()
 
-        :param class_name:  The name of the Class that this new data node is an instance of.
+        :param class_name:  The name of the Class of this new data node.
                                 Also use to set a label on the new node, if labels isn't specified
         :param class_internal_id: OPTIONAL alternative to class_name.  If both specified,
                                 class_internal_id prevails
@@ -2752,8 +2811,14 @@ class NeoSchema:
         :return:                If successful, an integer with the internal database ID of the node just created;
                                     otherwise, an Exception is raised
         """
-        if class_internal_id is None:                                # Note: zero could be a valid value
-            class_internal_id = cls.get_class_internal_id(class_name)     # This call will also validate the class name
+        if class_internal_id is None:                                   # Note: zero could be a valid value
+            assert class_name is not None, \
+                "add_data_node_with_links(): arguments `class_name` and `class_internal_id` cannot both be missing"
+
+            class_internal_id = cls.get_class_internal_id(class_name)   # This call will also validate the class name
+        else:
+            class_name = cls.get_class_name(class_internal_id)
+
 
         if labels is None:
             # If not specified, use the Class name
@@ -2783,19 +2848,14 @@ class NeoSchema:
             #print("New ID assigned to new data node: ", new_id)
             cypher_prop_dict["uri"] = new_id               # Expand the dictionary
 
-
             # EXAMPLE of cypher_prop_dict at this stage:
             #       {"make": "Toyota", "color": "white", "uri": "123"}
             #       where "123" is the next auto-assigned uri
 
 
-        # Create a new data node, with a "SCHEMA" relationship to its Class node and, possible, also relationships to another data nodes
-        link_to_schema_class = {"internal_id": class_internal_id, "rel_name": "SCHEMA", "rel_dir": "OUT"}
-        if links:
-            links.append(link_to_schema_class)
-        else:
-            links = [link_to_schema_class]
+        cypher_prop_dict["_SCHEMA"] = class_name               # Expand the dictionary
 
+        # Create a new data node, with the correct Class - and, possibly, also relationships to another data nodes
         neo_id = cls.db.create_node_with_links(labels=labels,
                                                properties=cypher_prop_dict,
                                                links=links)
@@ -2860,12 +2920,12 @@ class NeoSchema:
 
         # Make sure that at least either class_name or schema_uri is present
         if (not class_name) and (not schema_uri):
-            raise Exception("NeoSchema.add_data_point(): Must specify at least either the class_name or the schema_uri")
+            raise Exception("NeoSchema.add_data_point(): Must specify at least either the `class_name` or the `schema_uri`")
 
         if not class_name:
             class_name = cls.get_class_name_by_schema_uri(schema_uri)      # Derive the Class name from its ID
 
-        class_neo_id = cls.get_class_internal_id(class_name)
+        #class_neo_id = cls.get_class_internal_id(class_name)
 
         if labels is None:
             # If not specified, use the Class name
@@ -2882,6 +2942,9 @@ class NeoSchema:
             raise Exception(f"NeoSchema.add_data_point(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
 
+        cypher_prop_dict["_SCHEMA"] = class_name        # Expand the dictionary
+
+
         # In addition to the passed properties for the new node, data nodes may contain a special attributes: "uri";
         # if requested, expand cypher_prop_dict accordingly
         if assign_uri or new_uri:
@@ -2890,10 +2953,10 @@ class NeoSchema:
             else:
                 new_id = new_uri
             #print("New ID assigned to new data node: ", new_id)
-            cypher_prop_dict["uri"] = new_id               # Expand the dictionary
+            cypher_prop_dict["uri"] = new_id                # Expand the dictionary
 
             # EXAMPLE of cypher_prop_dict at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": 123}
+            #       {"make": "Toyota", "color": "white", "uri": 123, "_SCHEMA": "Car"}
             #       where 123 is the next auto-assigned uri
 
 
@@ -2906,20 +2969,12 @@ class NeoSchema:
 
             neo_id = cls.db.create_node_with_links(labels,
                                                    properties=cypher_prop_dict,
-                                                   links=[  {"internal_id": class_neo_id,
-                                                             "rel_name": "SCHEMA", "rel_dir": "OUT"},
-
-                                                            {"internal_id": connected_to_neo_id,
-                                                             "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
-                                                            ]
+                                                   links=[{"internal_id": connected_to_neo_id,
+                                                           "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
+                                                         ]
                                                    )
-        else:                   # Simpler case : only a link to the Class node
-            neo_id = cls.db.create_node_with_links(labels,
-                                                   properties=cypher_prop_dict,
-                                                   links=[{"internal_id": class_neo_id,
-                                                            "rel_name": "SCHEMA", "rel_dir": "OUT"}
-                                                          ]
-                                                   )
+        else:                   # Simpler case : no links
+            neo_id = cls.db.create_node_with_links(labels, properties=cypher_prop_dict)     # TODO: no need for method that creates links
 
         return neo_id
 
@@ -3015,31 +3070,26 @@ class NeoSchema:
             new_id = new_uri
         #print("New ID assigned to new data node: ", new_id)
         cypher_props_dict["uri"] = new_id               # Expand the dictionary
+        cypher_props_dict["_SCHEMA"] = class_name       # Expand the dictionary
 
         # EXAMPLE of cypher_props_dict at this stage:
         #       {"make": "Toyota", "color": "white", "uri": 123}
         #       where 123 is the next auto-assigned uri
 
         # Create a new data node, with a "SCHEMA" relationship to its Class node and, if requested, also a relationship to another data node
-        if connected_to_id:     # if requesting a relationship to an existing data node
+        if connected_to_id:     # (A) if requesting a relationship to an existing data node
             if rel_prop_key and (rel_prop_value != '' and rel_prop_value is not None):  # Note: cannot just say "and rel_prop_value" or it'll get dropped if zero
                 rel_attrs = {rel_prop_key: rel_prop_value}
             else:
                 rel_attrs = None
 
             neo_id = cls.db.create_node_with_relationships(labels, properties=cypher_props_dict,
-                                                  connections=[{"labels": "CLASS", "key": "name", "value": class_name,
-                                                                "rel_name": "SCHEMA"},
-
-                                                               {"labels": connected_to_labels, "key": "uri", "value": connected_to_id,
+                                                  connections=[{"labels": connected_to_labels, "key": "uri", "value": connected_to_id,
                                                                 "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
                                                                ]
                                                   )
-        else:                   # simpler case : only a link to the Class node
-            neo_id = cls.db.create_node_with_relationships(labels, properties=cypher_props_dict,
-                                                  connections=[{"labels": "CLASS", "key": "name", "value": class_name,
-                                                                "rel_name": "SCHEMA"}]
-                                                  )
+        else:                   # (B) simpler case : no links need to be created
+            neo_id = cls.db.create_node(labels=labels, properties=cypher_props_dict)
 
         if return_uri:
             return new_id
@@ -3086,8 +3136,11 @@ class NeoSchema:
         :return:                    If successful, an integer with Neo4j ID of the node just created;
                                         otherwise, an Exception is raised
         """
+        # Create a new data node
         new_neo_id = cls.add_data_point_fast_OBSOLETE(class_name=class_name, properties=properties, labels=labels,
                                                       assign_uri=assign_uri)
+
+        # Add relationships to the newly-created data node
         # TODO: maybe expand add_data_point_fast(), so that it can link to multiple other data nodes at once
         for link in connected_to_list:
             node_neo_id, rel_name = link    # Unpack
@@ -3158,7 +3211,7 @@ class NeoSchema:
             remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
 
         if class_name:
-            match_str = f"MATCH (n)-[:SCHEMA]->(:CLASS {{name: '{class_name}'}}) "
+            match_str = f"MATCH (n {{`_SCHEMA`: '{class_name}'}}) "
         else:
             match_str = f"MATCH (n) "
 
@@ -3191,9 +3244,8 @@ class NeoSchema:
 
         cls.assert_valid_class_name(class_name)
 
-        q = '''
-        
-            MATCH (dn)-[:SCHEMA]->(:CLASS {name: $class_name})
+        q = '''  
+            MATCH (dn {`_SCHEMA`: $class_name})
             DETACH DELETE dn
             '''
         #print(q)
@@ -3225,7 +3277,7 @@ class NeoSchema:
         cypher_labels = CypherUtils.prepare_labels(labels)
 
         q = f'''
-            MATCH (:CLASS)<-[:SCHEMA]-(data {cypher_labels})
+            MATCH (data {cypher_labels})
             WHERE id(data) = $node_id
             DETACH DELETE data
             '''
@@ -3282,7 +3334,7 @@ class NeoSchema:
                                 otherwise, an Exception is raised
         """
         if not existing_neo_id:
-            raise Exception("Missing argument: existing_neo_id")
+            raise Exception("register_existing_data_node() - Missing argument: `existing_neo_id`")
 
         assert type(existing_neo_id) == int, \
             "register_existing_data_node(): The argument `existing_neo_id` MUST be an integer"  # TODO: use validity checker
@@ -3302,7 +3354,9 @@ class NeoSchema:
 
         # Verify that the data node doesn't already have a SCHEMA relationship
         q = f'''
-            MATCH (n)-[:SCHEMA]->(:CLASS) WHERE id(n)={existing_neo_id} RETURN count(n) AS number_found
+            MATCH (n) 
+            WHERE id(n)={existing_neo_id} AND n.`_SCHEMA` IS NOT NULL
+            RETURN count(n) AS number_found
             '''
         number_found = cls.db.query(q, single_cell="number_found")
         if number_found:
@@ -3321,9 +3375,8 @@ class NeoSchema:
 
         # Link the existing data node, with a "SCHEMA" relationship, to its Class node, and also set some properties on the data node
         q = f'''
-            MATCH (existing), (class :CLASS {{name: $class_name}}) WHERE id(existing) = $existing_neo_id
-            MERGE (existing)-[:SCHEMA]->(class)
-            SET existing.uri = $new_uri
+            MATCH (existing) WHERE id(existing) = $existing_neo_id
+            SET existing.uri = $new_uri , existing.`_SCHEMA` = $class_name
             '''
 
         #cls.db.debug_query_print(q, data_binding, "register_existing_data_node") # Note: this is the special debug print for NeoAccess
@@ -3429,6 +3482,7 @@ class NeoSchema:
 
         from_class = cls.class_of_data_node(node_id=from_id, id_key=id_type)
         to_class = cls.class_of_data_node(node_id=to_id, id_key=id_type)
+
         assert cls.is_link_allowed(link_name=rel_name, from_class=from_class, to_class=to_class), \
             f"add_data_relationship(): The relationship requested to be added `{rel_name}`, " \
             f"from Class `{from_class}` to Class `{to_class}`, " \
@@ -3994,8 +4048,7 @@ class NeoSchema:
                     WITH cl, $data AS data 
                     UNWIND data AS record 
                     CREATE (dn {labels_str}) 
-                    SET dn = record 
-                    MERGE (dn)-[:SCHEMA]->(cl)
+                    SET dn = record , dn.`_SCHEMA` = $class_name
                     RETURN id(dn) as internal_id 
                     '''
 
@@ -4008,13 +4061,12 @@ class NeoSchema:
                     WITH cl, $data AS data 
                     UNWIND data AS record 
                     MERGE (dn {labels_str} {primary_key_s}) 
-                          -[:SCHEMA]-> (cl)
-                    SET dn {set_operator}= record 
+                    SET dn {set_operator}= record , dn.`_SCHEMA` = $class_name
                     RETURN id(dn) as internal_id 
                     '''
 
 
-            result = cls.db.update_query(q, data_binding={"data": scrubbed_record_list})
+            result = cls.db.update_query(q, data_binding={"data": scrubbed_record_list, "class_name": class_name})
             #cls.db.debug_query_print(q, data_binding={"data": scrubbed_record_list})
             #print("    result of running batch =", result)
 
@@ -4864,6 +4916,7 @@ class NeoSchema:
         :param d:           A dictionary with data from which to create a tree in the database
         :param class_name:  The name of the Schema Class for the root node(s) of the imported data
         :param level:       The level of the recursive call (used for debug printing)
+        :param cache:       Object of type SchemaCache
         :return:            The Neo4j ID of the newly created node,
                                 or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
         """
@@ -4882,7 +4935,7 @@ class NeoSchema:
         #cached_data = cache_old.get_class_cached_data(class_name)
         #declared_outlinks = cached_data['out_links']
         out_neighbors_dict = cache.get_cached_class_data(class_internal_id, request="out_neighbors")
-        declared_outlinks = list(out_neighbors_dict)    # Extract keys from dict
+        declared_outlinks = list(out_neighbors_dict)        # Extract keys from dict
         cls.debug_print(f"{indent_str}declared_outlinks: {declared_outlinks}")
 
 
@@ -4993,7 +5046,7 @@ class NeoSchema:
         else:
             links = [{"internal_id": child[0], "rel_name": child[1], "rel_dir": "OUT"}
                             for child in children_info]
-            # Note: a Neo4j ID is returned by the next call
+            # Note: an internal database ID is returned by the next call
             #return cls.add_data_node_with_links(class_internal_id=cached_data['neo_id'],
             return cls.add_data_node_with_links(class_internal_id=class_internal_id,
                                                 labels=class_name,
@@ -5013,7 +5066,7 @@ class NeoSchema:
             - if a dictionary, it gets processed by create_tree_from_dict()
             - if a list, it generates a recursive call
 
-        Return a list of the Neo4j ID of the newly created nodes.
+        Return a list of the internale database ID of the newly created nodes.
 
         IMPORTANT:  any part of the data that doesn't match the Schema,
                     gets silently dropped.  TODO: issue some report about that
@@ -5029,6 +5082,7 @@ class NeoSchema:
         :param l:           A list of data from which to create a set of trees in the database
         :param class_name:  The name of the Schema Class for the root node(s) of the imported data
         :param level:       The level of the recursive call (used for debug printing)
+        :param cache:       Object of type SchemaCache
 
         :return:            A list of the Neo4j values of the newly created nodes (each of which
                                 might be a root of a tree)
@@ -5343,7 +5397,7 @@ class NeoSchema:
 
         if namespace=="data_node":
             if not cls.namespace_exists("data_node"):
-                NeoSchema.create_namespace("data_node", prefix=prefix, suffix=suffix)
+                cls.create_namespace("data_node", prefix=prefix, suffix=suffix)
 
         (autoincrement_to_use, stored_prefix, stored_suffix) = cls.advance_autoincrement(namespace)
 
@@ -5443,7 +5497,7 @@ class NeoSchema:
         :return:     A string based on unique auto-increment values, used for Schema nodes
         """
         if not cls.namespace_exists("schema_node"):
-            NeoSchema.create_namespace("schema_node")
+            cls.create_namespace("schema_node")
 
         return cls.reserve_next_uri(namespace="schema_node", prefix="schema-")
 
@@ -5575,9 +5629,13 @@ class SchemaCache:
         self._schema = {}   # The KEYS are the internal database IDs of the Schema Class nodes;
                             # the VALUES are dicts that contain the following keys:
                             #       1) "class_attributes"
-                            #       2) "class_properties"
-                            #       3) "out_neighbors"   [Note: "in_neighbors" not done for now]
+                            #               EXAMPLE:  {'name': 'MY CLASS', 'schema_uri': '123', 'strict': False}
 
+                            #       2) "class_properties"
+                            #               EXAMPLE:  ["age", "gender", "weight"]
+
+                            #       3) "out_neighbors"   [Note: "in_neighbors" not done for now]
+                            #               EXAMPLE:  {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
 
 
     def get_all_cached_class_data(self, class_id: int) -> dict:
@@ -5658,115 +5716,3 @@ class SchemaCache:
                 '''
 
             return cached_data["out_neighbors"]
-
-
-
-
-######################################################################################################
-######################################################################################################
-
-class DataNode:
-    """
-    EXPERIMENTAL: not yet in use!
-
-    This new class is being experimented with, in the method APIRequestHandler.search_for_word()
-
-    It might perhaps better belong to the lower (NeoAccess) layer
-
-    TODO: explore some variation of the following data structure for network of data nodes (or maybe of any node)
-
-        - general node object -
-        {'properties': properties_dict,
-         'internal_id': some_int,
-         'labels': list_of_labels,
-         'links': list_of_link_objects
-        }
-
-        - link object -
-        {'name': relationship_name,
-         'properties': relationship_properties_dict,
-         'direction': in_or_out,
-         'node': node_object_on_other_side
-        }
-
-    Contrast it with data structure returned by Neo4j.
-
-    Also explore a SIMPLER data structure for a node and its immediate neighbors:
-
-        - simpler node object -
-        {'properties': properties_dict,
-         'internal_id': some_int,
-         'labels': list_of_labels,
-         'links': list_of_neighbor_objects
-        }
-
-        - neighbor object -
-        {'link_name': relationship_name,
-         'link_direction': in_or_out,
-         'link_properties': relationship_properties_dict,
-
-         'properties': properties_dict,
-         'internal_id': some_int,
-         'labels': list_of_labels,
-         'links': list_of_neighbor_objects  <-- MAYBE! Allow network representation, but may lose simplicity
-    }
-
-    Note:          {'link_name', 'link_direction', 'link_properties'} might be turned into a "link object"
-
-    """
-    def __init__(self, internal_id, labels, properties, links=None):
-        """
-        Initialize the data structure that represents all that is known about a Data Node
-
-        :param internal_id:
-        :param labels:
-        :param properties:
-        """
-        self.internal_id = internal_id
-        self.labels = labels
-        self.properties = properties
-        self.links = links              # List of DataRelationship objects
-                                        # IMPORTANT: None means 'unknown'; whereas [] means no links
-
-
-
-    def add_relationship(self, link_name, link_direction, link_properties, node_obj) -> None:
-        """
-        Save in memory a representation of all the data for the relationship
-        with the specified other node
-
-        :param link_name:
-        :param link_direction:
-        :param link_properties:
-        :param node_obj:        Object of type DataNode
-        :return:                None
-        """
-        new_rel = DataRelationship(link_name, link_direction, link_properties, node_obj)
-        if self.links is None:
-            self.links = [new_rel]
-        else:
-            self.links.append(new_rel)
-
-
-
-##############################
-
-class DataRelationship:
-    """
-    EXPERIMENTAL helper class: not yet in use!
-    """
-
-    def __init__(self, link_name, link_direction, link_properties, node_obj):
-        """
-        Initialize the data structure that represents all that is known
-        about the relationship with the specified node
-
-        :param link_name:
-        :param link_direction:
-        :param link_properties:
-        :param node_obj:        Object of type DataNode
-        """
-        self.link_name = link_name
-        self.link_direction = link_direction
-        self.link_properties = link_properties
-        self.node_obj = node_obj
