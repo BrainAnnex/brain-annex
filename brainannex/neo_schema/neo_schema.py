@@ -1850,7 +1850,7 @@ class NeoSchema:
                             f"instead, it is {type(node_id)}")
 
         if class_name:
-            schema_clause = "AND dn._SCHEMA = $class_name"
+            schema_clause = "AND dn.`_SCHEMA` = $class_name"
         else:
             schema_clause = ""
 
@@ -2403,13 +2403,13 @@ class NeoSchema:
         Note: the responsibility for picking a URI belongs to the calling function,
               which will typically make use of a namespace, and make use of reserve_next_uri()
 
-        Alternatives:
+        ALTERNATIVES:
             - If the data node needs to be created with links to other existing data nodes,
               use add_data_node_with_links() instead.
             - If creating multiple data nodes at once, consider using import_pandas_nodes()
 
-        :param class_node:  Either an integer with the internal database ID of an existing Class node,
-                                or a string with its name
+        :param class_node:  Either the internal database ID of an existing Class node,
+                                or its name
         :param properties:  [OPTIONAL] Dictionary with the properties of the new data node.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new data node,
@@ -2418,7 +2418,7 @@ class NeoSchema:
                                 is set to that value
         :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
-                                Note: only applicable for "Strict" schema - with a "Lenient" schema anything goes
+                                Note: only applicable for "Strict" schema - otherwise, anything goes!
 
         :return:            The internal database ID of the new data node just created, if created;
                                 or None if not created
@@ -2426,7 +2426,7 @@ class NeoSchema:
         # TODO: consider allowing creation of multiple nodes from one call
         # TODO: allow a new URI to be automatically generated from a namespace?
 
-        # Do various validations
+        # Validate arguments
         cls.assert_valid_class_identifier(class_node)
 
         assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
@@ -2488,53 +2488,6 @@ class NeoSchema:
                                                        labels=labels, properties_to_set=properties_to_set)
 
         return new_internal_id
-
-
-
-    @classmethod
-    def _prepare_data_node_labels(cls, class_name :str, extra_labels=None) -> [str]:
-        """
-        Return a list of labels to use on a Data Node,
-        given its Schema Class (whose name is always used as one of the labels)
-        and an optional list of extra labels.
-
-        The given Class name must be valid, but the Class does not need to exist yet.
-
-        Any leading/trailing blanks in the extra labels are removed.  Duplicate names are ignored.
-
-        :param class_name:      The name of a Schema Class
-        :param extra_labels:    [OPTIONAL] Either a string, list/tuple of strings
-        :return:
-        """
-        cls.assert_valid_class_name(class_name)
-
-        labels = [class_name]     # Start with the Class name as the first label label
-
-        if extra_labels is None:
-            return labels   # The Class name will be used as the only label
-
-
-        # If we get thus far, a value was provided for extra_labels
-
-        assert isinstance(extra_labels, (str, list, tuple)), \
-            "NeoSchema._prepare_labels(): argument `extra_labels`, " \
-            "if passed, must be a string, or list/tuple of strings"
-
-        if (t := type(extra_labels)) == str:
-            extra_labels = [extra_labels]
-        else:
-            assert (t == list) or (t == tuple), \
-                "NeoSchema._prepare_labels(): argument `extra_labels`, " \
-                "if passed, must be a string, or list/tuple of strings"
-
-        # extra_labels is now a list or tuple
-
-        for l in extra_labels:
-            clean_l = l.strip()
-            if clean_l not in labels:
-                labels.append(clean_l)
-
-        return labels
 
 
 
@@ -2773,6 +2726,8 @@ class NeoSchema:
         EXAMPLES:   add_data_node_with_links(class_name="Cars",
                                               properties={"make": "Toyota", "color": "white"},
                                               links=[{"internal_id": 123, "rel_name": "OWNED_BY", "rel_dir": "IN"}])
+
+                                              {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
@@ -3232,78 +3187,31 @@ class NeoSchema:
 
 
     @classmethod
-    def delete_data_nodes(cls, class_name :str) -> int:
+    def delete_data_nodes(cls, node_id=None, id_key=None, class_name=None) -> int:
         """
-        Delete all the Data Nodes of the given Schema Class
+        Delete all the Data Nodes that match all the passed conditions
 
-        :param class_name:  The name of a Schema Class
-        :return:            The number of deleted Data Nodes
+        :param node_id:     [OPTIONAL] Either an internal database ID or a key value,
+                                depending on the value of `id_key`
+        :param id_key:      [OPTIONAL] Name of a key used to identify the data node(s) with the `node_id` value;
+                                for example, "uri".
+                                If blank, then the `node_id` is taken to be the internal database ID
+        :param class_name:  [OPTIONAL] The name of a Schema Class
+        :return:            The number of Data Nodes that were actually deleted (possibly zero)
         """
-        #TODO: pytest
-        #TODO: permit some restrictions
-
-        cls.assert_valid_class_name(class_name)
-
-        q = '''  
-            MATCH (dn {`_SCHEMA`: $class_name})
-            DETACH DELETE dn
-            '''
-        #print(q)
-        stats = cls.db.update_query(q, data_binding={"class_name": class_name})
-
-        return stats.get("nodes_deleted", 0)    # Number of nodes deleted
-
-
-
-    @classmethod
-    def delete_data_node_OLD(cls, node_id=None, uri=None, class_node=None, labels=None) -> None:
-        """
-        Delete the given data node.  TODO: obsolete in favor of delete_data_nodes()
-        If no node gets deleted, or if more than 1 get deleted, an Exception is raised
-
-        :param node_id:     An integer with the internal database ID of an existing data node
-        :param uri:         An alternate way to refer to the node.  TODO: implement
-        :param class_node:  NOT IN CURRENT USE.  Specify the Class to which this node belongs TODO: implement
-        :param labels:      (OPTIONAL) String or list of strings.
-                                If passed, each label must be present in the node, for a match to occur
-                                (no problem if the node also includes other labels not listed here.)
-                                Generally, redundant, as a precaution against deleting wrong node
-        :return:            None
-        """
-        #TODO: return the number deleted
-        # Validate arguments
-        CypherUtils.assert_valid_internal_id(node_id)
-
-        cypher_labels = CypherUtils.prepare_labels(labels)
+        label, clause, data_dict = cls.prepare_match_cypher_clause(node_id=node_id, id_key=id_key,
+                                                            class_name=class_name)
 
         q = f'''
-            MATCH (data {cypher_labels})
-            WHERE id(data) = $node_id
-            DETACH DELETE data
+            MATCH (dn {label})
+            {clause}
+            DETACH DELETE dn
             '''
-        #print(q)
-        stats = cls.db.update_query(q, data_binding={"node_id": node_id})
 
-        number_nodes_deleted = stats.get("nodes_deleted", 0)
+        #cls.db.debug_query_print(q, data_binding=data_dict)
+        stats = cls.db.update_query(q, data_binding=data_dict)
 
-        if number_nodes_deleted == 0:
-            raise Exception("delete_data_node(): nothing was deleted")
-        elif number_nodes_deleted > 1:
-            raise Exception(f"delete_data_node(): more than 1 node was deleted.  Number deleted: {number_nodes_deleted}")
-
-
-
-    @classmethod
-    def delete_data_point(cls, uri: str, labels=None) -> int:
-        """
-        Delete the given data point.  TODO: obsolete in favor of delete_data_nodes()
-
-        :param uri:
-        :param labels:      OPTIONAL (generally, redundant)
-        :return:            The number of nodes deleted (possibly zero)
-        """
-        match = cls.db.match(key_name="uri", key_value=uri, labels=labels)
-        return cls.db.delete_nodes(match)
+        return stats.get("nodes_deleted", 0)        # Number of nodes deleted
 
 
 
@@ -5600,6 +5508,119 @@ class NeoSchema:
                 info = cls.db.debug_trim(info)
 
             print(info)
+
+
+
+    @classmethod
+    def _prepare_data_node_labels(cls, class_name :str, extra_labels=None) -> [str]:
+        """
+        Return a list of labels to use on a Data Node,
+        given its Schema Class (whose name is always used as one of the labels)
+        and an optional list of extra labels.
+
+        The given Class name must be valid, but the Class does not need to exist yet.
+
+        Any leading/trailing blanks in the extra labels are removed.  Duplicate names are ignored.
+
+        :param class_name:      The name of a Schema Class
+        :param extra_labels:    [OPTIONAL] Either a string, list/tuple of strings
+        :return:
+        """
+        cls.assert_valid_class_name(class_name)
+
+        labels = [class_name]     # Start with the Class name as the first label label
+
+        if extra_labels is None:
+            return labels   # The Class name will be used as the only label
+
+
+        # If we get thus far, a value was provided for extra_labels
+
+        assert isinstance(extra_labels, (str, list, tuple)), \
+            "NeoSchema._prepare_labels(): argument `extra_labels`, " \
+            "if passed, must be a string, or list/tuple of strings"
+
+        if (t := type(extra_labels)) == str:
+            extra_labels = [extra_labels]
+        else:
+            assert (t == list) or (t == tuple), \
+                "NeoSchema._prepare_labels(): argument `extra_labels`, " \
+                "if passed, must be a string, or list/tuple of strings"
+
+        # extra_labels is now a list or tuple
+
+        for l in extra_labels:
+            clean_l = l.strip()
+            if clean_l not in labels:
+                labels.append(clean_l)
+
+        return labels
+
+
+
+    @classmethod
+    def prepare_match_cypher_clause(cls, node_id=None, id_key=None, class_name=None) -> (str, str, dict):
+        """
+        Given some specs on locating data nodes, prepare a Cypher clause and data-binding dict to match those nodes.
+
+        The dummy name used in the clause is "dn"  (for data node).  The "WHERE" is included.
+
+        At least one of the arguments must be specified.
+
+        An implicit AND is performed, in case of multiple specifications
+
+        :param node_id:     [OPTIONAL] Either an internal database ID or a key value,
+                                depending on the value of `id_key`
+        :param id_key:      [OPTIONAL] Name of a key used to identify the data node(s) with the `node_id` value;
+                                for example, "uri".
+                                If blank, then the `node_id` is taken to be the internal database ID
+        :param class_name:  [OPTIONAL] The name of a Schema Class
+
+        :return:            A triplet:
+                                (1) label to use on the node
+                                (2) string with Cypher clause (including the "WHERE") to match the node(s)
+                                    with the specified requirements
+                                (3) data-binding dictionary to use with the above Cypher
+        """
+
+        clause_list = []        # Prepare the clause a part of a Cypher query
+        data_binding = {}
+
+
+        if id_key is None:
+            # `node_id` is taken to be the internal database ID
+            if node_id is not None:
+                # Match by internal database ID
+                CypherUtils.assert_valid_internal_id(node_id)
+                clause_list.append("id(dn) = $node_id")
+                data_binding["node_id"] = node_id
+        else:
+            assert node_id is not None, \
+                    f"_prepare_match_cypher_clause(): if argument `id_key` is provided, then " \
+                    f"`node_id` must be present, too"
+            assert type(id_key) == str, \
+                    f"_prepare_match_cypher_clause(): " \
+                    f"argument `id_key` must be None or a string; " \
+                    f"instead, it is of type {type(node_id)}"
+            data_binding["node_id"] = node_id
+            clause_list.append(f"dn.`{id_key}` = $node_id")
+
+
+        if class_name is not None:
+            cls.assert_valid_class_name(class_name)
+            clause_list.append("dn.`_SCHEMA` = $class_name")
+            data_binding["class_name"] = class_name
+
+        assert clause_list != [], \
+            f"_prepare_match_cypher_clause(): at least one of the arguments must be specified"
+
+        clause = "WHERE " + (" AND ").join(clause_list)
+
+        label = "" if class_name is None else f":`{class_name}`"
+
+        return (label, clause, data_binding)
+
+
 
 
 

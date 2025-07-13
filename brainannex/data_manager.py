@@ -765,7 +765,8 @@ class DataManager:
 
 
         # Perform the actual deletion of the Content Item node
-        number_deleted = NeoSchema.delete_data_point(uri=uri, labels=class_name)
+        #number_deleted = NeoSchema.delete_data_point(uri=uri, labels=class_name)
+        number_deleted = NeoSchema.delete_data_nodes(node_id=uri, id_key="uri", class_name=class_name)
 
 
         if number_deleted == 1:

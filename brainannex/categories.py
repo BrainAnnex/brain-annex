@@ -511,7 +511,8 @@ class Categories:
         if cls.count_subcategories(category_uri) > 0:
             raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because it has sub-categories. Use the Category manager to first sever those relationships")
 
-        number_deleted = NeoSchema.delete_data_point(uri=category_uri, labels="BA")
+        #number_deleted = NeoSchema.delete_data_point(uri=category_uri, labels="BA")
+        number_deleted = NeoSchema.delete_data_nodes(node_id=category_uri, id_key="uri", class_name="Category")
 
         if number_deleted != 1:
             raise Exception(f"Failed to delete the requested Category (URI '{category_uri}')")

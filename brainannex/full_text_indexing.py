@@ -487,7 +487,10 @@ class FullTextIndexing:
             f"remove_indexing(): unable to find an index for the given Content Item node" \
             f" (internal id {content_uri}).  Maybe you already removed it?"
 
-        NeoSchema.delete_data_node_OLD(node_id=indexer_id, labels="Indexer", class_node="Indexer")
+        number_deleted = NeoSchema.delete_data_nodes(node_id=indexer_id, class_name="Indexer")
+        #NeoSchema.delete_data_node_OLD(node_id=indexer_id, labels="Indexer", class_node="Indexer")
+        assert number_deleted == 1, \
+            f"remove_indexing(): failed to remove the Index node.  Number of nodes deleted: {number_deleted}"
 
 
 

@@ -1909,75 +1909,59 @@ def test_register_existing_data_point(db):
 
 
 
-def delete_data_node(db):
-    pass
-
-
-
-def test_delete_data_node_OLD(db):
+def test_delete_data_nodes(db):
     db.empty_dbase()
 
-    with pytest.raises(Exception):
-        NeoSchema.delete_data_node_OLD(node_id = 1)     # Non-existing node (database just got cleared)
-
+    result = NeoSchema.delete_data_nodes(node_id = 1)     # Non-existing node (database just got cleared)
+    assert result == 0
 
     create_sample_schema_1()    # Schema with patient/result/doctor
 
-    with pytest.raises(Exception):
-        NeoSchema.delete_data_node_OLD(node_id = -1)    # Invalid node ID
-
-
     # Create new data nodes
-    doctor_data_uri = NeoSchema.create_data_node(class_node="doctor",
+    doctor_internal_id = NeoSchema.create_data_node(class_node="doctor",
                                                  properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
 
-    patient_data_uri = NeoSchema.create_data_node(class_node="patient",
+    patient_internal_id = NeoSchema.create_data_node(class_node="patient",
                                                   properties={"name": "Val", "age": 22})
 
-    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
+    NeoSchema.create_data_node(class_node="result", properties={"biomarker": "insulin ", "value": 10})
+    NeoSchema.create_data_node(class_node="result", properties={"biomarker": "bilirubin ", "value": 1})
+
+    doctor = NeoSchema.search_data_node(internal_id=doctor_internal_id)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
-    patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
+    patient = NeoSchema.search_data_node(internal_id=patient_internal_id)
     assert patient == {'name': 'Val', 'age': 22}
 
-    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri)
+    assert NeoSchema.count_data_nodes_of_class("result") == 2
 
-    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
-    assert doctor is None   # The doctor got deleted
 
-    patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
-    assert patient == {'name': 'Val', 'age': 22}    # The patient is still there
-
+    # Now delete some of the data nodes we created
     with pytest.raises(Exception):
-        NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels="not_present")   # Nothing gets deleted; hence, error
+        NeoSchema.delete_data_nodes(node_id = -1)    # Invalid node ID
 
-    with pytest.raises(Exception):
-        NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels=["patient", "extra label"])   # Nothing gets deleted; hence, error
-
-    NeoSchema.delete_data_node_OLD(node_id=patient_data_uri, labels="patient")
-
-    patient = NeoSchema.search_data_node(internal_id=patient_data_uri)
-    assert patient is None    # The patient is now gone
-
-
-    doctor_data_uri = NeoSchema.create_data_node(class_node="doctor", extra_labels="employee",
-                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
-    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
-    assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
-
-    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri, labels="employee")
-    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
-    assert doctor is None   # The doctor got deleted
-
-    doctor_data_uri = NeoSchema.create_data_node(class_node="doctor", extra_labels=["doctor", "employee"],
-                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
-                                                # No harm in re-specifying the "doctor" label
-    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
-    assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
-
-    NeoSchema.delete_data_node_OLD(node_id=doctor_data_uri, labels=["employee", "doctor"])
-    doctor = NeoSchema.search_data_node(internal_id=doctor_data_uri)
+    result = NeoSchema.delete_data_nodes(node_id=doctor_internal_id)
+    assert result == 1
+    doctor = NeoSchema.search_data_node(internal_id=doctor_internal_id)
     assert doctor is None       # The doctor got deleted
+
+    result = NeoSchema.delete_data_nodes(node_id='Liz', id_key='name')  # Non-existent node
+    assert result == 0
+    patient = NeoSchema.search_data_node(internal_id=patient_internal_id)
+    assert patient == {'name': 'Val', 'age': 22}        # Still there
+
+    result = NeoSchema.delete_data_nodes(node_id='Val', id_key='name')  # Correct node
+    assert result == 1
+    patient = NeoSchema.search_data_node(internal_id=patient_internal_id)
+    assert patient is None      # The patient got deleted
+
+    result = NeoSchema.delete_data_nodes(class_name="result", node_id='LDL', id_key='biomarker')
+    assert result == 0          # No matches
+    assert NeoSchema.count_data_nodes_of_class("result") == 2   # Still there
+
+    result = NeoSchema.delete_data_nodes(class_name="result")
+    assert result == 2          # Both results got deleted
+    assert NeoSchema.count_data_nodes_of_class("result") == 0   # No results found
 
 
 
@@ -2300,9 +2284,9 @@ def test_advance_autoincrement(db):
 
 
 
-###############   PRIVATE  METHODS   ###############
+###############   UTILITY  METHODS   ###############
 
-def test_valid_schema_uri(db):
+def test_is_valid_schema_uri(db):
     db.empty_dbase()
     _ , uri = NeoSchema.create_class("Records")
     assert NeoSchema.is_valid_schema_uri(uri)
@@ -2317,3 +2301,45 @@ def test_valid_schema_uri(db):
     assert not NeoSchema.is_valid_schema_uri("schema-")
     assert not NeoSchema.is_valid_schema_uri("schema-zzz")
     assert not NeoSchema.is_valid_schema_uri("schema123")
+
+
+
+def test_prepare_match_cypher_clause():
+    result = NeoSchema.prepare_match_cypher_clause(node_id=123)
+    assert result[0] == ""
+    assert result[1] == "WHERE id(dn) = $node_id"
+    assert result[2] == {"node_id": 123}
+
+    result = NeoSchema.prepare_match_cypher_clause(node_id="c-88", id_key="uri")
+    assert result[0] == ""
+    assert result[1] == "WHERE dn.`uri` = $node_id"
+    assert result[2] == {"node_id": "c-88"}
+
+    result = NeoSchema.prepare_match_cypher_clause(node_id=3, id_key="dimension")
+    assert result[0] == ""
+    assert result[1] == "WHERE dn.`dimension` = $node_id"
+    assert result[2] == {"node_id": 3}
+
+    result = NeoSchema.prepare_match_cypher_clause(class_name="Car")
+    assert result[0] == ":`Car`"
+    assert result[1] == "WHERE dn.`_SCHEMA` = $class_name"
+    assert result[2] == {"class_name": "Car"}
+
+    result = NeoSchema.prepare_match_cypher_clause(node_id=123, class_name="Car")
+    assert result[0] == ":`Car`"
+    assert result[1] == "WHERE id(dn) = $node_id AND dn.`_SCHEMA` = $class_name"
+    assert result[2] == {"node_id": 123, "class_name": "Car"}
+
+    result = NeoSchema.prepare_match_cypher_clause(node_id="c-88", id_key="uri", class_name="Car")
+    assert result[0] == ":`Car`"
+    assert result[1] == "WHERE dn.`uri` = $node_id AND dn.`_SCHEMA` = $class_name"
+    assert result[2] == {"node_id": "c-88", "class_name": "Car"}
+
+    with pytest.raises(Exception):
+        NeoSchema.prepare_match_cypher_clause()     # No arguments
+
+    with pytest.raises(Exception):
+        NeoSchema.prepare_match_cypher_clause(id_key="uri") # Missing arg `node_id`
+
+    with pytest.raises(Exception):
+        NeoSchema.prepare_match_cypher_clause(node_id=123, id_key=456)  # id_key, if present, must be a str
