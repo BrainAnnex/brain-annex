@@ -2739,123 +2739,6 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_fast_OBSOLETE(cls, class_name="", schema_uri=None,
-                                     properties=None, labels=None,
-                                     connected_to_neo_id=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                                     assign_uri=False, new_uri=None) -> int:
-        """
-        # TODO: eventually absorb into create_data_node()
-        TODO: OBSOLETED BY add_data_node_with_links() - TO DITCH *AFTER* add_data_node_with_links() gets link validation!
-        A faster version of add_data_point()
-        Add a new data node, of the Class specified by name or ID,
-        with the given (possibly none) attributes and label(s),
-        optionally linked to another, already existing, DATA node.
-
-        The new data node, if successfully created, will be assigned a unique value for its field uri
-        If the requested Class doesn't exist, an Exception is raised
-
-        NOTE: if the new node requires MULTIPLE links to existing data points, use add_and_link_data_point() instead
-
-        EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
-                    add_data_point(schema_uri="123",   data_dict={"make": "Toyota", "color": "white"}, labels="car",
-                                   connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
-                    assuming there's an existing class named "Cars" and an existing data point with uri = 999, and label "salesperson"
-
-        TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
-        TODO: verify that required attributes are present
-        TODO: invoke special plugin-code, if applicable
-
-        :param class_name:      The name of the Class that this new data point is an instance of
-        :param schema_uri:      Alternate way to specify the Class; if both present, class_name prevails
-
-        :param properties:      An optional dictionary with the properties of the new data point.   TODO: NEW - changed name
-                                    EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param labels:          String or list of strings with label(s) to assign to the new data node;
-                                    if not specified, use the Class name
-
-        :param connected_to_neo_id: Int or None.  To optionally specify another (already existing) DATA node
-                                        to connect the new node to, specified by its Neo4j
-                                        EXAMPLE: the uri of a data point representing a particular salesperson or dealership
-
-        The following group only applicable if connected_to_id isn't None
-        :param rel_name:        Str or None.  EXAMPLE: "SOLD_BY"
-        :param rel_dir:         Str or None.  Either "OUT" (default) or "IN"
-        :param rel_prop_key:    Str or None.  Ignored if rel_prop_value is missing
-        :param rel_prop_value:  Str or None.  Ignored if rel_prop_key is missing
-
-        :param assign_uri:  If True, the new node is given an extra attribute named "uri" with a unique auto-increment value
-        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                    If new_uri is provided, then assign_uri is automatically made True
-
-        :return:                If successful, an integer with the Neo4j ID
-                                    of the node just created;
-                                    otherwise, an Exception is raised
-        """
-        #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
-
-        # Make sure that at least either class_name or schema_uri is present
-        if (not class_name) and (not schema_uri):
-            raise Exception("NeoSchema.add_data_point(): Must specify at least either the `class_name` or the `schema_uri`")
-
-        if not class_name:
-            class_name = cls.get_class_name_by_schema_uri(schema_uri)      # Derive the Class name from its ID
-
-        #class_neo_id = cls.get_class_internal_id(class_name)
-
-        if labels is None:
-            # If not specified, use the Class name
-            labels = class_name
-
-        if properties is None:
-            properties = {}
-
-        assert type(properties) == dict, "NeoSchema.add_data_point(): The properties argument, if provided, MUST be a dictionary"
-
-        cypher_prop_dict = properties
-
-        if not cls.allows_data_nodes(class_name=class_name):
-            raise Exception(f"NeoSchema.add_data_point(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
-
-
-        cypher_prop_dict["_SCHEMA"] = class_name        # Expand the dictionary
-
-
-        # In addition to the passed properties for the new node, data nodes may contain a special attributes: "uri";
-        # if requested, expand cypher_prop_dict accordingly
-        if assign_uri or new_uri:
-            if not new_uri:
-                new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-            else:
-                new_id = new_uri
-            #print("New ID assigned to new data node: ", new_id)
-            cypher_prop_dict["uri"] = new_id                # Expand the dictionary
-
-            # EXAMPLE of cypher_prop_dict at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": 123, "_SCHEMA": "Car"}
-            #       where 123 is the next auto-assigned uri
-
-
-        # Create a new data node, with a "SCHEMA" relationship to its Class node and, if requested, also a relationship to another data node
-        if connected_to_neo_id:     # if requesting a relationship to an existing data node
-            if rel_prop_key and (rel_prop_value != '' and rel_prop_value is not None):  # Note: cannot just say "and rel_prop_value" or it'll get dropped if zero
-                rel_attrs = {rel_prop_key: rel_prop_value}
-            else:
-                rel_attrs = None
-
-            neo_id = cls.db.create_node_with_links(labels,
-                                                   properties=cypher_prop_dict,
-                                                   links=[{"internal_id": connected_to_neo_id,
-                                                           "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
-                                                         ]
-                                                   )
-        else:                   # Simpler case : no links
-            neo_id = cls.db.create_node_with_links(labels, properties=cypher_prop_dict)     # TODO: no need for method that creates links
-
-        return neo_id
-
-
-
-    @classmethod
     def add_data_point_OLD(cls, class_name="", schema_uri=None,
                            data_dict=None, labels=None,
                            connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
@@ -3012,8 +2895,17 @@ class NeoSchema:
                                         otherwise, an Exception is raised
         """
         # Create a new data node
+        '''
         new_neo_id = cls.add_data_point_fast_OBSOLETE(class_name=class_name, properties=properties, labels=labels,
                                                       assign_uri=assign_uri)
+        '''
+        if assign_uri:
+            new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
+            new_neo_id = cls.create_data_node(class_node=class_name, properties=properties, extra_labels=labels,
+                                              new_uri=new_id)
+        else:
+            new_neo_id = cls.create_data_node(class_node=class_name, properties=properties, extra_labels=labels)
+
 
         # Add relationships to the newly-created data node
         # TODO: maybe expand add_data_point_fast(), so that it can link to multiple other data nodes at once
