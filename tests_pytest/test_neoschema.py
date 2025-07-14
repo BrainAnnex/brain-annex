@@ -1803,55 +1803,6 @@ def test_add_data_point(db):
 
 
 
-def test_add_and_link_data_point(db):
-    db.empty_dbase()
-
-    create_sample_schema_1()    # Schema with patient/result/doctor
-
-    doctor_neo_uri = NeoSchema.add_data_point_OLD(class_name="doctor",
-                                                  data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
-                                                  return_uri=False)
-
-    result_neo_uri = NeoSchema.add_data_point_OLD(class_name="result",
-                                                  data_dict={"biomarker": "glucose", "value": 99.0},
-                                                  return_uri=False)
-
-    patient_neo_uri = NeoSchema.add_and_link_data_point_OBSOLETE(class_name="patient",
-                                                                 properties={"name": "Jill", "age": 19, "balance": 312.15},
-                                                                 connected_to_list = [ (doctor_neo_uri, "IS_ATTENDED_BY") , (result_neo_uri, "HAS_RESULT") ])
-
-    # Traverse a loop in the graph, from the patient data node, back to itself - going thru data and schema nodes
-    q = '''
-        MATCH (p:patient {name: "Jill", age: 19, balance: 312.15})-[:IS_ATTENDED_BY]->
-              (d:doctor {name:"Dr. Preeti", specialty:"sports medicine", `_SCHEMA`:"doctor"}),
-              (r:result {biomarker: "glucose", value: 99.0, `_SCHEMA`:"result"})
-        WHERE id(p) = $patient AND id(d) = $doctor AND id(r) = $result
-        RETURN d, r
-        '''
-
-    data_binding = {"patient": patient_neo_uri, "doctor": doctor_neo_uri, "result": result_neo_uri}
-    #db.debug_print(q, data_binding=data_binding, force_output=True)
-    result = db.query(q, data_binding=data_binding)
-    #print("result:", result)
-    assert len(result) == 1
-
-
-    # Attempt to sneak in a relationship not in the Schema
-    with pytest.raises(Exception):
-        NeoSchema.add_and_link_data_point_OBSOLETE(class_name="patient",
-                                                   properties={"name": "Jill", "age": 19, "balance": 312.15},
-                                                   connected_to_list = [ (doctor_neo_uri, "NOT_A_DECLARED_RELATIONSHIP") , (result_neo_uri, "HAS_RESULT") ])
-
-
-    # Attempt to use a Class not in the Schema
-    with pytest.raises(Exception):
-        NeoSchema.add_and_link_data_point_OBSOLETE(class_name="NO_SUCH CLASS",
-                                                   properties={"name": "Jill", "age": 19, "balance": 312.15},
-                                                   connected_to_list = [ ])
-
-
-
-
 def test_register_existing_data_point(db):
     pass    # TODO
 

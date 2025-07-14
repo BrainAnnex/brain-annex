@@ -2857,67 +2857,6 @@ class NeoSchema:
 
 
     @classmethod
-    def add_and_link_data_point_OBSOLETE(cls, class_name: str, connected_to_list: [tuple], properties=None, labels=None,
-                                         assign_uri=False) -> int:
-        """
-        # TODO: eventually absorb into create_data_node()
-        TODO: OBSOLETED BY add_data_node_with_links() - TO DITCH *AFTER* add_data_node_with_links() gets link validation!
-        Create a new data node, of the Class with the given name,
-        with the specified optional labels and properties,
-        and link it to each of all the EXISTING nodes
-        specified in the (possibly empty) list connected_to_list,
-        using the various relationship names specified inside that list.
-
-        All the relationships are understood to be OUTbound from the newly-created node -
-        and they must be present in the Schema, or an Exception will be raised.
-
-        If the requested Class doesn't exist, an Exception is raised
-
-        The new data node optionally gets assigned a unique "uri" value (TODO: make optional)
-
-        EXAMPLE:
-            add_and_link_data_point(
-                                class_name="PERSON",
-                                properties={"name": "Julian", "city": "Berkeley"},
-                                connected_to_list=[ (123, "IS_EMPLOYED_BY") , (456, "OWNS") ]
-            )
-
-        Note: this is the Schema layer's counterpart of NeoAccess.create_node_with_children()
-
-        :param class_name:          Name of the Class specifying the schema for this new data point
-        :param connected_to_list:   A list of pairs (Neo4j ID value, relationship name)
-        :param properties:          A dictionary of attributes to give to the new node
-        :param labels:              OPTIONAL string or list of strings with label(s) to assign to new data node;
-                                        if not specified, use the Class name
-        :param assign_uri:      If True, the new node is given an extra attribute named "uri" with a unique auto-increment value
-
-        :return:                    If successful, an integer with Neo4j ID of the node just created;
-                                        otherwise, an Exception is raised
-        """
-        # Create a new data node
-        '''
-        new_neo_id = cls.add_data_point_fast_OBSOLETE(class_name=class_name, properties=properties, labels=labels,
-                                                      assign_uri=assign_uri)
-        '''
-        if assign_uri:
-            new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-            new_neo_id = cls.create_data_node(class_node=class_name, properties=properties, extra_labels=labels,
-                                              new_uri=new_id)
-        else:
-            new_neo_id = cls.create_data_node(class_node=class_name, properties=properties, extra_labels=labels)
-
-
-        # Add relationships to the newly-created data node
-        # TODO: maybe expand add_data_point_fast(), so that it can link to multiple other data nodes at once
-        for link in connected_to_list:
-            node_neo_id, rel_name = link    # Unpack
-            cls.add_data_relationship(from_id=new_neo_id, to_id=node_neo_id, rel_name=rel_name)
-
-        return new_neo_id
-
-
-
-    @classmethod
     def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True, class_name=None) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
