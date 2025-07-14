@@ -472,17 +472,28 @@ class Categories:
 
         parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_uri, key_name="uri")
 
+        '''
         new_internal_id = NeoSchema.add_data_node_with_links(
                                 class_name = "Category",
                                 properties = data_dict, labels = ["BA", "Category"],
                                 links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
                                 assign_uri=True)
+        '''
+        new_uri = NeoSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
+        NeoSchema.create_data_node(class_node = "Category", extra_labels = "BA",
+                                   properties = data_dict,
+                                   links = [{"internal_id": parent_category_internal_id,
+                                             "rel_name": "BA_subcategory_of"}],
+                                   new_uri=new_uri)
 
+        '''
         new_data_point = NeoSchema.search_data_node(internal_id = new_internal_id)
         assert new_data_point is not None, \
             "add_subcategory(): failure to fetch data node for the newly created subcategory"
 
         return new_data_point["uri"]
+        '''
+        return new_uri
 
 
 

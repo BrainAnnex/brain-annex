@@ -1627,9 +1627,12 @@ class NeoSchema:
             1) if silently_drop is True, drop that property from the returned pared-down list
             2) if silently_drop is False, raise an Exception
 
+        Note: if the Class is not "strict", then anything goes! (and any property can be set)
+
         :param class_internal_id:   The internal database ID of a Schema Class node
-        :param requested_props:     A dictionary of properties one wishes to assign to a new data node, if the Schema allows
-        :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped;
+        :param requested_props:     A dictionary of properties one wishes to assign to a new data node,
+                                        if the Schema allows them
+        :param silently_drop:       If True, any requested properties not allowed by the Schema are simply dropped from the returned list;
                                         otherwise, an Exception is raised if any property isn't allowed
 
         :return:                    A possibly pared-down version of the requested_props dictionary
@@ -2036,7 +2039,7 @@ class NeoSchema:
 
         See also get_data_node() and locate_node()
 
-        :param uri:         The "uri" field value to uniquely identify the data node
+        :param uri:         The `uri` field value to uniquely identify the data node
         :param internal_id: Alternate way to specify the data node;
                                 cannot specify both `uri` and `internal_id` arguments
 
@@ -2386,31 +2389,40 @@ class NeoSchema:
 
     @classmethod
     def create_data_node(cls, class_node :Union[int, str], properties = None, extra_labels = None,
-                         new_uri=None, silently_drop=False) -> Union[int, None]:
+                         new_uri=None, silently_drop=False, links = None) -> int:
         """
-        Create a single new data node, of the type indicated by specified Class,
-        with the given (possibly None) properties, and optional extra label(s);
-        the name of the Class is always used as a label.
+        Create a new data node, of the specified Class,
+        with the given (possibly None) properties, and optional extra label(s),
+        optionally linked to other, already existing, DATA nodes.
 
-        If the requested Class doesn't exist, an Exception is raised.
+        The name of the Class is always used as a label, and additional labels may be specified.
+        If the specified Class doesn't exist, or doesn't allow for Data Nodes, an Exception is raised.
+
+        Optionally, link up the new data node to other existing data nodes; this is an atomic operation that will
+            fail (with no data node created) if the other nodes aren't found.
 
         CAUTION: no check is made whether another data node with identical fields already exists;
-                 if that should be prevented, use add_data_node_merge() instead.
+                 if that should be prevented, use add_data_node_merge() instead,
+                 or utilize unique indices in the database
 
-        The new data node, if successfully created, will optionally be assigned
-        the passed URI value (new_uri) for its field `uri`.
-
-        Note: the responsibility for picking a URI belongs to the calling function,
-              which will typically make use of a namespace, and make use of reserve_next_uri()
+        URI optional field: The new data node, if successfully created, will optionally be assigned an additional field named `uri`
+            with the value passed by `new_uri`.
+            The responsibility for picking a URI belongs to the calling function,
+            which will typically make use of a namespace, and make use of reserve_next_uri()
 
         ALTERNATIVES:
-            - If the data node needs to be created with links to other existing data nodes,
-              use add_data_node_with_links() instead.
             - If creating multiple data nodes at once, consider using import_pandas_nodes()
+
+        EXAMPLE:
+            create_data_node(class_name="Cars",
+                             properties={"make": "Toyota", "color": "white"},
+                             links=[{"internal_id": 123, "rel_name": "OWNED_BY", "rel_dir": "IN"}])
+                                    {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
+                            )
 
         :param class_node:  Either the internal database ID of an existing Class node,
                                 or its name
-        :param properties:  [OPTIONAL] Dictionary with the properties of the new data node.
+        :param properties:  [OPTIONAL] Dictionary with the properties of the new data node.  Possibly empty, or None.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
@@ -2419,12 +2431,24 @@ class NeoSchema:
         :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
                                 Note: only applicable for "Strict" schema - otherwise, anything goes!
+        :param links:       OPTIONAL list of dicts identifying existing nodes,
+                                and specifying the name, direction and optional properties
+                                to give to the links connecting to them;
+                                use None, or an empty list, to indicate if there aren't any
+                                Each dict contains the following keys:
+                                    "internal_id"   REQUIRED - to identify an existing node
+                                    "rel_name"      REQUIRED - the name to give to the link
+                                    "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
+                                    "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
 
-        :return:            The internal database ID of the new data node just created, if created;
-                                or None if not created
+        :return:            The internal database ID of the new data node just created;
+                                if unable to create it, an Exception is raised
         """
+        # TODO: verify that required attributes are present
+        # TODO: verify that all the requested links conform to the Schema
         # TODO: consider allowing creation of multiple nodes from one call
         # TODO: allow a new URI to be automatically generated from a namespace?
+        # TODO: invoke special plugin-code, if applicable???
 
         # Validate arguments
         cls.assert_valid_class_identifier(class_node)
@@ -2433,13 +2457,16 @@ class NeoSchema:
             "NeoSchema.create_data_node(): argument `extra_labels`, " \
             "if passed, must be a string, or list/tuple of strings"
 
-        if properties:
+        if properties is not None:
             assert type(properties) == dict, \
                 "NeoSchema.create_data_node(): The `properties` argument, if provided, MUST be a dictionary"
 
+        assert links is None or type(links) == list, \
+            f"NeoAccess.create_data_node(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
+
 
         # Obtain both the Class name and its internal database ID
-        if type(class_node) == str:
+        if type(class_node) == str:         # TODO: this makes an assumption about the database internal IDs
             class_name = class_node
             class_internal_id = cls.get_class_internal_id(class_node)
         else:
@@ -2447,31 +2474,22 @@ class NeoSchema:
             class_internal_id = class_node
 
 
+        # Make sure that the specified Class accepts Data Nodes
+        assert cls.allows_data_nodes(class_internal_id=class_internal_id),\
+            f"NeoSchema.create_data_node(): addition of data nodes to Class `{class_name}` is not allowed by the Schema"
+
+
+        # Verify whether all the requested properties are allowed, and possibly trim them down
+        properties_to_set = cls.allowable_props(class_internal_id=class_internal_id, requested_props=properties,
+                                                silently_drop=silently_drop)
+
+
         # Prepare the list of labels to use on the new Data Node
         labels = cls._prepare_data_node_labels(class_name=class_name, extra_labels=extra_labels)
 
 
-        # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
-            raise Exception(f"NeoSchema.create_data_node(): "
-                            f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
-
-
-        # Verify whether all properties are allowed, and possibly trim them down
-        properties = cls.allowable_props(class_internal_id=class_internal_id, requested_props=properties,
-                                         silently_drop=silently_drop)
-
-
-        # Prepare the properties to add
-        if properties is None:
-            properties = {}
-
-        properties_to_set = cls.allowable_props(class_internal_id, requested_props=properties,
-                                                silently_drop=silently_drop)
-
-
-        # In addition to the passed properties for the new node, data nodes may contain a special attribute: "uri"
-        # if a value for new_uri was provided, expand properties_to_set accordingly
+        # In addition to the passed properties for the new node, data nodes may contain a special attribute: "uri";
+        # if a value for `new_uri` was provided, expand `properties_to_set` accordingly
         if new_uri is not None:
             assert type(new_uri) == str, \
                 "create_data_node(): argument `new_uri`, if provided, must be a string"
@@ -2480,29 +2498,49 @@ class NeoSchema:
             properties_to_set["uri"] = new_uri                   # Expand the dictionary
 
             # EXAMPLE of properties_to_set at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": "123"}
-            #       where "123" is the passed URI
+            #       {"make": "Toyota", "color": "white", "uri": "car-123"}
+            #       where "car-123" is the passed URI
 
 
-        new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
-                                                       labels=labels, properties_to_set=properties_to_set)
+        # TODO: perhaps merge the two approaches, node creation with and without links
+        if links is not None:
+            allowed_keys = {'internal_id', 'rel_name', 'rel_dir', 'rel_attrs'}
+            for d in links:
+                assert "internal_id" in d, \
+                    f"NeoSchema.create_data_node(): the `links` argument must be a list of dicts that contain the key 'internal_id'; the dict in question: {d}"
+
+                assert "rel_name" in d, \
+                    f"NeoSchema.create_data_node(): the `links` argument must be a list of dicts that contain the key 'rel_name'; the dict in question: {d}"
+
+                unexpected_keys = set(d) - allowed_keys     # Set difference.  It should be the empty set
+
+                assert unexpected_keys == set(), \
+                    f"NeoSchema.create_data_node(): the `links` argument must be a list of dicts whose keys are one of {allowed_keys}; the dict in question: {d}"
+
+            properties_to_set["_SCHEMA"] = class_name       # Expand the dictionary, to also include the Schema data
+            new_internal_id = cls.db.create_node_with_links(labels=labels,
+                                               properties=properties_to_set,
+                                               links=links, merge=False)
+        else:
+            new_internal_id = cls._create_data_node_helper(class_name=class_name,
+                                                labels=labels, properties_to_set=properties_to_set)
 
         return new_internal_id
 
 
 
     @classmethod
-    def _create_data_node_helper(cls, class_internal_id :int,
+    def _create_data_node_helper(cls, class_name :str,
                                  labels=None, properties_to_set=None,
                                  uri_namespace=None, primary_key=None, duplicate_option=None) -> Union[int, None]:
         """
-        Helper function, to (possibly) create a new data node, of the type indicated by specified Class,
+        Helper function, to create a new data node (or merge into an existing one), of the type indicated by specified Class,
         with the given label(s) and properties.
 
         IMPORTANT: all validations/schema checks are assumed to have been performed by the caller functions;
                    this is a private method not meant for the end user!
 
-        :param class_internal_id:   The internal database ID of an existing Class node in the Schema
+        :param class_name:
         :param labels:              String, or list/tuple of strings, with label(s)
                                         to assign to the new Data node,
                                         (note: the Class name should be among the labels to assign)
@@ -2517,9 +2555,6 @@ class NeoSchema:
         :return:                    If a new Data node gets created, return its internal database ID;
                                         otherwise (in case of a duplicate node already present) return None
         """
-        #TODO: pass the class name as argument
-        class_name = cls.get_class_name(class_internal_id)
-
         if uri_namespace:
             new_uri = cls.reserve_next_uri(namespace=uri_namespace)
             properties_to_set["uri"] = new_uri          # Expand the dictionary, to include the "uri" field
@@ -2700,121 +2735,6 @@ class NeoSchema:
 
         return {"new_nodes": new_id_list, "old_nodes": existing_id_list}
         # TODO: rename "old_nodes" to "present_nodes" (or "existing_nodes", or "found_nodes")
-
-
-
-    @classmethod
-    def add_data_node_with_links(cls, class_name = None, class_internal_id = None,
-                                 properties = None, labels = None,
-                                 links = None,
-                                 assign_uri=False, new_uri=None) -> int:
-        """
-        # TODO: eventually absorb into create_data_node()
-        This is NeoSchema's counterpart of NeoAccess.create_node_with_links()
-
-        Add a new data node, of the Class specified by its name,
-        with the given (possibly none) attributes and label(s),
-        optionally linked to other, already existing, DATA nodes.
-
-        If the specified Class doesn't exist, or doesn't allow for Data Nodes, an Exception is raised.
-
-        The new data node, if successfully created:
-            1) will be given the Class name as a label, unless labels are specified
-            2) will optionally be assigned an "uri" unique value
-               that is either automatically assigned or passed.
-
-        EXAMPLES:   add_data_node_with_links(class_name="Cars",
-                                              properties={"make": "Toyota", "color": "white"},
-                                              links=[{"internal_id": 123, "rel_name": "OWNED_BY", "rel_dir": "IN"}])
-
-                                              {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
-
-        TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
-        TODO: verify that required attributes are present
-        TODO: verify that all the requested links conform to the Schema
-        TODO: invoke special plugin-code, if applicable???
-        TODO: maybe rename to add_data_node()
-
-        :param class_name:  The name of the Class of this new data node.
-                                Also use to set a label on the new node, if labels isn't specified
-        :param class_internal_id: OPTIONAL alternative to class_name.  If both specified,
-                                class_internal_id prevails
-                            TODO: merge class_name and class_internal_id into class_node, as done
-                                  for create_data_node()
-        :param properties:  An optional dictionary with the properties of the new data node.
-                                EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param labels:      OPTIONAL string, or list of strings, with label(s) to assign to the new data node;
-                                if not specified, use the Class name.  TODO: ALWAYS include the Class name, as done in create_data_node()
-        :param links:       OPTIONAL list of dicts identifying existing nodes,
-                                and specifying the name, direction and optional properties
-                                to give to the links connecting to them;
-                                use None, or an empty list, to indicate if there aren't any
-                                Each dict contains the following keys:
-                                    "internal_id"   REQUIRED - to identify an existing node
-                                    "rel_name"      REQUIRED - the name to give to the link
-                                    "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
-                                    "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
-
-        :param assign_uri:  If True, the new node is given an extra attribute named "uri",
-                                    with a unique auto-increment value.
-                                    Default is False
-                                    TODO: OBSOLETE
-
-        :param new_uri:     Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
-                                    If new_uri is provided, then assign_uri is automatically made True
-
-        :return:                If successful, an integer with the internal database ID of the node just created;
-                                    otherwise, an Exception is raised
-        """
-        if class_internal_id is None:                                   # Note: zero could be a valid value
-            assert class_name is not None, \
-                "add_data_node_with_links(): arguments `class_name` and `class_internal_id` cannot both be missing"
-
-            class_internal_id = cls.get_class_internal_id(class_name)   # This call will also validate the class name
-        else:
-            class_name = cls.get_class_name(class_internal_id)
-
-
-        if labels is None:
-            # If not specified, use the Class name
-            labels = class_name
-
-        if properties is None:
-            properties = {}
-
-        assert type(properties) == dict, \
-            "NeoSchema.add_data_node_with_links(): The `properties` argument, if provided, MUST be a dictionary"
-
-        cypher_prop_dict = properties
-
-        assert links is None or type(links) == list, \
-            f"NeoAccess.add_data_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
-
-        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
-            raise Exception(f"NeoSchema.add_data_node_with_links(): Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
-
-        # In addition to the passed properties for the new node, data nodes may contain 2 special attributes: "uri" and "schema_code";
-        # if requested, expand cypher_prop_dict accordingly
-        if assign_uri or new_uri:
-            if not new_uri:
-                new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-            else:
-                new_id = new_uri
-            #print("New ID assigned to new data node: ", new_id)
-            cypher_prop_dict["uri"] = new_id               # Expand the dictionary
-
-            # EXAMPLE of cypher_prop_dict at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": "123"}
-            #       where "123" is the next auto-assigned uri
-
-
-        cypher_prop_dict["_SCHEMA"] = class_name               # Expand the dictionary
-
-        # Create a new data node, with the correct Class - and, possibly, also relationships to another data nodes
-        neo_id = cls.db.create_node_with_links(labels=labels,
-                                               properties=cypher_prop_dict,
-                                               links=links)
-        return neo_id
 
 
 
@@ -3702,7 +3622,7 @@ class NeoSchema:
             #print(d_scrubbed)
 
             # Perform the actual import
-            new_internal_id = cls._create_data_node_helper(class_internal_id=class_internal_id,
+            new_internal_id = cls._create_data_node_helper(class_name=class_name,
                                                            labels=labels, properties_to_set=d_scrubbed,
                                                            uri_namespace=uri_namespace,
                                                            primary_key=primary_key, duplicate_option=duplicate_option)
@@ -4741,7 +4661,7 @@ class NeoSchema:
         if provenance:
             import_metadata["source"] = provenance
 
-        metadata_neo_id = cls.add_data_node_with_links(class_name="Import Data", properties=import_metadata)
+        metadata_neo_id = cls.create_data_node(class_node="Import Data", properties=import_metadata)
 
         # Store the import date in the node with the metadata
         # Note: this is done as a separate step, so that the attribute will be a DATE ("LocalDate") field, not a text one
@@ -4955,12 +4875,16 @@ class NeoSchema:
             links = [{"internal_id": child[0], "rel_name": child[1], "rel_dir": "OUT"}
                             for child in children_info]
             # Note: an internal database ID is returned by the next call
-            #return cls.add_data_node_with_links(class_internal_id=cached_data['neo_id'],
+            '''
             return cls.add_data_node_with_links(class_internal_id=class_internal_id,
                                                 labels=class_name,
                                                 properties=node_properties,
                                                 links=links,
                                                 assign_uri=False)
+            '''
+            return cls.create_data_node(class_node=class_internal_id,
+                                        properties=node_properties,
+                                        links=links)
 
 
 
