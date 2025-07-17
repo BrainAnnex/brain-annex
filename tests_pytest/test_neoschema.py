@@ -477,8 +477,8 @@ def test_delete_class(db):
     # Interlinked Classes with properties; one of the Classes has an attached data node
     db.empty_dbase()
     create_sample_schema_2()    # Schema with quotes and categories
-    NeoSchema.add_data_point_OLD(class_name="quotes",
-                                 data_dict={"quote": "Comparison is the thief of joy"})
+    NeoSchema.create_data_node(class_node="quotes",
+                               properties={"quote": "Comparison is the thief of joy"})
 
     NeoSchema.delete_class("Category")    # No problem in deleting this Class with no attached data nodes
     assert NeoSchema.class_name_exists("quotes")
@@ -1772,37 +1772,6 @@ def test_add_data_column_merge(db):
 
 
 
-def test_add_data_point(db):
-    #TODO: also test the connected_to_uri arguments
-    db.empty_dbase()
-
-    create_sample_schema_1()    # Schema with patient/result/doctor
-
-    # Create a new data point, and get its uri
-    doctor_data_uri = NeoSchema.add_data_point_OLD(class_name="doctor",
-                                                   data_dict={"name": "Dr. Preeti", "specialty": "sports medicine"},
-                                                   return_uri=True)
-
-    # Create a new data point, and this time get its Internal Database ID
-    result_neo_uri = NeoSchema.add_data_point_OLD(class_name="result",
-                                                  data_dict={"biomarker": "glucose", "value": 99.0},
-                                                  return_uri=False)
-
-    q = '''
-        MATCH (d:doctor {uri: $doctor, name:"Dr. Preeti", specialty:"sports medicine",`_SCHEMA`: "doctor"}),
-              (r:result {biomarker: "glucose", value: 99.0,`_SCHEMA`: "result"})
-        WHERE id(r) = $result_neo_uri
-        RETURN d, r
-        '''
-
-    #db.debug_print(q, data_binding={"doctor": doctor_data_uri, "result_neo_uri": result_neo_uri}, force_output=True)
-
-    result = db.query(q, data_binding={"doctor": doctor_data_uri, "result_neo_uri": result_neo_uri})
-    #print("result:", result)
-    assert len(result) == 1
-
-
-
 def test_register_existing_data_point(db):
     pass    # TODO
 
@@ -1995,11 +1964,6 @@ def test_remove_data_relationship(db):
 
 
 
-def test_locate_node(db):
-    pass    # TODO
-
-
-
 def test_class_of_data_point(db):
     db.empty_dbase()
     with pytest.raises(Exception):
@@ -2010,7 +1974,8 @@ def test_class_of_data_point(db):
         NeoSchema.class_of_data_node(node_id=internal_id)     # It's not a data node
 
     NeoSchema.create_class("Person")
-    uri = NeoSchema.add_data_point_OLD("Person")
+    uri = NeoSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
+    NeoSchema.create_data_node(class_node="Person", new_uri=uri)
 
     assert NeoSchema.class_of_data_node(node_id=uri, id_key="uri") == "Person"
     assert NeoSchema.class_of_data_node(node_id=uri, id_key="uri", labels="Person") == "Person"
@@ -2029,7 +1994,7 @@ def test_class_of_data_point(db):
     #db.debug_print(q, {}, "test")
     db.update_query(q)
     with pytest.raises(Exception):
-        NeoSchema.class_of_data_node(node_id=uri, id_key="uri") == "Person"    # Data node is associated to a non-string class name
+        NeoSchema.class_of_data_node(node_id=uri, id_key="uri")    # Data node is associated to a non-string class name
 
 
 

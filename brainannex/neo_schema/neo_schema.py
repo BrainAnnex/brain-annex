@@ -2392,7 +2392,7 @@ class NeoSchema:
                          new_uri=None, silently_drop=False, links = None) -> int:
         """
         Create a new data node, of the specified Class,
-        with the given (possibly None) properties, and optional extra label(s),
+        with the given optional properties, and optional extra label(s),
         optionally linked to other, already existing, DATA nodes.
 
         The name of the Class is always used as a label, and additional labels may be specified.
@@ -2449,6 +2449,7 @@ class NeoSchema:
         # TODO: consider allowing creation of multiple nodes from one call
         # TODO: allow a new URI to be automatically generated from a namespace?
         # TODO: invoke special plugin-code, if applicable???
+        # TODO: maybe switch arg from `class_node` to `class_name`
 
         # Validate arguments
         cls.assert_valid_class_identifier(class_node)
@@ -2739,124 +2740,6 @@ class NeoSchema:
 
 
     @classmethod
-    def add_data_point_OLD(cls, class_name="", schema_uri=None,
-                           data_dict=None, labels=None,
-                           connected_to_id=None, connected_to_labels=None, rel_name=None, rel_dir="OUT", rel_prop_key=None, rel_prop_value=None,
-                           new_uri=None, return_uri=True) -> Union[int, str]:
-        """
-        # TODO: eventually absorb into create_data_node()
-        TODO: OBSOLETE.  Replace by add_data_node_with_links()
-              TO DITCH *AFTER* add_data_node_with_links() gets link validation!
-
-        Add a new data node, of the Class specified by name or ID,
-        with the given (possibly none) attributes and label(s),
-        optionally linked to another DATA node, already existing.
-
-        The new data node, if successfully created, will be assigned a unique value for its field uri
-        If the requested Class doesn't exist, an Exception is raised
-
-        EXAMPLES:   add_data_point(class_name="Cars", data_dict={"make": "Toyota", "color": "white"}, labels="car")
-                    add_data_point(schema_uri="123",     data_dict={"make": "Toyota", "color": "white"}, labels="car",
-                                   connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT")
-                    assuming there's an existing class named "Cars" and an existing data point with uri = 999, and label "salesperson"
-
-        TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
-        TODO: verify that required attributes are present
-        TODO: invoke special plugin-code, if applicable
-        TODO: make the issuance of a new uri optional
-
-        :param class_name:      The name of the Class that this new data point is an instance of
-        :param schema_uri:      Alternate way to specify the Class; if both present, class_name prevails
-
-        :param data_dict:       An optional dictionary with the properties of the new data point.
-                                TODO: a better name might be "properties"
-                                    EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param labels:          String or list of strings with label(s) to assign to the new data node;
-                                    if not specified, use the Class name.  TODO: the Class name ought to ALWAYS be added
-
-        :param connected_to_id: Int or None.  To optionally specify another (already existing) DATA node
-                                        to connect the new node to, specified by its uri.
-                                        TODO: --> for efficiency, use the Neo4j ID instead [and ditch the arg "connected_to_labels"]
-                                        EXAMPLE: the uri of a data point representing a particular salesperson or dealership
-
-        The following group only applicable if connected_to_id isn't None
-        :param connected_to_labels:     EXAMPLE: "salesperson"
-        :param rel_name:        Str or None.  EXAMPLE: "SOLD_BY"
-        :param rel_dir:         Str or None.  Either "OUT" (default) or "IN"
-        :param rel_prop_key:    Str or None.  Ignored if rel_prop_value is missing
-        :param rel_prop_value:  Str or None.  Ignored if rel_prop_key is missing
-
-        :param new_uri:         Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be a unique string)
-        :param return_uri:      Default to True.    TODO: change to False
-                                If True, the returned value is the auto-increment "uri" value of the node just created;
-                                    otherwise, it returns its Neo4j ID
-
-        :return:                EITHER a string with either the auto-increment "uri" value
-                                OR or the internal database ID
-                                of the node just created (based on the flag "return_uri")
-        """
-        #print(f"In add_data_point().  rel_name: `{rel_name}` | rel_prop_key: `{rel_prop_key}` | rel_prop_value: {rel_prop_value}")
-
-        # Make sure that at least either class_name or schema_uri is present
-        if (not class_name) and (not schema_uri):
-            raise Exception("Must specify at least either the `class_name` or the `schema_uri`")
-
-        if not class_name:
-            class_name = cls.get_class_name_by_schema_uri(schema_uri)      # Derive the Class name from its ID
-
-        if labels is None:
-            # If not specified, use the Class name
-            labels = class_name
-
-        if data_dict is None:
-            data_dict = {}
-
-        assert type(data_dict) == dict, "The data_dict argument, if provided, MUST be a dictionary"
-
-        cypher_props_dict = data_dict
-
-        if not cls.allows_data_nodes(class_name=class_name):
-            raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
-
-
-        # In addition to the passed properties for the new node, data nodes contain a special attributes: "uri";
-        # expand cypher_props_dict accordingly
-        # TODO: make this part optional
-        if not new_uri:
-            new_id = cls.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-        else:
-            new_id = new_uri
-        #print("New ID assigned to new data node: ", new_id)
-        cypher_props_dict["uri"] = new_id               # Expand the dictionary
-        cypher_props_dict["_SCHEMA"] = class_name       # Expand the dictionary
-
-        # EXAMPLE of cypher_props_dict at this stage:
-        #       {"make": "Toyota", "color": "white", "uri": 123}
-        #       where 123 is the next auto-assigned uri
-
-        # Create a new data node, with a "SCHEMA" relationship to its Class node and, if requested, also a relationship to another data node
-        if connected_to_id:     # (A) if requesting a relationship to an existing data node
-            if rel_prop_key and (rel_prop_value != '' and rel_prop_value is not None):  # Note: cannot just say "and rel_prop_value" or it'll get dropped if zero
-                rel_attrs = {rel_prop_key: rel_prop_value}
-            else:
-                rel_attrs = None
-
-            neo_id = cls.db.create_node_with_relationships(labels, properties=cypher_props_dict,
-                                                  connections=[{"labels": connected_to_labels, "key": "uri", "value": connected_to_id,
-                                                                "rel_name": rel_name, "rel_dir": rel_dir, "rel_attrs": rel_attrs}
-                                                               ]
-                                                  )
-        else:                   # (B) simpler case : no links need to be created
-            neo_id = cls.db.create_node(labels=labels, properties=cypher_props_dict)
-
-        if return_uri:
-            return new_id
-        else:
-            return neo_id
-
-
-
-    @classmethod
     def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True, class_name=None) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
@@ -3112,10 +2995,8 @@ class NeoSchema:
     @classmethod
     def add_data_relationship(cls, from_id, to_id, rel_name :str, rel_props = None, id_type=None) -> None:
         """
-        Simpler (and possibly faster) version of add_data_relationship_OLD()
-
         Add a new relationship with the given name, from one to the other of the 2 given data nodes,
-        identified by their Neo4j ID's.
+        identified by their internal database ID's.
 
         The requested new relationship MUST be present in the Schema, or an Exception will be raised.
 
