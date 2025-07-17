@@ -450,27 +450,24 @@ class NeoSchema:
 
 
     @classmethod
-    def rename_class(cls, old_name :str, new_name :str, rename_data_fields=True) -> None:
+    def rename_class(cls, old_name :str, new_name :str) -> int:
         """
-        Rename the specified Class.
+        Rename the specified Class, and alter accordingly all the Data Nodes that are part of it.
         If the Class is not found, an Exception is raised
 
-        :param old_name:            The current name (to be changed) of the Class of interest
-        :param new_name:            The new name to give to the above Class
-        :param rename_data_fields:  If True (default), the corresponding label in the data nodes of that Class
-                                        is renamed as well
-        :return:                    None
+        :param old_name:    The current name (to be changed) of the Class of interest
+        :param new_name:    The new name to give to the above Class
+
+        :return:            The number of updated Data Nodes
         """
-        # TODO: pytest
-        # TODO: fix bug causing an early crash if no data point of the old Class is present
         assert old_name != new_name, \
-            "rename_class(): The old name and the new name cannot be the same"
+            f"rename_class(): The old name and the new name cannot be the same (`{old_name}`)"
 
         assert new_name != "", \
-            "rename_class(): The new name cannot be an empty (blank) string"
+            "rename_class(): The new class name cannot be an empty (blank) string"
 
-        q = f'''
-            MATCH (c :CLASS {{ name: $old_name }})
+        q = '''
+            MATCH (c :CLASS {name: $old_name})
             SET c.name = $new_name
             '''
 
@@ -478,32 +475,24 @@ class NeoSchema:
         #cls.db.debug_query_print(q, data_binding)
 
         result = cls.db.update_query(q, data_binding=data_binding)
+        #print(result)
+        assert result.get("properties_set") == 1, \
+            f"rename_class(): failed to rename Class `{old_name}`. Maybe it doesn't exist?  No change made to Data Nodes."
 
 
-
-        if rename_data_fields:
-            q = f'''
-                MATCH (dn) 
-                WHERE dn._SCHEMA = `{old_name}`
-                SET dn._SCHEMA = $new_name, dn:`{new_name}`
-                REMOVE dn:`{old_name}`
-                '''
+        # Change the `_SCHEMA` property value, and the label, on all the Data Notes for this Class
+        q = f'''
+            MATCH (dn) 
+            WHERE dn.`_SCHEMA` = $old_name
+            SET dn.`_SCHEMA` = $new_name, dn:`{new_name}`
+            REMOVE dn:`{old_name}`
+            '''
 
         data_binding = {"old_name": old_name, "new_name": new_name}
         #cls.db.debug_query_print(q, data_binding)
-
         result = cls.db.update_query(q, data_binding=data_binding)
         #print(result)
-
-        '''
-        #TODO: revisit
-        if not rename_data_fields:
-            assert result.get("properties_set") == 1, \
-                "rename_class(): Failed to rename the Class (may have failed to find it)"
-        else:
-            assert result.get("properties_set") >= 1 and (result.get("labels_added") == result.get("labels_removed")), \
-                "rename_class(): Failed to rename the Class (may have failed to find it)"
-        '''
+        return result.get("properties_set", 0)
 
 
 
@@ -1392,8 +1381,7 @@ class NeoSchema:
         using an outbound relationship with the specified name.  Typically used to create "INSTANCE_OF"
         relationships from new Classes.
 
-        If a Class with the given name already exists, nothing is done,
-        and an Exception is raised.
+        If a Class with the given name already exists, an Exception is raised.
 
         NOTE: if the Class already exists, use add_properties_to_class() instead
 
@@ -2388,7 +2376,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_data_node(cls, class_node :Union[int, str], properties = None, extra_labels = None,
+    def create_data_node(cls, class_name :str, properties = None, extra_labels = None,
                          new_uri=None, silently_drop=False, links = None) -> int:
         """
         Create a new data node, of the specified Class,
@@ -2420,8 +2408,7 @@ class NeoSchema:
                                     {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
                             )
 
-        :param class_node:  Either the internal database ID of an existing Class node,
-                                or its name
+        :param class_name:  The name of an existing Class node, to which the new Data Node belongs to
         :param properties:  [OPTIONAL] Dictionary with the properties of the new data node.  Possibly empty, or None.
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new data node,
@@ -2449,11 +2436,8 @@ class NeoSchema:
         # TODO: consider allowing creation of multiple nodes from one call
         # TODO: allow a new URI to be automatically generated from a namespace?
         # TODO: invoke special plugin-code, if applicable???
-        # TODO: maybe switch arg from `class_node` to `class_name`
 
         # Validate arguments
-        cls.assert_valid_class_identifier(class_node)
-
         assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
             "NeoSchema.create_data_node(): argument `extra_labels`, " \
             "if passed, must be a string, or list/tuple of strings"
@@ -2466,13 +2450,8 @@ class NeoSchema:
             f"NeoAccess.create_data_node(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
 
 
-        # Obtain both the Class name and its internal database ID
-        if type(class_node) == str:         # TODO: this makes an assumption about the database internal IDs
-            class_name = class_node
-            class_internal_id = cls.get_class_internal_id(class_node)
-        else:
-            class_name = cls.get_class_name(class_node)
-            class_internal_id = class_node
+        # Obtain both the Class name and its the internal database ID of the Class schema node
+        class_internal_id = cls.get_class_internal_id(class_name)
 
 
         # Make sure that the specified Class accepts Data Nodes
@@ -4373,7 +4352,7 @@ class NeoSchema:
         if provenance:
             import_metadata["source"] = provenance
 
-        metadata_neo_id = cls.create_data_node(class_node="Import Data", properties=import_metadata)
+        metadata_neo_id = cls.create_data_node(class_name="Import Data", properties=import_metadata)
 
         # Store the import date in the node with the metadata
         # Note: this is done as a separate step, so that the attribute will be a DATE ("LocalDate") field, not a text one
@@ -4424,7 +4403,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_tree_from_dict(cls, d: dict, class_name: str, level=1, cache=None) -> Union[int, None]:
+    def create_tree_from_dict(cls, d :dict, class_name :str, level=1, cache=None) -> Union[int, None]:
         """
         Add a new data node (which may turn into a tree root) of the specified Class,
         with data from the given dictionary:
@@ -4594,7 +4573,7 @@ class NeoSchema:
                                                 links=links,
                                                 assign_uri=False)
             '''
-            return cls.create_data_node(class_node=class_internal_id,
+            return cls.create_data_node(class_name=class_name,
                                         properties=node_properties,
                                         links=links)
 

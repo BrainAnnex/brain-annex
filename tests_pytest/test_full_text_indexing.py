@@ -29,7 +29,7 @@ def setup_sample_index(db) -> int:
     FullTextIndexing.initialize_schema()
 
     # Create a data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Document.pdf"})
+    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Document.pdf"})
 
     return content_id
 
@@ -194,7 +194,7 @@ def test_new_indexing(db):
     # Now test a scenario where some Word node already exist
 
     # Create another data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Other_Document.txt"})
+    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...and then index some words to it
     FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"research", "science"}, to_lower_case=True)
 
@@ -231,7 +231,7 @@ def test_add_words_to_index(db):
 
 
     # Create a data node of type "Indexer", and link it up to the passed Content Item data node
-    indexer_id = NeoSchema.create_data_node(class_node ="Indexer",
+    indexer_id = NeoSchema.create_data_node(class_name="Indexer",
                                             links =[{"internal_id": content_id, "rel_name": "has_index",
                                                      "rel_dir": "IN"}])
     # ...and then index some words to it
@@ -256,9 +256,9 @@ def test_add_words_to_index(db):
     # Now test a scenario where some Word node already exist
 
     # Create another data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Other_Document.txt"})
+    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...then create a data node of type "Indexer", and link it up to the passed Content Item data node
-    indexer_id = NeoSchema.create_data_node(class_node ="Indexer",
+    indexer_id = NeoSchema.create_data_node(class_name="Indexer",
                                             links =[{"internal_id": content_id, "rel_name": "has_index",
                                                      "rel_dir": "IN"}])
     # ...and then index some words to it
@@ -425,7 +425,7 @@ def test_search_word(db):
 
 
     # Add a 2nd data node of type "Content Item"...
-    content_id_2 = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "some_other_file.txt"})
+    content_id_2 = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "some_other_file.txt"})
     # ...and then index some words to it
     FullTextIndexing.new_indexing(internal_id=content_id_2, unique_words={"ship", "lab", "glassware"})
 

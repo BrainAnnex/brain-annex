@@ -216,6 +216,70 @@ def test_get_all_classes(db):
 
 
 
+def test_rename_class(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        NeoSchema.rename_class(old_name="some name", new_name="some name")
+
+    with pytest.raises(Exception):
+        NeoSchema.rename_class(old_name="some name", new_name="")
+
+    with pytest.raises(Exception):
+        NeoSchema.rename_class(old_name="Car", new_name="Vehicle")  # Doesn't exist
+
+    internal_id, _ = NeoSchema.create_class_with_properties("Car", strict=True,
+                                properties=["color"])
+
+    result = NeoSchema.rename_class(old_name="Car", new_name="Vehicle")
+    assert result == 0       # No Data Nodes were affected
+
+    q = f'''MATCH 
+        (n:CLASS {{name:"Vehicle"}}) 
+        WHERE id(n) = {internal_id} 
+        RETURN count(n) AS number_found
+        '''
+    assert db.query(q, single_cell="number_found") == 1
+
+    q = f'''MATCH 
+        (n:CLASS {{name:"Car"}})     // The old name
+        WHERE id(n) = {internal_id} 
+        RETURN count(n) AS number_found
+        '''
+    assert db.query(q, single_cell="number_found") == 0
+
+
+    # Now add a Data Node, prior to again renaming the Class
+    data_node_id = NeoSchema.create_data_node(class_name="Vehicle", properties={"color": "white"},
+                                              extra_labels="West Coast")
+
+    result = NeoSchema.rename_class(old_name="Vehicle", new_name="Recreational Vehicle")
+    assert result == 1      # 1 Data Nodes was affected
+
+    q = f'''
+        MATCH (n :`Recreational Vehicle`:`West Coast`) 
+        WHERE id(n) = {data_node_id} AND n.`_SCHEMA` = "Recreational Vehicle" AND n.color = "white"
+        RETURN count(n) AS number_found
+        '''
+
+    assert db.query(q, single_cell="number_found") == 1
+
+    q = f'''MATCH 
+        (n:CLASS {{name:"Recreational Vehicle"}}) 
+        WHERE id(n) = {internal_id} 
+        RETURN count(n) AS number_found
+        '''
+    assert db.query(q, single_cell="number_found") == 1
+
+    q = f'''MATCH 
+        (n:CLASS {{name:"Vehicle"}})    // The old name
+        WHERE id(n) = {internal_id} 
+        RETURN count(n) AS number_found
+        '''
+    assert db.query(q, single_cell="number_found") == 0
+
+
+
 def test_create_class_relationship(db):
     db.empty_dbase()
     french_id , french_uri  = NeoSchema.create_class("French Vocabulary")
@@ -273,11 +337,6 @@ def test_create_class_relationship(db):
         RETURN p.name AS prop_name ORDER BY prop_name
         '''
     assert db.query(q, single_column="prop_name") == ["Frequency", "Usefulness"]
-
-
-
-def test_rename_class_rel(db):
-    pass    # TODO
 
 
 
@@ -477,7 +536,7 @@ def test_delete_class(db):
     # Interlinked Classes with properties; one of the Classes has an attached data node
     db.empty_dbase()
     create_sample_schema_2()    # Schema with quotes and categories
-    NeoSchema.create_data_node(class_node="quotes",
+    NeoSchema.create_data_node(class_name="quotes",
                                properties={"quote": "Comparison is the thief of joy"})
 
     NeoSchema.delete_class("Category")    # No problem in deleting this Class with no attached data nodes
@@ -865,7 +924,7 @@ def test_get_data_node(db):
     db.empty_dbase()
 
     NeoSchema.create_class(name="Car")
-    db_id = NeoSchema.create_data_node(class_node="Car", properties={"make": "Toyota", "color": "white"})
+    db_id = NeoSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
 
     result = NeoSchema.get_data_node(class_name="Car", node_id=db_id)
     assert result == {'color': 'white', 'make': 'Toyota'}
@@ -886,7 +945,7 @@ def test_search_data_node(db):
     NeoSchema.create_class(name="Car")
 
     # Create a data node without uri field
-    db_id = NeoSchema.create_data_node(class_node="Car", properties={"make": "Toyota", "color": "white"})
+    db_id = NeoSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
 
     result = NeoSchema.search_data_node(internal_id=db_id)
     assert result == {'color': 'white', 'make': 'Toyota'}
@@ -908,7 +967,7 @@ def test_search_data_node(db):
 
 
     # Create data node with uri field
-    NeoSchema.create_data_node(class_node="Car",
+    NeoSchema.create_data_node(class_name="Car",
                                properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
 
     with pytest.raises(Exception):
@@ -941,7 +1000,7 @@ def test_get_all_data_nodes_of_class(db):
     assert result == []
 
     # Create a data node without uri field
-    db_id_car1 = NeoSchema.create_data_node(class_node="Car", properties={"make": "Toyota", "color": "white"})
+    db_id_car1 = NeoSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
 
     result= NeoSchema.get_all_data_nodes_of_class(class_name="Car")
     assert result == [{'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, 'neo4j_labels': ['Car']}]
@@ -955,13 +1014,13 @@ def test_get_all_data_nodes_of_class(db):
 
     # Create a data node without uri field
     NeoSchema.create_class(name="Boat")
-    db_id_boat1 = NeoSchema.create_data_node(class_node="Boat", properties={"make": "C&C", "type": "sloop"})
+    db_id_boat1 = NeoSchema.create_data_node(class_name="Boat", properties={"make": "C&C", "type": "sloop"})
 
     result= NeoSchema.get_all_data_nodes_of_class(class_name="Boat")
     assert result == [{'make': 'C&C', 'type': 'sloop', 'internal_id': db_id_boat1, 'neo4j_labels': ['Boat']}]
 
     # Create a data node with uri field
-    db_id_car2 = NeoSchema.create_data_node(class_node="Car", properties={"make": "Fiat", "color": "blue"}, new_uri="cincilla")
+    db_id_car2 = NeoSchema.create_data_node(class_name="Car", properties={"make": "Fiat", "color": "blue"}, new_uri="cincilla")
 
     result= NeoSchema.get_all_data_nodes_of_class(class_name="Car")
 
@@ -987,22 +1046,22 @@ def test_count_data_nodes_of_class(db):
     with pytest.raises(Exception):
         NeoSchema.count_data_nodes_of_class("unknown")   # Non-existent Class
 
-    class_internal_id_1 , _ = NeoSchema.create_class("Some class")
+    NeoSchema.create_class("Some class")
 
     assert NeoSchema.count_data_nodes_of_class("Some class") == 0
 
-    NeoSchema.create_data_node(class_node=class_internal_id_1)
+    NeoSchema.create_data_node(class_name="Some class")
     assert NeoSchema.count_data_nodes_of_class("Some class") == 1
 
-    NeoSchema.create_data_node(class_node=class_internal_id_1)
+    NeoSchema.create_data_node(class_name="Some class")
     assert NeoSchema.count_data_nodes_of_class("Some class") == 2
 
 
-    class_internal_id_2 , _ = NeoSchema.create_class("Another class")
+    NeoSchema.create_class("Another class")
 
     assert NeoSchema.count_data_nodes_of_class("Another class") == 0
 
-    NeoSchema.create_data_node(class_node=class_internal_id_2)
+    NeoSchema.create_data_node(class_name="Another class")
     assert NeoSchema.count_data_nodes_of_class("Another class") == 1
 
     assert NeoSchema.count_data_nodes_of_class("Some class") == 2   # Where we left it off
@@ -1030,15 +1089,15 @@ def test_create_data_node_1(db):
     create_sample_schema_1()    # Schema with patient/result/doctor
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="nonexistent",
+        NeoSchema.create_data_node(class_name="nonexistent",
                                    properties={"name": "who cares?"})
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="doctor", properties="NOT a dict")
+        NeoSchema.create_data_node(class_name="doctor", properties="NOT a dict")
 
 
     # Create a 1st "doctor" data node
-    internal_id = NeoSchema.create_data_node(class_node="doctor",
+    internal_id = NeoSchema.create_data_node(class_name="doctor",
                                              properties={"name": "Dr. Preeti", "specialty": "sports medicine"},
                                              extra_labels = None,
                                              new_uri=None, silently_drop=False)
@@ -1056,7 +1115,7 @@ def test_create_data_node_1(db):
 
     # Create a 2nd "doctor" data node, this time assigning an extra label and storing a URI
     uri = "doc-1"
-    internal_id = NeoSchema.create_data_node(class_node="doctor",
+    internal_id = NeoSchema.create_data_node(class_name="doctor",
                                              properties={"name": "Dr. Watson", "specialty": "genetics"},
                                              extra_labels = "Nobelist",
                                              new_uri=uri, silently_drop=False)
@@ -1073,7 +1132,7 @@ def test_create_data_node_1(db):
 
     # Create a 3rd "doctor" data node, this time assigning 2 extra labels and also assigning a URI
     uri = "d-123"
-    internal_id = NeoSchema.create_data_node(class_node="doctor",
+    internal_id = NeoSchema.create_data_node(class_name="doctor",
                                              properties={"name": "Dr. Lewis", "specialty": "radiology"},
                                              extra_labels = ["retired", "person"],
                                              new_uri=uri, silently_drop=False)
@@ -1091,7 +1150,7 @@ def test_create_data_node_1(db):
 
     # Create a 4th "doctor" data node, this time using a tuple rather than a list to assign 2 extra labels
     uri = "d-999"
-    internal_id = NeoSchema.create_data_node(class_node="doctor",
+    internal_id = NeoSchema.create_data_node(class_name="doctor",
                                              properties={"name": "Dr. Clark", "specialty": "pediatrics"},
                                              extra_labels = ("retired", "person"),
                                              new_uri=uri, silently_drop=False)
@@ -1118,13 +1177,13 @@ def test_create_data_node_2(db):
 
     # Create a "person" data node, attempting to set a property not declared in the Schema; this will fail
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="person",
+        NeoSchema.create_data_node(class_name="person",
                                    properties={"name": "Joe", "address": "extraneous undeclared field"},
                                    extra_labels = None, new_uri=None,
                                    silently_drop=False)
 
     # To prevent a failure, we can ask to silently drop any undeclared property
-    internal_id = NeoSchema.create_data_node(class_node="person",
+    internal_id = NeoSchema.create_data_node(class_name="person",
                                              properties={"age": 22, "address": "extraneous undeclared field"},
                                              extra_labels = None, new_uri=None,
                                              silently_drop=True)
@@ -1144,7 +1203,7 @@ def test_create_data_node_2(db):
                                            properties=["brand"], strict=False)
 
     # Because the class is "lenient", data nodes may be created with undeclared properties
-    internal_id = NeoSchema.create_data_node(class_node="car",
+    internal_id = NeoSchema.create_data_node(class_name="car",
                                              properties={"brand": "Toyota", "color": "white"},
                                              extra_labels = None, new_uri=None,
                                              silently_drop=False)
@@ -1163,9 +1222,9 @@ def test_create_data_node_2(db):
 def test_create_data_node_3(db):
     db.empty_dbase()
 
-    class_internal_id , _ = NeoSchema.create_class("No data nodes allowed", no_datanodes = True)
+    NeoSchema.create_class("No data nodes allowed", no_datanodes = True)
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node=class_internal_id)   # The Class doesn't allow data nodes
+        NeoSchema.create_data_node(class_name="No data nodes allowed")   # The Class doesn't allow data nodes
 
 
     class_internal_id , class_schema_uri = NeoSchema.create_class("Car", strict=True)
@@ -1173,7 +1232,7 @@ def test_create_data_node_3(db):
     assert NeoSchema.count_data_nodes_of_class("Car") == 0
 
     # Successfully adding the first data node
-    new_datanode_internal_id = NeoSchema.create_data_node(class_node="Car")
+    new_datanode_internal_id = NeoSchema.create_data_node(class_name="Car")
     assert NeoSchema.count_data_nodes_of_class("Car") == 1
 
     # Locate the data point just added
@@ -1188,15 +1247,15 @@ def test_create_data_node_3(db):
 
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node=class_internal_id,
+        NeoSchema.create_data_node(class_name="Car",
                                    properties={"color": "No properties allowed"},
                                    silently_drop=False)   # Trying to set a non-allowed property
 
 
     # Successfully adding a 2nd data node
-    new_datanode_internal_id = NeoSchema.create_data_node(class_node=class_internal_id,
-                                                  properties={"color": "No properties allowed"},
-                                                  silently_drop=True)
+    new_datanode_internal_id = NeoSchema.create_data_node(class_name="Car",
+                                                          properties={"color": "No properties allowed"},
+                                                          silently_drop=True)
 
     assert NeoSchema.count_data_nodes_of_class("Car") == 2
 
@@ -1214,8 +1273,8 @@ def test_create_data_node_3(db):
     # Successfully adding a 3rd data point
     NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["color"]) # Expand the allow class properties
 
-    new_datanode_internal_id = NeoSchema.create_data_node(class_node=class_internal_id,
-                                                  properties={"color": "white"})
+    new_datanode_internal_id = NeoSchema.create_data_node(class_name="Car",
+                                                          properties={"color": "white"})
 
     assert NeoSchema.count_data_nodes_of_class("Car") == 3
 
@@ -1234,15 +1293,15 @@ def test_create_data_node_3(db):
     NeoSchema.add_properties_to_class(class_node=class_internal_id, property_list=["year"])
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node=class_internal_id,
+        NeoSchema.create_data_node(class_name="Car",
                                    properties={"color": "white", "make": "Toyota"},
                                    silently_drop=False)   # Trying to set a non-allowed property
 
 
     # Successfully adding a 4th data point
-    new_datanode_internal_id = NeoSchema.create_data_node(class_node=class_internal_id,
-                                                  properties={"color": "red", "make": "VW"},
-                                                  silently_drop=True)
+    new_datanode_internal_id = NeoSchema.create_data_node(class_name="Car",
+                                                          properties={"color": "red", "make": "VW"},
+                                                          silently_drop=True)
 
     assert NeoSchema.count_data_nodes_of_class("Car") == 4
 
@@ -1258,9 +1317,9 @@ def test_create_data_node_3(db):
 
 
     # Successfully adding a 5th data point
-    new_datanode_internal_id = NeoSchema.create_data_node(class_node=class_internal_id,
-                                                  properties={"color": "blue", "make": "Fiat", "year": 2000},
-                                                  silently_drop=True)
+    new_datanode_internal_id = NeoSchema.create_data_node(class_name="Car",
+                                                          properties={"color": "blue", "make": "Fiat", "year": 2000},
+                                                          silently_drop=True)
 
     assert NeoSchema.count_data_nodes_of_class("Car") == 5
 
@@ -1277,9 +1336,9 @@ def test_create_data_node_3(db):
 
 
     # Successfully adding a 6th data point
-    new_datanode_internal_id = NeoSchema.create_data_node(class_node=class_internal_id,
-                                                  properties={"color": "green", "year": 2022},
-                                                  silently_drop=False)
+    new_datanode_internal_id = NeoSchema.create_data_node(class_name="Car",
+                                                          properties={"color": "green", "year": 2022},
+                                                          silently_drop=False)
 
     assert NeoSchema.count_data_nodes_of_class("Car") == 6
 
@@ -1302,21 +1361,21 @@ def test_create_data_node_4(db):
     create_sample_schema_1()    # Schema with patient/result/doctor
 
      # Create a new data point, and get its Neo4j ID
-    doctor_internal_id = NeoSchema.create_data_node(class_node="doctor",
-                                                     properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+    doctor_internal_id = NeoSchema.create_data_node(class_name="doctor",
+                                                    properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="patient",
-                                           properties={"name": "Jill", "age": 22, "balance": 145.50},
-                                           links={}
-                                  )   # links must be a list
+        NeoSchema.create_data_node(class_name="patient",
+                                   properties={"name": "Jill", "age": 22, "balance": 145.50},
+                                   links={}
+                                   )   # links must be a list
 
 
     # Create a new data node for a "patient", linked to the existing "doctor" data point (OUT-bound relationship)
-    patient_internal_id = NeoSchema.create_data_node(class_node="patient",
-                                             properties={"name": "Jill", "age": 22, "balance": 145},
-                                             links=[{"internal_id": doctor_internal_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
-                                             )
+    patient_internal_id = NeoSchema.create_data_node(class_name="patient",
+                                                     properties={"name": "Jill", "age": 22, "balance": 145},
+                                                     links=[{"internal_id": doctor_internal_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
+                                                     )
 
     q = '''
         MATCH (p :patient {name: "Jill", age: 22, balance: 145, `_SCHEMA`:"patient"})-[:IS_ATTENDED_BY]
@@ -1330,10 +1389,10 @@ def test_create_data_node_4(db):
 
     # Create a new data node for a "result", linked to the existing "patient" data node;
     #   this time, also assign a "uri" to the new data node, and it's an IN-bound relationship
-    result_internal_id = NeoSchema.create_data_node(class_node="result",
-                                                        properties={"biomarker": "glucose", "value": 99},
-                                                        links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
-                                                        new_uri= "RESULT-1")
+    result_internal_id = NeoSchema.create_data_node(class_name="result",
+                                                    properties={"biomarker": "glucose", "value": 99},
+                                                    links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                    new_uri= "RESULT-1")
     q = '''
         MATCH 
         (p :patient {name: "Jill", age: 22, balance: 145, `_SCHEMA`:"patient"})
@@ -1352,10 +1411,10 @@ def test_create_data_node_4(db):
 
     # Create a 2nd data point for a "result", linked to the existing "patient" data point;
     #   agan with a specific "uri" assigned to the new data node
-    result2_internal_id = NeoSchema.create_data_node(class_node="result",
-                                                         properties={"biomarker": "cholesterol", "value": 180},
-                                                         links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
-                                                         new_uri="RESULT-2")
+    result2_internal_id = NeoSchema.create_data_node(class_name="result",
+                                                     properties={"biomarker": "cholesterol", "value": 180},
+                                                     links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                     new_uri="RESULT-2")
     q = '''
         MATCH 
         (r1 :result {biomarker: "glucose", value: 99, `_SCHEMA`:"result"})
@@ -1376,14 +1435,14 @@ def test_create_data_node_4(db):
 
 
     # Create another "patient" node, linked to the existing "doctor" data node, this time with some extra properties
-    patient_internal_id_2 = NeoSchema.create_data_node(class_node="patient",
-                                             properties={"name": "Jack", "age": 99, "balance": 8000},
-                                             links=[{"internal_id": doctor_internal_id,
+    patient_internal_id_2 = NeoSchema.create_data_node(class_name="patient",
+                                                       properties={"name": "Jack", "age": 99, "balance": 8000},
+                                                       links=[{"internal_id": doctor_internal_id,
                                                      "rel_name": "IS_ATTENDED_BY",
                                                      "rel_dir": "OUT",
                                                      "rel_attrs": {"since": 1999}
                                                     }]
-                                             )
+                                                       )
 
     q = '''
         MATCH (p :patient {name: "Jack", age: 99, balance: 8000, `_SCHEMA`:"patient"})
@@ -1398,38 +1457,38 @@ def test_create_data_node_4(db):
 
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="patient",
-                                             properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                             links=[{"internal_id": -1,             # No such node exists
+        NeoSchema.create_data_node(class_name="patient",
+                                   properties={"name": "Spencer", "age": 55, "balance": 1200},
+                                   links=[{"internal_id": -1,             # No such node exists
                                                      "rel_name": "IS_ATTENDED_BY"
                                                     }]
-                                             )
+                                   )
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="patient",
-                                             properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                             links=666       # Not a list
-                                             )
+        NeoSchema.create_data_node(class_name="patient",
+                                   properties={"name": "Spencer", "age": 55, "balance": 1200},
+                                   links=666  # Not a list
+                                   )
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="patient",
-                                             properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                             links=[{}]     # Missing required keys
-                                             )
+        NeoSchema.create_data_node(class_name="patient",
+                                   properties={"name": "Spencer", "age": 55, "balance": 1200},
+                                   links=[{}]  # Missing required keys
+                                   )
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="patient",
-                                             properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                             links=[{"internal_id": doctor_internal_id}]     # Missing required keys
-                                             )
+        NeoSchema.create_data_node(class_name="patient",
+                                   properties={"name": "Spencer", "age": 55, "balance": 1200},
+                                   links=[{"internal_id": doctor_internal_id}]  # Missing required keys
+                                   )
 
     with pytest.raises(Exception):
-        NeoSchema.create_data_node(class_node="patient",
-                                             properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                             links=[{"internal_id": doctor_internal_id,
+        NeoSchema.create_data_node(class_name="patient",
+                                   properties={"name": "Spencer", "age": 55, "balance": 1200},
+                                   links=[{"internal_id": doctor_internal_id,
                                                      "rel_name": "IS_ATTENDED_BY",
-                                                     "unexpected_key": 666}]     # Unexpected key
-                                             )
+                                                     "unexpected_key": 666}]  # Unexpected key
+                                   )
 
     assert NeoSchema.count_data_nodes_of_class("patient") == 2      # The 3rd patient node didn't get created by any of the failed calls
 
@@ -1452,7 +1511,7 @@ def test_update_data_node(db):
     # Create a "doctor" data node
     NeoSchema.create_namespace(name="doctor", prefix ="doc-")
     uri = NeoSchema.reserve_next_uri(namespace="doctor")
-    internal_id = NeoSchema.create_data_node(class_node="doctor",
+    internal_id = NeoSchema.create_data_node(class_name="doctor",
                                              properties={"name": "Dr. Watson", "specialty": "pediatrics"},
                                              new_uri=uri)
 
@@ -1786,14 +1845,14 @@ def test_delete_data_nodes(db):
     create_sample_schema_1()    # Schema with patient/result/doctor
 
     # Create new data nodes
-    doctor_internal_id = NeoSchema.create_data_node(class_node="doctor",
-                                                 properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
+    doctor_internal_id = NeoSchema.create_data_node(class_name="doctor",
+                                                    properties={"name": "Dr. Preeti", "specialty": "sports medicine"})
 
-    patient_internal_id = NeoSchema.create_data_node(class_node="patient",
-                                                  properties={"name": "Val", "age": 22})
+    patient_internal_id = NeoSchema.create_data_node(class_name="patient",
+                                                     properties={"name": "Val", "age": 22})
 
-    NeoSchema.create_data_node(class_node="result", properties={"biomarker": "insulin ", "value": 10})
-    NeoSchema.create_data_node(class_node="result", properties={"biomarker": "bilirubin ", "value": 1})
+    NeoSchema.create_data_node(class_name="result", properties={"biomarker": "insulin ", "value": 10})
+    NeoSchema.create_data_node(class_name="result", properties={"biomarker": "bilirubin ", "value": 1})
 
     doctor = NeoSchema.search_data_node(internal_id=doctor_internal_id)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
@@ -1841,9 +1900,9 @@ def test_add_data_relationship_hub(db):
     NeoSchema.create_class_with_properties("State", properties=["name"])
 
     # Set up the Data Nodes (2 cities and a state)
-    berkeley = NeoSchema.create_data_node(class_node="City", properties = {"name": "Berkeley"})
-    san_diego = NeoSchema.create_data_node(class_node="City", properties = {"name": "San Diego"})
-    california = NeoSchema.create_data_node(class_node="State", properties = {"name": "California"})
+    berkeley = NeoSchema.create_data_node(class_name="City", properties = {"name": "Berkeley"})
+    san_diego = NeoSchema.create_data_node(class_name="City", properties = {"name": "San Diego"})
+    california = NeoSchema.create_data_node(class_name="State", properties = {"name": "California"})
 
     with pytest.raises(Exception):
         # Trying to create a data relationship not yet declared in the Schema
@@ -1868,8 +1927,8 @@ def test_add_data_relationship_hub(db):
 
 
     # Add more Data Nodes
-    nevada = NeoSchema.create_data_node(class_node="State", properties = {"name": "Nevada"})
-    oregon = NeoSchema.create_data_node(class_node="State", properties = {"name": "Oregon"})
+    nevada = NeoSchema.create_data_node(class_name="State", properties = {"name": "Nevada"})
+    oregon = NeoSchema.create_data_node(class_name="State", properties = {"name": "Oregon"})
 
     with pytest.raises(Exception):
         # Trying to create a data relationship not yet declared in the Schema
@@ -1906,10 +1965,10 @@ def test_add_data_relationship(db):
         NeoSchema.add_data_relationship(from_id=neo_uri_1, to_id=neo_uri_2, rel_name="junk") # Not data nodes with a Schema
 
     _ , person_class_uri = NeoSchema.create_class("Person", strict=True)
-    person_internal_id = NeoSchema.create_data_node(class_node="Person", new_uri="julian")
+    person_internal_id = NeoSchema.create_data_node(class_name="Person", new_uri="julian")
 
     _ , car_class_uri = NeoSchema.create_class("Car")
-    car_internal_id = NeoSchema.create_data_node(class_node="Car", properties={"color": "white"})
+    car_internal_id = NeoSchema.create_data_node(class_name="Car", properties={"color": "white"})
 
     with pytest.raises(Exception):
         # No such relationship exists between their Classes
@@ -1949,7 +2008,7 @@ def test_add_data_relationship(db):
     assert db.links_exist(match_from=car_internal_id, match_to=person_internal_id, rel_name="IS_DRIVEN_BY")
 
     # Now add a relationship using URI's instead of internal database ID's
-    red_car_internal_id = NeoSchema.create_data_node(class_node="Car", properties={"color": "red"}, new_uri="new_car")
+    red_car_internal_id = NeoSchema.create_data_node(class_name="Car", properties={"color": "red"}, new_uri="new_car")
     NeoSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="uri", rel_name="DRIVES")
     assert db.links_exist(match_from=person_internal_id, match_to=red_car_internal_id, rel_name="DRIVES")
 
@@ -1975,7 +2034,7 @@ def test_class_of_data_point(db):
 
     NeoSchema.create_class("Person")
     uri = NeoSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-    NeoSchema.create_data_node(class_node="Person", new_uri=uri)
+    NeoSchema.create_data_node(class_name="Person", new_uri=uri)
 
     assert NeoSchema.class_of_data_node(node_id=uri, id_key="uri") == "Person"
     assert NeoSchema.class_of_data_node(node_id=uri, id_key="uri", labels="Person") == "Person"

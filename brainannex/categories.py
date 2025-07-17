@@ -422,7 +422,7 @@ class Categories:
         #new_uri = NeoSchema.reserve_next_uri(namespace="Category", prefix="cat-")
         new_uri = "cat-root"    # use a special URI
 
-        internal_id = NeoSchema.create_data_node(class_node="Category",
+        internal_id = NeoSchema.create_data_node(class_name="Category",
                                                  properties = data_dict,
                                                  new_uri=new_uri)
         return (internal_id, new_uri)
@@ -480,7 +480,7 @@ class Categories:
                                 assign_uri=True)
         '''
         new_uri = NeoSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-        NeoSchema.create_data_node(class_node = "Category", extra_labels = "BA",
+        NeoSchema.create_data_node(class_name="Category", extra_labels ="BA",
                                    properties = data_dict,
                                    links = [{"internal_id": parent_category_internal_id,
                                              "rel_name": "BA_subcategory_of"}],
@@ -1009,7 +1009,7 @@ class Categories:
             new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
 
 
-        NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
+        NeoSchema.create_data_node(class_name=item_class_name, properties=item_properties,
                                    extra_labels="BA", new_uri=new_uri,
                                    silently_drop=True)
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,

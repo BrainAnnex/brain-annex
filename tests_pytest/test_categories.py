@@ -318,7 +318,7 @@ def test_link_content_at_end(db):
                                         rel_name="BA_in_category")
 
     # Create a new Data Node
-    NeoSchema.create_data_node(class_node="Image", properties={"caption": "my_pic"},
+    NeoSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
                                new_uri="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
@@ -351,7 +351,7 @@ def test_detach_from_category(db):
                                         rel_name="BA_in_category")
 
     # Create a new Data Node
-    NeoSchema.create_data_node(class_node="Image", properties={"caption": "my_pic"},
+    NeoSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
                                new_uri="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")

@@ -804,7 +804,7 @@ class DataManager:
         new_uri = NeoSchema.generate_uri(class_name)
         print(f"create_new_content_item() - New item will be assigned URI: '{new_uri}'")
 
-        internal_id = NeoSchema.create_data_node(class_node=class_name, properties=item_data, new_uri=new_uri)
+        internal_id = NeoSchema.create_data_node(class_name=class_name, properties=item_data, new_uri=new_uri)
 
         return {"internal_id": internal_id, "uri": new_uri}
 

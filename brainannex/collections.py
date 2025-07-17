@@ -167,15 +167,15 @@ class Collections:
                                             )
         '''
         collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
-        NeoSchema.create_data_node(class_node=item_class_name,
-                                    properties=data_binding,
-                                    extra_labels="BA",
-                                    links=[{"internal_id": collection_id,
+        NeoSchema.create_data_node(class_name=item_class_name,
+                                   properties=data_binding,
+                                   extra_labels="BA",
+                                   links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
                                     ],
-                                    new_uri=new_uri
-                                  )
+                                   new_uri=new_uri
+                                   )
         return new_uri
 
 
@@ -471,15 +471,15 @@ class Collections:
                                             )
         '''
         collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
-        NeoSchema.create_data_node(class_node=item_class_name,
-                                    properties=data_binding,
-                                    extra_labels="BA",
-                                    links=[{"internal_id": collection_id,
+        NeoSchema.create_data_node(class_name=item_class_name,
+                                   properties=data_binding,
+                                   extra_labels="BA",
+                                   links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
                                     ],
-                                    new_uri=new_uri
-                                  )
+                                   new_uri=new_uri
+                                   )
         return new_uri
 
 
@@ -578,15 +578,15 @@ class Collections:
                                             )
         '''
         collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
-        NeoSchema.create_data_node(class_node=item_class_name,
-                                    properties=item_properties,
-                                    extra_labels="BA",
-                                    links=[{"internal_id": collection_id,
+        NeoSchema.create_data_node(class_name=item_class_name,
+                                   properties=item_properties,
+                                   extra_labels="BA",
+                                   links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": new_pos}}
                                     ],
-                                    new_uri=new_uri
-                                  )
+                                   new_uri=new_uri
+                                   )
         return new_uri
 
 
