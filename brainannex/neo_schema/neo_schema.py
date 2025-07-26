@@ -463,8 +463,7 @@ class NeoSchema:
         assert old_name != new_name, \
             f"rename_class(): The old name and the new name cannot be the same (`{old_name}`)"
 
-        assert new_name != "", \
-            "rename_class(): The new class name cannot be an empty (blank) string"
+        cls.assert_valid_class_name(new_name)
 
         q = '''
             MATCH (c :CLASS {name: $old_name})

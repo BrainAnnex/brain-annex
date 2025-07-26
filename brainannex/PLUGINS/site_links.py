@@ -26,5 +26,5 @@ class SiteLinks:
                                                class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 
         # Ensure that the URL's will be constrained to be unique
-        NeoSchema.db.create_constraint(label="Site Link", key="url", type="UNIQUE", name="unique_bookmarks")
+        NeoSchema.db.create_constraint(label="Site Link", key="url", name="unique_bookmarks")
 

@@ -226,6 +226,9 @@ def test_rename_class(db):
         NeoSchema.rename_class(old_name="some name", new_name="")
 
     with pytest.raises(Exception):
+        NeoSchema.rename_class(old_name="some name", new_name="    bad name    ")
+
+    with pytest.raises(Exception):
         NeoSchema.rename_class(old_name="Car", new_name="Vehicle")  # Doesn't exist
 
     internal_id, _ = NeoSchema.create_class_with_properties("Car", strict=True,
