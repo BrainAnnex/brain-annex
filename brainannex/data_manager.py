@@ -765,7 +765,8 @@ class DataManager:
 
 
         # Perform the actual deletion of the Content Item node
-        number_deleted = NeoSchema.delete_data_point(uri=uri, labels=class_name)
+        #number_deleted = NeoSchema.delete_data_point(uri=uri, labels=class_name)
+        number_deleted = NeoSchema.delete_data_nodes(node_id=uri, id_key="uri", class_name=class_name)
 
 
         if number_deleted == 1:
@@ -803,7 +804,7 @@ class DataManager:
         new_uri = NeoSchema.generate_uri(class_name)
         print(f"create_new_content_item() - New item will be assigned URI: '{new_uri}'")
 
-        internal_id = NeoSchema.create_data_node(class_node=class_name, properties=item_data, new_uri=new_uri)
+        internal_id = NeoSchema.create_data_node(class_name=class_name, properties=item_data, new_uri=new_uri)
 
         return {"internal_id": internal_id, "uri": new_uri}
 

@@ -69,17 +69,9 @@ class Collections:
         :return:                True if the given data node is a Collection, or False otherwise
         """
 
-        #TODO: maybe allow the scenario where there's a longer chain of "INSTANCE_OF" relationships??
-        q = '''
-            MATCH p=({uri: $collection_uri}) -[:SCHEMA]-> (:CLASS) 
-                    -[:INSTANCE_OF]-> 
-                    (:CLASS {name: "Collections"})
-            RETURN count(p) AS number_paths
-            '''
-        data_binding = {"collection_uri": collection_uri}
-        number_paths = cls.db.query(q, data_binding, single_cell="number_paths")
-
-        return True if number_paths > 0 else False
+        # Locate the Schema Class of the given Data Node
+        class_name = NeoSchema.class_of_data_node(node_id=collection_uri, id_key="uri")
+        return NeoSchema.is_instance_of(class1=class_name, class2="Collections")
 
 
 
@@ -164,7 +156,7 @@ class Collections:
             pos = min_pos - cls.DELTA_POS   # Go some distance before the beginning
 
         data_binding = item_properties
-
+        '''
         return NeoSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=data_binding,
                                             labels=["BA", item_class_name],
@@ -173,6 +165,18 @@ class Collections:
                                             rel_prop_key="pos", rel_prop_value=pos,
                                             new_uri=new_uri
                                             )
+        '''
+        collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
+        NeoSchema.create_data_node(class_name=item_class_name,
+                                   properties=data_binding,
+                                   extra_labels="BA",
+                                   links=[{"internal_id": collection_id,
+                                            "rel_name": membership_rel_name,
+                                            "rel_attrs": {"pos": pos}}
+                                    ],
+                                   new_uri=new_uri
+                                   )
+        return new_uri
 
 
 
@@ -456,7 +460,7 @@ class Collections:
         data_binding = item_properties
 
         #cls.db.debug_print(q, data_binding, "add_to_collection_at_end", True)
-
+        '''
         return NeoSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=data_binding,
                                             labels=["BA", item_class_name],
@@ -465,6 +469,18 @@ class Collections:
                                             rel_prop_key="pos", rel_prop_value=pos,
                                             new_uri=new_uri
                                             )
+        '''
+        collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
+        NeoSchema.create_data_node(class_name=item_class_name,
+                                   properties=data_binding,
+                                   extra_labels="BA",
+                                   links=[{"internal_id": collection_id,
+                                            "rel_name": membership_rel_name,
+                                            "rel_attrs": {"pos": pos}}
+                                    ],
+                                   new_uri=new_uri
+                                   )
+        return new_uri
 
 
 
@@ -551,7 +567,7 @@ class Collections:
         else:
             new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
 
-
+        '''
         return NeoSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=item_properties,
                                             labels=["BA", item_class_name],
@@ -560,15 +576,18 @@ class Collections:
                                             rel_prop_key="pos", rel_prop_value=new_pos,
                                             new_uri=new_uri
                                             )
-
-        #link_to = [{"labels": "BA", "key": "uri", "value": collection_id,
-        #            "rel_name": membership_rel_name, "rel_attrs": {"pos": new_pos}}]
-
-        #new_neo_id = cls.db.create_node_with_relationships(labels="BA", properties=item_properties, connections=link_to)
-
-        #uri = NeoSchema.register_existing_data_node(class_name=item_class_name, existing_neo_id=new_neo_id, new_uri=new_uri)
-
-        #return uri
+        '''
+        collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
+        NeoSchema.create_data_node(class_name=item_class_name,
+                                   properties=item_properties,
+                                   extra_labels="BA",
+                                   links=[{"internal_id": collection_id,
+                                            "rel_name": membership_rel_name,
+                                            "rel_attrs": {"pos": new_pos}}
+                                    ],
+                                   new_uri=new_uri
+                                   )
+        return new_uri
 
 
 

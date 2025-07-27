@@ -29,7 +29,7 @@ def setup_sample_index(db) -> int:
     FullTextIndexing.initialize_schema()
 
     # Create a data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Document.pdf"})
+    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Document.pdf"})
 
     return content_id
 
@@ -167,6 +167,7 @@ def test_initialize_schema(db):
 def test_new_indexing(db):
     # Set up a new indexing system, and create a sample Content node
     content_id = setup_sample_index(db)
+
     # ...and then index some words to it
     FullTextIndexing.new_indexing(internal_id=content_id,
                                   unique_words={"lab", "research", "R/D"}, to_lower_case=True)
@@ -182,8 +183,7 @@ def test_new_indexing(db):
     assert FullTextIndexing.number_of_indexed_words(content_id) == 3
 
     q = '''
-        MATCH (w:Word)-[:SCHEMA]->(wc:CLASS {name: "Word"})-[:occurs]->(ic:CLASS {name:"Indexer"})
-        <-[:SCHEMA]-(i:Indexer)<-[:occurs]-(w)
+        MATCH (i:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
         RETURN w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -194,7 +194,7 @@ def test_new_indexing(db):
     # Now test a scenario where some Word node already exist
 
     # Create another data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Other_Document.txt"})
+    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...and then index some words to it
     FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"research", "science"}, to_lower_case=True)
 
@@ -205,12 +205,9 @@ def test_new_indexing(db):
     assert FullTextIndexing.number_of_indexed_words(content_id) == 2
 
     q = '''
-        MATCH (ci_cl:CLASS {name:"Content Item"})-[:has_index]->(CLASS {name:"Indexer"})
-        <-[:occurs]-(:CLASS {name:"Word"})
-        <-[:SCHEMA]-(w:Word)-[:occurs]
+        MATCH (w:Word {`_SCHEMA`: "Word"})-[:occurs]
         ->(:Indexer)
-        <-[:has_index]-(:`Content Item`)-[:SCHEMA]
-        ->(ci_cl)
+        <-[:has_index]-(:`Content Item` {`_SCHEMA`: "Content Item"})
         RETURN DISTINCT w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -234,9 +231,9 @@ def test_add_words_to_index(db):
 
 
     # Create a data node of type "Indexer", and link it up to the passed Content Item data node
-    indexer_id = NeoSchema.add_data_node_with_links(class_name ="Indexer",
-                                                    links =[{"internal_id": content_id, "rel_name": "has_index",
-                                                             "rel_dir": "IN"}])
+    indexer_id = NeoSchema.create_data_node(class_name="Indexer",
+                                            links =[{"internal_id": content_id, "rel_name": "has_index",
+                                                     "rel_dir": "IN"}])
     # ...and then index some words to it
     n_added = FullTextIndexing.add_words_to_index(indexer_id=indexer_id,
                                                   unique_words={"lab", "research", "R/D"}, to_lower_case=True)
@@ -249,8 +246,7 @@ def test_add_words_to_index(db):
     assert FullTextIndexing.number_of_indexed_words(content_id) == 3
 
     q = '''
-        MATCH (w:Word)-[:SCHEMA]->(wc:CLASS {name: "Word"})-[:occurs]->(ic:CLASS {name:"Indexer"})
-        <-[:SCHEMA]-(i:Indexer)<-[:occurs]-(w)
+        MATCH (i:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
         RETURN w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -260,11 +256,11 @@ def test_add_words_to_index(db):
     # Now test a scenario where some Word node already exist
 
     # Create another data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "My_Other_Document.txt"})
+    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...then create a data node of type "Indexer", and link it up to the passed Content Item data node
-    indexer_id = NeoSchema.add_data_node_with_links(class_name ="Indexer",
-                                                    links =[{"internal_id": content_id, "rel_name": "has_index",
-                                                             "rel_dir": "IN"}])
+    indexer_id = NeoSchema.create_data_node(class_name="Indexer",
+                                            links =[{"internal_id": content_id, "rel_name": "has_index",
+                                                     "rel_dir": "IN"}])
     # ...and then index some words to it
     n_added = FullTextIndexing.add_words_to_index(indexer_id=indexer_id,
                                                   unique_words={"RESEARCH", "science"}, to_lower_case=True)
@@ -277,12 +273,9 @@ def test_add_words_to_index(db):
     assert FullTextIndexing.number_of_indexed_words(content_id) == 2
 
     q = '''
-        MATCH (ci_cl:CLASS {name:"Content Item"})-[:has_index]->(CLASS {name:"Indexer"})
-        <-[:occurs]-(:CLASS {name:"Word"})
-        <-[:SCHEMA]-(w:Word)-[:occurs]
+        MATCH (w:Word {`_SCHEMA`: "Word"})-[:occurs]
         ->(:Indexer)
-        <-[:has_index]-(:`Content Item`)-[:SCHEMA]
-        ->(ci_cl)
+        <-[:has_index]-(:`Content Item` {`_SCHEMA`: "Content Item"})
         RETURN DISTINCT w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -317,8 +310,7 @@ def test_update_indexing(db):
     assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     q = '''
-        MATCH (w:Word)-[:SCHEMA]->(wc:CLASS {name: "Word"})-[:occurs]->(ic:CLASS {name:"Indexer"})
-        <-[:SCHEMA]-(:Indexer)<-[:occurs]-(w)
+        MATCH (:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
         RETURN w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -335,8 +327,7 @@ def test_update_indexing(db):
     assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     q = '''
-        MATCH (w:Word)-[:SCHEMA]->(wc:CLASS {name: "Word"})-[:occurs]->(ic:CLASS {name:"Indexer"})
-        <-[:SCHEMA]-(:Indexer)<-[:occurs]-(w)
+        MATCH (:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
         RETURN w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -434,7 +425,7 @@ def test_search_word(db):
 
 
     # Add a 2nd data node of type "Content Item"...
-    content_id_2 = NeoSchema.create_data_node(class_node="Content Item", properties={"filename": "some_other_file.txt"})
+    content_id_2 = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "some_other_file.txt"})
     # ...and then index some words to it
     FullTextIndexing.new_indexing(internal_id=content_id_2, unique_words={"ship", "lab", "glassware"})
 

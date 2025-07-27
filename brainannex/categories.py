@@ -91,7 +91,6 @@ class Categories:
         """
         # Note: since the category_uri is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
-        #return NeoSchema.search_data_node(uri=category_uri, labels="BA", properties={"schema_code": "cat"})
         return NeoSchema.get_data_node(class_name="Category", node_id=category_uri, id_key="uri")
 
 
@@ -116,7 +115,7 @@ class Categories:
     @classmethod
     def get_all_categories(cls, exclude_root=True, include_remarks=False) -> [dict]:
         """
-        Return all the existing Categories - possibly except the root -
+        Return all the existing Categories - optionally except the root Category -
         as a list of dictionaries with keys 'uri', 'name', 'pinned' and, optionally, 'remarks',
         sorted by name.
 
@@ -136,7 +135,7 @@ class Categories:
 
         # TODO: switch to using the Schema library datanode operations
         q =  f'''
-             MATCH (cat:Category)-[:SCHEMA]->(:CLASS {{name:"Category"}}) 
+             MATCH (cat :Category {{`_SCHEMA`: "Category"}})
              {clause}
              RETURN cat.uri AS uri, cat.name AS name, cat.pinned AS pinned {remarks_subquery}
              ORDER BY toLower(cat.name)
@@ -228,8 +227,13 @@ class Categories:
         match = cls.db.match(labels="Category",
                              properties={"uri": category_uri})
 
-        return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
+        result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                    neighbor_labels="Category")
+
+        # Ditch unneeded attributes
+        NeoSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
+
+        return result
 
 
 
@@ -258,8 +262,7 @@ class Categories:
         result = cls.db.query_extended(q, flatten=True)
 
         # Ditch unneeded attributes
-        #for item in result:
-        #    del item["neo4j_labels"]
+        NeoSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
 
         return result
 
@@ -419,7 +422,7 @@ class Categories:
         #new_uri = NeoSchema.reserve_next_uri(namespace="Category", prefix="cat-")
         new_uri = "cat-root"    # use a special URI
 
-        internal_id = NeoSchema.create_data_node(class_node="Category",
+        internal_id = NeoSchema.create_data_node(class_name="Category",
                                                  properties = data_dict,
                                                  new_uri=new_uri)
         return (internal_id, new_uri)
@@ -446,7 +449,7 @@ class Categories:
 
         # TODO: block the addition of multiple subcategories with the same name (i.e., prevent
         #       a Category to have multiple "children" with the same name)
-        if not category_uri:
+        if category_uri is None:
             category_uri = data_dict.get("category_uri")
             assert category_uri is not None, \
                         "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
@@ -469,17 +472,28 @@ class Categories:
 
         parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_uri, key_name="uri")
 
+        '''
         new_internal_id = NeoSchema.add_data_node_with_links(
                                 class_name = "Category",
                                 properties = data_dict, labels = ["BA", "Category"],
                                 links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
                                 assign_uri=True)
+        '''
+        new_uri = NeoSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
+        NeoSchema.create_data_node(class_name="Category", extra_labels ="BA",
+                                   properties = data_dict,
+                                   links = [{"internal_id": parent_category_internal_id,
+                                             "rel_name": "BA_subcategory_of"}],
+                                   new_uri=new_uri)
 
+        '''
         new_data_point = NeoSchema.search_data_node(internal_id = new_internal_id)
         assert new_data_point is not None, \
             "add_subcategory(): failure to fetch data node for the newly created subcategory"
 
         return new_data_point["uri"]
+        '''
+        return new_uri
 
 
 
@@ -508,7 +522,8 @@ class Categories:
         if cls.count_subcategories(category_uri) > 0:
             raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because it has sub-categories. Use the Category manager to first sever those relationships")
 
-        number_deleted = NeoSchema.delete_data_point(uri=category_uri, labels="BA")
+        #number_deleted = NeoSchema.delete_data_point(uri=category_uri, labels="BA")
+        number_deleted = NeoSchema.delete_data_nodes(node_id=category_uri, id_key="uri", class_name="Category")
 
         if number_deleted != 1:
             raise Exception(f"Failed to delete the requested Category (URI '{category_uri}')")
@@ -683,7 +698,7 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True or False
         """
-        all_props = NeoSchema.search_data_node(uri=uri, labels="Category")    # Returns a dict, or None
+        all_props = NeoSchema.search_data_node(uri=uri)    # Returns a dict, or None.   # labels="Category"
         assert all_props, "is_pinned(): unable to locate the specified Category node"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
@@ -862,7 +877,9 @@ class Categories:
         # TODO: switch to using one of the Collections methods
 
         q = '''
-            MATCH (cl :CLASS)<-[:SCHEMA]- (n) -[r :BA_in_category]-> (:Category {uri:$category_id})
+            MATCH (n) -[r :BA_in_category]-> (:Category {uri:$category_id}),
+            (cl :CLASS)
+            WHERE cl.name = n.`_SCHEMA`
             RETURN n, r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code
             ORDER BY r.pos
             '''
@@ -903,7 +920,9 @@ class Categories:
 
             content_item_list.append(item_record)
 
-        #print(content_item_list)
+        #print(f"****** content_item_list: ", content_item_list)
+        NeoSchema.remove_schema_info(content_item_list)    # Zap any low-level Schema-related data
+
         return content_item_list
 
 
@@ -990,7 +1009,7 @@ class Categories:
             new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
 
 
-        NeoSchema.create_data_node(class_node=item_class_name, properties=item_properties,
+        NeoSchema.create_data_node(class_name=item_class_name, properties=item_properties,
                                    extra_labels="BA", new_uri=new_uri,
                                    silently_drop=True)
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
@@ -1122,8 +1141,10 @@ class Categories:
         """
         # Locate the names of the Classes of all the Content Items attached to the given Category
         q = '''
-            MATCH   (CLASS {name: "Category"}) <-[:SCHEMA]- (cat :Category {uri: $category_uri}) 
-                    <-[:BA_in_category]- (content_item) -[:SCHEMA]-> (cl:CLASS) 
+            MATCH  (cat :Category {uri: $category_uri, `_SCHEMA`: "Category"}) 
+                    <-[:BA_in_category]- (content_item),
+                    (cl:CLASS)
+            WHERE cl.name = content_item.`_SCHEMA`
             RETURN DISTINCT cl.name AS class_name
             '''
         #cls.db.debug_query_print(q, data_binding={"category_uri": category_uri})
@@ -1142,6 +1163,7 @@ class Categories:
             records_schema_data[class_name] = prop_list
 
         return records_schema_data
+
 
 
 

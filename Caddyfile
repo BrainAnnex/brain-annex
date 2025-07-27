@@ -1,0 +1,23 @@
+example.com {
+        # Handle static files for navigation
+        handle_path /navigation/static/* {
+                root * /home/brain_annex/flask_modules/navigation/static
+                file_server
+        }
+
+        # Handle static files for web API
+        handle_path /BA/api/static/* {
+                root * /home/brain_annex/flask_modules/api/static
+                file_server
+        }
+
+        # Handle static files for web pages
+        handle_path /BA/pages/static/* {
+                root * /home/brain_annex/flask_modules/pages/static
+                file_server
+        }
+
+        # All other requests are reverse-proxied to Flask (port 5000) or gunicorn (port 8000)
+        # reverse_proxy localhost:5000
+        reverse_proxy localhost:8000
+}
