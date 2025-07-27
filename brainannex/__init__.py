@@ -1,4 +1,4 @@
-__version__ = "5.0.0rc2"    # IN-PROGRESS
+__version__ = "5.0.0rc2"
 
 
 from brainannex.neo_schema.neo_schema import NeoSchema
