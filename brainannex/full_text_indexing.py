@@ -1,9 +1,9 @@
 import re
 import html
 from typing import Union, List, Set
-from neoaccess.cypher_utils import CypherUtils
-from brainannex.neo_schema.neo_schema import NeoSchema
-import brainannex.utilities.exceptions as exceptions
+from brainannex import CypherUtils, NeoSchema
+import utilities.exceptions as exceptions
+
 
 
 class FullTextIndexing:
@@ -13,7 +13,7 @@ class FullTextIndexing:
     For more info and background info, please see:
         https://julianspolymathexplorations.blogspot.com/2023/08/full-text-search-neo4j-indexing.html
 
-    NOTE: no stemming nor lemmatizing is done.
+    NOTE: no "stemming" nor "lemmatizing" is done.
           Therefore, for best results, all word searches should be done on stems;
           for example, search for "learn" rather than "learning" or "learns" - to catch all 3
     """

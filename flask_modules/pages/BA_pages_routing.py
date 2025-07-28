@@ -7,9 +7,9 @@ from flask import Blueprint, render_template, current_app, make_response, reques
                                                     # Note: the "request" package makes available a GLOBAL request object
 from flask_login import login_required, current_user
 from flask_modules.navigation.navigation import get_site_pages  # Navigation configuration
-from brainannex import DataManager, Categories, version
-from brainannex.node_explorer import NodeExplorer
-from brainannex.neo_schema.neo_schema import NeoSchema
+from brainannex import NeoSchema, Categories, version
+from app_libraries.data_manager import DataManager
+from app_libraries.node_explorer import NodeExplorer
 from datetime import datetime
 import time
 import json
@@ -114,7 +114,7 @@ class PagesRouting:
 
             # Get the Name and Remarks attached to the given Category
             category_info = Categories.get_category_info(category_uri)
-            # EXAMPLE : [{'id': '3', 'name': 'Hobbies', 'remarks': 'excluding sports'}]
+            # EXAMPLE : [{'uri': '3', 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
             if not category_info:   # If page wasn't found
                 # TODO: add a special page to show the error messages
