@@ -2546,13 +2546,3 @@ class NeoAccess(InterGraph):
         indent_spaces = level*4
         indent_str = " " * indent_spaces        # Repeat a blank character the specified number of times
         return indent_str
-
-
-
-    def _debug_local(self) -> str:
-        """
-        Use to test the switch from a local to remote repository, for debugging
-
-        :return:
-        """
-        return "local"
