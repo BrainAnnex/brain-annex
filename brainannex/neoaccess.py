@@ -1884,7 +1884,7 @@ class NeoAccess(InterGraph):
                                link_to_node=None) -> dict:
         """
         TODO: In-progress.  DO NOT USE.   Use load_pandas() instead
-        
+
         Import data from a CSV file located on the same file system as the Neo4j database,
         and the records represent nodes to be created in the database.
 

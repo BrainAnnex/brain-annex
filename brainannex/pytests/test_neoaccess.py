@@ -35,6 +35,7 @@ def db():
 
 def test_get_single_field(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
     # Create 2 nodes
     db.query('''CREATE (:`my label`:`color` {`field A`: 123, `field B`: 'test'}), 
                        (:`my label`:`make`  {                `field B`: 'more test', `field C`: 3.14})
@@ -1577,8 +1578,10 @@ def test_load_pandas_2(db):
     # Verify that a database Index got created as a result of using merge_primary_key
     all_indexes = db.get_indexes()
     assert len(all_indexes) == 1
-    index_as_list = list(all_indexes.iloc[0])
-    assert index_as_list == [['scientist'], 'scientist.scientist_id', ['scientist_id'], 'BTREE', 'NONUNIQUE']
+    # Investigate the 0-th (only) index
+    assert all_indexes["name"][0] == 'scientist.scientist_id'
+    assert all_indexes["labelsOrTypes"][0] == ['scientist']
+    assert all_indexes["properties"][0] == ['scientist_id']
 
 
     # More tests of merge with primary_key
@@ -1611,16 +1614,17 @@ def test_load_pandas_2(db):
     assert len(all_indexes) == 2
 
     # There's no guarantee about the order of the Indices
-    index_0 = list(all_indexes.iloc[0])
-    index_1 = list(all_indexes.iloc[1])
-    expected_A = [['scientist'], 'scientist.scientist_id', ['scientist_id'], 'BTREE', 'NONUNIQUE']  # The old index
-    expected_B = [['X'], 'X.patient_id', ['patient_id'], 'BTREE', 'NONUNIQUE']                      # The newly-added index
+    index_0 = list(all_indexes.iloc[0][["name", "labelsOrTypes", "properties"]])    # Selected cols from 0-th row
+    index_1 = list(all_indexes.iloc[1][["name", "labelsOrTypes", "properties"]])    # Selected cols from 1st row
+    expected_A = ['scientist.scientist_id', ['scientist'], ['scientist_id']]  # The old index
+    expected_B = ['X.patient_id', ['X'], ['patient_id']]                      # The newly-added index
 
     assert (index_0 == expected_A) or (index_0 == expected_B)
     if index_0 == expected_A:
         assert index_1 == expected_B
     else:
         assert index_1 == expected_A
+
 
 
 def test_load_pandas_3(db):
@@ -1764,9 +1768,11 @@ def test_load_pandas_6(db):
     id_list = db.load_pandas(df, labels="events")
 
     for node_id in id_list:
-        q = f'''MATCH (n :events) WHERE id(n) = {node_id} RETURN apoc.meta.type(n.`arrival date`) AS dtype'''
+        cyp = db.property_data_type_cypher()
+        q = f'''MATCH (n :events) WHERE id(n) = {node_id} RETURN {cyp}(n.`arrival date`) AS dtype'''
         res = db.query(q, single_cell="dtype")
-        assert res == "LocalDateTime"
+        assert res == "LocalDateTime" or res == "LOCAL_DATE_TIME"
+        # Respectively, for v.4 and v.5 of Neo4j
 
 
 def test_load_pandas_7(db):
