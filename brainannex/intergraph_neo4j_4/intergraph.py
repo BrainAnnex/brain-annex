@@ -876,6 +876,32 @@ class InterGraph:
 
     #####################################################################################################
 
+    '''                                     ~   DATA TYPES   ~                                        '''
+
+    def ________DATA_TYPES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    def property_data_type_cypher(self) -> str:
+        """
+        Return the Cypher fragment to be used as the name of the function
+        to use to extract the data type from a node property.
+
+        EXAMPLE:    cyp = property_data_type_cypher()
+                    q = f"MATCH (n) WHERE id(n) = 123 RETURN {cyp}(n.`my_field`) AS dtype"
+                    Then run the above query q
+
+        :return:    A string with a Cypher fragment
+        """
+        return "apoc.meta.type"
+
+
+
+
+
+    #####################################################################################################
+
     '''                                   ~   DEBUGGING SUPPORT   ~                                   '''
 
     def ________DEBUGGING_SUPPORT________(DIVIDER):
