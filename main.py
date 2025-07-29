@@ -31,8 +31,8 @@ from flask_modules.sample_embedded_site.sample_pages.sample_pages_routing import
 from flask_modules.sample_embedded_site.sample_api.sample_api_routing import SampleApiRouting
 
 # The remaining imports, below, are for the database initialization
-from neoaccess import NeoAccess
-from brainannex.initialize import InitializeBrainAnnex
+from brainannex import NeoAccess
+from app_libraries.initialize import InitializeBrainAnnex
 
 
 
@@ -80,7 +80,7 @@ if found_files == ['config.defaults.ini']:
 if found_files == ['config.ini']:
     print("A local, customized, version of the config file found ('config.ini'); all configuration will be based on this file")
 else:
-    print("Two config files found: settings in 'config.ini' will over-ride any counterpart in 'config.defaults.ini'")
+    print("Two config files found: settings in 'config.ini' will take priority, and over-ride any counterpart in 'config.defaults.ini'")
 
 
 #print("Sections found in config file(s): ", config.sections())    # EXAMPLE: ['SETTINGS']

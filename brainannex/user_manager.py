@@ -1,7 +1,7 @@
 import bcrypt                       # For password encryption
 from typing import Union
-from neoaccess import NeoAccess
-from brainannex import NeoSchema
+from brainannex import NeoAccess, NeoSchema
+
 
 
 class UserManager:
@@ -14,7 +14,6 @@ class UserManager:
 
     db = None   # "NeoAccess" object.  MUST be set before using this class!
                 # Note: this database-interface object is a CLASS variable, accessible as cls.db
-
 
 
     @classmethod

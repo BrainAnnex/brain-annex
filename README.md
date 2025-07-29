@@ -1,12 +1,26 @@
-# Brain Annex
+# Brain Annex - a full technology stack on top of GRAPH DATABASES
 
-**Version 5** of is a *complete overhaul* of Brain Annex's internal structure.  
-This major new release is in a *release candidate* stage.
+### This is a mono-repository of:
 
-The bottom layer (the `NeoAccess` library) is stable,
-and is being released independently.
+1) The "Brain Annex" python library
+2) The "Brain Annex" web app (backend and frontend)
 
-The version number can be found in the `brainannex/__init__.py` file.
+### Graph databases currently supported:
+
+1) Neo4j, version 4.4 (the final release of major version 4)
+2) Neo4j, version 5.26 (the final release of major version 5)
+3) We expect to later support others, possibly Memgraph and AWS Neptune
+
+### Do you only care about the python library?
+Simply `pip install brainannex-neo4j-4` or `pip install brainannex-neo4j-5` (based on which major version of Neo4j you use.)  
+Nothing else to do!
+
+### IMPORTANT for installing the web app - to switch between supported databases:
+1) Must change the database driver, in the first line of `requirements.txt`
+2) Must uncomment the appropriate version line in the `brainannex/__init__.py` file
+
+
+
 
 ### Website: https://BrainAnnex.org
 
@@ -16,16 +30,31 @@ The version number can be found in the `brainannex/__init__.py` file.
 
 # Brain Annex's Technology Stack (Overview)
 
-NOTE: the bottom layer, or layers, of the stack may be used independently of the
-layers above them, if desired.
+## BRAIN ANNEX PYTON LIBRARY
 
 _From lower to higher levels:_
 
-* **Neo4j graph database** (v. 4.4)
+* **InterGraph library** (low-level, database-specific layer)
 
 * **NeoAccess library** (python interface offering many services)
 
 * **NeoSchema library** (optional Schema layer)
+* _plus several other specialized high-level libraries_
+
+---
+#### What is a "Schema layer"?
+
+A schema layer harmoniously brings together the best of the flexibility 
+("anything goes!") of graph databases, 
+and the "law and order" aspect of relational databases! 
+*  [Motivation and Overview](https://julianspolymathexplorations.blogspot.com/2022/11/schema-graph-databases-neo4j.html)
+
+* [User Guide](https://brainannex.org/docs/neoschema-user-guide.htm)
+
+* [Reference Guide](https://brainannex.org/docs/neoschema.htm)
+---
+
+## BRAIN ANNEX WEB APP
 
 * **Python/Flask** (for web API, and web app pages)
 
@@ -41,7 +70,7 @@ _From lower to higher levels:_
 
 ## What are Neo4j/Graph Databases, and why do they matter?
 If you're new, here's a 
-[gentle brief intro](https://julianspolymathexplorations.blogspot.com/2021/02/neo4j-graph-databases-intro.html). 
+[gentle brief intro](https://julianspolymathexplorations.blogspot.com/2023/10/intro-graph-databases-beginner.html). 
 
 
 # Brain Annex's Technology Stack (Details)
@@ -52,13 +81,15 @@ The libraries that are the bottom layers may also be used independently.
 ![Brain Annex Technology Stack](docs/BrainAnnex_Technology_Stack.png)
 
 
-# How to set up and use Brain Annex
+# How to set up and use Brain Annex WEB APP
 
-Brain Annex, if used in its entirety, supports both local and remote setup of the web app and of the Neo4j database.
+(Note: if you only care about the python library, just pip install it!  This section doesn't apply to you!)   
+
+The underlying graph database and the Brain Annex web app may be installed either locally or on a remote server.
 
 The database and web app may reside on the same or different machines.
 
-You may also opt to simply use some of its library: everything is very modular!
+
 
 ## SETUP
 
@@ -94,16 +125,6 @@ Most of the items in this diagram are examples of typical user-added schema:
 
 
 
-**Optional: add Neo4j Indexes and Constraints**
-
-Not strictly needed for test runs, but at some point Neo4j Indexes and Constraints 
-need to be added, for speed and reliability.
-From the Neo4j browser interface, issue the following Cypher commands:
-
-    CREATE CONSTRAINT unique_BA_ID ON (n:BA) ASSERT n.uri IS UNIQUE
-    CREATE CONSTRAINT unique_CLASS_ID ON (n:CLASS) ASSERT n.uri IS UNIQUE
-    CREATE CONSTRAINT unique_CLASS_NAME ON (n:CLASS) ASSERT n.name IS UNIQUE
-    CREATE CONSTRAINT unique_PROPERTY_ID ON (n:PROPERTY) ASSERT n.uri IS UNIQUE
 
 
 # Major components

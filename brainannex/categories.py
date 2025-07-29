@@ -1,8 +1,7 @@
 from typing import Union, List
-from brainannex.neo_schema.neo_schema import NeoSchema
-from brainannex.collections import Collections
-from neoaccess import NeoAccess
+from brainannex import NeoAccess, NeoSchema, Collections
 import pandas as pd
+
 
 
 class Categories:

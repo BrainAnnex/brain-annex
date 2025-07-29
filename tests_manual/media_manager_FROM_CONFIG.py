@@ -1,5 +1,5 @@
 from brainannex.media_manager import MediaManager
-from brainannex.neo_schema.neo_schema import NeoSchema
+from brainannex.neoschema.neo_schema import NeoSchema
 from brainannex.data_manager import DataManager
 from neoaccess import NeoAccess
 import pytest

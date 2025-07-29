@@ -14,8 +14,7 @@
 import os
 import getpass
 from configparser import ConfigParser
-from neoaccess import NeoAccess
-from brainannex import NeoSchema, UserManager
+from brainannex import NeoAccess, NeoSchema, UserManager
 
 
 print("\n--- INITIALIZING (if needed) the BrainAnnex web app, and creating a new admin user...\n")
@@ -60,7 +59,7 @@ if found_files == ['config.defaults.ini']:
 if found_files == ['config.ini']:
     print("A local, personalized, version of the config file found ('config.ini'); all configuration will be based on this file")
 else:
-    print("Two config files found: anything in 'config.ini' will over-ride any counterpart in 'config.defaults.ini'")
+    print("Two config files found: anything in 'config.ini' will take priority, and over-ride any counterpart in 'config.defaults.ini'")
 
 
 #print ("Sections found in config file(s): ", config.sections())

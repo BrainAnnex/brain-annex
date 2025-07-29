@@ -1,6 +1,6 @@
 from typing import Union, List
-from brainannex.neo_schema.neo_schema import NeoSchema
-from neoaccess import NeoAccess
+from brainannex import NeoAccess, NeoSchema
+
 
 
 class Collections:
@@ -213,7 +213,9 @@ class Collections:
 
         # Database update, with a DATA LOCK to protect against multiple concurrent calls,
         # that locates the next-available "pos" number, and creates a relationship using it.
-        # Info on using a lock this way: https://neo4j.com/docs/java-reference/4.4/transaction-management/
+        # Info on using a lock this way:
+        # https://neo4j.com/docs/java-reference/4.4/transaction-management/
+        # https://neo4j.com/docs/operations-manual/5/database-internals/concurrent-data-access/#transactions-isolation-lostupdates
         # The "OPTIONAL MATCH" is used to compute a new positional value
         q = f'''
             MATCH (ci), (collection) 
@@ -224,6 +226,20 @@ class Collections:
             WITH ci, collection
             
             OPTIONAL MATCH (existing_ci) -[r :`{membership_link_name}`]-> (collection)
+            WITH collection, ci, r.pos AS pos
+            
+            WITH collection, ci, coalesce(max(pos), -{cls.DELTA_POS}) AS largest_pos
+            WITH collection, ci, largest_pos + {cls.DELTA_POS} AS new_pos
+                      
+            MERGE (ci) -[:`{membership_link_name}` {{pos: new_pos}}]-> (collection)
+            
+            REMOVE collection._LOCK_
+            '''
+
+        # Note: coalesce(max(pos), -{cls.DELTA_POS})  gives the max value, if present, or -DELTA_POS if absent (i.e. null)
+        #       Then, by adding DELTA_POS, we ultimately get the (max value + DELTA_POS) if present, or zero if absent
+        '''
+            # Old portion that worked in Neo4j 4.4 but ran afoul of 5.26
             WITH r.pos AS pos, collection, ci
             WITH 
                 CASE WHEN pos IS NULL THEN
@@ -231,11 +247,7 @@ class Collections:
                 ELSE
                     max(pos) + {cls.DELTA_POS}
                 END AS new_pos, collection, ci
-            
-            MERGE (ci) -[:`{membership_link_name}` {{pos: new_pos}}]-> (collection)
-            
-            REMOVE collection._LOCK_
-            '''
+        '''
 
         data_binding={"collection_uri": collection_uri, "item_uri": item_uri}
 
@@ -289,13 +301,10 @@ class Collections:
                         
             OPTIONAL MATCH (existing_ci) -[r :`{membership_rel_name}`]-> (collection_to)
             WITH r.pos AS pos, collection_from, collection_to, moving_ci, old_r
-            WITH 
-                CASE WHEN pos IS NULL THEN
-                    0
-                ELSE
-                    max(pos) + {cls.DELTA_POS}
-                END AS new_pos, collection_from, collection_to, moving_ci, old_r
-            
+ 
+            WITH collection_from, collection_to, moving_ci, old_r, coalesce(max(pos), -{cls.DELTA_POS}) AS largest_pos
+            WITH collection_from, collection_to, moving_ci, old_r, largest_pos + {cls.DELTA_POS} AS new_pos
+          
             DELETE old_r
             MERGE (moving_ci)-[:`{membership_rel_name}` {{pos: new_pos}}]->(collection_to)
             '''
@@ -364,12 +373,9 @@ class Collections:
             // Attempt to locate Items already on the "to" Collection
             OPTIONAL MATCH (existing_ci) -[r :`{membership_rel_name}`]-> (collection_to)
             WITH r.pos AS pos, collection_from, collection_to
-            WITH 
-                CASE WHEN pos IS NULL THEN
-                    0                           // The "to" Collection is devoid of Items
-                ELSE
-                    max(pos) + {cls.DELTA_POS}  // A value greater than that of the last Item
-                END AS new_start_pos, collection_from, collection_to
+            
+            WITH collection_from, collection_to, coalesce(max(pos), -{cls.DELTA_POS}) AS largest_pos
+            WITH collection_from, collection_to, largest_pos + {cls.DELTA_POS} AS new_start_pos            
             
             WITH range(0, size($item_list)) AS ITEM_INDEX_LIST, 
                  new_start_pos, collection_from, collection_to

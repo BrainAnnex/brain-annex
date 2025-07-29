@@ -1,6 +1,7 @@
 from typing import Union
 
 
+
 class PyGraphVisual:
     """
     Facilitate data preparation for graph visualization that uses the Cytoscape.js library

@@ -5,15 +5,14 @@
 
 from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
 from flask_login import login_required
-from brainannex.data_manager import DataManager
-from brainannex.documentation_generator import DocumentationGenerator
-from brainannex.media_manager import MediaManager, ImageProcessing
-from brainannex.neo_schema.neo_schema import NeoSchema
-from brainannex.categories import Categories
-from brainannex.PLUGINS.documents import Documents
-import brainannex.PLUGINS.plugin_support as plugin_support
-from brainannex.upload_helper import UploadHelper
-import brainannex.utilities.exceptions as exceptions                # To give better info on Exceptions
+from app_libraries.data_manager import DataManager
+from app_libraries.documentation_generator import DocumentationGenerator
+from app_libraries.media_manager import MediaManager, ImageProcessing
+from brainannex import NeoSchema, Categories
+from app_libraries.PLUGINS.documents import Documents
+import app_libraries.PLUGINS.plugin_support as plugin_support
+from app_libraries.upload_helper import UploadHelper
+import utilities.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
 import json
