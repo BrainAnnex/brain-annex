@@ -679,7 +679,10 @@ class InterGraph:
         Return all the database indexes, and some of their attributes,
         as a Pandas dataframe.
 
-        EXAMPLE:
+        Standard (always present) column names: "name", "labelsOrTypes", "properties".
+        Other columns will depend on the (version of the) underlying graph database.
+
+        EXAMPLE of a returned dataframe::
                  labelsOrTypes              name          properties    type  uniqueness
              0    ["my_label"]  "index_23b59623"     ["my_property"]   BTREE   NONUNIQUE
              1    ["L"]            "L.client_id"       ["client_id"]   BTREE      UNIQUE
