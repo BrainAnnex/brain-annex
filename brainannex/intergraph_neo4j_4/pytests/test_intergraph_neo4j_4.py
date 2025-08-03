@@ -12,7 +12,7 @@ IMPORTANT - to run the pytests in this file, the following ENVIRONMENT VARIABLES
 """
 
 import pytest
-from brainannex.intergraph_neo4j_4.intergraph import InterGraph
+from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph
 from utilities.comparisons import compare_unordered_lists, compare_recordsets
 from datetime import datetime, date
 import os

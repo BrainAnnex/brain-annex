@@ -134,3 +134,4 @@ dmypy.json
 # Brain Annex - specific
 /notebooks/PRIVATE/
 config.ini
+quick.bat

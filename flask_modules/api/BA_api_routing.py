@@ -1881,22 +1881,25 @@ class ApiRouting:
                 #print("/get_filtered parameters: ", data_dict)
                 # EXAMPLE: {'label': 'Image', 'key_name': 'caption', 'key_value': 'history', 'order_by': '', 'skip': '0', 'limit': '10'}
 
-                # The following validation is to remedy a Cypher/Neo4j bug
-                # about unexpected results when using "SKIP" and "LIMIT" together with a "ORDER BY" by an unknown field
-                if ("order_by" in data_dict) and ("label" in data_dict):
-                    order_by_str = data_dict["order_by"]
-                    if (order_by_str) and ("," not in order_by_str):    # "ORDER BY" is present and doesn't contain multiple parts
-                                                                        # (i.e. we're sorting by just one field)
-                        assert order_by_str in NeoSchema.get_class_properties(class_node=data_dict["label"], include_ancestors=True), \
-                            f"cannot sort recordset (`{data_dict['label']}`) by the unknown property `{order_by_str}`"
 
-                recordset = DataManager.get_nodes_by_filter(data_dict)
+                recordset = DataManager.get_nodes_by_filter(data_dict)      # List of dicts, with all the field of the search results
+                #print("recordset: ", recordset)
+
+                # Build a list from the original one; for each "record" (list element which is a dict),
+                #   take only its key/value pairs where the value has an acceptable type.
+                #   This is done to remove "bytes" values (for example, encoded passwords) and other quantities
+                #   that aren't serializable with JSON
+                sanitized_recordset = [{k: v for k, v in record.items()
+                                            if (type(v) == str or type(v) == int or type(v) == bool) }
+                                       for record in recordset]
+
                 if "label" in data_dict:
-                    total_count = NeoSchema.count_data_nodes_of_class(data_dict["label"])
+                    #total_count = NeoSchema.count_data_nodes_of_class(data_dict["label"])
+                    total_count = NeoSchema.db.count_nodes(labels=data_dict["label"])
                 else:
                     total_count = None
                 response = {"status": "ok",
-                            "payload": {"recordset": recordset, "total_count": total_count}}   # Successful termination
+                            "payload": {"recordset": sanitized_recordset, "total_count": total_count}}   # Successful termination
                 #print(f"get_filtered() is returning successfully: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
                                                 #   Note: jsonify() may fail if any parts of the response are not JSON serializable

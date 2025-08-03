@@ -32,7 +32,7 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
     <!-- JavaScript -->
-    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>       <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
 </head>
 
@@ -112,7 +112,7 @@
         </tr>
         <tr>
             <td>Key Value</td><td><input type="text" size="50" v-model="key_value">
-            <span style="color: gray">Contains</span></td>
+            <span style="color: gray">Contains (if text)</span></td>
         </tr>
         <tr>
             <td>ORDER BY</td><td><input type="text" size="50" v-model="order_by">
@@ -127,7 +127,9 @@
     </table>
 
     <br>
-    <button @click="submit_query">Submit query</button>
+    <button @click="submit_query" v-bind:disabled="!labels">
+        Submit query <span v-if="!labels">(MUST pick a label first)</span>
+    </button>
 
 </div>  <!-- class='form-box' -->
 
@@ -142,12 +144,15 @@
 
 <div style="border:1px solid #DDD; padding:10px">
 
+    <p v-if="result_array.recordset && (result_array.recordset.length === 0)" style="color: gray">
+        NO ITEMS FOUND
+    </p>
     <p v-for="(item, index) in result_array.recordset">
         [[item]]
     </p>
 
     <p v-if="result_array.total_count" style="color:gray">
-        (Total number of items with the requested label: [[result_array.total_count]])
+        <b>[[result_array.recordset.length]] records found</b> (out of a total of [[result_array.total_count]] node(s) with the requested label `[[labels]]`)
     </p>
 
 </div>
@@ -167,12 +172,12 @@
 new Vue({
     el: '#vue-root-1',
 
-    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+    delimiters: ['[[', ']]'] ,      // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
 
     data: {     // Global data for the whole page (Vue root element).  This is the handover of data from Flask to Vue
-        content_array: "TBA",                       // Array containing item-data objects
-                                                    // EXAMPLE: [{"pos":0,"uri":5,"schema_code":"h","text":"GENERAL METHODS"},
-                                                    //           {"pos":50,"uri":8,"schema_code":"i","basename":"mypix","suffix":"png"}]
+        content_array: "TBA",       // Array containing item-data objects
+                                    // EXAMPLE: [{"pos":0,"uri":5,"schema_code":"h","text":"GENERAL METHODS"},
+                                    //           {"pos":50,"uri":8,"schema_code":"i","basename":"mypix","suffix":"png"}]
         class_name: "",             // TODO: Not currently used
         labels: "",
         key_name: "",
@@ -181,11 +186,13 @@ new Vue({
         skip: 0,
         limit: 10,
 
-        result_array: [],
+        result_array: [],           // Array of dicts - object with 2 properties:
+                                    //      * total_count
+                                    //      * recordset       list of dicts, with one entry per node (record) returned by the search
 
-        status_message: "",          // Message for the user about the status of the last operation (NOT used for "waiting" status)
-        error: false,                // Whether the last server communication resulted in error
-        waiting: false               // Whether any server request is still pending
+        status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
+        error: false,               // Whether the last server communication resulted in error
+        waiting: false              // Whether any server request is still pending
     },
 
 

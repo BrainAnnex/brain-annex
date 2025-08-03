@@ -109,7 +109,7 @@ number_nodes = db.count_nodes()
 
 if number_nodes > 0:
     print(f"\nData already present in the database ({number_nodes} nodes found); "
-          f"the Schema is assumed to be present, and will NOT be imported")
+          f"the Schema is assumed to be present, and will NOT be imported\n")
 else:
     print("\nThe database is empty; now importing/creating the Schema...")
 
@@ -132,6 +132,7 @@ else:
 
 # Attempt to create the Schema for the `User` class.  If it already exists, no action will be taken
 try:
+    print("Attempt to create the Schema for the `User` class (if needed).......")
     UserManager.create_schema()
 except Exception as ex:
     print(f"INFO: `User` Schema NOT created. ", ex)
@@ -142,7 +143,7 @@ print("\nTime to create a new admin user...\n")
 print("Enter the desired username: ")
 username = input()
 
-password = getpass.getpass(f"Enter the desired password for user `{username}`: ")
+password = getpass.getpass(f"Enter the desired password for user `{username}` (at least 8 characters): ")
 
 print(f"Enter the email address for user `{username}` :")
 email = input()

@@ -1391,6 +1391,7 @@ class DataManager:
                                                           this seems to be a Cypher/Neo4j bug
                                 "skip"          The number of initial entries (in the context of specified order) to skip
                                 "limit"         The max number of entries to return
+
                             EXAMPLES:
                                 {"label": "BA", "key_name": "uri", "key_value": "sl-123"}
                                 {"label": "doctor", "limit": 25, "skip": 50}
@@ -1399,8 +1400,7 @@ class DataManager:
 
         :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node
         """
-        #TODO: intercept and decode values such as neo4j.time.DateTime(2016, 11, 5, 23, 13, 46, 0)  , for example found in Item 'sl-1087'
-        #TODO: maybe parse the filter_dict here, but move the body of the computation to NeoSchema
+        #TODO: parse the filter_dict here, but move the body of the computation to NeoSchema
 
         #print(f"In get_nodes_by_filter().  filter_dict: {filter_dict}")
 
@@ -1421,7 +1421,7 @@ class DataManager:
         key_name = filter_dict.get("key_name")
         key_value = filter_dict.get("key_value")
 
-        clause = filter_dict.get("clause")
+        #clause = filter_dict.get("clause")     # Not in current use
         order_by = filter_dict.get("order_by")
 
 
@@ -1441,110 +1441,11 @@ class DataManager:
 
         #print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | clause: {clause} | limit: {limit}")
 
-        match = cls.db.match(labels=label, key_name=key_name, key_value=key_value, clause=clause)
 
-        #result = cls.db.get_nodes(match, order_by=order_by, limit=limit)
-
-        match_structure = CypherUtils.process_match_structure(match, caller_method="get_nodes_by_filter")
-        # Unpack needed values from the match structure
-        (node, where, data_binding, dummy_node_name) = match_structure.unpack_match()   # The "node" and "where" part not currently used
-
-        labels_str = CypherUtils.prepare_labels(label)      # EXAMPLE: ":`my label`"
-        node = f"({dummy_node_name} {labels_str})"          # EXAMPLE: "(n :`my label`)"
-
-        q = f'''
-            MATCH {node} 
-            '''
-
-        if key_name:
-            q += f"WHERE {dummy_node_name}.{key_name} CONTAINS $key_value"
-
-        q += f'''   
-            RETURN {dummy_node_name} 
-            '''
-            # Formerly using {CypherUtils.prepare_where(where)} , which won't allow for "CONTAINS"
-
-        if order_by:
-            revised_order_by = cls._process_order_by(s=order_by, dummy_node_name=dummy_node_name)
-            q += f"ORDER BY {revised_order_by} \n"
-
-        if skip:
-            q += f"SKIP {skip} \n"
-
-        if limit:
-            q += f"LIMIT {limit}"
-
-        data_binding["key_value"] = key_value
-        #cls.db.debug_query_print(q, data_binding)
-
-        result = cls.db.query(q, data_binding=data_binding)
-
-        data = []
-        for record in result:
-            d = record["n"]     # A dict of field names and values.
-                                # EXAMPLE: {'PatientID': 123, 'Sex': 'F', 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
-
-            # Convert any DateTime values to strings; the time part is dropped.  TODO: this ought to get handled by NeoAccess!
-            for key, val in d.items():
-               if  type(val) == neo4j.time.DateTime:
-                    conv = neo4j.time.DateTime.to_native(val)   # This will be of type datetime.datetime
-                    d[key] = conv.strftime("%Y/%m/%d")          # EXAMPLE: "2000/01/31"
-
-            data.append(d)
-
-        return data
+        return NeoSchema.get_nodes_by_filter(labels=label, key_name=key_name, key_value=key_value,
+                                             string_match="CONTAINS", order_by=order_by, skip=skip, limit=limit)
 
 
-
-    @classmethod
-    def _process_order_by(cls, s :str, dummy_node_name="n") -> str:
-        """
-        Make the names case-insensitive, and prefix each by the dummy node name
-
-        EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
-                     returns "toLower(n.John) DESC, toLower(n.Alice), toLower(n.Bob) DESC, toLower(n.Carol)"
-                     Note: "DESC" is case-insensitive
-        :param s:   A string that is expected to be a comma-separated list of field names,
-                        with each optionally followed by (spaces and) the string "DESC"
-        :return:
-        """
-        #TODO: move to NeoAccess
-
-        # Define a regular expression pattern to match each name optionally followed by "DESC"
-        pattern = re.compile(r'(\w+)\s*(DESC)?', re.IGNORECASE)
-                                                    # (\w+)     one or more of ASCII letter, digit or underscore, in a capturing group
-                                                    # \s        blank space
-                                                    # *         zero or more times
-                                                    # (DESC)?   optional literal "DESC", in a capturing group
-
-        # Split the input string by commas to separate the individual components:
-        # each component is expected to be a field name, optionally followed by DESC
-        parts = s.split(',')
-
-        # Parse each component using the pattern
-        result = []
-        for part in parts:
-            match = pattern.match(part.strip())
-            if match:
-                field_name = match.group(1)
-                desc = bool(match.group(2))
-                if desc:
-                    result.append(f"{dummy_node_name}.{field_name} DESC")     # Taken out: toLower() - it fails for non-string cases
-                else:
-                    result.append(f"{dummy_node_name}.{field_name}")
-
-        #TODO: deal with making case-insensitive *if* field_name is of type 'STRING'
-        '''
-        q = f
-        WITH {dummy_node_name},
-        CASE
-        WHEN apoc.meta.type({dummy_node_name}.{field_name}) = 'STRING' THEN toLower({dummy_node_name}.{field_name})
-        ELSE {dummy_node_name}.{field_name}
-        END AS order_field
-        ORDER BY order_field
-        '''
-
-        return ", ".join(result)
 
 
 

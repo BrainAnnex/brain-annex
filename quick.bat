@@ -6,7 +6,7 @@
 :: ****** IMPORTANT ****** - FIRST CHANGE THE FOLDER NAME BELOW TO THE LOCATION ON YOUR MACHINE!!
 
 :: Add the root of the project files to the value of the sys.path seen inside the execution of the notebooks
-set PYTHONPATH=\Docs\- MY CODE (Win11)\Brain Annex\BA app develop
+set PYTHONPATH=\PATH_TO_YOUR_PYCHARM_PROJECT
 
 :: Start Jupyter Lab (if a port other than the default 8888 is desired, use the option --port YOUR_PORT_NUMBER)
 .\venv\Scripts\jupyter-lab
