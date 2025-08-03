@@ -3,8 +3,9 @@ from brainannex.cypher_utils import CypherUtils, CypherMatch
 from brainannex import NeoAccess
 import json
 import math
+import re                               # For REGEX
 from datetime import datetime
-from neo4j.time import DateTime     # TODO: move to NeoAccess
+import neo4j.time                       # TODO: move to InterGraph
 import pandas as pd
 import numpy as np
 
@@ -2021,9 +2022,181 @@ class NeoSchema:
 
 
     @classmethod
+    def get_nodes_by_filter(cls, class_name=None, labels=None,
+                            key_name=None, key_value=None, string_match=None,
+                            order_by=None, ignore_case=None,
+                            skip=None, limit=100) -> [dict]:
+        """
+        Locate the nodes that match the given parameters, and return them in the specified way
+
+        :param class_name:  [OPTIONAL]
+        :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
+        :param key_name:    [OPTIONAL] Property (field) name to search.  NO need to be a primary key!
+        :param key_value:   [OPTIONAL] Only applicable if arg `key_name` is present: match nodes with the
+                                specified key name/value.
+                                If key_value is a string, the match is case-sensitive;
+                                weather must a partial match is accepted will depend on the `string_match` arg
+        :param string_match:[OPTIONAL] Only applies if key_value is a string.
+                                Valid choices: "CONTAINS", "STARTS WITH", "ENDS WITH"
+        :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive instructions.
+                                EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
+                                Note: nodes lacking the order-by fields, will appear at the end of the
+                                      returned sorted list when sorting in ascending order, or at the start
+                                      when in descending order
+        :param ignore_case: [OPTIONAL] List of names of string-valued fields, for which sorting
+                                should ignore the case of the sorted values.  MUST be string-valued fields,
+                                or an Exception will result
+        :param skip:        [OPTIONAL]
+        :param limit:       [OPTIONAL]
+
+        :return:            A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
+                                Notes: The internal database ID is *not* included.
+                                       The `_SCHEMA` special property, if present, will be included.
+                                       Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
+        """
+        labels_str = CypherUtils.prepare_labels(labels)     # EXAMPLE: ":`my label`:`my other label`"
+
+        clause_list = []
+        data_binding = {}
+
+        if (key_name is not None) and (key_name != ""):
+            assert key_value is not None, \
+                "get_data_nodes_by_filter(): if argument `key_name` is present, then so must be `key_value`"
+
+            data_binding["key_value"] = key_value
+
+            if type(key_value) != str:
+                clause_list.append(f"(n.`{key_name}` = $key_value)")
+            else:
+                # key_value is a string
+                if (string_match is None or string_match == ""):
+                    clause_list.append(f"(n.`{key_name}` = $key_value)")
+                else:
+                    allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
+                    assert string_match in allowed_patters, \
+                        "get_data_nodes_by_filter(): argument `string_match`, if specified, must be one of {allowed_patters}"
+
+                    clause_list.append(f"(n.`{key_name}` {string_match} $key_value)")   # EXAMPLE: (n.`city` CONTAINS $key_value)
+
+
+        if class_name is not None:
+            # The following validation is to remedy a Cypher/Neo4j bug
+            # about unexpected results when using "SKIP" and "LIMIT" together with a "ORDER BY" by an unknown field
+            if order_by is not None:
+                if "," not in order_by:    # "ORDER BY" is present and doesn't contain multiple parts
+                                           # (i.e. we're sorting by just one field)
+                    assert order_by in NeoSchema.get_class_properties(class_node=class_name, include_ancestors=True), \
+                        f"cannot sort recordset (`{class_name}`) by the unknown property `{order_by}`"
+
+            data_binding["class_name"] = class_name
+            clause_list.append("(n.`_SCHEMA` = $class_name)")
+
+
+        if clause_list == []:
+            clause = ""
+        else:
+            clause = "WHERE " + "AND".join(clause_list)     # "WHERE", followed by AND-separated clauses
+
+
+        q = f'''
+            MATCH (n {labels_str})
+            {clause}
+            RETURN n
+            '''
+
+        if order_by:
+            revised_order_by = cls._process_order_by(s=order_by, dummy_node_name="n", ignore_case=ignore_case)
+            q += f"ORDER BY {revised_order_by} \n"
+
+        if skip:
+            q += f"SKIP {skip} \n"
+
+        if limit:
+            q += f"LIMIT {limit}"
+
+
+        #cls.db.debug_query_print(q, data_binding)
+        result = cls.db.query(q, data_binding=data_binding)
+
+        data = []
+        for record in result:
+            d = record["n"]     # A dict of field names and values.
+                                # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+
+            # Convert any DateTime values to strings; the time part is dropped.  TODO: this ought to get handled by InterGraph!
+            for key, val in d.items():
+                if  type(val) == neo4j.time.DateTime:
+                    conv = neo4j.time.DateTime.to_native(val)   # This will be of python type datetime.datetime
+                    d[key] = conv.strftime("%Y/%m/%d")          # EXAMPLE: "2000/01/31"
+                if  type(val) == neo4j.time.Date:
+                    conv = neo4j.time.Date.to_native(val)       # This will be of python type datetime.datetime
+                    d[key] = conv.strftime("%Y/%m/%d")          # EXAMPLE: "2000/01/31"
+
+            data.append(d)
+
+        return data
+
+
+    @classmethod
+    def _process_order_by(cls, s :str, dummy_node_name="n", ignore_case=None) -> str:
+        """
+        Wrap each property name in back ticks (`), and prefix it by the dummy node name;
+        optionally encapsulate it with the function toLower()
+
+        EXAMPLE:  Given   s="Alice DESC, Bob, Carol DESC, Disc Number"
+                          dummy_node_name="n"
+                          ignore_case = ["Carol"]
+                  return "n.`Alice` DESC, n.`Bob`, toLower(n.`Carol`) DESC, n.`Disc Number`"
+                  Note: The keyword "DESC" is case-insensitive
+
+        :param s:   A string that is expected to be a comma-separated list of field names,
+                        with each optionally followed by (spaces and) the string "DESC"
+        :param ignore_case: [OPTIONAL] List of field names for which the sort order
+                        should be case-insensitive
+
+        :return:    A string such as "n.`Alice` DESC, n.`Bob`, n.`Carol` DESC, n.`Dee`",
+                        suitable for a Cypher "ORDER BY" command
+        """
+        if ignore_case is None:
+            ignore_case = []
+
+        # Split the input string by commas to separate the individual components:
+        # each component is expected to be a field name, optionally followed by DESC
+        parts = s.split(',')
+
+        # Define a regular expression pattern to match each name (potentially containing blanks) optionally followed by "DESC"
+        pattern = re.compile(r'^([\w\s]+?)(?:\s+(DESC))?$', re.IGNORECASE)
+                        # ^                 at start of string
+                        # ([\w\s]+?)        one or more of ASCII letter, digit, underscore, or space in a capturing group, non-greedy
+                        # (?:\s+(DESC))?    optional literal "DESC", in a capturing group, with 1 or more blanks (not captured) before
+                        #                       note: (?:SOMESTUFF) is a non-capturing group
+                        # $                 at end of string
+
+
+        # Parse each component using the pattern
+        result = []
+        for part in parts:
+            match = pattern.match(part.strip())
+            if match:
+                field_name = match.group(1)     # EXAMPLE: "Alice"
+                desc = bool(match.group(2))     # EXAMPLES: "DESC" , or ""
+                wrapped_field_name = f"{dummy_node_name}.`{field_name}`"    # EXAMPLE: "n.`Alice`"
+                if field_name in ignore_case:
+                    wrapped_field_name = f"toLower({wrapped_field_name})"   # EXAMPLE: "toLower(n.`Alice`)"
+
+                if desc:
+                    result.append(f"{wrapped_field_name} DESC")             # EXAMPLE: "n.`Alice` DESC"
+                else:
+                    result.append(wrapped_field_name)
+
+        return ", ".join(result)
+
+
+
+    @classmethod
     def search_data_node(cls, uri = None, internal_id = None, hide_schema=True) -> Union[dict, None]:
         """
-        Return a dictionary with all the key/value pairs of the attributes of given (single) data node
+        Return a dictionary with all the key/value pairs of the properties of given (single) data node
 
         See also get_data_node() and locate_node()
 
@@ -2079,7 +2252,7 @@ class NeoSchema:
 
         :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
         :param id_type: For example, "uri";
-                            if not specified, the node ID is assumed to be Neo4j ID's
+                            if not specified, the node ID is assumed to be the internal database ID's
         :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
         :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
 
@@ -3299,7 +3472,7 @@ class NeoSchema:
                     dt_str = d_scrubbed[dt_col]     # EXAMPLE: '2015-08-15 01:02:03'
                     dt_python = datetime.fromisoformat(dt_str)  # As a python "datetime" object
                     # EXAMPLE: datetime.datetime(2015, 8, 15, 1, 2, 3)
-                    dt_neo = DateTime.from_native(dt_python)    # In Neo4j format; TODO: let NeoAccess handle this
+                    dt_neo = neo4j.time.DateTime.from_native(dt_python)    # In Neo4j format; TODO: let NeoAccess handle this
                     # EXAMPLE: neo4j.time.DateTime(2015, 8, 15, 1, 2, 3, 0)
                     d_scrubbed[dt_col] = dt_neo     # Replace the original string value
 
@@ -3545,7 +3718,7 @@ class NeoSchema:
                         dt_python = datetime.fromisoformat(dt_str)  # As a python "datetime" object
                         # EXAMPLE: datetime.datetime(2015, 8, 15, 1, 2, 3)
                         # TODO: maybe do a dataframe-wide op such as df = db.pd_datetime_to_neo4j_datetime(df) done in NeoAccess
-                        dt_neo = DateTime.from_native(dt_python)    # In Neo4j format; TODO: let NeoAccess handle this
+                        dt_neo = neo4j.time.DateTime.from_native(dt_python)    # In Neo4j format; TODO: let InterGraph handle this
                         # EXAMPLE: neo4j.time.DateTime(2015, 8, 15, 1, 2, 3, 0)
                         d_scrubbed[dt_col] = dt_neo     # Replace the original string value
 

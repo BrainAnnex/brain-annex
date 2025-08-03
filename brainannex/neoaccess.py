@@ -198,14 +198,18 @@ class NeoAccess(InterGraph):
 
 
 
-    def count_nodes(self) -> int:
+    def count_nodes(self, labels=None) -> int:
         """
-        Compute and return the total number of nodes in the database
+        Compute and return the total number of nodes in the database, optionally matching the specified labels
 
-        :return:    The total number of nodes in the database
+        :param labels:  [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
+        :return:        The number of nodes in the database (matching the labels, if specified)
         """
         #  TODO: test
-        q = "MATCH (n) RETURN COUNT(n) AS number_nodes"
+
+        labels_str = CypherUtils.prepare_labels(labels)     # EXAMPLE: ":`my label`:`my other label`"
+
+        q = f"MATCH (n {labels_str}) RETURN COUNT(n) AS number_nodes"
 
         return self.query(q, single_cell="number_nodes")
 

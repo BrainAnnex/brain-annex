@@ -522,7 +522,7 @@ class CypherUtils:
     @classmethod
     def prepare_labels(cls, labels :Union[str, List[str], Tuple[str]]) -> str:
         """
-        Turn the given string, or list/tuple of strings - representing one or more Neo4j labels - into a string
+        Turn the given string, or list/tuple of strings - representing one or more database node labels - into a string
         suitable for inclusion into a Cypher query.
         Blanks ARE allowed in the names.
         EXAMPLES:

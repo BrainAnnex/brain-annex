@@ -150,11 +150,3 @@ def test_get_nodes_by_filter(db):
 
     # TODO: add more tests
     #print(DataManager.get_nodes_by_filter({}))
-
-
-
-def test__process_order_by():
-    s = "John DESC, Alice, Bob desc, Carol"
-    result = DataManager._process_order_by(s)
-    assert result == "n.John DESC, n.Alice, n.Bob DESC, n.Carol"
-    #assert result == "toLower(n.John) DESC, toLower(n.Alice), toLower(n.Bob) DESC, toLower(n.Carol)" # Temporarily on hold
