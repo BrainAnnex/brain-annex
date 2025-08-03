@@ -4,6 +4,7 @@
 import pytest
 from utilities.comparisons import compare_unordered_lists, compare_recordsets
 from brainannex import NeoAccess, NeoSchema
+import neo4j.time
 
 
 # Provide a database connection that can be used by the various tests that need it
@@ -938,6 +939,185 @@ def test_get_data_node(db):
     db_id = db.create_node(labels="Car", properties={"make": "BMW", "color": "red"})
     result = NeoSchema.get_data_node(class_name="Car", node_id=db_id)
     assert result is None
+
+
+
+def test_get_nodes_by_filter(db):
+    db.empty_dbase()
+
+    assert NeoSchema.get_nodes_by_filter() == []
+
+    db.create_node(labels="Car", properties={"color": "yellow", "year": 1999})      # A GENERIC node (not a Data Node)
+
+    assert NeoSchema.get_nodes_by_filter() == [{"color": "yellow", "year": 1999}]
+
+    assert NeoSchema.get_nodes_by_filter(labels="Car") == [{"color": "yellow", "year": 1999}]
+
+    assert NeoSchema.get_nodes_by_filter(labels="Car", key_name="") == [{"color": "yellow", "year": 1999}]
+
+    with pytest.raises(Exception):
+        NeoSchema.get_nodes_by_filter(labels="Car", key_name="some_key_name")   # Key name but no value
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_name="color", key_value="yellow")
+    assert result == [{"color": "yellow", "year": 1999}]
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_name="color", key_value="lavender")
+    assert result == []
+
+    result = NeoSchema.get_nodes_by_filter(labels="Plane", key_name="color", key_value="yellow")
+    assert result == []
+
+    result = NeoSchema.get_nodes_by_filter(class_name="Car", key_name="color", key_value="yellow")
+    assert result == []
+
+
+    # Create a Schema
+    NeoSchema.create_class_with_properties(name="Car", properties=["color", "year", "make"], strict=True)
+
+    NeoSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "grey"})
+
+    result = NeoSchema.get_nodes_by_filter(class_name="Elephant")
+    assert result == []
+
+    result = NeoSchema.get_nodes_by_filter(class_name="Car")    # This locates 1 node
+    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}]
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car")        # This locates 2 nodes
+    expected = [{"_SCHEMA": "Car", "color": "grey", "make": "Toyota"},
+                {"color": "yellow", "year": 1999}
+               ]
+    assert compare_recordsets(result, expected)
+
+    result = NeoSchema.get_nodes_by_filter(key_name="make", key_value="toyota")
+    assert result == []     # Case-sensitive
+
+
+    result = NeoSchema.get_nodes_by_filter(key_name="make", key_value="Toy")
+    assert result == []
+
+    result = NeoSchema.get_nodes_by_filter(key_name="make", key_value="Toy", string_match="ENDS WITH")
+    assert result == []
+
+    result = NeoSchema.get_nodes_by_filter(key_name="make", key_value="yota", string_match="ENDS WITH")
+    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}]
+
+    result = NeoSchema.get_nodes_by_filter(key_name="make", key_value="Toy", string_match="STARTS WITH")
+    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}]
+
+    result = NeoSchema.get_nodes_by_filter(key_name="make", key_value="Toy", string_match="CONTAINS")
+    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}]
+
+    # Add a 3rd car
+    NeoSchema.create_data_node(class_name="Car", properties={"make": "Chevrolet", "color": "pink", "year": 1955})
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="year")
+    assert result == [{'_SCHEMA': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'},
+                      {'color': 'yellow', 'year': 1999},
+                      {'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}
+                     ]          # The record with no date will be at the end, when sorting in ascending order
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="  year    DESC    ")
+    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'},
+                      {'color': 'yellow', 'year': 1999},
+                      {'_SCHEMA': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'}
+                     ]          #  The record with no date will be at the end, when sorting in descending order
+
+
+    # Add a 4th car
+    NeoSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white", "year": 1988})
+
+     # Add a 5th car
+    NeoSchema.create_data_node(class_name="Car", properties={"make": "Chevrolet", "color": "green", "year": 1970})
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC")
+    assert result == [  {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
+                        {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
+                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
+                        {'make': 'Toyota','year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
+                        {'color': 'yellow', 'year': 1999}]
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC", limit=4)
+    assert result == [  {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
+                        {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
+                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
+                        {'make': 'Toyota','year': 1988, '_SCHEMA': 'Car', 'color': 'white'}]
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC", skip=2)
+    assert result == [  {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
+                        {'make': 'Toyota','year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
+                        {'color': 'yellow', 'year': 1999}]
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="   make   , year   DESC   ", skip=2, limit=1)
+    assert result == [  {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'}]
+
+    # Add a 6th car; notice the lower case
+    NeoSchema.create_data_node(class_name="Car", properties={"make": "fiat", "color": "blue", "year": 1970})
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="make, year")
+    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
+                        {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
+                        {'make': 'Toyota', 'year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
+                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
+                        {'make': 'fiat', 'year': 1970, '_SCHEMA': 'Car', 'color': 'blue'},
+                        {'color': 'yellow', 'year': 1999}]   # "fiat" comes after "Toyota" due to capitalization
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="make, year", ignore_case=["make"])
+    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
+                        {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
+                        {'make': 'fiat', 'year': 1970, '_SCHEMA': 'Car', 'color': 'blue'},
+                        {'make': 'Toyota', 'year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
+                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
+                        {'color': 'yellow', 'year': 1999}]  # The "fiat" is now alphabetized regardless of case
+
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="year, make DESC", ignore_case=["make"])
+    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
+                        {'make': 'fiat', 'year': 1970, '_SCHEMA': 'Car', 'color': 'blue'},
+                        {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
+                        {'make': 'Toyota', 'year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
+                        {'color': 'yellow', 'year': 1999},
+                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'}]
+
+    # Add a 7th car; notice the blank in the new field name
+    db.create_node(labels="Car", properties={"year": 2003, "decommission year": 2025})      # A GENERIC node (not a Data Node)
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="decommission year, make, year", ignore_case=["make"], limit=2)
+    assert result == [{'decommission year': 2025, 'year': 2003},
+                      {'_SCHEMA': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'}]
+
+    with pytest.raises(Exception):
+        # Trying to sort by a property (field) name unregistered with the Schema
+        NeoSchema.get_nodes_by_filter(class_name="Car", key_name="color", key_value="yellow",
+                                      order_by="SOME_UNKNOWN_FIELD")
+
+
+    # Add an 8th car, using a date as a field value
+    db.create_node(labels="Car", properties={"color": "red", "make": "Honda",
+                                             "bought_on": neo4j.time.Date(2019, 6, 1),
+                                             "certified": neo4j.time.DateTime(2019, 1, 31, 18, 59, 35)
+                                             })
+    result = NeoSchema.get_nodes_by_filter(key_name="make", key_value="Honda")  # Retrieve that latest node
+    assert result == [{'color': 'red', 'make': 'Honda',
+                       'bought_on': '2019/06/01', 'certified': '2019/01/31'}]
+
+
+
+def test__process_order_by():
+    s = "John DESC, Alice, Bob desc, Carol"
+    result = NeoSchema._process_order_by(s)
+    assert result == "n.`John` DESC, n.`Alice`, n.`Bob` DESC, n.`Carol`"
+
+    s = "make, built year, make, decommission year DESC"
+    result = NeoSchema._process_order_by(s)
+    assert result == "n.`make`, n.`built year`, n.`make`, n.`decommission year` DESC"
+
+    s = "  A B    C desc  ,   D desc,E,F G  "
+    result = NeoSchema._process_order_by(s, dummy_node_name="node")
+    assert result == "node.`A B    C` DESC, node.`D` DESC, node.`E`, node.`F G`"
+
+    s="Alice DESC,Bob,   Carol   DESC   ,Disc Number    "
+    result = NeoSchema._process_order_by(s, ignore_case = ["Carol"])
+    assert result == "n.`Alice` DESC, n.`Bob`, toLower(n.`Carol`) DESC, n.`Disc Number`"
 
 
 

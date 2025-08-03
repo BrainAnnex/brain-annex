@@ -49,3 +49,9 @@ div.content-block-title {
 	line-height:18px;
 	overflow:visible;
 }
+
+
+button:disabled {
+    background-color: #cccccc   !important;
+    color: #666666   !important;
+}
