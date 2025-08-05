@@ -131,6 +131,7 @@ class ServerCommunication
 
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
             custom_data:    If present, it is passed as a final argument to the callback function
+                            TODO: a better name might be pass_thru_data
 
         EXAMPLE of invocation:
             ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});

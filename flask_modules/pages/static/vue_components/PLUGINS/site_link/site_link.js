@@ -157,11 +157,12 @@ Vue.component('vue-plugin-sl',
                 if (current_name === null || current_name === undefined
                         ||  (typeof current_name === 'string' && current_name.trim() === '') )
                 {
-                    this.current_data.name = "[Fetching the page title...]";    // Temporary name assignment
+                    // We'll retrieve a name only if the name field is null, undefined or a string of blanks
+                    Vue.set(this.current_data, "name", "[Fetching the page title...]"); // Temporary name assignment
                     this.get_webpage_title(url);    // Query the server to find out the page title, and sets the "name" field to it
                 }
                 else
-                    console.log(`We already have a name for this webpage; no action taken`);
+                    console.log(`set_name(): we already have a name for this webpage; no action taken`);
             },
 
 
@@ -261,27 +262,37 @@ Vue.component('vue-plugin-sl',
                 (Note: letting the server handle this, to avoid running afoul of CORS.)
              */
             {
-                console.log(`Retrieving title of webpage ${url}`);
+                console.log(`Attempting to retrieve title of webpage: ${url}`);
 
-                let url_server = `/BA/api/fetch-remote-title?url=${url}`;
-                console.log(`About to contact the server at ${url_server}`);
+                // Send the request to the server, using a GET
+                const url_server_api = `/BA/api/fetch-remote-title?url=${url}`;
 
-                ServerCommunication.contact_server_OLD(url_server,  {callback_fn: this.finish_get_webpage_title});
+                console.log(`About to contact the server at ${url_server_api}`);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server_NEW(url_server_api,
+                            {method: "GET",
+                             callback_fn: this.finish_get_webpage_title
+                            });
             },
 
             finish_get_webpage_title(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of get_webpage_title() upon getting a response from the server
             {
-                console.log("Finalizing the get_webpage_title operation...");
+                console.log("Finalizing the get_webpage_title() operation...");
+
+                var new_name;
 
                 if (success)  {     // Server reported SUCCESS
-                    this.current_data.name = server_payload;
+                    new_name = server_payload;
                     // Note: if the user has already saved the record by the time this fetch terminates,
                     //       then the modified field won't get saved in the database, nor shown in the UI
                 }
                 else  {             // Server reported FAILURE
-                    this.current_data.name = "Unable to extract webpage title";
+                    new_name = "Unable to extract webpage title";
                 }
+
+                Vue.set(this.current_data, "name", new_name);
             },
 
 

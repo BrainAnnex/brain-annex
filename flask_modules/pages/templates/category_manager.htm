@@ -529,7 +529,6 @@ new Vue({
         remove_see_also(uri)
         // Remove the 'SEE ALSO' link from the current Category to the Category with the given uri
         {
-            //alert(`Sorry, removal of 'SEE ALSO' relationships not yet implemented`);
             console.log(`Attempting to remove a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the Category with URI '${uri}'`);
 
             // Send the request to the server, using a POST
@@ -546,13 +545,13 @@ new Vue({
                         {method: "POST",
                          data_obj: post_obj,
                          json_encode_send: false,
-                         callback_fn: this.finish_server_communication
+                         callback_fn: this.finish_remove_see_also,
+                         custom_data: uri
                         });
 
             this.waiting = true;        // Entering a waiting-for-server mode
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";   // Clear any message from the previous operation
-
         },
 
 
@@ -564,12 +563,18 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 console.log("    server call was successful; it returned: ", server_payload);
                 this.status_message = `SEE_ALSO relationship successfully removed`;
-                //...
+
+                // Update the page display
+                let see_also_uri = custom_data;
+                pos = this.locate_item(this.see_also_categories, see_also_uri);
+                if (pos == -1)
+                    alert("Unable to find the deleted SEE_ALSO relationship in the page. Try refreshing it");
+                else
+                    this.see_also_categories.splice(pos, 1);
             }
             else  {             // Server reported FAILURE
                 this.error = true;
-                this.status_message = `FAILED to remove SEE_ALSO relationship: ${error_message}`;
-                //...
+                this.status_message = `FAILED to remove the SEE_ALSO relationship: ${error_message}`;
             }
 
             // Final wrap-up, regardless of error or success
@@ -677,6 +682,8 @@ new Vue({
                 // Synchronize the page data to the finalized current data
                 let cat_id = custom_data[1];    // The ID of the deleted Category
                 var pos;                        // The array position of the deleted Category
+
+                // Update the page display
                 if (custom_data[0] == "parent")  {      // Deleting a parent category
                     pos = this.locate_item(this.parent_categories, cat_id);
                     if (pos == -1)
@@ -687,7 +694,7 @@ new Vue({
                 else  {                                 // Deleting a sub-category
                     pos = this.locate_item(this.subcategories, cat_id);
                     if (pos == -1)
-                        alert("Unable to find the deleted Subcategory in the page. Try refreshing");
+                        alert("Unable to find the deleted Subcategory in the page. Try refreshing it");
                     else
                         this.subcategories.splice(pos, 1);
                 }
@@ -701,18 +708,22 @@ new Vue({
             this.waiting = false;           // Make a note that the asynchronous operation has come to an end
         },
 
+
+
         locate_item(arr, uri)
-        // Locate a Category, specified by its ID, in the given array (of Parent Categories or Subcategories)
+        // Locate an item in an array of object, specified by its "uri" field
+        // The array index of the first match is returned; if not found, -1 is returned
         // TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
         {
             const number_items = arr.length;
 
+            // Loop over the array
             for (var i = 0; i < number_items; i++) {
                 if (arr[i].uri == uri)
                     return i;          //  Found it
             }
 
-            return -1;    // Didn't find it
+            return -1;      // Didn't find it
         },
 
 
