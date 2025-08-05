@@ -250,7 +250,7 @@ Vue.component('vue-schema-editor',
                 this.error = false;         // Clear any error from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server_OLD(url_server,
                             {post_obj: post_obj,
                              callback_fn: this.finish_add_property});
             },
@@ -304,7 +304,7 @@ Vue.component('vue-schema-editor',
                 this.error = false;         // Clear any error from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server_OLD(url_server,
                             {post_obj: post_obj,
                              callback_fn: this.finish_delete_class});
             },
@@ -366,7 +366,7 @@ Vue.component('vue-schema-editor',
                 this.error = false;         // Clear any error from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server_OLD(url_server,
                             {post_obj: post_obj,
                              callback_fn: this.finish_delete_relationship});
             },
@@ -432,7 +432,7 @@ Vue.component('vue-schema-editor',
                 this.error = false;         // Clear any error from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server_OLD(url_server,
                             {post_obj: post_obj,
                              callback_fn: this.finish_add_relationship});
             },

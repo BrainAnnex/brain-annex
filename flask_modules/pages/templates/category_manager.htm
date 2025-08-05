@@ -12,14 +12,12 @@
         category_remarks    EXAMPLE: "Notes from class"
 
         all_categories      EXAMPLE: [{'name': 'Language', 'uri': '544'}]
-        subcategories
+        subcategories       A list with data about all the sub-categories of this Category
         parent_categories   EXAMPLE: [{'name': 'Language', 'uri': '544', 'schema_code': 'cat'}]
         see_also_categories A list with data about all the "see also" links originating from this Category
                             EXAMPLE:  [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
 
         pin_status          True if this Category is "pinned"; otherwise, False
-
-        TODO: pass the see_also data
 #}
 
 <html>
@@ -230,14 +228,14 @@ It does *NOT* delete `' + p.name + '`'"
     <div style="width:150px"><img src="/BA/pages/static/graphics/seeAlso_128_172537.png">
     </div>
 
-    <!-- Show existing SEE_ALSO links (and, TODO: offer a way to delete them) -->
+    <!-- Show all the existing SEE_ALSO links (and also offer a way to delete any of them) -->
     <div style="width:250px; font-size:12px">
         <template v-for='cat in this.see_also_categories'>
-        &diams; [[cat.name]]
-        <img @click="remove_see_also(cat.uri)"  class="clickable-icon" src='/BA/pages/static/graphics/delete_12_1493279.png' style="margin-left:5px"
-             title='NOT YET IMPLEMENTED.  SEVER the "see also" relationship betw. "{{category_name}}" and this category'
-        >
-        <br>
+            &diams; [[cat.name]]
+            <img @click="remove_see_also(cat.uri)"  class="clickable-icon" src='/BA/pages/static/graphics/delete_12_1493279.png' style="margin-left:5px"
+                 title='SEVER the "see also" relationship betw. &ldquo;{{category_name}}&rdquo; and this category'
+            >
+            <br>
         </template>
 
         <!-- Pulldown menu to add SEE_ALSO links to other existing Categories; todo: don't show existing ones -->
@@ -489,7 +487,7 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
-            ServerCommunication.contact_server(url_server,
+            ServerCommunication.contact_server_OLD(url_server,
                         {post_obj: post_obj,
                         callback_fn: this.finish_add_see_also, custom_data: this.uri_see_also_child_to_add});
         },
@@ -531,8 +529,52 @@ new Vue({
         remove_see_also(uri)
         // Remove the 'SEE ALSO' link from the current Category to the Category with the given uri
         {
-            alert(`Sorry, removal of 'SEE ALSO' relationships not yet implemented`);
+            //alert(`Sorry, removal of 'SEE ALSO' relationships not yet implemented`);
             console.log(`Attempting to remove a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the Category with URI '${uri}'`);
+
+            // Send the request to the server, using a POST
+            const url_server_api = "/BA/api/see_also";
+            const post_obj = {from_category_uri: this.category_uri,
+                              to_category_uri: uri,
+                              action: "remove"};
+
+            console.log(`About to contact the server at ${url_server_api} .  POST object:`);
+            console.log(post_obj);
+
+            // Initiate asynchronous contact with the server
+            ServerCommunication.contact_server_NEW(url_server_api,
+                        {method: "POST",
+                         data_obj: post_obj,
+                         json_encode_send: false,
+                         callback_fn: this.finish_server_communication
+                        });
+
+            this.waiting = true;        // Entering a waiting-for-server mode
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";   // Clear any message from the previous operation
+
+        },
+
+
+        finish_remove_see_also(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of get_data_from_server() upon getting a response from the server
+        {
+            console.log("Finalizing the remove_see_also() operation...");
+            console.log(`Custom data passed: ${custom_data}`);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `SEE_ALSO relationship successfully removed`;
+                //...
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED to remove SEE_ALSO relationship: ${error_message}`;
+                //...
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            //...
         },
 
 
@@ -555,7 +597,7 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
-            ServerCommunication.contact_server(url_server,
+            ServerCommunication.contact_server_OLD(url_server,
                         {post_obj: post_obj,
                         callback_fn: this.finish_add_parent_category, custom_data: this.uri_parent_to_add});
         },
@@ -618,7 +660,7 @@ new Vue({
             else
                 custom_data = ['child', child_id];
 
-            ServerCommunication.contact_server(url_server,
+            ServerCommunication.contact_server_OLD(url_server,
                         {post_obj: post_obj,
                         callback_fn: this.finish_sever_relationship, custom_data: custom_data});
         },
@@ -710,7 +752,7 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
-            ServerCommunication.contact_server(url_server,
+            ServerCommunication.contact_server_OLD(url_server,
                         {post_obj: post_obj, callback_fn: this.finish_save_name_edit});
         },
 
@@ -763,7 +805,7 @@ new Vue({
             this.waiting = true;
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";
-            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_delete_category});
+            ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_delete_category});
         },
 
         finish_delete_category(success, server_payload, error_message)
@@ -808,7 +850,7 @@ new Vue({
             this.waiting = true;        // Entering a waiting-for-server mode
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";   // Clear any message from the previous operation
-            ServerCommunication.contact_server(url_server_api,
+            ServerCommunication.contact_server_OLD(url_server_api,
                                                {post_obj: post_obj, callback_fn: this.finish_add_subcategory});
         },
 
@@ -859,7 +901,7 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
 
             // Initiate asynchronous contact with the server
-            ServerCommunication.contact_server(url_server_api,{callback_fn: this.finish_pin_category});
+            ServerCommunication.contact_server_OLD(url_server_api,{callback_fn: this.finish_pin_category});
         },
 
         finish_pin_category(success, server_payload, error_message, custom_data)

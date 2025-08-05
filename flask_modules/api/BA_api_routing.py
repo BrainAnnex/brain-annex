@@ -1517,14 +1517,15 @@ class ApiRouting:
                 Nothing
             """
             # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('from_category_uri', 'cat-12'),
-            #                              ('to_category_uri', 'cat-4732'),
-            #                              ('action', 'remove')])
+            post_data = request.form    # Example: ImmutableMultiDict([('from_category_uri', 'cat-12'),
+                                        #                              ('to_category_uri', 'cat-4732'),
+                                        #                              ('action', 'remove')])
             #print(post_data)
 
             try:
                 data_dict = cls.extract_post_pars(post_data,
                                                   required_par_list=['from_category_uri', 'to_category_uri', 'action'])
+
                 if data_dict["action"] == "add":
                     Categories.create_see_also(from_category=data_dict["from_category_uri"], to_category=data_dict["to_category_uri"])
                 elif data_dict["action"] == "remove":
@@ -1540,6 +1541,7 @@ class ApiRouting:
 
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
 

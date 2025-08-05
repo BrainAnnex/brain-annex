@@ -2,7 +2,7 @@
     ----------------------------------------------------------------------------------
 	MIT License
 
-    Copyright (c) 2021-24 Julian A. West and the BrainAnnex.org project.
+    Copyright (c) 2021-25 Julian A. West and the BrainAnnex.org project.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ class ServerCommunication
     Guide:  https://brainannex.org/docs/server_communication.htm
  */
 {
-    static contact_server(url_server,
+    static contact_server_OLD(url_server,
                                         {
                                             method = "GET",
                                             post_obj = {},
@@ -61,7 +61,7 @@ class ServerCommunication
             custom_data:    If present, it is passed as a final argument to the callback function
 
         EXAMPLE of invocation:
-            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_get_note});
+            ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_get_note});
 
         EXAMPLE of callback_fn:
 
@@ -70,7 +70,7 @@ class ServerCommunication
             //      success:        boolean indicating whether the server call succeeded
             //      server_payload: whatever the server returned (stripped of information about the success of the operation)
             //      error_message:  a string only applicable in case of failure
-            //      custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
+            //      custom_data:    whatever JavaScript structure, if any, was passed by the contact_server_OLD() call
             {
                 console.log("Finalizing the get_note operation...");
 
@@ -85,23 +85,23 @@ class ServerCommunication
 
      */
     {
-        // TODO: more argument checking
+        // TODO: phase out
         if (typeof post_obj !== 'object') {
-            alert("ERROR in invocation of contact_server(): the `post_obj` argument is not an Object");
+            alert("ERROR in invocation of contact_server_OLD(): the `post_obj` argument is not an Object");
             return;
         }
 
         const post_obj_as_string = ServerCommunication.parse_POST_object(post_obj);
-        //console.log(`contact_server() converted the POST object to the following string: ${post_obj_as_string}`);
+        //console.log(`contact_server_OLD() converted the POST object to the following string: ${post_obj_as_string}`);
         if (post_obj_as_string != "")
             post_body = post_obj_as_string;     // If a post_body was passed, it will be over-ridden,
                                                 // because post_obj has higher priority
 
         /*
         if (post_body == "")
-            console.log('contact_server() - No POST data present');
+            console.log('contact_server_OLD() - No POST data present');
         else
-           console.log(`contact_server() - a POST will be used, with the following data: "${post_body}"`);
+           console.log(`contact_server_OLD() - a POST will be used, with the following data: "${post_body}"`);
         */
 
         return ServerCommunication.contact_server_JSON(url_server, post_body, callback_fn, custom_data, method);

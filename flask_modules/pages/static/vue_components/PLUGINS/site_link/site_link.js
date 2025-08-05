@@ -266,7 +266,7 @@ Vue.component('vue-plugin-sl',
                 let url_server = `/BA/api/fetch-remote-title?url=${url}`;
                 console.log(`About to contact the server at ${url_server}`);
 
-                ServerCommunication.contact_server(url_server,  {callback_fn: this.finish_get_webpage_title});
+                ServerCommunication.contact_server_OLD(url_server,  {callback_fn: this.finish_get_webpage_title});
             },
 
             finish_get_webpage_title(success, server_payload, error_message, custom_data)

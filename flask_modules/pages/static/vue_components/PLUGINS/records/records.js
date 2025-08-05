@@ -339,7 +339,7 @@ Vue.component('vue-plugin-r',
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
 
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server_OLD(url_server,
                             {post_obj: post_obj,
                              callback_fn: this.finish_get_linked_records_from_server,
                              custom_data: [rel_name, dir]});
@@ -382,7 +382,7 @@ Vue.component('vue-plugin-r',
                 let url_server = "/BA/api/get_link_summary/" + item.uri;
                 console.log(`About to contact the server at ${url_server}`);
                 this.waiting_for_links = true;
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server_OLD(url_server,
                             {callback_fn: this.finish_get_link_summary_from_server});
             },
 
@@ -429,7 +429,7 @@ Vue.component('vue-plugin-r',
                 let post_obj = {class_name: item.class_name};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server_OLD(url_server,
                             {post_obj: post_obj, callback_fn: this.finish_get_fields_from_server});
 
                 return true;
@@ -591,7 +591,7 @@ Vue.component('vue-plugin-r',
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
+                ServerCommunication.contact_server_OLD(url_server_api,
                                                    {post_obj: post_obj, callback_fn: this.finish_save});
 
                 this.waiting_mode = true;
