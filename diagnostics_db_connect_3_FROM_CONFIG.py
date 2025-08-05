@@ -7,7 +7,7 @@
 
 import os
 from configparser import ConfigParser
-from neoaccess import NeoAccess
+from brainannex import NeoAccess
 
 print("About to test the database connection, using the credentials STORED in the configuration file(s)...\n")
 
@@ -35,10 +35,10 @@ config = ConfigParser()
 
 if os.environ.get("FLASK_APP"):     # Remote deployment
     print("This is a REMOTE deployment")
-    found_files = config.read(['../config.defaults.ini', '../config.ini'])     # For server     TODO: any way to use absolute paths?
+    found_files = config.read(['config.defaults.ini', 'config.ini'])     # For server
 else:                               # Local deployment
     print("This is a LOCAL deployment")
-    found_files = config.read(['../config.defaults.ini', '../config.ini'])     # For local machine
+    found_files = config.read(['config.defaults.ini', 'config.ini'])     # For local machine
 
 #print("found_files: ", found_files)    # This will be a list of the names of the files that were found
 
