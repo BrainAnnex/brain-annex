@@ -126,7 +126,7 @@ Vue.component('vue-plugin-single-record',
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
+                ServerCommunication.contact_server_OLD(url_server_api,
                             {post_obj: post_obj,
                              callback_fn: this.finish_save
                             });

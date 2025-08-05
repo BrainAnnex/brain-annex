@@ -802,7 +802,7 @@ new Vue({
             console.log(post_obj);
 
             // Initiate asynchronous contact with the server
-            ServerCommunication.contact_server(url_server_api,
+            ServerCommunication.contact_server_OLD(url_server_api,
                         {post_obj: post_obj,
                          callback_fn: this.finish_perform_bulk_operation
                         });
@@ -895,7 +895,7 @@ new Vue({
             this.waiting = true;        // Entering a waiting-for-server mode
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";   // Clear any message from the previous operation
-            ServerCommunication.contact_server(url_server_api,
+            ServerCommunication.contact_server_OLD(url_server_api,
                                                {post_obj: post_obj, callback_fn: this.finish_add_subcategory});
         },
 
@@ -1020,7 +1020,7 @@ new Vue({
             }
 
             url_server = `/BA/api/delete/${item.uri}/${item.class_name}`;
-            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_delete, custom_data: index});
+            ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_delete, custom_data: index});
 
         },  // delete_content_item()
 
@@ -1071,7 +1071,7 @@ new Vue({
             const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
-            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_move_up, custom_data: i});
+            ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_move_up, custom_data: i});
             //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_up, i);
 
         }, // move_up_content_item
@@ -1123,7 +1123,7 @@ new Vue({
             const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
-            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_move_down, custom_data: i});
+            ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_move_down, custom_data: i});
             //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_down, i);
 
         }, // move_down_content_item
@@ -1317,7 +1317,7 @@ new Vue({
             const url_server = `/BA/api/reposition/${this.category_uri}/${uri}/${where_to}`;
             console.log(url_server);
 
-            ServerCommunication.contact_server(url_server, {callback_fn: this.finish_relocate_content_item, custom_data: i});
+            ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_relocate_content_item, custom_data: i});
             //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_relocate_content_item, i);
 
         }, // relocate_content_item

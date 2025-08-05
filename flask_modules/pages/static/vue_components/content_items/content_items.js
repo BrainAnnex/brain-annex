@@ -332,7 +332,7 @@ Vue.component('vue-content-items',
                 this.status_message = "";   // Clear any message from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
+                ServerCommunication.contact_server_OLD(url_server_api,
                             {callback_fn: this.finish_add_tag,
                              custom_data: [category_uri, category_name]
                             });
@@ -376,7 +376,7 @@ Vue.component('vue-content-items',
                 this.status_message = "";   // Clear any message from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
+                ServerCommunication.contact_server_OLD(url_server_api,
                             {callback_fn: this.finish_untag_category,
                              custom_data: category_uri
                             });
@@ -431,7 +431,7 @@ Vue.component('vue-content-items',
                 this.status_message = "";   // Clear any message from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
+                ServerCommunication.contact_server_OLD(url_server_api,
                             {callback_fn: this.finish_populate_category_links
                             });
             },

@@ -239,7 +239,7 @@ new Vue({
             this.intake_status = true;  // The continuous intake is initiated
 
             // Initiate asynchronous contact with the server
-            ServerCommunication.contact_server(url_server_api,
+            ServerCommunication.contact_server_OLD(url_server_api,
                         {post_obj: post_obj,
                          callback_fn: this.finish_engage_continuous_intake
                          });
@@ -280,7 +280,7 @@ new Vue({
             this.status_message2 = "";   // Clear any message from the previous operation
 
             // Initiate asynchronous contact with the server
-            ServerCommunication.contact_server(url_server_api,
+            ServerCommunication.contact_server_OLD(url_server_api,
                         {callback_fn: this.finish_terminate_continuous_intake});
         },
 
