@@ -719,6 +719,7 @@ class InterGraph:
         :param key:     A string with the key (property) name to which the index is to be applied
         :return:        True if a new index was created, or False otherwise
         """
+        # TODO: clarify naming, and offer option to specify a name
         existing_indexes = self.get_indexes()   # A Pandas dataframe with info about indexes;
                                                 #       in particular 2 columns named "labelsOrTypes" and "properties"
 
