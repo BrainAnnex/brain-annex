@@ -311,7 +311,7 @@ class MediaManager:
         :param class_name:  (Redundant, since implied by the uri; TODO: maybe eventually drop)
         :return:            None
         """
-        print(f"In before_update_content() - uri: `{uri}` | class_name: `{class_name}` | set_dict: {set_dict}")
+        #print(f"In before_update_content() - uri: `{uri}` | class_name: `{class_name}` | set_dict: {set_dict}")
         basename = set_dict.get("basename")
         suffix =   set_dict.get("suffix")
 

@@ -182,7 +182,7 @@ Vue.component('vue-schema-creator',
                 this.error = false;         // Clear any error from the previous operation
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server,
+                ServerCommunication.contact_server_OLD(url_server,
                             {post_obj: post_obj,
                              callback_fn: this.finish_add_class});
             },

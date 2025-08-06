@@ -154,7 +154,7 @@ Vue.component('vue-plugin-n',
                 // Prepare a URL to communicate with the server's endpoint
                 const url_server_api = "/BA/api/get_text_media/" + item_data.uri;
 
-                ServerCommunication.contact_server(url_server_api,
+                ServerCommunication.contact_server_OLD(url_server_api,
                                                   {callback_fn: this.finish_get_note});
 
                 console.log("    SENT REQUEST TO SERVER to retrieve Note whose URI is `" + item_data.uri + "`...");
@@ -364,7 +364,7 @@ Vue.component('vue-plugin-n',
                 this.error = false;   // Clear possible past message
 
                 //console.log("In 'vue-plugin-n', do_box_save().  post_obj: ", post_obj);
-                ServerCommunication.contact_server(url_server, {post_obj: post_obj,
+                ServerCommunication.contact_server_OLD(url_server, {post_obj: post_obj,
                                                                 callback_fn: this.finish_save});
 
             },  // do_box_save()

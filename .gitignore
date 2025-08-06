@@ -135,3 +135,4 @@ dmypy.json
 /notebooks/PRIVATE/
 config.ini
 quick.bat
+Caddyfile
