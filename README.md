@@ -12,12 +12,23 @@
 3) We expect to later support others, possibly Memgraph and AWS Neptune
 
 ### Do you only care about the python library?
-Simply `pip install brainannex-neo4j-4` or `pip install brainannex-neo4j-5` (based on which major version of Neo4j you use.)  
-Nothing else to do!
+Simply: 
+* `pip install brainannex-neo4jv4`  
+or 
+* `pip install brainannex-neo4jv5`  
+(based on **which major version of Neo4j** you use.)  
+Nothing else to do!  
+
+Then use it with imports such as:  
+`from brainannex import NeoAccess`  
+(notice that we are just saying `brainannex` here, NOT the full install name!)
+
+
 
 ### IMPORTANT for installing the web app - to switch between supported databases:
 1) Must change the database driver, in the first line of `requirements.txt`
-2) Must uncomment the appropriate version line in the `brainannex/__init__.py` file
+2) Must comment/uncomment the appropriate version lines in the `brainannex/__init__.py` file, 
+for the `InterGraph` module, which is database-specific.
 
 
 

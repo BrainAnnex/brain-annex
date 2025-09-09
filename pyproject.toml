@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "brainannex-neo4jv4"
+version = "5.0-rc.5"
+authors = [
+  { name = "Julian West BrainAnnex.org" },
+]
+maintainers = [
+  { email = "julian@brainannex.org" },
+]
+description = "Full-Stack Data/Knowledge Management with Neo4j"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+	"neo4j~=4.4.12",
+	"numpy~=1.26.4",
+	"pandas~=1.5.3",
+	"pillow~=10.3.0",
+	"requests~=2.28.2",
+	"pymupdf~=1.23.5",
+	"bcrypt==4.1.2"
+]
+keywords = [
+  "graph database",
+  "neo4j",
+  "knowledge graph"
+]
+
+[project.urls]
+Homepage = "https://brainannex.org"
+"Home-page" = "https://brainannex.org"
+"Bug Tracker" = "https://github.com/BrainAnnex/brain-annex/issues"
+Source = "https://github.com/BrainAnnex/brain-annex"
+Documentation = "https://brainannex.org"
+
+[tool.hatch.build.targets.wheel]
+packages = ["brainannex"]
