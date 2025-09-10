@@ -1972,7 +1972,9 @@ class NeoAccess(InterGraph):
         Export the entire Neo4j database as a JSON string.
 
         IMPORTANT: APOC must be activated in the database, to use this function.
-                   Otherwise it'll raise an Exception
+                   Otherwise it'll raise an Exception.
+                   Different versions of the Neo4j 4.4 database return different values for the dicts with type "relationship" !!!
+                        In the dicts for the "start" and "end" nodes, sometime the "properties" are included, and sometimes not!!!
 
         EXAMPLE:
         { 'nodes': 2,
@@ -2012,6 +2014,9 @@ class NeoAccess(InterGraph):
                         "properties":       the number of properties exported
                         "data":             the actual export as a JSON string that encodes a list of dict's
         """
+        # TODO: possibly more InterGraph
+        #       simplify and standardize the returned values
+
         cypher = '''
             CALL apoc.export.json.all(null, {useTypes: true, stream: true, jsonFormat: "JSON_LINES"})
             YIELD nodes, relationships, properties, data

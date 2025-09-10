@@ -1,4 +1,4 @@
-neo4j==4.4.12       # Uncomment the line that matches the database version being used
+neo4j==4.4.13       # Uncomment the line that matches the database version being used
 #neo4j==5.28.1        # Uncomment the line that matches the database version being used
 
 flask==1.1.2

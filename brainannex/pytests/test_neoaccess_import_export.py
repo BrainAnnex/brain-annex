@@ -74,6 +74,8 @@ def test_export_dbase_json(db):
     assert result['properties'] == 3
 
     actual_json = result['data']
+
+    # TODO: this must be standardized, because different versions of the 4.4 database return different values!!!
     expected_json = f'[{{"type":"node","id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},\n' \
                     f' {{"type":"node","id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}},\n' \
                     f' {{"type":"relationship","id":"{rel_id_1}","label":"LOVES","start":{{"id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},"end":{{"id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}}}}\n]'
@@ -107,6 +109,8 @@ def test_export_dbase_json(db):
     assert result['properties'] == 5    # Note that the 2 properties in the latest relationship went into the count
 
     actual_json = result['data']
+
+    # TODO: this must be standardized, because different versions of the 4.4 database return different values!!!
     expected_json = f'[{{"type":"node","id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},\n' \
                     f' {{"type":"node","id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}},\n' \
                     f' {{"id":"{rel_id_1}","type":"relationship","label":"LOVES","start":{{"id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},"end":{{"id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}}}},\n' \
@@ -205,6 +209,7 @@ def test_export_nodes_rels_json(db):
     expected_json = f'[{{"type":"node","id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},\n' \
                     f' {{"type":"node","id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}},\n' \
                     f' {{"type":"relationship","id":"{rel_id_1}","label":"LOVES","start":{{"id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},"end":{{"id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}}}}\n]'
+    # TODO: some versions of the 4.4 database return place the "id" before the "type" in the last line
     #print("RESULT:\n", result['data'])
     #print("\nEXPECTED:\n", expected_json)
 
@@ -224,6 +229,7 @@ def test_export_nodes_rels_json(db):
     assert result['properties'] == 2    # The "name" and "age" for the `Adam` node
     expected_json = f'[{{"type":"node","id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}},\n' \
                     f' {{"type":"relationship","id":"{rel_id_1}","label":"LOVES","start":{{"id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},"end":{{"id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}}}}\n]'
+    # TODO: some versions of the 4.4 database return place the "id" before the "type" in the last line
     #print("RESULT:\n", result['data'])
     #print("\nEXPECTED:\n", expected_json)
 

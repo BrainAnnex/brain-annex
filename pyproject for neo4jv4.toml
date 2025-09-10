@@ -11,7 +11,7 @@ authors = [
 maintainers = [
   { email = "julian@brainannex.org" },
 ]
-description = "Full-Stack Data/Knowledge Management with Neo4j"
+description = "Full-Stack Data/Knowledge Management with Neo4j version 4"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
@@ -21,7 +21,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-	"neo4j~=4.4.12",
+	"neo4j~=4.4.13",
 	"numpy~=1.26.4",
 	"pandas~=1.5.3",
 	"pillow~=10.3.0",
