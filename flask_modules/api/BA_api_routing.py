@@ -10,9 +10,8 @@ from app_libraries.documentation_generator import DocumentationGenerator
 from app_libraries.media_manager import MediaManager, ImageProcessing
 from brainannex import NeoSchema, Categories
 from app_libraries.PLUGINS.documents import Documents
-import app_libraries.PLUGINS.plugin_support as plugin_support
 from app_libraries.upload_helper import UploadHelper
-import utilities.exceptions as exceptions                # To give better info on Exceptions
+import brainannex.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
 import json

@@ -840,13 +840,16 @@ class InterGraph:
         """
         #TODO: offer the option to pass multiple keys
 
-        existing_constraints = self.get_constraints()
-        # Constraint is created if not already exists;
-        # a standard name for a constraint is assigned: `{label}.{key}.UNIQUE` if name was not provided
+        # A standard name for a constraint is assigned: `{label}.{key}.UNIQUE` if name was not provided
         cname = (name if name else f"{label}.{key}.UNIQUE")
+
+        # Constraint is created if not already exists
+        # TODO: this part could probably be ditched, if the "IF NOT EXISTS" is taken out of the query below
+        existing_constraints = self.get_constraints()
         if cname in list(existing_constraints['name']):
             #print("--- ALREADY EXISTS")
             return False
+
 
         try:
             q = f'''
