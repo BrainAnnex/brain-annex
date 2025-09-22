@@ -27,7 +27,7 @@
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
-    <link type="text/css"  rel="stylesheet" href="/BA/pages/static/multiselect/multiselect.css">
+    <link type="text/css"  rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
@@ -84,6 +84,10 @@
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
 
 
+
+
+
+
 <div class='form-box'>
     <span class='title'>SELECT THE CRITERIA</span><br><br>
 
@@ -107,11 +111,27 @@
             </td>
 
         </tr>
+
         <tr>
-            <td>Key Name</td><td><input type="text" size="50" v-model="key_name"></td>
+            <td>Key Names</td>
+            <td style="padding-top: 10px; color: gray">
+                SELECTED: [[selected]]<br>
+                <vue-multiselect
+                    v-model="selected"
+                    v-bind:options="{{all_labels}}"
+                    v-bind:multiple="true">
+                </vue-multiselect>
+                If more than 1 selected, an implicit OR
+            </td>
         </tr>
+
         <tr>
-            <td>Key Value</td><td><input type="text" size="50" v-model="key_value">
+            <td>Key Name (typed in)</td><td><input type="text" size="50" v-model="key_name"></td>
+        </tr>
+
+        <tr>
+            <td>Key Value</td>
+            <td><input type="text" size="50" v-model="key_value">
             <span style="color: gray">Contains (if text)</span></td>
         </tr>
         <tr>
@@ -158,21 +178,28 @@
 </div>
 
 
-</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root-1 element  ~~~~~~~~~~~~~~~~~~~~~  -->
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element "vue-root-1"  ~~~~~~~~~~~~~~~~~~~~~  -->
 
 
 
 
 
 <!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements.
-     Using type="module" because it contains imports! -->
+     The type="module" must be for imported scripts that in turn contain imports!  In that case,
+     the script below must handle both the JS import and the instantiation of Vue, to make sure
+     that the former is completed first -->
 
-<script>
-// Instantiation must come after the component definition
+<script type="module">
+// Import the JS module (it will register the component globally - and it will be completed
+// prior to the instantiation of Vue, below)
+import '/BA/pages/static/vue_components/multiselect/multiselect.js';
+
+
+// Instantiation of the Vue object (ROOT component) must come last
 new Vue({
-    el: '#vue-root-1',
+    el: '#vue-root-1',              // There should be a DIV in the HTML code with this string as id
 
-    delimiters: ['[[', ']]'] ,      // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+    delimiters: ['[[', ']]'] ,      // Changing delimiters: requesting double SQUARE brackets for Vue, to avoid interfering with Flask
 
     data: {     // Global data for the whole page (Vue root element).  This is the handover of data from Flask to Vue
         content_array: "TBA",       // Array containing item-data objects
@@ -189,6 +216,8 @@ new Vue({
         result_array: [],           // Array of dicts - object with 2 properties:
                                     //      * total_count
                                     //      * recordset       list of dicts, with one entry per node (record) returned by the search
+
+        selected: null,             // Used by the "multiselect" Vue component
 
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
         error: false,               // Whether the last server communication resulted in error
