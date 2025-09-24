@@ -4,7 +4,7 @@
 
 
 import os
-import utilities.exceptions as exceptions
+import brainannex.exceptions as exceptions
 from brainannex import NeoSchema
 from PIL import Image
 

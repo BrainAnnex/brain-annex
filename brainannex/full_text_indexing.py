@@ -2,7 +2,7 @@ import re
 import html
 from typing import Union, List, Set
 from brainannex import CypherUtils, NeoSchema
-import utilities.exceptions as exceptions
+import brainannex.exceptions as exceptions
 
 
 

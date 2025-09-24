@@ -330,7 +330,7 @@ Vue.component('vue-plugin-rs',
                 console.log(post_obj);      // EXAMPLE:  {class_name: "Quote", quote: "Inspiration exists, but it has to find us working", attribution: "Pablo Picasso"}
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
                              json_encode_send: true,
@@ -399,7 +399,7 @@ Vue.component('vue-plugin-rs',
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
                              json_encode_send: true,
@@ -473,7 +473,7 @@ Vue.component('vue-plugin-rs',
                 console.log(data_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {   data_obj: data_obj,
                                 json_encode_send: true,
                                 callback_fn: this.finish_get_fields
@@ -531,7 +531,7 @@ Vue.component('vue-plugin-rs',
                 console.log(get_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {   data_obj: get_obj,
                                 json_encode_send: false,
                                 callback_fn: this.finish_get_recordset,

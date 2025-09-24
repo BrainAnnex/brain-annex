@@ -23,7 +23,6 @@
 
 <body>
 
-<div id="vue-root">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
 
 {# HORIZONTAL STATUS BAR (fixed at the top) #}
 {% include "horiz_status_bar.htm" %}
@@ -36,8 +35,10 @@
 
 <h2 class="title">Schema Manager</h2>
 
-
 <br><br>
+
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
 
 <div class="content-block">
     <p><b>SECTION 1</b></p>
@@ -62,22 +63,23 @@
 </div>
 
 
-</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element "vue-root-1" ~~~~~~~~~~~~~~~~~~~~~  -->
 
 
 
 <!--
-    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements.
+    Will need to use type="module" (and just a single combined <script> below) if the imported JS file
+    in turn contains imports!
   -->
 <script src="/BA/pages/static/vue_components/schema_editor/schema_editor.js"></script>
-
 
 <script>
 // Instantiation of the ROOT component must come after the definition of the descendant components
 new Vue({
-    el: '#vue-root',
+    el: '#vue-root-1',
 
-    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets, to avoid interfering with Flask
+    delimiters: ['[[', ']]'] ,  // Changing delimiters: requesting double SQUARE brackets for Vue, to avoid interfering with Flask
 
     data: {     // GLOBAL DATA for the whole page (Vue root element).
 

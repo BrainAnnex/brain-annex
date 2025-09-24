@@ -92,11 +92,11 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 const post_obj = {my_post_var: "my POST value"};
                 const my_var = "some value";        // Optional parameter to pass, if needed
 
-                console.log(`About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
                              json_encode_send: false,  /* OR true, as desired */
@@ -118,10 +118,12 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
                 const my_var = "some value";        // Optional parameter to pass, if needed
 
-                console.log(`About to contact the server at ${url_server_api}`);
+                // var get_obj = {my_key, my_value};    // Optional
+
+                console.log(`About to contact the server at "${url_server_api}"`);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {method: "GET",
                              callback_fn: this.finish_server_communication,
                              custom_data: my_var
@@ -135,7 +137,13 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
             finish_server_communication(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of get_data_from_server() upon getting a response from the server
+            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+
+                success:        boolean indicating whether the server call succeeded
+                server_payload: whatever the server returned (stripped of information about the success of the operation)
+                error_message:  a string only applicable in case of failure
+                custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
+            */
             {
                 console.log("Finalizing the get_data_from_server() operation...");
                 console.log(`Custom data passed: ${custom_data}`);

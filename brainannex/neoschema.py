@@ -2023,7 +2023,7 @@ class NeoSchema:
 
     @classmethod
     def get_nodes_by_filter(cls, class_name=None, labels=None,
-                            key_name=None, key_value=None, string_match=None,
+                            key_names=None, key_value=None, string_match=None,
                             order_by=None, ignore_case=None,
                             skip=None, limit=100) -> [dict]:
         """
@@ -2031,7 +2031,7 @@ class NeoSchema:
 
         :param class_name:  [OPTIONAL]
         :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
-        :param key_name:    [OPTIONAL] Property (field) name to search.  NO need to be a primary key!
+        :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
         :param key_value:   [OPTIONAL] Only applicable if arg `key_name` is present: match nodes with the
                                 specified key name/value.
                                 If key_value is a string, the match is case-sensitive;
@@ -2046,37 +2046,41 @@ class NeoSchema:
         :param ignore_case: [OPTIONAL] List of names of string-valued fields, for which sorting
                                 should ignore the case of the sorted values.  MUST be string-valued fields,
                                 or an Exception will result
-        :param skip:        [OPTIONAL]
-        :param limit:       [OPTIONAL]
+        :param skip:        [OPTIONAL] An integer
+        :param limit:       [OPTIONAL] An integer specifying the max number of items to return
 
         :return:            A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
                                 Notes: The internal database ID is *not* included.
                                        The `_SCHEMA` special property, if present, will be included.
                                        Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
         """
+        allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
+        if string_match:
+            assert string_match in allowed_patters, \
+                "get_data_nodes_by_filter(): argument `string_match`, if specified, must be one of {allowed_patters}"
+
+
         labels_str = CypherUtils.prepare_labels(labels)     # EXAMPLE: ":`my label`:`my other label`"
 
-        clause_list = []
+        clause_list = []        # List of clauses that all must be satisfied (i.e. "AND" will go between them)
+                                # EXAMPLE:  "(n.`age` = 22)"
         data_binding = {}
 
-        if (key_name is not None) and (key_name != ""):
+        if (key_names is not None) and (key_names != ""):
             assert key_value is not None, \
-                "get_data_nodes_by_filter(): if argument `key_name` is present, then so must be `key_value`"
+                "get_data_nodes_by_filter(): if argument `key_names` is present, then so must be `key_value`"
 
             data_binding["key_value"] = key_value
 
-            if type(key_value) != str:
-                clause_list.append(f"(n.`{key_name}` = $key_value)")
+            if type(key_names) == list:
+                # Process each individual key name in turn, and put an OR between the Cypher fragments of them
+                or_list = [cls._process_key_name_value(key_name=name, key_value=key_value, string_match=string_match)
+                            for name in key_names]
+                clause = "(" + " OR ".join(or_list) + ")"
+                # EXAMPLE:  "((n.`color` = $key_value) OR (n.`trim` = $key_value))"
+                clause_list.append(clause)
             else:
-                # key_value is a string
-                if (string_match is None or string_match == ""):
-                    clause_list.append(f"(n.`{key_name}` = $key_value)")
-                else:
-                    allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
-                    assert string_match in allowed_patters, \
-                        "get_data_nodes_by_filter(): argument `string_match`, if specified, must be one of {allowed_patters}"
-
-                    clause_list.append(f"(n.`{key_name}` {string_match} $key_value)")   # EXAMPLE: (n.`city` CONTAINS $key_value)
+                clause_list.append(cls._process_key_name_value(key_name=key_names, key_value=key_value, string_match=string_match))
 
 
         if class_name is not None:
@@ -2135,6 +2139,32 @@ class NeoSchema:
             data.append(d)
 
         return data
+
+
+    @classmethod
+    def _process_key_name_value(cls, key_name :str, key_value, string_match=None) -> str:
+        """
+        Helper method for get_nodes_by_filter()
+
+        :param key_name:    Property (field) name
+        :param key_value:   Value to match the property name against
+        :param string_match:[OPTIONAL] Only applies if key_value is a string.
+                                (Validation is done by the calling routine)
+                                EXAMPLES: "CONTAINS", "STARTS WITH", "ENDS WITH"
+
+        :return:            A fragment of a Cypher query.  EXAMPLES:
+                                "(n.`age` = $key_value)"
+                                "(n.`city` CONTAINS $key_value)"
+        """
+        assert type(key_name) == str, \
+                f"get_nodes_by_filter(): argument `key_names`, if passed, " \
+                f"must be a string or list or strings (value passed is of type {type(key_name)})"
+
+        if string_match and type(key_value) == str:
+            return f"(n.`{key_name}` {string_match} $key_value)"   # EXAMPLE: "(n.`city` CONTAINS $key_value)"
+
+        return f"(n.`{key_name}` = $key_value)"
+
 
 
     @classmethod

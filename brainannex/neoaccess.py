@@ -389,6 +389,30 @@ class NeoAccess(InterGraph):
 
 
 
+    def find_first_duplicate(self, labels, property_name) -> Union[dict, None]:
+        """
+        Search the database for node duplicates based on the given labels/property_name pairing;
+        return the first duplicate, or None if not found
+
+        :param labels:
+        :param property_name:
+        :return:        If no duplicates are present, return None;
+                        otherwise return a dict such as
+                        {'FIRST_INTERNAL_ID': 123, 'SECOND_INTERNAL_ID': 999, 'my_property_name': "I'm a duplicate"}
+        """
+        #TODO: generalize labels; pytest
+        q = f'''
+            MATCH (n1 :{labels}), (n2 :{labels})
+            WHERE n1.`{property_name}` = n2.`{property_name}`
+            AND id(n1) <> id(n2)
+            RETURN id(n1) AS FIRST_INTERNAL_ID, id(n2) AS SECOND_INTERNAL_ID, 
+            n1.`{property_name}` AS {property_name}
+            '''
+
+        return self.query(q, single_row=True)
+
+
+        
     def get_node_labels(self, internal_id: int) -> [str]:
         """
         Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
@@ -427,6 +451,35 @@ class NeoAccess(InterGraph):
             '''
 
         return self.query(q, single_row=True)
+
+
+
+    def sample_properties(self, label :str, sample_size=10) -> {str}:
+        """
+        Take a sample of the given size of the database nodes with the given label,
+        and form a set of ALL the properties that are set on any of those nodes.
+
+        Meant as an estimate of the properties (typically) used, in current usage of the database,
+        for nodes of a given label.
+
+        CAUTION: In a graph database, any node may freely deviate - and have, or not have, any Properties
+                 it wishes.  If any type of standardization is desired, make use of the Schema layer
+
+        :param label:       Name of the database label of interest
+        :param sample_size: Number of nodes to use as a representative sampler
+        :return:            Set of property (aka field) names
+        """
+        # TODO: Pytest
+        m = self.match(labels=label)
+
+        result = self.get_nodes(match=m, limit=sample_size) # A list of dicts
+
+        # Note: outer loop in set comprehension, below, is "for d in result" (for each dict in list);
+        #       inner loop, "for k in d" (for each key in dict)
+        all_keys = {k for d in result for k in d}   # Set of all the key that occur in ANY of the dicts in result
+
+        return all_keys
+
 
 
 
@@ -1997,7 +2050,9 @@ class NeoAccess(InterGraph):
         Export the entire Neo4j database as a JSON string.
 
         IMPORTANT: APOC must be activated in the database, to use this function.
-                   Otherwise it'll raise an Exception
+                   Otherwise it'll raise an Exception.
+                   Different versions of the Neo4j 4.4 database return different values for the dicts with type "relationship" !!!
+                        In the dicts for the "start" and "end" nodes, sometime the "properties" are included, and sometimes not!!!
 
         EXAMPLE:
         { 'nodes': 2,
@@ -2037,6 +2092,9 @@ class NeoAccess(InterGraph):
                         "properties":       the number of properties exported
                         "data":             the actual export as a JSON string that encodes a list of dict's
         """
+        # TODO: possibly more InterGraph
+        #       simplify and standardize the returned values
+
         cypher = '''
             CALL apoc.export.json.all(null, {useTypes: true, stream: true, jsonFormat: "JSON_LINES"})
             YIELD nodes, relationships, properties, data
