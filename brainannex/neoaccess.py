@@ -389,6 +389,30 @@ class NeoAccess(InterGraph):
 
 
 
+    def find_first_duplicate(self, labels, property_name) -> Union[dict, None]:
+        """
+        Search the database for node duplicates based on the given labels/property_name pairing;
+        return the first duplicate, or None if not found
+
+        :param labels:
+        :param property_name:
+        :return:        If no duplicates are present, return None;
+                        otherwise return a dict such as
+                        {'FIRST_INTERNAL_ID': 123, 'SECOND_INTERNAL_ID': 999, 'my_property_name': "I'm a duplicate"}
+        """
+        #TODO: generalize labels; pytest
+        q = f'''
+            MATCH (n1 :{labels}), (n2 :{labels})
+            WHERE n1.`{property_name}` = n2.`{property_name}`
+            AND id(n1) <> id(n2)
+            RETURN id(n1) AS FIRST_INTERNAL_ID, id(n2) AS SECOND_INTERNAL_ID, 
+            n1.`{property_name}` AS {property_name}
+            '''
+
+        return self.query(q, single_row=True)
+
+
+        
     def get_node_labels(self, internal_id: int) -> [str]:
         """
         Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
