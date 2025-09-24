@@ -146,7 +146,7 @@ Vue.component('vue-plugin-h',
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
                              json_encode_send: false,

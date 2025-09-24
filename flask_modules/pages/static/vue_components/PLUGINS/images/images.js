@@ -160,7 +160,7 @@ Vue.component('vue-plugin-i',
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
                              callback_fn: this.finish_save_edit,

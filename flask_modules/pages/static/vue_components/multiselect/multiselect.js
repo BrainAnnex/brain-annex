@@ -1,8 +1,5 @@
-import multiselectMixin from './multiselectMixin.js'
-import pointerMixin from './pointerMixin.js'
-
-/* Vue-related code.  This must be included in the HTML file AFTER the Vue-containing element
- */
+import multiselectMixin from './multiselectMixin.js';
+import pointerMixin from './pointerMixin.js';
 
 
 Vue.component('vue-multiselect',
@@ -20,8 +17,8 @@ Vue.component('vue-multiselect',
             * @type {String}
             */
             name: {
-            type: String,
-            default: ''
+                type: String,
+                default: ''
             },
 
             /**
@@ -30,8 +27,8 @@ Vue.component('vue-multiselect',
             * @type {String}
             */
             selectLabel: {
-            type: String,
-            default: 'Press enter to select'
+                type: String,
+                default: 'Press enter to select'
             },
 
             /**
@@ -40,8 +37,8 @@ Vue.component('vue-multiselect',
             * @type {String}
             */
             selectedLabel: {
-            type: String,
-            default: 'Selected'
+                type: String,
+                default: 'Selected'
             },
 
             /**
@@ -50,8 +47,8 @@ Vue.component('vue-multiselect',
             * @type {String}
             */
             deselectLabel: {
-            type: String,
-            default: 'Press enter to remove'
+                type: String,
+                default: 'Press enter to remove'
             },
 
             /**
@@ -60,8 +57,8 @@ Vue.component('vue-multiselect',
             * @type {Boolean}
             */
             showLabels: {
-            type: Boolean,
-            default: true
+                type: Boolean,
+                default: true
             },
 
             /**
@@ -70,8 +67,8 @@ Vue.component('vue-multiselect',
             * @type {Integer}
             */
             limit: {
-            type: Number,
-            default: 99999
+                type: Number,
+                default: 99999
             },
 
             /**
@@ -80,8 +77,8 @@ Vue.component('vue-multiselect',
             * @type {Integer}
             */
             maxHeight: {
-            type: Number,
-            default: 300
+                type: Number,
+                default: 300
             },
 
             /**
@@ -92,8 +89,8 @@ Vue.component('vue-multiselect',
             * @type {Function}
             */
             limitText: {
-            type: Function,
-            default: count => `and ${count} more`
+                type: Function,
+                default: count => `and ${count} more`
             },
 
             /**
@@ -102,8 +99,8 @@ Vue.component('vue-multiselect',
             * @type {Boolean}
             */
             loading: {
-            type: Boolean,
-            default: false
+                type: Boolean,
+                default: false
             },
 
             /**
@@ -112,8 +109,8 @@ Vue.component('vue-multiselect',
             * @type {Boolean}
             */
             disabled: {
-            type: Boolean,
-            default: false
+                type: Boolean,
+                default: false
             },
 
             /**
@@ -122,22 +119,24 @@ Vue.component('vue-multiselect',
             * @type {String}
             */
             openDirection: {
-            type: String,
-            default: ''
+                type: String,
+                default: ''
             },
 
             showNoResults: {
-            type: Boolean,
-            default: true
+                type: Boolean,
+                default: true
             },
 
             tabindex: {
-            type: Number,
-            default: 0
+                type: Number,
+                default: 0
             }
 
         }, // END props
 
+
+        // TEMPLATE
         template: `
             <div
                 :tabindex="searchable ? -1 : tabindex"
@@ -253,45 +252,46 @@ Vue.component('vue-multiselect',
             `,  // END template
 
 
+        // COMPUTED
         computed: {
-              visibleValue () {
+            visibleValue () {
                 return this.multiple
                   ? this.internalValue.slice(0, this.limit)
                   : []
-              },
+            },
 
-              deselectLabelText () {
+            deselectLabelText () {
                 return this.showLabels
                   ? this.deselectLabel
                   : ''
-              },
+            },
 
-              selectLabelText () {
+            selectLabelText () {
                 return this.showLabels
                   ? this.selectLabel
                   : ''
-              },
+            },
 
-              selectedLabelText () {
+            selectedLabelText () {
                 return this.showLabels
                   ? this.selectedLabel
                   : ''
-              },
+            },
 
-              inputStyle () {
+            inputStyle () {
                 if (this.multiple && this.value && this.value.length) {
                   // Hide input by setting the width to 0 allowing it to receive focus
                   return this.isOpen ? { 'width': 'auto' } : { 'width': '0', 'position': 'absolute' }
                 }
-              },
+            },
 
-              contentStyle () {
+            contentStyle () {
                 return this.options.length
                   ? { 'display': 'inline-block' }
                   : { 'display': 'block' }
-              },
+            },
 
-              isAbove () {
+            isAbove () {
                 if (this.openDirection === 'above' || this.openDirection === 'top') {
                   return true
                 } else if (this.openDirection === 'below' || this.openDirection === 'bottom') {
@@ -299,28 +299,9 @@ Vue.component('vue-multiselect',
                 } else {
                   return this.prefferedOpenDirection === 'above'
                 }
-              }
+            }
 
         }  // END computed
 
     }
 );  // end component 'multiselect'
-
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-// Instantiation of the Vue root element must come after the component definition
-new Vue({
-    el: '#vue-root-1',      // There should be a DIV in the main HTML code with this id
-
-    // data and methods for the root component
-    data: {
-        selected: null
-    },
-
-    methods : {
-    }
-});

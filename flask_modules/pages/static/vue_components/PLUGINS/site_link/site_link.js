@@ -270,7 +270,7 @@ Vue.component('vue-plugin-sl',
                 console.log(`About to contact the server at ${url_server_api}`);
 
                 // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {method: "GET",
                              callback_fn: this.finish_get_webpage_title
                             });
@@ -336,7 +336,7 @@ Vue.component('vue-plugin-sl',
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server, using POST data
-                ServerCommunication.contact_server_NEW(url_server_api,
+                ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
                              json_encode_send: false,

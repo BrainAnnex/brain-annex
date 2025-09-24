@@ -1,6 +1,13 @@
 <!DOCTYPE html>
-{#  Flask-passed parameters: label_list, header_list, record_list,
-    inbound_headers, outbound_headers, inbound_counts, outbound_counts
+{#  Flask-passed parameters:
+        label_list          List of all the node labels present in the database
+                                EXAMPLE: ["my_label_1", "my_label_2"]
+        header_list
+        record_list,
+        inbound_headers
+        outbound_headers
+        inbound_counts
+        outbound_counts
  #}
 
 <html lang="en">
@@ -85,7 +92,7 @@ Choose a label:
     {% endfor %}
 </tr>
 
-{% for record in record_list%}
+{% for record in record_list %}
     <tr>
         <td style="color:#AAA">{{loop.index}}</td>  {# Showing the row count #}
         {% for value in record %}
