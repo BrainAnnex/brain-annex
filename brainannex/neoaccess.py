@@ -412,7 +412,7 @@ class NeoAccess(InterGraph):
         return self.query(q, single_row=True)
 
 
-        
+
     def get_node_labels(self, internal_id: int) -> [str]:
         """
         Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID

@@ -1938,7 +1938,7 @@ class ApiRouting:
 
 
             try:
-                recordset = DataManager.get_nodes_by_filter(json_data)      # List of dicts, with all the fields of the search results
+                recordset = DataManager.get_nodes_by_filter(json_data)  # List of dicts, with all the fields of the search results
                 #print("recordset: ", recordset)
 
                 # Build a list from the original database-query result; for each "record" (list element which is a dict),
@@ -1949,9 +1949,9 @@ class ApiRouting:
                                             if (type(v) == str or type(v) == int or type(v) == bool) }
                                        for record in recordset]
 
-                if "label" in data_dict:
-                    #total_count = NeoSchema.count_data_nodes_of_class(data_dict["label"])
-                    total_count = NeoSchema.db.count_nodes(labels=data_dict["label"])
+                if "label" in json_data:
+                    #total_count = NeoSchema.count_data_nodes_of_class(json_data["label"])
+                    total_count = NeoSchema.db.count_nodes(labels=json_data["label"])
                 else:
                     total_count = None
                 response = {"status": "ok",
@@ -1959,6 +1959,7 @@ class ApiRouting:
                 #print(f"get_filtered() is returning successfully: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
                                                 #   Note: jsonify() may fail if any parts of the response are not JSON serializable
+
             except Exception as ex:
                 response = {"status": "error", "error_message": f"/get_filtered web API endpoint: {ex}" }    # Error termination
                 #print(f"get_filtered() is returning with error: `{response}`")

@@ -719,22 +719,31 @@ class InterGraph:
         :param key:     A string with the key (property) name to which the index is to be applied
         :return:        True if a new index was created, or False otherwise
         """
+        # TODO: clarify naming, and offer option to specify a name
         existing_indexes = self.get_indexes()   # A Pandas dataframe with info about indexes;
                                                 #       in particular 2 columns named "labelsOrTypes" and "properties"
 
-        # Index is created if not already exists.
-        # a standard name for the index is assigned: `{label}.{key}`
+        # Ditch Pandas dataframe rows where either column "labelsOrTypes" or "properties" is missing
+        # (this would be the case for indexes of type "LOOKUP", which won't have "labelsOrTypes" nor "properties")
+        existing_indexes = existing_indexes.dropna(subset=["labelsOrTypes", "properties"])
+
+        # Proceed by row (axis=1) along the Pandas dataframe `existing_indexes`, and assemble a list of pairs.
+        # The 1st element in the pairs consists of underscore-separated `labelsOrTypes` entries;
+        # the 2nd element in the pairs consists of underscore-separated `properties` entries
         existing_standard_name_pairs = list(existing_indexes.apply(
-            lambda x: ("_".join(x['labelsOrTypes']), "_".join(x['properties'])), axis=1))   # Proceed by row
+            lambda x: ("_".join(x['labelsOrTypes']), "_".join(x['properties'])), axis=1))
         """
         For example, if the Pandas dataframe existing_indexes contains the following columns: 
                             labelsOrTypes     properties
                 0                   [car]  [color, make]
                 1                [person]          [sex]
                 
-        then existing_standard_names will be:  [('car', 'color_make'), ('person', 'sex')]
+        then existing_standard_name_pairs will be:  [('car', 'color_make'), ('person', 'sex')]
         """
 
+
+        # Index is created if not already exists.
+        # a standard name for the index is assigned: `{label}.{key}`
         if (label, key) not in existing_standard_name_pairs:
             q = f'CREATE INDEX `{label}.{key}` FOR (s:`{label}`) ON (s.`{key}`)'
             self.query(q)
