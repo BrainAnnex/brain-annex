@@ -8,9 +8,9 @@ from flask_login import login_required
 from app_libraries.data_manager import DataManager
 from app_libraries.documentation_generator import DocumentationGenerator
 from app_libraries.media_manager import MediaManager, ImageProcessing
-from brainannex import NeoSchema, Categories
 from app_libraries.PLUGINS.documents import Documents
 from app_libraries.upload_helper import UploadHelper
+from brainannex import NeoSchema, Categories
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
@@ -1808,6 +1808,38 @@ class ApiRouting:
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
+        @bp.route('/field-names-by-class/<class_name>')
+        @login_required
+        def field_names_by_class(class_name):
+            """
+            Get all the field (property) names
+            registered with that class name or, if no such class exists,
+            retrieve field names typically associated with nodes with that label
+
+            EXAMPLES of invocation: http://localhost:5000/BA/api/field-names-by-class/cars
+
+            :param class_name:  The name of a Schema Class node, or of a database node label
+            :return:            A JSON object with a list of field (property) names
+                                EXAMPLE:
+                                    {
+                                        "status": "ok",
+                                        "payload": ["my_field_1", "my_field_2"]
+                                    }
+            """
+            #TODO: for now, we're just searching by label, rather than by Class
+            try:
+                # Fetch all the Properties of the given Class
+                all_props = NeoSchema.db.sample_properties(label=class_name, sample_size=10)    # Set of strings
+                payload = list(all_props)       # Convert set to list
+                response = {"status": "ok", "payload": payload}    # Successful termination
+            except Exception as ex:
+                err_details = f"/field-names-by-class :  {exceptions.exception_helper(ex)}"
+                response = {"status": "error", "error_message": err_details}    # Error termination
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
         @bp.route('/get-filtered-json', methods=['POST'])
         @login_required
         def get_filtered_JSON():     # *** NOT IN CURRENT USE; see get_filtered() ***
@@ -1847,27 +1879,23 @@ class ApiRouting:
         @login_required
         def get_filtered():
             """
-            EXAMPLES of invocation:
-                http://localhost:5000/BA/api/get_filtered?label=BA&key_name=uri&key_value=123
-                http://localhost:5000/BA/api/get_filtered?label=YouTube+Channel&order_by=name&limit=5&skip=15
-                http://localhost:5000/BA/api/get_filtered?label=Quote&order_by=attribution,quote
-                http://localhost:5000/BA/api/get_filtered?label=YouTube+Channel&clause=n.name+CONTAINS+%27science%27
-                http://localhost:5000/BA/api/get_filtered?label=Quote&clause=n.quote%20CONTAINS%20%27kiss%27&order_by=attribution,quote
+            EXAMPLE of invocation:
+                http://localhost:5000//BA/api/get_filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
 
-                Note: "+" corresponds to a blank space and "%27" corresponds to a single quote
-        
-            GET FIELDS (all optional):
-                label       To name of a node label
-                key_name    A string with the name of a node attribute;
-                                if provided, key_value must be passed, too
-                key_value   The required value for the above key; if provided, key_name must be passed, too.
-                                Note: no requirement for the key to be primary
-                clause      MUST use "n" as dummy name
-                                EXAMPLE:  n.name CONTAINS 'art'
-                order_by    Field name, or comma-separated list;
-                                each name may optionally be followed by "DESC"
-                skip        The number of initial entries (in the context of specified order) to skip
-                limit       The max number of entries to return
+            GET VARIABLE:
+                json    A JSON-encoded dict, containing the following entries:
+
+                    label       To name of a node label
+                    key_name    A string, or list of strings, with the name of a node attribute;
+                                    if provided, key_value must be passed, too
+                    key_value   The required value for the above key; if provided, key_name must be passed, too.
+                                    Note: no requirement for the key to be primary
+                    clause      MUST use "n" as dummy name   (NOT IN CURRENT USE?)
+                                    EXAMPLE:  n.name CONTAINS 'art'
+                    order_by    Field name, or comma-separated list;
+                                    each name may optionally be followed by "DESC"
+                    skip        The number of initial entries (in the context of specified order) to skip
+                    limit       The max number of entries to return
 
             RETURNED JSON PAYLOAD:
                 recordset:  A list of dicts with the filtered data
@@ -1875,18 +1903,45 @@ class ApiRouting:
                                 if no label was provided, None
             """
             # Extract the GET values
-            get_data = request.args     # Example: ImmutableMultiDict([('label', 'BA'), ('key_name', 'uri'), ('key_value', '123')])
+            get_data = request.args     # Example: Example: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
+            #print("get_data: ", get_data)
 
             try:
-                data_dict = cls.extract_get_pars(get_data)
-                #print("/get_filtered parameters: ", data_dict)
-                # EXAMPLE: {'label': 'Image', 'key_name': 'caption', 'key_value': 'history', 'order_by': '', 'skip': '0', 'limit': '10'}
+                # This operation might fail - if "json" keys is missing
+                data_dict = cls.extract_get_pars(get_data, required_par_list=["json"])
+                #print("data_dict: ", data_dict)
+                # EXAMPLE: {'json': '{"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}'}
+            except Exception as ex:
+                err_details = exceptions.exception_helper(ex)
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+                print(response_data["error_message"])
+                return jsonify(response_data)    # This function also takes care of the Content-Type header
 
 
-                recordset = DataManager.get_nodes_by_filter(data_dict)      # List of dicts, with all the field of the search results
+            json_str = data_dict["json"]
+            # EXAMPLE: the STRING {"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
+            #print("get_filtered() - JSON string: ", json_str)
+
+            # TODO: turn a lot of the code below into a JSON-helper method;
+            #       in particular, add a "json_decode" arg to extract_get_pars()
+            #       See approach in '/update_content_item_JSON'
+
+            try:
+                # This operation might fail - if there are problems in the JSON encoding
+                json_data = json.loads(json_str)    # Turn the string into a Python object
+                #print("Decoded JSON request: ", json_data)
+                # EXAMPLE:  {'label': 'German Vocabulary', 'key_name': ['English', 'German'], 'key_value': 'sucht'}
+            except Exception as ex:
+                response_data = {"status": "error", "error_message": f"Failed parsing of JSON string in request. Incorrectly formatted.  {ex}"}
+                print(response_data["error_message"])
+                return jsonify(response_data)    # This function also takes care of the Content-Type header
+
+
+            try:
+                recordset = DataManager.get_nodes_by_filter(json_data)      # List of dicts, with all the fields of the search results
                 #print("recordset: ", recordset)
 
-                # Build a list from the original one; for each "record" (list element which is a dict),
+                # Build a list from the original database-query result; for each "record" (list element which is a dict),
                 #   take only its key/value pairs where the value has an acceptable type.
                 #   This is done to remove "bytes" values (for example, encoded passwords) and other quantities
                 #   that aren't serializable with JSON

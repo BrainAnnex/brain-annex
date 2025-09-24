@@ -76,7 +76,7 @@
 
 
 
-<br><br><br><br><br>
+<br><br><br><br>
 
 <h2>Search the Database Nodes</h2>
 
@@ -101,7 +101,7 @@
             <td>Label Name</td>
 
             <td>
-                <select v-model="labels">
+                <select v-model="label" @change='lookup_fields'>
                     <option disabled value=''>[Choose a label]</option>
                        <option v-for="label in {{all_labels}}" v-bind:value="label">
                        [[label]]
@@ -115,28 +115,32 @@
         <tr>
             <td>Key Names</td>
             <td style="padding-top: 10px; color: gray">
-                SELECTED: [[selected]]<br>
+                <!--SELECTED: [[selected_fields]]<br>-->
                 <vue-multiselect
-                    v-model="selected"
-                    v-bind:options="{{all_labels}}"
+                    v-model="selected_fields"
+                    v-bind:options=available_fields
+                    placeholder="Select option (Pick a label FIRST)"
                     v-bind:multiple="true">
                 </vue-multiselect>
-                If more than 1 selected, an implicit OR
+                If more than 1 selected from menu, an implicit OR
             </td>
         </tr>
 
         <tr>
-            <td>Key Name (typed in)</td><td><input type="text" size="50" v-model="key_name"></td>
+            <td>Key Name (typed in)</td><td><input type="text" size="50" v-model="key_name">
+            <span style="color: gray">If provided, it takes priority over values from menu</span>
+            </td>
         </tr>
 
         <tr>
-            <td>Key Value</td>
-            <td><input type="text" size="50" v-model="key_value">
-            <span style="color: gray">Contains (if text)</span></td>
+            <td style="padding-top:20px">Key Value</td>
+            <td style="padding-top:20px"><input type="text" size="50" v-model="key_value">
+            <span style="color: gray">If text, Case-Sensitive, with implicit "Contains"</span></td>
         </tr>
         <tr>
             <td>ORDER BY</td><td><input type="text" size="50" v-model="order_by">
-            <span style="color: gray">Comma-separated values, optionally followed by DESC</span></td>
+            <span style="color: gray">Comma-separated values, each optionally followed by DESC</span>
+            </td>
         </tr>
         <tr>
             <td>SKIP</td><td><input type="text" size="2" v-model="skip"></td>
@@ -147,8 +151,8 @@
     </table>
 
     <br>
-    <button @click="submit_query" v-bind:disabled="!labels">
-        Submit query <span v-if="!labels">(MUST pick a label first)</span>
+    <button @click="submit_query" v-bind:disabled="!label">
+        Submit query <span v-if="!label">(MUST pick a label first)</span>
     </button>
 
 </div>  <!-- class='form-box' -->
@@ -172,7 +176,7 @@
     </p>
 
     <p v-if="result_array.total_count" style="color:gray">
-        <b>[[result_array.recordset.length]] records found</b> (out of a total of [[result_array.total_count]] node(s) with the requested label `[[labels]]`)
+        <b>[[result_array.recordset.length]] records found</b> (out of a total of [[result_array.total_count]] node(s) with the requested label `[[label]]`)
     </p>
 
 </div>
@@ -206,7 +210,7 @@ new Vue({
                                     // EXAMPLE: [{"pos":0,"uri":5,"schema_code":"h","text":"GENERAL METHODS"},
                                     //           {"pos":50,"uri":8,"schema_code":"i","basename":"mypix","suffix":"png"}]
         class_name: "",             // TODO: Not currently used
-        labels: "",
+        label: "",
         key_name: "",
         key_value: "",
         order_by: "",
@@ -217,7 +221,8 @@ new Vue({
                                     //      * total_count
                                     //      * recordset       list of dicts, with one entry per node (record) returned by the search
 
-        selected: null,             // Used by the "multiselect" Vue component
+        available_fields: [],       // Array of field names for dbase node
+        selected_fields: null,      // Used by the "multiselect" Vue component
 
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
         error: false,               // Whether the last server communication resulted in error
@@ -228,18 +233,73 @@ new Vue({
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+        lookup_fields()
+        /* Invoked when the user selects, from a pulldown menu, a dbase "label" to use for the search.
+           Contact the server to request all the field (property) names
+           typically associated with nodes that have that dbase label
+         */
+        {
+            const url_server_api = `/BA/api/field-names-by-class/${this.label}`;
+
+            console.log(`Graph-database label chosen: "${this.label}"`);
+
+            console.log(`About to contact the server at "${url_server_api}"`);
+
+            // Initiate asynchronous contact with the server
+            this.waiting = true;
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";
+
+            ServerCommunication.contact_server(url_server_api,
+                    {method: "GET", callback_fn: this.finish_lookup_fields});
+        },
+
+
+        finish_lookup_fields(success, server_payload, error_message, custom_data)
+        /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+                success:        boolean indicating whether the server call succeeded
+                server_payload: whatever the server returned (stripped of information about the success of the operation)
+                error_message:  a string only applicable in case of failure
+                custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
+        */
+        {
+            console.log("Finalizing the finish_lookup_fields() operation...");
+
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Operation completed`;
+                this.available_fields = server_payload;
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        },
+
+
+
         submit_query()
-        //
+        // Invoked when the user presses the "Submit Query" button, to perform a dbase search
         {
             const url_server_api = "/BA/api/get_filtered";
 
-            var get_obj = {label: this.labels,
-                           key_name: this.key_name, key_value: this.key_value,
+            var fields_to_search_for = "";
+
+            if (this.key_name)
+                fields_to_search_for = this.key_name;   // A manually-typed choice over-rides choices from menu
+            else if (this.selected_fields)
+                fields_to_search_for = this.selected_fields;    // Lower priority
+
+            var get_obj = {label: this.label,
+                           key_name: fields_to_search_for,
+                           key_value: this.key_value,
                            order_by: this.order_by,
                            skip: this.skip,
                            limit: this.limit};
 
-            console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+            console.log(`About to contact the server at "${url_server_api}" .  GET object:`);
             console.log(get_obj);
 
             // Initiate asynchronous contact with the server
@@ -247,8 +307,11 @@ new Vue({
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";
 
-            ServerCommunication.contact_server_NEW(url_server_api,
-                    {method: "GET", data_obj: get_obj, callback_fn: this.finish_submit_query});
+            ServerCommunication.contact_server(url_server_api,
+                    {method: "GET",
+                    data_obj: get_obj,
+                    json_encode_send: true,
+                    callback_fn: this.finish_submit_query});
         },
 
         finish_submit_query(success, server_payload, error_message)

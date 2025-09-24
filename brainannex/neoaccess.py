@@ -406,6 +406,35 @@ class NeoAccess(InterGraph):
 
 
 
+    def sample_properties(self, label :str, sample_size=10) -> {str}:
+        """
+        Take a sample of the given size of the database nodes with the given label,
+        and form a set of ALL the properties that are set on any of those nodes.
+
+        Meant as an estimate of the properties (typically) used, in current usage of the database,
+        for nodes of a given label.
+
+        CAUTION: In a graph database, any node may freely deviate - and have, or not have, any Properties
+                 it wishes.  If any type of standardization is desired, make use of the Schema layer
+
+        :param label:       Name of the database label of interest
+        :param sample_size: Number of nodes to use as a representative sampler
+        :return:            Set of property (aka field) names
+        """
+        # TODO: Pytest
+        m = self.match(labels=label)
+
+        result = self.get_nodes(match=m, limit=sample_size) # A list of dicts
+
+        # Note: outer loop in set comprehension, below, is "for d in result" (for each dict in list);
+        #       inner loop, "for k in d" (for each key in dict)
+        all_keys = {k for d in result for k in d}   # Set of all the key that occur in ANY of the dicts in result
+
+        return all_keys
+
+
+
+
 
     #####################################################################################################
 

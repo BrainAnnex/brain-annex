@@ -187,8 +187,8 @@ export default {
      * @type {String}
      */
     placeholder: {
-      type: String,
-      default: 'Select option'
+        type: String,
+        default: 'Select option'
     },
     /**
      * Allow to remove all selected values

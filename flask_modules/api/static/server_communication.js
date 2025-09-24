@@ -106,11 +106,11 @@ class ServerCommunication
 
         return ServerCommunication.contact_server_JSON(url_server, post_body, callback_fn, custom_data, method);
 
-    } // contact_server - TODO: phase out
+    } // contact_server_OLD - TODO: phase out
 
 
 
-    static contact_server_NEW(url_server,
+    static contact_server(url_server,
                                         {
                                             method = "GET",
                                             data_obj = {},
@@ -123,13 +123,19 @@ class ServerCommunication
 
         url_server:     Do NOT include a final "/"
 
-            method:         Either "GET" or "POST" - optional, by default "GET"
+            method:         [OPTIONAL] Either "GET" or "POST".  By default, "GET"
 
-            data_obj:       To be used with either GET or POST.  EXAMPLE:  {uri: 123, text: "Some data"}
+            data_obj:       [OPTIONAL] To be used with either GET or POST.
+                            Object with the data to be sent to the server, as part of the request.
+                            EXAMPLE:  {uri: 123, text: "Some data"}
 
-            json_encode_send:    If true, the data in data_obj will get JSON-encoded
+            json_encode_send: If true, the entire data_obj will get JSON-encoded, and passed in the form:
+                                json=CONVERTED_JSN_OBJECT
+                              By default, false
+                              EXAMPLE: json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}"
 
-            callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op
+            callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op()
+
             custom_data:    If present, it is passed as a final argument to the callback function
                             TODO: a better name might be pass_thru_data
 
@@ -163,7 +169,7 @@ class ServerCommunication
 
         // TODO: more argument checking
         if (typeof data_obj !== 'object') {
-            alert("ERROR in invocation of contact_server_NEW(): the `data_obj` argument is not an Object");
+            alert("ERROR in invocation of contact_server(): the `data_obj` argument is not an Object");
             return;
         }
 
@@ -171,23 +177,23 @@ class ServerCommunication
         if (json_encode_send) {
             ServerCommunication.sanitize_data_object(data_obj);    // TODO: unclear if really necessary; JSON.stringify() seems to already ditch "undeclared" values
             var data_str = JSON.stringify(data_obj);
-            console.log(`contact_server_NEW(): the data object to send is being converted to JSON as '${data_str}'`);
+            console.log(`contact_server(): the data object to send to server is first being converted to JSON as: '${data_str}'`);
             if (method == "GET")
                 data_str = "json=" + data_str;      // Start preparing a query string for the URL
         }
         else {
             var data_str = ServerCommunication.parse_data_object(data_obj);
-            console.log(`contact_server_NEW(): the data object to send is being string-encoded as "${data_str}"`);
+            console.log(`contact_server(): the data object to send is being string-encoded as "${data_str}"`);
         }
 
 
         if (method == "POST")  {
             if (json_encode_send)  {
-                console.log(`contact_server_NEW() - a POST will be used, with the following JSON data string: ${data_str}`);
+                console.log(`contact_server() - a POST will be used, with the following JSON data string: ${data_str}`);
                 var fetch_options = ServerCommunication.prepare_POST_options_JSON(data_str);    // An object
             }
             else  {
-                console.log(`contact_server_NEW() - a POST will be used, with the following data string: "${data_str}"`);
+                console.log(`contact_server() - a POST will be used, with the following data string: "${data_str}"`);
                 var fetch_options = ServerCommunication.prepare_POST_options(data_str);         // An object
             }
         }
@@ -195,13 +201,13 @@ class ServerCommunication
             if (data_str != "")
                 url_server += "?" + data_str;       // Append a query string to the URL
 
-            console.log(`contact_server_NEW() - a GET will be used, with the following URL: ${url_server}`);
+            console.log(`contact_server() - a GET will be used, with the following URL: "${url_server}"`);
             var fetch_options = ServerCommunication.prepare_GET_options();              // An object
         }
 
         return ServerCommunication.send_data_to_server(url_server, fetch_options, callback_fn, custom_data);
 
-    } // contact_server_NEW
+    } // contact_server
 
 
 
@@ -213,7 +219,7 @@ class ServerCommunication
         var server_payload = "";    // Only applicable if success_flag is true
         var error_message = "";     // Only applicable if success_flag is false
 
-        console.log("send_data_to_server(): about to start asynchronous call to ", url_server);
+        console.log(`send_data_to_server(): about to start asynchronous call to:  ${url_server}`);
         console.log("    using the following fetch_options: ", fetch_options);
 
         fetch(url_server, fetch_options)

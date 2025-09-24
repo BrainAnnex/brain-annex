@@ -1,13 +1,12 @@
-from brainannex import NeoAccess, CypherUtils, NeoSchema, \
+from brainannex import NeoAccess, NeoSchema, \
                        Categories, FullTextIndexing, PyGraphVisual
 
 import app_libraries.PLUGINS.plugin_support as plugin_support
-from .PLUGINS.notes import Notes
-from .PLUGINS.documents import Documents
-from .upload_helper import UploadHelper
-from .media_manager import MediaManager
+from app_libraries.PLUGINS.notes import Notes
+from app_libraries.PLUGINS.documents import Documents
+from app_libraries.upload_helper import UploadHelper
+from app_libraries.media_manager import MediaManager
 
-import neo4j.time                       # TODO: move to NeoAccess
 import re                               # For REGEX
 import pandas as pd
 import os
@@ -1442,7 +1441,7 @@ class DataManager:
         #print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | clause: {clause} | limit: {limit}")
 
 
-        return NeoSchema.get_nodes_by_filter(labels=label, key_name=key_name, key_value=key_value,
+        return NeoSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
                                              string_match="CONTAINS", order_by=order_by, skip=skip, limit=limit)
 
 
