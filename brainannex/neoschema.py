@@ -2023,8 +2023,8 @@ class NeoSchema:
 
     @classmethod
     def get_nodes_by_filter(cls, class_name=None, labels=None,
-                            key_names=None, key_value=None, string_match=None,
-                            order_by=None, ignore_case=None,
+                            key_names=None, key_value=None, string_match=None, case_sensitive=True,
+                            order_by=None, sort_ignore_case=None,
                             skip=None, limit=100) -> [dict]:
         """
         Locate the nodes that match the given parameters, and return them in the specified way
@@ -2038,12 +2038,14 @@ class NeoSchema:
                                 weather must a partial match is accepted will depend on the `string_match` arg
         :param string_match:[OPTIONAL] Only applies if key_value is a string.
                                 Valid choices: "CONTAINS", "STARTS WITH", "ENDS WITH"
+        :param case_sensitive:[OPTIONAL] Only applies if key_value is a string.
+                                By default True; use False, to disregard case in string matches
         :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive instructions.
                                 EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
                                 Note: nodes lacking the order-by fields, will appear at the end of the
                                       returned sorted list when sorting in ascending order, or at the start
                                       when in descending order
-        :param ignore_case: [OPTIONAL] List of names of string-valued fields, for which sorting
+        :param sort_ignore_case: [OPTIONAL] List of names of string-valued fields, for which sorting
                                 should ignore the case of the sorted values.  MUST be string-valued fields,
                                 or an Exception will result
         :param skip:        [OPTIONAL] An integer
@@ -2074,13 +2076,14 @@ class NeoSchema:
 
             if type(key_names) == list:
                 # Process each individual key name in turn, and put an OR between the Cypher fragments of them
-                or_list = [cls._process_key_name_value(key_name=name, key_value=key_value, string_match=string_match)
+                or_list = [cls._process_key_name_value(key_name=name, key_value=key_value, string_match=string_match, case_sensitive=case_sensitive)
                             for name in key_names]
                 clause = "(" + " OR ".join(or_list) + ")"
                 # EXAMPLE:  "((n.`color` = $key_value) OR (n.`trim` = $key_value))"
                 clause_list.append(clause)
             else:
-                clause_list.append(cls._process_key_name_value(key_name=key_names, key_value=key_value, string_match=string_match))
+                clause_list.append(cls._process_key_name_value(key_name=key_names, key_value=key_value,
+                                                               string_match=string_match, case_sensitive=case_sensitive))
 
 
         if class_name is not None:
@@ -2109,7 +2112,7 @@ class NeoSchema:
             '''
 
         if order_by:
-            revised_order_by = cls._process_order_by(s=order_by, dummy_node_name="n", ignore_case=ignore_case)
+            revised_order_by = cls._process_order_by(s=order_by, dummy_node_name="n", ignore_case=sort_ignore_case)
             q += f"ORDER BY {revised_order_by} \n"
 
         if skip:
@@ -2142,36 +2145,78 @@ class NeoSchema:
 
 
     @classmethod
-    def _process_key_name_value(cls, key_name :str, key_value, string_match=None) -> str:
+    def _process_key_name_value(cls, key_name :str, key_value, string_match=None, case_sensitive=True) -> str:
         """
         Helper method for get_nodes_by_filter()
 
         :param key_name:    Property (field) name
         :param key_value:   Value to match the property name against
         :param string_match:[OPTIONAL] Only applies if key_value is a string.
-                                (Validation is done by the calling routine)
-                                EXAMPLES: "CONTAINS", "STARTS WITH", "ENDS WITH"
+                                One of the available Cypher string-matching functions.
+                                Allowed values: "CONTAINS", "STARTS WITH", "ENDS WITH"
+                                (Validation is done by the calling function)
+        :param case_sensitive: [OPTIONAL] Only applies if key_value is a string.
+                                By default True; if set to False, applies toLower to both sides.
+                                EXAMPLE:  "(toLower(n.`city`) = toLower($key_value))"
 
-        :return:            A fragment of a Cypher query.  EXAMPLES:
+        :return:            A fragment of a Cypher query, to be used to create a clause.
+                            EXAMPLES:
                                 "(n.`age` = $key_value)"
                                 "(n.`city` CONTAINS $key_value)"
+                                "(
+                                    CASE
+                                        WHEN n.`color` = toString(n.`color`)
+                                        THEN toLower(n.`color`)
+                                        ELSE n.`color`
+                                    END
+                                    = toLower($key_value)
+                                )"
         """
         assert type(key_name) == str, \
                 f"get_nodes_by_filter(): argument `key_names`, if passed, " \
-                f"must be a string or list or strings (value passed is of type {type(key_name)})"
+                f"must be a a string, or list of strings (instead, encountered type {type(key_name)})"
+                # Note: the error message is meant to make sense in the context of the calling function get_nodes_by_filter()
 
         if string_match and type(key_value) == str:
-            return f"(n.`{key_name}` {string_match} $key_value)"   # EXAMPLE: "(n.`city` CONTAINS $key_value)"
+            op = string_match
+        else:
+            op = "="
 
-        return f"(n.`{key_name}` = $key_value)"
+
+        if case_sensitive or type(key_value) != str:
+            return f"(n.`{key_name}` {op} $key_value)"                     # EXAMPLE: "(n.`city` CONTAINS $key_value)"
+        else:
+            # NOTE: if, below, we used a simpler Cypher such as
+            #       f"(toLower(n.`{key_name}`) {op} toLower($key_value))"
+            #       it would crash in scenarios where `key_value` is indeed a string, but the field `key_name` is not!
+            #       An untested alternative might be to use:  apoc.meta.type()
+
+            #q = f"(toLower(n.`{key_name}`) {op} toLower($key_value))"   # EXAMPLE: "(toLower(n.`city`) = toLower($key_value))"
+            q = f'''
+            (
+                CASE 
+                    WHEN n.`{key_name}` = toString(n.`{key_name}`) 
+                    THEN toLower(n.`{key_name}`) 
+                    ELSE n.`{key_name}` 
+                END
+                {op} toLower($key_value)
+            )
+            '''
+            return q
+
+            #return f"(toLower(n.`{key_name}`) {op} toLower($key_value))"   # EXAMPLE: "(toLower(n.`city`) = toLower($key_value))"
 
 
 
     @classmethod
     def _process_order_by(cls, s :str, dummy_node_name="n", ignore_case=None) -> str:
         """
-        Wrap each property name in back ticks (`), and prefix it by the dummy node name;
-        optionally encapsulate it with the function toLower()
+        Helper method for get_nodes_by_filter().
+
+        Parse the string s for property names (aka field names),
+        then wrap each property name in back ticks (`),
+        prefix it by the dummy node name,
+        and optionally encapsulate it with the function toLower()
 
         EXAMPLE:  Given   s="Alice DESC, Bob, Carol DESC, Disc Number"
                           dummy_node_name="n"
@@ -2182,10 +2227,15 @@ class NeoSchema:
         :param s:   A string that is expected to be a comma-separated list of field names,
                         with each optionally followed by (spaces and) the string "DESC"
         :param ignore_case: [OPTIONAL] List of field names for which the sort order
-                        should be case-insensitive
+                        should be case-insensitive.
+                        CAUTION: trying to apply ignore_case to a field that isn't string-based
+                                 (such as a numeric field), will cause error
 
-        :return:    A string such as "n.`Alice` DESC, n.`Bob`, n.`Carol` DESC, n.`Dee`",
-                        suitable for a Cypher "ORDER BY" command
+        :return:    A string suitable for a Cypher "ORDER BY" command
+                        EXAMPLES:
+                            "n.`Alice` DESC, n.`Bob`, n.`Carol` DESC, n.`Dee`"
+                            "toLower(n.`Alice`) DESC, n.`Bob`, n.`Carol` DESC, n.`Dee`"
+
         """
         if ignore_case is None:
             ignore_case = []

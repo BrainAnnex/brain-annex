@@ -135,7 +135,9 @@
         <tr>
             <td style="padding-top:20px">Key Value</td>
             <td style="padding-top:20px"><input type="text" size="50" v-model="key_value">
-            <span style="color: gray">If text, Case-Sensitive, with implicit "Contains"</span></td>
+            <span style="color: gray">If text, implicit "Contains" (sub-string)</span>
+            <input type="checkbox"  v-model="case_sensitive" style="margin-left:15px">Match Case?
+            </td>
         </tr>
         <tr>
             <td>ORDER BY</td><td><input type="text" size="50" v-model="order_by">
@@ -163,7 +165,7 @@
 </p>
 
 
-<p style="color: #CCC; margin-top:30px; margin-bottom:0">Query result:</p>
+<p style="color: #888; margin-top:30px; margin-bottom:0">Query result:</p>
 
 
 <div style="border:1px solid #DDD; padding:10px">
@@ -213,6 +215,7 @@ new Vue({
         label: "",
         key_name: "",
         key_value: "",
+        case_sensitive: false,      // Applicable to text-based searches
         order_by: "",
         skip: 0,
         limit: 10,
@@ -288,13 +291,14 @@ new Vue({
             var fields_to_search_for = "";
 
             if (this.key_name)
-                fields_to_search_for = this.key_name;   // A manually-typed choice over-rides choices from menu
+                fields_to_search_for = this.key_name;           // A manually-typed field name over-rides choices from menu
             else if (this.selected_fields)
                 fields_to_search_for = this.selected_fields;    // Lower priority
 
             var get_obj = {label: this.label,
                            key_name: fields_to_search_for,
                            key_value: this.key_value,
+                           case_sensitive: this.case_sensitive,
                            order_by: this.order_by,
                            skip: this.skip,
                            limit: this.limit};

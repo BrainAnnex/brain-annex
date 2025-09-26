@@ -1381,6 +1381,7 @@ class DataManager:
                                                     if provided, key_value must be passed, too
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
                                                     Note: no requirement for the key to be primary
+                                "case_sensitive" Boolean
                                 "clause"        TODO: NOT CURRENTLY IMPLEMENTED
                                                     MUST use "n" as dummy name.
                                                     EXAMPLE: "n.name CONTAINS 'art'"
@@ -1407,7 +1408,7 @@ class DataManager:
             f"get_nodes_by_filter(): argument `filter_dict` must be a dictionary.  " \
             f"The type of the passed argument was {type(filter_dict)}"
 
-        allowed_keys = ["label", "key_name", "key_value", "clause", "order_by", "skip", "limit"]
+        allowed_keys = ["label", "key_name", "key_value", "case_sensitive", "clause", "order_by", "skip", "limit"]
 
         # Check the validity of the keys
         for key in filter_dict:
@@ -1419,6 +1420,7 @@ class DataManager:
 
         key_name = filter_dict.get("key_name")
         key_value = filter_dict.get("key_value")
+        case_sensitive = filter_dict.get("case_sensitive")
 
         #clause = filter_dict.get("clause")     # Not in current use
         order_by = filter_dict.get("order_by")
@@ -1442,7 +1444,8 @@ class DataManager:
 
 
         return NeoSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
-                                             string_match="CONTAINS", order_by=order_by, skip=skip, limit=limit)
+                                             string_match="CONTAINS", case_sensitive=case_sensitive,
+                                             order_by=order_by, skip=skip, limit=limit)
 
 
 
