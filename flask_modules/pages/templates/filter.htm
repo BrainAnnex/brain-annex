@@ -168,15 +168,23 @@
 <p style="color: #888; margin-top:30px; margin-bottom:0">Query result:</p>
 
 
-<div style="border:1px solid #DDD; padding:10px">
+<div style="border:1px solid #DDD; padding:10px; background-color: #f4f4f4">
 
     <p v-if="search_result.recordset && (search_result.recordset.length === 0)" style="color: gray">
         NO ITEMS FOUND
     </p>
-    <p v-for="(item, index) in search_result.recordset">
-        [[item]] &nbsp;
+    <p v-for="(item, index) in search_result.recordset"
+        style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:2px;
+               background-color: white">
+        <template v-for="(val, key) in item">
+             <span style="color:grey">[[key]] :</span> `[[val]]` <span style="color:brown; font-weight: bold">|| </span>
+        </template>
+        &nbsp;
         <img src="/BA/pages/static/graphics/eye_16_173007.png" title="HIDE" alt="HIDE"
              @click="hide_record(index)" class="clickable-icon">
+        &nbsp;
+        <img src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
+             class="clickable-icon">
     </p>
 
     <p v-if="search_result.total_count" style="color:gray">

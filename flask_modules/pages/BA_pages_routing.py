@@ -489,7 +489,7 @@ class PagesRouting:
             template = "node_explorer.htm"
 
             label_list = DataManager.get_node_labels()
-            return "TEMPORARILY DISABLED"
+            #return "TEMPORARILY DISABLED"
             # TODO: fix infinite loop in print statements
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = \
                 NodeExplorer.all_nodes_by_label(label)
