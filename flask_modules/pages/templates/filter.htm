@@ -170,15 +170,17 @@
 
 <div style="border:1px solid #DDD; padding:10px">
 
-    <p v-if="result_array.recordset && (result_array.recordset.length === 0)" style="color: gray">
+    <p v-if="search_result.recordset && (search_result.recordset.length === 0)" style="color: gray">
         NO ITEMS FOUND
     </p>
-    <p v-for="(item, index) in result_array.recordset">
-        [[item]]
+    <p v-for="(item, index) in search_result.recordset">
+        [[item]] &nbsp;
+        <img src="/BA/pages/static/graphics/eye_16_173007.png" title="HIDE" alt="HIDE"
+             @click="hide_record(index)" class="clickable-icon">
     </p>
 
-    <p v-if="result_array.total_count" style="color:gray">
-        <b>[[result_array.recordset.length]] records found</b> (out of a total of [[result_array.total_count]] node(s) with the requested label `[[label]]`)
+    <p v-if="search_result.total_count" style="color:gray">
+        <b>[[search_result.recordset.length]] records found</b> (out of a total of [[search_result.total_count]] node(s) with the requested label `[[label]]`)
     </p>
 
 </div>
@@ -220,9 +222,9 @@ new Vue({
         skip: 0,
         limit: 10,
 
-        result_array: [],           // Array of dicts - object with 2 properties:
-                                    //      * total_count     Integer
-                                    //      * recordset       List of dicts, with one entry per node (record) returned by the search
+        search_result: [],          // Object with 2 properties:
+                                    //      * total_count     Integer (total number of nodes with requested label in dbase)
+                                    //      * recordset       Array of dicts, with one entry per node (record) returned by the search
 
         available_fields: [],       // Array of field names for dbase node
         selected_fields: null,      // Used by the "multiselect" Vue component
@@ -326,7 +328,7 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 console.log("    server call was successful; it returned: " , server_payload);
                 // server_payload is expected to be an oject with 2 properties: `total_count` and `recordset`
-                this.result_array = server_payload;
+                this.search_result = server_payload;
                 this.status_message = `Data successfully retrieved`;
             }
             else  {             // Server reported FAILURE
@@ -336,6 +338,17 @@ new Vue({
 
             // Final wrap-up, regardless of error or success
             this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        },
+
+
+
+        hide_record(record_index)
+        // Invoked when the user click on the icon next to a record from the search result, to hide it
+        {
+            console.log(`hide_record() invoked for record ${record_index}`);
+
+            // Delete 1 element from the specified index position
+            this.search_result.recordset.splice(record_index, 1);
         }
 
     } // METHODS
