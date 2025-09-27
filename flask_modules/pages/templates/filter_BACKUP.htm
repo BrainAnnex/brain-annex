@@ -171,12 +171,12 @@
 
 <div style="border:1px solid #DDD; padding:10px; background-color: #f4f4f4">
 
-    <p v-if="recordset_summary && (recordset_array.length === 0)" style="color: gray">
+    <p v-if="recordset_array && (recordset_array.length === 0)" style="color: gray">
         NO ITEMS FOUND
     </p>
 
     <p v-for="(item, index) in recordset_array"
-        style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:3px;
+        style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:2px;
                background-color: white">
         <template v-for="(val, key) in item.data">
              <span style="color:grey">[[key]] :</span> `[[val]]` <span style="color:brown; font-weight: bold">|| </span>
@@ -185,16 +185,9 @@
         <img src="/BA/pages/static/graphics/eye_16_173007.png" title="HIDE" alt="HIDE"
              @click="hide_record(index)" class="clickable-icon">
         &nbsp;
-
-        <span v-if="item.controls.expand">
-            LINKS
-            <img src="/BA/pages/static/graphics/arrow_down_22_79479.png" title="Hide LINKS" alt="Hide LINKS"
-              @click="item.controls.expand = !item.controls.expand" class="clickable-icon">
-        </span>
-
-        <img v-else src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
+        <img src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
              @click="item.controls.expand = !item.controls.expand" class="clickable-icon">
-
+        <span v-if="item.controls.expand"> LINKS</span>
     </p>
 
     <p v-if="recordset_summary" style="color:gray">
