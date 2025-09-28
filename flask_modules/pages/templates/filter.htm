@@ -115,7 +115,7 @@
 
         <tr>
             <td style="border-left: 2px solid green; padding-left: 3px;">Key Names</td>
-            <td style="padding-top: 10px; color: gray">
+            <td style="padding-top: 10px">
                 <!--SELECTED: [[selected_fields]]<br>-->
                 <vue-multiselect
                     v-model="selected_fields"
@@ -123,26 +123,26 @@
                     placeholder="Select option (Pick a label FIRST)"
                     v-bind:multiple="true">
                 </vue-multiselect>
-                <span style="display: block; text-align: right">If more than 1 selected from menu, an implicit OR</span>
+                <span class="form-comment" style="display: block; text-align: right">If more than 1 selected from menu, an implicit OR</span>
             </td>
         </tr>
 
         <tr>
             <td style="border-left: 2px solid green; padding-left: 3px;">Key Name (typed in)</td><td><input type="text" size="50" v-model="key_name">
-            <span style="color: gray">If provided, it takes priority over values from menu</span>
+            <span class="form-comment">If provided, it takes priority over values from menu</span>
             </td>
         </tr>
 
         <tr>
             <td style="padding-top:20px">Key Value</td>
             <td style="padding-top:20px"><input type="text" size="50" v-model="key_value">
-            <span style="color: gray">If text, implicit "Contains" (sub-string)</span>
+            <span class="form-comment">If text, implicit "Contains" (sub-string)</span>
             <input type="checkbox"  v-model="case_sensitive" style="margin-left:15px">Match Case?
             </td>
         </tr>
         <tr>
             <td>ORDER BY</td><td><input type="text" size="50" v-model="order_by">
-            <span style="color: gray">Comma-separated values, each optionally followed by DESC</span>
+            <span class="form-comment">Comma-separated values, each optionally followed by DESC</span>
             </td>
         </tr>
         <tr>
@@ -177,23 +177,33 @@
 
     <p v-for="(item, index) in recordset_array"
         style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:3px;
-               background-color: white">
+               background-color: white"
+        v-bind:style="{'margin-left': item.controls.indent * 50 + 'px'}">
         <template v-for="(val, key) in item.data">
-             <span style="color:grey">[[key]] :</span> `[[val]]` <span style="color:brown; font-weight: bold">|| </span>
+             <span style="color:grey; font-size:12px" class="monospace">[[key]]: </span>
+             `<span style="background-color: rgb(245, 243, 243)">[[val]]</span>` <span style="color:brown; font-weight: bold">|| </span>
         </template>
         &nbsp;
         <img src="/BA/pages/static/graphics/eye_16_173007.png" title="HIDE" alt="HIDE"
              @click="hide_record(index)" class="clickable-icon">
         &nbsp;
 
-        <span v-if="item.controls.expand">
-            LINKS
+        <span v-if="item.controls.expand" >
+            <img src="/BA/pages/static/graphics/20_inbound_4619661.png" title="IN-bound links" alt="OUT-bound links">
+            <span class="clickable-icon relationship-in" title="Show IN-bound links" alt="Show IN-bound links"
+                @click="foo(item)">HAS_ON_PAYROLL</span>
+            &nbsp; &nbsp;
+
+            <img src="/BA/pages/static/graphics/20_outbound_4619660.png" title="OUT-bound links" alt="OUT-bound links">
+            <span class="clickable-icon relationship-out" title="Show OUT-bound links" alt="Show OUT-bound links">EMPLOYED_BY</span>
+
             <img src="/BA/pages/static/graphics/arrow_down_22_79479.png" title="Hide LINKS" alt="Hide LINKS"
-              @click="item.controls.expand = !item.controls.expand" class="clickable-icon">
+              @click="item.controls.expand = !item.controls.expand" class="clickable-icon" style="background-color:black">
         </span>
 
         <img v-else src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
-             @click="item.controls.expand = !item.controls.expand" class="clickable-icon">
+             @click="item.controls.expand = !item.controls.expand"
+             class="clickable-icon" style="background-color:black">
 
     </p>
 
@@ -238,10 +248,15 @@ new Vue({
         skip: 0,
         limit: 10,
 
+        next_record_id: 0,
+
         recordset_summary: "",      // The total count (total number of nodes with requested label in dbase)
         recordset_array: [],        // Each entry is an object with 2 keys: "controls" and "data":
                                     //      "controls" is an array of dicts, with one entry per node (record) returned by the search
-                                    //          each entry includes the keys "indent" (int) and "expand" (bool)
+                                    //          each entry includes the keys:
+                                    //                      "record_id" (int)
+                                    //                      "indent" (int)
+                                    //                      "expand" (bool)
                                     //      "data" is an array of dicts, with one entry per node (record) returned by the search
                                     //          each entry contains all the node properties from the database
 
@@ -352,11 +367,14 @@ new Vue({
 
                 for (let i = 0; i < server_payload.recordset.length; i++) {
                     let new_entry = {controls: {
+                                                    record_id: this.next_record_id,
                                                     expand: false,
-                                                    indent: 0
+                                                    indent: 0,
+                                                    parent_id: null
                                                 },
                                      data: server_payload.recordset[i]
                                      };
+                    this.next_record_id += 1;
                     //console.log(`new_entry: ${new_entry.controls}, ${new_entry.data}`);
                     Vue.set(this.recordset_array, i, new_entry);
                 }
@@ -382,7 +400,50 @@ new Vue({
             // Delete 1 element from the specified index position
             this.recordset_array.splice(record_index, 1);
             //this.search_result.recordset.splice(record_index, 1);
-        }
+        },
+
+
+
+        foo(record)
+        {
+            const parent_id = record.controls.record_id;
+            console.log(`parent_id: ${parent_id}`);
+            let new_entry = {controls: {
+                                            record_id: this.next_record_id,
+                                            expand: false,
+                                            indent: record.controls.indent + 1,
+                                            parent_id: parent_id
+                                        },
+                             data:  {
+                                        "A": 123,
+                                        "B": "hello world"
+                                    }
+                             };
+            this.next_record_id += 1;
+            console.log(`new_entry: record_id = ${new_entry.controls.record_id}`);
+            console.log(new_entry.data);
+
+            const i = this.locate_item(parent_id);
+            console.log(`Located parent item at index ${i}`);
+            this.recordset_array.splice(i+1, 0, new_entry);
+        },
+
+
+        locate_item(record_id)
+        /*
+         */
+        {
+            //console.log(`Attempting to locate content item with record_id '${record_id}'`);
+
+            const number_items = this.recordset_array.length;
+
+            for (var i = 0; i < number_items; i++) {
+                if (this.recordset_array[i].controls.record_id == record_id)
+                    return i;          //  Found it
+            }
+
+            return -1;    // Didn't find it
+        },
 
     } // METHODS
 
