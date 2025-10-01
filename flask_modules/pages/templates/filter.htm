@@ -450,7 +450,6 @@ new Vue({
 
             // Delete 1 element from the specified index position
             this.recordset_array.splice(record_index, 1);
-            //this.search_result.recordset.splice(record_index, 1);
         },
 
 
@@ -464,15 +463,13 @@ new Vue({
             const parent_id = record.controls.record_id;
             console.log(`parent_id: ${parent_id} | rel_name: "${rel_name} | index: "${index}"`);
 
-            var found = false;
-            for (let pos = index+1; pos < this.recordset_array.length; pos++)  {
-                console.log(this.recordset_array[pos].controls);
-                if (this.recordset_array[pos].controls.parent_id == parent_id
-                        &&  this.recordset_array[pos].controls.parent_link == rel_name)  {
-                    //alert(`Already shown, at pos ${pos}`);
-                    break;
-                }
+            var children = this.locate_children(record, rel_name, index);
+
+            if (children.length != 0)  {
+                alert(`${children.length} link(s) already found at the following array positions: ${children}.  No action taken`);
+                return;
             }
+
 
             // TODO: this sample hardwired section to be replaced by a server call
             var n_links;
@@ -512,6 +509,36 @@ new Vue({
             }
         },
 
+
+        locate_children(record, rel_name, index)
+        {
+            const record_id = record.controls.record_id;
+            const record_indent = record.controls.indent;
+            console.log(`record_id: ${record_id} | rel_name: "${rel_name} | index: "${index}"`);
+
+            var children = [];
+
+            for (var pos = index+1; pos < this.recordset_array.length; pos++)  {
+                var control_data = this.recordset_array[pos].controls;
+                var parent_id = control_data.parent_id;
+
+                console.log(`Looking at sub-record (child link) that has parent_id = ${record_id}`);
+                if (parent_id == record_id
+                        &&  control_data.parent_link == rel_name
+                        &&  control_data.indent == record_indent + 1)  {
+                    console.log(`Found child at pos ${pos}`);
+                    children.push(pos);
+                }
+            }
+
+            console.log(`children: ${children}`);
+            return children;
+        },
+
+        hide_links(start_pos)
+        {
+            this.hide_record(start_pos);
+        },
 
         locate_item(record_id)
         /*
