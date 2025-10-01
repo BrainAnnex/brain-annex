@@ -178,12 +178,22 @@
         NO ITEMS FOUND
     </p>
 
+
+    <!--  For each located item  -->
     <p v-for="(item, index) in recordset_array"
                 style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:3px;
                        background-color: white"
                 v-bind:style="{'margin-left': item.controls.indent * 50 + 'px'}">
 
-        <!-- If applicable, show the record's parentage -->
+        <!--  Eye icon, to hide the record  -->
+        <span style="color:#d0d0d0">[[item.controls.record_id]] </span>
+        <img src="/BA/pages/static/graphics/eye_16_173007.png"
+             @click="hide_record(item, index)" class="clickable-icon"
+             v-bind:title="'HIDE record (index ' + index + ')'"   alt="HIDE"
+        >
+        &nbsp;
+
+        <!-- If applicable, show the record's parentage (i.e. link name/direction to a record above) -->
         <template v-if="item.controls.parent_id !== null">
             <span v-if="item.controls.parent_dir == 'OUT'"
                 class="subrecord-out" style="display: inline-block; margin-right:10px">
@@ -202,9 +212,7 @@
              <span style="color:grey; font-size:12px" class="monospace">[[key]]: </span>
              `<span style="background-color: rgb(251, 240, 240)">[[val]]</span>` <span style="color:brown; font-weight: bold">|| </span>
         </template>
-        &nbsp;
-        <img src="/BA/pages/static/graphics/eye_16_173007.png" title="HIDE" alt="HIDE"
-             @click="hide_record(index)" class="clickable-icon">
+
         &nbsp;
 
         <span v-if="item.controls.expand" >
@@ -249,6 +257,7 @@
     </p>
 
 
+    <!-- Summary of search -->
     <p v-if="recordset_summary" style="color:gray">
         <b>[[recordset_array.length]] records found</b> (out of a total of [[recordset_summary]] node(s) with the requested label `[[label]]`)
     </p>
@@ -293,9 +302,10 @@ new Vue({
         next_record_id: 0,
 
         recordset_summary: "",      // The total count (total number of nodes with requested label in dbase)
-        recordset_array: [],        // Each entry is an object with 2 keys: "controls" and "data":
-                                    //      "controls" is an array of dicts, with one entry per node (record) returned by the search
-                                    //          each entry includes the keys:
+        recordset_array: [],        // Array of dicts, with one entry per record returned by the search
+                                    //      Each entry is an object with 2 keys: "controls" and "data":
+                                    //
+                                    //      * "controls" is an array of dicts, with the following keys:
                                     //                      "record_id" (int)
                                     //                      "parent_id" (int)
                                     //                      "parent_link" (str)
@@ -303,8 +313,10 @@ new Vue({
                                     //                      "expand" (bool)
                                     //                      "indent" (int)
                                     //                      "links" (array of triples: name, "IN"/"OUT", count)
-                                    //      "data" is an array of dicts, with one entry per node (record) returned by the search
-                                    //          each entry contains all the node properties from the database
+                                    //                      "pos" (int) : meant to hold TEMPORARY values
+                                    //
+                                    //      * "data" is an array of dicts contains all the field names and values
+                                    //            returned from the database query
 
         available_fields: [],       // Array of field names for dbase node
         selected_fields: null,      // Used by the "multiselect" Vue component
@@ -443,13 +455,37 @@ new Vue({
 
 
 
-        hide_record(record_index)
-        // Invoked when the user click on the icon next to a record from the search result, to hide it
+        hide_record(record, record_index)
+        // Invoked when the user click on the icon next to a record, to hide it
         {
-            console.log(`hide_record() invoked for record with index ${record_index}`);
+            console.log(`hide_record() invoked for record with index=${record_index} and record_id=${record.controls.record_id}`);
+
+            var children = this.locate_all_children(record, record_index);
+            if (children.length > 0)  {
+                console.log(`hide_record() : the record to hide has children; considering them first, in reverse order`);
+                // Consider the children in reverse order (lowest one in the list, first)
+                for (var child_n = children.length -1; child_n >= 0; child_n--)  {
+                    console.log(`hide_record() : considering child in position ${child_n}`);
+                    var child_array_entry = children[child_n];
+
+                    var child_record = child_array_entry[0];
+                    var child_index = child_array_entry[1];
+
+                    console.log(child_record);
+                    console.log(child_index);
+
+
+                    var child_id = child_record.controls.record_id;
+
+                    alert(`Considering child: (record_id=${child_id}) at index pos ${child_index}`);
+
+                    // Recursive call
+                    this.hide_record(child_record, child_index);
+                }
+            }
 
             // Delete 1 element from the specified index position
-            this.recordset_array.splice(record_index, 1);
+            //this.recordset_array.splice(record_index, 1);
         },
 
 
@@ -510,7 +546,67 @@ new Vue({
         },
 
 
+
+        locate_all_children(record, index)
+        // Same as locate_children(), but disregarding rel_name
+        // TODO: merge the two functions
+        // Start the search at the given index position in the overall array of records
+        {
+            const record_id = record.controls.record_id;
+            const record_indent = record.controls.indent;
+            console.log(`In locate_all_children(): record_id: ${record_id} | index: ${index}`);
+
+            var children = [];
+
+            for (var pos = index+1; pos < this.recordset_array.length; pos++)  {
+                // TODO: quit as soon as the indent is <= that of the parent
+                console.log(`In locate_all_children(): examining record in position ${pos}`);
+                var record_under_consideration = this.recordset_array[pos];
+                var control_data = this.recordset_array[pos].controls;
+                var parent_id = control_data.parent_id;
+
+                //console.log(`   ... investigating if this record has parent_id = ${record_id}`);
+                if (parent_id == record_id
+                        &&  control_data.indent == record_indent + 1)
+                {
+                    console.log(`   yes!`);
+                    var child_id = control_data.record_id;
+                    console.log(`Found child (record_id=${child_id}) at index pos ${pos}`);
+
+                    record_under_consideration.controls.pos = pos;
+
+                    console.log(`Pushing "record_under_consideration"`);
+                    console.log(record_under_consideration);
+                    console.log(record_under_consideration.controls);
+                    console.log(record_under_consideration.controls.record_id);
+
+                    children.push(record_under_consideration);
+                    //children.push([record_under_consideration, pos]);
+                }
+                //else
+                    //console.log(`   no!`);
+            }
+
+            console.log(`children: ${children}`);
+            console.log(`number of children: ${children.length}`);
+
+            var first_child = children[0];
+
+            console.log(`first (0-th) child: first_child`);
+            console.log(first_child);
+
+            //console.log(`record of first (0-th) child: ${first_child[0]}`);
+            //console.log(`pos of first (0-th) child: ${first_child[0]}`);
+
+            console.log("returning from locate_all_children()");
+
+            return children;
+        },
+
+
         locate_children(record, rel_name, index)
+        // Locate the children of a record based on the specified relationship name
+        // Start the search at the given index position in the overall array of records
         {
             const record_id = record.controls.record_id;
             const record_indent = record.controls.indent;
