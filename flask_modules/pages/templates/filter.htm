@@ -27,6 +27,7 @@
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/record_navigator.css">
     <link type="text/css"  rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
@@ -166,8 +167,10 @@
 </p>
 
 
-<p style="color: #888; margin-top:30px; margin-bottom:0">Query result:</p>
 
+<!--  ***  QUERY RESULTS  ***  -->
+
+<p style="color: #888; margin-top:30px; margin-bottom:0">Query result:</p>
 
 <div style="border:1px solid #DDD; padding:10px; background-color: #f4f4f4">
 
@@ -176,12 +179,28 @@
     </p>
 
     <p v-for="(item, index) in recordset_array"
-        style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:3px;
-               background-color: white"
-        v-bind:style="{'margin-left': item.controls.indent * 50 + 'px'}">
+                style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:3px;
+                       background-color: white"
+                v-bind:style="{'margin-left': item.controls.indent * 50 + 'px'}">
+
+        <!-- If applicable, show the record's parentage -->
+        <template v-if="item.controls.parent_id !== null">
+            <span v-if="item.controls.parent_dir == 'OUT'"
+                class="subrecord-out" style="display: inline-block; margin-right:10px">
+                <img src='/BA/pages/static/graphics/down_thick_arrow_16_216439.png'>
+                [[item.controls.parent_link]]
+            </span>
+            <span v-else
+                class="subrecord-in" style="display: inline-block; margin-right:10px">
+                <img src='/BA/pages/static/graphics/thick_up_arrow_16_216098.png'>
+                [[item.controls.parent_link]]
+            </span>
+        </template>
+
+        <!-- Display the data record (with all its fields) -->
         <template v-for="(val, key) in item.data">
              <span style="color:grey; font-size:12px" class="monospace">[[key]]: </span>
-             `<span style="background-color: rgb(245, 243, 243)">[[val]]</span>` <span style="color:brown; font-weight: bold">|| </span>
+             `<span style="background-color: rgb(251, 240, 240)">[[val]]</span>` <span style="color:brown; font-weight: bold">|| </span>
         </template>
         &nbsp;
         <img src="/BA/pages/static/graphics/eye_16_173007.png" title="HIDE" alt="HIDE"
@@ -189,23 +208,46 @@
         &nbsp;
 
         <span v-if="item.controls.expand" >
-            <img src="/BA/pages/static/graphics/20_inbound_4619661.png" title="IN-bound links" alt="OUT-bound links">
-            <span class="clickable-icon relationship-in" title="Show IN-bound links" alt="Show IN-bound links"
-                @click="foo(item)">HAS_ON_PAYROLL</span>
-            &nbsp; &nbsp;
 
-            <img src="/BA/pages/static/graphics/20_outbound_4619660.png" title="OUT-bound links" alt="OUT-bound links">
-            <span class="clickable-icon relationship-out" title="Show OUT-bound links" alt="Show OUT-bound links">EMPLOYED_BY</span>
+            <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
 
+                <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, link[0], index)"
+                      class="clickable-icon relationship-in"
+                      v-bind:title="'Show/Hide ' + link[2] + ' inbound link(s) `' + link[0] + '`'"
+                >
+                    <!-- Inbound link : show the number of links, an icon, and the link's name -->
+                    [[ link[2] ]]
+                    <img src="/BA/pages/static/graphics/20_inbound_4619661.png" alt="Show/Hide IN-bound links">
+                    [[ link[0] ]]
+                </span>
+
+                 <span v-else @click="toggle_linked_records(item, link[0], index)"
+                      class="clickable-icon relationship-out"
+                      v-bind:title="'Show/Hide ' + link[2] + ' outbound link(s) `' + link[0] + '`'"
+                 >
+                    <!-- Outbound link : show the number of links, an icon, and the link's name -->
+                    [[ link[2] ]]
+                    <img src="/BA/pages/static/graphics/20_outbound_4619660.png" alt="Show/Hide OUT-bound links">
+                    [[ link[0] ]]
+                </span>
+
+                &nbsp;
+            </template>
+
+
+            <!-- Arrow to shrink the record, to hide the links -->
             <img src="/BA/pages/static/graphics/arrow_down_22_79479.png" title="Hide LINKS" alt="Hide LINKS"
-              @click="item.controls.expand = !item.controls.expand" class="clickable-icon" style="background-color:black">
+              @click="toggle_links(item)"
+              class="clickable-icon" style="background-color:black">
         </span>
 
+        <!-- Arrow to expand the record, to show the links -->
         <img v-else src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
-             @click="item.controls.expand = !item.controls.expand"
+             @click="toggle_links(item)"
              class="clickable-icon" style="background-color:black">
 
     </p>
+
 
     <p v-if="recordset_summary" style="color:gray">
         <b>[[recordset_array.length]] records found</b> (out of a total of [[recordset_summary]] node(s) with the requested label `[[label]]`)
@@ -255,8 +297,12 @@ new Vue({
                                     //      "controls" is an array of dicts, with one entry per node (record) returned by the search
                                     //          each entry includes the keys:
                                     //                      "record_id" (int)
-                                    //                      "indent" (int)
+                                    //                      "parent_id" (int)
+                                    //                      "parent_link" (str)
+                                    //                      "parent_dir" (str)
                                     //                      "expand" (bool)
+                                    //                      "indent" (int)
+                                    //                      "links" (array of triples: name, "IN"/"OUT", count)
                                     //      "data" is an array of dicts, with one entry per node (record) returned by the search
                                     //          each entry contains all the node properties from the database
 
@@ -365,12 +411,17 @@ new Vue({
 
                 this.recordset_summary = server_payload.total_count;
 
-                for (let i = 0; i < server_payload.recordset.length; i++) {
+                for (let i = 0; i < server_payload.recordset.length; i++)  {
                     let new_entry = {controls: {
                                                     record_id: this.next_record_id,
+
+                                                    parent_id: null,
+                                                    parent_link: null,
+                                                    parent_dir: null,
+
                                                     expand: false,
                                                     indent: 0,
-                                                    parent_id: null
+                                                    links: null
                                                 },
                                      data: server_payload.recordset[i]
                                      };
@@ -395,7 +446,7 @@ new Vue({
         hide_record(record_index)
         // Invoked when the user click on the icon next to a record from the search result, to hide it
         {
-            console.log(`hide_record() invoked for record ${record_index}`);
+            console.log(`hide_record() invoked for record with index ${record_index}`);
 
             // Delete 1 element from the specified index position
             this.recordset_array.splice(record_index, 1);
@@ -404,28 +455,61 @@ new Vue({
 
 
 
-        foo(record)
+        toggle_linked_records(record, rel_name, index)
+        /* Toggle the display of all the records (database nodes)
+           that have a relationship by the given name
+           to the specified record (node) at the index position
+         */
         {
             const parent_id = record.controls.record_id;
-            console.log(`parent_id: ${parent_id}`);
-            let new_entry = {controls: {
-                                            record_id: this.next_record_id,
-                                            expand: false,
-                                            indent: record.controls.indent + 1,
-                                            parent_id: parent_id
-                                        },
-                             data:  {
-                                        "A": 123,
-                                        "B": "hello world"
-                                    }
-                             };
-            this.next_record_id += 1;
-            console.log(`new_entry: record_id = ${new_entry.controls.record_id}`);
-            console.log(new_entry.data);
+            console.log(`parent_id: ${parent_id} | rel_name: "${rel_name} | index: "${index}"`);
 
-            const i = this.locate_item(parent_id);
-            console.log(`Located parent item at index ${i}`);
-            this.recordset_array.splice(i+1, 0, new_entry);
+            var found = false;
+            for (let pos = index+1; pos < this.recordset_array.length; pos++)  {
+                console.log(this.recordset_array[pos].controls);
+                if (this.recordset_array[pos].controls.parent_id == parent_id
+                        &&  this.recordset_array[pos].controls.parent_link == rel_name)  {
+                    //alert(`Already shown, at pos ${pos}`);
+                    break;
+                }
+            }
+
+            // TODO: this sample hardwired section to be replaced by a server call
+            var n_links;
+            if (rel_name == "MARRIED_TO")
+                var n_links = 1;
+            else
+                var n_links = 2;
+            if (rel_name == "HAS_ON_PAYROLL")
+                var dir = "IN";
+            else
+                var dir = "OUT";
+
+
+            for (let counter = 0; counter < n_links; counter++)  {
+                // TODO: for now using hardwired sample data; to be replaced with server data
+                let new_entry = {controls: {
+                                                record_id: this.next_record_id,
+                                                expand: false,
+                                                indent: record.controls.indent + 1,
+
+                                                parent_id: parent_id,
+                                                parent_link: rel_name,
+                                                parent_dir: dir
+                                            },
+                                 data:  {
+                                            "A": 123,
+                                            "B": "hello world"
+                                        }
+                                 };
+                this.next_record_id += 1;
+                console.log(`new_entry: record_id = ${new_entry.controls.record_id}`);
+                console.log(new_entry.data);
+
+                const i = this.locate_item(parent_id);
+                console.log(`Located parent item at index ${i}`);
+                this.recordset_array.splice(i+1, 0, new_entry);
+            }
         },
 
 
@@ -444,6 +528,15 @@ new Vue({
 
             return -1;    // Didn't find it
         },
+
+
+        toggle_links(record)
+        {
+            record.controls.expand = !record.controls.expand;
+
+            // TODO: for now, hardwired with arbitrary values; to be populated from server query result
+            record.controls.links = [["HAS_ON_PAYROLL", "IN", 2], ["EMPLOYED_BY", "OUT", 2], ["MARRIED_TO", "OUT", 1]];
+        }
 
     } // METHODS
 

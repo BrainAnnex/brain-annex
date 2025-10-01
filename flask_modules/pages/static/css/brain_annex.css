@@ -32,20 +32,22 @@ span.waiting {
 }
 
 
+
+
+/* Misc. SPAN styling */
+
 span.star-yellow {          /* Used to display star ratings */
     color: #a6a606;
 }
 
 
+span.monospace {
+    font-family: "Courier New", "Lucida Console", monospace;
+}
 
-/* Misc. SPAN styling */
 
 span.form-comment {
     color: #a6a6a6;
-}
-
-span.monospace {
-    font-family: "Courier New", "Lucida Console", monospace;
 }
 
 
@@ -145,26 +147,3 @@ a:active {
 	color:red !important;
 }
 
-
-
-/*  Taken from Vue components, with wider usage
- */
-
-/* A little box showing a link (either IN or OUT) */
-span.relationship-in {
-    display: inline-block;
-    margin-right: 5px;
-    padding: 3px 8px;
-    border-radius: 8px;
-    color: #333;
-    background-color: #bbe175;
-}
-
-span.relationship-out {
-    display: inline-block;
-    margin-right: 5px;
-    padding: 3px 8px;
-    border-radius: 8px;
-    color: #333;
-    background-color: #fdbeb8;
-}
