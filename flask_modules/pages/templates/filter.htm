@@ -467,26 +467,23 @@ new Vue({
             //return;
 
 
-
             var children = this.locate_children(record, record_index);
             if (children.length > 0)  {
                 console.log(`hide_record() : the record to hide has children; considering them first, in reverse order`);
                 // Consider the children in reverse order (lowest one in the list, first)
                 for (var child_n = children.length -1; child_n >= 0; child_n--)  {
-                    console.log(`hide_record() : considering child in position ${child_n}`);
-                    var child_array_entry = children[child_n];
 
-                    var child_record = child_array_entry.data;
-                    var child_controls = child_array_entry.controls;
+                    var child_record = children[child_n];
+
+                    var child_data = child_record.data;
+                    var child_controls = child_record.controls;
 
                     var child_index = child_controls.pos;
 
+                    console.log(`    considering the ${child_n}-th child (record_id=${child_id} at index pos ${child_index})`);
                     console.log(child_record);
-                    console.log(child_index);
 
                     var child_id = child_controls.record_id;
-
-                    alert(`Considering child: (record_id=${child_id}) at index pos ${child_index}`);
 
                     // Recursive call
                     this.hide_record(child_record, child_index);
@@ -494,7 +491,7 @@ new Vue({
             }
 
             // Delete 1 element from the specified index position
-            alert(`   Deleting record with record_id=${record.controls.record_id}) at index pos ${record_index}`);
+            alert(`   Deleting record with record_id=${record.controls.record_id}, at index pos ${record_index}`);
             //this.recordset_array.splice(record_index, 1);
         },
 
