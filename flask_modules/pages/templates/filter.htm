@@ -462,12 +462,13 @@ new Vue({
 
 
             // TODO: temporary hijack of this function for debugging!
-            this.locate_all_children(record, record_index);
-            return;
+            ////this.locate_children(record, record_index);
+            //this.locate_children(record, record_index, "EMPLOYED_BY");
+            //return;
 
 
 
-            var children = this.locate_all_children(record, record_index);
+            var children = this.locate_children(record, record_index);
             if (children.length > 0)  {
                 console.log(`hide_record() : the record to hide has children; considering them first, in reverse order`);
                 // Consider the children in reverse order (lowest one in the list, first)
@@ -475,14 +476,15 @@ new Vue({
                     console.log(`hide_record() : considering child in position ${child_n}`);
                     var child_array_entry = children[child_n];
 
-                    var child_record = child_array_entry[0];
-                    var child_index = child_array_entry[1];
+                    var child_record = child_array_entry.data;
+                    var child_controls = child_array_entry.controls;
+
+                    var child_index = child_controls.pos;
 
                     console.log(child_record);
                     console.log(child_index);
 
-
-                    var child_id = child_record.controls.record_id;
+                    var child_id = child_controls.record_id;
 
                     alert(`Considering child: (record_id=${child_id}) at index pos ${child_index}`);
 
@@ -492,6 +494,7 @@ new Vue({
             }
 
             // Delete 1 element from the specified index position
+            alert(`   Deleting record with record_id=${record.controls.record_id}) at index pos ${record_index}`);
             //this.recordset_array.splice(record_index, 1);
         },
 
@@ -554,43 +557,50 @@ new Vue({
 
 
 
-        locate_all_children(record, index)
-        /* Same as locate_children(), but disregarding rel_name
-           TODO: merge the two functions
-           "Children" are defined as records below the given index position (i.e.,
-           start the search just past the given index position in the overall array of records.)
+        locate_children(record, index, rel_name)
+        /* Given a record, and its index in the overall array of records,
+           locate all its children records - optionally requiring the given relationship.
 
-           Return an array with all the child records, after saving their index position in their `controls` objects
+           "Children" are defined as records below the given index position (i.e.,
+           start the search just past the given index position in the overall array of records)
+           that have the given record as their parent, optionally by means of the given relationship.
+
+           Return an array with all the child records, after saving their index position in their `controls` objects.
+
+           :param record:   An object that is an element of the overall array of records this.recordset_array
+           :param index:    An integer with the index of the above record in the overall array of records
+           :param rel_name: [OPTIONAL] If not specified (null),
+                                then children records are not restricted to that particular relationship name
          */
         {
             const reference_id = record.controls.record_id;
             const reference_indent = record.controls.indent;
-            console.log(`In locate_all_children(): REFERENCE record_id: ${reference_id} | index: ${index} | indent: ${reference_indent}`);
+            console.log(`In locate_children(): REFERENCE record_id: ${reference_id} | index: ${index} | indent: ${reference_indent} | rel_name: ${rel_name}`);
 
-            var children = [];      // Building list of all the found child records
+            let children = [];      // Building list of all the found child records
 
             // Start the search just past the given index position
             // in `this.recordset_array` (the overall array of records)
             for (var pos = index+1;  pos < this.recordset_array.length;  pos++)  {
-                // TODO: quit as soon as the indent is <= that of the parent
-
-                var record_under_consideration = this.recordset_array[pos];
-                var control_data = record_under_consideration.controls;
+                let record_under_consideration = this.recordset_array[pos];
+                let control_data = record_under_consideration.controls;
                 let parent_id = control_data.parent_id;
                 let indent = control_data.indent;
 
-                console.log(`    examining record in position ${pos}; it has indent ${indent}, id ${control_data.record_id}, and parent id ${parent_id}`);
+                console.log(`    examining record in position ${pos}; it has indent ${indent}, id ${control_data.record_id}, parent id ${parent_id} and parent_link ${control_data.parent_link}`);
 
                 if (indent <= reference_indent)
-                    break;
+                    break;      // Quit as soon as the indent is <= that of the reference record
+
 
                 if (parent_id == reference_id)
-                {
-                    control_data.pos = pos;     // Save the array index position with the child's control data
+                    // Found a match in the parentage; if a rel_name was specified, also match for that
+                    if  ((rel_name == null)  || (control_data.parent_link == rel_name))  {
+                        control_data.pos = pos;     // Save the array index position with the child's control data
 
-                    console.log(`    ^--- found a child!  Pushing "record_under_consideration"`);
-                    children.push(record_under_consideration);
-                }
+                        console.log(`      ^--- found a child!  Pushing "record_under_consideration"`);
+                        children.push(record_under_consideration);
+                    }
             }
 
             console.log(`    Finished looping.  Number of children: ${children.length}`);
@@ -599,6 +609,7 @@ new Vue({
                 console.log(`    First child:`);
                 console.log(children[0]);       // Show the 1st (0-th child), if present
 
+                // Show the record id's of all the children
                 let children_ids = [];
                 for (let i=0 ;  i < children.length;  ++i)
                     children_ids.push(children[i].controls.record_id);
@@ -607,44 +618,18 @@ new Vue({
             }
 
 
-            console.log("    Returning from locate_all_children()");
+            //console.log("    Returning from locate_children()");
 
             return children;
         },
 
 
-
-        locate_children(record, rel_name, index)
-        // Locate the children of a record based on the specified relationship name
-        // Start the search at the given index position in the overall array of records
-        {
-            const record_id = record.controls.record_id;
-            const record_indent = record.controls.indent;
-            console.log(`record_id: ${record_id} | rel_name: "${rel_name} | index: "${index}"`);
-
-            var children = [];
-
-            for (var pos = index+1; pos < this.recordset_array.length; pos++)  {
-                var control_data = this.recordset_array[pos].controls;
-                var parent_id = control_data.parent_id;
-
-                console.log(`Looking at sub-record (child link) that has parent_id = ${record_id}`);
-                if (parent_id == record_id
-                        &&  control_data.parent_link == rel_name
-                        &&  control_data.indent == record_indent + 1)  {
-                    console.log(`Found child at pos ${pos}`);
-                    children.push(pos);
-                }
-            }
-
-            console.log(`children: ${children}`);
-            return children;
-        },
 
         hide_links(start_pos)
         {
             this.hide_record(start_pos);
         },
+
 
         locate_item(record_id)
         /*
