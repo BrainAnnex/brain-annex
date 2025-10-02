@@ -472,7 +472,7 @@ new Vue({
                 console.log(`hide_record() : the record to hide has children; considering them first, in reverse order`);
                 // Consider the children in reverse order (lowest one in the list, first)
                 for (var child_n = children.length -1; child_n >= 0; child_n--)  {
-
+                    // For each child record
                     var child_record = children[child_n];
 
                     var child_data = child_record.data;
@@ -504,12 +504,30 @@ new Vue({
          */
         {
             const parent_id = record.controls.record_id;
-            console.log(`parent_id: ${parent_id} | rel_name: "${rel_name} | index: "${index}"`);
+            console.log(`In toggle_linked_records() - parent_id: ${parent_id} | rel_name: "${rel_name} | index: "${index}"`);
 
-            var children = this.locate_children(record, rel_name, index);
+            console.log(`    checking if immediate children by the relationship "${rel_name}" are present...`);
+            var children = this.locate_children(record, index, rel_name);
 
-            if (children.length != 0)  {
-                alert(`${children.length} link(s) already found at the following array positions: ${children}.  No action taken`);
+            if (children.length == 0)
+                console.log(`    No children found; the toggle operation will be a "show"...`);
+            else {
+                //alert(`${children.length} link(s) already found.  No action taken`);
+                console.log(`${children.length} link(s) already found; the toggle operation will be a "HIDE"...`);
+                // Consider the children in reverse order (lowest one in the list, first),
+                // and hide each of them (along with their descendants, if applicable)
+                for (var child_n = children.length -1; child_n >= 0; child_n--)  {
+                    // For each child record
+                    var child_record = children[child_n];
+
+                    var child_data = child_record.data;
+                    var child_controls = child_record.controls;
+
+                    var child_index = child_controls.pos;
+
+                    this.hide_record(child_record, child_index);
+                }
+
                 return;
             }
 
@@ -556,11 +574,12 @@ new Vue({
 
         locate_children(record, index, rel_name)
         /* Given a record, and its index in the overall array of records,
-           locate all its children records - optionally requiring the given relationship.
+           locate all its (immediate) children records - optionally requiring the given relationship.
 
            "Children" are defined as records below the given index position (i.e.,
            start the search just past the given index position in the overall array of records)
            that have the given record as their parent, optionally by means of the given relationship.
+           One-hop relationships only.
 
            Return an array with all the child records, after saving their index position in their `controls` objects.
 
@@ -577,7 +596,7 @@ new Vue({
             let children = [];      // Building list of all the found child records
 
             // Start the search just past the given index position
-            // in `this.recordset_array` (the overall array of records)
+            //      in `this.recordset_array` (the overall array of records)
             for (var pos = index+1;  pos < this.recordset_array.length;  pos++)  {
                 let record_under_consideration = this.recordset_array[pos];
                 let control_data = record_under_consideration.controls;
