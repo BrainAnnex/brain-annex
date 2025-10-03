@@ -188,7 +188,7 @@
         <!--  Eye icon, to hide the record  -->
         <span style="color:#d0d0d0">[[item.controls.record_id]] </span>
         <img src="/BA/pages/static/graphics/eye_16_173007.png"
-             @click="hide_record(item, index)" class="clickable-icon"
+             @click="hide_record(item, index, true)" class="clickable-icon"
              v-bind:title="'HIDE record (index ' + index + ')'"   alt="HIDE"
         >
         &nbsp;
@@ -245,13 +245,13 @@
 
             <!-- Arrow to shrink the record, to hide the links -->
             <img src="/BA/pages/static/graphics/arrow_down_22_79479.png" title="Hide LINKS" alt="Hide LINKS"
-              @click="toggle_links(item)"
+              @click="toggle_links(item, index)"
               class="clickable-icon" style="background-color:black">
         </span>
 
         <!-- Arrow to expand the record, to show the links -->
         <img v-else src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
-             @click="toggle_links(item)"
+             @click="toggle_links(item, index)"
              class="clickable-icon" style="background-color:black">
 
     </p>
@@ -455,17 +455,12 @@ new Vue({
 
 
 
-        hide_record(record, record_index)
-        // Invoked when the user click on the icon next to a record, to hide it
+        hide_record(record, record_index, hide)
+        /*  Recursively hide all the descendant of the specified record;
+            If hide is true, also hide the record itself
+         */
         {
             console.log(`hide_record() invoked for record with index=${record_index} and record_id=${record.controls.record_id}`);
-
-
-            // TODO: temporary hijack of this function for debugging!
-            ////this.locate_children(record, record_index);
-            //this.locate_children(record, record_index, "EMPLOYED_BY");
-            //return;
-
 
             var children = this.locate_children(record, record_index);
             if (children.length > 0)  {
@@ -486,13 +481,15 @@ new Vue({
                     var child_id = child_controls.record_id;
 
                     // Recursive call
-                    this.hide_record(child_record, child_index);
+                    this.hide_record(child_record, child_index, true);
                 }
             }
 
-            // Delete 1 element from the specified index position
-            console.log(`Deleting record with record_id=${record.controls.record_id}, at index pos ${record_index}`);
-            this.recordset_array.splice(record_index, 1);
+            if (hide)  {
+                // Delete 1 element from the specified index position
+                console.log(`Deleting record with record_id=${record.controls.record_id}, at index pos ${record_index}`);
+                this.recordset_array.splice(record_index, 1);
+            }
         },
 
 
@@ -524,7 +521,7 @@ new Vue({
 
                     var child_index = child_controls.pos;
 
-                    this.hide_record(child_record, child_index);
+                    this.hide_record(child_record, child_index, true);
                 }
 
                 return;     // We hid the child sub-records, and we're done!
@@ -666,12 +663,19 @@ new Vue({
 
 
 
-        toggle_links(record)
+        toggle_links(record, record_index)
         {
-            record.controls.expand = !record.controls.expand;
+            record.controls.expand = !record.controls.expand;   // Toggle the line-expansion status
 
-            // TODO: for now, hardwired with arbitrary values; to be populated from server query result
-            record.controls.links = [["HAS_ON_PAYROLL", "IN", 2], ["EMPLOYED_BY", "OUT", 2], ["MARRIED_TO", "OUT", 1]];
+            if (record.controls.expand)  {    // Enable showing a little inline summary of the available links
+                // TODO: for now, hardwired with arbitrary values; to be populated from server query result
+                record.controls.links = [["HAS_ON_PAYROLL", "IN", 2], ["EMPLOYED_BY", "OUT", 2], ["MARRIED_TO", "OUT", 1]];
+
+                return;
+            }
+
+            // Hide all its descendant sub-records (but not the record itself)
+            this.hide_record(record, record_index, false);
         }
 
     } // METHODS
