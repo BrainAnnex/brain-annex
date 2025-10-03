@@ -491,7 +491,7 @@ new Vue({
             }
 
             // Delete 1 element from the specified index position
-            alert(`   Deleting record with record_id=${record.controls.record_id}, at index pos ${record_index}`);
+            console.log(`Deleting record with record_id=${record.controls.record_id}, at index pos ${record_index}`);
             this.recordset_array.splice(record_index, 1);
         },
 
@@ -509,10 +509,8 @@ new Vue({
             console.log(`    checking if immediate children by the relationship "${rel_name}" are present...`);
             var children = this.locate_children(record, index, rel_name);
 
-            if (children.length == 0)
-                console.log(`    No children found; the toggle operation will be a "show"...`);
-            else {
-                // The toggle operation is interpeted to be a "HIDE
+            if (children.length > 0)  {
+                // Given existing sub-records from our link name, the toggle operation is taken to be a "HIDE"
                 //alert(`${children.length} link(s) already found.  No action taken`);
                 console.log(`${children.length} link(s) already found; the toggle operation will be a "HIDE"...`);
                 // Consider the children in reverse order (lowest one in the list, first),
@@ -529,8 +527,12 @@ new Vue({
                     this.hide_record(child_record, child_index);
                 }
 
-                return;
+                return;     // We hid the child sub-records, and we're done!
             }
+
+
+            // Given no sub-records from our link name, the toggle operation is taken to be a "SHOW"
+            console.log(`    No children found; the toggle operation will be a "show"...`);
 
 
             // TODO: this sample hardwired section to be replaced by a server call
@@ -567,7 +569,10 @@ new Vue({
 
                 const i = this.locate_item(parent_id);
                 console.log(`Located parent item at index ${i}`);
-                this.recordset_array.splice(i+1, 0, new_entry);
+                if (i == -1)
+                    alert(f`Unable to find the parent record of the item at index ${i}`);
+                else
+                    this.recordset_array.splice(i+1, 0, new_entry); // Insert the new entry just below its parent
             }
         },
 
@@ -643,10 +648,11 @@ new Vue({
 
 
         locate_item(record_id)
-        /*
+        /* Attempt to locate a record with the requested id, from the overall array of records.
+           If found, return its index in the array; otherwise, return -1
          */
         {
-            //console.log(`Attempting to locate content item with record_id '${record_id}'`);
+            //console.log(`Attempting to locate the record with record_id '${record_id}'`);
 
             const number_items = this.recordset_array.length;
 
@@ -657,6 +663,7 @@ new Vue({
 
             return -1;    // Didn't find it
         },
+
 
 
         toggle_links(record)
