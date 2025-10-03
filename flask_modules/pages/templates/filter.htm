@@ -492,7 +492,7 @@ new Vue({
 
             // Delete 1 element from the specified index position
             alert(`   Deleting record with record_id=${record.controls.record_id}, at index pos ${record_index}`);
-            //this.recordset_array.splice(record_index, 1);
+            this.recordset_array.splice(record_index, 1);
         },
 
 
@@ -512,6 +512,7 @@ new Vue({
             if (children.length == 0)
                 console.log(`    No children found; the toggle operation will be a "show"...`);
             else {
+                // The toggle operation is interpeted to be a "HIDE
                 //alert(`${children.length} link(s) already found.  No action taken`);
                 console.log(`${children.length} link(s) already found; the toggle operation will be a "HIDE"...`);
                 // Consider the children in reverse order (lowest one in the list, first),
@@ -622,8 +623,8 @@ new Vue({
             console.log(`    Finished looping.  Number of children: ${children.length}`);
 
             if (children.length > 0)  {
-                console.log(`    First child:`);
-                console.log(children[0]);       // Show the 1st (0-th child), if present
+                //console.log(`    First child:`);
+                //console.log(children[0]);       // Show the 1st (0-th child), if present
 
                 // Show the record id's of all the children
                 let children_ids = [];
@@ -639,12 +640,6 @@ new Vue({
             return children;
         },
 
-
-
-        hide_links(start_pos)
-        {
-            this.hide_record(start_pos);
-        },
 
 
         locate_item(record_id)
