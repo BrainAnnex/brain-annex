@@ -330,6 +330,7 @@ new Vue({
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+
         lookup_fields()
         /* Invoked when the user selects, from a pulldown menu, a dbase "label" to use for the search.
            Contact the server to request all the field (property) names
@@ -447,6 +448,83 @@ new Vue({
             else  {             // Server reported FAILURE
                 this.error = true;
                 this.status_message = `FAILED retrieval of data. ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+        },
+
+
+
+        toggle_links(record, record_index)
+        /*  Show/Hide an inline summary of the available links from/to the given record.
+            If hiding the summary, also hide all its descendant sub-records (but not the record itself)
+         */
+        {
+            record.controls.expand = !record.controls.expand;   // Toggle the line-expansion status
+
+            if (record.controls.expand)  {    // Enable showing a little inline summary of the available links
+                this.get_link_summary_from_server(record);
+
+
+                // TODO: for now, hardwired with arbitrary values; to be populated from server query result
+                //record.controls.links = [["HAS_ON_PAYROLL", "IN", 2], ["EMPLOYED_BY", "OUT", 2], ["MARRIED_TO", "OUT", 1]];
+
+                return;
+            }
+
+            // Hide all its descendant sub-records (but not the record itself)
+            this.hide_record(record, record_index, false);
+        },
+
+
+
+        get_link_summary_from_server(record)
+        /*  Invoked when the user clicks to expand the "Show Links" region.
+            Initiate request to server, to get the list of the names/counts
+            of all the Inbound and Outbound links from the given record (node)
+         */
+        {
+            console.log(`Getting the links summary info for record id ${record.controls.record_id}`);
+
+            const internal_id = record.data.internal_id;
+            const url_server_api = `/BA/api/get-link-summary-by-id/${internal_id}`;
+
+            console.log(`About to contact the server at "${url_server_api}"`);
+
+            // Initiate asynchronous contact with the server
+            this.waiting = true;
+            this.error = false;         // Clear any error from the previous operation
+            this.status_message = "";
+
+            ServerCommunication.contact_server(url_server_api,
+                    {method: "GET",
+                    callback_fn: this.finish_get_link_summary_from_server,
+                    custom_data: record
+                    });
+        },
+
+        finish_get_link_summary_from_server(success, server_payload, error_message, custom_data)
+        /* Callback function to wrap up the action of get_link_summary_from_server() upon getting a response from the server.
+
+            success:        boolean indicating whether the server call succeeded
+            server_payload: whatever the server returned (stripped of information about the success of the operation)
+            error_message:  a string only applicable in case of failure
+            custom_data:    whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+        */
+        {
+            console.log("Finalizing the get_link_summary_from_server() operation...");
+            console.log(`Custom pass-thru data:`);
+            console.log(custom_data);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Operation completed`;
+                var record = custom_data;                   // The record object to which the retrieved link into applies
+                record.controls.links = server_payload;     // Populate the record with the retrieved data
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED operation: ${error_message}`;
             }
 
             // Final wrap-up, regardless of error or success
@@ -659,23 +737,6 @@ new Vue({
             }
 
             return -1;    // Didn't find it
-        },
-
-
-
-        toggle_links(record, record_index)
-        {
-            record.controls.expand = !record.controls.expand;   // Toggle the line-expansion status
-
-            if (record.controls.expand)  {    // Enable showing a little inline summary of the available links
-                // TODO: for now, hardwired with arbitrary values; to be populated from server query result
-                record.controls.links = [["HAS_ON_PAYROLL", "IN", 2], ["EMPLOYED_BY", "OUT", 2], ["MARRIED_TO", "OUT", 1]];
-
-                return;
-            }
-
-            // Hide all its descendant sub-records (but not the record itself)
-            this.hide_record(record, record_index, false);
         }
 
     } // METHODS

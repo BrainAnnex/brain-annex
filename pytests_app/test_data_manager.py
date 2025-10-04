@@ -134,12 +134,12 @@ def test_get_nodes_by_filter(db):
 
     assert DataManager.get_nodes_by_filter({}) == []    # The database is empty
 
-    db.create_node(labels="Test Label", properties={'age': 22, 'gender': 'F'})
+    internal_id = db.create_node(labels="Test Label", properties={'age': 22, 'gender': 'F'})
 
     # No filtration
-    assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22}]
+    assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22, 'internal_id': internal_id}]
     # Filtration by labels
-    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == [{'gender': 'F', 'age': 22}]
+    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == [{'gender': 'F', 'age': 22, 'internal_id': internal_id}]
     assert DataManager.get_nodes_by_filter({"label": "WRONG_Label"}) == []
 
     with pytest.raises(Exception):

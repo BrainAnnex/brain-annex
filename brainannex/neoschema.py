@@ -2023,13 +2023,14 @@ class NeoSchema:
 
     @classmethod
     def get_nodes_by_filter(cls, class_name=None, labels=None,
-                            key_names=None, key_value=None, string_match=None, case_sensitive=True,
+                            key_names=None, key_value=None, string_match=None, case_sensitive=True, include_id=False,
                             order_by=None, sort_ignore_case=None,
                             skip=None, limit=100) -> [dict]:
         """
-        Locate the nodes that match the given parameters, and return them in the specified way
+        Locate the nodes that match the given parameters, and return them in the specified way,
+        as a list of dicts
 
-        :param class_name:  [OPTIONAL]
+        :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
         :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
         :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
         :param key_value:   [OPTIONAL] Only applicable if arg `key_name` is present: match nodes with the
@@ -2040,6 +2041,8 @@ class NeoSchema:
                                 Valid choices: "CONTAINS", "STARTS WITH", "ENDS WITH"
         :param case_sensitive:[OPTIONAL] Only applies if key_value is a string.
                                 By default True; use False, to disregard case in string matches
+        :param include_id:  [OPTIONAL] If True, also return an extra field named "internal_id",
+                                with the internal database ID value; by default, False
         :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive instructions.
                                 EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
                                 Note: nodes lacking the order-by fields, will appear at the end of the
@@ -2061,6 +2064,8 @@ class NeoSchema:
             assert string_match in allowed_patters, \
                 "get_data_nodes_by_filter(): argument `string_match`, if specified, must be one of {allowed_patters}"
 
+
+        # Start preparing a Cypher query to extract the requested data
 
         labels_str = CypherUtils.prepare_labels(labels)     # EXAMPLE: ":`my label`:`my other label`"
 
@@ -2111,6 +2116,10 @@ class NeoSchema:
             RETURN n
             '''
 
+        if include_id:
+            q += ''' , id(n) as internal_id
+                 '''
+
         if order_by:
             revised_order_by = cls._process_order_by(s=order_by, dummy_node_name="n", ignore_case=sort_ignore_case)
             q += f"ORDER BY {revised_order_by} \n"
@@ -2138,6 +2147,9 @@ class NeoSchema:
                 if  type(val) == neo4j.time.Date:
                     conv = neo4j.time.Date.to_native(val)       # This will be of python type datetime.datetime
                     d[key] = conv.strftime("%Y/%m/%d")          # EXAMPLE: "2000/01/31"
+
+            if include_id:
+                d["internal_id"] = record["internal_id"]
 
             data.append(d)
 

@@ -935,6 +935,45 @@ class ApiRouting:
             return jsonify(response)   # This function also takes care of the Content-Type header
 
 
+        @bp.route('/get-link-summary-by-id/<internal_id>')
+        @login_required
+        def get_link_summary_by_id(internal_id):
+            """
+            Return a JSON structure identifying the names and counts of all
+            the inbound and outbound links to and from the given node.
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/get-link-summary-by-id/123
+
+            :param internal_id: Internal database ID of the node of interest
+            :return:            A JSON string with the names and counts of inbound and outbound links
+                                EXAMPLE:
+                                    {
+                                        "status": "ok",
+                                        "payload": [["HAS_ON_PAYROLL", "IN", 2],
+                                                    ["EMPLOYED_BY", "OUT", 2],
+                                                    ["MARRIED_TO", "OUT", 1]
+                                                   ]
+                                    }
+            """
+            try:
+                #payload = NeoSchema.db.get_link_summary(internal_id=internal_id)
+
+                link_data = NeoSchema.db.get_link_summary(internal_id=internal_id)
+                # Transform the format      TODO: maybe move to DataManager
+                payload = []
+                for l in link_data["in"]:   # Process the inbound links
+                    payload.append([l[0], "IN", l[1]])  # EXAMPLE: payload.append(["EMPLOYS", "IN", 2])
+
+                for l in link_data["out"]:  # Process the outbound links
+                    payload.append([l[0], "OUT", l[1]])
+
+                response = {"status": "ok", "payload": payload}             # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
 
         @bp.route('/get_records_by_link', methods=['POST'])
         @login_required
@@ -1885,7 +1924,7 @@ class ApiRouting:
             GET VARIABLE:
                 json    A JSON-encoded dict, containing the following entries:
 
-                    label       To name of a node label
+                    label       The name of a node label
                     key_name    A string, or list of strings, with the name of a node attribute;
                                     if provided, key_value must be passed, too
                     key_value   The required value for the above key; if provided, key_name must be passed, too.

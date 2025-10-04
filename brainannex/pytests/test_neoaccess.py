@@ -520,6 +520,37 @@ def test_get_siblings(db):
 
 
 
+def test_get_link_summary(db):
+    db.empty_dbase()
+
+    # 1st node
+    car_id = db.create_node(labels="Car")
+
+    assert db.get_link_summary(car_id) == {"in": [], "out": []}
+
+
+    # 2nd node
+    person_id = db.create_attached_node(labels="Person",
+                        attached_to=car_id, rel_name="OWNS", rel_dir="OUT")
+
+    assert db.get_link_summary(person_id) == {"in": [], "out": [("OWNS", 1)]}
+
+    assert db.get_link_summary(car_id) == {"in": [("OWNS", 1)], "out": []}
+
+
+    # 3rd node
+    db.create_attached_node(labels="Color",
+                            attached_to=car_id, rel_name="HAS_COLOR", rel_dir="IN")
+
+    assert db.get_link_summary(person_id) == {"in": [], "out": [("OWNS", 1)]}
+
+    assert db.get_link_summary(car_id) == {"in": [("OWNS", 1)], "out": [("HAS_COLOR", 1)]}
+
+    #TODO: additional tests
+
+
+
+
 
 ###  ~ CREATE NODES ~
 

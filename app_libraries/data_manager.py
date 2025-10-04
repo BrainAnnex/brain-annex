@@ -611,7 +611,6 @@ class DataManager:
         """
         Return a dictionary structure identifying the names and counts of all
         inbound and outbound links to/from the given data node.
-        TODO: move most of it to the "~ FOLLOW LINKS ~" section of NeoAccess
 
         :param uri:         String with the URI of a data node
         :param omit_names:  Optional list of relationship names to disregard
@@ -628,6 +627,7 @@ class DataManager:
                                     ]
                                 }
         """
+        # TODO: use NeoAccess.get_link_summary() instead, after it is generalized to accept match structures
         if omit_names:
             assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
             where_clause = f"WHERE NOT type(r) IN {omit_names}"
@@ -656,6 +656,7 @@ class DataManager:
         rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
         return  {"in": rel_in, "out": rel_out}
+
 
 
 
@@ -1398,7 +1399,8 @@ class DataManager:
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
                                 {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
-        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node
+        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node, including
+                                a field called "internal_id" that has the internal database ID
         """
         #TODO: parse the filter_dict here, but move the body of the computation to NeoSchema
 
@@ -1445,6 +1447,7 @@ class DataManager:
 
         return NeoSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
                                              string_match="CONTAINS", case_sensitive=case_sensitive,
+                                             include_id=True,
                                              order_by=order_by, skip=skip, limit=limit)
 
 

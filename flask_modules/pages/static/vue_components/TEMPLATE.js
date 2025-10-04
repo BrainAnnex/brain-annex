@@ -142,11 +142,12 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 success:        boolean indicating whether the server call succeeded
                 server_payload: whatever the server returned (stripped of information about the success of the operation)
                 error_message:  a string only applicable in case of failure
-                custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
+                custom_data:    whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
             */
             {
                 console.log("Finalizing the get_data_from_server() operation...");
-                console.log(`Custom data passed: ${custom_data}`);
+                console.log(`Custom pass-thru data:`);
+                console.log(custom_data)
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;

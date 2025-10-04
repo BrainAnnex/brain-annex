@@ -371,7 +371,7 @@ Vue.component('vue-plugin-r',
                 // Final wrap-up, regardless of error or success
                 //this.waiting_for_links = false;
 
-            }, // finish_get_link_summary_from_server
+            }, // finish_get_linked_records_from_server
 
 
 

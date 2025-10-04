@@ -947,9 +947,12 @@ def test_get_nodes_by_filter(db):
 
     assert NeoSchema.get_nodes_by_filter() == []
 
-    db.create_node(labels="Car", properties={"color": "yellow", "year": 1999})      # A GENERIC node (not a Data Node)
+    # Create a GENERIC node (not a Data Node)
+    internal_id = db.create_node(labels="Car", properties={"color": "yellow", "year": 1999})
 
     assert NeoSchema.get_nodes_by_filter() == [{"color": "yellow", "year": 1999}]
+
+    assert NeoSchema.get_nodes_by_filter(include_id=True) == [{"color": "yellow", "year": 1999, "internal_id": internal_id}]
 
     assert NeoSchema.get_nodes_by_filter(labels="Car") == [{"color": "yellow", "year": 1999}]
 

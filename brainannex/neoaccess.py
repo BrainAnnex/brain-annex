@@ -1726,6 +1726,65 @@ class NeoAccess(InterGraph):
 
 
 
+    def get_link_summary(self, internal_id, omit_names = None) -> dict:
+        """
+        Return a dictionary structure identifying the names and counts of all
+        inbound and outbound links to and from the given node.
+
+        :param internal_id: The internal database ID of the node of interest
+        :param omit_names:  [OPTIONAL] List of relationship names to disregard
+
+        :return:            A dictionary with the names and counts of the inbound and outbound links.
+                            This dictionary has two keys, "in" and "out";
+                            their respective values are (possibly empty) lists.
+                            Each list entry is a pair of the form (link_name, count)
+                            EXAMPLE:
+                                {
+                                    "in": [
+                                        ("served_at", 1)
+                                    ],
+                                    "out": [
+                                        ("located_in", 1),
+                                        ("cuisine_type", 2)
+                                    ]
+                                }
+        """
+        # TODO: generalize to accept a match structure instead of just internal_id
+
+        id_clause = f"id(n) = {internal_id}"
+
+        if omit_names:
+            assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
+            where_clause = f"WHERE NOT type(r) IN {omit_names} AND {id_clause}"
+        else:
+            where_clause = f"WHERE {id_clause}"
+
+        # Get outbound links (names and counts)
+        q_out = f'''
+                MATCH (n)-[r]->(n2)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
+        result = self.query(q_out)
+        rel_out = [ ( l["rel_name"], l["rel_count"] ) for l in result ]
+
+
+        # Get inbound links (names and counts)
+        q_in = f'''
+                MATCH (n)<-[r]-(n2)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
+        result = self.query(q_in)
+        rel_in = [ ( l["rel_name"], l["rel_count"] ) for l in result ]
+
+        return  {"in": rel_in, "out": rel_out}
+
+
+
+
 
 
     #####################################################################################################
