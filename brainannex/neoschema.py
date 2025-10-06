@@ -2117,7 +2117,7 @@ class NeoSchema:
             '''
 
         if include_id:
-            q += ''' , id(n) as internal_id
+            q += ''' , id(n) AS internal_id
                  '''
 
         if order_by:
@@ -2134,26 +2134,8 @@ class NeoSchema:
         #cls.db.debug_query_print(q, data_binding)
         result = cls.db.query(q, data_binding=data_binding)
 
-        data = []
-        for record in result:
-            d = record["n"]     # A dict of field names and values.
-                                # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+        return cls.db.standardize_recordset(recordset=result)
 
-            # Convert any DateTime values to strings; the time part is dropped.  TODO: this ought to get handled by InterGraph!
-            for key, val in d.items():
-                if  type(val) == neo4j.time.DateTime:
-                    conv = neo4j.time.DateTime.to_native(val)   # This will be of python type datetime.datetime
-                    d[key] = conv.strftime("%Y/%m/%d")          # EXAMPLE: "2000/01/31"
-                if  type(val) == neo4j.time.Date:
-                    conv = neo4j.time.Date.to_native(val)       # This will be of python type datetime.datetime
-                    d[key] = conv.strftime("%Y/%m/%d")          # EXAMPLE: "2000/01/31"
-
-            if include_id:
-                d["internal_id"] = record["internal_id"]
-
-            data.append(d)
-
-        return data
 
 
     @classmethod

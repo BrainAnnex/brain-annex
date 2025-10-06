@@ -979,10 +979,22 @@ class ApiRouting:
         @login_required
         def get_records_by_link_api():
             """
-            Locate and return the data of the nodes linked to the one specified by uri,
-            by the relationship named by rel_name, in the direction specified by dir
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/get_records_by_link -d "uri=123&rel_name=BA_served_at&dir=IN"
+            Locate and return the data (properties) of the nodes linked to the one specified
+            by either its uri or internal database ID.
+            From that node, follow the relationships named by `rel_name`, in the direction specified by `dir`.
+
+            If the internal database ID is provided, then the internal database ID's of the matched nodes is also returned.
+
+            EXAMPLES of invocation:
+                1) Using uri:
+                    curl http://localhost:5000/BA/api/get_records_by_link -d "uri=123&rel_name=BA_served_at&dir=IN"
+                2) Using internal_id:
+                    curl http://localhost:5000/BA/api/get_records_by_link -d "internal_id=8&rel_name=BA_served_at&dir=IN"
+
+            POST PARAMETERS:
+                uri or internal_id      One of them is required (the latter takes priority)
+                rel_name                The name of the relationship to follow across one hop
+                dir                     Must be either "IN" or "OUT"
             """
             # Extract the POST values
             post_data = request.form
@@ -990,14 +1002,14 @@ class ApiRouting:
             #cls.show_post_data(post_data)
 
             try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['uri', 'rel_name', 'dir'])
-                data_dict["uri"] = data_dict["uri"]
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['rel_name', 'dir'])
                 payload = DataManager.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
 
             return jsonify(response)   # This function also takes care of the Content-Type header
+
 
 
 

@@ -575,7 +575,7 @@ new Vue({
         toggle_linked_records(record, rel_name, index)
         /* Toggle the display of all the records (database nodes)
            that have a relationship by the given name
-           to the specified record (node) at the index position
+           to the specified record (node) at the specified index position
          */
         {
             const parent_id = record.controls.record_id;
@@ -583,6 +583,9 @@ new Vue({
 
             console.log(`    checking if immediate children by the relationship "${rel_name}" are present...`);
             var children = this.locate_children(record, index, rel_name);
+
+
+            // **** "HIDE" SCENARIO
 
             if (children.length > 0)  {
                 // Given existing sub-records from our link name, the toggle operation is taken to be a "HIDE"
@@ -602,12 +605,14 @@ new Vue({
                     this.hide_record(child_record, child_index, true);
                 }
 
-                return;     // We hid the child sub-records, and we're done!
+                return;     // We've hidden the child sub-records, and we're done!
             }
 
 
+            // **** "SHOW" SCENARIO
+
             // Given no sub-records from our link name, the toggle operation is taken to be a "SHOW"
-            console.log(`    No children found; the toggle operation will be a "show"...`);
+            console.log(`    No existing sub-records (children) found; the toggle operation will be a "show"...`);
 
 
             // TODO: this sample hardwired section to be replaced by a server call
