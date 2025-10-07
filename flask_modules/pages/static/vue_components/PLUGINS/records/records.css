@@ -47,7 +47,7 @@ div.edit-link  {
 }
 
 
-/* A little box showing a relationships */
+/* A little box showing a link (either IN or OUT) */
 span.relationship-in {
     display: inline-block;
     margin-right: 5px;

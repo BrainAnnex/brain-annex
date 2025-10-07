@@ -406,8 +406,8 @@ class CypherUtils:
             if caller_method is None:
                 caller_method = "process_match_structure"
 
-            raise Exception(f"{caller_method}(): the argument must be either an integer with a valid internal database ID, "
-                            f"or an object of type cypher_utils.NodeSpecs")
+            raise Exception(f"{caller_method}(): the `match` argument must be either an integer with a valid internal database ID, "
+                            f"or an object of type cypher_utils.NodeSpecs ; the passed type is {type(handle)}")
 
 
         return CypherMatch(handle, dummy_node_name_if_missing=dummy_node_name)

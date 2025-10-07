@@ -935,15 +935,66 @@ class ApiRouting:
             return jsonify(response)   # This function also takes care of the Content-Type header
 
 
+        @bp.route('/get-link-summary-by-id/<internal_id>')
+        @login_required
+        def get_link_summary_by_id(internal_id):
+            """
+            Return a JSON structure identifying the names and counts of all
+            the inbound and outbound links to and from the given node.
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/get-link-summary-by-id/123
+
+            :param internal_id: Internal database ID of the node of interest
+            :return:            A JSON string with the names and counts of inbound and outbound links
+                                EXAMPLE:
+                                    {
+                                        "status": "ok",
+                                        "payload": [["HAS_ON_PAYROLL", "IN", 2],
+                                                    ["EMPLOYED_BY", "OUT", 2],
+                                                    ["MARRIED_TO", "OUT", 1]
+                                                   ]
+                                    }
+            """
+            try:
+                #payload = NeoSchema.db.get_link_summary(internal_id=internal_id)
+
+                link_data = NeoSchema.db.get_link_summary(internal_id=internal_id)
+                # Transform the format      TODO: maybe move to DataManager
+                payload = []
+                for l in link_data["in"]:   # Process the inbound links
+                    payload.append([l[0], "IN", l[1]])  # EXAMPLE: payload.append(["EMPLOYS", "IN", 2])
+
+                for l in link_data["out"]:  # Process the outbound links
+                    payload.append([l[0], "OUT", l[1]])
+
+                response = {"status": "ok", "payload": payload}             # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+
+            return jsonify(response)   # This function also takes care of the Content-Type header
+
+
 
         @bp.route('/get_records_by_link', methods=['POST'])
         @login_required
         def get_records_by_link_api():
             """
-            Locate and return the data of the nodes linked to the one specified by uri,
-            by the relationship named by rel_name, in the direction specified by dir
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/get_records_by_link -d "uri=123&rel_name=BA_served_at&dir=IN"
+            Locate and return the data (properties) of the nodes linked to the one specified
+            by either its uri or internal database ID.
+            From that node, follow the relationships named by `rel_name`, in the direction specified by `dir`.
+
+            If the internal database ID is provided, then the internal database ID's of the matched nodes is also returned.
+
+            EXAMPLES of invocation:
+                1) Using uri:
+                    curl http://localhost:5000/BA/api/get_records_by_link -d "uri=123&rel_name=BA_served_at&dir=IN"
+                2) Using internal_id:
+                    curl http://localhost:5000/BA/api/get_records_by_link -d "internal_id=8&rel_name=BA_served_at&dir=IN"
+
+            POST PARAMETERS:
+                uri or internal_id      One of them is required (the latter takes priority)
+                rel_name                The name of the relationship to follow across one hop
+                dir                     Must be either "IN" or "OUT"
             """
             # Extract the POST values
             post_data = request.form
@@ -951,14 +1002,14 @@ class ApiRouting:
             #cls.show_post_data(post_data)
 
             try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['uri', 'rel_name', 'dir'])
-                data_dict["uri"] = data_dict["uri"]
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['rel_name', 'dir'])
                 payload = DataManager.get_records_by_link(data_dict)
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
 
             return jsonify(response)   # This function also takes care of the Content-Type header
+
 
 
 
@@ -1885,7 +1936,7 @@ class ApiRouting:
             GET VARIABLE:
                 json    A JSON-encoded dict, containing the following entries:
 
-                    label       To name of a node label
+                    label       The name of a node label
                     key_name    A string, or list of strings, with the name of a node attribute;
                                     if provided, key_value must be passed, too
                     key_value   The required value for the above key; if provided, key_name must be passed, too.
@@ -1898,8 +1949,10 @@ class ApiRouting:
                     limit       The max number of entries to return
 
             RETURNED JSON PAYLOAD:
-                recordset:  A list of dicts with the filtered data
-                total_count:The total number of nodes in the database with the given label - NOT considering the remainder of the filter
+                recordset:   A list of dicts with the filtered data; each dict contains the data for a node,
+                                including a field called "internal_id" that has the internal database ID,
+                                and a field called "node_labels" with a list of the node's label names
+                total_count: The total number of nodes in the database with the given label - NOT considering the remainder of the filter
                                 if no label was provided, None
             """
             # Extract the GET values
@@ -1946,7 +1999,7 @@ class ApiRouting:
                 #   This is done to remove "bytes" values (for example, encoded passwords) and other quantities
                 #   that aren't serializable with JSON
                 sanitized_recordset = [{k: v for k, v in record.items()
-                                            if (type(v) == str or type(v) == int or type(v) == bool) }
+                                            if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list) }
                                        for record in recordset]
 
                 if "label" in json_data:

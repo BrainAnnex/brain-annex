@@ -20,7 +20,7 @@ def db():
 # ************  CREATE CATEGORY CLASS AND ROOT CATEGORY for the testing  **************
 
 def initialize_categories(db):
-    # Clear the dbase, create the Schema needed for Categories , and create a ROOT Category node;
+    # Clear the dbase, create the Schema needed for Categories, and create a ROOT Category node;
     # return the pair (internal database ID, URI) of the new Categories ROOT node
 
     db.empty_dbase()
@@ -34,6 +34,44 @@ def initialize_categories(db):
 
 
 # ********************  THE ACTUAL TESTS  ********************
+
+def test_get_records_by_link(db):
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
+    book_1 = db.create_node("book", {'title': 'The Double Helix', "uri": "biochem-1"})
+    book_2 = db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
+
+    # Create new node, linked to the previous two
+    person_id = db.create_node_with_relationships(labels="person",
+                                      properties={"name": "Julian", "city": "Berkeley"},
+                                      connections=[
+                                          {"labels": "book",
+                                           "key": "title", "value": "The Double Helix",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"},
+
+                                          {"labels": "book",
+                                           "key": "title", "value": "Intro to Hilbert Spaces",
+                                           "rel_name": "OWNS", "rel_dir": "OUT"}
+                                      ]
+                                      )
+
+    request_data = {"uri": "biochem-1", "rel_name": "OWNS", "dir": "IN"}
+    result = DataManager.get_records_by_link(request_data)
+    expected = [{"name": "Julian", "city": "Berkeley", 'node_labels': ['person']}]
+    assert result == expected
+
+    request_data = {"internal_id": book_2, "rel_name": "OWNS", "dir": "IN"}
+    result = DataManager.get_records_by_link(request_data)
+    expected = [{"internal_id": person_id, "name": "Julian", "city": "Berkeley", 'node_labels': ['person']}]
+    assert result == expected
+
+    request_data = {"internal_id": person_id, "rel_name": "OWNS", "dir": "OUT"}
+    result = DataManager.get_records_by_link(request_data)
+    expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', 'internal_id': book_1, 'node_labels': ['book']} ,
+                {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2, 'node_labels': ['book']}]
+    assert compare_recordsets(result, expected)
+
+
 
 def test_update_content_item(db):
 
@@ -134,13 +172,18 @@ def test_get_nodes_by_filter(db):
 
     assert DataManager.get_nodes_by_filter({}) == []    # The database is empty
 
-    db.create_node(labels="Test Label", properties={'age': 22, 'gender': 'F'})
+    internal_id = db.create_node(labels="Test Label", properties={'age': 22, 'gender': 'F'})
 
     # No filtration
-    assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22}]
+    assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
     # Filtration by labels
-    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == [{'gender': 'F', 'age': 22}]
+    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == \
+                                [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
     assert DataManager.get_nodes_by_filter({"label": "WRONG_Label"}) == []
+    assert DataManager.get_nodes_by_filter({"key_name": "age", "key_value": 22}) == \
+                                [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
+    assert DataManager.get_nodes_by_filter({"key_name": "age", "key_value": 99}) == []
+    assert DataManager.get_nodes_by_filter({"label": "WRONG_Label", "key_name": "age", "key_value": 22}) == []
 
     with pytest.raises(Exception):
         DataManager.get_nodes_by_filter(filter_dict=123)        # Not a dict

@@ -139,14 +139,15 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             finish_server_communication(success, server_payload, error_message, custom_data)
             /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
 
-                success:        boolean indicating whether the server call succeeded
-                server_payload: whatever the server returned (stripped of information about the success of the operation)
-                error_message:  a string only applicable in case of failure
-                custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+                custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
             */
             {
                 console.log("Finalizing the get_data_from_server() operation...");
-                console.log(`Custom data passed: ${custom_data}`);
+                console.log(`Custom pass-thru data:`);
+                console.log(custom_data)
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
