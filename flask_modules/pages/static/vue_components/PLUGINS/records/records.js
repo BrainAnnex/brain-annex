@@ -330,6 +330,8 @@ Vue.component('vue-plugin-r',
             /* Initiate request to server, to get the list of the properties
                of the data nodes linked to the one specified by uri,
                by the relationship named by rel_name, in the direction specified by dir
+
+               :param record_id:    The uri string of the record of interest
              */
             {
                 console.log(`Getting the properties of data nodes linked to record with uri ${record_id} by means of the ${dir}-bound relationship '${rel_name}'`);
@@ -355,8 +357,8 @@ Vue.component('vue-plugin-r',
                     console.log("    server call was successful; it returned: " , server_payload);
                     /*  EXAMPLE:
                             [
-                                {uri: 100, name: "mushrooms pie", eval: "+", schema_code: "r"},
-                                {uri: 180, name: "Margherita pie", eval: "OK", schema_code: "r"}
+                                {uri: "100", name: "mushrooms pie", eval: "+", schema_code: "r"},
+                                {uri: "180", name: "Margherita pie", eval: "OK", schema_code: "r"}
                             ]
                      */
                     this.linked_records = server_payload;

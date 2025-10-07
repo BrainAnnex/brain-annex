@@ -194,7 +194,7 @@
         &nbsp;
 
         <!-- If applicable, show the record's parentage (i.e. link name/direction to a record above) -->
-        <template v-if="item.controls.parent_id !== null">
+        <template v-if="item.controls.parent_record_id !== null">
             <span v-if="item.controls.parent_dir == 'OUT'"
                 class="subrecord-out" style="display: inline-block; margin-right:10px">
                 <img src='/BA/pages/static/graphics/down_thick_arrow_16_216439.png'>
@@ -219,7 +219,7 @@
 
             <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
 
-                <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, link[0], index)"
+                <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, link[0], index, 'IN')"
                       class="clickable-icon relationship-in"
                       v-bind:title="'Show/Hide ' + link[2] + ' inbound link(s) `' + link[0] + '`'"
                 >
@@ -229,7 +229,7 @@
                     [[ link[0] ]]
                 </span>
 
-                 <span v-else @click="toggle_linked_records(item, link[0], index)"
+                 <span v-else @click="toggle_linked_records(item, link[0], index, 'OUT')"
                       class="clickable-icon relationship-out"
                       v-bind:title="'Show/Hide ' + link[2] + ' outbound link(s) `' + link[0] + '`'"
                  >
@@ -307,7 +307,7 @@ new Vue({
                                     //
                                     //      * "controls" is an array of dicts, with the following keys:
                                     //                      "record_id" (int)
-                                    //                      "parent_id" (int)
+                                    //                      "parent_record_id" (int)
                                     //                      "parent_link" (str)
                                     //                      "parent_dir" (str)
                                     //                      "expand" (bool)
@@ -428,7 +428,7 @@ new Vue({
                     let new_entry = {controls: {
                                                     record_id: this.next_record_id,
 
-                                                    parent_id: null,
+                                                    parent_record_id: null,
                                                     parent_link: null,
                                                     parent_dir: null,
 
@@ -488,6 +488,10 @@ new Vue({
             console.log(`Getting the links summary info for record id ${record.controls.record_id}`);
 
             const internal_id = record.data.internal_id;
+            if (internal_id == null)  {
+                alert("get_link_summary_from_server(): the record lacks an internal database ID.  Its links cannot be expanded");
+                return;
+            }
             const url_server_api = `/BA/api/get-link-summary-by-id/${internal_id}`;
 
             console.log(`About to contact the server at "${url_server_api}"`);
@@ -572,14 +576,20 @@ new Vue({
 
 
 
-        toggle_linked_records(record, rel_name, index)
+        toggle_linked_records(record, rel_name, index, dir)
         /* Toggle the display of all the records (database nodes)
            that have a relationship by the given name
            to the specified record (node) at the specified index position
+
+           :param record:   Object
+           :param rel_name: The name of the relationship to follow (for one hop)
+           :param index:    Integer
+           :param dir:      Either "IN" or "OUT"
          */
         {
-            const parent_id = record.controls.record_id;
-            console.log(`In toggle_linked_records() - parent_id: ${parent_id} | rel_name: "${rel_name} | index: "${index}"`);
+            const parent_record_id = record.controls.record_id;
+            const parent_internal_id = record.data.internal_id;
+            console.log(`In toggle_linked_records() - parent_record_id: ${parent_record_id} | parent_internal_id: ${parent_internal_id} | index: ${index} | rel_name: "${rel_name}" | dir: "${dir}"`);
 
             console.log(`    checking if immediate children by the relationship "${rel_name}" are present...`);
             var children = this.locate_children(record, index, rel_name);
@@ -612,10 +622,24 @@ new Vue({
             // **** "SHOW" SCENARIO
 
             // Given no sub-records from our link name, the toggle operation is taken to be a "SHOW"
-            console.log(`    No existing sub-records (children) found; the toggle operation will be a "show"...`);
+            console.log(`    No existing sub-records (children) found; the toggle operation will be a "SHOW"...`);
+
+            this.get_linked_records_from_server(record, rel_name, dir);
+
+            return;
 
 
-            // TODO: this sample hardwired section to be replaced by a server call
+            // TODO: ZAP
+            var new_data_arr = [
+                                    {"A": 123, "B": "hello world"},
+                                    {"A": 999, "B": "how are you?"}
+                               ];
+
+            this.populate_subrecords(record, rel_name, dir, new_data_arr);
+
+
+            return;
+            // TODO: this SAMPLE hardwired section to be replaced by a server call
             var n_links;
             if (rel_name == "MARRIED_TO")
                 var n_links = 1;
@@ -626,7 +650,6 @@ new Vue({
             else
                 var dir = "OUT";
 
-
             for (let counter = 0; counter < n_links; counter++)  {
                 // TODO: for now using hardwired sample data; to be replaced with server data
                 let new_entry = {controls: {
@@ -634,7 +657,7 @@ new Vue({
                                                 expand: false,
                                                 indent: record.controls.indent + 1,
 
-                                                parent_id: parent_id,
+                                                parent_record_id: parent_record_id,
                                                 parent_link: rel_name,
                                                 parent_dir: dir
                                             },
@@ -647,16 +670,134 @@ new Vue({
                 console.log(`new_entry: record_id = ${new_entry.controls.record_id}`);
                 console.log(new_entry.data);
 
-                const i = this.locate_item(parent_id);
+                const i = this.locate_item(parent_record_id);
                 console.log(`Located parent item at index ${i}`);
                 if (i == -1)
-                    alert(f`Unable to find the parent record of the item at index ${i}`);
+                    alert(`Unable to find the parent record of the item at index ${i}`);
                 else
                     this.recordset_array.splice(i+1, 0, new_entry); // Insert the new entry just below its parent
             }
         },
 
 
+        populate_subrecords(record, rel_name, dir, new_data_arr)
+        {
+            const parent_record_id = record.controls.record_id;
+            const n_links = new_data_arr.length;
+
+            for (let counter = 0; counter < n_links; counter++)  {
+                // TODO: for now using hardwired sample data; to be replaced with server data
+                let new_entry = {controls: {
+                                                record_id: this.next_record_id,
+                                                expand: false,
+                                                indent: record.controls.indent + 1,
+
+                                                parent_record_id: parent_record_id,
+                                                parent_link: rel_name,
+                                                parent_dir: dir
+                                            },
+                                 data:
+                                            new_data_arr[counter]
+                                 };
+
+                this.next_record_id += 1;   // Advance the auto-increment value
+                console.log(`new_entry: record_id = ${new_entry.controls.record_id}`);
+                console.log(new_entry.data);
+
+                const i = this.locate_item(parent_record_id);
+
+                if (i == -1)
+                    alert(`Unable to locate any item with a record_id of ${parent_record_id}`);
+                else  {
+                    console.log(`Located parent record at index position ${i}`);
+                    this.recordset_array.splice(i+1, 0, new_entry); // Insert the new entry just below its parent
+                }
+            }
+        },
+
+
+
+        get_linked_records_from_server(record, rel_name, dir)
+        /* Initiate request to server, to get the list of the properties
+           of the data nodes linked to the node (record) specified by the given internal dbase ID,
+           by the relationship named by rel_name, in the direction specified by dir
+
+           :param record:   Object with the record of interest
+           :param rel_name: The name of the relationship to follow (for one hop)
+           :param dir:      Either "IN" or "OUT"
+         */
+        {
+            const internal_id = record.data.internal_id;
+
+            console.log(`get_linked_records_from_server(): Getting the properties of data nodes linked to record with internal dbase ID ${internal_id} by means of the ${dir}-bound relationship '${rel_name}'`);
+
+            const url_server_api = "/BA/api/get_records_by_link";
+            const post_obj = {internal_id: internal_id, rel_name: rel_name, dir: dir};
+            const my_var = [record, rel_name, dir];        // Pass-thru parameters
+
+            console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
+            console.log(post_obj);
+
+            // Initiate asynchronous contact with the server
+            ServerCommunication.contact_server(url_server_api,
+                        {method: "POST",
+                         data_obj: post_obj,
+                         json_encode_send: false,
+                         callback_fn: this.finish_get_linked_records_from_server,
+                         custom_data: my_var
+                        });
+        },
+
+        finish_get_linked_records_from_server(success, server_payload, error_message, custom_data)
+        /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+
+            success:        Boolean indicating whether the server call succeeded
+            server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                                The server returns a JSON value.
+            error_message:  A string only applicable in case of failure
+            custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+        */
+        {
+            console.log("Finalizing the get_linked_records_from_server() operation...");
+            console.log(`Custom pass-thru data:`);
+            console.log(custom_data)
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                /*  EXAMPLE:
+                        [
+                            {uri: "100", internal_id: 2, name: "mushrooms pie", eval: "+"},
+                            {uri: "180", internal_id: 9, name: "Margherita pie", eval: "OK"}
+                        ]
+                */
+                this.status_message = `Operation completed`;
+
+                const record =  custom_data[0];
+                const rel_name = custom_data[1];
+                const dir = custom_data[2];
+                this.populate_subrecords(record, rel_name, dir, server_payload);
+
+                //this.linked_records = server_payload;
+                //this.link_name = custom_data[0];
+                //this.rel_dir = custom_data[1];
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED operation: ${error_message}`;
+                //...
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            //...
+        },  // finish_get_linked_records_from_server
+
+
+
+
+
+
+
+        // ----------------------------------------------------------------------------------------------
 
         locate_children(record, index, rel_name)
         /* Given a record, and its index in the overall array of records,
@@ -686,16 +827,16 @@ new Vue({
             for (var pos = index+1;  pos < this.recordset_array.length;  pos++)  {
                 let record_under_consideration = this.recordset_array[pos];
                 let control_data = record_under_consideration.controls;
-                let parent_id = control_data.parent_id;
+                let parent_record_id = control_data.parent_record_id;
                 let indent = control_data.indent;
 
-                console.log(`    examining record in position ${pos}; it has indent ${indent}, id ${control_data.record_id}, parent id ${parent_id} and parent_link ${control_data.parent_link}`);
+                console.log(`    examining record in position ${pos}; it has indent ${indent}, id ${control_data.record_id}, parent id ${parent_record_id} and parent_link ${control_data.parent_link}`);
 
                 if (indent <= reference_indent)
                     break;      // Quit as soon as the indent is <= that of the reference record
 
 
-                if (parent_id == reference_id)
+                if (parent_record_id == reference_id)
                     // Found a match in the parentage; if a rel_name was specified, also match for that
                     if  ((rel_name == null)  || (control_data.parent_link == rel_name))  {
                         control_data.pos = pos;     // Save the array index position with the child's control data
