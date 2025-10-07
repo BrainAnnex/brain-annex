@@ -585,24 +585,39 @@ class DataManager:
     @classmethod
     def get_records_by_link(cls, request_data: dict) -> [dict]:
         """
-        Locate and return the data of the nodes linked to the one specified by uri,
-        by the relationship named by rel_name, in the direction specified by dir
+        Locate and return the data (properties) of the nodes linked to the one specified
+        by either its uri or internal database ID.
+        From that node, follow the relationships named by `rel_name`, in the direction specified by `dir`.
 
-        :param request_data: A dictionary with 3 keys, "uri", "rel_name", "dir"
-        :return:             A list of dictionaries with all the properties of the neighbor nodes
+        If the internal database ID is provided, then the internal database ID's of the matched nodes is also returned.
+
+
+        :param request_data: A dictionary with the keys, "rel_name" and "dir",
+                                plus either "uri" or "internal_id" (the latter takes priority)
+
+        :return:             A list of dictionaries with all the properties of the neighbor nodes,
+                             including an extra field called "node_labels", with a string of label names
+                             If the internal database ID is provided, then the internal database ID's
+                                of the matched nodes is also returned.
         """
-        uri = request_data["uri"]               # This must be a string
         rel_name = request_data["rel_name"]
         dir = request_data["dir"]               # Must be either "IN or "OUT"
 
         assert dir in ["IN", "OUT"], \
             f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
-        assert type(uri) == str, \
-            "get_records_by_link(): The value of the parameter `uri` must be an integer"
 
-        match = cls.db.match(labels="BA", key_name="uri", key_value=uri)
+        if "internal_id" in request_data:       # "internal_id" takes priority, as a way to identify the node
+            match = int(request_data["internal_id"])
+            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True, include_labels=True)
+        else:
+            assert "uri" in request_data, \
+                "get_records_by_link(): A value for `internal_id` or `uri` must be provided"
 
-        return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, neighbor_labels ="BA")
+            uri = request_data["uri"]
+
+            match = cls.db.match(key_name="uri", key_value=uri)
+
+            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=False, include_labels=True)
 
 
 
@@ -611,7 +626,6 @@ class DataManager:
         """
         Return a dictionary structure identifying the names and counts of all
         inbound and outbound links to/from the given data node.
-        TODO: move most of it to the "~ FOLLOW LINKS ~" section of NeoAccess
 
         :param uri:         String with the URI of a data node
         :param omit_names:  Optional list of relationship names to disregard
@@ -628,6 +642,7 @@ class DataManager:
                                     ]
                                 }
         """
+        # TODO: use NeoAccess.get_link_summary() instead, after it is generalized to accept match structures
         if omit_names:
             assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
             where_clause = f"WHERE NOT type(r) IN {omit_names}"
@@ -656,6 +671,7 @@ class DataManager:
         rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
         return  {"in": rel_in, "out": rel_out}
+
 
 
 
@@ -1381,6 +1397,7 @@ class DataManager:
                                                     if provided, key_value must be passed, too
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
                                                     Note: no requirement for the key to be primary
+                                "case_sensitive" Boolean
                                 "clause"        TODO: NOT CURRENTLY IMPLEMENTED
                                                     MUST use "n" as dummy name.
                                                     EXAMPLE: "n.name CONTAINS 'art'"
@@ -1397,7 +1414,9 @@ class DataManager:
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
                                 {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
-        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node
+        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node,
+                                including a field called "internal_id" that has the internal database ID,
+                                and a field called "node_labels" with a list of the node's label names
         """
         #TODO: parse the filter_dict here, but move the body of the computation to NeoSchema
 
@@ -1407,7 +1426,7 @@ class DataManager:
             f"get_nodes_by_filter(): argument `filter_dict` must be a dictionary.  " \
             f"The type of the passed argument was {type(filter_dict)}"
 
-        allowed_keys = ["label", "key_name", "key_value", "clause", "order_by", "skip", "limit"]
+        allowed_keys = ["label", "key_name", "key_value", "case_sensitive", "clause", "order_by", "skip", "limit"]
 
         # Check the validity of the keys
         for key in filter_dict:
@@ -1419,6 +1438,7 @@ class DataManager:
 
         key_name = filter_dict.get("key_name")
         key_value = filter_dict.get("key_value")
+        case_sensitive = filter_dict.get("case_sensitive")
 
         #clause = filter_dict.get("clause")     # Not in current use
         order_by = filter_dict.get("order_by")
@@ -1442,7 +1462,9 @@ class DataManager:
 
 
         return NeoSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
-                                             string_match="CONTAINS", order_by=order_by, skip=skip, limit=limit)
+                                             string_match="CONTAINS", case_sensitive=case_sensitive,
+                                             include_id=True, include_labels=True,
+                                             order_by=order_by, skip=skip, limit=limit)
 
 
 

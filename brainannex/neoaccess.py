@@ -389,6 +389,23 @@ class NeoAccess(InterGraph):
 
 
 
+    def get_node_labels(self, internal_id: int) -> [str]:
+        """
+        Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
+
+        TODO: maybe also accept a "match" structure as argument
+
+        :param internal_id: An integer with a Neo4j node id
+        :return:            A list of strings with the names of all the labels of the given node
+        """
+        CypherUtils.assert_valid_internal_id(internal_id)
+
+        q = "MATCH (n) WHERE id(n)=$internal_id RETURN labels(n) AS all_labels"
+
+        return self.query(q, data_binding={"internal_id": internal_id}, single_cell="all_labels")
+
+
+
     def find_first_duplicate(self, labels, property_name) -> Union[dict, None]:
         """
         Search the database for node duplicates based on the given labels/property_name pairing;
@@ -411,24 +428,7 @@ class NeoAccess(InterGraph):
 
         return self.query(q, single_row=True)
 
-
-
-    def get_node_labels(self, internal_id: int) -> [str]:
-        """
-        Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
-
-        TODO: maybe also accept a "match" structure as argument
-
-        :param internal_id: An integer with a Neo4j node id
-        :return:            A list of strings with the names of all the labels of the given node
-        """
-        CypherUtils.assert_valid_internal_id(internal_id)
-
-        q = "MATCH (n) WHERE id(n)=$internal_id RETURN labels(n) AS all_labels"
-
-        return self.query(q, data_binding={"internal_id": internal_id}, single_cell="all_labels")
-
-
+        
 
     def find_first_duplicate(self, labels, property_name) -> Union[dict, None]:
         """
@@ -1564,11 +1564,72 @@ class NeoAccess(InterGraph):
     #####################################################################################################
 
 
-    def follow_links(self, match: Union[int, NodeSpecs], rel_name :str, rel_dir ="OUT", neighbor_labels = None) -> [dict]:
+    def standardize_recordset(self, recordset :[dict], dummy_name="n"):
+        """
+        Sanitize and standardize the given recordset, typically as returned by a call to query(),
+        obtained from a Cypher query that returned a group of nodes (using the dummy name "n"),
+        and optionally also the internal database ID (returned as "internal_id").
+
+        The sanitizing is done by transforming any Neo4j date and datetime format to suitable python counterparts.
+        The time parts get dropped, and the date is returned in the format yyyy_mm_dd
+
+        If applicable, insert into the records the values of the internal database ID (using the key "internal_id"),
+        and/or of the node labels (using the key "node_labels")
+
+        EXAMPLES of queries that generate recordsets in the expected formats, when passed to query():
+                "MATCH (n) RETURN n"
+                "MATCH (n) RETURN n, id(n) AS internal_id"
+
+        :param recordset:   A list of dict's that contain the key "n" and optionally the key "internal_id".
+                                EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "internal_id": 88, "node_labels": ["Car", "Vehicle"]},
+                                           {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "internal_id": 4},
+                                           {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "internal_id": 53},
+                                         ]
+        :param dummy_name:
+
+        :return:            A list of dict's that contain all the node properties - sanitized as needed - and,
+                                optionally, an extra key named "internal_id"
+                                EXAMPLE:  [ {"field1": 1, "field1": "x", "internal_id": 88, "node_labels": ["Car", "Vehicle"]},
+                                            {"PatientID": 123, "DOB": "2000/01/31", "internal_id": 4},
+                                            {"timestamp": 123, "DOB": "2003/07/15", "internal_id": 53}
+                                          ]
+        """
+        # TODO: possibly sanitize other Neo4j data types
+        # TODO: offer options for how to transform date and datetime fields
+        # TODO: perhaps add a flag to query(), to automatically invoke this function at the end;
+        #       alternatively, perhaps create a new query_recordset() method that contains query() plus this function.
+        result = []
+        for record in recordset:
+            data = record[dummy_name]   # A dict of field names and values, comprising the properties of the node n.
+                                        # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+
+            # Convert any DateTime or Date values to strings; the time part is dropped.  TODO: make the time dropping optional
+            for key, val in data.items():
+                if  type(val) == neo4j.time.DateTime:
+                    conv = neo4j.time.DateTime.to_native(val)   # This will be of python type datetime.datetime
+                    data[key] = conv.strftime("%Y/%m/%d")       # Overwrite with converted value.  EXAMPLE: "2000/01/31"
+                if  type(val) == neo4j.time.Date:
+                    conv = neo4j.time.Date.to_native(val)       # This will be of python type datetime.datetime
+                    data[key] = conv.strftime("%Y/%m/%d")       # Overwrite with converted value.  EXAMPLE: "2000/01/31"
+
+            if "internal_id" in record:
+                data["internal_id"] = record["internal_id"]     # Integrate the internal database ID, if provided, into the record
+
+            if "node_labels" in record:
+                data["node_labels"] = record["node_labels"]     # Integrate the node labels (a list of strings), if provided, into the record
+
+            result.append(data)
+
+        return result
+
+
+
+    def follow_links(self, match: Union[int, NodeSpecs], rel_name :str, rel_dir ="OUT",
+                           neighbor_labels=None, include_id=False, include_labels=False) -> [dict]:
         """
         From the given starting node(s), follow all the relationships that have the specified name,
-        from/into neighbor nodes (optionally having the given labels),
-        and return all the properties of those neighbor nodes.
+        from/into neighbor nodes (optionally requiring those nodes to have the given labels),
+        and return all the properties of the located neighbor nodes, optionally also including their internal database ID's.
 
         :param match:           EITHER an integer with an internal database node id,
                                     OR a "NodeSpecs" object, as returned by match(),
@@ -1576,14 +1637,20 @@ class NeoAccess(InterGraph):
         :param rel_name:        A string with the name of relationship to follow.
                                     (Note: any other relationships are ignored)
         :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
-        :param neighbor_labels: Optional label(s) required on the neighbors.
+        :param neighbor_labels: [OPTIONAL] label(s) required on the neighbor nodes; nodes that don't match are ignored.
                                     If used, provide either a string or list of strings
 
-        :return:                A list of dictionaries with all the properties of the neighbor nodes
-                                    Note that the internal database ID is NOT considered a property.
-                                    TODO: add the option to just return a subset of fields
+        :param include_id:      [OPTIONAL] If True, also return an extra field named "internal_id",
+                                    with the internal database ID value; by default, False
+        :param include_labels:  [OPTIONAL] If True, also return an extra field named "node_labels",
+                                with a list of the node labels; by default, False
+
+        :return:                A list of dictionaries with all the properties of the neighbor nodes.
+                                    If `include_id` is True, then each dict also contains a key named "internal_id",
+                                    with the internal database ID value.
+                                    Any datetime, etc, value in the database are first converted to python strings
         """
-        # TODO: add a method that fetches the ID's of those nodes, rather than their properties
+        # TODO: add an option to only retrieve SOME of the properties
         # TODO: add an option to also retrieve some or all the properties of the relationships
 
         match_structure = CypherUtils.process_match_structure(match, caller_method="follow_links")
@@ -1607,9 +1674,16 @@ class NeoAccess(InterGraph):
 
         q += CypherUtils.prepare_where(where) + " RETURN neighbor"
 
-        result = self.query(q, data_binding, single_column='neighbor')
+        if include_id:
+            q += " , id(neighbor) AS internal_id"
 
-        return result
+        if include_labels:
+            q += " , labels(neighbor) AS node_labels"
+
+
+        result = self.query(q, data_binding)        # , single_column='neighbor'
+
+        return self.standardize_recordset(recordset=result, dummy_name="neighbor")
 
 
 
@@ -1748,6 +1822,65 @@ class NeoAccess(InterGraph):
 
         result = self.query_extended(q, data_binding={"internal_id": internal_id}, flatten=True)
         return result
+
+
+
+    def get_link_summary(self, internal_id, omit_names = None) -> dict:
+        """
+        Return a dictionary structure identifying the names and counts of all
+        inbound and outbound links to and from the given node.
+
+        :param internal_id: The internal database ID of the node of interest
+        :param omit_names:  [OPTIONAL] List of relationship names to disregard
+
+        :return:            A dictionary with the names and counts of the inbound and outbound links.
+                            This dictionary has two keys, "in" and "out";
+                            their respective values are (possibly empty) lists.
+                            Each list entry is a pair of the form (link_name, count)
+                            EXAMPLE:
+                                {
+                                    "in": [
+                                        ("served_at", 1)
+                                    ],
+                                    "out": [
+                                        ("located_in", 1),
+                                        ("cuisine_type", 2)
+                                    ]
+                                }
+        """
+        # TODO: generalize to accept a match structure instead of just internal_id
+
+        id_clause = f"id(n) = {internal_id}"
+
+        if omit_names:
+            assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
+            where_clause = f"WHERE NOT type(r) IN {omit_names} AND {id_clause}"
+        else:
+            where_clause = f"WHERE {id_clause}"
+
+        # Get outbound links (names and counts)
+        q_out = f'''
+                MATCH (n)-[r]->(n2)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
+        result = self.query(q_out)
+        rel_out = [ ( l["rel_name"], l["rel_count"] ) for l in result ]
+
+
+        # Get inbound links (names and counts)
+        q_in = f'''
+                MATCH (n)<-[r]-(n2)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
+        result = self.query(q_in)
+        rel_in = [ ( l["rel_name"], l["rel_count"] ) for l in result ]
+
+        return  {"in": rel_in, "out": rel_out}
+
 
 
 

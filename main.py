@@ -160,7 +160,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER                 # A temporary folder
 app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
 app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
 # Parameters for special folders
-app.config['MEDIA_FOLDER'] = MEDIA_FOLDER       # Expected to end with a "/"
+app.config['MEDIA_FOLDER'] = MEDIA_FOLDER       # Expected to end with a "/"   TODO: add the final slash here, if not already present
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER     # EXAMPLE: "/tmp/"
 
 #app.config['site_pages'] = site_pages

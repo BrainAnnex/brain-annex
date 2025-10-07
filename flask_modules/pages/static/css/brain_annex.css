@@ -32,8 +32,22 @@ span.waiting {
 }
 
 
+
+
+/* Misc. SPAN styling */
+
 span.star-yellow {          /* Used to display star ratings */
     color: #a6a606;
+}
+
+
+span.monospace {
+    font-family: "Courier New", "Lucida Console", monospace;
+}
+
+
+span.form-comment {
+    color: #a6a6a6;
 }
 
 
@@ -132,3 +146,4 @@ a:active {
 .dark-background  a:active {
 	color:red !important;
 }
+

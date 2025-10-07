@@ -312,14 +312,68 @@ def test_get_node_labels(db):
 
 
 
+def test_standardize_recordset(db):
+    db.empty_dbase()
+
+    # Use a date as a field value
+    car_1 = db.create_node(labels="Car", properties={"color": "red", "make": "Honda",
+                                             "bought_on": neo4j.time.Date(2019, 6, 1),
+                                             "certified": neo4j.time.DateTime(2019, 1, 31, 18, 59, 35)
+                                             })
+    q = "MATCH (n) RETURN n"
+    dataset = db.query(q)
+
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'red', 'make': 'Honda',
+                       'bought_on': '2019/06/01', 'certified': '2019/01/31'}]
+
+
+    car_2 = db.create_node(labels="Car", properties={"color": "blue", "make": "Toyota",
+                                             "bought_on": neo4j.time.Date(2025, 10, 4),
+                                             "certified": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)
+                                             })
+
+    q = "MATCH (n) WHERE n.color='blue' RETURN n, id(n) AS internal_id"
+    dataset = db.query(q)
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'blue', 'make': 'Toyota',
+                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2}]
+
+
+    q = "MATCH (n) RETURN n, id(n) AS internal_id ORDER BY n.make"
+    dataset = db.query(q)
+
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'red', 'make': 'Honda',
+                       'bought_on': '2019/06/01', 'certified': '2019/01/31', 'internal_id': car_1},
+                      {'color': 'blue', 'make': 'Toyota',
+                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2}]
+
+
+    q = "MATCH (n) RETURN n, id(n) AS internal_id, labels(n) AS node_labels ORDER BY n.make"
+    dataset = db.query(q)
+
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'red', 'make': 'Honda',
+                       'bought_on': '2019/06/01', 'certified': '2019/01/31', 'internal_id': car_1, 'node_labels': ['Car']},
+                      {'color': 'blue', 'make': 'Toyota',
+                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2, 'node_labels': ['Car']}]
+
+
+
+
 
 ###  ~ FOLLOW LINKS ~
 
 def test_follow_links(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
-    db.create_node("book", {'title': 'The Double Helix'})
-    db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
+    book_1 = db.create_node("book", {'title': 'The Double Helix'})
+    book_2 = db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
 
     # Create new node, linked to the previous two
     db.create_node_with_relationships(labels="person", properties={"name": "Julian", "city": "Berkeley"},
@@ -335,8 +389,21 @@ def test_follow_links(db):
 
     match = db.match(labels="person", properties={"name": "Julian", "city": "Berkeley"})
 
-    links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book")
-    expected = [{'title': 'The Double Helix'} , {'title': 'Intro to Hilbert Spaces'} ]
+    links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=False)
+    expected = [{'title': 'The Double Helix'} , {'title': 'Intro to Hilbert Spaces'}]
+    assert compare_recordsets(links, expected)
+
+    links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=True)
+    expected = [{'title': 'The Double Helix', 'internal_id': book_1} , {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2}]
+    assert compare_recordsets(links, expected)
+
+    links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=False, include_labels=True)
+    expected = [{'title': 'The Double Helix', 'node_labels': ['book']} , {'title': 'Intro to Hilbert Spaces', 'node_labels': ['book']}]
+    assert compare_recordsets(links, expected)
+
+    links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=True, include_labels=True)
+    expected = [ {'title': 'The Double Helix', 'internal_id': book_1, 'node_labels': ['book']} ,
+                 {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2, 'node_labels': ['book']}]
     assert compare_recordsets(links, expected)
 
 
@@ -517,6 +584,37 @@ def test_get_siblings(db):
                 {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']},
                 {'name': 'Italian', 'internal_id': italian_id, 'neo4j_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
+
+
+
+def test_get_link_summary(db):
+    db.empty_dbase()
+
+    # 1st node
+    car_id = db.create_node(labels="Car")
+
+    assert db.get_link_summary(car_id) == {"in": [], "out": []}
+
+
+    # 2nd node
+    person_id = db.create_attached_node(labels="Person",
+                        attached_to=car_id, rel_name="OWNS", rel_dir="OUT")
+
+    assert db.get_link_summary(person_id) == {"in": [], "out": [("OWNS", 1)]}
+
+    assert db.get_link_summary(car_id) == {"in": [("OWNS", 1)], "out": []}
+
+
+    # 3rd node
+    db.create_attached_node(labels="Color",
+                            attached_to=car_id, rel_name="HAS_COLOR", rel_dir="IN")
+
+    assert db.get_link_summary(person_id) == {"in": [], "out": [("OWNS", 1)]}
+
+    assert db.get_link_summary(car_id) == {"in": [("OWNS", 1)], "out": [("HAS_COLOR", 1)]}
+
+    #TODO: additional tests
+
 
 
 

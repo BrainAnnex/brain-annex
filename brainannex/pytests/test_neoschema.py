@@ -947,9 +947,14 @@ def test_get_nodes_by_filter(db):
 
     assert NeoSchema.get_nodes_by_filter() == []
 
-    db.create_node(labels="Car", properties={"color": "yellow", "year": 1999})      # A GENERIC node (not a Data Node)
+    # Create a GENERIC node (not a Data Node)
+    internal_id = db.create_node(labels="Car", properties={"color": "yellow", "year": 1999})
 
     assert NeoSchema.get_nodes_by_filter() == [{"color": "yellow", "year": 1999}]
+
+    assert NeoSchema.get_nodes_by_filter(include_id=True) == [{"color": "yellow", "year": 1999, "internal_id": internal_id}]
+
+    assert NeoSchema.get_nodes_by_filter(include_labels=True) == [{"color": "yellow", "year": 1999, "node_labels": ["Car"]}]
 
     assert NeoSchema.get_nodes_by_filter(labels="Car") == [{"color": "yellow", "year": 1999}]
 
@@ -961,6 +966,12 @@ def test_get_nodes_by_filter(db):
     result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="yellow")
     assert result == [{"color": "yellow", "year": 1999}]
 
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="YELLOW")
+    assert result == []
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="YELLOW", case_sensitive=False)
+    assert result == [{"color": "yellow", "year": 1999}]
+
     result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="ello")
     assert result == []
 
@@ -970,6 +981,20 @@ def test_get_nodes_by_filter(db):
     result = NeoSchema.get_nodes_by_filter(labels="Car", key_names=["color", "year"], key_value="yellow")
     assert result == [{"color": "yellow", "year": 1999}]
 
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_names=["year", "color"], key_value="yEllOW", case_sensitive=False)
+    assert result == [{"color": "yellow", "year": 1999}]
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value=1999)
+    assert result == [{"color": "yellow", "year": 1999}]
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value=1999, case_sensitive=False)
+    assert result == [{"color": "yellow", "year": 1999}]    # case_sensitive is ignored, because value isn't text
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value="1999")
+    assert result == []         # No match because we searched for the string "1999" rather than the number 1999
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value="1999", case_sensitive=False)
+    assert result == []         # No match because we searched for the string "1999" rather than the number 1999
 
     result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="lavender")
     assert result == []
@@ -1096,7 +1121,7 @@ def test_get_nodes_by_filter(db):
                         {'color': 'black', 'trim': 'yellow', 'year': 1999},
                         {'color': 'yellow', 'year': 1999}]   # "fiat" comes after "Toyota" due to capitalization
 
-    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="make, year,  color  ", ignore_case=["make"])
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="make, year,  color  ", sort_ignore_case=["make"])
     assert result == [  {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
                         {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
                         {'make': 'fiat', 'year': 1970, '_SCHEMA': 'Car', 'color': 'blue'},
@@ -1106,7 +1131,7 @@ def test_get_nodes_by_filter(db):
                         {'color': 'yellow', 'year': 1999}]  # The "fiat" is now alphabetized regardless of case
 
 
-    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="year, make DESC, color DESC", ignore_case=["make"])
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="year, make DESC, color DESC", sort_ignore_case=["make"])
     assert result == [  {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
                         {'make': 'fiat', 'year': 1970, '_SCHEMA': 'Car', 'color': 'blue'},
                         {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
@@ -1118,7 +1143,7 @@ def test_get_nodes_by_filter(db):
     # Add a new Car node; notice the blank in the new field name
     db.create_node(labels="Car", properties={"year": 2003, "decommission year": 2025})      # A GENERIC node (not a Data Node)
 
-    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="decommission year, make, year", ignore_case=["make"], limit=2)
+    result = NeoSchema.get_nodes_by_filter(labels="Car", order_by="decommission year, make, year", sort_ignore_case=["make"], limit=2)
     assert result == [{'decommission year': 2025, 'year': 2003},
                       {'_SCHEMA': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'}]
 
@@ -1149,11 +1174,40 @@ def test__process_key_name_value():
     result = NeoSchema._process_key_name_value(key_name="age", key_value=22, string_match="CONTAINS")
     assert result == "(n.`age` = $key_value)"   # The "CONTAINS" is ignored because the value isn't a string
 
+    result = NeoSchema._process_key_name_value(key_name="age", key_value=22, case_sensitive=False)
+    assert result == "(n.`age` = $key_value)"   # The `case_sensitive` arg is ignored because the value isn't a string
+
     result = NeoSchema._process_key_name_value(key_name="city", key_value="New York")
     assert result == "(n.`city` = $key_value)"
 
+    result = NeoSchema._process_key_name_value(key_name="city", key_value="New York", case_sensitive=False)
+    expected = '''
+            (
+                CASE 
+                    WHEN n.`city` = toString(n.`city`) 
+                    THEN toLower(n.`city`) 
+                    ELSE n.`city` 
+                END
+                = toLower($key_value)
+            )
+            '''
+    assert result == expected
+
     result = NeoSchema._process_key_name_value(key_name="city", key_value="New York", string_match="CONTAINS")
     assert result == "(n.`city` CONTAINS $key_value)"
+
+    result = NeoSchema._process_key_name_value(key_name="city", key_value="New York", string_match="ENDS WITH", case_sensitive=False)
+    expected = '''
+            (
+                CASE 
+                    WHEN n.`city` = toString(n.`city`) 
+                    THEN toLower(n.`city`) 
+                    ELSE n.`city` 
+                END
+                ENDS WITH toLower($key_value)
+            )
+            '''
+    assert result == expected
 
 
 
