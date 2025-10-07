@@ -389,6 +389,23 @@ class NeoAccess(InterGraph):
 
 
 
+    def get_node_labels(self, internal_id: int) -> [str]:
+        """
+        Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
+
+        TODO: maybe also accept a "match" structure as argument
+
+        :param internal_id: An integer with a Neo4j node id
+        :return:            A list of strings with the names of all the labels of the given node
+        """
+        CypherUtils.assert_valid_internal_id(internal_id)
+
+        q = "MATCH (n) WHERE id(n)=$internal_id RETURN labels(n) AS all_labels"
+
+        return self.query(q, data_binding={"internal_id": internal_id}, single_cell="all_labels")
+
+
+
     def find_first_duplicate(self, labels, property_name) -> Union[dict, None]:
         """
         Search the database for node duplicates based on the given labels/property_name pairing;
@@ -411,24 +428,7 @@ class NeoAccess(InterGraph):
 
         return self.query(q, single_row=True)
 
-
-
-    def get_node_labels(self, internal_id: int) -> [str]:
-        """
-        Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
-
-        TODO: maybe also accept a "match" structure as argument
-
-        :param internal_id: An integer with a Neo4j node id
-        :return:            A list of strings with the names of all the labels of the given node
-        """
-        CypherUtils.assert_valid_internal_id(internal_id)
-
-        q = "MATCH (n) WHERE id(n)=$internal_id RETURN labels(n) AS all_labels"
-
-        return self.query(q, data_binding={"internal_id": internal_id}, single_cell="all_labels")
-
-
+        
 
     def sample_properties(self, label :str, sample_size=10) -> {str}:
         """
