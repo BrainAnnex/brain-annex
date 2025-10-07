@@ -411,7 +411,7 @@ class NeoAccess(InterGraph):
         Search the database for node duplicates based on the given labels/property_name pairing;
         return the first duplicate, or None if not found
 
-        :param labels:
+        :param labels:  For now, just 1 label
         :param property_name:
         :return:        If no duplicates are present, return None;
                         otherwise return a dict such as
@@ -428,7 +428,7 @@ class NeoAccess(InterGraph):
 
         return self.query(q, single_row=True)
 
-        
+
 
     def sample_properties(self, label :str, sample_size=10) -> {str}:
         """
