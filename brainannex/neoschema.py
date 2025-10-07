@@ -2023,7 +2023,8 @@ class NeoSchema:
 
     @classmethod
     def get_nodes_by_filter(cls, class_name=None, labels=None,
-                            key_names=None, key_value=None, string_match=None, case_sensitive=True, include_id=False,
+                            key_names=None, key_value=None, string_match=None, case_sensitive=True,
+                            include_id=False, include_labels=False,
                             order_by=None, sort_ignore_case=None,
                             skip=None, limit=100) -> [dict]:
         """
@@ -2043,6 +2044,8 @@ class NeoSchema:
                                 By default True; use False, to disregard case in string matches
         :param include_id:  [OPTIONAL] If True, also return an extra field named "internal_id",
                                 with the internal database ID value; by default, False
+        :param include_labels:  [OPTIONAL] If True, also return an extra field named "node_labels",
+                                with a list of the node labels; by default, False
         :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive instructions.
                                 EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
                                 Note: nodes lacking the order-by fields, will appear at the end of the
@@ -2118,6 +2121,10 @@ class NeoSchema:
 
         if include_id:
             q += ''' , id(n) AS internal_id
+                 '''
+
+        if include_labels:
+            q += ''' , labels(n) AS node_labels
                  '''
 
         if order_by:
@@ -2539,6 +2546,7 @@ class NeoSchema:
                                 otherwise, a list of dictionaries
         """
         #TODO: pytest
+        #TODO: merge with the NeoAccess version by the same name?
         #TODO: allow an option to return the internal database ID's
         '''
         TODO - idea to expand `links`:

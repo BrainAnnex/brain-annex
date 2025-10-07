@@ -954,6 +954,8 @@ def test_get_nodes_by_filter(db):
 
     assert NeoSchema.get_nodes_by_filter(include_id=True) == [{"color": "yellow", "year": 1999, "internal_id": internal_id}]
 
+    assert NeoSchema.get_nodes_by_filter(include_labels=True) == [{"color": "yellow", "year": 1999, "node_labels": ["Car"]}]
+
     assert NeoSchema.get_nodes_by_filter(labels="Car") == [{"color": "yellow", "year": 1999}]
 
     assert NeoSchema.get_nodes_by_filter(labels="Car", key_names="") == [{"color": "yellow", "year": 1999}]

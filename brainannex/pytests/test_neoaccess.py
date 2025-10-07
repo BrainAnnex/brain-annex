@@ -353,6 +353,17 @@ def test_standardize_recordset(db):
                        'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2}]
 
 
+    q = "MATCH (n) RETURN n, id(n) AS internal_id, labels(n) AS node_labels ORDER BY n.make"
+    dataset = db.query(q)
+
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'red', 'make': 'Honda',
+                       'bought_on': '2019/06/01', 'certified': '2019/01/31', 'internal_id': car_1, 'node_labels': ['Car']},
+                      {'color': 'blue', 'make': 'Toyota',
+                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2, 'node_labels': ['Car']}]
+
+
 
 
 
@@ -384,6 +395,15 @@ def test_follow_links(db):
 
     links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=True)
     expected = [{'title': 'The Double Helix', 'internal_id': book_1} , {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2}]
+    assert compare_recordsets(links, expected)
+
+    links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=False, include_labels=True)
+    expected = [{'title': 'The Double Helix', 'node_labels': ['book']} , {'title': 'Intro to Hilbert Spaces', 'node_labels': ['book']}]
+    assert compare_recordsets(links, expected)
+
+    links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=True, include_labels=True)
+    expected = [ {'title': 'The Double Helix', 'internal_id': book_1, 'node_labels': ['book']} ,
+                 {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2, 'node_labels': ['book']}]
     assert compare_recordsets(links, expected)
 
 

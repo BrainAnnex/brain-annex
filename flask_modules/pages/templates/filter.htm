@@ -213,7 +213,9 @@
 
         <!-- Display the data record (with all its fields) -->
         <template v-for="(val, key) in item.data">
-             <span style="color:grey; font-size:12px" class="monospace">[[key]]: </span>
+            <span v-if="key == 'node_labels'" style="color:brown; font-size:14px; font-weight:bold; font-family: Arial, sans-serif;">LABELS: </span>
+            <span v-else style="color:grey; font-size:12px" class="monospace">[[key]]: </span>
+
              `<span style="background-color: rgb(251, 240, 240)">[[val]]</span>` <span style="color:brown; font-weight: bold">|| </span>
         </template>
 
@@ -225,7 +227,7 @@
 
                 <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, link[0], index, 'IN')"
                       class="clickable-icon relationship-in"
-                      v-bind:title="'Show/Hide ' + link[2] + ' INbound link(s) `' + link[0] + '`'"
+                      v-bind:title="'Show/Hide ' + link[2] + ' IN-bound link(s) `' + link[0] + '`'"
                 >
                     <!-- Inbound link : show the number of links, an icon, and the link's name -->
                     [[ link[2] ]]
@@ -235,7 +237,7 @@
 
                  <span v-else @click="toggle_linked_records(item, link[0], index, 'OUT')"
                       class="clickable-icon relationship-out"
-                      v-bind:title="'Show/Hide ' + link[2] + ' OUTbound link(s) `' + link[0] + '`'"
+                      v-bind:title="'Show/Hide ' + link[2] + ' OUT-bound link(s) `' + link[0] + '`'"
                  >
                     <!-- Outbound link : show the number of links, an icon, and the link's name -->
                     [[ link[2] ]]
@@ -313,7 +315,7 @@ new Vue({
                                     //                      "record_id" (int)
                                     //                      "parent_record_id" (int)
                                     //                      "parent_link" (str)
-                                    //                      "parent_dir" (str)
+                                    //                      "parent_dir" (str: "IN" or "OUT")
                                     //                      "expand" (bool)
                                     //                      "indent" (int)
                                     //                      "links" (array of triples: name, "IN"/"OUT", count)
@@ -360,7 +362,7 @@ new Vue({
         {
             console.log(`hide_record() invoked for record with index=${record_index} and record_id=${record.controls.record_id}`);
 
-            var children = this.locate_children(record, record_index);
+            var children = this.locate_children(record, record_index);   // By any link name/direction
             if (children.length > 0)  {
                 console.log(`hide_record() : the record to hide has children; considering them first, in reverse order`);
                 // Consider the children in reverse order (lowest one in the list, first)
@@ -393,22 +395,24 @@ new Vue({
 
 
         toggle_linked_records(record, rel_name, index, dir)
-        /* Toggle the display of all the records (database nodes)
+        /* Toggle the display of all the "sub-records" (database nodes)
            that have a relationship by the given name
-           to the specified record (node) at the specified index position
+           to the specified record
 
-           :param record:   Object
+           :param record:   Object with the information about the database node of interest
            :param rel_name: The name of the relationship to follow (for one hop)
-           :param index:    Integer
+           :param index:    Integer with the record position in the current listing
            :param dir:      Either "IN" or "OUT"
          */
         {
+            // The given record will be referred to as "parent", because we'll be dealing
+            // with its "children" (neighbor database nodes)
             const parent_record_id = record.controls.record_id;
             const parent_internal_id = record.data.internal_id;
             console.log(`In toggle_linked_records() - parent_record_id: ${parent_record_id} | parent_internal_id: ${parent_internal_id} | index: ${index} | rel_name: "${rel_name}" | dir: "${dir}"`);
 
             console.log(`    checking if immediate children by the relationship "${rel_name}" are present...`);
-            var children = this.locate_children(record, index, rel_name);
+            var children = this.locate_children(record, index, rel_name, dir);
 
 
             // **** "HIDE" SCENARIO
@@ -493,7 +497,7 @@ new Vue({
 
 
 
-        locate_children(record, index, rel_name)
+        locate_children(record, index, rel_name, dir)
         /* Given a record, and its index in the overall array of records,
            locate all its (immediate) children records - optionally requiring the given relationship.
 
@@ -508,11 +512,13 @@ new Vue({
            :param index:    An integer with the index of the above record in the overall array of records
            :param rel_name: [OPTIONAL] If not specified (null),
                                 then children records are not restricted to that particular relationship name
+           :param dir:      [OPTIONAL]
          */
         {
             const reference_id = record.controls.record_id;
             const reference_indent = record.controls.indent;
-            console.log(`In locate_children(): REFERENCE record_id: ${reference_id} | index: ${index} | indent: ${reference_indent} | rel_name: ${rel_name}`);
+            console.log(`In locate_children(): REFERENCE record_id: ${reference_id} | index: ${index} | indent: ${reference_indent}
+                        | rel_name: "${rel_name}" | dir: "${dir}"`);
 
             let children = [];      // Building list of all the found child records
 
@@ -524,7 +530,8 @@ new Vue({
                 let parent_record_id = control_data.parent_record_id;
                 let indent = control_data.indent;
 
-                console.log(`    examining record in position ${pos}; it has indent ${indent}, id ${control_data.record_id}, parent id ${parent_record_id} and parent_link ${control_data.parent_link}`);
+                console.log(`    examining record in position ${pos}; it has indent ${indent}, id ${control_data.record_id},
+                                    parent id ${parent_record_id} and parent_link ${control_data.parent_link}`);
 
                 if (indent <= reference_indent)
                     break;      // Quit as soon as the indent is <= that of the reference record
@@ -532,7 +539,7 @@ new Vue({
 
                 if (parent_record_id == reference_id)
                     // Found a match in the parentage; if a rel_name was specified, also match for that
-                    if  ((rel_name == null)  || (control_data.parent_link == rel_name))  {
+                    if  ((rel_name == null)  || (control_data.parent_link == rel_name  &&  control_data.parent_dir == dir))  {
                         control_data.pos = pos;     // Save the array index position with the child's control data
 
                         console.log(`      ^--- found a child!  Pushing "record_under_consideration"`);
@@ -771,8 +778,8 @@ new Vue({
 
         get_linked_records_from_server(record, rel_name, dir)
         /* Initiate request to server, to get the list of the properties
-           of the data nodes linked to the node (record) specified by the given internal dbase ID,
-           by the relationship named by rel_name, in the direction specified by dir
+           of the data nodes linked to the specified node (record),
+           by the relationship named by rel_name, in the direction requested by dir
 
            :param record:   Object with the record of interest
            :param rel_name: The name of the relationship to follow (for one hop)

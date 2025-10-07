@@ -1949,8 +1949,10 @@ class ApiRouting:
                     limit       The max number of entries to return
 
             RETURNED JSON PAYLOAD:
-                recordset:  A list of dicts with the filtered data
-                total_count:The total number of nodes in the database with the given label - NOT considering the remainder of the filter
+                recordset:   A list of dicts with the filtered data; each dict contains the data for a node,
+                                including a field called "internal_id" that has the internal database ID,
+                                and a field called "node_labels" with a list of the node's label names
+                total_count: The total number of nodes in the database with the given label - NOT considering the remainder of the filter
                                 if no label was provided, None
             """
             # Extract the GET values
@@ -1997,7 +1999,7 @@ class ApiRouting:
                 #   This is done to remove "bytes" values (for example, encoded passwords) and other quantities
                 #   that aren't serializable with JSON
                 sanitized_recordset = [{k: v for k, v in record.items()
-                                            if (type(v) == str or type(v) == int or type(v) == bool) }
+                                            if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list) }
                                        for record in recordset]
 
                 if "label" in json_data:

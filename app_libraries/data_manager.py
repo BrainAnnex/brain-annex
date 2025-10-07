@@ -607,7 +607,7 @@ class DataManager:
 
         if "internal_id" in request_data:       # "internal_id" takes priority, as a way to identify the node
             match = int(request_data["internal_id"])
-            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True)
+            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True, include_labels=True)
         else:
             assert "uri" in request_data, \
                 "get_records_by_link(): A value for `internal_id` or `uri` must be provided"
@@ -616,7 +616,7 @@ class DataManager:
 
             match = cls.db.match(key_name="uri", key_value=uri)
 
-            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=False)
+            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=False, include_labels=True)
 
 
 
@@ -1413,8 +1413,9 @@ class DataManager:
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
                                 {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
-        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node, including
-                                a field called "internal_id" that has the internal database ID
+        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node,
+                                including a field called "internal_id" that has the internal database ID,
+                                and a field called "node_labels" with a list of the node's label names
         """
         #TODO: parse the filter_dict here, but move the body of the computation to NeoSchema
 
@@ -1461,7 +1462,7 @@ class DataManager:
 
         return NeoSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
                                              string_match="CONTAINS", case_sensitive=case_sensitive,
-                                             include_id=True,
+                                             include_id=True, include_labels=True,
                                              order_by=order_by, skip=skip, limit=limit)
 
 

@@ -1547,14 +1547,16 @@ class NeoAccess(InterGraph):
 
         The sanitizing is done by transforming any Neo4j date and datetime format to suitable python counterparts.
         The time parts get dropped, and the date is returned in the format yyyy_mm_dd
-        Optionally, insert into the records the values of the internal database ID (using the key "internal_id")
+
+        If applicable, insert into the records the values of the internal database ID (using the key "internal_id"),
+        and/or of the node labels (using the key "node_labels")
 
         EXAMPLES of queries that generate recordsets in the expected formats, when passed to query():
                 "MATCH (n) RETURN n"
                 "MATCH (n) RETURN n, id(n) AS internal_id"
 
         :param recordset:   A list of dict's that contain the key "n" and optionally the key "internal_id".
-                                EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "internal_id": 88},
+                                EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "internal_id": 88, "node_labels": ["Car", "Vehicle"]},
                                            {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "internal_id": 4},
                                            {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "internal_id": 53},
                                          ]
@@ -1562,7 +1564,7 @@ class NeoAccess(InterGraph):
 
         :return:            A list of dict's that contain all the node properties - sanitized as needed - and,
                                 optionally, an extra key named "internal_id"
-                                EXAMPLE:  [ {"field1": 1, "field1": "x", "internal_id": 88},
+                                EXAMPLE:  [ {"field1": 1, "field1": "x", "internal_id": 88, "node_labels": ["Car", "Vehicle"]},
                                             {"PatientID": 123, "DOB": "2000/01/31", "internal_id": 4},
                                             {"timestamp": 123, "DOB": "2003/07/15", "internal_id": 53}
                                           ]
@@ -1588,6 +1590,9 @@ class NeoAccess(InterGraph):
             if "internal_id" in record:
                 data["internal_id"] = record["internal_id"]     # Integrate the internal database ID, if provided, into the record
 
+            if "node_labels" in record:
+                data["node_labels"] = record["node_labels"]     # Integrate the node labels (a list of strings), if provided, into the record
+
             result.append(data)
 
         return result
@@ -1595,7 +1600,7 @@ class NeoAccess(InterGraph):
 
 
     def follow_links(self, match: Union[int, NodeSpecs], rel_name :str, rel_dir ="OUT",
-                           neighbor_labels=None, include_id=False) -> [dict]:
+                           neighbor_labels=None, include_id=False, include_labels=False) -> [dict]:
         """
         From the given starting node(s), follow all the relationships that have the specified name,
         from/into neighbor nodes (optionally requiring those nodes to have the given labels),
@@ -1612,6 +1617,8 @@ class NeoAccess(InterGraph):
 
         :param include_id:      [OPTIONAL] If True, also return an extra field named "internal_id",
                                     with the internal database ID value; by default, False
+        :param include_labels:  [OPTIONAL] If True, also return an extra field named "node_labels",
+                                with a list of the node labels; by default, False
 
         :return:                A list of dictionaries with all the properties of the neighbor nodes.
                                     If `include_id` is True, then each dict also contains a key named "internal_id",
@@ -1644,6 +1651,10 @@ class NeoAccess(InterGraph):
 
         if include_id:
             q += " , id(neighbor) AS internal_id"
+
+        if include_labels:
+            q += " , labels(neighbor) AS node_labels"
+
 
         result = self.query(q, data_binding)        # , single_column='neighbor'
 

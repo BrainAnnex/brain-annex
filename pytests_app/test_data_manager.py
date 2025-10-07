@@ -175,10 +175,15 @@ def test_get_nodes_by_filter(db):
     internal_id = db.create_node(labels="Test Label", properties={'age': 22, 'gender': 'F'})
 
     # No filtration
-    assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22, 'internal_id': internal_id}]
+    assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
     # Filtration by labels
-    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == [{'gender': 'F', 'age': 22, 'internal_id': internal_id}]
+    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == \
+                                [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
     assert DataManager.get_nodes_by_filter({"label": "WRONG_Label"}) == []
+    assert DataManager.get_nodes_by_filter({"key_name": "age", "key_value": 22}) == \
+                                [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
+    assert DataManager.get_nodes_by_filter({"key_name": "age", "key_value": 99}) == []
+    assert DataManager.get_nodes_by_filter({"label": "WRONG_Label", "key_name": "age", "key_value": 22}) == []
 
     with pytest.raises(Exception):
         DataManager.get_nodes_by_filter(filter_dict=123)        # Not a dict
