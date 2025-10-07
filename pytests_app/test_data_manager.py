@@ -57,18 +57,18 @@ def test_get_records_by_link(db):
 
     request_data = {"uri": "biochem-1", "rel_name": "OWNS", "dir": "IN"}
     result = DataManager.get_records_by_link(request_data)
-    expected = [{"name": "Julian", "city": "Berkeley"}]
+    expected = [{"name": "Julian", "city": "Berkeley", 'node_labels': ['person']}]
     assert result == expected
 
     request_data = {"internal_id": book_2, "rel_name": "OWNS", "dir": "IN"}
     result = DataManager.get_records_by_link(request_data)
-    expected = [{"internal_id": person_id, "name": "Julian", "city": "Berkeley"}]
+    expected = [{"internal_id": person_id, "name": "Julian", "city": "Berkeley", 'node_labels': ['person']}]
     assert result == expected
 
     request_data = {"internal_id": person_id, "rel_name": "OWNS", "dir": "OUT"}
     result = DataManager.get_records_by_link(request_data)
-    expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', 'internal_id': book_1} ,
-                {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2}]
+    expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', 'internal_id': book_1, 'node_labels': ['book']} ,
+                {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2, 'node_labels': ['book']}]
     assert compare_recordsets(result, expected)
 
 

@@ -595,7 +595,8 @@ class DataManager:
         :param request_data: A dictionary with the keys, "rel_name" and "dir",
                                 plus either "uri" or "internal_id" (the latter takes priority)
 
-        :return:             A list of dictionaries with all the properties of the neighbor nodes.
+        :return:             A list of dictionaries with all the properties of the neighbor nodes,
+                             including an extra field called "node_labels", with a string of label names
                              If the internal database ID is provided, then the internal database ID's
                                 of the matched nodes is also returned.
         """
