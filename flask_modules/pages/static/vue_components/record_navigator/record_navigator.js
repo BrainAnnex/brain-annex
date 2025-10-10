@@ -155,6 +155,8 @@ Vue.component('vue-record-navigator',
             nodes_data()  {
                 //console.log('The prop `nodes_data` has changed!');
 
+                this.recordset_array = [];  // Clear all past records (TODO: maybe make this optional)
+
                 for (let i = 0; i < this.nodes_data.length; i++)  {
                     let new_entry = {controls: {
                                                     record_id: this.next_record_id,
