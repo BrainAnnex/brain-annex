@@ -963,6 +963,9 @@ def test_get_nodes_by_filter(db):
     with pytest.raises(Exception):
         NeoSchema.get_nodes_by_filter(labels="Car", key_names="some_key_name")   # Key name but no value
 
+    with pytest.raises(Exception):
+        NeoSchema.get_nodes_by_filter(labels="Car", key_value="yellow")         # Key value but no key name
+
     result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="yellow")
     assert result == [{"color": "yellow", "year": 1999}]
 
@@ -982,6 +985,9 @@ def test_get_nodes_by_filter(db):
     assert result == [{"color": "yellow", "year": 1999}]
 
     result = NeoSchema.get_nodes_by_filter(labels="Car", key_names=["year", "color"], key_value="yEllOW", case_sensitive=False)
+    assert result == [{"color": "yellow", "year": 1999}]
+
+    result = NeoSchema.get_nodes_by_filter(labels="Car", key_names=[], key_value="")
     assert result == [{"color": "yellow", "year": 1999}]
 
     result = NeoSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value=1999)

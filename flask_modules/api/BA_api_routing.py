@@ -1967,7 +1967,7 @@ class ApiRouting:
             except Exception as ex:
                 err_details = exceptions.exception_helper(ex)
                 response_data = {"status": "error", "error_message": err_details}        # Error termination
-                print(response_data["error_message"])
+                #print(response_data["error_message"])
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
 
 
@@ -1986,7 +1986,7 @@ class ApiRouting:
                 # EXAMPLE:  {'label': 'German Vocabulary', 'key_name': ['English', 'German'], 'key_value': 'sucht'}
             except Exception as ex:
                 response_data = {"status": "error", "error_message": f"Failed parsing of JSON string in request. Incorrectly formatted.  {ex}"}
-                print(response_data["error_message"])
+                #print(response_data["error_message"])
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
 
 

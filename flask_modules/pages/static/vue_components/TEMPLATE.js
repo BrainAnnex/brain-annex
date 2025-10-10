@@ -34,6 +34,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
 
+        // ----------------  DATA  -----------------
         data: function() {
             return {
                 count: 0,

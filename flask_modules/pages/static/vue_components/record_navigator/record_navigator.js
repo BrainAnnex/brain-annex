@@ -5,19 +5,16 @@
 Vue.component('vue-record-navigator',
     {
         props: {
-            /*  Comments TBA */
+            /*  Array of objects, with one entry per "record" (data from one database node) */
             nodes_data: {
                 required: true
             }
         },
 
 
-        my_optional_component_metadata: 123,
-
-
 
         template: `
-            <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
+            <!-- Outer container, serving as Vue-required template root -->
             <div style="border:1px solid #DDD; padding:10px; background-color: #f4f4f4">
 
                 <p v-if="recordset_array.length === 0" style="color: gray">
@@ -72,7 +69,16 @@ Vue.component('vue-record-navigator',
 
                     &nbsp;
 
-                    <span v-if="item.controls.expand">
+
+                    <!-- If the link-summary data for the record is hidden, show an arrow to expand the record and show its link summary... -->
+                    <img  v-if="item.controls.expand==false"
+                        src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
+                         @click="toggle_links(item, index)"
+                         class="clickable-icon" style="background-color:black"
+                    >
+
+                    <!-- ...otherwise, if the link-summary data is to be shown, show it -->
+                    <span v-else>
 
                         <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
 
@@ -107,20 +113,14 @@ Vue.component('vue-record-navigator',
                         >
                     </span>
 
-
-                    <!-- Arrow to expand the record, to show the links -->
-                    <img v-else src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
-                         @click="toggle_links(item, index)"
-                         class="clickable-icon" style="background-color:black"
-                    >
                 </p>
-
 
             </div>  <!-- End of outer container -->
             `,
 
 
 
+        // ----------------  DATA  -----------------
         data: function() {
             return {
                 next_record_id: 0,      // Auto-increment to identify records shown on page
@@ -153,7 +153,7 @@ Vue.component('vue-record-navigator',
         // ----------------  WATCH  -----------------
         watch: {
             nodes_data()  {
-                console.log('The prop `nodes_data` has changed!');
+                //console.log('The prop `nodes_data` has changed!');
 
                 for (let i = 0; i < this.nodes_data.length; i++)  {
                     let new_entry = {controls: {
