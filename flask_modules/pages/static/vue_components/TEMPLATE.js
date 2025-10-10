@@ -1,3 +1,6 @@
+/*  Template for a Vue component
+ */
+
 Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names! -->
     {
         props: {
@@ -44,6 +47,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
 
+        // ----------------  WATCH  -----------------
         watch: {
             /*
             some_data_b() {
