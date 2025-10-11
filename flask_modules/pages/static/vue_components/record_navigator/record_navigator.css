@@ -20,12 +20,22 @@ span.subrecord-out {
 }
 
 
-/* Little rounded box showing a link (either IN or OUT) */
+/* Little rounded boxes for labels */
+span.node-label {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: white;
+    background-color: #444444;
+}
+
+
+/* For little rounded boxes that show a link (either IN or OUT) */
 span.relationship-in {
     display: inline-block;
     margin-right: 5px;
     padding: 3px 8px;
-    border-radius: 8px;
     color: #333;
     background-color: #bbe175;
 }
@@ -34,7 +44,6 @@ span.relationship-out {
     display: inline-block;
     margin-right: 5px;
     padding: 3px 8px;
-    border-radius: 8px;
     color: #333;
     background-color: #fdbeb8;
 }
