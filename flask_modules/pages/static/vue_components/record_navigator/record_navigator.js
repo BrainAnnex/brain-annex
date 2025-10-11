@@ -22,14 +22,14 @@ Vue.component('vue-record-navigator',
                 </p>
 
 
-                <!--  For each located item  -->
+                <!--  For each item in the current recordset -->
                 <p v-for="(item, index) in recordset_array"
                             style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:3px;
                                    background-color: white"
                             v-bind:style="{'margin-left': item.controls.indent * 50 + 'px'}">
 
 
-                    <!--  Eye icon, offering option to hide the record  -->
+                    <!--  Eye icon, offering option to hide (delete from memory) the record  -->
                     <span style="color:#d0d0d0">{{item.controls.record_id}} </span>
                     <img src="/BA/pages/static/graphics/eye_16_173007.png"
                          @click="hide_record(item, index, true)" class="clickable-icon"
@@ -59,12 +59,20 @@ Vue.component('vue-record-navigator',
                     </template>
 
 
-                    <!-- Display the data record (all its fields, incl. internal_id; the node labels receive special handling) -->
-                    <template v-for="(val, key) in item.data">
-                        <span v-if="key == 'node_labels'" style="color:brown; font-size:14px; font-weight:bold; font-family: Arial, sans-serif;">LABELS: </span>
-                        <span v-else style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
+                    <!-- Display the data record (all its fields, incl. "internal_id" and "node_labels")
+                      -->
 
-                         \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
+                    <!-- Part 1 of 2: the node labels receive special handling -->
+                    <span style="color:brown; font-size:14px; font-weight:bold; font-family: Arial, sans-serif;">LABELS: </span>
+                    <span style="background-color: rgb(251, 240, 240)">{{item.data.node_labels}}</span> <span style="color:brown; font-weight: bold">|| </span>
+
+                    <!-- Part 2 of 2: all the other fields, incl. internal_id -->
+                    <template v-for="(val, key) in item.data">
+                        <template v-if="key != 'node_labels'">
+                            <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
+
+                             \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
+                        </template>
                     </template>
 
                     &nbsp;
@@ -126,10 +134,11 @@ Vue.component('vue-record-navigator',
                 next_record_id: 0,      // Auto-increment to identify records shown on page
 
                 recordset_array: [],
-                                        // Array of dicts, with one entry per record returned by the search
-                                        //      Each entry is an object with 2 keys: "controls" and "data":
+                                        // Array of objects, with one entry per record (database node)
                                         //
-                                        //      * "controls" is an array of dicts, with the following keys:
+                                        //      EACH ENTRY is an object with 2 keys: "controls" and "data":
+                                        //
+                                        //      * "controls" is an object with the following keys:
                                         //                      "record_id" (int)
                                         //                      "parent_record_id" (int)
                                         //                      "parent_link" (str)
@@ -139,8 +148,9 @@ Vue.component('vue-record-navigator',
                                         //                      "links" (array of triples: name, "IN"/"OUT", count)
                                         //                      "pos" (int) : meant to hold TEMPORARY values
                                         //
-                                        //      * "data" is an array of dicts contains all the field names and values
-                                        //            returned from the database query
+                                        //      * "data" is an object containing all the field names and values
+                                        //            returned from the database node
+                                        //           (incl. the special fields "internal_id" and "node_labels")
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
