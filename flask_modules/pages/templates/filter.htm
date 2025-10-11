@@ -293,6 +293,7 @@ new Vue({
         submit_query()
         // Invoked when the user presses the "Submit Query" button, to perform a dbase search
         {
+            // Send the request to the server, using a GET
             const url_server_api = "/BA/api/get_filtered";
 
             var fields_to_search_for = "";
@@ -302,13 +303,13 @@ new Vue({
             else if (this.selected_fields)
                 fields_to_search_for = this.selected_fields;    // Lower priority
 
-            var get_obj = {label: this.label,
-                           key_name: fields_to_search_for,
-                           key_value: this.key_value,
-                           case_sensitive: this.case_sensitive,
-                           order_by: this.order_by,
-                           skip: this.skip,
-                           limit: this.limit};
+            const get_obj = {label: this.label,
+                             key_name: fields_to_search_for,
+                             key_value: this.key_value,
+                             case_sensitive: this.case_sensitive,
+                             order_by: this.order_by,
+                             skip: this.skip,
+                             limit: this.limit};
 
             console.log(`About to contact the server at "${url_server_api}" .  GET object:`);
             console.log(get_obj);
@@ -319,10 +320,11 @@ new Vue({
             this.status_message = "";
 
             ServerCommunication.contact_server(url_server_api,
-                    {method: "GET",
-                    data_obj: get_obj,
-                    json_encode_send: true,
-                    callback_fn: this.finish_submit_query});
+                    {   method: "GET",
+                        data_obj: get_obj,
+                        json_encode_send: true,
+                        callback_fn: this.finish_submit_query
+                    });
         },
 
         finish_submit_query(success, server_payload, error_message)
