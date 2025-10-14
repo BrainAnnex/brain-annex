@@ -152,7 +152,8 @@ class ApiRouting:
     @classmethod
     def extract_get_pars(cls, get_data, required_par_list=None) -> dict:
         """
-        Convert into a Python dictionary the given GET data.
+        Convert the given GET data (an ImmutableMultiDict object) into a Python dictionary,
+        optionally enforcing the presence of the specified required GET parameters
 
         EXAMPLE:
             get_data = request.args
@@ -161,7 +162,7 @@ class ApiRouting:
         :param get_data:            An ImmutableMultiDict object, which is a sub-class of Dictionary
                                         that may contain multiple values for the same key.
                                         EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
-        :param required_par_list:   [OPTIONAL] A list or tuple of name of GET parameters whose presence is to be enforce.
+        :param required_par_list:   [OPTIONAL] A list or tuple of name of GET parameters whose presence is to be enforced.
                                         EXAMPLE: ['uri', 'rel_name']
 
         :return:                    A dict populated with the GET data
@@ -171,7 +172,7 @@ class ApiRouting:
         if required_par_list:
             for par in required_par_list:
                 assert par in data_dict, \
-                    f"The expected parameter `{par}` is missing from the GET request (i.e. from the query string at end of the URL)"
+                    f"The expected parameter `{par}` is missing from the query string at end of the URL. The GET request: {data_dict}"
 
         return data_dict
 
@@ -979,11 +980,12 @@ class ApiRouting:
         @login_required
         def get_records_by_link_api():
             """
-            Locate and return the data (properties) of the nodes linked to the one specified
-            by either its uri or internal database ID.
+            Locate and return the data (properties) of all the nodes (up to a max of 100)
+            linked to the one specified by either its uri or internal database ID.
             From that node, follow the relationships named by `rel_name`, in the direction specified by `dir`.
 
-            If the internal database ID is provided, then the internal database ID's of the matched nodes is also returned.
+            If the internal database ID is provided,
+            then the internal database ID's of the matched nodes is also returned in each record.
 
             EXAMPLES of invocation:
                 1) Using uri:
@@ -996,6 +998,7 @@ class ApiRouting:
                 rel_name                The name of the relationship to follow across one hop
                 dir                     Must be either "IN" or "OUT"
             """
+            # TODO: provide flexibility for the max number returned (currenly hardwired)
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
@@ -1890,41 +1893,6 @@ class ApiRouting:
             return jsonify(response)   # This function also takes care of the Content-Type header
 
 
-
-        @bp.route('/get-filtered-json', methods=['POST'])
-        @login_required
-        def get_filtered_JSON():     # *** NOT IN CURRENT USE; see get_filtered() ***
-            """
-            Note: a form-data version is also available
-        
-            EXAMPLE invocation -    send a POST request to http://localhost:5000/BA/api/get-filtered-json
-                                    with body:
-                                    {"label":"BA", "key_name":"uri", "key_value":123}
-        
-                On Win7 command prompt (but NOT the PowerShell!!), do:
-                    curl http://localhost:5000/BA/api/get-filtered-json -d "{\"label\":\"BA\", \"key_name\":\"uri\", \"key_value\":123}"
-        
-            JSON KEYS (all optional):
-                label       To name of a single Neo4j label
-                key_name    A string with the name of a node attribute; if provided, key_value must be present, too
-                key_value   The required value for the above key; if provided, key_name must be present, too
-                                        Note: no requirement for the key to be primary
-            """
-            # Extract the POST values
-            #post_data = request.form
-            #json_data = dict(post_data).get("json")     # EXAMPLE: '{"label": "BA", "key_name": "uri", "key_value": 123}'
-        
-            json_data = request.get_json(force=True)    # force=True is needed if using the Win7 command prompt, even if including
-                                                        # the option    -H 'Content-Type: application/json'
-        
-            print(json_data)
-        
-            # Fetch the data from the filters
-            prop_list = [1, 2, 3]   # TODO: use NeoSchema.get_class_properties(include_ancestors=True)
-            response = {"status": "ok", "payload": prop_list}
-            return jsonify(response)   # This function also takes care of the Content-Type header
-        
-        
         
         @bp.route('/get_filtered')
         @login_required
@@ -1936,7 +1904,7 @@ class ApiRouting:
             GET VARIABLE:
                 json    A JSON-encoded dict, containing the following entries:
 
-                    label       The name of a node label
+                    label       The name of a database node label
                     key_name    A string, or list of strings, with the name of a node attribute;
                                     if provided, key_value must be passed, too
                     key_value   The required value for the above key; if provided, key_name must be passed, too.
@@ -1967,7 +1935,7 @@ class ApiRouting:
             except Exception as ex:
                 err_details = exceptions.exception_helper(ex)
                 response_data = {"status": "error", "error_message": err_details}        # Error termination
-                print(response_data["error_message"])
+                #print(response_data["error_message"])
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
 
 
@@ -1986,7 +1954,7 @@ class ApiRouting:
                 # EXAMPLE:  {'label': 'German Vocabulary', 'key_name': ['English', 'German'], 'key_value': 'sucht'}
             except Exception as ex:
                 response_data = {"status": "error", "error_message": f"Failed parsing of JSON string in request. Incorrectly formatted.  {ex}"}
-                print(response_data["error_message"])
+                #print(response_data["error_message"])
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
 
 
