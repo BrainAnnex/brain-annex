@@ -1600,7 +1600,7 @@ class NeoAccess(InterGraph):
 
 
     def follow_links(self, match: Union[int, NodeSpecs], rel_name :str, rel_dir ="OUT",
-                           neighbor_labels=None, include_id=False, include_labels=False) -> [dict]:
+                           neighbor_labels=None, include_id=False, include_labels=False, limit=100) -> [dict]:
         """
         From the given starting node(s), follow all the relationships that have the specified name,
         from/into neighbor nodes (optionally requiring those nodes to have the given labels),
@@ -1618,7 +1618,9 @@ class NeoAccess(InterGraph):
         :param include_id:      [OPTIONAL] If True, also return an extra field named "internal_id",
                                     with the internal database ID value; by default, False
         :param include_labels:  [OPTIONAL] If True, also return an extra field named "node_labels",
-                                with a list of the node labels; by default, False
+                                    with a list of the node labels; by default, False
+        :param limit:           [OPTIONAL] The max number of neighbors to visit (not in any particular order);
+                                    by default 100
 
         :return:                A list of dictionaries with all the properties of the neighbor nodes.
                                     If `include_id` is True, then each dict also contains a key named "internal_id",
@@ -1630,9 +1632,9 @@ class NeoAccess(InterGraph):
 
         match_structure = CypherUtils.process_match_structure(match, caller_method="follow_links")
 
-        if self.debug:
-            print("In follow_links()")
-            print("    match_structure:", match_structure)
+        if limit is not None:
+            assert (type(limit) == int) and (limit >= 1), \
+                f"follow_links(): the argument `limit`, if passed, must be an integer >= 1 (value passed: {limit})"
 
         # Unpack needed values from the match dictionary
         (node, where, data_binding, _) = match_structure.unpack_match()
@@ -1655,6 +1657,8 @@ class NeoAccess(InterGraph):
         if include_labels:
             q += " , labels(neighbor) AS node_labels"
 
+        if limit is not None:
+            q += f" LIMIT {limit}"
 
         result = self.query(q, data_binding)        # , single_column='neighbor'
 

@@ -532,8 +532,9 @@ Vue.component('vue-plugin-rs',
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {   data_obj: get_obj,
-                                json_encode_send: false,
+                            {   method: "GET",
+                                data_obj: get_obj,
+                                json_encode_send: true,
                                 callback_fn: this.finish_get_recordset,
                                 custom_data: my_var
                             });

@@ -1830,6 +1830,7 @@ class NeoSchema:
         :return:            True if the specified Data Node exists, or False otherwise
         """
         #TODO: pytest
+        #TODO: consider adding an `include_ancestors` option
 
         # Prepare the clause part of a Cypher query
         if id_key is None:
@@ -2034,8 +2035,8 @@ class NeoSchema:
         :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
         :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
         :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
-        :param key_value:   [OPTIONAL] Only applicable if arg `key_name` is present: match nodes with the
-                                specified key name/value.
+        :param key_value:   [OPTIONAL] Only applicable if arg `key_names` is present: match nodes with the
+                                specified key name/value (for each key, with an implicit OR, if there's more than 1).
                                 If key_value is a string, the match is case-sensitive;
                                 weather must a partial match is accepted will depend on the `string_match` arg
         :param string_match:[OPTIONAL] Only applies if key_value is a string.
@@ -2073,12 +2074,20 @@ class NeoSchema:
         labels_str = CypherUtils.prepare_labels(labels)     # EXAMPLE: ":`my label`:`my other label`"
 
         clause_list = []        # List of clauses that all must be satisfied (i.e. "AND" will go between them)
+                                # Each entry is a string that contains outer round parentheses
                                 # EXAMPLE:  "(n.`age` = 22)"
         data_binding = {}
 
+        if key_names == []:
+            key_names = None
+
+        if (key_value is not None) and (key_value != ""):
+            assert key_names is not None, \
+                f"get_data_nodes_by_filter(): since argument `key_value` is present ({key_value}), then so must be `key_names`"
+
         if (key_names is not None) and (key_names != ""):
             assert key_value is not None, \
-                "get_data_nodes_by_filter(): if argument `key_names` is present, then so must be `key_value`"
+                f"get_data_nodes_by_filter(): since argument `key_names` is present ({key_names}), then so must be `key_value`"
 
             data_binding["key_value"] = key_value
 

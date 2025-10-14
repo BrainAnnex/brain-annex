@@ -12,12 +12,12 @@
 Vue.component('vue-plugin-single-record',
     {
         props: ['record_data', 'field_list'],
-        /*  record_data:    EXAMPLE:
+        /*  record_data:    Object.  EXAMPLE:
                             {"uri":"52", "pos":10, "schema_code":"r",
-                             class_name:"German Vocabulary", <-- NOT CURRENTLY BEING PASSED
+                             class_name:"German Vocabulary",
                              "German":"Tier", "English":"animal"}
 
-            field_list:     A list of field names being shown, in order.
+            field_list:     An array of field names being shown, in order.
                             EXAMPLE: ["French", "English", "notes"]
           */
 
@@ -113,7 +113,7 @@ Vue.component('vue-plugin-single-record',
 
                 let post_obj = {schema_code: this.record_data.schema_code,
                                 uri: this.record_data.uri,
-                                class_name: "Records"
+                                class_name: this.record_data.class_name
                                 };
                 // Go over each key (field name); note that keys that aren't field names were previously eliminated
                 for (key in this.record_current) {
