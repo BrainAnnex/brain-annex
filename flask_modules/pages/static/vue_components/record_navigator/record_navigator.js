@@ -88,7 +88,7 @@ Vue.component('vue-record-navigator',
 
                         <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
 
-                            <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, link[0], index, 'IN')"
+                            <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, index, link[0], 'IN', link[2])"
                                   class="clickable-icon relationship-in"
                                   v-bind:title="'Show/Hide ' + link[2] + ' IN-bound link(s) \`' + link[0] + '\`'"
                             >
@@ -98,7 +98,7 @@ Vue.component('vue-record-navigator',
                                 {{ link[0] }}
                             </span>
 
-                             <span v-else @click="toggle_linked_records(item, link[0], index, 'OUT')"
+                             <span v-else @click="toggle_linked_records(item, index, link[0], 'OUT', link[2])"
                                   class="clickable-icon relationship-out"
                                   v-bind:title="'Show/Hide ' + link[2] + ' OUT-bound link(s) \`' + link[0] + '\`'"
                              >
@@ -208,15 +208,16 @@ Vue.component('vue-record-navigator',
 
 
 
-            toggle_linked_records(record, rel_name, index, dir)
+            toggle_linked_records(record, index, rel_name, dir, n_links)
             /* Toggle the display of all the "sub-records" (database nodes)
                that have a relationship by the given name
                to the specified record
 
                :param record:   Object with the information about the database node of interest
+               :param index:    Integer with the position of the record in the current listing
                :param rel_name: The name of the relationship to follow (for one hop)
-               :param index:    Integer with the record position in the current listing
                :param dir:      Either "IN" or "OUT"
+               :param n_links:  Number of links to (possibly) fetch from the server
              */
             {
                 // The given record will be referred to as "parent", because we'll be dealing
@@ -257,6 +258,9 @@ Vue.component('vue-record-navigator',
 
                 // Given no sub-records from our link name, the toggle operation is taken to be a "SHOW"
                 console.log(`    No existing sub-records (children) found; the toggle operation will be a "SHOW"...`);
+
+                if (n_links > 100)
+                    alert(`Due to the high number of links (${n_links}), only 100 will be shown`);
 
                 this.get_linked_records_from_server(record, rel_name, dir);
             },

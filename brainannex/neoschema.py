@@ -1830,6 +1830,7 @@ class NeoSchema:
         :return:            True if the specified Data Node exists, or False otherwise
         """
         #TODO: pytest
+        #TODO: consider adding an `include_ancestors` option
 
         # Prepare the clause part of a Cypher query
         if id_key is None:

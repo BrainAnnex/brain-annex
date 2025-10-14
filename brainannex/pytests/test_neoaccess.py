@@ -393,6 +393,9 @@ def test_follow_links(db):
     expected = [{'title': 'The Double Helix'} , {'title': 'Intro to Hilbert Spaces'}]
     assert compare_recordsets(links, expected)
 
+    links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=False, limit=1)
+    assert (links == [{'title': 'The Double Helix'}]) or (links == [{'title': 'Intro to Hilbert Spaces'}])
+
     links = db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=True)
     expected = [{'title': 'The Double Helix', 'internal_id': book_1} , {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2}]
     assert compare_recordsets(links, expected)
@@ -405,6 +408,12 @@ def test_follow_links(db):
     expected = [ {'title': 'The Double Helix', 'internal_id': book_1, 'node_labels': ['book']} ,
                  {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2, 'node_labels': ['book']}]
     assert compare_recordsets(links, expected)
+
+    with pytest.raises(Exception):
+        db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=False, limit="not integer!")
+
+    with pytest.raises(Exception):
+        db.follow_links(match, rel_name="OWNS", rel_dir="OUT", neighbor_labels="book", include_id=False, limit=0)   # Bad limit
 
 
 

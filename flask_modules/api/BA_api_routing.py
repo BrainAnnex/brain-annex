@@ -980,11 +980,12 @@ class ApiRouting:
         @login_required
         def get_records_by_link_api():
             """
-            Locate and return the data (properties) of the nodes linked to the one specified
-            by either its uri or internal database ID.
+            Locate and return the data (properties) of all the nodes (up to a max of 100)
+            linked to the one specified by either its uri or internal database ID.
             From that node, follow the relationships named by `rel_name`, in the direction specified by `dir`.
 
-            If the internal database ID is provided, then the internal database ID's of the matched nodes is also returned.
+            If the internal database ID is provided,
+            then the internal database ID's of the matched nodes is also returned in each record.
 
             EXAMPLES of invocation:
                 1) Using uri:
@@ -997,6 +998,7 @@ class ApiRouting:
                 rel_name                The name of the relationship to follow across one hop
                 dir                     Must be either "IN" or "OUT"
             """
+            # TODO: provide flexibility for the max number returned (currenly hardwired)
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])

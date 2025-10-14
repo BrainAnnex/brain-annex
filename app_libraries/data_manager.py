@@ -586,7 +586,7 @@ class DataManager:
     def get_records_by_link(cls, request_data: dict) -> [dict]:
         """
         Locate and return the data (properties) of the nodes linked to the one specified
-        by either its uri or internal database ID.
+        by either its uri or internal database ID, up to a max of 100.
         From that node, follow the relationships named by `rel_name`, in the direction specified by `dir`.
 
         If the internal database ID is provided, then the internal database ID's of the matched nodes is also returned.
@@ -608,7 +608,7 @@ class DataManager:
 
         if "internal_id" in request_data:       # "internal_id" takes priority, as a way to identify the node
             match = int(request_data["internal_id"])
-            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True, include_labels=True)
+            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True, include_labels=True, limit=100)
         else:
             assert "uri" in request_data, \
                 "get_records_by_link(): A value for `internal_id` or `uri` must be provided"
@@ -617,7 +617,7 @@ class DataManager:
 
             match = cls.db.match(key_name="uri", key_value=uri)
 
-            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=False, include_labels=True)
+            return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=False, include_labels=True, limit=100)
 
 
 
