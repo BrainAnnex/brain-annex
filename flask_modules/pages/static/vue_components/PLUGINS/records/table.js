@@ -1,12 +1,16 @@
 /*  Vue component to display and edit a tabular representation
-    of a group of Content Items all of type "r" (Record) and all from the same Schema Class
+    of a group of Content Items all of type "r" (Record) and all from the same Schema Class.
+
+    This is the current standard way to display and edit GROUPED Content Items of type "r" from the same Schema Class
+    in the Page Viewer.
+    For "loose" Content Items of type "r", the Vue component 'vue-plugin-r' is currently used.
  */
 
 Vue.component('vue-plugin-table',
     {
         props: ['record_data_list', 'common_fields'],
         /*  record_data_list:  EXAMPLE:
-                                 [{"uri":52, "pos":10, "schema_code":"r", class_name:"German Vocabulary",
+                                 [{"uri":52, "pos":10, "schema_code":"r", "class_name":"German Vocabulary",
                                   "German":"Tier", "English":"animal"}
                                  ]
                                  (if any uri is -1, it means that it's a newly-created header, not yet registered with the server)

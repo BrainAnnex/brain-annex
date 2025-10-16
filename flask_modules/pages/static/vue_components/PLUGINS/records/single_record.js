@@ -1,4 +1,4 @@
-/*  Vue component to display and edit a SINGLE table row of data (NOT headers)
+/*  Vue component to display and edit a SINGLE table ROW of data (NOT headers)
     from a Content Item at type "r" (Record).
     Table headers, and <table> tag, are handled by the parent component, in table.js
 
@@ -14,7 +14,7 @@ Vue.component('vue-plugin-single-record',
         props: ['record_data', 'field_list'],
         /*  record_data:    Object.  EXAMPLE:
                             {"uri":"52", "pos":10, "schema_code":"r",
-                             class_name:"German Vocabulary",
+                             "class_name":"German Vocabulary",
                              "German":"Tier", "English":"animal"}
 
             field_list:     An array of field names being shown, in order.
@@ -52,13 +52,13 @@ Vue.component('vue-plugin-single-record',
 
         data: function() {
             return {
-                editing_mode: false,
+                editing_mode: false,    // Flag indicating whether this record is being edited
 
                 /*
                     "PROP" DATA PASSED BY THE PARENT COMPONENT (NOT copied to component variables):
                         record_data:        The FULL data passed by the parent component
 
-                    COMPONENT VARIABLES:
+                    VARIABLES of this Vue Component:
                         record_current:     Object with the values bound to the editing fields,
                                             initially cloned from (part of) the "prop" data;
                                             it'll change in the course of the edit-in-progress

@@ -1,7 +1,7 @@
-__version__ = "5.0.0rc6_INTERIM_2"
+__version__ = "5.0.0rc6_INTERIM_3"      #IN_PROGRESS
 
 
-# IMPORTANT: ONY 1 of the following small group of InterGraph imports
+# IMPORTANT: ONLY 1 of the following small group of InterGraph imports
 #            should be uncommented,
 #            depending on the graph database being used
 

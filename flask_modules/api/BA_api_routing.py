@@ -1898,6 +1898,9 @@ class ApiRouting:
         @login_required
         def get_filtered():
             """
+            Perform a database search for particular nodes, and return their properties,
+            as well as a total count
+
             EXAMPLE of invocation:
                 http://localhost:5000//BA/api/get_filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
 

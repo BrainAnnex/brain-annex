@@ -42,15 +42,30 @@ Vue.component('vue-plugin-rs',
                         </tr>
 
                         <!--
-                            Data row
+                            All the various Data rows
                          -->
                         <tr v-for="record in recordset">
+                            <!-- The various data fields -->
                             <td v-for="field_name in headers">
-                                <span v-html="render_cell(record[field_name])"></span>
+                                <span v-if="record.internal_id != record_being_editing"
+                                    v-html="render_cell(record[field_name])"
+                                ></span>
+                                <input   v-else type="text" size="25"
+                                         v-model="record_mid_edit[field_name]"
+                                >
                             </td>
+
+                            <!-- The control cell (for editing) -->
                             <td v-show="edit_mode" style="background-color: #f2f2f2">
-                                <img src="/BA/pages/static/graphics/edit_16_pencil2.png"
-                                     @click="edit_record" class="control" title="EDIT" alt="EDIT">
+                                <span v-if="record.internal_id == record_being_editing">
+                                    <button @click="save_record_edit">SAVE</button>
+                                    <a @click.prevent="cancel_record_edit" href="#" style="margin-left:15px">Cancel</a>
+                                </span>
+                                <img v-if="record_being_editing === null"
+                                     src="/BA/pages/static/graphics/edit_16_pencil2.png"
+                                     @click="edit_record(record)"
+                                     class="control" title="EDIT" alt="EDIT"
+                                >
                             </td>
                         </tr>
 
@@ -176,8 +191,10 @@ Vue.component('vue-plugin-rs',
 
                 total_count: null,      // Size of the entire (un-filtered) recordset
 
+                record_being_editing: null, // The "ID" of the record currently being edited, if any;
+                                            // for now, only one record at a time may be edited
 
-                recordset_editing: false,  // If true, the definition of the recordset goes into editing mode
+                recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -185,6 +202,10 @@ Vue.component('vue-plugin-rs',
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+
+                // The following 2 apply to the single record currently being edited (just one at most)
+                record_at_start_of_edit:    null,
+                record_mid_edit:            null,
 
 
                 new_record: {},         // Used for the addition of new record; note that it's valid
@@ -263,10 +284,40 @@ Vue.component('vue-plugin-rs',
 
 
 
-            edit_record()
+            edit_record(record)
+            /*  Edit an individual row (record).
+                Invoked when the user clicks on the "EDIT" control for that record
+
+                :param record:  An object with the standard properties
+                                    "internal_id", "node_labels", and "uri" [may or may not have a value],
+                                    plus whatever fields are part of the given particular record (node)
+                                    EXAMPLE:  {internal_id: 123, node_labels: ["Restaurant"], uri: "r-88",
+                                               name: "Pizzeria NY", city: "NYC"}
+             */
             {
-                //console.log(`Editing individual record in recordset`);
+                console.log(`Editing the following individual record in recordset:`);
+                console.log(record);
+
+                this.record_being_editing = record.internal_id;     // Specify that editing is in progress for this record
+
+                this.record_at_start_of_edit = Object.assign({}, record);   // Clone the object
+                this.record_mid_edit = Object.assign({}, record);           // Clone the object
+            },
+
+
+            cancel_record_edit()
+            {
+                this.record_being_editing = null;       // To indicate that no record is being edited
+
+                // Clear the temporary variables used for the editing
+                this.record_at_start_of_edit = null;
+                this.record_mid_edit = null;
+            },
+
+            save_record_edit()
+            {
                 alert("Editing individual records not yet implemented, sorry!");
+                this.cancel_record_edit();      // Clean up and leave the editing mode for the record being edited
             },
 
 
@@ -510,7 +561,10 @@ Vue.component('vue-plugin-rs',
 
             get_recordset(page)
             /*  Request from the server the specified page (group of records) of the recordset.
-                If successful, it will update the values for: this.recordset, this.total_count, this.current_page
+                If successful, it will update the values for:
+                        this.recordset
+                        this.total_count
+                        this.current_page
               */
             {
                 skip = (page-1) * this.current_metadata.n_group;
@@ -520,6 +574,8 @@ Vue.component('vue-plugin-rs',
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get_filtered";
 
+                // Note: for now, we're actually doing a database search by node label,
+                //       rather than by Schema Class
                 const get_obj = {label: this.current_metadata.class,
                                  order_by: this.current_metadata.order_by,
                                  limit: this.current_metadata.n_group,
@@ -555,17 +611,14 @@ Vue.component('vue-plugin-rs',
                     this.recordset = server_payload.recordset;
                     this.total_count = server_payload.total_count;
                     this.current_page = custom_data;
-                    //...
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    //...
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                //...
             } // finish_get_recordset
 
         }  // methods
