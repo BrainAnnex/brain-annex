@@ -6,7 +6,7 @@
 from typing import Union, List, Tuple
 
 
-class CombinedExperimental:
+class CypherBuilder:
 
 
     def __init__(self, internal_id=None,
@@ -57,8 +57,8 @@ class CombinedExperimental:
         self.clause = clause                        # EXAMPLES:
                                                     # EXAMPLES:  "n.age < 25 AND n.income > 100000"
                                                     #            ("n.weight < $max_weight", {"max_weight": 100})
-        self.clause_dummy_name = clause_dummy_name  # EXAMPLE: "n"
-                                                    #   Note: if no clause is present, it will be None
+        self.dummy_node_name = clause_dummy_name    # EXAMPLE: "n"
+
 
         # The following group of object variables can be thought of as
         #   the "PROCESSED match structure",
@@ -72,8 +72,8 @@ class CombinedExperimental:
         self.data_binding = None        # For all the passed properties,
                                         #   and for the requested key/value pair, as applicable
                                         #   EXAMPLE: {"n_par_1": "F", "n_par_2": 22}
-        self.dummy_node_name = None     # Used for matching the node(s).  EXAMPLE: "n"
         self.cypher = None              # The complete Cypher query, exclusive of RETURN and later parts
+                                        #   the WHERE pass will be missing if there are no clauses
 
 
         # Validate all the passed arguments
@@ -124,7 +124,8 @@ class CombinedExperimental:
 
 
         if clause is None:
-            self.clause_dummy_name = None      # In this scenario, the dummy name isn't yet used, and any name could be used
+            self.dummy_node_name = None     # In this scenario, the dummy name isn't yet used, and any name could be used
+                                            #   it will get set by process_query_specs()
 
 
         if key_name and (key_value is None):  # CAUTION: key_value might legitimately be 0 or "" (hence the "is None")
@@ -151,18 +152,18 @@ class CombinedExperimental:
 
     def process_query_specs(self, dummy_node_name_if_missing="n"):
         """
-        :param dummy_node_name_if_missing:  String that will be used ONLY if
-                                                self.clause_dummy_name was not already set during instantiation
+        :param dummy_node_name_if_missing:  String that will be used ONLY if the dummy name
+                                                was not already set during object instantiation
         """
-        # If a value is already present in the raw match structure,
+        # If a value was already set during object instantiation,
         # it takes priority
-        if self.clause_dummy_name is None:
+        if self.dummy_node_name is None:
+            assert dummy_node_name_if_missing is not None, \
+                "NodeSpecs.process_query_specs(): `dummy_node_name_if_missing` cannot be None"
+
             dummy_node_name = dummy_node_name_if_missing
         else:
-            dummy_node_name = self.clause_dummy_name
-
-        assert dummy_node_name is not None, \
-                "NodeSpecs(): `dummy_node_name` cannot be None"
+            dummy_node_name = self.dummy_node_name
 
 
         """
@@ -239,7 +240,7 @@ class CombinedExperimental:
         self.data_binding = cypher_dict
         self.dummy_node_name = dummy_node_name
         if self.where:
-            self.cypher = f"MATCH {self.node} WHERE {self.where}"
+            self.cypher = f"MATCH {self.node} WHERE ({self.where})"
         else:
             self.cypher = f"MATCH {self.node}"
 
@@ -251,22 +252,21 @@ class CombinedExperimental:
 
         :return:
         """
-        str_1 = f"RAW match structure (object of class NodeSpecs):\n" \
-                f"    internal_id: {self.internal_id}" \
-                f"    labels: {self.labels}" \
-                f"    key_name: {self.key_name}" \
-                f"    key_value: {self.key_value}" \
-                f"    properties: {self.properties}" \
-                f"    clause: {self.clause}" \
-                f"    clause_dummy_name: {self.clause_dummy_name}"
-
-        str_2 = f"CYPHER-PROCESSED match structure (object of class CypherMatch):\n" \
-                f"    node: {self.node}" \
-                f"    where: {self.where}" \
-                f"    data_binding: {self.data_binding}" \
-                f"    dummy_node_name: {self.dummy_node_name}"
-
-        return str_1 + "\n\n" + str_2
+        return f'''Object properties:
+                   internal_id: {self.internal_id}
+                   labels: {self.labels}
+                   key_name: {self.key_name}
+                   key_value: {self.key_value}
+                   properties: {self.properties}
+                   clause: {self.clause}
+                   dummy_node_name: {self.dummy_node_name}
+                   
+                   node: {self.node}
+                   where: {self.where}
+                   
+                   data_binding: {self.data_binding}
+                   cypher: {self.cypher}
+                '''
 
 
 
@@ -285,7 +285,7 @@ class CombinedExperimental:
 
     def extract_dummy_name(self) -> str:
         """
-        Return the dummy node _name to be used in composing Cypher queries
+        Return the dummy node name to be used in composing Cypher queries
 
         :return:    A string with the dummy node name to use in the Cypher query (often "n" , or "to" , or "from")
         """
@@ -317,8 +317,10 @@ class CombinedExperimental:
 
         :return:
         """
-        # TODO: new method to test
-        return CypherUtils.prepare_where([self.where])
+        if self.where:
+            return "WHERE ({self.where})"
+
+        return ""
 
 
 
@@ -334,6 +336,309 @@ class CombinedExperimental:
         assert type(self.data_binding) == dict, "the `data_binding` attribute is not a dictionary, as expected"
         assert type(self.dummy_node_name) == str, "the `dummy_node_name` attribute is not a string, as expected"
 
+
+
+
+
+######################################################################################################################
+
+class CypherUtils:
+    """
+    Helper STATIC class.
+    Meant as a PRIVATE class; not indicated for the end user.
+    """
+
+    @classmethod
+    def process_match_structure(cls, handle :Union[int, str, dict, CypherBuilder], dummy_node_name="n", caller_method=None) -> CypherBuilder:
+        """
+        Accept either a valid internal database node ID, or a "NodeSpecs" object (representing a "raw match"),
+        and turn it into a "CypherMatch" object (representing a "processed match")
+
+        Note: no database operation is performed
+
+        :param handle:          EITHER a valid internal database ID (int or string),
+                                    OR a python dictionary (with property matches to require),
+                                    OR a "NodeSpecs" object (containing data to identify a node or set of nodes)
+
+        :param dummy_node_name: A string that will be used inside a Cypher query, to refer to nodes
+        :param caller_method:   [OPTIONAL] String with name of caller method, only used for error messages
+
+        :return:                A "CypherMatch" object (representing a "processed match"), used to identify a node,
+                                    or group of nodes
+        """
+        if type(handle) == CypherBuilder:
+            handle.process_query_specs(dummy_node_name_if_missing=dummy_node_name)
+            return handle
+
+        if type(handle) == dict:
+            return CypherBuilder(properties=handle, clause_dummy_name=dummy_node_name)
+
+
+        # Since the `handle` argument is not on object of class "NodeSpecs", nor a dict,
+        # then it's expected to be a valid internal dbase ID
+        if cls.valid_internal_id(handle):    # If the argument "handle" is a valid internal database ID
+            return CypherBuilder(internal_id=handle)      # Instantiate an object of type "CypherBuilder"
+        else:
+            if caller_method is None:
+                caller_method = "process_match_structure"   # This is used for the error message, below
+            raise Exception(f"{caller_method}(): the `match` argument is neither a valid internal database ID, "
+                        f"nor an object of type 'cypher_utils.NodeSpecs' ; the passed value is: {handle}")
+
+
+
+    @classmethod
+    def assemble_cypher_blocks(cls, handle :Union[int, str, dict, CypherBuilder], caller_method=None) -> tuple:
+        """
+
+        :param handle:          EITHER a valid internal database ID (int or string),
+                                    OR a python dictionary (with property matches to require),
+                                    OR a "CypherBuilder" object (containing data to identify a node or set of nodes)
+
+        :param caller_method:   [OPTIONAL] String with name of caller method, only used for error messages
+
+        :return:                A tuple containing (node, where, data_binding, dummy_node_name)
+                                    1) "node":  a string, defining a node in a Cypher query,
+                                                incl. parentheses but *excluding* the "MATCH" keyword
+                                    2) "where": a string, defining the "WHERE" part of the subquery
+                                                (*excluding* the "WHERE"),
+                                                if applicable;  otherwise, a blank
+                                    3) "data_binding":      a (possibly empty) data-binding dictionary
+                                    4) "dummy_node_name":   a string used for the node name inside the Cypher query (by default, "n");
+                                                            potentially relevant to the "node" and "where" values
+        """
+        match_structure = cls.process_match_structure(handle=handle, caller_method=caller_method)
+        return match_structure.unpack_match()
+
+
+
+    @classmethod
+    def check_match_compatibility(cls, match1: CypherBuilder, match2: CypherBuilder) -> None:
+        """
+        If the two given "CypherBuilder" objects
+        are incompatible - in terms of collision in their dummy node names -
+        raise an Exception.
+
+        :param match1:  A "CypherBuilder" object to be used to identify a node, or group of nodes
+        :param match2:  A "CypherBuilder" object to be used to identify a node, or group of nodes
+        :return:        None
+        """
+        assert match1.extract_dummy_name() != match2.extract_dummy_name(), \
+            f"check_match_compatibility(): conflict between 2 matches " \
+            f"using the same dummy node name ({match1.extract_dummy_name()}). " \
+            f"Make sure to pass different dummy names"
+
+
+
+    @classmethod
+    def combined_where(cls, match1: CypherBuilder, match2: CypherBuilder, check_compatibility=True) -> str:
+        """
+        Given the two "CypherBuilder" objects,
+        return the combined version of all their WHERE statements.
+        Also prefix the WHERE keyword to the result (if appropriate);
+        if there are no clauses, an empty string is returned (without the WHERE keyword.)
+        For details, see prepare_where()
+
+        :param match1:  A CypherMatch" object to be used to identify a node, or group of nodes
+        :param match2:  A CypherMatch" object to be used to identify a node, or group of nodes
+        :param check_compatibility: Use True if the individual matches are meant to refer to different nodes,
+                                        and need to make sure there's no conflict in the dummy node names
+        :return:        A string with the combined WHERE statement,
+                            suitable for inclusion into a Cypher query (empty if there were no subclauses)
+        """
+        if check_compatibility:
+            cls.check_match_compatibility(match1, match2)
+
+        where_list = [match1.where, match2.where]
+        return cls.prepare_where(where_list)
+
+
+    @classmethod
+    def combined_data_binding(cls, match1: CypherBuilder, match2: CypherBuilder) -> dict:
+        """
+        Given the two "CypherBuilder" objects,
+        return the combined version of all their data binding dictionaries.
+        NOTE:  if the individual matches are meant to refer to different nodes,
+                    need to first make sure there's no conflict in the dummy node names -
+                    use check_match_compatibility() as needed.
+                    In practice, combined_where() is typically run whenever combined_data_binding() is -
+                    and the former can take care of checking for compatibility
+
+        :param match1:  A "CypherBuilder" object to be used to identify a node, or group of nodes
+        :param match2:  A "CypherBuilder" object to be used to identify a node, or group of nodes
+        :return:        A (possibly empty) dict with the combined data binding dictionaries,
+                            suitable for inclusion into a Cypher query
+        """
+        combined_data_binding = match1.data_binding     # Our 1st dict
+        new_data_binding = match2.data_binding          # Our 2nd dict
+        combined_data_binding.update(new_data_binding)  # Merge the second dict into the first one
+
+        return combined_data_binding
+
+
+
+
+    ############ The following methods make no reference to any "CypherBuilder" object
+
+    @classmethod
+    def assert_valid_internal_id(cls, internal_id :Union[int, str]) -> None:
+        """
+        Raise an Exception if the argument is not a valid internal graph database ID
+
+        :param internal_id: Alleged internal graph database ID
+        :return:            None
+        """
+        assert cls.valid_internal_id(internal_id), \
+            f"assert_valid_internal_id(): the passed value ({internal_id}) is not a valid internal graph database ID; " \
+            f"a string or non-negative integer expected"
+
+
+
+    @classmethod
+    def valid_internal_id(cls, internal_id :Union[int, str]) -> bool:
+        """
+        Return True if `internal_id` is a potentially valid ID for a graph database.
+        Note that whether it's actually valid will depend on the specific graph database, which isn't known here.
+
+        EXAMPLES:
+            - Neo4j version 4 uses non-negative integers
+            - Neo4j version 5 still uses non-negative integers, but also offers an alternative internal ID that is a string
+            - Most other graph databases (such as Neptune) use strings
+
+        :param internal_id: An alleged internal database ID
+        :return:            True if internal_id is a valid internal database ID, or False otherwise
+        """
+        # TODO: also invoke the database-specific lower layer InterGraph
+        t = type(internal_id)
+        if t != int and t != str:
+            return False
+
+        if t == int:
+            if internal_id < 0:
+                return False
+
+        return True
+
+
+
+    @classmethod
+    def prepare_labels(cls, labels :Union[str, List[str], Tuple[str]]) -> str:
+        """
+        Turn the given string, or list/tuple of strings - representing one or more database node labels - into a string
+        suitable for inclusion into a Cypher query.
+        Blanks ARE allowed in the names.
+        EXAMPLES:
+            "" or None          both give rise to    ""
+            "client"            gives rise to   ":`client`"
+            "my label"          gives rise to   ":`my label`"
+            ["car", "vehicle"]  gives rise to   ":`car`:`vehicle`"
+
+        :param labels:  A string, or list/tuple of strings, representing one or multiple Neo4j labels;
+                            it's acceptable to be None
+        :return:        A string suitable for inclusion in the node part of a Cypher query
+        """
+        if not labels:
+            return ""   # No labels
+
+        if type(labels) == str:
+            labels = [labels]
+
+        cypher_labels = ""
+        for single_label in labels:
+            cypher_labels += f":`{single_label}`"       # EXAMPLE: ":`label 1`:`label 2`"
+            # Note: the back ticks allow the inclusion of blank spaces in the labels
+
+        return cypher_labels
+
+
+
+    @classmethod
+    def prepare_where(cls, where_list: Union[str, list]) -> str:
+        """
+        Given a WHERE clause, or list/tuple of them, combined them all into one -
+        and also prefix the WHERE keyword to the result (if appropriate).
+        The *combined* clauses of the WHERE statement are parentheses-enclosed, to protect against code injection
+
+        EXAMPLES:   "" or "      " or [] or ("  ", "") all result in  ""
+                    "n.name = 'Julian'" returns "WHERE (n.name = 'Julian')"
+                        Likewise for ["n.name = 'Julian'"]
+                    ("p.key1 = 123", "   ",  "p.key2 = 456") returns "WHERE (p.key1 = 123 AND p.key2 = 456)"
+
+        :param where_list:  A string with a subclause, or list or tuple of subclauses,
+                            suitable for insertion in a WHERE statement
+
+        :return:            A string with the combined WHERE statement,
+                            suitable for inclusion into a Cypher query (empty if there were no subclauses)
+        """
+        if type(where_list) == str:
+            where_list = [where_list]
+        else:
+            assert type(where_list) == list or type(where_list) == tuple, \
+                f"prepare_where(): the argument must be a string, list or tuple; instead, it was of type {type(where_list)}"
+
+        purged_where_list = [w for w in where_list if w.strip() != ""]      # Drop all the blank terms in the list
+
+        if len(purged_where_list) == 0:
+            return ""
+
+        return "WHERE (" + " AND ".join(purged_where_list) + ")"    # The outer parentheses are to protect against code injection
+
+
+
+    @classmethod
+    def dict_to_cypher(cls, data_dict: {}, prefix="par_") -> (str, {}):
+        """
+        Turn a Python dictionary (meant for specifying node or relationship attributes)
+        into a string suitable for Cypher queries,
+        plus its corresponding data-binding dictionary.
+
+        EXAMPLE :
+                {'cost': 65.99, 'item description': 'the "red" button'}
+
+                will lead to the pair:
+                    (
+                        '{`cost`: $par_1, `item description`: $par_2}',
+                        {'par_1': 65.99, 'par_2': 'the "red" button'}
+                    )
+
+        Note that backticks are used in the Cypher string to allow blanks in the key names.
+        Consecutively-named dummy variables ($par_1, $par_2, etc) are used,
+        instead of names based on the keys of the data dictionary (such as $cost),
+        because the keys might contain blanks.
+
+        SAMPLE USAGE:
+            (cypher_properties, data_binding) = dict_to_cypher(data_dict)
+
+        :param data_dict:   A Python dictionary
+        :param prefix:      Optional prefix string for the data-binding dummy names (parameter tokens); handy to prevent conflict;
+                                by default, "par_"
+
+        :return:            A pair consisting of a string suitable for Cypher queries,
+                                and a corresponding data-binding dictionary.
+                            If the passed dictionary is empty or None,
+                                the pair returned is ("", {})
+        """
+        if data_dict is None or data_dict == {}:
+            return ("", {})
+
+        assert type(data_dict) == dict, f"The data_dict argument passed to dict_to_cypher() is not a dictionary. Value: {data_dict}"
+
+        rel_props_list = []     # A list of strings
+        data_binding = {}
+        parameter_count = 1     # Sequential integers used in the data dictionary, such as "par_1", "par_2", etc.
+
+        for prop_key, prop_value in data_dict.items():
+            parameter_token =  f"{prefix}{parameter_count}"          # EXAMPLE: "par_3"
+
+            # Extend the list of Cypher property relationships and their corresponding data dictionary
+            rel_props_list.append(f"`{prop_key}`: ${parameter_token}")    # The $ refers to the data binding
+            data_binding[parameter_token] = prop_value
+            parameter_count += 1
+
+        rel_props_str = ", ".join(rel_props_list)
+
+        rel_props_str = "{" + rel_props_str + "}"
+
+        return (rel_props_str, data_binding)
 
 
 
@@ -716,7 +1021,7 @@ class CypherMatch:
 
 ######################################################################################################################
 
-class CypherUtils:
+class CypherUtils_OLD:
     """
     Helper STATIC class.
     Meant as a PRIVATE class; not indicated for the end user.
