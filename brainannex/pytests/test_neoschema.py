@@ -912,8 +912,39 @@ def test_get_data_node_internal_id(db):
 def test_get_data_node_id(db):
     pass    # TODO
 
+
+
+def test_data_node_exists_EXPERIMENTAL(db):
+    db.empty_dbase()
+
+    assert not NeoSchema.data_node_exists_EXPERIMENTAL(match=123)
+    assert not NeoSchema.data_node_exists_EXPERIMENTAL(match={"uri": "c-88"}, class_name="Car")
+
+
+
 def test_data_node_exists(db):
-    pass    # TODO
+    db.empty_dbase()
+
+    assert not NeoSchema.data_node_exists(node_id=123)
+    assert not NeoSchema.data_node_exists(node_id="c-88", id_key="uri", class_name="Car")
+    assert not NeoSchema.data_node_exists(node_id=45, id_key="employee id", class_name="Employee")
+
+    NeoSchema.create_class(name="Car", strict = True)
+    internal_id = NeoSchema.create_data_node(class_name="Car", new_uri="c-88")
+    assert NeoSchema.data_node_exists(node_id=internal_id)
+    assert NeoSchema.data_node_exists(node_id=internal_id, class_name="Car")
+    assert not NeoSchema.data_node_exists(node_id=internal_id, class_name="BOAT")
+    assert NeoSchema.data_node_exists(node_id="c-88", id_key="uri", class_name="Car")
+    assert not NeoSchema.data_node_exists(node_id="c-88", id_key="uri", class_name="BOAT")
+
+    NeoSchema.create_class_with_properties(name="Employee", properties=["employee id"], strict=True)
+    NeoSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
+    assert NeoSchema.data_node_exists(node_id=45, id_key="employee id", class_name="Employee")
+
+    with pytest.raises(Exception):
+        NeoSchema.data_node_exists(node_id=45, id_key="employee id")    # Missing `class_name`
+
+
 
 def test_data_link_exists(db):
     pass    # TODO

@@ -315,11 +315,41 @@ Vue.component('vue-plugin-rs',
             },
 
             save_record_edit()
+            // Invoked when the user asks to save the edit-in-progress
             {
-                alert("Editing individual records not yet implemented, sorry!");
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/update_content_item";          // TODO: modify web app endpoint
+
+                const post_obj = {
+                                    internal_id: this.record_mid_edit.internal_id
+                                 };     // Note: not using (at least for now, `uri` nor `class_name`
+
+                // Go over each field name of the recordset
+                for (field_name of this.headers)    // Looping over array
+                    post_obj[field_name] = this.record_mid_edit[field_name];
+
+                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_record_edit
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
                 this.cancel_record_edit();      // Clean up and leave the editing mode for the record being edited
             },
 
+            finish_save_record_edit()
+            {
+
+            },
 
 
             render_cell(cell_data)

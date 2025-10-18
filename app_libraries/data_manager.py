@@ -687,6 +687,7 @@ class DataManager:
 
         Notes:
             - if a field is blank, it gets completely dropped from the node
+            - if a field isn't mentioned, no change is applied to it
             - leading/trailing blanks in the field values are stripped away
 
         :param uri:         String with a unique identifier for the Content Item to update
@@ -724,7 +725,7 @@ class DataManager:
 
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks = True,
+        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks=True,
                                                     class_name=class_name)
 
 

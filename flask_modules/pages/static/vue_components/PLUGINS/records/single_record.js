@@ -118,7 +118,7 @@ Vue.component('vue-plugin-single-record',
                 // Go over each key (field name); note that keys that aren't field names were previously eliminated
                 for (key in this.record_current) {
                     if ( (this.record_current[key] != "")  ||  (key in this.record_pre_edit) )
-                        // Non-blank values always lead to updates; blanks, only if the field was originally present
+                        // Non-blank values always lead to updates; blanks lead to updates only if the field was originally present
                         post_obj[key] = this.record_current[key];
                 }
 

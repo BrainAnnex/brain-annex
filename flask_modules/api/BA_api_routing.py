@@ -1159,33 +1159,36 @@ class ApiRouting:
                 json    (REQUIRED) A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
-                uri                 REQUIRED
-                class_name          REQUIRED
-                plus whichever fields are being edited
+                REQUIRED    `uri` and `class_name`
+                                OR  `internal_id`
+                OPTIONAL    whichever fields are being edited
 
-            NOTE: the "class_name" value is redundant
-
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/update_content_item
+            EXAMPLES of invocation:
+                curl http://localhost:5000/BA/api/update_content_item_JSON
                         -d 'json={"uri":"6965","class_name":"Recordset","class":"YouTube Channel","n_group":7,"order_by":"name"}'
+
+                curl http://localhost:5000/BA/api/update_content_item_JSON
+                        -d 'json={"internal_id":123,"note":"My note","name":"Brain Annex channel"}'
             """
             #TODO: maybe use a PUT or PATCH method, instead of a POST
             #TODO: explore more Schema enforcements
 
-            # Extract and parse the POST value
-            data_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
+            # Extract and parse the POST value.  TODO: put a try/except around this
+            data_dict = request.get_json()      # This parses the JSON-encoded string in the POST message into a python dictionary,
                                                 # provided that mimetype indicates "application/json"
             # EXAMPLE: {'uri': '6967', 'class_name': 'Recordset', 'class': 'University Classes', 'n_group': 12, 'order_by': 'code'}
             # See: https://flask.palletsprojects.com/en/1.1.x/api/
             print("In update_content_item_JSON() -  data_dict: ", data_dict)
 
             # TODO: create a helper function for the unpacking/validation below
-            uri = data_dict.get('uri')
+            uri = data_dict.get('uri')                  # These values will be None if missing
             class_name = data_dict.get('class_name')
+            internal_id = data_dict.get('internal_id')
 
-            if not uri or not class_name:
+            # Enforce required parameters (TODO: turn this into a general utility function)
+            if (not uri or not class_name) and (not internal_id):
                 err_details = f"update_content_item_JSON(): some required parameters are missing; " \
-                              f"'uri' and 'class_name' are required"
+                              f"`uri` and `class_name` (or, alternatively `internal_id`) are required"
                 response_data = {"status": "error", "error_message": err_details}
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 

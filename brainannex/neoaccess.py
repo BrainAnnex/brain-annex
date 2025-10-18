@@ -14,7 +14,7 @@ from typing import Union, List, Tuple
 
 '''
     NOTE: this class was being released independently for some time, but
-          eventually got re-incoporated in its parent project BrainAnnex.org
+          eventually got re-incorporated in its parent project BrainAnnex.org
           
     ----------------------------------------------------------------------------------
     HISTORY and AUTHORS:
@@ -289,14 +289,10 @@ class NeoAccess(InterGraph):
         # TODO: provide an option to specify the desired fields
 
         """
-        match_structure = CypherUtils.process_match_structure(match, caller_method="get_nodes")
-
-        if self.debug:
-            print("In get_nodes()")
-            print("    match_structure:", match_structure)
+        #match_structure = CypherUtils.process_match_structure(match, caller_method="get_nodes")
 
         # Unpack needed values from the match structure
-        (node, where, data_binding, dummy_node_name) = match_structure.unpack_match()
+        (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
 
         cypher = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN {dummy_node_name}"
 
@@ -368,14 +364,10 @@ class NeoAccess(InterGraph):
         :return:        An integer with the internal database ID of the located node,
                         if exactly 1 node is found; otherwise, raise an Exception
         """
-        match_structure = CypherUtils.process_match_structure(match, caller_method="get_node_internal_id")
-
-        if self.debug:
-            print("In get_node_internal_id()")
-            print("    match_structure:", match_structure)
+        #match_structure = CypherUtils.process_match_structure(match, caller_method="get_node_internal_id")
 
         # Unpack needed values from the match dictionary
-        (node, where, data_binding, _) = match_structure.unpack_match()
+        (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_node_internal_id")
 
         q = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN id(n) AS INTERNAL_ID"
 
@@ -1043,14 +1035,10 @@ class NeoAccess(InterGraph):
         :return:        The number of nodes deleted (possibly zero)
         """
         # Create the "processed-match dictionaries"
-        match_structure = CypherUtils.process_match_structure(match, caller_method="delete_nodes")
-
-        if self.debug:
-            print("In delete_nodes()")
-            print("    match_structure:", match_structure)
+        #match_structure = CypherUtils.process_match_structure(match, caller_method="delete_nodes")
 
         # Unpack needed values from the match dictionary
-        (node, where, data_binding, _) = match_structure.unpack_match()
+        (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="delete_nodes")
 
         q = f"MATCH {node} {CypherUtils.prepare_where(where)} DETACH DELETE n"
 
@@ -1071,22 +1059,35 @@ class NeoAccess(InterGraph):
     #####################################################################################################
 
 
-    def set_fields(self, match: Union[int, NodeSpecs], set_dict: dict ) -> int:
+    def set_fields(self, match: Union[int, str, dict, NodeSpecs], set_dict: dict, drop_blanks=True) -> int:
         """
-        EXAMPLE - locate the "car" with vehicle id 123 and set its color to "white" and price to 7000
-            match_structure = match(labels = "car", properties = {"vehicle id": 123})
-            set_fields(match=match_structure, set_dict = {"color": "white", "price": 7000})
+        Update, possibly adding and/or dropping fields, the properties of an existing node or group of nodes.
+
+        EXAMPLE - locate the "car" node with `vehicle id` 123 and set its color to "white" and price to 7000
+            m = match(labels = "car", properties = {"vehicle id": 123})     # Object of type "NodeSpecs"
+            set_fields(match=m, set_dict = {"color": "white", "price": 7000})
 
         NOTE: other fields are left un-disturbed
 
         Return the number of properties set.
 
-        :param match:       EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
-        :param set_dict:    A dictionary of field name/values to create/update the node's attributes
-                            (note: blanks ARE allowed in the keys)
+        :param match:       EITHER a valid internal database ID (int or string),
+                                OR a python dictionary (with property matches to require),
+                                OR a "NodeSpecs" object, as returned by match(),
+                                    that contains data to identify a node or set of nodes
 
-        :return:            The number of properties set
+        :param set_dict:    A dictionary of field name/values to create/update the node's attributes
+                                (note: blanks ARE allowed in the keys)
+                                Blanks at the start/end of string values are zapped.
+                                Any None value leads to that attribute being dropped from the nodes.
+        :param drop_blanks: [OPTIONAL] If True (default), then any blank field is interpreted as a request to drop that property
+                                (as opposed to setting its value to "")
+                                Note that None values are always dropped, regardless of this flag.
+
+        :return:            The number of properties set or removed;
+                                if the record wasn't found, or an empty `set_dict` was passed, return 0
+                                Important: a property is counted as being "set" even if the new value is
+                                           identical to the old value!
         """
         #         TODO: if any field is blank, offer the option drop it altogether from the node,
         #               with a "REMOVE n.field" statement in Cypher; doing SET n.field = "" doesn't drop it
@@ -1094,42 +1095,54 @@ class NeoAccess(InterGraph):
         if set_dict == {}:
             return 0             # There's nothing to do
 
-        match_structure = CypherUtils.process_match_structure(match, caller_method="set_fields")
 
-        if self.debug:
-            print("In set_fields()")
-            print("    match_structure:", match_structure)
+        # Unpack the parts needed to put together a Cypher query
+        (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="set_fields")
 
-        # Unpack needed values from the match dictionary
-        (node, where, data_binding, dummy_node_name) = match_structure.unpack_match()
-
+        # Start forming the Cypher query
         cypher_match = f"MATCH {node} {CypherUtils.prepare_where(where)} "
 
         set_list = []
-        for field_name, field_value in set_dict.items():        # field_name, field_value are key/values in set_dict
-            field_name_safe = field_name.replace(" ", "_")      # To protect against blanks in name.  E.g., "end date" becomes "end_date"
-            set_list.append(f"{dummy_node_name}.`{field_name}` = ${field_name_safe}")    # Example:  "n.`field1` = $field1"
-            data_binding[field_name_safe] = field_value                                  # EXTEND the Cypher data-binding dictionary
+        remove_list = []
+        for field_name, field_value in set_dict.items():    # field_name, field_value are key/values in set_dict
+            if type(field_value) == str:
+                field_value = field_value.strip()               # Zap all leading and trailing blanks
+
+            if (field_value == "") and drop_blanks:
+                remove_list.append(f"{dummy_node_name}.`{field_name}`")
+            else:
+                field_name_safe = field_name.replace(" ", "_")      # To protect against blanks in name, which could not be used
+                                                                    #   in names of data-binding variables.  E.g., "end date" becomes "end_date"
+                set_list.append(f"{dummy_node_name}.`{field_name}` = ${field_name_safe}")    # Example:  "n.`field1` = $field1"
+                data_binding[field_name_safe] = field_value                                  # EXTEND the Cypher data-binding dictionary
 
         # Example of data_binding at the end of the loop: {'n_par_1': 123, 'n_par_2': 7500, 'color': 'white', 'price': 7000}
         #       in this example, the first 2 keys arise from the match (find) operation to locate the node,
         #       while the last 2 are for the use of the SET operation
 
 
-        # Note: set_list cannot be empty, because we eliminated the scenario set_dict == {} at the beginning
-        set_clause = "SET " + ", ".join(set_list)   # Example:  "SET n.`color` = $color, n.`price` = $price"
+        set_clause = ""
+        if set_list:
+            set_clause = " SET " + ", ".join(set_list)   # Example:  "SET n.`color` = $color, n.`price` = $price"
 
-        cypher = cypher_match + set_clause
+        remove_clause = ""
+        if drop_blanks and remove_list:
+            remove_clause = " REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
+
+
+        cypher = cypher_match + set_clause + remove_clause
 
         # Example of cypher:
         # "MATCH (n :`car` {`vehicle id`: $n_par_1, `price`: $n_par_2})  SET n.`color` = $color, n.`price` = $price"
         # Example of data binding:
         #       {'n_par_1': 123, 'n_par_2': 7500, 'color': 'white', 'price': 7000}
 
+        #self.debug_query_print(cypher, data_binding)
         stats = self.update_query(cypher, data_binding)
 
         number_properties_set = stats.get("properties_set", 0)
         return number_properties_set
+
 
 
 
@@ -1385,11 +1398,6 @@ class NeoAccess(InterGraph):
         match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from", caller_method="number_of_links")
         match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to", caller_method="number_of_links")
 
-        if self.debug:
-            print("In number_of_links()")
-            print("    match_from:", match_from)
-            print("    match_to:", match_to)
-
         # Unpack needed values from the match_from and match_to structures
         nodes_from = match_from.extract_node()
         nodes_to   = match_to.extract_node()
@@ -1630,14 +1638,14 @@ class NeoAccess(InterGraph):
         # TODO: add an option to only retrieve SOME of the properties
         # TODO: add an option to also retrieve some or all the properties of the relationships
 
-        match_structure = CypherUtils.process_match_structure(match, caller_method="follow_links")
+        #match_structure = CypherUtils.process_match_structure(match, caller_method="follow_links")
 
         if limit is not None:
             assert (type(limit) == int) and (limit >= 1), \
                 f"follow_links(): the argument `limit`, if passed, must be an integer >= 1 (value passed: {limit})"
 
         # Unpack needed values from the match dictionary
-        (node, where, data_binding, _) = match_structure.unpack_match()
+        (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="follow_links")
 
         neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
 
@@ -1680,14 +1688,10 @@ class NeoAccess(InterGraph):
         :return:                The total number of inbound and/or outbound relationships to the given node(s)
         """
         #TODO: change default of `rel_dir` to "BOTH"
-        match_structure = CypherUtils.process_match_structure(match, caller_method="count_links")
-
-        if self.debug:
-            print("In count_links()")
-            print("    match_structure:", match_structure)
+        #match_structure = CypherUtils.process_match_structure(match, caller_method="count_links")
 
         # Unpack needed values from the match dictionary
-        (node, where, data_binding, _) = match_structure.unpack_match()
+        (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="count_links")
 
         neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
 

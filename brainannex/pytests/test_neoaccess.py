@@ -528,7 +528,7 @@ def test_get_siblings(db):
         db.get_siblings(internal_id=french_id, rel_name=666, rel_dir="OUT") # rel_name isn't a string
 
     with pytest.raises(Exception):
-        db.get_siblings(internal_id="Do I look like an ID?", rel_name="subcategory_of", rel_dir="OUT")
+        db.get_siblings(internal_id=[1, 2, 3], rel_name="subcategory_of", rel_dir="OUT")    # Bad ID
 
     with pytest.raises(Exception):
         db.get_siblings(internal_id=french_id, rel_name="subcategory_of", rel_dir="Is it IN or OUT")
@@ -1067,18 +1067,55 @@ def test_delete_nodes_by_label(db):
 def test_set_fields(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
-    # Create a new node.  Notice the blank in the key
-    db.create_node("car", {'vehicle id': 123, 'price': 7500})
+    # Create a new node.  Notice the blank in the key 'vehicle id'
+    car_id = db.create_node("car", {'vehicle id': 123, 'price': 7500})
 
-    # Locate the node just created, and create/update its attributes (reduce the price)
-    match = db.match(labels="car", properties={'vehicle id': 123, 'price': 7500})
-    db.set_fields(match=match, set_dict = {"color": "white", "price": 7000})
+    # Locate the node just created, and create/update its attributes (add color plus make, and reduce the price)
+    match = db.match(labels="car")
+    n_set = db.set_fields(match=match, set_dict={"color": "white", "make": "Toyota", "price": 7000})
+    assert n_set == 3
 
     # Look up the updated record
     match = db.match(labels="car")
     retrieved_records = db.get_nodes(match)
-    expected_record_list = [{'vehicle id': 123, 'color': 'white', 'price': 7000}]
+    expected_record_list = [{'vehicle id': 123, 'color': 'white', 'make': 'Toyota', 'price': 7000}]
     assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by a property and change the color attribute
+    n_set = db.set_fields(match={'vehicle id': 123}, set_dict={"color": "   blue    "})  # Extra blanks will get stripped
+    assert n_set == 1
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': 'blue', 'make': 'Toyota', 'price': 7000}]
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by internal id and clear its "color" attribute
+    n_set = db.set_fields(match=car_id, set_dict={"color": ""}, drop_blanks=False)
+    assert n_set == 1
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': '', 'make': 'Toyota', 'price': 7000}]    # 'color' property still there, but blank value
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by internal id and eliminate its "make" attribute
+    n_set = db.set_fields(match=car_id, set_dict={"make": ""}, drop_blanks=True)
+    assert n_set == 1
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': '', 'price': 7000}]    # 'make' property is completely gone
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by internal id and eliminate its "price" attribute
+    n_set = db.set_fields(match=car_id, set_dict={"price": None}, drop_blanks=False)
+    assert n_set == 1
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': ''}]    # 'price' property is completely gone
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by internal id and eliminate its "vehicle id" attribute to the SAME value it already has
+    n_set = db.set_fields(match=car_id, set_dict={"vehicle id": 123})
+    assert n_set == 1       # 1 property set - even if to the same value it already had
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': ''}]    # No change
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
 
 
 
