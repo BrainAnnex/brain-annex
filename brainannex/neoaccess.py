@@ -1,6 +1,6 @@
 from neo4j.time import DateTime                             # To convert datetimes (and dates) between neo4j.time.DateTime and python
 import neo4j.graph                                          # To check returned data types
-from brainannex.cypher_utils import CypherUtils, NodeSpecs  # Helper classes
+from brainannex.cypher_utils import CypherUtils, CypherBuilder  # Helper classes
 from brainannex import InterGraph                           # One of a family of classes, for different (versions) of graph databases;
                                                             #   make sure to pick the one for your database, in the "brainannex/__init__.py" file!
 import math
@@ -72,10 +72,10 @@ class NeoAccess(InterGraph):
 
 
     def match(self, labels=None, internal_id=None,
-              key_name=None, key_value=None, properties=None, clause=None, dummy_node_name="n") -> NodeSpecs:
+              key_name=None, key_value=None, properties=None, clause=None, dummy_node_name="n") -> CypherBuilder:
         """
-        Return a "NodeSpecs" object storing all the passed specifications (the "RAW match structure"),
-        as expected as argument in various other functions in this library,
+        Return a "CypherBuilder" object storing all the passed specifications;
+        that object is expected as argument in various other functions in this library,
         in order to identify a node or group of nodes.
 
         IMPORTANT:  if internal_id is provided, all other conditions are DISREGARDED;
@@ -120,9 +120,9 @@ class NeoAccess(InterGraph):
         #TODO: limitations include inability to do partial, or case-insensitive, matches for key_value.
         #      Maybe instead of specifying all arguments at once, it might be better to have individual methods
         #      for a "Cypher query builder"?
-        return NodeSpecs(internal_id=internal_id,
-                         labels=labels, key_name=key_name, key_value=key_value,
-                         properties=properties, clause=clause, clause_dummy_name=dummy_node_name)
+        return CypherBuilder(internal_id=internal_id,
+                             labels=labels, key_name=key_name, key_value=key_value,
+                             properties=properties, clause=clause, dummy_name=dummy_node_name)
 
 
 
@@ -149,8 +149,9 @@ class NeoAccess(InterGraph):
             "NeoAccess.get_record_by_primary_key(): the primary key value cannot be None" # Note: 0 or "" could be legit
 
         match = self.match(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
+        #print(match)
         result = self.get_nodes(match=match, return_internal_id=return_internal_id)
-
+        #print(result)
         if len(result) == 0:
             return None
         if len(result) > 1:
@@ -215,14 +216,14 @@ class NeoAccess(InterGraph):
 
 
 
-    def get_single_field(self, match: Union[int, NodeSpecs], field_name: str, order_by=None, limit=None) -> list:
+    def get_single_field(self, match: Union[int, CypherBuilder], field_name: str, order_by=None, limit=None) -> list:
         """
         For situations where one is fetching just 1 field,
         and one desires a list of the values of that field, rather than a dictionary of records.
         In other respects, similar to the more general get_nodes()
 
         :param match:       EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param field_name:  A string with the name of the desired field (attribute)
         :param order_by:    see get_nodes()
         :param limit:       see get_nodes()
@@ -238,7 +239,7 @@ class NeoAccess(InterGraph):
 
 
 
-    def get_nodes(self, match: Union[int, NodeSpecs],
+    def get_nodes(self, match: Union[int, str, dict, CypherBuilder],
                   return_internal_id=False, return_labels=False, order_by=None, limit=None,
                   single_row=False, single_cell=""):
         """
@@ -246,8 +247,9 @@ class NeoAccess(InterGraph):
         corresponding to all the Neo4j nodes specified by the given match data.
         However, if the flags "single_row" or "single_cell" are set, simpler data structures are returned
 
-        :param match:           EITHER an integer with an internal database node id,
-                                    OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+        :param match:           EITHER an integer or string with an internal database node id,
+                                    OR a dict with key/values to match,
+                                    OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
 
         :param return_internal_id:  Flag indicating whether to also include the Neo4j internal node ID in the returned data
                                     (using "internal_id" as its key in the returned dictionary)
@@ -289,11 +291,9 @@ class NeoAccess(InterGraph):
         # TODO: provide an option to specify the desired fields
 
         """
-        #match_structure = CypherUtils.process_match_structure(match, caller_method="get_nodes")
-
-        # Unpack needed values from the match structure
+        # Unpack needed values from the Cypher builder
         (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
-
+        #print(node, where, data_binding, dummy_node_name)
         cypher = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN {dummy_node_name}"
 
         if order_by:
@@ -334,14 +334,14 @@ class NeoAccess(InterGraph):
 
 
 
-    def get_df(self, match: Union[int, NodeSpecs], order_by=None, limit=None) -> pd.DataFrame:
+    def get_df(self, match: Union[int, CypherBuilder], order_by=None, limit=None) -> pd.DataFrame:
         """
         Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
 
         [See get_nodes() for more information about the arguments]
 
         :param match:       EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param order_by:    Optional string with the key (field) name to order by, in ascending order
                                 Note: lower and uppercase names are treated differently in the sort order
         :param limit:       Optional integer to specify the maximum number of nodes returned
@@ -353,14 +353,14 @@ class NeoAccess(InterGraph):
 
 
 
-    def get_node_internal_id(self, match: NodeSpecs) -> int:
+    def get_node_internal_id(self, match: CypherBuilder) -> int:
         """
         Return the internal database ID of a SINGLE node identified by the "match" data
         created by a call to match().
 
         If not found, or if more than 1 found, an Exception is raised
 
-        :param match:   A "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+        :param match:   A "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :return:        An integer with the internal database ID of the located node,
                         if exactly 1 node is found; otherwise, raise an Exception
         """
@@ -1025,13 +1025,13 @@ class NeoAccess(InterGraph):
     #####################################################################################################
 
 
-    def delete_nodes(self, match: Union[int, NodeSpecs]) -> int:
+    def delete_nodes(self, match: Union[int, CypherBuilder]) -> int:
         """
         Delete the node or nodes specified by the match argument.
         Return the number of nodes deleted.
 
         :param match:   EITHER an integer with an internal database node id,
-                            OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                            OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :return:        The number of nodes deleted (possibly zero)
         """
         # Create the "processed-match dictionaries"
@@ -1059,12 +1059,12 @@ class NeoAccess(InterGraph):
     #####################################################################################################
 
 
-    def set_fields(self, match: Union[int, str, dict, NodeSpecs], set_dict: dict, drop_blanks=True) -> int:
+    def set_fields(self, match: Union[int, str, dict, CypherBuilder], set_dict: dict, drop_blanks=True) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing node or group of nodes.
 
         EXAMPLE - locate the "car" node with `vehicle id` 123 and set its color to "white" and price to 7000
-            m = match(labels = "car", properties = {"vehicle id": 123})     # Object of type "NodeSpecs"
+            m = match(labels = "car", properties = {"vehicle id": 123})     # Object of type "CypherBuilder"
             set_fields(match=m, set_dict = {"color": "white", "price": 7000})
 
         NOTE: other fields are left un-disturbed
@@ -1073,7 +1073,7 @@ class NeoAccess(InterGraph):
 
         :param match:       EITHER a valid internal database ID (int or string),
                                 OR a python dictionary (with property matches to require),
-                                OR a "NodeSpecs" object, as returned by match(),
+                                OR a "CypherBuilder" object, as returned by match(),
                                     that contains data to identify a node or set of nodes
 
         :param set_dict:    A dictionary of field name/values to create/update the node's attributes
@@ -1168,7 +1168,8 @@ class NeoAccess(InterGraph):
 
 
 
-    def add_links(self, match_from: Union[int, NodeSpecs], match_to: Union[int, NodeSpecs], rel_name:str) -> int:
+    def add_links(self, match_from: Union[int, str, CypherBuilder], match_to: Union[int, str, CypherBuilder],
+                  rel_name:str) -> int:
         """
         Add one or more links (aka graph edges/relationships), with the specified rel_name,
         originating in each of the nodes specified by the match_from specifications,
@@ -1182,10 +1183,11 @@ class NeoAccess(InterGraph):
         TODO: add a `rel_props` argument
               (Unclear what multiple calls would do in this case: update the props or create a new relationship??)
 
-        :param match_from:  EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
-        :param match_to:    EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+        :param match_from:  EITHER an integer or string with an internal database node id,
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
+        :param match_to:    EITHER an integer or string with an internal database node id,
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
+                            Note: match_to could be the same as match_from (to add a link from a node to itself)
                             Note: match_from and match_to, if created by calls to match(),
                                   in scenarios where a clause dummy name is actually used,
                                   MUST use different clause dummy names.
@@ -1195,41 +1197,32 @@ class NeoAccess(InterGraph):
 
         :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
         """
-        # Create the corresponding "CypherMatch" objects
-        cypher_match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from", caller_method="add_links")
-        cypher_match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to", caller_method="add_links")
+        #print(match_from)
+        (nodes_from, where_from, data_binding_from, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_from, dummy_node_name="from", caller_method="add_links")
+        #print("1 ********** data_binding_from: ", data_binding_from)
 
-        if self.debug:
-            print("In add_links()")
-            print("    cypher_match_from:", cypher_match_from)
-            print("    cypher_match_to:", cypher_match_to)
+        (nodes_to, where_to, data_binding_to, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_to, dummy_node_name="to", caller_method="add_links")
+        #print("2 ********** data_binding_to: ", data_binding_to)
 
-        # Unpack needed values from the cypher_match_from and cypher_match_to structures
-        nodes_from = cypher_match_from.extract_node()
-        nodes_to   = cypher_match_to.extract_node()
-
-        # Combine the two WHERE clauses from each of the matches,
-        # and also prefix (if appropriate) the WHERE keyword
-        where_clause = CypherUtils.combined_where(cypher_match_from, cypher_match_to, check_compatibility=True)
-
-
-        from_dummy_name = cypher_match_from.extract_dummy_name()
-        to_dummy_name = cypher_match_to.extract_dummy_name()
+        where_clause = CypherUtils.prepare_where([where_from, where_to])
 
         # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
         q = f'''
             MATCH {nodes_from}, {nodes_to}
             {where_clause}
-            MERGE ({from_dummy_name}) -[:`{rel_name}`]-> ({to_dummy_name})           
+            MERGE (from) -[:`{rel_name}`]-> (to)           
             '''
 
-        # Merge the data-binding dict's
-        combined_data_binding = CypherUtils.combined_data_binding(cypher_match_from, cypher_match_to)
-
+        # Merge the data-binding dict's   TODO: turn this into a CypherUtils method
+        combined_data_binding = data_binding_from.copy()        # Clone
+        combined_data_binding = combined_data_binding.update(data_binding_to)  # Merge the second dict into the first one
+        #print("3 ********** combined_data_binding: ", combined_data_binding)
+        #combined_data_binding = data_binding_from.update(data_binding_to)  # Merge the second dict into the first one
+        #print(q)
 
         result = self.update_query(q, combined_data_binding)
-        if self.debug:
-            print("    RESULT of update_query in add_links(): ", result)
 
         number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
         if number_relationships_added == 0:       # This could be more than 1: see notes above
@@ -1239,16 +1232,16 @@ class NeoAccess(InterGraph):
 
 
 
-    def add_links_fast(self, match_from: int, match_to: int, rel_name:str) -> int:
+    def add_links_fast(self, match_from :Union[int, str], match_to :Union[int, str], rel_name :str) -> int:
         """
-        Method optimized for speed.  Only internal database ID are used.
+        Method optimized for speed.  Only internal database ID's are used.
 
         Add a links (aka graph edges/relationships), with the specified rel_name,
         originating in the node identified by match_from,
         and terminating in the node identified by match_to
 
-        :param match_from:  An integer with an internal Neo4j node id
-        :param match_to:    An integer with an internal Neo4j node id
+        :param match_from:  An integer or string with an internal database node id
+        :param match_to:    An integer or string with an internal database node id
         :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed
 
         :return:            The number of links added.  If none got added, or in case of error, an Exception is raised
@@ -1270,10 +1263,7 @@ class NeoAccess(InterGraph):
 
 
 
-    # TODO: add a method to remove all links of a given name emanating to or from a given node
-    #       - as done for Schema.remove_all_data_relationship()
-    # TODO: add a rename_link() method
-    def remove_links(self, match_from: Union[int, NodeSpecs], match_to: Union[int, NodeSpecs], rel_name) -> int:
+    def remove_links(self, match_from: Union[int, CypherBuilder], match_to: Union[int, CypherBuilder], rel_name) -> int:
         """
         Remove one or more links (aka relationships/edges)
         originating in any of the nodes specified by the match_from specifications,
@@ -1289,9 +1279,9 @@ class NeoAccess(InterGraph):
                         as long as the relationships differ in their properties
 
         :param match_from:  EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param match_to:    EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
                             Note: match_from and match_to, if created by calls to match(),
                                   in scenarios where a clause dummy name is actually used,
                                   MUST use different clause dummy names.
@@ -1302,14 +1292,14 @@ class NeoAccess(InterGraph):
 
         :return:            The number of edges removed.  If none got deleted, or in case of error, an Exception is raised
         """
-        # Create the "processed match dictionaries"
+        # TODO: add a method to remove all links of a given name emanating to or from a given node
+        #       - as done for Schema.remove_all_data_relationship()
+        # TODO: add a rename_link() method
+
+        # TODO: this will fail if match_from and match_to are the same object; proceed as done in add_links()
         match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from", caller_method="remove_links")
         match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to", caller_method="remove_links")
 
-        if self.debug:
-            print("In remove_links()")
-            print("    match_from:", match_from)
-            print("    match_to:", match_to)
 
         # Unpack needed values from the match_from and match_to structures
         nodes_from = match_from.extract_node()
@@ -1349,16 +1339,16 @@ class NeoAccess(InterGraph):
 
 
 
-    def links_exist(self, match_from: Union[int, NodeSpecs], match_to: Union[int, NodeSpecs], rel_name: str) -> bool:
+    def links_exist(self, match_from: Union[int, CypherBuilder], match_to: Union[int, CypherBuilder], rel_name: str) -> bool:
         """
         Return True if one or more edges (relationships) with the specified name exist in the direction
         from and to the nodes (individual nodes or set of nodes) specified in the first two arguments.
         Typically used to find whether 2 given nodes have a direct link between them.
 
         :param match_from:  EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param match_to:    EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
                             Note: match_from and match_to, if created by calls to match(),
                                   in scenarios where a clause dummy name is actually used,
                                   MUST use different clause dummy names.
@@ -1373,16 +1363,16 @@ class NeoAccess(InterGraph):
 
 
 
-    def number_of_links(self, match_from: Union[int, NodeSpecs], match_to: Union[int, NodeSpecs], rel_name: str) -> int:
+    def number_of_links(self, match_from: Union[int, CypherBuilder], match_to: Union[int, CypherBuilder], rel_name: str) -> int:
         """
         Return the number of links (aka edges or relationships) with the given name
         that exist in the direction from and to the nodes (individual nodes or set of nodes)
         that are specified in the first two arguments.
 
         :param match_from:  EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param match_to:    EITHER an integer with an internal database node id,
-                                OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
                             Note: match_from and match_to, if created by calls to match(),
                                   in scenarios where a clause dummy name is actually used,
                                   MUST use different clause dummy names.
@@ -1607,7 +1597,7 @@ class NeoAccess(InterGraph):
 
 
 
-    def follow_links(self, match: Union[int, NodeSpecs], rel_name :str, rel_dir ="OUT",
+    def follow_links(self, match: Union[int, CypherBuilder], rel_name :str, rel_dir ="OUT",
                            neighbor_labels=None, include_id=False, include_labels=False, limit=100) -> [dict]:
         """
         From the given starting node(s), follow all the relationships that have the specified name,
@@ -1615,7 +1605,7 @@ class NeoAccess(InterGraph):
         and return all the properties of the located neighbor nodes, optionally also including their internal database ID's.
 
         :param match:           EITHER an integer with an internal database node id,
-                                    OR a "NodeSpecs" object, as returned by match(),
+                                    OR a "CypherBuilder" object, as returned by match(),
                                     with data to identify a node or set of nodes
         :param rel_name:        A string with the name of relationship to follow.
                                     (Note: any other relationships are ignored)
@@ -1674,13 +1664,13 @@ class NeoAccess(InterGraph):
 
 
 
-    def count_links(self, match: Union[int, NodeSpecs], rel_name: str, rel_dir="OUT", neighbor_labels = None) -> int:
+    def count_links(self, match: Union[int, CypherBuilder], rel_name: str, rel_dir="OUT", neighbor_labels = None) -> int:
         """
         From the given starting node(s), count all the relationships OF THE GIVEN NAME to and/or from it,
         into/from neighbor nodes (optionally having the given labels)
 
         :param match:           EITHER an integer with an internal database node id,
-                                    OR a "NodeSpecs" object, as returned by match(), with data to identify a node or set of nodes
+                                    OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param rel_name:        A string with the name of relationship to follow.  (Note: any other relationships are ignored)
         :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
         :param neighbor_labels: Optional label(s) required on the neighbors.  If present, either a string or list of strings

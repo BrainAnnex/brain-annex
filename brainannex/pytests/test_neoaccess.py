@@ -229,8 +229,10 @@ def test_get_nodes(db):
     #       can simply alter the dummy name internally used, from the default "n" to something else
     match = db.match(dummy_node_name="person", labels="my 2nd label",
                      clause=("person.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
-    # All good now, because internally the Cypher query is "MATCH (person :`my 2nd label` {`age`: $person_par_1}) WHERE (person.age > $n_par_1) RETURN person"
-    #                                    with data binding {'n_par_1': 22, 'person_par_1': 30}
+
+    # All good now, because internally the Cypher query is:
+    #           "MATCH (person :`my 2nd label` {`age`: $person_par_1}) WHERE (person.age > $n_par_1) RETURN person"
+    #           with data binding {'n_par_1': 22, 'person_par_1': 30}
     retrieved_records = db.get_nodes(match)
     assert compare_recordsets(retrieved_records, expected_records)
 
