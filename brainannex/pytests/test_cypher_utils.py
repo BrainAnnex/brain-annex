@@ -67,7 +67,7 @@ def test_CypherBuilder():
     assert ns.labels == "my label"
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
-    assert ns.properties == {"patient code": 100, "onset age": 23}
+    assert ns.properties == {"onset age": 23}
     assert ns.clause == "n.income > 10000"
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
@@ -89,7 +89,7 @@ def test_CypherBuilder():
     assert ns.labels == "my label"
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
-    assert ns.properties == {"patient code": 100, "onset age": 23}
+    assert ns.properties == {"onset age": 23}
     assert ns.clause == "n.income > 10000"
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
@@ -103,14 +103,15 @@ def test_CypherBuilder():
     ns = CypherBuilder(
                    labels="my label", key_name="patient code", key_value=100,
                    properties={"onset age": 23},
-                   clause=("p.income > $income_threshold", {"income_threshold": 10000}),
+                   clause="p.income > $income_threshold",
+                   clause_binding={"income_threshold": 10000},
                    dummy_name="p")
 
     assert ns.internal_id is None
     assert ns.labels == "my label"
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
-    assert ns.properties == {"patient code": 100, "onset age": 23}
+    assert ns.properties == {"onset age": 23}
     assert ns.clause == "p.income > $income_threshold"
     assert ns.clause_binding == {"income_threshold": 10000}
     assert ns.dummy_node_name == "p"
@@ -131,8 +132,8 @@ def test_CypherBuilder():
     assert ns.labels == ("my label 1", "my label 2")
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
-    assert ns.properties == {"patient code": 100, "onset age": 23}
-    assert ns.clause is None
+    assert ns.properties == {"onset age": 23}
+    assert ns.clause == ""
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
 
@@ -147,8 +148,8 @@ def test_CypherBuilder():
     assert ns.labels == "person"
     assert ns.key_name == "SSN"
     assert ns.key_value == 123
-    assert ns.properties == {"SSN": 123}
-    assert ns.clause is None
+    assert ns.properties == {}
+    assert ns.clause == ""
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
 
@@ -172,7 +173,7 @@ def test_finalize_dummy_name():
     assert ns.labels == "my label"
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
-    assert ns.properties == {"patient code": 100, "onset age": 23}
+    assert ns.properties == {"onset age": 23}
     assert ns.clause == "n.income > 10000"
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
@@ -196,7 +197,7 @@ def test_finalize_dummy_name():
     assert ns.labels == "my label"
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
-    assert ns.properties == {"patient code": 100, "onset age": 23}
+    assert ns.properties == {"onset age": 23}
     assert ns.clause == "n.income > 10000"
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
@@ -220,8 +221,8 @@ def test_finalize_dummy_name():
     assert ns.labels == ("my label 1", "my label 2")
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
-    assert ns.properties == {"patient code": 100, "onset age": 23}
-    assert ns.clause is None
+    assert ns.properties == {"onset age": 23}
+    assert ns.clause == ""
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
     assert ns.node == "(n :`my label 1`:`my label 2` {`onset age`: $n_par_1, `patient code`: $n_par_2})"
@@ -235,8 +236,8 @@ def test_finalize_dummy_name():
     assert ns.labels == ("my label 1", "my label 2")
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
-    assert ns.properties == {"patient code": 100, "onset age": 23}
-    assert ns.clause is None
+    assert ns.properties == {"onset age": 23}
+    assert ns.clause == ""
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "dummy"
     assert ns.node == "(dummy :`my label 1`:`my label 2` {`onset age`: $dummy_par_1, `patient code`: $dummy_par_2})"
@@ -253,8 +254,8 @@ def test_finalize_dummy_name():
     assert ns.labels == "person"
     assert ns.key_name == "SSN"
     assert ns.key_value == 123
-    assert ns.properties == {"SSN": 123}
-    assert ns.clause is None
+    assert ns.properties == {}
+    assert ns.clause == ""
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
 
@@ -269,8 +270,8 @@ def test_finalize_dummy_name():
     assert ns.labels == "person"
     assert ns.key_name == "SSN"
     assert ns.key_value == 123
-    assert ns.properties == {"SSN": 123}
-    assert ns.clause is None
+    assert ns.properties == {}
+    assert ns.clause == ""
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "dummy"
 
@@ -283,6 +284,123 @@ def test_finalize_dummy_name():
 
 
 ############   For class CypherUtils   ############
+
+def test_process_match_structure():
+    ns = CypherUtils.process_match_structure(handle=123)
+
+    assert ns.internal_id == 123
+    assert ns.labels is None
+    assert ns.key_name is None
+    assert ns.key_value is None
+    assert ns.properties == {}
+    assert ns.clause == ""
+    assert ns.clause_binding == {}
+    assert ns.dummy_node_name == "n"
+
+    assert ns.node == "(n)"
+    assert ns.where == "id(n) = 123"
+    assert ns.data_binding == {}
+    assert ns.cypher == "MATCH (n) WHERE id(n) = 123"
+
+
+    ns = CypherBuilder(
+                   labels=("my label 1", "my label 2"),
+                   key_name="patient code", key_value=100,
+                   properties={"onset age": 23})
+
+    new_obj = CypherUtils.process_match_structure(handle=ns, dummy_node_name="FROM")
+
+    assert new_obj.internal_id is None
+    assert new_obj.labels == ("my label 1", "my label 2")
+    assert new_obj.key_name == "patient code"
+    assert new_obj.key_value == 100
+    assert new_obj.properties == {"onset age": 23}
+    assert new_obj.clause == ""
+    assert new_obj.clause_binding == {}
+    assert new_obj.dummy_node_name == "FROM"
+
+    assert new_obj.node == "(FROM :`my label 1`:`my label 2` {`onset age`: $FROM_par_1, `patient code`: $FROM_par_2})"
+    assert new_obj.where == ""
+    assert new_obj.data_binding == {"FROM_par_1": 23, 'FROM_par_2': 100}
+    assert new_obj.cypher == "MATCH (FROM :`my label 1`:`my label 2` {`onset age`: $FROM_par_1, `patient code`: $FROM_par_2})"
+
+    # The original "ns" object was left undisturbed
+    assert ns.internal_id is None
+    assert ns.labels == ("my label 1", "my label 2")
+    assert ns.key_name == "patient code"
+    assert ns.key_value == 100
+    assert ns.properties == {"onset age": 23}
+    assert ns.clause == ""
+    assert ns.clause_binding == {}
+    assert ns.dummy_node_name == "n"
+
+    assert ns.node == "(n :`my label 1`:`my label 2` {`onset age`: $n_par_1, `patient code`: $n_par_2})"
+    assert ns.where == ""
+    assert ns.data_binding == {"n_par_1": 23, 'n_par_2': 100}
+    assert ns.cypher == "MATCH (n :`my label 1`:`my label 2` {`onset age`: $n_par_1, `patient code`: $n_par_2})"
+
+
+    ns = CypherBuilder(labels="my label", clause="n.income > 10000", dummy_name="n")
+
+    with pytest.raises(Exception):
+        CypherUtils.process_match_structure(handle=ns, dummy_node_name="FROM")  # Conflict in dummy name
+
+    new_obj = CypherUtils.process_match_structure(handle=ns, dummy_node_name="n")
+
+    assert new_obj.internal_id is None
+    assert new_obj.labels == "my label"
+    assert new_obj.key_name is None
+    assert new_obj.key_value is None
+    assert new_obj.properties == {}
+    assert new_obj.clause == "n.income > 10000"
+    assert new_obj.clause_binding == {}
+    assert new_obj.dummy_node_name == "n"
+
+    assert new_obj.node == "(n :`my label` )"
+    assert new_obj.where == "n.income > 10000"
+    assert new_obj.data_binding == {}
+    assert new_obj.cypher == "MATCH (n :`my label` ) WHERE (n.income > 10000)"
+
+    new_obj.cypher = "SOME JUNK"
+
+
+    # The original object is left undisturbed
+    assert ns.internal_id is None
+    assert ns.labels == "my label"
+    assert ns.key_name is None
+    assert ns.key_value is None
+    assert ns.properties == {}
+    assert ns.clause == "n.income > 10000"
+    assert ns.clause_binding == {}
+    assert ns.dummy_node_name == "n"
+
+    assert ns.node == "(n :`my label` )"
+    assert ns.where == "n.income > 10000"
+    assert ns.data_binding == {}
+    assert ns.cypher == "MATCH (n :`my label` ) WHERE (n.income > 10000)"
+
+
+    ns = CypherBuilder(labels="my label",
+                       clause="n.income > $min_income", clause_binding={"min_income": 10000},
+                       dummy_name="n")
+
+    new_obj = CypherUtils.process_match_structure(handle=ns)
+
+    assert new_obj.internal_id is None
+    assert new_obj.labels == "my label"
+    assert new_obj.key_name is None
+    assert new_obj.key_value is None
+    assert new_obj.properties == {}
+    assert new_obj.clause == "n.income > $min_income"
+    assert new_obj.clause_binding == {"min_income": 10000}
+    assert new_obj.dummy_node_name == "n"
+
+    assert new_obj.node == "(n :`my label` )"
+    assert new_obj.where == "n.income > $min_income"
+    assert new_obj.data_binding == {"min_income": 10000}
+    assert new_obj.cypher == "MATCH (n :`my label` ) WHERE (n.income > $min_income)"
+
+
 
 def test_valid_internal_id():
     assert CypherUtils.valid_internal_id(23) == True

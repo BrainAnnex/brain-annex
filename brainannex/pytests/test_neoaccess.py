@@ -137,9 +137,8 @@ def test_get_nodes(db):
 
     # Again, retrieve the record (this time using data-binding in the Cypher query, and values passed as a separate dictionary)
     match = db.match(labels="test_label",
-                     clause=( "n.patient_id = $patient_id AND n.gender = $gender",
-                               {"patient_id": 123, "gender": "M"}
-                            )
+                     clause="n.patient_id = $patient_id AND n.gender = $gender",
+                     clause_binding={"patient_id": 123, "gender": "M"}
                     )
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
@@ -164,9 +163,8 @@ def test_get_nodes(db):
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Retrieve the record just created (in a different way, using a Cypher subquery with its own data binding)
-    match = db.match(labels="my 2nd label", clause=("n.age = $age AND n.gender = $gender",
-                                                     {"age": 21, "gender": "F"}
-                                                     ))
+    match = db.match(labels="my 2nd label",
+                    clause="n.age = $age AND n.gender = $gender", clause_binding={"age": 21, "gender": "F"})
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
@@ -211,7 +209,10 @@ def test_get_nodes(db):
 
     # Re-use of same key names in subquery data-binding and in properties dictionaries is ok, because the keys in
     #   properties dictionaries get internally changed
-    match = db.match(labels="my 2nd label", clause=("n.age > $age" , {"age": 22}), properties={"age": 30})
+    match = db.match(labels="my 2nd label",
+                    clause="n.age > $age",
+                    clause_binding={"age": 22},
+                    properties={"age": 30})
     retrieved_records = db.get_nodes(match)
     # Note: internally, the final Cypher query is: "MATCH (n :`my 2nd label` {`age`: $n_par_1}) WHERE (n.age > $age) RETURN n"
     #                           with data binding: {'age': 22, 'n_par_1': 30}
@@ -222,17 +223,22 @@ def test_get_nodes(db):
     # A conflict arises only if we happen to use a key name that clashes with an internal name, such as "n_par_1";
     # an Exception is expected is such a case
     with pytest.raises(Exception):
-        match = db.match(labels="my 2nd label", clause=("n.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
+        match = db.match(labels="my 2nd label",
+                        clause="n.age > $n_par_1",
+                        clause_binding={"n_par_1": 22},
+                        properties={"age": 30})
         assert db.get_nodes(match)
 
     # If we really wanted to use a key called "n_par_1" in our subquery dictionary, we
     #       can simply alter the dummy name internally used, from the default "n" to something else
     match = db.match(dummy_node_name="person", labels="my 2nd label",
-                     clause=("person.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
-
+                     clause="person.age > $n_par_1" ,
+                     clause_binding={"n_par_1": 22},
+                     properties={"age": 30})
+    #print(match)
     # All good now, because internally the Cypher query is:
     #           "MATCH (person :`my 2nd label` {`age`: $person_par_1}) WHERE (person.age > $n_par_1) RETURN person"
-    #           with data binding {'n_par_1': 22, 'person_par_1': 30}
+    #           with data binding {'person_par_1': 30, 'n_par_1': 22}
     retrieved_records = db.get_nodes(match)
     assert compare_recordsets(retrieved_records, expected_records)
 

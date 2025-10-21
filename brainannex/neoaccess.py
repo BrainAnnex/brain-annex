@@ -72,7 +72,9 @@ class NeoAccess(InterGraph):
 
 
     def match(self, labels=None, internal_id=None,
-              key_name=None, key_value=None, properties=None, clause=None, dummy_node_name="n") -> CypherBuilder:
+              key_name=None, key_value=None, properties=None,
+              clause=None, clause_binding=None,
+              dummy_node_name="n") -> CypherBuilder:
         """
         Return a "CypherBuilder" object storing all the passed specifications;
         that object is expected as argument in various other functions in this library,
@@ -110,7 +112,8 @@ class NeoAccess(InterGraph):
                                             where n is the dummy node name and i is an integer,
                                             or an Exception will be raised - those names are for internal use only
                                 EXAMPLES:   "n.age < 25 AND n.income > 100000"
-                                            ("n.weight < $max_weight", {"max_weight": 100})
+
+        :param clause_binding:  EXAMPLE {"max_weight": 100} , if the clause is "n.weight < $max_weight"
 
         :param dummy_node_name: A string with a name by which to refer to the node (by default, "n");
                                 only used if a `clause` argument is passed
@@ -122,7 +125,9 @@ class NeoAccess(InterGraph):
         #      for a "Cypher query builder"?
         return CypherBuilder(internal_id=internal_id,
                              labels=labels, key_name=key_name, key_value=key_value,
-                             properties=properties, clause=clause, dummy_name=dummy_node_name)
+                             properties=properties,
+                             clause=clause, clause_binding=clause_binding,
+                             dummy_name=dummy_node_name)
 
 
 
@@ -239,7 +244,7 @@ class NeoAccess(InterGraph):
 
 
 
-    def get_nodes(self, match: Union[int, str, dict, CypherBuilder],
+    def get_nodes(self, match: Union[int, str, CypherBuilder],
                   return_internal_id=False, return_labels=False, order_by=None, limit=None,
                   single_row=False, single_cell=""):
         """
@@ -248,7 +253,6 @@ class NeoAccess(InterGraph):
         However, if the flags "single_row" or "single_cell" are set, simpler data structures are returned
 
         :param match:           EITHER an integer or string with an internal database node id,
-                                    OR a dict with key/values to match,
                                     OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
 
         :param return_internal_id:  Flag indicating whether to also include the Neo4j internal node ID in the returned data
@@ -599,10 +603,6 @@ class NeoAccess(InterGraph):
             assert (rel_name is not None) and (rel_name != ""), \
                 f"create_attached_node(): when the the argument `attached_to` is present, a non-empty `rel_name` must be passed"
 
-        if self.debug:
-            print(f"In create_attached_node().  labels: {labels}, properties: {properties}, "
-                  f"attached_to: {attached_to}, rel_name: {rel_name}, rel_dir: {rel_dir}")
-
         if attached_to is None:
             links = None
         else:
@@ -662,9 +662,6 @@ class NeoAccess(InterGraph):
         assert links is None or type(links) == list, \
             f"NeoAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
 
-        if self.debug:
-            print(f"In create_node_with_links().  labels: {labels}, links: {links}, properties: {properties}")
-
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
         #   to define the new node to be created
@@ -708,7 +705,7 @@ class NeoAccess(InterGraph):
         # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'EDGE1_1': 2021}
 
         result = self.update_query(q, data_binding)
-        self.debug_print(f"Result of update_query in create_node_with_links():\n{result}")
+        #self.debug_print(f"Result of update_query in create_node_with_links():\n{result}")
         # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'internal_id': 604}]}
 
 
@@ -1168,7 +1165,7 @@ class NeoAccess(InterGraph):
 
 
 
-    def add_links(self, match_from: Union[int, str, CypherBuilder], match_to: Union[int, str, CypherBuilder],
+    def add_links(self, match_from: Union[int, CypherBuilder], match_to: Union[int, CypherBuilder],
                   rel_name:str) -> int:
         """
         Add one or more links (aka graph edges/relationships), with the specified rel_name,
@@ -1217,9 +1214,8 @@ class NeoAccess(InterGraph):
 
         # Merge the data-binding dict's   TODO: turn this into a CypherUtils method
         combined_data_binding = data_binding_from.copy()        # Clone
-        combined_data_binding = combined_data_binding.update(data_binding_to)  # Merge the second dict into the first one
+        combined_data_binding.update(data_binding_to)  # Merge the second dict into the first one
         #print("3 ********** combined_data_binding: ", combined_data_binding)
-        #combined_data_binding = data_binding_from.update(data_binding_to)  # Merge the second dict into the first one
         #print(q)
 
         result = self.update_query(q, combined_data_binding)
@@ -1328,8 +1324,7 @@ class NeoAccess(InterGraph):
 
 
         result = self.update_query(q, combined_data_binding)
-        if self.debug:
-            print("    result of update_query in remove_links: ", result)
+
 
         number_relationships_deleted = result.get("relationships_deleted", 0)   # If field isn't present, return a 0
         if number_relationships_deleted == 0:       # This could be more than 1: see notes above
@@ -1407,8 +1402,6 @@ class NeoAccess(InterGraph):
         combined_data_binding = CypherUtils.combined_data_binding(match_from, match_to)
 
         result = self.query(q, combined_data_binding)
-        if self.debug:
-            print("    result of query in number_of_links(): ", result)
 
         return len(result)
 
@@ -1762,7 +1755,7 @@ class NeoAccess(InterGraph):
         #TODO: test order_by
         #TODO: test scenarios that are affected by the DISTINCT ; eg: 2 siblings that share the same 2 parent,
         #      to avoid over-counting
-        #TODO: also accept a "CypherMatch" object for internal_id
+        #TODO: also accept a "CypherBuilder" object for internal_id
 
         CypherUtils.assert_valid_internal_id(internal_id)
 
@@ -2135,7 +2128,7 @@ class NeoAccess(InterGraph):
 
 
         status = self.update_query(q)
-        print(status)
+        #print(status)
         return status
 
 

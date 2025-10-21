@@ -1,5 +1,5 @@
 from typing import Union, List
-from brainannex.cypher_utils import CypherUtils, CypherMatch, NodeSpecs  # Helper classes
+from brainannex.cypher_utils import CypherUtils, CypherBuilder  # Helper classes
 from brainannex import NeoAccess
 import json
 import math
@@ -1819,7 +1819,7 @@ class NeoSchema:
 
 
     @classmethod
-    def data_node_exists_EXPERIMENTAL(cls, match: Union[int, str, dict, NodeSpecs], class_name=None) -> bool:
+    def data_node_exists_EXPERIMENTAL(cls, match: Union[int, str, dict, CypherBuilder], class_name=None) -> bool:
         """
         ALTERNATE APPROACH, NOT CURRENTLY IN USE.
 
@@ -2375,7 +2375,7 @@ class NeoSchema:
 
 
     @classmethod
-    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> CypherMatch:
+    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
         """
         EXPERIMENTAL - a generalization of get_data_node()
 
@@ -2390,7 +2390,7 @@ class NeoSchema:
         :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
         :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
 
-        :return:        A "CypherMatch" object
+        :return:        A "CypherBuilder" object
         """
         if id_type:
             match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
@@ -2416,7 +2416,7 @@ class NeoSchema:
                                 if not found, an Exception is raised
         """
         match = cls.locate_node(node_id=node_id, id_type=id_key, labels=labels)
-        # This is an object of type "CypherMatch"
+        # This is an object of type "CypherBuilder"
 
         node = match.node
         where_clause = CypherUtils.prepare_where([match.where])
