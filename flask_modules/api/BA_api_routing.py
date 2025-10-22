@@ -957,8 +957,6 @@ class ApiRouting:
                                     }
             """
             try:
-                #payload = NeoSchema.db.get_link_summary(internal_id=internal_id)
-
                 link_data = NeoSchema.db.get_link_summary(internal_id=internal_id)
                 # Transform the format      TODO: maybe move to DataManager
                 payload = []
@@ -1107,7 +1105,7 @@ class ApiRouting:
         @login_required
         def update_content_item():
             """
-            Update an existing Content Item.
+            Update an existing Data Node, possibly representing a Content Item.
 
             Required POST variables:
                 'uri', 'class_name'
@@ -1120,6 +1118,7 @@ class ApiRouting:
                 curl http://localhost:5000/BA/api/update_content_item -d "uri=11&class_name=Headers&text=my_header"
                 curl http://localhost:5000/BA/api/update_content_item -d "uri=62&class_name=German Vocabulary&English=Love&German=Liebe"
             """
+            #TODO: probably phase out in favor of '/update_content_item_JSON'
             #TODO: maybe use a PUT or PATCH method, instead of a POST
             #TODO: explore more Schema enforcements
 
@@ -1152,58 +1151,92 @@ class ApiRouting:
         @login_required
         def update_content_item_JSON():
             """
-            Update an existing Content Item.
+            Update an existing Data Node, possibly representing a Content Item.
             This is variation of '/update_content_item' that expects to receive JSON data
 
-            POST VARIABLES:
+            1 POST VARIABLE EXPECTED:
                 json    (REQUIRED) A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
-                uri                 REQUIRED
-                class_name          REQUIRED
-                plus whichever fields are being edited
+                REQUIRED    `uri` and `class_name`
+                                OR  `internal_id`
+                OPTIONAL    whichever fields are being edited
 
-            NOTE: the "class_name" value is redundant
-
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/update_content_item
+            EXAMPLES of invocation:
+                curl http://localhost:5000/BA/api/update_content_item_JSON
                         -d 'json={"uri":"6965","class_name":"Recordset","class":"YouTube Channel","n_group":7,"order_by":"name"}'
+
+                curl http://localhost:5000/BA/api/update_content_item_JSON
+                        -d 'json={"internal_id":123,"note":"My note","name":"Brain Annex channel"}'
             """
             #TODO: maybe use a PUT or PATCH method, instead of a POST
             #TODO: explore more Schema enforcements
 
             # Extract and parse the POST value
-            data_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
-                                                # provided that mimetype indicates "application/json"
-            # EXAMPLE: {'uri': '6967', 'class_name': 'Recordset', 'class': 'University Classes', 'n_group': 12, 'order_by': 'code'}
+            try:
+                data_dict = request.get_json()      # This parses the JSON-encoded string in the POST message into a python dictionary,
+                                                    # provided that mimetype indicates "application/json";
+                                                    # other mime types will result in a None value
+                assert data_dict is not None, "the client request does not have the MIME type 'application/json'"
+            except Exception as ex:
+                err_details = f"update_content_item_JSON(): Unable to update the Record (Content Item / Database Node).  " \
+                              f"Request body could not be parsed as valid JSON.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            # EXAMPLES of data_dict:
+            #       {'uri': '6967', 'class_name': 'Recordset', 'class': 'University Classes', 'n_group': 12, 'order_by': 'code'}
+            #       {'internal_id': 123, 'note': 'My note', 'name': 'Brain Annex channel'}
             # See: https://flask.palletsprojects.com/en/1.1.x/api/
             print("In update_content_item_JSON() -  data_dict: ", data_dict)
 
             # TODO: create a helper function for the unpacking/validation below
+             # The following values will be None if missing
             uri = data_dict.get('uri')
             class_name = data_dict.get('class_name')
+            internal_id = data_dict.get('internal_id')
 
-            if not uri or not class_name:
+            # Enforce required parameters (TODO: turn this into a general utility function)
+            if (not uri or not class_name) and (not internal_id):
                 err_details = f"update_content_item_JSON(): some required parameters are missing; " \
-                              f"'uri' and 'class_name' are required"
+                              f"`uri` and `class_name` (or, alternatively `internal_id`) are required"
                 response_data = {"status": "error", "error_message": err_details}
-                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+                return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
 
 
-            try:
+            if uri:
                 del data_dict["uri"]
+            if class_name:
                 del data_dict["class_name"]
+            if internal_id:
+                del data_dict["internal_id"]
 
-                DataManager.update_content_item(uri=uri, class_name=class_name,
-                                                update_data=data_dict)
-                response_data = {"status": "ok"}                                    # If no errors
-            except Exception as ex:
-                err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # Error termination
-                                        #TODO: consider a "500 Internal Server Error" in this case
-                                        #      or maybe a "422 Unprocessable Entity"
+            if uri:
+                # Scenario where `uri` and `class_name` are used
+                try:
+                    DataManager.update_content_item(uri=uri, class_name=class_name,
+                                                    update_data=data_dict)
+                    response_data = {"status": "ok"}                                    # If no errors
+                except Exception as ex:
+                    err_details = f"Unable to update the specified Content Item.  {exceptions.exception_helper(ex)}"
+                    response_data = {"status": "error", "error_message": err_details}   # Error termination
+                                            #TODO: consider a "500 Internal Server Error" in this case
+                                            #      or maybe a "422 Unprocessable Entity"
+            else:
+                # Scenario where `internal_id` is used
+                try:
+                    number_properties_set = NeoSchema.db.set_fields(match=internal_id,
+                                                                    set_dict=data_dict, drop_blanks=True)
+                    assert number_properties_set > 0, f"No node found with internal_id {internal_id}"
+                    response_data = {"status": "ok"}                                    # If no errors
+                except Exception as ex:
+                    err_details = f"Unable to update the specified record.  {exceptions.exception_helper(ex)}"
+                    response_data = {"status": "error", "error_message": err_details}   # Error termination
+                                            #TODO: consider a "500 Internal Server Error" in this case
+                                            #      or maybe a "422 Unprocessable Entity"
 
-            #print(f"update_content_item() is returning: `{response_data}`")
+
+            print(f"update_content_item() is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
@@ -1898,6 +1931,9 @@ class ApiRouting:
         @login_required
         def get_filtered():
             """
+            Perform a database search for particular nodes, and return their properties,
+            as well as a total count
+
             EXAMPLE of invocation:
                 http://localhost:5000//BA/api/get_filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
 

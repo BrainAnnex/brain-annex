@@ -1,7 +1,7 @@
-__version__ = "5.0.0rc6_INTERIM_2"
+__version__ = "5.0.0rc6_INTERIM_3"
 
 
-# IMPORTANT: ONY 1 of the following small group of InterGraph imports
+# IMPORTANT: ONLY 1 of the following small group of InterGraph imports
 #            should be uncommented,
 #            depending on the graph database being used
 
@@ -9,7 +9,7 @@ from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph      # (
 #from brainannex.intergraph_neo4j_5.intergraph_neo4j_5 import InterGraph     # (Un)comment AS NEEDED!
 
 from brainannex.neoaccess import NeoAccess
-from brainannex.cypher_utils import (NodeSpecs, CypherUtils, CypherMatch)
+from brainannex.cypher_utils import (CypherBuilder, CypherUtils)
 from brainannex.neoschema import (NeoSchema, SchemaCache)
 from brainannex.collections import Collections
 from brainannex.categories import Categories
@@ -21,9 +21,8 @@ from brainannex.py_graph_visual import PyGraphVisual
 __all__ = [
     'InterGraph',
     'NeoAccess',
-    'NodeSpecs',
+    'CypherBuilder',
     'CypherUtils',
-    'CypherMatch',
     'NeoSchema',
     'SchemaCache',
     'Collections',

@@ -193,74 +193,6 @@ Vue.component('vue-plugin-d',
             },
 
 
-            save_edit()
-            // Send a request to the server, to update the document's metadata
-            {
-                //console.log(`In save_edit(): attempting to save the new metadata, for document with URI '${this.item_data.uri}'`);
-
-                // Send the request to the server, using a POST
-                const url_server_api = "/BA/api/update_content_item";
-                const post_obj = {uri: this.item_data.uri,
-                                  class_name: "Document",
-                                  caption: this.current_metadata.caption,
-                                  basename: this.current_metadata.basename,
-                                  url: this.current_metadata.url,
-                                  month: this.current_metadata.month,
-                                  year: this.current_metadata.year,
-                                  authors: this.current_metadata.authors,
-                                  comments: this.current_metadata.comments,
-                                  rating: this.current_metadata.rating,
-                                  read: this.current_metadata.read
-                                  };
-                const my_var = null;        // Optional parameter to pass, if needed
-
-                console.log(`In 'vue-plugin-d'.  About to contact the server at ${url_server_api} .  POST object:`);
-                console.log(post_obj);
-
-                // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {method: "POST",
-                             data_obj: post_obj,
-                             json_encode_send: false,
-                             callback_fn: this.finish_save_edit,
-                             custom_data: my_var
-                            });
-
-                this.waiting = true;        // Entering a waiting-for-server mode
-                this.error = false;         // Clear any error from the previous operation
-                this.status_message = "";   // Clear any message from the previous operation
-            },
-
-
-            finish_save_edit(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of save_edit() upon getting a response from the server
-            {
-                console.log("Finalizing the save_edit() operation...");
-                console.log(`Custom data passed: ${custom_data}`);
-                if (success)  {     // Server reported SUCCESS
-                    console.log("    server call was successful; it returned: ", server_payload);
-                    this.status_message = `Operation completed`;
-
-                    // Inform the parent component of the new state of the document's metadata
-                    console.log("Documents component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_metadata);
-
-                    // Synchronize the baseline data to the finalized current data
-                    this.pre_edit_metadata = Object.assign({}, this.current_metadata);  // Clone
-                }
-                else  {             // Server reported FAILURE
-                    this.error = true;
-                    this.status_message = `FAILED operation: ${error_message}`;
-                    // Revert to pre-edit data
-                    this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone
-                }
-
-                // Final wrap-up, regardless of error or success
-                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
-                this.edit_metadata = false; // Leave the editing mode
-            },
-
-
 
             render_newlines(text)
             // Return all the newlines in the given text replaced as HTML line breaks: "<br>"
@@ -299,7 +231,84 @@ Vue.component('vue-plugin-d',
                 }
                 else
                     return cell_data;
+            },
+
+
+
+            /*
+                ---------   SERVER CALLS   ---------
+             */
+
+            save_edit()
+            // Send a request to the server, to update the document's metadata
+            {
+                //console.log(`In save_edit(): attempting to save the new metadata, for document with URI '${this.item_data.uri}'`);
+
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/update_content_item_JSON";
+
+                const post_obj = {uri: this.item_data.uri,
+                                  class_name: "Document",
+                                  caption: this.current_metadata.caption,
+                                  basename: this.current_metadata.basename,
+                                  url: this.current_metadata.url,
+                                  month: this.current_metadata.month,
+                                  year: this.current_metadata.year,
+                                  authors: this.current_metadata.authors,
+                                  comments: this.current_metadata.comments,
+                                  rating: this.current_metadata.rating,
+                                  read: this.current_metadata.read
+                                  };
+
+                console.log(`In 'vue-plugin-d'.  About to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_edit
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_save_edit(success, server_payload, error_message)
+            /* Callback function to wrap up the action of save_edit() upon getting a response from the server
+
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+            */
+            {
+                console.log("Finalizing the save_edit() operation...");
+
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+
+                    // Inform the parent component of the new state of the document's metadata
+                    console.log("Documents component sending `updated-item` signal to its parent");
+                    this.$emit('updated-item', this.current_metadata);
+
+                    // Synchronize the baseline data to the finalized current data
+                    this.pre_edit_metadata = Object.assign({}, this.current_metadata);  // Clone
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    // Revert to pre-edit data
+                    this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.edit_metadata = false; // Leave the editing mode
             }
+
 
         }  // methods
 

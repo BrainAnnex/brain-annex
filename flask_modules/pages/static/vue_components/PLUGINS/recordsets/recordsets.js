@@ -42,15 +42,30 @@ Vue.component('vue-plugin-rs',
                         </tr>
 
                         <!--
-                            Data row
+                            All the various Data rows
                          -->
                         <tr v-for="record in recordset">
+                            <!-- The various data fields -->
                             <td v-for="field_name in headers">
-                                <span v-html="render_cell(record[field_name])"></span>
+                                <span v-if="record.internal_id != record_being_editing"
+                                    v-html="render_cell(record[field_name])"
+                                ></span>
+                                <input   v-else type="text" size="25"
+                                         v-model="record_latest[field_name]"
+                                >
                             </td>
+
+                            <!-- The control cell (for editing) -->
                             <td v-show="edit_mode" style="background-color: #f2f2f2">
-                                <img src="/BA/pages/static/graphics/edit_16_pencil2.png"
-                                     @click="edit_record" class="control" title="EDIT" alt="EDIT">
+                                <span v-if="record.internal_id == record_being_editing">
+                                    <button @click="save_record_edit">SAVE</button>
+                                    <a @click.prevent="cancel_record_edit" href="#" style="margin-left:15px">Cancel</a>
+                                </span>
+                                <img v-if="record_being_editing === null"
+                                     src="/BA/pages/static/graphics/edit_16_pencil2.png"
+                                     @click="edit_record(record)"
+                                     class="control" title="EDIT" alt="EDIT"
+                                >
                             </td>
                         </tr>
 
@@ -170,14 +185,17 @@ Vue.component('vue-plugin-rs',
             return {
                 headers: [],            // EXAMPLE:  ["quote", "attribution", "notes"]
 
-                recordset: [],          // This will get loaded by querying the server when the page loads
+                recordset: [],          // Array of records to show together (in the context of previous/next navigation)
+                                        // This will get loaded by querying the server when the page loads
 
                 current_page: 1,
 
                 total_count: null,      // Size of the entire (un-filtered) recordset
 
+                record_being_editing: null, // The "ID" of the record currently being edited, if any;
+                                            // for now, only one record at a time may be edited
 
-                recordset_editing: false,  // If true, the definition of the recordset goes into editing mode
+                recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -185,6 +203,12 @@ Vue.component('vue-plugin-rs',
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+
+                // The following applies to the single record currently being edited (just one at most).
+                // This object contains the values bound to the editing fields,
+                //      initially cloned from the record being edited in the current recordset;
+                //      it'll change in the course of the edit-in-progress
+                record_latest: null,
 
 
                 new_record: {},         // Used for the addition of new record; note that it's valid
@@ -209,7 +233,6 @@ Vue.component('vue-plugin-rs',
          */
         {
             console.log(`The Recordsets component has been mounted`);
-            //alert(`The Recordsets component has been mounted`);
 
             if (this.item_data.uri < 0)  {  // A negative URI is a convention to indicate a just-created Recordset
                 this.edit_recordset();
@@ -263,10 +286,33 @@ Vue.component('vue-plugin-rs',
 
 
 
-            edit_record()
+            edit_record(record)
+            /*  Edit an individual row (record).
+                Invoked when the user clicks on the "EDIT" control for that record
+
+                :param record:  An object with the standard properties
+                                    "internal_id", "node_labels", and "uri" [may or may not have a value],
+                                    plus whatever fields are part of the given particular record (node)
+                                    EXAMPLE:  {internal_id: 123, node_labels: ["Restaurant"], uri: "r-88",
+                                               name: "Pizzeria NY", city: "NYC"}
+             */
             {
-                //console.log(`Editing individual record in recordset`);
-                alert("Editing individual records not yet implemented, sorry!");
+                console.log(`Editing the following individual record in the current recordset:`);
+                console.log(record);
+
+                this.record_being_editing = record.internal_id;     // Specify that editing is in progress for this record
+
+                this.record_latest = Object.assign({}, record);     // Clone the record object into a temporary variable
+                                                                    // to which the editing fields are bound
+            },
+
+
+            cancel_record_edit()
+            {
+                this.record_being_editing = null;       // To indicate that no record is being edited
+
+                // Clear the temporary variable used for the editing
+                this.record_latest = null;
             },
 
 
@@ -307,11 +353,89 @@ Vue.component('vue-plugin-rs',
 
 
             /*
-                ---  SERVER CALLS  ---
+                ---------   SERVER CALLS   ---------
              */
+
+            save_record_edit()
+            /*  Invoked when the user asks to save the edit-in-progress of an individual record.
+                NOT used for new records, nor to change the definition of the recordset .
+             */
+            {
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/update_content_item_JSON";
+
+                const post_obj = {
+                                    internal_id: this.record_latest.internal_id
+                                 };     // Note: not using (at least for now, `uri` nor `class_name`
+
+                // Go over each field name of the recordset
+                for (field_name of this.headers)    // Looping over array
+                    post_obj[field_name] = this.record_latest[field_name];
+
+                console.log(`In save_record_edit(): about to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_record_edit
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+                this.record_being_editing = null;       // To indicate that no record is being edited
+                //this.cancel_record_edit();  // Clean up and leave the editing mode for the record being edited
+            },
+
+            finish_save_record_edit(success, server_payload, error_message)
+            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+            */
+            {
+                console.log("Finalizing the save_record_edit() operation...");
+
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+
+                    // Update the item in the recordset array that corresponds to the current record
+                    var internal_id = this.record_latest.internal_id;
+
+                    const recordset_length = this.recordset.length;
+
+                    for (var i = 0; i < recordset_length; i++) {
+                        if (this.recordset[i].internal_id == internal_id)  {
+                            //console.log("    record to update was located in recordset at position: ", i);
+                            break;
+                        }
+                    }
+                    if (i == recordset_length)
+                        alert("Unable to refresh record : try reloading the page");
+                    else
+                        Vue.set(this.recordset, i, this.record_latest);
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    // Clear the temporary variable used for the editing
+                    this.record_latest = null;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            },
+
 
             save_new_record()
             // Send a request to the server, to save a record newly entered thru a form
+            // (NOT for editing existing records)
             {
                 console.log(`In save_new_record(), for Recordset with URI '${this.current_metadata.uri}'`);
 
@@ -349,12 +473,10 @@ Vue.component('vue-plugin-rs',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `New record added`;
-                    //...
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    //...
                 }
 
                 // Final wrap-up, regardless of error or success
@@ -386,6 +508,7 @@ Vue.component('vue-plugin-rs',
                 else  {
                     // Update an existing Recordset
                     var url_server_api = "/BA/api/update_content_item_JSON";
+
                     var post_obj = {uri: this.current_metadata.uri,
                                     class_name: this.item_data.class_name,
 
@@ -395,7 +518,7 @@ Vue.component('vue-plugin-rs',
                                    };
                 }
 
-                console.log(`About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
@@ -510,7 +633,10 @@ Vue.component('vue-plugin-rs',
 
             get_recordset(page)
             /*  Request from the server the specified page (group of records) of the recordset.
-                If successful, it will update the values for: this.recordset, this.total_count, this.current_page
+                If successful, it will update the values for:
+                        this.recordset
+                        this.total_count
+                        this.current_page
               */
             {
                 skip = (page-1) * this.current_metadata.n_group;
@@ -520,6 +646,8 @@ Vue.component('vue-plugin-rs',
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get_filtered";
 
+                // Note: for now, we're actually doing a database search by node label,
+                //       rather than by Schema Class
                 const get_obj = {label: this.current_metadata.class,
                                  order_by: this.current_metadata.order_by,
                                  limit: this.current_metadata.n_group,
@@ -555,17 +683,14 @@ Vue.component('vue-plugin-rs',
                     this.recordset = server_payload.recordset;
                     this.total_count = server_payload.total_count;
                     this.current_page = custom_data;
-                    //...
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    //...
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                //...
             } // finish_get_recordset
 
         }  // methods

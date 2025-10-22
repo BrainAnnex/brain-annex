@@ -85,7 +85,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
             /*
-                SERVER CALLS
+                ---------   SERVER CALLS   ---------
              */
 
             server_communication_POST()          /* "POST"  version */
@@ -97,7 +97,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 const post_obj = {my_post_var: "my POST value"};
                 const my_var = "some value";        // Optional parameter to pass, if needed
 
-                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(`In server_communication_POST(): about to contact the server at "${url_server_api}" .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
@@ -125,7 +125,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // var get_obj = {my_key, my_value};    // Optional
 
-                console.log(`About to contact the server at "${url_server_api}"`);
+                console.log(`In server_communication_POST(): about to contact the server at "${url_server_api}"`);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,

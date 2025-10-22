@@ -1,4 +1,10 @@
 /*  Vue component to display and edit Content Items of type "r" (generic Records)
+
+    At present, this is the default, primary way to display and edit the above Content Items
+    in the Page Viewer.
+
+    For "grouped" Content Items of type "r" from the same Schema Class,
+    the newer Vue component 'vue-plugin-table' is currently used.
  */
 
 Vue.component('vue-plugin-r',
@@ -6,7 +12,7 @@ Vue.component('vue-plugin-r',
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_data:  An object with the relevant data about this Record item
 
-                        EXAMPLE: {class_name:"German Vocabulary",
+                        EXAMPLE: {"class_name":"German Vocabulary",
                                   "uri":"52", "pos":10, "schema_code":"r",
                                   "German":"Tier", "English":"animal"}
                                   (if uri is a negative number, it means that it's a newly-created header,
@@ -149,7 +155,8 @@ Vue.component('vue-plugin-r',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.uri < 0  ? true : false), // Negative uri means "new Item"
+                editing_mode: (this.item_data.uri < 0  ? true : false), // Flag indicating whether this record is being edited
+                                                                        // Negative uri means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 

@@ -1,5 +1,5 @@
 from typing import Union, List
-from brainannex.cypher_utils import CypherUtils, CypherMatch
+from brainannex.cypher_utils import CypherUtils, CypherBuilder  # Helper classes
 from brainannex import NeoAccess
 import json
 import math
@@ -1819,28 +1819,72 @@ class NeoSchema:
 
 
     @classmethod
-    def data_node_exists(cls, node_id: Union[int, str], id_key=None, class_name=None) -> bool:
+    def data_node_exists_EXPERIMENTAL(cls, match: Union[int, str, dict, CypherBuilder], class_name=None) -> bool:
+        """
+        ALTERNATE APPROACH, NOT CURRENTLY IN USE.
+
+        Return True if the specified Data Node exists, or False otherwise.
+
+        :param match:
+        :param class_name:
+        :return:            True if the specified Data Node exists, or False otherwise
+        """
+
+        # Unpack the parts needed to put together a Cypher query
+        (match_str, where_clause, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="data_node_exists")
+
+        if class_name:
+            # Add an extra property match requirement
+            if where_clause != "":
+                where_clause += " AND "
+
+            where_clause += f" {dummy_node_name}.`_SCHEMA` = $class_name"
+            data_binding["class_name"] = class_name
+
+        # Prepare a Cypher query to locate the number of the data nodes
+        q = f'''
+            MATCH {match_str}
+            WHERE {where_clause} 
+            RETURN COUNT({dummy_node_name}) AS number_found           
+            '''
+
+        cls.db.debug_query_print(q, data_binding)
+        number_found = cls.db.query(q, data_binding,
+                                    single_cell="number_found")
+
+        if number_found == 0:
+            return False
+        elif number_found == 1:
+            return True
+        else:
+            raise Exception(f"data_node_exists(): non-unique identification of Data Node; more than 1  was found ")
+
+
+
+    @classmethod
+    def data_node_exists(cls, node_id, id_key=None, class_name=None) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
+        If opting to search by primary key, and more than 1 node comes up, an Exception is raised
 
         :param node_id:     Either an internal database ID or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
                                 Leave blank to use the internal database ID
-        :param class_name:  [OPTIONAL] Used for a stricter check
+        :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :return:            True if the specified Data Node exists, or False otherwise
         """
-        #TODO: pytest
         #TODO: consider adding an `include_ancestors` option
+        #TODO: use this as a MODEL for other functions
 
         # Prepare the clause part of a Cypher query
         if id_key is None:
+            # Using the internal database ID
             clause = "WHERE id(dn) = $node_id"
-        elif type(node_id) == str:
-            clause = f"WHERE dn.`{id_key}` = $node_id"
         else:
-            raise Exception(f"data_node_exists(): "
-                            f"argument `node_id` must be None or a string; "
-                            f"instead, it is {type(node_id)}")
+            # Using a primary key and the Class name
+            assert class_name is not None, "" \
+                "data_node_exists(): argument `class_name` is required when searching by primary key"
+            clause = f"WHERE dn.`{id_key}` = $node_id"
 
         if class_name:
             schema_clause = "AND dn.`_SCHEMA` = $class_name"
@@ -2331,7 +2375,7 @@ class NeoSchema:
 
 
     @classmethod
-    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> CypherMatch:
+    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
         """
         EXPERIMENTAL - a generalization of get_data_node()
 
@@ -2346,7 +2390,7 @@ class NeoSchema:
         :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
         :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
 
-        :return:        A "CypherMatch" object
+        :return:        A "CypherBuilder" object
         """
         if id_type:
             match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
@@ -2372,7 +2416,7 @@ class NeoSchema:
                                 if not found, an Exception is raised
         """
         match = cls.locate_node(node_id=node_id, id_type=id_key, labels=labels)
-        # This is an object of type "CypherMatch"
+        # This is an object of type "CypherBuilder"
 
         node = match.node
         where_clause = CypherUtils.prepare_where([match.where])
@@ -2641,7 +2685,7 @@ class NeoSchema:
 
     @classmethod
     def create_data_node(cls, class_name :str, properties = None, extra_labels = None,
-                         new_uri=None, silently_drop=False, links = None) -> int:
+                         new_uri=None, silently_drop=False, links = None) -> Union[int, str]:
         """
         Create a new data node, of the specified Class,
         with the given optional properties, and optional extra label(s),
@@ -2983,7 +3027,7 @@ class NeoSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks = True, class_name=None) -> int:
+    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks=True, class_name=None) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
@@ -2996,13 +3040,15 @@ class NeoSchema:
         :param class_name:  [OPTIONAL] The name of the Class to which the given Data Note is part of;
                                 if provided, it gets enforced
         :return:            The number of properties set or removed;
-                                if the record wasn't found, or an empty set_dict was passed, return 0
-                                Important: a property is counted as "set" even if the new value is
+                                if the record wasn't found, or an empty `set_dict` was passed, return 0
+                                Important: a property is counted as being "set" even if the new value is
                                            identical to the old value!
         """
         #TODO: test the class_name argument
-        #TODO: check whether the Schema allows the added/dropped fields, if applicable
-        #      Compare the keys of set_dict against the Properties of the Class of the Data Node
+        #TODO: check whether the Schema allows the added/dropped fields, if applicable;
+        #      compare the keys of set_dict against the Properties of the Class of the Data Node
+        #TODO: check for data integrity (data types, etc) of the new values
+        #TODO: make use of NeoAccess.set_fields()
 
         if set_dict == {}:
             return 0            # Nothing to do!
@@ -3055,9 +3101,8 @@ class NeoSchema:
             '''
 
         #cls.db.debug_query_print(q, data_binding)
-
         stats = cls.db.update_query(q, data_binding)
-        #print(stats)
+
         number_properties_set = stats.get("properties_set", 0)
         return number_properties_set
 
