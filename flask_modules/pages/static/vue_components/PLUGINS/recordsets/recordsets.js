@@ -51,7 +51,7 @@ Vue.component('vue-plugin-rs',
                                     v-html="render_cell(record[field_name])"
                                 ></span>
                                 <input   v-else type="text" size="25"
-                                         v-model="record_mid_edit[field_name]"
+                                         v-model="record_latest[field_name]"
                                 >
                             </td>
 
@@ -185,7 +185,8 @@ Vue.component('vue-plugin-rs',
             return {
                 headers: [],            // EXAMPLE:  ["quote", "attribution", "notes"]
 
-                recordset: [],          // This will get loaded by querying the server when the page loads
+                recordset: [],          // Array of records to show together (in the context of previous/next navigation)
+                                        // This will get loaded by querying the server when the page loads
 
                 current_page: 1,
 
@@ -204,8 +205,11 @@ Vue.component('vue-plugin-rs',
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
 
                 // The following 2 apply to the single record currently being edited (just one at most)
-                record_at_start_of_edit:    null,
-                record_mid_edit:            null,
+                // This object contains the values bound to the editing fields, initially cloned from the prop data;
+                //      it'll change in the course of the edit-in-progress
+                record_latest:      null,
+                // Clone of the above object, used to restore the data in case of a Cancel or failed save
+                record_pre_edit:    null,
 
 
                 new_record: {},         // Used for the addition of new record; note that it's valid
@@ -300,8 +304,8 @@ Vue.component('vue-plugin-rs',
 
                 this.record_being_editing = record.internal_id;     // Specify that editing is in progress for this record
 
-                this.record_at_start_of_edit = Object.assign({}, record);   // Clone the object
-                this.record_mid_edit = Object.assign({}, record);           // Clone the object
+                this.record_pre_edit = Object.assign({}, record);   // Clone the record object.  TODO: might not be needed
+                this.record_latest = Object.assign({}, record);     // Clone the record object
             },
 
 
@@ -310,46 +314,10 @@ Vue.component('vue-plugin-rs',
                 this.record_being_editing = null;       // To indicate that no record is being edited
 
                 // Clear the temporary variables used for the editing
-                this.record_at_start_of_edit = null;
-                this.record_mid_edit = null;
+                this.record_pre_edit = null;            // TODO: might not be needed
+                this.record_latest = null;
             },
 
-            save_record_edit()
-            // Invoked when the user asks to save the edit-in-progress
-            {
-                // Send the request to the server, using a POST
-                const url_server_api = "/BA/api/update_content_item";          // TODO: modify web app endpoint
-
-                const post_obj = {
-                                    internal_id: this.record_mid_edit.internal_id
-                                 };     // Note: not using (at least for now, `uri` nor `class_name`
-
-                // Go over each field name of the recordset
-                for (field_name of this.headers)    // Looping over array
-                    post_obj[field_name] = this.record_mid_edit[field_name];
-
-                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
-                console.log(post_obj);
-
-                // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {method: "POST",
-                             data_obj: post_obj,
-                             json_encode_send: true,
-                             callback_fn: this.finish_save_record_edit
-                            });
-
-                this.waiting = true;        // Entering a waiting-for-server mode
-                this.error = false;         // Clear any error from the previous operation
-                this.status_message = "";   // Clear any message from the previous operation
-
-                this.cancel_record_edit();      // Clean up and leave the editing mode for the record being edited
-            },
-
-            finish_save_record_edit()
-            {
-
-            },
 
 
             render_cell(cell_data)
@@ -391,8 +359,91 @@ Vue.component('vue-plugin-rs',
                 ---  SERVER CALLS  ---
              */
 
+            save_record_edit()
+            /*  Invoked when the user asks to save the edit-in-progress of an individual record.
+                NOT used for new records, nor to change the definition of the recordset .
+             */
+            {
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/update_content_item_JSON";          // TODO: modify web app endpoint
+
+                const post_obj = {
+                                    internal_id: this.record_latest.internal_id
+                                 };     // Note: not using (at least for now, `uri` nor `class_name`
+
+                // Go over each field name of the recordset
+                for (field_name of this.headers)    // Looping over array
+                    post_obj[field_name] = this.record_latest[field_name];
+
+                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_record_edit
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+                this.record_being_editing = null;       // To indicate that no record is being edited
+                //this.cancel_record_edit();  // Clean up and leave the editing mode for the record being edited
+            },
+
+            finish_save_record_edit(success, server_payload, error_message)
+            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+            */
+            {
+                console.log("Finalizing the save_record_edit() operation...");
+
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+
+                    // Update the item in the recordset array that corresponds to the current record
+                    var internal_id = this.record_latest.internal_id;
+
+                    const recordset_length = this.recordset.length;
+
+                    for (var i = 0; i < recordset_length; i++) {
+                        if (this.recordset[i].internal_id == internal_id)  {
+                            console.log("    record to update located at position: ", i);
+                            break;
+                        }
+                    }
+                    if (i == recordset_length)
+                        alert("Unable to refresh record : try reloading the page");
+                    else
+                        //var i = 0;      // TODO: temp, just for testing!!!
+                        Vue.set(this.recordset, i, this.record_latest);
+
+                    this.record_pre_edit = null;            // TODO: might not be needed
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    // Clear the temporary variables used for the editing
+                    this.record_pre_edit = null;            // TODO: might not be needed
+                    this.record_latest = null;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                //...
+            },
+
+
             save_new_record()
             // Send a request to the server, to save a record newly entered thru a form
+            // (NOT for editing existing records)
             {
                 console.log(`In save_new_record(), for Recordset with URI '${this.current_metadata.uri}'`);
 
@@ -466,7 +517,8 @@ Vue.component('vue-plugin-rs',
                 }
                 else  {
                     // Update an existing Recordset
-                    var url_server_api = "/BA/api/update_content_item_JSON";
+                    const url_server_api = "/BA/api/update_content_item_JSON";
+
                     var post_obj = {uri: this.current_metadata.uri,
                                     class_name: this.item_data.class_name,
 
@@ -476,7 +528,7 @@ Vue.component('vue-plugin-rs',
                                    };
                 }
 
-                console.log(`About to contact the server at ${url_server_api} .  POST object:`);
+                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server

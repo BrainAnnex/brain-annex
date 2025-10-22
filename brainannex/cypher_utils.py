@@ -9,11 +9,12 @@ from typing import Union, List, Tuple
 class CypherBuilder:
     """
     Used to automatically assemble various parts of a Cypher query
-    to locate a node, or group of nodes, based on various match criteria.
+    to be used to locate a node, or group of nodes, based on various match criteria.
+    (No support for scenarios involving links.)
     
     Objects of this class (sometimes referred to as a "match structures")
     are used to facilitate a user to specify a node in a wide variety of ways - and
-    save those specifications, in a "pre-digested" way, to use as needed in Cypher queries.
+    save those specifications, to use as needed in later building Cypher queries.
 
     NO extra database operations are involved.
 
@@ -22,45 +23,59 @@ class CypherBuilder:
                     if it's missing, an implicit AND operation applies to all the specified conditions
                     (Regardless, all the passed data is stored in this object)
 
-    Validates and stores all the passed specifications (the "RAW match structure"),
+
+    Upon instantiation, two broad actions take place:
+
+    First, validation and storage of all the passed specifications (the "RAW match structure"),
     that are used to identify a node or group of nodes.
 
-    Then generate and store values for the following 4 properties:
+    Then the generation and storage of values for the following 6 properties:
 
-        1) "node":  a string, defining a node in a Cypher query, incl. parentheses but *excluding* the "MATCH" keyword
-        2) "where": a string, defining the "WHERE" part of the subquery (*excluding* the "WHERE"), if applicable;
+        1) "node":  A string, defining a node in a Cypher query, incl. parentheses but *excluding* the "MATCH" keyword
+        2) "where": A string, defining the "WHERE" part of the subquery (*excluding* the "WHERE"), if applicable;
                     otherwise, a blank
-        3) "data_binding":      a (possibly empty) data-binding dictionary
-        4) "dummy_node_name":   a string used for the node name inside the Cypher query (by default, "n");
+        3) "clause_binding"     A dict meant to provide the data for a clause
+        4) "data_binding":      A (possibly empty) data-binding dictionary
+        5) "dummy_node_name":   A string used for the node name inside the Cypher query (by default, "n");
                                 potentially relevant to the "node" and "where" values
+        6) "cypher":            The complete Cypher query, exclusive of RETURN statement and later parts;
+                                the WHERE pass will be missing if there are no clauses
 
         EXAMPLES:
             *   node: "(n)"
                     where: ""
+                    clause_binding: {}
                     data_binding: {}
                     dummy_node_name: "n"
+                    cypher: "MATCH (n)"
             *   node: "(p :`person` )"
                     where: ""
+                    clause_binding: {}
                     data_binding: {}
                     dummy_node_name: "p"
             *   node: "(n  )"
                     where: "id(n) = 123"
+                    clause_binding: {}
                     data_binding: {}
                     dummy_node_name: "n"
             *   node: "(n :`car`:`surplus inventory` )"
                     where: ""
+                    clause_binding: {}
                     data_binding: {}
                     dummy_node_name: "n"
             *    node: "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
                     where: ""
+                    clause_binding: {}
                     data_binding: {"n_par_1": "F", "n_par_2": 22}
                     dummy_node_name: "n"
             *   node: "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
                     where: "n.income > 90000 OR n.state = 'CA'"
+                    clause_binding: {}
                     data_binding: {"n_par_1": "F", "n_par_2": 22}
                     dummy_node_name: "n"
             *   node: "(n :`person` {`gender`: $n_par_1, `age`: $n_par_2})"
                     where: "n.income > $min_income"
+                    clause_binding:  {"$min_income": 90000}
                     data_binding: {"n_par_1": "F", "n_par_2": 22, "min_income": 90000}
                     dummy_node_name: "n"
     """
@@ -116,7 +131,7 @@ class CypherBuilder:
                                                     #   and the requested key/value pair, if applicable
         self.clause = clause                        # EXAMPLE:  "n.age < 25 AND n.income > 100000"
                                                     #   (note: if the passed clause contains a data-binding dictionary,
-                                                #          that gets stripped from here, and incorporated into self.data_binding)
+                                                    #          that gets stripped from here, and incorporated into self.data_binding)
         self.clause_binding = clause_binding    # A dict meant to provide the data for a clause
                                                 #   EXAMPLE, if the clause is  "n.weight < $max_weight"
                                                 #            then a clause_binding of {'max_weight': 100}
@@ -134,79 +149,89 @@ class CypherBuilder:
         self.data_binding = {}          # For all the passed properties,
                                         #   and for the requested key/value pair, as applicable
                                         #   EXAMPLE: {"n_par_1": "F", "n_par_2": 22}
-        self.cypher = ""                # The complete Cypher query, exclusive of RETURN and later parts
+        self.cypher = ""                # The complete Cypher query, exclusive of RETURN statement and later parts;
                                         #   the WHERE pass will be missing if there are no clauses
 
 
-        # Validate all the passed arguments
-        if internal_id is not None:
-            assert CypherUtils.valid_internal_id(internal_id), \
-                f"CypherBuilder(): the argument `internal_id` ({internal_id}) is not a valid internal database ID value"
+        # Validate all the passed arguments, and clean up some of the string values
+        self._validate_and_clean()
+
+        # Finalize the object's construction
+        self.build_cypher_elements(dummy_name=self.dummy_node_name)
 
 
-        if labels is not None:
-            assert (type(labels) == str) or (type(labels) == list) or (type(labels) == tuple), \
-                f"CypherBuilder(): the argument `labels`, if provided, must be a string, or a list/tuple of strings"
 
+    def _validate_and_clean(self) -> None:
+        """
+        Validate all the arguments passed to the class constructor, and clean up some of the string values
 
-        if key_name is not None:
-            assert type(key_name) == str, \
-                f"CypherBuilder(): the argument `key_name`, if provided, must be a string"
+        :return:    None
+        """
+        if self.internal_id is not None:
+            assert CypherUtils.valid_internal_id(self.internal_id), \
+                f"CypherBuilder() instantiation: the argument `internal_id` ({self.internal_id}) " \
+                f"is not a valid internal database ID value"
 
-            key_name = key_name.strip()           # Zap any leading/trailing blanks
+        if self.labels is not None:
+            assert (type(self.labels) == str) or (type(self.labels) == list) or (type(self.labels) == tuple), \
+                f"CypherBuilder() instantiation: the argument `labels`, " \
+                f"if provided, must be a string, or a list/tuple of strings.  The type passed was {type(self.labels)}"
 
-            assert key_value is not None, \
+        if self.key_name is not None:
+            assert type(self.key_name) == str, \
+                f"CypherBuilder(): the argument `key_name`, if provided, must be a string.  The type passed was {type(self.key_name)}"
+
+            self.key_name = self.key_name.strip()           # Zap any leading/trailing blanks
+
+            assert self.key_value is not None, \
                 f"CypherBuilder(): if the argument `key_name` is provided, so must be `key_value`"
 
 
-        if key_value is not None:
-            assert key_name, "CypherBuilder(): If the argument `key_value` is provided, so must be `key_name`"
+        if self.key_value is not None:
+            assert self.key_name, "CypherBuilder(): If the argument `key_value` is provided, so must be `key_name`"
 
 
-        if properties is None:
+        if self.properties is None:
             self.properties = {}
         else:
-            assert type(properties) == dict, \
+            assert type(self.properties) == dict, \
                 f"CypherBuilder(): the argument `properties`, if provided, must be a python dictionary"
 
-        if key_name in self.properties:
-            raise Exception(f"CypherBuilder(): Name conflict between the specified key_name (`{key_name}`) "
-                            f"and one of the keys in properties ({properties})")
+        if self.key_name in self.properties:
+            raise Exception(f"CypherBuilder(): Name conflict between the specified key_name (`{self.key_name}`) "
+                            f"and one of the keys in properties ({self.properties})")
 
 
-        if clause is None:
+        if self.clause is None:
             self.clause = ""
         else:
-            assert type(clause) == str, \
+            assert type(self.clause) == str, \
                 f"CypherBuilder(): the argument `clause`, if provided, must be a string.  EXAMPLE: 'n.age > 21'"
 
-            self.clause = clause.strip()          # Zap leading/trailing blanks
+            self.clause = self.clause.strip()          # Zap leading/trailing blanks
 
 
-        if clause_binding is None:
+        if self.clause_binding is None:
             self.clause_binding = {}
-        elif clause_binding != {}:
-            assert type(clause_binding) == dict, \
+        elif self.clause_binding != {}:
+            assert type(self.clause_binding) == dict, \
                 "CypherBuilder(): the argument `clause`, if provided must be a dict.  EXAMPLE: {'max_weight': 100}"
 
-            assert clause, \
+            assert self.clause, \
                 f"CypherBuilder(): if the argument `clause_binding` is provided, so must be `clause`"
 
-            self.clause_binding = clause_binding
-
-        self.finalize_dummy_name(dummy_name=self.dummy_node_name)
 
 
-
-
-    def finalize_dummy_name(self, dummy_name=None) -> None:
+    def build_cypher_elements(self, dummy_name=None) -> None:
         """
         This method manages the parts of the object buildup that depend on the dummy node name.
-        Two use cases:
-            1) if called at the end of a new object's instantiation, it finalizes its construction
-            2) if called on an existing object, it will change its structure
-                    to make use of the given node dummy name, if possible, or raise an Exception if not.
-                    (Caution: the object will get permanently changed)
+        Primary use case:
+            if called at the end of a new object's instantiation, it finalizes its construction
+
+        Alternate use case:
+            if called on an existing object, it will change its structure
+                to make use of the given node dummy name, if possible, or raise an Exception if not.
+                (Caution: the object will get permanently changed)
 
         :param dummy_name:  String with the desired dummy name to use to refer to the node in Cypher queries
         :return:            None

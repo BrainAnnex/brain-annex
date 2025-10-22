@@ -1056,7 +1056,7 @@ class NeoAccess(InterGraph):
     #####################################################################################################
 
 
-    def set_fields(self, match: Union[int, str, dict, CypherBuilder], set_dict: dict, drop_blanks=True) -> int:
+    def set_fields(self, match: Union[int, str, CypherBuilder], set_dict: dict, drop_blanks=True) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing node or group of nodes.
 
@@ -1069,7 +1069,6 @@ class NeoAccess(InterGraph):
         Return the number of properties set.
 
         :param match:       EITHER a valid internal database ID (int or string),
-                                OR a python dictionary (with property matches to require),
                                 OR a "CypherBuilder" object, as returned by match(),
                                     that contains data to identify a node or set of nodes
 
@@ -1079,15 +1078,13 @@ class NeoAccess(InterGraph):
                                 Any None value leads to that attribute being dropped from the nodes.
         :param drop_blanks: [OPTIONAL] If True (default), then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
-                                Note that None values are always dropped, regardless of this flag.
+                                Note that attributes set to None values are always dropped, regardless of this flag.
 
         :return:            The number of properties set or removed;
                                 if the record wasn't found, or an empty `set_dict` was passed, return 0
                                 Important: a property is counted as being "set" even if the new value is
                                            identical to the old value!
         """
-        #         TODO: if any field is blank, offer the option drop it altogether from the node,
-        #               with a "REMOVE n.field" statement in Cypher; doing SET n.field = "" doesn't drop it
 
         if set_dict == {}:
             return 0             # There's nothing to do

@@ -167,7 +167,7 @@ def test_finalize_dummy_name():
                        properties={"onset age": 23},
                        clause="n.income > 10000", dummy_name="n")
 
-    ns.finalize_dummy_name("n")     # No change
+    ns.build_cypher_elements("n")     # No change
 
     assert ns.internal_id == 123
     assert ns.labels == "my label"
@@ -183,7 +183,7 @@ def test_finalize_dummy_name():
     assert ns.cypher == "MATCH (n) WHERE id(n) = 123"
 
     with pytest.raises(Exception):
-        ns.finalize_dummy_name("dummy")     # Can't change dummy name when a clause is present
+        ns.build_cypher_elements("dummy")     # Can't change dummy name when a clause is present
 
 
     ns = CypherBuilder(
@@ -191,7 +191,7 @@ def test_finalize_dummy_name():
                    properties={"onset age": 23},
                    clause="n.income > 10000", dummy_name="n")
 
-    ns.finalize_dummy_name("n")     # No change
+    ns.build_cypher_elements("n")     # No change
 
     assert ns.internal_id is None
     assert ns.labels == "my label"
@@ -207,7 +207,7 @@ def test_finalize_dummy_name():
     assert ns.cypher == "MATCH (n :`my label` {`onset age`: $n_par_1, `patient code`: $n_par_2}) WHERE (n.income > 10000)"
 
     with pytest.raises(Exception):
-        ns.finalize_dummy_name("dummy")     # Can't change dummy name when a clause is present
+        ns.build_cypher_elements("dummy")     # Can't change dummy name when a clause is present
 
 
     ns = CypherBuilder(
@@ -215,7 +215,7 @@ def test_finalize_dummy_name():
                    key_name="patient code", key_value=100,
                    properties={"onset age": 23})
 
-    ns.finalize_dummy_name("n")     # No change
+    ns.build_cypher_elements("n")     # No change
 
     assert ns.internal_id is None
     assert ns.labels == ("my label 1", "my label 2")
@@ -230,7 +230,7 @@ def test_finalize_dummy_name():
     assert ns.data_binding == {"n_par_1": 23, 'n_par_2': 100}
     assert ns.cypher == "MATCH (n :`my label 1`:`my label 2` {`onset age`: $n_par_1, `patient code`: $n_par_2})"
 
-    ns.finalize_dummy_name("dummy")
+    ns.build_cypher_elements("dummy")
 
     assert ns.internal_id is None
     assert ns.labels == ("my label 1", "my label 2")
@@ -248,7 +248,7 @@ def test_finalize_dummy_name():
 
     ns = CypherBuilder(labels="person", key_name="SSN", key_value=123)
 
-    ns.finalize_dummy_name("n")     # No change
+    ns.build_cypher_elements("n")     # No change
 
     assert ns.internal_id is None
     assert ns.labels == "person"
@@ -264,7 +264,7 @@ def test_finalize_dummy_name():
     assert ns.data_binding == {"n_par_1": 123}
     assert ns.cypher == "MATCH (n :`person` {`SSN`: $n_par_1})"
 
-    ns.finalize_dummy_name("dummy")
+    ns.build_cypher_elements("dummy")
 
     assert ns.internal_id is None
     assert ns.labels == "person"
