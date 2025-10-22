@@ -85,7 +85,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
             /*
-                SERVER CALLS
+                ---------   SERVER CALLS   ---------
              */
 
             server_communication_POST()          /* "POST"  version */

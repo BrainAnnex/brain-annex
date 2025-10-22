@@ -204,12 +204,11 @@ Vue.component('vue-plugin-rs',
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
 
-                // The following 2 apply to the single record currently being edited (just one at most)
-                // This object contains the values bound to the editing fields, initially cloned from the prop data;
+                // The following applies to the single record currently being edited (just one at most).
+                // This object contains the values bound to the editing fields,
+                //      initially cloned from the record being edited in the current recordset;
                 //      it'll change in the course of the edit-in-progress
-                record_latest:      null,
-                // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                record_pre_edit:    null,
+                record_latest: null,
 
 
                 new_record: {},         // Used for the addition of new record; note that it's valid
@@ -234,7 +233,6 @@ Vue.component('vue-plugin-rs',
          */
         {
             console.log(`The Recordsets component has been mounted`);
-            //alert(`The Recordsets component has been mounted`);
 
             if (this.item_data.uri < 0)  {  // A negative URI is a convention to indicate a just-created Recordset
                 this.edit_recordset();
@@ -299,13 +297,13 @@ Vue.component('vue-plugin-rs',
                                                name: "Pizzeria NY", city: "NYC"}
              */
             {
-                console.log(`Editing the following individual record in recordset:`);
+                console.log(`Editing the following individual record in the current recordset:`);
                 console.log(record);
 
                 this.record_being_editing = record.internal_id;     // Specify that editing is in progress for this record
 
-                this.record_pre_edit = Object.assign({}, record);   // Clone the record object.  TODO: might not be needed
-                this.record_latest = Object.assign({}, record);     // Clone the record object
+                this.record_latest = Object.assign({}, record);     // Clone the record object into a temporary variable
+                                                                    // to which the editing fields are bound
             },
 
 
@@ -313,8 +311,7 @@ Vue.component('vue-plugin-rs',
             {
                 this.record_being_editing = null;       // To indicate that no record is being edited
 
-                // Clear the temporary variables used for the editing
-                this.record_pre_edit = null;            // TODO: might not be needed
+                // Clear the temporary variable used for the editing
                 this.record_latest = null;
             },
 
@@ -356,7 +353,7 @@ Vue.component('vue-plugin-rs',
 
 
             /*
-                ---  SERVER CALLS  ---
+                ---------   SERVER CALLS   ---------
              */
 
             save_record_edit()
@@ -422,22 +419,17 @@ Vue.component('vue-plugin-rs',
                     if (i == recordset_length)
                         alert("Unable to refresh record : try reloading the page");
                     else
-                        //var i = 0;      // TODO: temp, just for testing!!!
                         Vue.set(this.recordset, i, this.record_latest);
-
-                    this.record_pre_edit = null;            // TODO: might not be needed
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    // Clear the temporary variables used for the editing
-                    this.record_pre_edit = null;            // TODO: might not be needed
+                    // Clear the temporary variable used for the editing
                     this.record_latest = null;
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                //...
             },
 
 
@@ -481,12 +473,10 @@ Vue.component('vue-plugin-rs',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `New record added`;
-                    //...
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    //...
                 }
 
                 // Final wrap-up, regardless of error or success
@@ -517,7 +507,7 @@ Vue.component('vue-plugin-rs',
                 }
                 else  {
                     // Update an existing Recordset
-                    const url_server_api = "/BA/api/update_content_item_JSON";
+                    var url_server_api = "/BA/api/update_content_item_JSON";
 
                     var post_obj = {uri: this.current_metadata.uri,
                                     class_name: this.item_data.class_name,
