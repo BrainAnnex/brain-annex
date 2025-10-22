@@ -137,9 +137,8 @@ def test_get_nodes(db):
 
     # Again, retrieve the record (this time using data-binding in the Cypher query, and values passed as a separate dictionary)
     match = db.match(labels="test_label",
-                     clause=( "n.patient_id = $patient_id AND n.gender = $gender",
-                               {"patient_id": 123, "gender": "M"}
-                            )
+                     clause="n.patient_id = $patient_id AND n.gender = $gender",
+                     clause_binding={"patient_id": 123, "gender": "M"}
                     )
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
@@ -164,9 +163,8 @@ def test_get_nodes(db):
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
     # Retrieve the record just created (in a different way, using a Cypher subquery with its own data binding)
-    match = db.match(labels="my 2nd label", clause=("n.age = $age AND n.gender = $gender",
-                                                     {"age": 21, "gender": "F"}
-                                                     ))
+    match = db.match(labels="my 2nd label",
+                    clause="n.age = $age AND n.gender = $gender", clause_binding={"age": 21, "gender": "F"})
     retrieved_records = db.get_nodes(match)
     assert retrieved_records == [{'age': 21, 'gender': 'F', 'client id': 123}]
 
@@ -211,7 +209,10 @@ def test_get_nodes(db):
 
     # Re-use of same key names in subquery data-binding and in properties dictionaries is ok, because the keys in
     #   properties dictionaries get internally changed
-    match = db.match(labels="my 2nd label", clause=("n.age > $age" , {"age": 22}), properties={"age": 30})
+    match = db.match(labels="my 2nd label",
+                    clause="n.age > $age",
+                    clause_binding={"age": 22},
+                    properties={"age": 30})
     retrieved_records = db.get_nodes(match)
     # Note: internally, the final Cypher query is: "MATCH (n :`my 2nd label` {`age`: $n_par_1}) WHERE (n.age > $age) RETURN n"
     #                           with data binding: {'age': 22, 'n_par_1': 30}
@@ -222,15 +223,22 @@ def test_get_nodes(db):
     # A conflict arises only if we happen to use a key name that clashes with an internal name, such as "n_par_1";
     # an Exception is expected is such a case
     with pytest.raises(Exception):
-        match = db.match(labels="my 2nd label", clause=("n.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
+        match = db.match(labels="my 2nd label",
+                        clause="n.age > $n_par_1",
+                        clause_binding={"n_par_1": 22},
+                        properties={"age": 30})
         assert db.get_nodes(match)
 
     # If we really wanted to use a key called "n_par_1" in our subquery dictionary, we
     #       can simply alter the dummy name internally used, from the default "n" to something else
     match = db.match(dummy_node_name="person", labels="my 2nd label",
-                     clause=("person.age > $n_par_1" , {"n_par_1": 22}), properties={"age": 30})
-    # All good now, because internally the Cypher query is "MATCH (person :`my 2nd label` {`age`: $person_par_1}) WHERE (person.age > $n_par_1) RETURN person"
-    #                                    with data binding {'n_par_1': 22, 'person_par_1': 30}
+                     clause="person.age > $n_par_1" ,
+                     clause_binding={"n_par_1": 22},
+                     properties={"age": 30})
+    #print(match)
+    # All good now, because internally the Cypher query is:
+    #           "MATCH (person :`my 2nd label` {`age`: $person_par_1}) WHERE (person.age > $n_par_1) RETURN person"
+    #           with data binding {'person_par_1': 30, 'n_par_1': 22}
     retrieved_records = db.get_nodes(match)
     assert compare_recordsets(retrieved_records, expected_records)
 
@@ -528,7 +536,7 @@ def test_get_siblings(db):
         db.get_siblings(internal_id=french_id, rel_name=666, rel_dir="OUT") # rel_name isn't a string
 
     with pytest.raises(Exception):
-        db.get_siblings(internal_id="Do I look like an ID?", rel_name="subcategory_of", rel_dir="OUT")
+        db.get_siblings(internal_id=[1, 2, 3], rel_name="subcategory_of", rel_dir="OUT")    # Bad ID
 
     with pytest.raises(Exception):
         db.get_siblings(internal_id=french_id, rel_name="subcategory_of", rel_dir="Is it IN or OUT")
@@ -1067,18 +1075,55 @@ def test_delete_nodes_by_label(db):
 def test_set_fields(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
-    # Create a new node.  Notice the blank in the key
-    db.create_node("car", {'vehicle id': 123, 'price': 7500})
+    # Create a new node.  Notice the blank in the key 'vehicle id'
+    car_id = db.create_node("car", {'vehicle id': 123, 'price': 7500})
 
-    # Locate the node just created, and create/update its attributes (reduce the price)
-    match = db.match(labels="car", properties={'vehicle id': 123, 'price': 7500})
-    db.set_fields(match=match, set_dict = {"color": "white", "price": 7000})
+    # Locate the node just created, and create/update its attributes (add color plus make, and reduce the price)
+    match = db.match(labels="car")
+    n_set = db.set_fields(match=match, set_dict={"color": "white", "make": "Toyota", "price": 7000})
+    assert n_set == 3
 
     # Look up the updated record
     match = db.match(labels="car")
     retrieved_records = db.get_nodes(match)
-    expected_record_list = [{'vehicle id': 123, 'color': 'white', 'price': 7000}]
+    expected_record_list = [{'vehicle id': 123, 'color': 'white', 'make': 'Toyota', 'price': 7000}]
     assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by a property and change the color attribute
+    n_set = db.set_fields(match={'vehicle id': 123}, set_dict={"color": "   blue    "})  # Extra blanks will get stripped
+    assert n_set == 1
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': 'blue', 'make': 'Toyota', 'price': 7000}]
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by internal id and clear its "color" attribute
+    n_set = db.set_fields(match=car_id, set_dict={"color": ""}, drop_blanks=False)
+    assert n_set == 1
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': '', 'make': 'Toyota', 'price': 7000}]    # 'color' property still there, but blank value
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by internal id and eliminate its "make" attribute
+    n_set = db.set_fields(match=car_id, set_dict={"make": ""}, drop_blanks=True)
+    assert n_set == 1
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': '', 'price': 7000}]    # 'make' property is completely gone
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by internal id and eliminate its "price" attribute
+    n_set = db.set_fields(match=car_id, set_dict={"price": None}, drop_blanks=False)
+    assert n_set == 1
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': ''}]    # 'price' property is completely gone
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
+    # Locate the node by internal id and eliminate its "vehicle id" attribute to the SAME value it already has
+    n_set = db.set_fields(match=car_id, set_dict={"vehicle id": 123})
+    assert n_set == 1       # 1 property set - even if to the same value it already had
+    retrieved_records = db.get_nodes(car_id)
+    expected_record_list = [{'vehicle id': 123, 'color': ''}]    # No change
+    assert compare_recordsets(retrieved_records, expected_record_list)
+
 
 
 
