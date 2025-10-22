@@ -362,7 +362,7 @@ Vue.component('vue-plugin-rs',
              */
             {
                 // Send the request to the server, using a POST
-                const url_server_api = "/BA/api/update_content_item_JSON";          // TODO: modify web app endpoint
+                const url_server_api = "/BA/api/update_content_item_JSON";
 
                 const post_obj = {
                                     internal_id: this.record_latest.internal_id
@@ -372,7 +372,7 @@ Vue.component('vue-plugin-rs',
                 for (field_name of this.headers)    // Looping over array
                     post_obj[field_name] = this.record_latest[field_name];
 
-                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(`In save_record_edit(): about to contact the server at "${url_server_api}" .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
@@ -412,7 +412,7 @@ Vue.component('vue-plugin-rs',
 
                     for (var i = 0; i < recordset_length; i++) {
                         if (this.recordset[i].internal_id == internal_id)  {
-                            console.log("    record to update located at position: ", i);
+                            //console.log("    record to update was located in recordset at position: ", i);
                             break;
                         }
                     }
