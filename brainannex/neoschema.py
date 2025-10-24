@@ -185,7 +185,7 @@ class NeoSchema:
 
 
     @classmethod
-    def assert_valid_class_identifier(cls, class_node :Union[int, str]) -> None:
+    def assert_valid_class_identifier(cls, class_node : int | str) -> None:
         """
         Raise an Exception is the argument is not a valid "identifier" for a Class node,
         meaning either a valid name or a valid internal database ID
@@ -643,7 +643,7 @@ class NeoSchema:
 
 
     @classmethod
-    def create_class_relationship(cls, from_class: Union[int, str], to_class: Union[int, str],
+    def create_class_relationship(cls, from_class: int | str, to_class: int | str,
                                   rel_name="INSTANCE_OF", use_link_node=False, link_properties=None) -> None:
         """
         Create a relationship (provided that it doesn't already exist) with the specified name
@@ -834,7 +834,7 @@ class NeoSchema:
 
 
     @classmethod
-    def unlink_classes(cls, class1 :Union[int, str], class2 :Union[int, str]) -> int:
+    def unlink_classes(cls, class1 : int | str, class2 : int | str) -> int:
         """
         Remove ALL relationships (in any direction) between the specified Classes
 
@@ -1162,7 +1162,7 @@ class NeoSchema:
     #####################################################################################################
 
     @classmethod
-    def get_class_properties(cls, class_node: Union[int, str],
+    def get_class_properties(cls, class_node: int | str,
                              include_ancestors=False, sort_by_path_len="ASC", exclude_system=False) -> [str]:
         """
         Return the list of all the names of the Properties associated with the given Class
@@ -2375,7 +2375,7 @@ class NeoSchema:
 
 
     @classmethod
-    def locate_node(cls, node_id: Union[int, str], id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
+    def locate_node(cls, node_id: int | str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
         """
         EXPERIMENTAL - a generalization of get_data_node()
 
@@ -3027,7 +3027,7 @@ class NeoSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node :Union[int, str], set_dict :dict, drop_blanks=True, class_name=None) -> int:
+    def update_data_node(cls, data_node : int | str, set_dict :dict, drop_blanks=True, class_name=None) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
@@ -3378,7 +3378,7 @@ class NeoSchema:
 
 
     @classmethod
-    def remove_multiple_data_relationships(cls, node_id: Union[int, str], rel_name: str, rel_dir: str, labels=None) -> None:
+    def remove_multiple_data_relationships(cls, node_id :int|str, rel_name: str, rel_dir: str, labels=None) -> None:
         """
         Drop all the relationships with the given name, from or to the given data node.
         Note: the data node is left untouched.
@@ -4517,7 +4517,7 @@ class NeoSchema:
 
 
     @classmethod
-    def import_triplestore(cls, df :pd.DataFrame, class_node :Union[int, str],
+    def import_triplestore(cls, df :pd.DataFrame, class_node : int | str,
                            col_names = None, uri_prefix = None,
                            datetime_cols=None, int_cols=None,
                            extra_labels=None,

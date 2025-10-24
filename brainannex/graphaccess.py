@@ -252,7 +252,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_nodes(self, match: Union[int, str, CypherBuilder],
+    def get_nodes(self, match: int | CypherBuilder,
                   return_internal_id=False, return_labels=False, order_by=None, limit=None,
                   single_row=False, single_cell=""):
         """

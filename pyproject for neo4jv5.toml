@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brainannex-neo4jv5"
-version = "5.0-rc.5"
+version = "5.0-rc.6"
 authors = [
   { name = "Julian West BrainAnnex.org" },
 ]
@@ -14,7 +14,7 @@ maintainers = [
 description = "Full-Stack Data/Knowledge Management with Neo4j version 5"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

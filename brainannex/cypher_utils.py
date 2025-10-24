@@ -565,6 +565,7 @@ class CypherUtils:
         combined_data_binding = match1.data_binding     # Our 1st dict
         new_data_binding = match2.data_binding          # Our 2nd dict
         combined_data_binding.update(new_data_binding)  # Merge the second dict into the first one
+                                                        # TODO: this operation has side effect of changing 1st object!
 
         return combined_data_binding
 
