@@ -12,24 +12,32 @@ import time
 from typing import Union, List, Tuple
 
 
-'''
-    NOTE: this class was being released independently for some time, but
-          eventually got re-incorporated in its parent project BrainAnnex.org
-          
+'''        
     ----------------------------------------------------------------------------------
     HISTORY and AUTHORS:
-        - NeoAccess (this library) is a fork of NeoInterface;
-                NeoAccess was created, and is being maintained, by Julian West,
-                primarily in the context of the BrainAnnex.org open-source project.
-                It started out in late 2021; for change log,
-                see the "LIBRARIES" entries in https://brainannex.org/history
+    
+        GraphAccess was created, and is being maintained, primarily by Julian West,
+        in the context of the BrainAnnex.org open-source project.
+        For change log, see the "LIBRARIES" entries in https://brainannex.org/history
+                
+        Reverse chronological order:
+               
+        - Name changed to GraphAccess, from NeoAccess, in 2025, 
+                to emphasize potential use with other graph databases besides Neo4j.
+                The database-specific portions were extracted and separated 
+                into a family of parent classes ("InterGraph"), one per supported database
+                (currently supported are versions 4 and 5 of the Neo4j database)
+        
+        - NeoAccess is a fork of NeoInterface; it started out in late 2021.
+                This library was released independently on PyPI for a period of time, but
+                eventually got re-incorporated into the broader library `brainannex`
 
         - NeoInterface (the parent library)
                 was co-authored by Alexey Kuznetsov and Julian West in 2021,
                 and is maintained by GSK pharmaceuticals
                 with an Apache License 2.0 (https://github.com/GSK-Biostatistics/neointerface).
                 NeoInterface is in part based on the earlier library Neo4jLiaison,
-                as well as a library developed by Alexey Kuznetsov.
+                as well as on a library developed by Alexey Kuznetsov.
 
         - Neo4jLiaison, an ancestor library now obsoleted, was authored by Julian West in 2020
                 (https://github.com/BrainAnnex/neo4j-liaison)
@@ -46,7 +54,7 @@ from typing import Union, List, Tuple
 '''
 
 
-class NeoAccess(InterGraph):
+class GraphAccess(InterGraph):
     """
     IMPORTANT : this works with various versions of the Neo4j database (and, possibly,
                 other graph databases), depending on the version of the underlying InterGraph library)
@@ -148,10 +156,10 @@ class NeoAccess(InterGraph):
         :return:                    A dictionary, if a unique record was found; or None if not found
         """
         assert primary_key_name, \
-            f"NeoAccess.get_record_by_primary_key(): the primary key name cannot be absent or empty (value: {primary_key_name})"
+            f"GraphAccess.get_record_by_primary_key(): the primary key name cannot be absent or empty (value: {primary_key_name})"
 
         assert primary_key_value is not None, \
-            "NeoAccess.get_record_by_primary_key(): the primary key value cannot be None" # Note: 0 or "" could be legit
+            "GraphAccess.get_record_by_primary_key(): the primary key value cannot be None" # Note: 0 or "" could be legit
 
         match = self.match(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
         #print(match)
@@ -160,7 +168,7 @@ class NeoAccess(InterGraph):
         if len(result) == 0:
             return None
         if len(result) > 1:
-            raise Exception(f"NeoAccess.get_record_by_primary_key(): multiple records ({len(result)}) share the value (`{primary_key_value}`) in the primary key ({primary_key_name})")
+            raise Exception(f"GraphAccess.get_record_by_primary_key(): multiple records ({len(result)}) share the value (`{primary_key_value}`) in the primary key ({primary_key_name})")
 
         return result[0]
 
@@ -497,7 +505,7 @@ class NeoAccess(InterGraph):
 
         result_list = self.query_extended(q, data_dictionary, flatten=True)  # TODO: switch to update_query(), and verify the creation
         if len(result_list) != 1:
-            raise Exception("NeoAccess.create_node(): failed to create the requested new node")
+            raise Exception("GraphAccess.create_node(): failed to create the requested new node")
 
         return result_list[0]['internal_id']           # Return the Neo4j internal ID of the node just created
 
@@ -657,10 +665,10 @@ class NeoAccess(InterGraph):
         :return:            An integer with the Neo4j ID of the newly-created node
         """
         assert properties is None or type(properties) == dict, \
-            f"NeoAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
+            f"GraphAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
 
         assert links is None or type(links) == list, \
-            f"NeoAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
+            f"GraphAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
 
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
@@ -712,7 +720,7 @@ class NeoAccess(InterGraph):
         # Assert that the query produced the expected actions
         if not merge:
             if result.get("nodes_created", 0) != 1:
-                raise Exception("NeoAccess.create_node_with_links(): failed to create the new node "
+                raise Exception("GraphAccess.create_node_with_links(): failed to create the new node "
                                 "(check whether the requested link-to nodes exist)")
 
             if not labels:
@@ -723,26 +731,26 @@ class NeoAccess(InterGraph):
                 expected_number_labels = len(labels)
 
             if result.get("labels_added", 0) != expected_number_labels:
-                raise Exception(f"NeoAccess.create_node_with_links(): failed to set the {expected_number_labels} label(s) expected on the new node")
+                raise Exception(f"GraphAccess.create_node_with_links(): failed to set the {expected_number_labels} label(s) expected on the new node")
 
 
         if result.get("relationships_created", 0) != len(links):
-            raise Exception(f"NeoAccess.create_node_with_links(): failed to create all the {len(links)} requested relationships")
+            raise Exception(f"GraphAccess.create_node_with_links(): failed to create all the {len(links)} requested relationships")
 
         # Determine the number of entries in the data_binding dict, where the value isn't None
         expected_number_properties = sum(1 for v in data_binding.values() if v is not None)
         if result.get("properties_set", 0) != expected_number_properties:
-            raise Exception(f"NeoAccess.create_node_with_links(): Was expecting to set {expected_number_properties} properties on the new node and its relationships; "
+            raise Exception(f"GraphAccess.create_node_with_links(): Was expecting to set {expected_number_properties} properties on the new node and its relationships; "
                             f"instead, {result.get('properties_set')} got set")
 
         returned_data = result.get("returned_data")
         #print("returned_data", returned_data)
         if len(returned_data) == 0:
-            raise Exception("NeoAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
+            raise Exception("GraphAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
         internal_id = returned_data[0].get("internal_id", None)
         if internal_id is None:    # Note: internal_id might be zero
-            raise Exception("NeoAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
+            raise Exception("GraphAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
         return internal_id    # Return the Neo4j ID of the new node
 
@@ -766,7 +774,7 @@ class NeoAccess(InterGraph):
         """
 
         assert links and type(links) == list and len(links) > 0, \
-            f"NeoAccess._assemble_query_for_linking(): the argument must be a non-empty list"
+            f"GraphAccess._assemble_query_for_linking(): the argument must be a non-empty list"
 
         # Define the portion of the Cypher query to locate the existing nodes
         q_MATCH = "MATCH"
@@ -779,14 +787,14 @@ class NeoAccess(InterGraph):
         for i, edge in enumerate(links):
             match_internal_id = edge.get("internal_id")
             if match_internal_id is None:    # Caution: it might be zero
-                raise Exception(f"NeoAccess._assemble_query_for_linking(): Missing 'internal_id' key for the node to link to (in list element {edge})")
+                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing 'internal_id' key for the node to link to (in list element {edge})")
 
             assert type(match_internal_id) == int, \
-                f"NeoAccess._assemble_query_for_linking(): The value of the 'internal_id' key must be an integer. The type was {type(match_internal_id)}"
+                f"GraphAccess._assemble_query_for_linking(): The value of the 'internal_id' key must be an integer. The type was {type(match_internal_id)}"
 
             rel_name = edge.get("rel_name")
             if not rel_name:
-                raise Exception(f"NeoAccess._assemble_query_for_linking(): Missing name ('rel_name' key) for the new relationship (in list element {edge})")
+                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing name ('rel_name' key) for the new relationship (in list element {edge})")
 
             node_dummy_name = f"ex{i}"  # EXAMPLE: "ex3".   The "ex" stands for "existing node"
             q_MATCH += f" (ex{i})"      # EXAMPLE: " (ex3)"

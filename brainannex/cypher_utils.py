@@ -1,4 +1,4 @@
-# This file contains 2 helper classes for the NeoAccess library:
+# This file contains 2 helper classes for the GraphAccess library:
 #       - CypherBuilder     To store the specs to identify one or more nodes,
 #                           and to store Cypher fragments & data-binding dict, to identify one or more nodes (the "PROCESSED match structure")
 #       - CypherUtils       Static class to pre-process node specs, plus misc. Cypher-related utilities
@@ -476,12 +476,11 @@ class CypherUtils:
 
 
     @classmethod
-    def assemble_cypher_blocks(cls, handle :Union[int, str, dict, CypherBuilder],
+    def assemble_cypher_blocks(cls, handle :Union[int, str, CypherBuilder],
                               dummy_node_name=None, caller_method=None) -> tuple:
         """
 
         :param handle:          EITHER a valid internal database ID (int or string),
-                                    OR a python dictionary (with property matches to require),
                                     OR a "CypherBuilder" object (containing data to identify a node or set of nodes)
 
         :param dummy_node_name: [OPTIONAL] A string that will be used inside a Cypher query, to refer to nodes
@@ -538,6 +537,7 @@ class CypherUtils:
         :return:        A string with the combined WHERE statement,
                             suitable for inclusion into a Cypher query (empty if there were no subclauses)
         """
+        #TODO: perhaps phase out in favor of unpacking and then combining using prepare_where()
         if check_compatibility:
             cls.check_match_compatibility(match1, match2)
 
@@ -561,6 +561,7 @@ class CypherUtils:
         :return:        A (possibly empty) dict with the combined data binding dictionaries,
                             suitable for inclusion into a Cypher query
         """
+        #TODO: perhaps phase out in favor of unpacking and then combining
         combined_data_binding = match1.data_binding     # Our 1st dict
         new_data_binding = match2.data_binding          # Our 2nd dict
         combined_data_binding.update(new_data_binding)  # Merge the second dict into the first one

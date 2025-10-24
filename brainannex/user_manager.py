@@ -1,6 +1,6 @@
 import bcrypt                       # For password encryption
 from typing import Union
-from brainannex import NeoAccess, NeoSchema
+from brainannex import GraphAccess, NeoSchema
 
 
 
@@ -12,21 +12,21 @@ class UserManager:
     IMPORTANT: prior to use, its class variable "db" must be set, by calling set_database()
     """
 
-    db = None   # "NeoAccess" object.  MUST be set before using this class!
+    db = None   # "GraphAccess" object.  MUST be set before using this class!
                 # Note: this database-interface object is a CLASS variable, accessible as cls.db
 
 
     @classmethod
-    def set_database(cls, db :NeoAccess) -> None:
+    def set_database(cls, db :GraphAccess) -> None:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object, created with the NeoAccess library
+        :param db:  Database-interface object, created with the GraphAccess library
         :return:    None
         """
 
-        assert type(db) == NeoAccess, \
-            "UserManager.set_database(): argument passed isn't a valid NeoAccess object"
+        assert type(db) == GraphAccess, \
+            "UserManager.set_database(): argument passed isn't a valid GraphAccess object"
 
         cls.db = db
 

@@ -1,4 +1,4 @@
-from brainannex import NeoAccess, NeoSchema, \
+from brainannex import GraphAccess, NeoSchema, \
                        Categories, FullTextIndexing, PyGraphVisual
 
 import app_libraries.PLUGINS.plugin_support as plugin_support
@@ -37,7 +37,7 @@ class DataManager:
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
-    db = None           # Object of class "NeoAccess"
+    db = None           # Object of class "GraphAccess"
                         # MUST be set, with a call to set_database(), before using this class!
 
     LOG_FOLDER = None   # Location where the log file is stored
@@ -52,16 +52,16 @@ class DataManager:
 
 
     @classmethod
-    def set_database(cls, db :NeoAccess) -> None:
+    def set_database(cls, db :GraphAccess) -> None:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object, created with the NeoAccess library
+        :param db:  Database-interface object, created with the GraphAccess library
         :return:    None
         """
 
-        assert type(db) == NeoAccess, \
-            "NeoSchema.set_database(): argument passed isn't a valid `NeoAccess` object"
+        assert type(db) == GraphAccess, \
+            "NeoSchema.set_database(): argument passed isn't a valid `GraphAccess` object"
 
         cls.db = db     # Save the database object
 
@@ -82,7 +82,7 @@ class DataManager:
 
         :return:    A list of strings, sorted alphabetically
         """
-        # TODO: move to NeoAccess
+        # TODO: move to GraphAccess
         label_list = cls.db.get_labels()    # Fetch all the node labels in the database
 
         return sorted(label_list)
@@ -97,7 +97,7 @@ class DataManager:
 
         :return:    The internal database ID of the new node
         """
-        # TODO: move to NeoAccess
+        # TODO: move to GraphAccess
         return  cls.db.create_node(label)
 
 
@@ -642,7 +642,7 @@ class DataManager:
                                     ]
                                 }
         """
-        # TODO: use NeoAccess.get_link_summary() instead, after it is generalized to accept match structures
+        # TODO: use GraphAccess.get_link_summary() instead, after it is generalized to accept match structures
         if omit_names:
             assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
             where_clause = f"WHERE NOT type(r) IN {omit_names}"

@@ -1,5 +1,5 @@
 import pytest
-from brainannex import NeoAccess, NeoSchema, Collections, Categories
+from brainannex import GraphAccess, NeoSchema, Collections, Categories
 from utilities.comparisons import compare_recordsets
 from app_libraries.data_manager import DataManager
 
@@ -8,7 +8,7 @@ from app_libraries.data_manager import DataManager
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
+    neo_obj = GraphAccess(debug=False)
     #NeoSchema.set_database(neo_obj)
     #Categories.db = neo_obj
     #Collections.set_database(neo_obj)

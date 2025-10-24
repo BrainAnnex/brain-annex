@@ -3,14 +3,14 @@
 
 import pytest
 from utilities.comparisons import compare_unordered_lists, compare_recordsets
-from brainannex import NeoAccess, NeoSchema
+from brainannex import GraphAccess, NeoSchema
 import neo4j.time
 
 
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
+    neo_obj = GraphAccess(debug=False)
     NeoSchema.set_database(neo_obj)
     yield neo_obj
 

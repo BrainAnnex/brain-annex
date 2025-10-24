@@ -7,7 +7,7 @@ class NodeExplorer:
 
     # The "db" property gets set by InitializeBrainAnnex.set_dbase()
 
-    db = None       # Object of class "NeoAccess".  MUST be set before using this class!  
+    db = None       # Object of class "GraphAccess".  MUST be set before using this class!
     
 
 

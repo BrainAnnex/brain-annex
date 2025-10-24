@@ -7,7 +7,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from brainannex import NeoAccess, NeoSchema, SchemaCache
+from brainannex import GraphAccess, NeoSchema, SchemaCache
 from test_neoschema import create_sample_schema_1, create_sample_schema_2
 from utilities.comparisons import *
 
@@ -15,7 +15,7 @@ from utilities.comparisons import *
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
+    neo_obj = GraphAccess(debug=False)
     NeoSchema.set_database(neo_obj)
     NeoSchema.debug = False
     yield neo_obj

@@ -9,7 +9,7 @@ class PyGraphVisual:
 
 
     def __init__(self, db=None):
-        self.db = db                    # Object of "NeoAccess" class
+        self.db = db                    # Object of "GraphAccess" class
 
         self.structure = []             # The data that defines a graph to visualize.
                                         #    A list of dicts defining nodes, and possibly edges as well.
@@ -204,7 +204,7 @@ class PyGraphVisual:
     def prepare_graph(self, result_dataset :[dict], add_edges=True) -> [int]:
         """
         Given a list of dictionary data about graph-database nodes - for example,
-        as returned by NeoAccess.get_nodes() - construct and save visualization data for them.
+        as returned by GraphAccess.get_nodes() - construct and save visualization data for them.
 
         Each dictionary entry is expected to have a key named "internal_id";
         if not present, it will be silently ignored.

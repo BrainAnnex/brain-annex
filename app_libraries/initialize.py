@@ -17,10 +17,10 @@ class InitializeBrainAnnex:
     @classmethod
     def set_dbase(cls, db_handle) -> None:
         """
-        Initialize various static classes that need the "NeoAccess" database object
+        Initialize various static classes that need the "GraphAccess" database object
         (to avoid multiple dbase connections)
 
-        :param db_handle:   Object of class "NeoAccess"
+        :param db_handle:   Object of class "GraphAccess"
         :return:            None
         """
         DataManager.db = db_handle

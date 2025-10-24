@@ -1,7 +1,7 @@
 # *** CAUTION! ***  The database gets cleared out during some of the tests!
 
 import pytest
-from neoaccess import NeoAccess
+from neoaccess import GraphAccess
 from brainannex.neoschema.neo_schema import NeoSchema
 
 
@@ -9,7 +9,7 @@ from brainannex.neoschema.neo_schema import NeoSchema
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
+    neo_obj = GraphAccess(debug=False)
     NeoSchema.db = neo_obj
     #yield neo_obj      # Shouldn't need to reach directly into NeoAccess in these tests
 

@@ -487,7 +487,7 @@ class MediaManager:
         that lack a corresponding database record (for now, just considering Notes)
 
         :param directory:   EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
-        :param db:          Object of type "NeoAccess"; TODO: should be able to avoid it
+        :param db:          Object of type "GraphAccess"; TODO: should be able to avoid it
                                                               by using the NeoSchema layer instead
         :return:            A list of names of "orphaned" file s
         """

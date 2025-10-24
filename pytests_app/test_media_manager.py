@@ -1,6 +1,6 @@
 import pytest
 import os
-from brainannex import NeoAccess, NeoSchema
+from brainannex import GraphAccess, NeoSchema
 from app_libraries.media_manager import MediaManager
 import app_libraries.PLUGINS.plugin_support as plugin_support
 from app_libraries.PLUGINS.documents import Documents
@@ -13,7 +13,7 @@ from app_libraries.PLUGINS.notes import Notes
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
+    neo_obj = GraphAccess(debug=False)
     NeoSchema.set_database(neo_obj)
 
     MediaManager.set_media_folder("D:/media/my_media_folder/")

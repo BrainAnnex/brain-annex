@@ -201,8 +201,8 @@ class DocumentationGenerator:
         PART B - Python Class Names
         '''
         # Match and capture a python class name
-        #       EXAMPLE 1:  "class NeoAccessCore:"
-        #       EXAMPLE 2:  "class NeoAccess(NeoAccessCore):"
+        #       EXAMPLE 1:  "class GraphAccessCore:"
+        #       EXAMPLE 2:  "class GraphAccess(NeoAccessCore):"
         pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)(?:\([a-zA-Z][a-zA-Z0-9_]*\))?\s*:'
         '''
             class               Literal "class"

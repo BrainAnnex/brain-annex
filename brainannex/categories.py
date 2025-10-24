@@ -1,5 +1,5 @@
 from typing import Union, List
-from brainannex import NeoAccess, NeoSchema, Collections
+from brainannex import GraphAccess, NeoSchema, Collections
 import pandas as pd
 
 
@@ -22,16 +22,16 @@ class Categories:
 
 
     @classmethod
-    def set_database(cls, db :NeoAccess) -> None:
+    def set_database(cls, db :GraphAccess) -> None:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object, created with the NeoAccess library
+        :param db:  Database-interface object, created with the GraphAccess library
         :return:    None
         """
 
-        assert type(db) == NeoAccess, \
-            "Categories.set_database(): argument passed isn't a valid NeoAccess object"
+        assert type(db) == GraphAccess, \
+            "Categories.set_database(): argument passed isn't a valid GraphAccess object"
 
         cls.db = db     # Save the database object
 
@@ -249,7 +249,7 @@ class Categories:
                                             {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Category', 'BA']}
         """
 
-        #TODO: switch to this after the next update of NeoAccess
+        #TODO: switch to this after the next update of GraphAccess
         #result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of", order_by="name")
 
         q = f"""
@@ -913,7 +913,7 @@ class Categories:
 
             if "date_created" in item_record:   # TODO: this is a hack, to clean up!
                 del item_record["date_created"] # Datetime objects aren't serializable and lead to Flask errors
-                                                # TODO: let NeoAccess handle the conversion to string
+                                                # TODO: let GraphAccess handle the conversion to string
                                                 # TODO: utilize a "type" attribute in the Schema Property node,
                                                 #       to inform of the "datetime" data type
 

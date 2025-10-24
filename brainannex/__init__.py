@@ -1,4 +1,4 @@
-__version__ = "5.0.0rc6_INTERIM_3"
+__version__ = "5.0.0rc6_INTERIM_4"   #IN_PROGRESS
 
 
 # IMPORTANT: ONLY 1 of the following small group of InterGraph imports
@@ -8,7 +8,7 @@ __version__ = "5.0.0rc6_INTERIM_3"
 from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph      # (Un)comment AS NEEDED!
 #from brainannex.intergraph_neo4j_5.intergraph_neo4j_5 import InterGraph     # (Un)comment AS NEEDED!
 
-from brainannex.neoaccess import NeoAccess
+from brainannex.graphaccess import GraphAccess
 from brainannex.cypher_utils import (CypherBuilder, CypherUtils)
 from brainannex.neoschema import (NeoSchema, SchemaCache)
 from brainannex.collections import Collections
@@ -20,7 +20,7 @@ from brainannex.py_graph_visual import PyGraphVisual
 
 __all__ = [
     'InterGraph',
-    'NeoAccess',
+    'GraphAccess',
     'CypherBuilder',
     'CypherUtils',
     'NeoSchema',

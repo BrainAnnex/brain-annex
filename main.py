@@ -31,7 +31,7 @@ from flask_modules.sample_embedded_site.sample_pages.sample_pages_routing import
 from flask_modules.sample_embedded_site.sample_api.sample_api_routing import SampleApiRouting
 
 # The remaining imports, below, are for the database initialization
-from brainannex import NeoAccess
+from brainannex import GraphAccess
 from app_libraries.initialize import InitializeBrainAnnex
 
 
@@ -128,7 +128,7 @@ assert DEPLOYMENT == "LOCAL" or DEPLOYMENT == "REMOTE", \
 
 ### INITIALIZATION of various static classes that need the database object
 #   (to avoid multiple dbase connections)
-APP_NEO4J_DBASE = NeoAccess(host=NEO4J_HOST, credentials=(NEO4J_USER, NEO4J_PASSWORD))
+APP_NEO4J_DBASE = GraphAccess(host=NEO4J_HOST, credentials=(NEO4J_USER, NEO4J_PASSWORD))
 
 InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
 InitializeBrainAnnex.set_folders(MEDIA_FOLDER, LOG_FOLDER)

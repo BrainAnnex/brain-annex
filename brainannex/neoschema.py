@@ -1,6 +1,6 @@
 from typing import Union, List
 from brainannex.cypher_utils import CypherUtils, CypherBuilder  # Helper classes
-from brainannex import NeoAccess
+from brainannex import GraphAccess
 import json
 import math
 import re                               # For REGEX
@@ -15,7 +15,7 @@ class NeoSchema:
     """
     Note: major implementation changes introduced in version 5 Release Candidate 2
 
-    A layer above the class NeoAccess (or, in principle, another library providing a compatible interface),
+    A layer above the class GraphAccess (or, in principle, another library providing a compatible interface),
     to provide an optional schema to the underlying database.
 
     Schemas may be used to either:
@@ -114,28 +114,28 @@ class NeoSchema:
 
     db = None           # MUST be set before using this class!
                         # Database-interface object is a CLASS variable, accessible as cls.db
-                        # For use with the NeoAccess library
+                        # For use with the GraphAccess library
 
     debug = False       # Flag indicating whether a debug mode is to be used by the methods of this class
 
 
     #TODO:   - continue the process of making the methods more efficient,
-    #          by directly generate Cypher code, rather than using high-level methods in NeoAccess;
+    #          by directly generate Cypher code, rather than using high-level methods in GraphAccess;
     #          for example, as done by create_data_node()
 
 
 
     @classmethod
-    def set_database(cls, db :NeoAccess) -> None:
+    def set_database(cls, db :GraphAccess) -> None:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object, created with the NeoAccess library
+        :param db:  Database-interface object, created with the GraphAccess library
         :return:    None
         """
 
-        assert type(db) == NeoAccess, \
-            "NeoSchema.set_database(): argument passed isn't a valid `NeoAccess` object"
+        assert type(db) == GraphAccess, \
+            "NeoSchema.set_database(): argument passed isn't a valid `GraphAccess` object"
 
         cls.db = db
 
@@ -1933,7 +1933,7 @@ class NeoSchema:
         :return:            True if the specified Data Node link, or False otherwise
         """
         # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
-        # TODO: maybe make a version of this function for NeoAccess
+        # TODO: maybe make a version of this function for GraphAccess
 
         # Prepare the clause part of a Cypher query
         if id_key is None:
@@ -1984,7 +1984,7 @@ class NeoSchema:
                                     [{'Rank': 99}, {'Rank': 123}, {}]     (Two links with properties, and one without)
         """
         # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
-        # TODO: maybe make a version of this function for NeoAccess
+        # TODO: maybe make a version of this function for GraphAccess
         # TODO: pytest
 
         # Prepare the clause part of a Cypher query
@@ -2599,7 +2599,7 @@ class NeoSchema:
                                 otherwise, a list of dictionaries
         """
         #TODO: pytest
-        #TODO: merge with the NeoAccess version by the same name?
+        #TODO: merge with the GraphAccess version by the same name?
         #TODO: allow an option to return the internal database ID's
         '''
         TODO - idea to expand `links`:

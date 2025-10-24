@@ -30,7 +30,7 @@ class InterGraph:
     This "CORE" library allows the execution of arbitrary Cypher (query language) commands,
     and helps manage the complex data structures that they return.
     It may be used independently,
-    or as the foundation of the higher-level child class, "NeoAccess"
+    or as the foundation of the higher-level child class, "GraphAccess"
 
     SECTIONS IN THIS CLASS:
         * INIT (constructor) and DATABASE CONNECTION
@@ -77,11 +77,11 @@ class InterGraph:
 
         self.driver = None
 
-        assert host, "Cannot instantiate the NeoAccess object with an undefined argument`host`; " \
+        assert host, "Cannot instantiate the GraphAccess object with an undefined argument`host`; " \
                      "unable to obtain a default value from getenv('NEO4J_HOST') . You need to pass a value, " \
                      "or to set that environment variable"
 
-        assert credentials, "Cannot instantiate the NeoAccess object with an undefined argument `credentials`; " \
+        assert credentials, "Cannot instantiate the GraphAccess object with an undefined argument `credentials`; " \
                             "unable to obtain a default value from getenv('NEO4J_USER') and getenv('NEO4J_PASSWORD') . You need to pass a value, " \
                             "or to set those environment variables"
 

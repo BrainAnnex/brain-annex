@@ -2,7 +2,7 @@
 # in the environment variables NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD
 
 import os
-from brainannex import NeoAccess
+from brainannex import GraphAccess
 
 print("About to test the database connection, using the credentials STORED in the environment variables NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD...\n")
 
@@ -17,7 +17,7 @@ if not os.environ.get('NEO4J_HOST') \
 
 else:
     # Attempt to connect to the Neo4j database from credentials in environment variables
-    obj = NeoAccess(debug=True, autoconnect=True)
+    obj = GraphAccess(debug=True, autoconnect=True)
 
     print("Version of the Neo4j driver: ", obj.version())
 

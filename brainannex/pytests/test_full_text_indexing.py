@@ -1,5 +1,5 @@
 import pytest
-from brainannex import NeoAccess, NeoSchema, FullTextIndexing
+from brainannex import GraphAccess, NeoSchema, FullTextIndexing
 from utilities.comparisons import compare_unordered_lists, compare_recordsets
 
 
@@ -7,7 +7,7 @@ from utilities.comparisons import compare_unordered_lists, compare_recordsets
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
+    neo_obj = GraphAccess(debug=False)
     NeoSchema.set_database(neo_obj)
     FullTextIndexing.db = neo_obj
     yield neo_obj

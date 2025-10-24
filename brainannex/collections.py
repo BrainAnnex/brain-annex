@@ -1,5 +1,5 @@
 from typing import Union, List
-from brainannex import NeoAccess, NeoSchema
+from brainannex import GraphAccess, NeoSchema
 
 
 
@@ -32,16 +32,16 @@ class Collections:
 
 
     @classmethod
-    def set_database(cls, db :NeoAccess) -> None:
+    def set_database(cls, db :GraphAccess) -> None:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object, created with the NeoAccess library
+        :param db:  Database-interface object, created with the GraphAccess library
         :return:    None
         """
 
-        assert type(db) == NeoAccess, \
-            "Collections.set_database(): argument passed isn't a valid `NeoAccess` object"
+        assert type(db) == GraphAccess, \
+            "Collections.set_database(): argument passed isn't a valid `GraphAccess` object"
 
         cls.db = db
 
