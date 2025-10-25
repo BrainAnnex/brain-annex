@@ -31,7 +31,7 @@ Vue.component('vue-plugin-rs',
                 <div class="dragscroll" style="margin-top: 0; max-width: 99%; overflow: auto">
                     <table class='rs-main'>
 
-                        <!-- Header row  -->
+                        <!-- HEADER row  -->
                         <tr>
                             <th v-for="field_name in headers">
                                 {{insert_blanks(field_name)}}
@@ -42,17 +42,28 @@ Vue.component('vue-plugin-rs',
                         </tr>
 
                         <!--
-                            All the various Data rows
+                            All the various DATA ROWS
                          -->
                         <tr v-for="record in recordset">
+
                             <!-- The various data fields -->
                             <td v-for="field_name in headers">
+
+                                <!-- VIEW mode -->
                                 <span v-if="record.internal_id != record_being_editing"
                                     v-html="render_cell(record[field_name])"
                                 ></span>
-                                <input   v-else type="text" size="25"
-                                         v-model="record_latest[field_name]"
-                                >
+
+                                <!-- vs. EDIT mode (some field names to show in larger boxes are for now hardwired) -->
+                                <template v-else>
+                                    <textarea v-if="field_name=='Comments' || field_name=='name'" rows="5" cols="40"
+                                        v-model="record_latest[field_name]"
+                                    >
+                                    </textarea>
+                                    <input v-else type="text" size="25"
+                                             v-model="record_latest[field_name]"
+                                    >
+                                </template>
                             </td>
 
                             <!-- The control cell (for editing) -->

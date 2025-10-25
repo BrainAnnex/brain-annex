@@ -7,8 +7,6 @@
 
 div.sidebox {					/* RIGHT Sidebox (for viewer pages), displaying the page Categories, in its expanded state */
 	float:right;
-	position: relative;         /* Must have this, in order to utilize z-index, below */
-	z-index: -100;              /* Put behind other items (it comes up under some circumstances, such as record editing) */
 	width:15%;
 	box-sizing: border-box;
 
