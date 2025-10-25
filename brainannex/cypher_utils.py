@@ -521,55 +521,6 @@ class CypherUtils:
 
 
 
-    @classmethod
-    def combined_where(cls, match1: CypherBuilder, match2: CypherBuilder, check_compatibility=True) -> str:
-        """
-        Given the two "CypherBuilder" objects,
-        return the combined version of all their WHERE statements.
-        Also prefix the WHERE keyword to the result (if appropriate);
-        if there are no clauses, an empty string is returned (without the WHERE keyword.)
-        For details, see prepare_where()
-
-        :param match1:  A "CypherBuilder" object to be used to identify a node, or group of nodes
-        :param match2:  A "CypherBuilder" object to be used to identify a node, or group of nodes
-        :param check_compatibility: Use True if the individual matches are meant to refer to different nodes,
-                                        and need to make sure there's no conflict in the dummy node names
-        :return:        A string with the combined WHERE statement,
-                            suitable for inclusion into a Cypher query (empty if there were no subclauses)
-        """
-        #TODO: perhaps phase out in favor of unpacking and then combining using prepare_where()
-        if check_compatibility:
-            cls.check_match_compatibility(match1, match2)
-
-        where_list = [match1.where, match2.where]
-        return cls.prepare_where(where_list)
-
-
-    @classmethod
-    def combined_data_binding(cls, match1: CypherBuilder, match2: CypherBuilder) -> dict:
-        """
-        Given the two "CypherBuilder" objects,
-        return the combined version of all their data binding dictionaries.
-        NOTE:  if the individual matches are meant to refer to different nodes,
-                    need to first make sure there's no conflict in the dummy node names -
-                    use check_match_compatibility() as needed.
-                    In practice, combined_where() is typically run whenever combined_data_binding() is -
-                    and the former can take care of checking for compatibility
-
-        :param match1:  A "CypherBuilder" object to be used to identify a node, or group of nodes
-        :param match2:  A "CypherBuilder" object to be used to identify a node, or group of nodes
-        :return:        A (possibly empty) dict with the combined data binding dictionaries,
-                            suitable for inclusion into a Cypher query
-        """
-        #TODO: perhaps phase out in favor of unpacking and then combining
-        combined_data_binding = match1.data_binding     # Our 1st dict
-        new_data_binding = match2.data_binding          # Our 2nd dict
-        combined_data_binding.update(new_data_binding)  # Merge the second dict into the first one
-                                                        # TODO: this operation has side effect of changing 1st object!
-
-        return combined_data_binding
-
-
 
 
     ############ The following methods make no reference to any "CypherBuilder" object
@@ -676,6 +627,25 @@ class CypherUtils:
             return ""
 
         return "WHERE (" + " AND ".join(purged_where_list) + ")"    # The outer parentheses are to protect against code injection
+
+
+
+    @classmethod
+    def prepare_data_binding(cls, data_binding_1 :dict, data_binding_2 :dict) -> dict:
+        """
+        Return the combined version of two data binding dictionaries
+        (without altering the original dictionaries)
+
+        :return:    A (possibly empty) dict with the combined data binding dictionaries,
+                        suitable for inclusion into a Cypher query
+        """
+        assert type(data_binding_1) == dict, "prepare_data_binding(): all arguments must be python dictionaries"
+        assert type(data_binding_2) == dict, "prepare_data_binding(): all arguments must be python dictionaries"
+
+        combined_data_binding = data_binding_1.copy()   # Clone the 1st dict, to avoid side effects on it, from the mergebelow
+        combined_data_binding.update(data_binding_2)    # Merge the second dict into the clone of the first one
+
+        return combined_data_binding
 
 
 

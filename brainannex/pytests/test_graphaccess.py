@@ -1237,7 +1237,7 @@ def test_add_links_fast(db):
 
 
 
-def test_remove_edges(db):
+def test_remove_links(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_car = db.create_node("car", {'color': 'white'})
@@ -1381,8 +1381,23 @@ def test_remove_edges(db):
     assert result[0]["n_relationships"] == 0    # All gone
 
 
+def test_remove_links_2(db):
+    # This set of test focuses on removing edges between a node and itself
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
-def test_remove_edges_2(db):
+    node_id = db.create_node("Being", {'name': 'Narcissus'})
+
+    number_added = db.add_links(node_id, node_id, rel_name="LOVES")
+    assert number_added == 1
+
+    with pytest.raises(Exception):
+        db.remove_links(node_id, node_id, rel_name="SOME_RANDOM_NAME")
+
+    number_removed = db.remove_links(node_id, node_id, rel_name=None)
+    assert number_removed == 1
+
+
+def test_remove_links_3(db):
     # This set of test focuses on removing edges between GROUPS of nodes
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
@@ -1420,7 +1435,7 @@ def test_remove_edges_2(db):
 
 
 
-def test_edges_exists(db):
+def test_links_exist(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_car = db.create_node("car", {'color': 'white'})
@@ -1996,7 +2011,7 @@ def test_pd_datetime_to_neo4j_datetime(db):
 
 ###  ~ JSON IMPORT/EXPORT ~
 
-# =>  SEE test_neoaccess_import_export.py
+# =>  SEE test_graphaccess_import_export.py
 
 
 

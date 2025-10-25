@@ -252,7 +252,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_nodes(self, match: int | CypherBuilder,
+    def get_nodes(self, match :int|CypherBuilder,
                   return_internal_id=False, return_labels=False, order_by=None, limit=None,
                   single_row=False, single_cell=""):
         """
@@ -1199,14 +1199,11 @@ class GraphAccess(InterGraph):
 
         :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
         """
-        #print(match_from)
         (nodes_from, where_from, data_binding_from, _) = \
                 CypherUtils.assemble_cypher_blocks(handle=match_from, dummy_node_name="from", caller_method="add_links")
-        #print("1 ********** data_binding_from: ", data_binding_from)
 
         (nodes_to, where_to, data_binding_to, _) = \
                 CypherUtils.assemble_cypher_blocks(handle=match_to, dummy_node_name="to", caller_method="add_links")
-        #print("2 ********** data_binding_to: ", data_binding_to)
 
         where_clause = CypherUtils.prepare_where([where_from, where_to])
 
@@ -1217,11 +1214,8 @@ class GraphAccess(InterGraph):
             MERGE (from) -[:`{rel_name}`]-> (to)           
             '''
 
-        # Merge the data-binding dict's   TODO: turn this into a CypherUtils method
-        combined_data_binding = data_binding_from.copy()        # Clone
-        combined_data_binding.update(data_binding_to)  # Merge the second dict into the first one
-        #print("3 ********** combined_data_binding: ", combined_data_binding)
-        #print(q)
+        # Merge the data-binding dict's
+        combined_data_binding = CypherUtils.prepare_data_binding(data_binding_from, data_binding_to)
 
         result = self.update_query(q, combined_data_binding)
 
@@ -1264,7 +1258,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def remove_links(self, match_from: Union[int, CypherBuilder], match_to: Union[int, CypherBuilder], rel_name) -> int:
+    def remove_links(self, match_from :int|CypherBuilder, match_to :int|CypherBuilder, rel_name) -> int:
         """
         Remove one or more links (aka relationships/edges)
         originating in any of the nodes specified by the match_from specifications,
@@ -1291,24 +1285,23 @@ class GraphAccess(InterGraph):
                                 if None or a blank string, all relationships between those 2 nodes will get deleted.
                                 Blanks allowed.
 
-        :return:            The number of edges removed.  If none got deleted, or in case of error, an Exception is raised
+        :return:            The number of edges removed, if edges were found.
+                                If none got deleted, an Exception is raised
         """
         # TODO: add a method to remove all links of a given name emanating to or from a given node
         #       - as done for Schema.remove_all_data_relationship()
         # TODO: add a rename_link() method
 
-        # TODO: this will fail if match_from and match_to are the same object; proceed as done in add_links()
-        match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from", caller_method="remove_links")
-        match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to", caller_method="remove_links")
+        (nodes_from, where_from, data_binding_from, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_from, dummy_node_name="from", caller_method="remove_links")
 
+        (nodes_to, where_to, data_binding_to, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_to, dummy_node_name="to", caller_method="remove_links")
 
-        # Unpack needed values from the match_from and match_to structures
-        nodes_from = match_from.extract_node()
-        nodes_to   = match_to.extract_node()
 
         # Combine the two WHERE clauses from each of the matches,
         # and also prefix (if appropriate) the WHERE keyword
-        where_clause = CypherUtils.combined_where(match_from, match_to, check_compatibility=True)
+        where_clause = CypherUtils.prepare_where([where_from, where_to])
 
         # Prepare the query
         if rel_name is None or rel_name == "":  # Delete ALL relationships
@@ -1325,7 +1318,7 @@ class GraphAccess(InterGraph):
                 '''
 
         # Merge the data-binding dict's
-        combined_data_binding = CypherUtils.combined_data_binding(match_from, match_to)
+        combined_data_binding = CypherUtils.prepare_data_binding(data_binding_from, data_binding_to)
 
 
         result = self.update_query(q, combined_data_binding)
@@ -1383,18 +1376,18 @@ class GraphAccess(InterGraph):
         :return:            The number of links (relationships) that were found
         """
         # TODO: maybe rename arguments from_match and to_match, for consistency with NeoSchema
-        #TODO: allow unspecified relationship names
-        #TODO: allow specifying properties that must be in the relationship
-        match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from", caller_method="number_of_links")
-        match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to", caller_method="number_of_links")
+        # TODO: allow unspecified relationship names
+        # TODO: allow specifying properties that must be in the relationship
+        (nodes_from, where_from, data_binding_from, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_from, dummy_node_name="from", caller_method="number_of_links")
 
-        # Unpack needed values from the match_from and match_to structures
-        nodes_from = match_from.extract_node()
-        nodes_to   = match_to.extract_node()
+        (nodes_to, where_to, data_binding_to, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_to, dummy_node_name="to", caller_method="number_of_links")
 
         # Combine the two WHERE clauses from each of the matches,
+        # Combine the two WHERE clauses from each of the matches,
         # and also prefix (if appropriate) the WHERE keyword
-        where_clause = CypherUtils.combined_where(match_from, match_to, check_compatibility=True)
+        where_clause = CypherUtils.prepare_where([where_from, where_to])
 
         # Prepare the query.   TODO: to be more efficient, do something like p=MATCH ....  RETURN COUNT(p) AS link_number
         q = f'''
@@ -1404,7 +1397,7 @@ class GraphAccess(InterGraph):
             '''
 
         # Merge the data-binding dict's
-        combined_data_binding = CypherUtils.combined_data_binding(match_from, match_to)
+        combined_data_binding = CypherUtils.prepare_data_binding(data_binding_from, data_binding_to)
 
         result = self.query(q, combined_data_binding)
 
