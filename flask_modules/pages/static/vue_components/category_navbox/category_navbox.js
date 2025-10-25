@@ -139,7 +139,7 @@ Vue.component('vue-category-navbox',
                 <!--
                     COLLAPSED version of sidebox
                   -->
-                <div v-show='!show_right_sidebox' class='sidebox_collapsed' style='display:none'>
+                <div v-show='!show_right_sidebox' class='sidebox-collapsed' style='display:none'>
                     <img @click='set_sidebox_state(true)'  src='/BA/pages/static/graphics/thin_right_arrow_32.png'
                          class='clickable-icon  fixed-expand-icon'
                          align='left' title='Click to expand sidebox' alt='Click to expand sidebox'>
