@@ -191,7 +191,9 @@ Vue.component('vue-plugin-r',
                  */
                 current_data: this.clone_and_standardize(this.item_data),
                 original_data: this.clone_and_standardize(this.item_data),
-                // Scrub some data, so that it won't show up in the tabular format
+                // Scrub some data, so that it won't show up in the tabular format.
+                //     `uri`, `schema_code`, `class_name`, `insert_after` and `pos` get scrubbed out
+                //      TODO: separate display and control data!
                 // NOTE: clone_and_standardize() gets called twice
 
                 expanded_row: false,
@@ -329,8 +331,41 @@ Vue.component('vue-plugin-r',
 
 
 
+            clone_and_standardize(obj)
+            // Clone the passed object; then remove some keys that shouldn't get shown nor edited
+            {
+                clone_obj = Object.assign({}, obj);     // Clone the object
+
+                // Scrub some data, so that it won't show up in the tabular format
+                delete clone_obj.uri;
+                delete clone_obj.schema_code;   // TODO: in the process of getting phased out
+                delete clone_obj.class_name;
+                delete clone_obj.insert_after;  // TODO: is this field still present?
+                delete clone_obj.pos;           // TODO: this might be getting phased out
+
+                return clone_obj;
+            },
+
+
+            manage_newlines(text)   // NOT IN CURRENT USE
+            // Replace all newlines in the text with the HTML newline tag "<br>"
+            {
+                if (text == null)
+                    return "";
+
+                return "<pre>" + text + "</pre>";
+
+                // The following isn't as clean, if text alignment was created based on monospace
+                //text = text.replace(/\n/g, "<br>")     // g means globally: replace all \n with <br>
+                //text = text.replace(/ /g, "&nbsp;")    // g means globally: replace all blanks with &nbsp;
+                //return text;
+            },
+
+
+
+
             /*
-                SERVER CALLS
+                ---------   SERVER CALLS   ---------
              */
 
             get_linked_records_from_server(record_id, rel_name, dir)
@@ -498,36 +533,6 @@ Vue.component('vue-plugin-r',
             }, // finish_get_fields_from_server
 
 
-            clone_and_standardize(obj)
-            // Clone the passed object; then remove some keys that shouldn't get shown nor edited
-            {
-                clone_obj = Object.assign({}, obj);     // Clone the object
-
-                // Scrub some data, so that it won't show up in the tabular format
-                delete clone_obj.uri;
-                delete clone_obj.schema_code;
-                delete clone_obj.class_name;
-                delete clone_obj.insert_after;  // TODO: is this field still present?
-                delete clone_obj.pos;           // TODO: this might be getting phased out
-
-                return clone_obj;
-            },
-
-
-            manage_newlines(text)   // NOT IN CURRENT USE
-            // Replace all newlines in the text with the HTML newline tag "<br>"
-            {
-                if (text == null)
-                    return "";
-
-                return "<pre>" + text + "</pre>";
-
-                // The following isn't as clean, if text alignment was created based on monospace
-                //text = text.replace(/\n/g, "<br>")     // g means globally: replace all \n with <br>
-                //text = text.replace(/ /g, "&nbsp;")    // g means globally: replace all blanks with &nbsp;
-                //return text;
-            },
-
 
             edit_content_item(item)
             {
@@ -617,6 +622,9 @@ Vue.component('vue-plugin-r',
                 if (success)  {     // Server reported SUCCESS
                     this.status = `Successful edit`;
 
+                    //console.log("this.current_data prior to elimination of some fields:");
+                    //console.log(this.current_data);
+
                     // Eliminate some un-needed fields from the display
                     for (field in this.current_data)  {
                         if (this.current_data[field] != "")
@@ -631,12 +639,18 @@ Vue.component('vue-plugin-r',
                         }
                     }
 
-                    // If this was a new item (with the temporary negative URI), update its ID with the value assigned by the server
+                    // If this was a new item (with the temporary negative URI in the prop object `item_data`),
+                    // update its uri with the value assigned by the server
                     if (this.item_data.uri < 0)
                         this.current_data.uri = server_payload;
 
                     // Inform the ancestral root component of the new state of the data
                     console.log("Records component sending `updated-item` signal to its parent");
+                    //console.log(this.current_data);
+                    // Note: the signal below ONLY include DISPLAY data, not control data such as
+                    //       `uri`, `schema_code`, `class_name`, `insert_after`, `pos`
+                    //        WITH THE SINGLE EXCEPTION of `uri` field on newly-added records
+                    //        TODO: separate display and control data!
                     this.$emit('updated-item', this.current_data);
 
                     // Synchronize the accepted baseline data to the current one
