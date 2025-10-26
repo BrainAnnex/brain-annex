@@ -587,7 +587,7 @@ Vue.component('vue-plugin-rs',
             get_fields()
             /*  Make a server call to obtain all Schema field of the Class that this recordset is based on
                 E.g.
-                    NeoSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
+                    GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                 to fetch:
                     ['quote', 'attribution', 'notes']
 

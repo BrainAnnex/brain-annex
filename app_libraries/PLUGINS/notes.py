@@ -1,5 +1,5 @@
 from app_libraries.media_manager import MediaManager
-from brainannex import NeoSchema, FullTextIndexing
+from brainannex import GraphSchema, FullTextIndexing
 
 
 
@@ -40,7 +40,7 @@ class Notes:
         #print(f"***** DELETING INDEXING for item {uri}")
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
-        content_id = NeoSchema.get_data_node_internal_id(uri=uri)
+        content_id = GraphSchema.get_data_node_internal_id(uri=uri)
         FullTextIndexing.remove_indexing(content_id)
 
 
@@ -144,7 +144,7 @@ class Notes:
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-        content_id = NeoSchema.get_data_node_internal_id(uri=uri)
+        content_id = GraphSchema.get_data_node_internal_id(uri=uri)
         n_words = len(unique_words)
         print(f"new_content_item_successful(): CREATING INDEXING for item `{uri}`. "
               f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")
@@ -167,7 +167,7 @@ class Notes:
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-        content_id = NeoSchema.get_data_node_internal_id(uri=uri)
+        content_id = GraphSchema.get_data_node_internal_id(uri=uri)
         n_words = len(unique_words)
         print(f"update_content_item_successful(): UPDATING INDEXING for item `{uri}`. "
               f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")

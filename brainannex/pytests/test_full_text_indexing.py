@@ -1,5 +1,5 @@
 import pytest
-from brainannex import GraphAccess, NeoSchema, FullTextIndexing
+from brainannex import GraphAccess, GraphSchema, FullTextIndexing
 from utilities.comparisons import compare_unordered_lists, compare_recordsets
 
 
@@ -8,7 +8,7 @@ from utilities.comparisons import compare_unordered_lists, compare_recordsets
 @pytest.fixture(scope="module")
 def db():
     neo_obj = GraphAccess(debug=False)
-    NeoSchema.set_database(neo_obj)
+    GraphSchema.set_database(neo_obj)
     FullTextIndexing.db = neo_obj
     yield neo_obj
 
@@ -22,12 +22,12 @@ def setup_sample_index(db) -> int:
     db.empty_dbase()
 
     # Set up all the needed Schema
-    NeoSchema.create_class_with_properties(name="Content Item", strict=True,
-                                           properties=["filename"])
+    GraphSchema.create_class_with_properties(name="Content Item", strict=True,
+                                             properties=["filename"])
     FullTextIndexing.initialize_schema()
 
     # Create a data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Document.pdf"})
+    content_id = GraphSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Document.pdf"})
 
     return content_id
 
@@ -174,9 +174,9 @@ def test_new_indexing(db):
         # Cannot create a new index, when one already exists
         FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"duplicate", "index"})
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Word") == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
-    assert NeoSchema.count_data_nodes_of_class(class_name="Content Item") == 1
+    assert GraphSchema.count_data_nodes_of_class(class_name="Word") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
+    assert GraphSchema.count_data_nodes_of_class(class_name="Content Item") == 1
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 3
 
@@ -192,13 +192,13 @@ def test_new_indexing(db):
     # Now test a scenario where some Word node already exist
 
     # Create another data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
+    content_id = GraphSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...and then index some words to it
     FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"research", "science"}, to_lower_case=True)
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Word") == 4    # One word from earlier ("research") got re-used
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 2
-    assert NeoSchema.count_data_nodes_of_class(class_name="Content Item") == 2
+    assert GraphSchema.count_data_nodes_of_class(class_name="Word") == 4    # One word from earlier ("research") got re-used
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 2
+    assert GraphSchema.count_data_nodes_of_class(class_name="Content Item") == 2
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 2
 
@@ -229,17 +229,17 @@ def test_add_words_to_index(db):
 
 
     # Create a data node of type "Indexer", and link it up to the passed Content Item data node
-    indexer_id = NeoSchema.create_data_node(class_name="Indexer",
-                                            links =[{"internal_id": content_id, "rel_name": "has_index",
+    indexer_id = GraphSchema.create_data_node(class_name="Indexer",
+                                              links =[{"internal_id": content_id, "rel_name": "has_index",
                                                      "rel_dir": "IN"}])
     # ...and then index some words to it
     n_added = FullTextIndexing.add_words_to_index(indexer_id=indexer_id,
                                                   unique_words={"lab", "research", "R/D"}, to_lower_case=True)
     assert n_added == 3
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Word") == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
-    assert NeoSchema.count_data_nodes_of_class(class_name="Content Item") == 1
+    assert GraphSchema.count_data_nodes_of_class(class_name="Word") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
+    assert GraphSchema.count_data_nodes_of_class(class_name="Content Item") == 1
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 3
 
@@ -254,19 +254,19 @@ def test_add_words_to_index(db):
     # Now test a scenario where some Word node already exist
 
     # Create another data node of type "Content Item"...
-    content_id = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
+    content_id = GraphSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...then create a data node of type "Indexer", and link it up to the passed Content Item data node
-    indexer_id = NeoSchema.create_data_node(class_name="Indexer",
-                                            links =[{"internal_id": content_id, "rel_name": "has_index",
+    indexer_id = GraphSchema.create_data_node(class_name="Indexer",
+                                              links =[{"internal_id": content_id, "rel_name": "has_index",
                                                      "rel_dir": "IN"}])
     # ...and then index some words to it
     n_added = FullTextIndexing.add_words_to_index(indexer_id=indexer_id,
                                                   unique_words={"RESEARCH", "science"}, to_lower_case=True)
     assert n_added == 1
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Word") == 4          # One word from earlier ("research") got re-used
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 2
-    assert NeoSchema.count_data_nodes_of_class(class_name="Content Item") == 2
+    assert GraphSchema.count_data_nodes_of_class(class_name="Word") == 4          # One word from earlier ("research") got re-used
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 2
+    assert GraphSchema.count_data_nodes_of_class(class_name="Content Item") == 2
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 2
 
@@ -294,8 +294,8 @@ def test_update_indexing(db):
     FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"lab", "research", "R/D"})
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 3
-    assert NeoSchema.count_data_nodes_of_class("Word") == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
+    assert GraphSchema.count_data_nodes_of_class("Word") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     indexer_node_id = FullTextIndexing.get_indexer_node_id(content_id)
 
@@ -304,8 +304,8 @@ def test_update_indexing(db):
     FullTextIndexing.update_indexing(content_uri=content_id, unique_words={"closed", "renovation"})
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 2
-    assert NeoSchema.count_data_nodes_of_class("Word") == 5
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
+    assert GraphSchema.count_data_nodes_of_class("Word") == 5
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     q = '''
         MATCH (:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
@@ -321,8 +321,8 @@ def test_update_indexing(db):
     FullTextIndexing.update_indexing(content_uri=content_id, unique_words={"research", "neuroscience"})
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 2
-    assert NeoSchema.count_data_nodes_of_class("Word") == 6
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
+    assert GraphSchema.count_data_nodes_of_class("Word") == 6
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     q = '''
         MATCH (:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
@@ -346,8 +346,8 @@ def test_remove_indexing(db):
     FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"lab", "research", "R/D"})
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 3
-    assert NeoSchema.count_data_nodes_of_class("Word") == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
+    assert GraphSchema.count_data_nodes_of_class("Word") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     indexer_node_id = FullTextIndexing.get_indexer_node_id(content_id)
 
@@ -356,8 +356,8 @@ def test_remove_indexing(db):
     FullTextIndexing.remove_indexing(content_id)
 
     assert FullTextIndexing.number_of_indexed_words(content_id) == 0
-    assert NeoSchema.count_data_nodes_of_class("Word") == 3             # The words are still there
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 0 # The Indexer node is gone
+    assert GraphSchema.count_data_nodes_of_class("Word") == 3             # The words are still there
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 0 # The Indexer node is gone
 
     assert db.get_nodes(match=indexer_node_id) == []                    # No such node exists anymore
 
@@ -377,7 +377,7 @@ def test_get_indexer_node_id(db):
     # ...and then index some words to it
     FullTextIndexing.new_indexing(internal_id=content_id, unique_words={"lab", "research", "R/D"})
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Indexer") == 1
+    assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     indexer_node_id = FullTextIndexing.get_indexer_node_id(content_id)
 
@@ -391,7 +391,7 @@ def test_get_indexer_node_id(db):
     assert db.number_of_links(match_from=content_id, match_to=indexer_node_id, rel_name="has_index") == 1
 
     # Verify that the "Indexer" data node is indeed associated to the schema Class called "Indexer"
-    assert NeoSchema.class_of_data_node(node_id=indexer_node_id, labels="Indexer") == "Indexer"
+    assert GraphSchema.class_of_data_node(node_id=indexer_node_id, labels="Indexer") == "Indexer"
 
 
 
@@ -423,7 +423,7 @@ def test_search_word(db):
 
 
     # Add a 2nd data node of type "Content Item"...
-    content_id_2 = NeoSchema.create_data_node(class_name="Content Item", properties={"filename": "some_other_file.txt"})
+    content_id_2 = GraphSchema.create_data_node(class_name="Content Item", properties={"filename": "some_other_file.txt"})
     # ...and then index some words to it
     FullTextIndexing.new_indexing(internal_id=content_id_2, unique_words={"ship", "lab", "glassware"})
 

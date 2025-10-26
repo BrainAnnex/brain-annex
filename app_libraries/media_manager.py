@@ -5,7 +5,7 @@
 
 import os
 import brainannex.exceptions as exceptions
-from brainannex import NeoSchema
+from brainannex import GraphSchema
 from PIL import Image
 
 
@@ -96,10 +96,10 @@ class MediaManager:
                                 "D:/media/documents/"
                                 "D:/media/images/resized/"
         """
-        class_name = NeoSchema.class_of_data_node(node_id=uri, id_key="uri")
+        class_name = GraphSchema.class_of_data_node(node_id=uri, id_key="uri")
 
-        dir_names = NeoSchema.follow_links(class_name=class_name, node_id=uri, id_key="uri",
-                                           link_name="BA_stored_in", properties="name")
+        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=uri, id_key="uri",
+                                             link_name="BA_stored_in", properties="name")
         #print("dir_names: ", dir_names)
 
         assert len(dir_names) < 2, \
@@ -134,7 +134,7 @@ class MediaManager:
         """
         #TODO: maybe combine this method and retrieve_full_path()
 
-        content_node = NeoSchema.search_data_node(uri = uri)
+        content_node = GraphSchema.search_data_node(uri = uri)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception(f"lookup_media_file(): Metadata not found for the Media file with URI '{uri}'")
@@ -232,7 +232,7 @@ class MediaManager:
         # TODO: (at least for large media) read the file in blocks
 
         #print("In get_binary_content(): uri = ", uri)
-        #content_node = NeoSchema.get_data_node(uri = uri)
+        #content_node = GraphSchema.get_data_node(uri = uri)
         #print("content_node:", content_node)
         #if content_node is None:
             #raise Exception("get_binary_content(): Metadata for the Content Datafile not found")
@@ -488,7 +488,7 @@ class MediaManager:
 
         :param directory:   EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
         :param db:          Object of type "GraphAccess"; TODO: should be able to avoid it
-                                                              by using the NeoSchema layer instead
+                                                              by using the GraphSchema layer instead
         :return:            A list of names of "orphaned" file s
         """
         file_list = os.listdir(directory)

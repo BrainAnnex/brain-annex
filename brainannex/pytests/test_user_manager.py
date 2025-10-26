@@ -1,5 +1,5 @@
 import pytest
-from brainannex import GraphAccess, NeoSchema, UserManager
+from brainannex import GraphAccess, GraphSchema, UserManager
 
 
 
@@ -8,7 +8,7 @@ from brainannex import GraphAccess, NeoSchema, UserManager
 def db():
     neo_obj = GraphAccess(debug=False)
     neo_obj.empty_dbase()
-    NeoSchema.set_database(neo_obj)
+    GraphSchema.set_database(neo_obj)
     UserManager.set_database(neo_obj)
     UserManager.create_schema()
 

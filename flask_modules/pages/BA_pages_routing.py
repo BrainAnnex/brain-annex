@@ -7,7 +7,7 @@ from flask import Blueprint, render_template, current_app, make_response, reques
                                                     # Note: the "request" package makes available a GLOBAL request object
 from flask_login import login_required, current_user
 from flask_modules.navigation.navigation import get_site_pages  # Navigation configuration
-from brainannex import NeoSchema, Categories, version
+from brainannex import GraphSchema, Categories, version
 from app_libraries.data_manager import DataManager
 from app_libraries.node_explorer import NodeExplorer
 from datetime import datetime
@@ -397,8 +397,8 @@ class PagesRouting:
             for item in content_items:
                 #print(item)
                 if "schema_code" not in item:
-                    class_name = NeoSchema.class_of_data_node(node_id=item["uri"], id_key="uri")
-                    schema_code = NeoSchema.get_schema_code(class_name=class_name)
+                    class_name = GraphSchema.class_of_data_node(node_id=item["uri"], id_key="uri")
+                    schema_code = GraphSchema.get_schema_code(class_name=class_name)
                     item["schema_code"] = schema_code
 
             return render_template(template,

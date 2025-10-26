@@ -128,14 +128,16 @@
             </td>
         </tr>
 
+        <!-- Maybe turn this row into part of an optional "advanced" mode
         <tr>
             <td style="border-left: 2px solid green; padding-left: 3px;">Key Name (typed in)</td><td><input type="text" size="50" v-model="key_name">
             <span class="form-comment">If provided, it takes priority over values from menu</span>
             </td>
         </tr>
+        -->
 
         <tr>
-            <td style="padding-top:20px">Key Value</td>
+            <td style="border-left: 2px solid green; padding-left: 3px;">Key Value</td>
             <td style="padding-top:20px"><input type="text" size="50" v-model="key_value">
             <span class="form-comment">If text, implicit "Contains" (sub-string)</span>
             <input type="checkbox"  v-model="case_sensitive" style="margin-left:15px">Match Case?
@@ -185,7 +187,7 @@
 >
 </vue-record-navigator>
 
-
+<br><br>
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element "vue-root-1"  ~~~~~~~~~~~~~~~~~~~~~  -->
 

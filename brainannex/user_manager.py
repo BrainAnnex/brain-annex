@@ -1,6 +1,6 @@
 import bcrypt                       # For password encryption
 from typing import Union
-from brainannex import GraphAccess, NeoSchema
+from brainannex import GraphAccess, GraphSchema
 
 
 
@@ -39,17 +39,17 @@ class UserManager:
 
         :return:    None
         """
-        NeoSchema.create_class_with_properties(name="User",
-                    properties=["user_id", "username", "password", "email", "admin"], strict=True)
+        GraphSchema.create_class_with_properties(name="User",
+                                                 properties=["user_id", "username", "password", "email", "admin"], strict=True)
 
-        NeoSchema.set_property_attribute(class_name="User", prop_name="user_id", attribute_name="dtype", attribute_value="int")
-        NeoSchema.set_property_attribute(class_name="User", prop_name="admin", attribute_name="dtype", attribute_value="bool")
+        GraphSchema.set_property_attribute(class_name="User", prop_name="user_id", attribute_name="dtype", attribute_value="int")
+        GraphSchema.set_property_attribute(class_name="User", prop_name="admin", attribute_name="dtype", attribute_value="bool")
 
-        NeoSchema.set_property_attribute(class_name="User", prop_name="user_id",  attribute_name="required", attribute_value=True)
-        NeoSchema.set_property_attribute(class_name="User", prop_name="username", attribute_name="required", attribute_value=True)
-        NeoSchema.set_property_attribute(class_name="User", prop_name="password", attribute_name="required", attribute_value=True)
+        GraphSchema.set_property_attribute(class_name="User", prop_name="user_id", attribute_name="required", attribute_value=True)
+        GraphSchema.set_property_attribute(class_name="User", prop_name="username", attribute_name="required", attribute_value=True)
+        GraphSchema.set_property_attribute(class_name="User", prop_name="password", attribute_name="required", attribute_value=True)
 
-        NeoSchema.create_namespace(name="user")
+        GraphSchema.create_namespace(name="user")
 
 
 
@@ -80,12 +80,12 @@ class UserManager:
 
         hashed_password = cls.create_hashed_password(password)
 
-        user_id, _, _ = NeoSchema.advance_autoincrement(namespace="user")     # Reserve a unique integer ID for this new user
+        user_id, _, _ = GraphSchema.advance_autoincrement(namespace="user")     # Reserve a unique integer ID for this new user
 
         # Attempt to create a new data node for the user,
         # if no other node with the same given username already exists
-        internal_id, created = NeoSchema.add_data_node_merge(class_name="User",
-                                                             properties={"username": username})
+        internal_id, created = GraphSchema.add_data_node_merge(class_name="User",
+                                                               properties={"username": username})
         assert created, \
             f"create_user(): the username `{username}` already exists"
 
@@ -94,7 +94,7 @@ class UserManager:
         if email:
             user_fields["email"] = email
 
-        number_set = NeoSchema.update_data_node(data_node=internal_id, set_dict=user_fields)
+        number_set = GraphSchema.update_data_node(data_node=internal_id, set_dict=user_fields)
 
         assert number_set == len(user_fields), \
             f"create_user(): user `{username}` created, but some or all of its properties could not be set"

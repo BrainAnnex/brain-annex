@@ -1,6 +1,6 @@
 import pytest
 from neoaccess import GraphAccess
-from brainannex.neoschema.neo_schema import NeoSchema
+from brainannex.graphschema.neo_schema import GraphSchema
 from brainannex.categories import Categories
 
 
@@ -9,7 +9,7 @@ from brainannex.categories import Categories
 def db():
     neo_obj = GraphAccess(debug=True)
     Categories.db = neo_obj
-    NeoSchema.db = neo_obj
+    GraphSchema.db = neo_obj
     yield neo_obj
 
 

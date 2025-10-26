@@ -49,7 +49,7 @@ _From lower to higher levels:_
 
 * **GraphAccess library** (python interface offering many services)
 
-* **NeoSchema library** (optional Schema layer)
+* **GraphSchema library** (optional Schema layer)
 * _plus several other specialized high-level libraries_
 
 ---
@@ -60,9 +60,9 @@ A schema layer harmoniously brings together the best of the flexibility
 and the "law and order" aspect of relational databases! 
 *  [Motivation and Overview](https://julianspolymathexplorations.blogspot.com/2022/11/schema-graph-databases-neo4j.html)
 
-* [User Guide](https://brainannex.org/docs/neoschema-user-guide.htm)
+* [User Guide](https://brainannex.org/docs/GraphSchema-user-guide.htm)
 
-* [Reference Guide](https://brainannex.org/docs/neoschema.htm)
+* [Reference Guide](https://brainannex.org/docs/GraphSchema.htm)
 ---
 
 ## BRAIN ANNEX WEB APP
@@ -143,7 +143,7 @@ Most of the items in this diagram are examples of typical user-added schema:
   [Link](https://github.com/BrainAnnex/neoaccess)
 
 
-* **NeoSchema** : a higher-level schema-based library on top of GraphAccess.
+* **GraphSchema** : a higher-level schema-based library on top of GraphAccess.
   [Link](https://github.com/BrainAnnex/brain-annex/blob/main/BrainAnnex/modules/neo_schema/neo_schema.py)<!-- @IGNORE PREVIOUS: link -->  
   [Article explaining this layer](https://julianspolymathexplorations.blogspot.com/2022/11/schema-graph-databases-neo4j.html)
   

@@ -1,5 +1,5 @@
 from typing import Union, List
-from brainannex import GraphAccess, NeoSchema, Collections
+from brainannex import GraphAccess, GraphSchema, Collections
 import pandas as pd
 
 
@@ -36,7 +36,7 @@ class Categories:
         cls.db = db     # Save the database object
 
         # Initialize dependencies
-        NeoSchema.set_database(db)
+        GraphSchema.set_database(db)
         Collections.set_database(db)
 
 
@@ -50,20 +50,20 @@ class Categories:
         :return:    An (int, str) pair of integers with the internal database ID
                         and the unique uri assigned to the new Class node
         """
-        (int_dbase_id, uri) = NeoSchema.create_class_with_properties(name="Category",
-                                                        properties=["name", "remarks", "uri", "root"],
-                                                        strict=True)
+        (int_dbase_id, uri) = GraphSchema.create_class_with_properties(name="Category",
+                                                                       properties=["name", "remarks", "uri", "root"],
+                                                                       strict=True)
 
-        NeoSchema.create_class_relationship(from_class="Category", to_class="Category",
-                                            rel_name="BA_subcategory_of", use_link_node=False)
+        GraphSchema.create_class_relationship(from_class="Category", to_class="Category",
+                                              rel_name="BA_subcategory_of", use_link_node=False)
 
-        NeoSchema.create_class_relationship(from_class="Category", to_class="Category",
-                                            rel_name="BA_see_also", use_link_node=False)
+        GraphSchema.create_class_relationship(from_class="Category", to_class="Category",
+                                              rel_name="BA_see_also", use_link_node=False)
 
-        if not NeoSchema.class_name_exists("Collections"):
+        if not GraphSchema.class_name_exists("Collections"):
             Collections.initialize_collections()
-            NeoSchema.create_class_relationship(from_class="Category", to_class="Collections",
-                                                rel_name="INSTANCE_OF", use_link_node=False)
+            GraphSchema.create_class_relationship(from_class="Category", to_class="Collections",
+                                                  rel_name="INSTANCE_OF", use_link_node=False)
 
         return (int_dbase_id, uri)
 
@@ -90,7 +90,7 @@ class Categories:
         """
         # Note: since the category_uri is a primary key,
         #       specifying a value for the labels and the "schema_code" property is for redundancy
-        return NeoSchema.get_data_node(class_name="Category", node_id=category_uri, id_key="uri")
+        return GraphSchema.get_data_node(class_name="Category", node_id=category_uri, id_key="uri")
 
 
 
@@ -102,7 +102,7 @@ class Categories:
         :param category_uri:    A string identifying the desired Category
         :return:                True if the given ID corresponds to the ROOT Category, or False otherwise
         """
-        assert NeoSchema.is_valid_uri(category_uri), \
+        assert GraphSchema.is_valid_uri(category_uri), \
             "is_root_category(): the argument `category_uri` is not a valid URI string"
 
         # NOTE: historically, "1" has been used for the ROOT Category; however, now that uri is shared
@@ -163,7 +163,7 @@ class Categories:
     def count_subcategories(cls, category_uri :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Category")
+        TODO: maybe turn into a method of GraphSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) Subcategories of the given Category; possibly, zero
@@ -179,7 +179,7 @@ class Categories:
     def count_parent_categories(cls, category_uri :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of NeoSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Category")
+        TODO: maybe turn into a method of GraphSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
@@ -230,7 +230,7 @@ class Categories:
                                    neighbor_labels="Category")
 
         # Ditch unneeded attributes
-        NeoSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
+        GraphSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
 
         return result
 
@@ -261,7 +261,7 @@ class Categories:
         result = cls.db.query_extended(q, flatten=True)
 
         # Ditch unneeded attributes
-        NeoSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
+        GraphSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
 
         return result
 
@@ -418,12 +418,12 @@ class Categories:
 
         data_dict["root"] = True        # Flag to mark this node as the root of the Category graph
 
-        #new_uri = NeoSchema.reserve_next_uri(namespace="Category", prefix="cat-")
+        #new_uri = GraphSchema.reserve_next_uri(namespace="Category", prefix="cat-")
         new_uri = "cat-root"    # use a special URI
 
-        internal_id = NeoSchema.create_data_node(class_name="Category",
-                                                 properties = data_dict,
-                                                 new_uri=new_uri)
+        internal_id = GraphSchema.create_data_node(class_name="Category",
+                                                   properties = data_dict,
+                                                   new_uri=new_uri)
         return (internal_id, new_uri)
 
 
@@ -453,7 +453,7 @@ class Categories:
             assert category_uri is not None, \
                         "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
 
-        assert NeoSchema.is_valid_uri(category_uri), \
+        assert GraphSchema.is_valid_uri(category_uri), \
                     f"add_subcategory(): invalid category uri ({category_uri})"
 
         subcategory_name = data_dict.get("subcategory_name")
@@ -469,24 +469,24 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        parent_category_internal_id = NeoSchema.get_data_node_id(key_value=category_uri, key_name="uri")
+        parent_category_internal_id = GraphSchema.get_data_node_id(key_value=category_uri, key_name="uri")
 
         '''
-        new_internal_id = NeoSchema.add_data_node_with_links(
+        new_internal_id = GraphSchema.add_data_node_with_links(
                                 class_name = "Category",
                                 properties = data_dict, labels = ["BA", "Category"],
                                 links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
                                 assign_uri=True)
         '''
-        new_uri = NeoSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-        NeoSchema.create_data_node(class_name="Category", extra_labels ="BA",
-                                   properties = data_dict,
-                                   links = [{"internal_id": parent_category_internal_id,
+        new_uri = GraphSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
+        GraphSchema.create_data_node(class_name="Category", extra_labels ="BA",
+                                     properties = data_dict,
+                                     links = [{"internal_id": parent_category_internal_id,
                                              "rel_name": "BA_subcategory_of"}],
-                                   new_uri=new_uri)
+                                     new_uri=new_uri)
 
         '''
-        new_data_point = NeoSchema.search_data_node(internal_id = new_internal_id)
+        new_data_point = GraphSchema.search_data_node(internal_id = new_internal_id)
         assert new_data_point is not None, \
             "add_subcategory(): failure to fetch data node for the newly created subcategory"
 
@@ -521,8 +521,8 @@ class Categories:
         if cls.count_subcategories(category_uri) > 0:
             raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because it has sub-categories. Use the Category manager to first sever those relationships")
 
-        #number_deleted = NeoSchema.delete_data_point(uri=category_uri, labels="BA")
-        number_deleted = NeoSchema.delete_data_nodes(node_id=category_uri, id_key="uri", class_name="Category")
+        #number_deleted = GraphSchema.delete_data_point(uri=category_uri, labels="BA")
+        number_deleted = GraphSchema.delete_data_nodes(node_id=category_uri, id_key="uri", class_name="Category")
 
         if number_deleted != 1:
             raise Exception(f"Failed to delete the requested Category (URI '{category_uri}')")
@@ -554,8 +554,8 @@ class Categories:
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
         try:
-            NeoSchema.add_data_relationship(from_id=subcategory_uri, to_id=category_uri,
-                                            rel_name="BA_subcategory_of", id_type="uri")
+            GraphSchema.add_data_relationship(from_id=subcategory_uri, to_id=category_uri,
+                                              rel_name="BA_subcategory_of", id_type="uri")
         except Exception as ex:
             raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship. {ex}")
 
@@ -679,9 +679,9 @@ class Categories:
         #       Maybe first locate the data node by multiple criteria
 
         if op == "set":
-            number_set = NeoSchema.update_data_node(data_node=uri, set_dict={"pinned": True})
+            number_set = GraphSchema.update_data_node(data_node=uri, set_dict={"pinned": True})
         elif op == "unset":
-            number_set = NeoSchema.update_data_node(data_node=uri, set_dict={"pinned": False})
+            number_set = GraphSchema.update_data_node(data_node=uri, set_dict={"pinned": False})
         else:
             raise Exception("pin_category(): the argument `op` must be equal to either 'set' or 'unset'")
 
@@ -697,7 +697,7 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True or False
         """
-        all_props = NeoSchema.search_data_node(uri=uri)    # Returns a dict, or None.   # labels="Category"
+        all_props = GraphSchema.search_data_node(uri=uri)    # Returns a dict, or None.   # labels="Category"
         assert all_props, "is_pinned(): unable to locate the specified Category node"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
@@ -719,8 +719,8 @@ class Categories:
         """
         # TODO: perhaps restore the old feature of also storing a "description" field on the relationships
 
-        return NeoSchema.follow_links(class_name="Category", node_id=from_category, id_key="uri",
-                                      link_name="BA_see_also", labels="Category", properties=["name", "remarks", "uri"])
+        return GraphSchema.follow_links(class_name="Category", node_id=from_category, id_key="uri",
+                                        link_name="BA_see_also", labels="Category", properties=["name", "remarks", "uri"])
 
 
 
@@ -733,8 +733,8 @@ class Categories:
         :param to_category:     URI of the Category where the "see_also" relationship terminates
         :return:                None
         """
-        NeoSchema.add_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
-                                        rel_name="BA_see_also")
+        GraphSchema.add_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
+                                          rel_name="BA_see_also")
 
 
 
@@ -748,8 +748,8 @@ class Categories:
         :param to_category:     URI of the Category where the "see_also" relationship terminates
         :return:                None
         """
-        NeoSchema.remove_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
-                                           rel_name="BA_see_also", labels="Category")
+        GraphSchema.remove_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
+                                             rel_name="BA_see_also", labels="Category")
 
 
 
@@ -920,7 +920,7 @@ class Categories:
             content_item_list.append(item_record)
 
         #print(f"****** content_item_list: ", content_item_list)
-        NeoSchema.remove_schema_info(content_item_list)    # Zap any low-level Schema-related data
+        GraphSchema.remove_schema_info(content_item_list)    # Zap any low-level Schema-related data
 
         return content_item_list
 
@@ -955,7 +955,7 @@ class Categories:
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
-            new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
+            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)    # Returns a string
 
 
         new_uri = Collections.add_to_collection_at_beginning(collection_uri=category_uri, membership_rel_name="BA_in_category",
@@ -1005,12 +1005,12 @@ class Categories:
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
-            new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
+            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)    # Returns a string
 
 
-        NeoSchema.create_data_node(class_name=item_class_name, properties=item_properties,
-                                   extra_labels="BA", new_uri=new_uri,
-                                   silently_drop=True)
+        GraphSchema.create_data_node(class_name=item_class_name, properties=item_properties,
+                                     extra_labels="BA", new_uri=new_uri,
+                                     silently_drop=True)
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
         #       NOT with the Content Item node ;
         #       this is allowed by our convention about "INSTANCE_OF" relationships
@@ -1043,7 +1043,7 @@ class Categories:
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
-            new_uri = NeoSchema.reserve_next_uri(namespace=namespace)    # Returns a string
+            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)    # Returns a string
 
 
         # TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
@@ -1074,8 +1074,8 @@ class Categories:
             f"detach_from_category(): Cannot delete the only remaining 'BA_in_category' link " \
             f"from Content Item (URI: '{item_uri}') to Categories"
 
-        NeoSchema.remove_data_relationship(from_id=item_uri, to_id=category_uri,
-                                           rel_name="BA_in_category", labels=None)
+        GraphSchema.remove_data_relationship(from_id=item_uri, to_id=category_uri,
+                                             rel_name="BA_in_category", labels=None)
 
 
 
@@ -1156,9 +1156,9 @@ class Categories:
         # Now extract all the Property fields, in the schema-stored order, of the above Classes
         records_schema_data = {}
         for class_name in class_list:
-            prop_list = NeoSchema.get_class_properties(class_node=class_name,
-                                                       include_ancestors=True, sort_by_path_len="ASC",
-                                                       exclude_system=exclude_system)
+            prop_list = GraphSchema.get_class_properties(class_node=class_name,
+                                                         include_ancestors=True, sort_by_path_len="ASC",
+                                                         exclude_system=exclude_system)
             records_schema_data[class_name] = prop_list
 
         return records_schema_data
@@ -1272,8 +1272,8 @@ class Categories:
                                     Use n=0 to indicate "move before anything else"
         :return:
         """
-        assert NeoSchema.is_valid_uri(category_uri), "ERROR: argument 'category_uri' is invalid"
-        assert NeoSchema.is_valid_uri(uri), "ERROR: argument 'uri' is not a valid string"
+        assert GraphSchema.is_valid_uri(category_uri), "ERROR: argument 'category_uri' is invalid"
+        assert GraphSchema.is_valid_uri(uri), "ERROR: argument 'uri' is not a valid string"
         assert type(move_after_n) == int, "ERROR: argument 'move_after_n' is not an integer"
         assert move_after_n >= 0, "ERROR: argument 'move_after_n' cannot be negative"
 
@@ -1361,7 +1361,7 @@ class Categories:
 
         :return:            The number of repositionings performed
         """
-        assert NeoSchema.is_valid_uri(category_uri), "ERROR: argument 'category_uri' is not a valid string"
+        assert GraphSchema.is_valid_uri(category_uri), "ERROR: argument 'category_uri' is not a valid string"
         assert type(n_to_skip) == int, "ERROR: argument 'n_to_skip' is not an integer"
         assert type(pos_shift) == int, "ERROR: argument 'pos_shift' is not an integer"
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
@@ -1451,7 +1451,7 @@ class Categories:
         # TODO: expand to cover all the data needs of BA_pages_routing.py
         # TODO: maybe move to DataManager layer
 
-        category_internal_id = NeoSchema.get_data_node_internal_id(uri = category_uri)
+        category_internal_id = GraphSchema.get_data_node_internal_id(uri = category_uri)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 
         return siblings_categories

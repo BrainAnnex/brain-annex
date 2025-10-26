@@ -1351,7 +1351,7 @@ class GraphAccess(InterGraph):
 
         :return:            True if one or more relationships were found, or False if not
         """
-        # TODO: maybe rename arguments from_match and to_match, for consistency with NeoSchema
+        # TODO: maybe rename arguments from_match and to_match, for consistency with GraphSchema
         return self.number_of_links(match_from=match_from, match_to=match_to, rel_name=rel_name) >= 1   # True if at least 1
 
 
@@ -1375,7 +1375,7 @@ class GraphAccess(InterGraph):
 
         :return:            The number of links (relationships) that were found
         """
-        # TODO: maybe rename arguments from_match and to_match, for consistency with NeoSchema
+        # TODO: maybe rename arguments from_match and to_match, for consistency with GraphSchema
         # TODO: allow unspecified relationship names
         # TODO: allow specifying properties that must be in the relationship
         (nodes_from, where_from, data_binding_from, _) = \
@@ -1904,7 +1904,7 @@ class GraphAccess(InterGraph):
         :return:                A (possibly-empty) list of the internal database ID's of the created nodes
         """
         # TODO: ditch empty strings; trim leading/trailing blanks from strings
-        #       Consider using the approach from NeoSchema.import_pandas_nodes()
+        #       Consider using the approach from GraphSchema.import_pandas_nodes()
 
         if isinstance(df, pd.Series):
             # Convert a Pandas Series into a Data Frame

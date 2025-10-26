@@ -137,7 +137,7 @@ class DocumentationGenerator:
         """
         Pattern for the creation of documentation from python files.
 
-        The python files has some expectations about their formatting; for example, as used in neoschema.py
+        The python files has some expectations about their formatting; for example, as used in GraphSchema.py
 
         Compose and return a REGEX pattern for parsing of data files, for use in import_datafile()
 

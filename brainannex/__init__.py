@@ -10,7 +10,7 @@ from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph      # (
 
 from brainannex.graphaccess import GraphAccess
 from brainannex.cypher_utils import (CypherBuilder, CypherUtils)
-from brainannex.neoschema import (NeoSchema, SchemaCache)
+from brainannex.graphschema import (GraphSchema, SchemaCache)
 from brainannex.collections import Collections
 from brainannex.categories import Categories
 from brainannex.full_text_indexing import FullTextIndexing
@@ -23,7 +23,7 @@ __all__ = [
     'GraphAccess',
     'CypherBuilder',
     'CypherUtils',
-    'NeoSchema',
+    'GraphSchema',
     'SchemaCache',
     'Collections',
     'Categories',

@@ -1,5 +1,5 @@
 from typing import Union, List
-from brainannex import GraphAccess, NeoSchema
+from brainannex import GraphAccess, GraphSchema
 
 
 
@@ -55,7 +55,7 @@ class Collections:
         :return:    An (int, str) pair of integers with the internal database ID
                         and the unique uri assigned to the node just created
         """
-        return NeoSchema.create_class(name="Collections", strict = False)
+        return GraphSchema.create_class(name="Collections", strict = False)
 
 
 
@@ -70,8 +70,8 @@ class Collections:
         """
 
         # Locate the Schema Class of the given Data Node
-        class_name = NeoSchema.class_of_data_node(node_id=collection_uri, id_key="uri")
-        return NeoSchema.is_instance_of(class1=class_name, class2="Collections")
+        class_name = GraphSchema.class_of_data_node(node_id=collection_uri, id_key="uri")
+        return GraphSchema.is_instance_of(class1=class_name, class2="Collections")
 
 
 
@@ -136,7 +136,7 @@ class Collections:
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in link_to_collection_at_end()
 
-        assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
+        assert GraphSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
@@ -157,7 +157,7 @@ class Collections:
 
         data_binding = item_properties
         '''
-        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+        return GraphSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=data_binding,
                                             labels=["BA", item_class_name],
                                             connected_to_id=collection_uri, connected_to_labels="BA",
@@ -166,16 +166,16 @@ class Collections:
                                             new_uri=new_uri
                                             )
         '''
-        collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
-        NeoSchema.create_data_node(class_name=item_class_name,
-                                   properties=data_binding,
-                                   extra_labels="BA",
-                                   links=[{"internal_id": collection_id,
+        collection_id = GraphSchema.get_data_node_internal_id(uri=collection_uri)
+        GraphSchema.create_data_node(class_name=item_class_name,
+                                     properties=data_binding,
+                                     extra_labels="BA",
+                                     links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
                                     ],
-                                   new_uri=new_uri
-                                   )
+                                     new_uri=new_uri
+                                     )
         return new_uri
 
 
@@ -199,7 +199,7 @@ class Collections:
         """
         # TODO: use this function as a ***ROLE MODEL*** for linking at the start, or after an existing Item
         # TODO: (optionally?) enforce that the respective Classes of the Data Nodes are a relationship named membership_rel_name;
-        #       use NeoSchema.class_relationship_exists()
+        #       use GraphSchema.class_relationship_exists()
 
         # TODO: validate more thoroughly the URI's
         assert item_uri, \
@@ -444,7 +444,7 @@ class Collections:
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in link_to_collection_at_end()
 
-        assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
+        assert GraphSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
@@ -467,7 +467,7 @@ class Collections:
 
         #cls.db.debug_print(q, data_binding, "add_to_collection_at_end", True)
         '''
-        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+        return GraphSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=data_binding,
                                             labels=["BA", item_class_name],
                                             connected_to_id=collection_uri, connected_to_labels="BA",
@@ -476,16 +476,16 @@ class Collections:
                                             new_uri=new_uri
                                             )
         '''
-        collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
-        NeoSchema.create_data_node(class_name=item_class_name,
-                                   properties=data_binding,
-                                   extra_labels="BA",
-                                   links=[{"internal_id": collection_id,
+        collection_id = GraphSchema.get_data_node_internal_id(uri=collection_uri)
+        GraphSchema.create_data_node(class_name=item_class_name,
+                                     properties=data_binding,
+                                     extra_labels="BA",
+                                     links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
                                     ],
-                                   new_uri=new_uri
-                                   )
+                                     new_uri=new_uri
+                                     )
         return new_uri
 
 
@@ -513,7 +513,7 @@ class Collections:
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in link_to_collection_at_end()
 
-        assert NeoSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
+        assert GraphSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
@@ -554,7 +554,7 @@ class Collections:
         if result is None:
             # An empty find is indicative of either an "insert at the end" (no n_after found),
             #       or a bad insert_after value that matches no node
-            node = NeoSchema.search_data_node(uri = insert_after)
+            node = GraphSchema.search_data_node(uri = insert_after)
             if node is None:
                 raise Exception(f"There is no node with the `uri` value ({insert_after}) passed by `insert_after`")
 
@@ -574,7 +574,7 @@ class Collections:
             new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
 
         '''
-        return NeoSchema.add_data_point_OLD(class_name=item_class_name,
+        return GraphSchema.add_data_point_OLD(class_name=item_class_name,
                                             data_dict=item_properties,
                                             labels=["BA", item_class_name],
                                             connected_to_id=collection_uri, connected_to_labels="BA",
@@ -583,16 +583,16 @@ class Collections:
                                             new_uri=new_uri
                                             )
         '''
-        collection_id = NeoSchema.get_data_node_internal_id(uri=collection_uri)
-        NeoSchema.create_data_node(class_name=item_class_name,
-                                   properties=item_properties,
-                                   extra_labels="BA",
-                                   links=[{"internal_id": collection_id,
+        collection_id = GraphSchema.get_data_node_internal_id(uri=collection_uri)
+        GraphSchema.create_data_node(class_name=item_class_name,
+                                     properties=item_properties,
+                                     extra_labels="BA",
+                                     links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": new_pos}}
                                     ],
-                                   new_uri=new_uri
-                                   )
+                                     new_uri=new_uri
+                                     )
         return new_uri
 
 

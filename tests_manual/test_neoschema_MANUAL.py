@@ -2,7 +2,7 @@
 
 import pytest
 from neoaccess import GraphAccess
-from brainannex.neoschema.neo_schema import NeoSchema
+from brainannex.graphschema.neo_schema import GraphSchema
 
 
 
@@ -10,7 +10,7 @@ from brainannex.neoschema.neo_schema import NeoSchema
 @pytest.fixture(scope="module")
 def db():
     neo_obj = GraphAccess(debug=False)
-    NeoSchema.db = neo_obj
+    GraphSchema.db = neo_obj
     #yield neo_obj      # Shouldn't need to reach directly into NeoAccess in these tests
 
 
@@ -18,34 +18,34 @@ def db():
 #############   CLASS-related   #############
 
 def test_create_class(db):
-    NeoSchema.create_class("French Vocabulary")
+    GraphSchema.create_class("French Vocabulary")
 
 
 
 def test_create_class_relationship(db):
-    #french_class_id = NeoSchema.create_class("French Vocabulary")
-    #foreign_class_id = NeoSchema.create_class("Foreign Vocabulary")
-    NeoSchema.create_class_relationship_OLD(from_id=93, to_id=19, rel_name="INSTANCE_OF")
+    #french_class_id = GraphSchema.create_class("French Vocabulary")
+    #foreign_class_id = GraphSchema.create_class("Foreign Vocabulary")
+    GraphSchema.create_class_relationship_OLD(from_id=93, to_id=19, rel_name="INSTANCE_OF")
 
 
 
 def test_get_class_relationships(db):
-    schema_id = NeoSchema.get_class_uri("Restaurants")
+    schema_id = GraphSchema.get_class_uri("Restaurants")
     print("schema_id is: ", schema_id)
 
-    result = NeoSchema.get_class_relationships(schema_id)
+    result = GraphSchema.get_class_relationships(schema_id)
     assert result == {'out': ['INSTANCE_OF', 'BA_located_in', 'BA_cuisine_type'], 'in': ['BA_served_at']}
 
-    result = NeoSchema.get_class_relationships(schema_id, link_dir="BOTH")
+    result = GraphSchema.get_class_relationships(schema_id, link_dir="BOTH")
     assert result == {'out': ['INSTANCE_OF', 'BA_located_in', 'BA_cuisine_type'], 'in': ['BA_served_at']}
 
-    result = NeoSchema.get_class_relationships(schema_id, omit_instance=True)
+    result = GraphSchema.get_class_relationships(schema_id, omit_instance=True)
     assert result == {'out': ['BA_located_in', 'BA_cuisine_type'], 'in': ['BA_served_at']}
 
-    result = NeoSchema.get_class_relationships(schema_id, link_dir="OUT", omit_instance=True)
+    result = GraphSchema.get_class_relationships(schema_id, link_dir="OUT", omit_instance=True)
     assert result == ['BA_located_in', 'BA_cuisine_type']
 
-    result = NeoSchema.get_class_relationships(schema_id, link_dir="IN")
+    result = GraphSchema.get_class_relationships(schema_id, link_dir="IN")
     assert result == ['BA_served_at']
 
 
@@ -54,37 +54,37 @@ def test_get_class_relationships(db):
 #############   PROPERTIES-RELATED   #############
 
 def test_get_class_properties(db):
-    prop_list = NeoSchema.get_class_properties_OLD(4)
+    prop_list = GraphSchema.get_class_properties_OLD(4)
     assert prop_list == ['French']
 
-    prop_list = NeoSchema.get_class_properties_OLD(4, include_ancestors=True, sort_by_path_len="ASC")
+    prop_list = GraphSchema.get_class_properties_OLD(4, include_ancestors=True, sort_by_path_len="ASC")
     assert prop_list == ['French', 'English', 'notes']
 
-    prop_list = NeoSchema.get_class_properties_OLD(1, include_ancestors=False)
+    prop_list = GraphSchema.get_class_properties_OLD(1, include_ancestors=False)
     assert prop_list == ['German']
 
 
 
 def test_add_properties_to_class(db):
-    result = NeoSchema.add_properties_to_class(class_uri=1, property_list=["Gender", "German"])
+    result = GraphSchema.add_properties_to_class(class_uri=1, property_list=["Gender", "German"])
     assert result == 2
 
     """
     German_class_id = 1
     Profl_class_id = 2
     French_class_id = 4
-    result = NeoSchema.add_properties_to_class(class_id = German_class_id, property_list=["German", "English", "Notes"])
+    result = GraphSchema.add_properties_to_class(class_id = German_class_id, property_list=["German", "English", "Notes"])
     assert result == 3
-    result = NeoSchema.add_properties_to_class(class_id = Profl_class_id, property_list=["name", "role", "location", "notes"])
+    result = GraphSchema.add_properties_to_class(class_id = Profl_class_id, property_list=["name", "role", "location", "notes"])
     assert result == 4
-    result = NeoSchema.add_properties_to_class(class_id = French_class_id, property_list=["French", "English", "Notes"])
+    result = GraphSchema.add_properties_to_class(class_id = French_class_id, property_list=["French", "English", "Notes"])
     assert result == 3
     """
 
 
 
 def test_remove_property_from_class(db):
-    NeoSchema.remove_property_from_class(class_uri=1, property_uri=5)
+    GraphSchema.remove_property_from_class(class_uri=1, property_uri=5)
 
 
 
@@ -94,7 +94,7 @@ def test_remove_property_from_class(db):
 
 
 def test_create_tree_from_dict(db):
-    root_id = NeoSchema.create_tree_from_dict({}, class_name="Restaurants")
+    root_id = GraphSchema.create_tree_from_dict({}, class_name="Restaurants")
 
 
 
@@ -104,21 +104,21 @@ def test_create_tree_from_dict(db):
 
 
 def test_data_points_of_class(db):
-    all_category_ids = NeoSchema.data_nodes_of_class("Category")
+    all_category_ids = GraphSchema.data_nodes_of_class("Category")
     print(all_category_ids)
     assert len(all_category_ids) == 27
 
 
 def test_allows_datanodes(db):
-    print(NeoSchema.allows_data_nodes("Records"))
-    print(NeoSchema.allows_data_nodes("Foreign Vocabulary"))
-    print(NeoSchema.allows_data_nodes("German Vocabulary"))
-    print(NeoSchema.allows_data_nodes("Quote"))
+    print(GraphSchema.allows_data_nodes("Records"))
+    print(GraphSchema.allows_data_nodes("Foreign Vocabulary"))
+    print(GraphSchema.allows_data_nodes("German Vocabulary"))
+    print(GraphSchema.allows_data_nodes("Quote"))
 
 
 
 def test_add_root_category(db):
-    NeoSchema.add_data_point_OLD(class_name="Category",
+    GraphSchema.add_data_point_OLD(class_name="Category",
                                  data_dict={"name": "ROOT (Home)", "remarks": "EVERYTHING - top level"},
                                  labels="BA")
 
@@ -127,15 +127,15 @@ def test_add_root_category(db):
 def test_initialize_schema(db):
     db.empty_dbase()    # Completely clear the database
 
-    _ , German_class_id = NeoSchema.create_class("German Vocabulary")
+    _ , German_class_id = GraphSchema.create_class("German Vocabulary")
     print(German_class_id)
 
-    _ , Profl_class_id = NeoSchema.create_class("Profl Connections")
+    _ , Profl_class_id = GraphSchema.create_class("Profl Connections")
     print(Profl_class_id)
 
-    NeoSchema.add_properties_to_class(class_uri= German_class_id, property_list=["German", "English", "Notes"])
+    GraphSchema.add_properties_to_class(class_uri= German_class_id, property_list=["German", "English", "Notes"])
 
-    NeoSchema.add_properties_to_class(class_uri= Profl_class_id, property_list=["name", "role", "location", "notes"])
+    GraphSchema.add_properties_to_class(class_uri= Profl_class_id, property_list=["name", "role", "location", "notes"])
 
     q = '''
         MATCH (c:CLASS {schema_id:1})
@@ -143,7 +143,7 @@ def test_initialize_schema(db):
         '''
     db.query(q)
 
-    result = NeoSchema.all_properties("BA", "uri", 88)
+    result = GraphSchema.all_properties("BA", "uri", 88)
     assert result == ['Notes', 'English', 'German']     # Note: order might differ!
 
 
@@ -151,38 +151,38 @@ def test_initialize_schema(db):
 
 
 def test_get_class_instances(db):
-    result = NeoSchema.get_class_instances("Records", leaf_only=True)
+    result = GraphSchema.get_class_instances("Records", leaf_only=True)
     print(result)
 
 
 
 def test_new_class_with_properties(db):
     """
-    _, new_id = NeoSchema.create_class_with_properties("Image",
+    _, new_id = GraphSchema.create_class_with_properties("Image",
                                                  ["width", "caption"], code="i"
                                                  )
     """
-    _, new_id = NeoSchema.create_class_with_properties(name="Document",
+    _, new_id = GraphSchema.create_class_with_properties(name="Document",
                                                        properties=["caption"],
                                                        code="d",
                                                        class_to_link_to="Media"
                                                        )
-    assert NeoSchema.valid_schema_id(new_id)
+    assert GraphSchema.valid_schema_id(new_id)
     print("test_new_class_with_properties() - New class was assigned schema id: ", new_id)
 
-    #NeoSchema.create_class_with_properties("Category", ["name", "remarks"])
-    #NeoSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"])
+    #GraphSchema.create_class_with_properties("Category", ["name", "remarks"])
+    #GraphSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"])
 
 
 
 def test_unlink_classes(db):
-    status = NeoSchema.unlink_classes(26, 15)
+    status = GraphSchema.unlink_classes(26, 15)
     assert status == True
 
 
 
 def test_rename_class_rel(db):
-    status = NeoSchema.rename_class_rel(from_class=1, to_class=19, new_rel_name="INSTANCE_OF")
+    status = GraphSchema.rename_class_rel(from_class=1, to_class=19, new_rel_name="INSTANCE_OF")
     assert status == True
 
 
@@ -192,32 +192,32 @@ def test_next_available_id(db):
     db.empty_dbase()    # Completely clear the database
 
     # Try on empty database
-    assert NeoSchema._next_available_schema_uri() == 1
+    assert GraphSchema._next_available_schema_uri() == 1
 
     db.create_node("CLASS", {"schema_id": 1})
-    assert NeoSchema._next_available_schema_uri() == 2
+    assert GraphSchema._next_available_schema_uri() == 2
 
     db.create_node("CLASS", {"schema_id": 2})
-    assert NeoSchema._next_available_schema_uri() == 3
+    assert GraphSchema._next_available_schema_uri() == 3
 
     db.create_node("PROPERTY", {"schema_id": 3})
-    assert NeoSchema._next_available_schema_uri() == 4
+    assert GraphSchema._next_available_schema_uri() == 4
 
     db.create_node("some_other_label", {"schema_id": 12345})
-    assert NeoSchema._next_available_schema_uri() == 4      # Unaffected by other labels
+    assert GraphSchema._next_available_schema_uri() == 4      # Unaffected by other labels
 
     db.create_node("CLASS", {"schema_id": 100})
-    assert NeoSchema._next_available_schema_uri() == 101
+    assert GraphSchema._next_available_schema_uri() == 101
 
     db.create_node("PROPERTY", {"schema_id": 665})
-    assert NeoSchema._next_available_schema_uri() == 666
+    assert GraphSchema._next_available_schema_uri() == 666
 
-    #print(NeoSchema.next_available_schema_id())
+    #print(GraphSchema.next_available_schema_id())
 
 
 
 def test_next_available_datapoint_id(db):
-    print(NeoSchema.reserve_next_uri())
+    print(GraphSchema.reserve_next_uri())
 
 
 
@@ -226,22 +226,22 @@ def test_next_available_datapoint_id(db):
 
 def test_get_schema_code(db):
     # TODO: assumes pre-set database!
-    assert NeoSchema.get_schema_code("Restaurants") == "r"
-    assert NeoSchema.get_schema_code("Entrees") == "r"
-    assert NeoSchema.get_schema_code("Records") == "r"
-    assert NeoSchema.get_schema_code("Foreign Vocabulary") == "r"
-    assert NeoSchema.get_schema_code("French Vocabulary") == "r"
-    assert NeoSchema.get_schema_code("Note") == "n"
-    assert NeoSchema.get_schema_code("Category") == "cat"
-    assert NeoSchema.get_schema_code("Media") == ""
+    assert GraphSchema.get_schema_code("Restaurants") == "r"
+    assert GraphSchema.get_schema_code("Entrees") == "r"
+    assert GraphSchema.get_schema_code("Records") == "r"
+    assert GraphSchema.get_schema_code("Foreign Vocabulary") == "r"
+    assert GraphSchema.get_schema_code("French Vocabulary") == "r"
+    assert GraphSchema.get_schema_code("Note") == "n"
+    assert GraphSchema.get_schema_code("Category") == "cat"
+    assert GraphSchema.get_schema_code("Media") == ""
 
 
 
 def test_get_schema_id(db):
     # TODO: assumes pre-set database!
-    assert NeoSchema.get_schema_id("h") == 31
-    assert NeoSchema.get_schema_id("n") == 23
-    assert NeoSchema.get_schema_id("junk") == -1
+    assert GraphSchema.get_schema_id("h") == 31
+    assert GraphSchema.get_schema_id("n") == 23
+    assert GraphSchema.get_schema_id("junk") == -1
 
 
 
@@ -250,7 +250,7 @@ def test_get_schema_id(db):
 
 def test_add_data_point(db):
 
-    new_id = NeoSchema.add_data_point_OLD(class_name="German Vocabulary",
+    new_id = GraphSchema.add_data_point_OLD(class_name="German Vocabulary",
                                           data_dict = {"German": "Tür",
                                                    "English": "door"
                                                    },
@@ -259,7 +259,7 @@ def test_add_data_point(db):
                                           rel_name="BA_in_category", rel_prop_key="pos", rel_prop_value=120
                                           )
     """
-    new_id = NeoSchema.add_data_point(class_name="Restaurants",
+    new_id = GraphSchema.add_data_point(class_name="Restaurants",
                                       data_dict = {"name": "The Red Sea",
                                        "address": "5200 Claremont Ave, at Telegraph",
                                        "phone": "(510) 655-3757",
@@ -272,13 +272,13 @@ def test_add_data_point(db):
                                       )
 
     
-    status = NeoSchema.add_data_point("Entrees",
+    status = GraphSchema.add_data_point("Entrees",
                                       {"name": "mushrooms pie", "eval": "OK"},
                                       labels="BA",
                                       connected_to_id=540, connected_to_labels="BA", rel_name="BA_served_at", rel_dir="OUT"
                                       )
                     
-    status = NeoSchema.add_data_point("Cars",
+    status = GraphSchema.add_data_point("Cars",
                                       {"make": "Toyota", "color": "white"},
                                       labels="car",
                                       connected_to_id=999, connected_to_labels="salesperson", rel_name="SOLD_BY", rel_dir="OUT"
@@ -291,11 +291,11 @@ def test_add_data_point(db):
 def test_add_existing_data_point(db):
 
     neo_id = db.create_node("BA", {"note": "TO DELETE!"})
-    new_uri = NeoSchema.register_existing_data_node(schema_uri=19, existing_neo_id=neo_id)
+    new_uri = GraphSchema.register_existing_data_node(schema_uri=19, existing_neo_id=neo_id)
     print("new_uri: ", new_uri)
 
     neo_id = db.create_node("BA", {"formula": "NH3"})
-    new_uri = NeoSchema.register_existing_data_node(class_name="Chemicals", existing_neo_id=neo_id)
+    new_uri = GraphSchema.register_existing_data_node(class_name="Chemicals", existing_neo_id=neo_id)
     print("new_uri: ", new_uri)
 
 
@@ -306,13 +306,13 @@ def test_delete_data_point(db):
 
 
 def test_add_data_relationship(db):
-    #status = NeoSchema.add_data_relationship(subcategory_id=536, category_id=540, rel_name="BA_served_at")
-    #status = NeoSchema.add_data_relationship(subcategory_id=514, category_id=544, rel_name="BA_subcategory_of")
-    #status = NeoSchema.add_data_relationship(subcategory_id=541, category_id=535, rel_name="BA_in_category")
-    number_added = NeoSchema.add_data_relationship(from_id=9, to_id=690, rel_name="BA_testing")
+    #status = GraphSchema.add_data_relationship(subcategory_id=536, category_id=540, rel_name="BA_served_at")
+    #status = GraphSchema.add_data_relationship(subcategory_id=514, category_id=544, rel_name="BA_subcategory_of")
+    #status = GraphSchema.add_data_relationship(subcategory_id=541, category_id=535, rel_name="BA_in_category")
+    number_added = GraphSchema.add_data_relationship(from_id=9, to_id=690, rel_name="BA_testing")
     assert number_added == 1
 
 
 
 def test_remove_data_relationship(db):
-    NeoSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")
+    GraphSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")

@@ -1,4 +1,4 @@
-from brainannex import Categories, Collections, NeoSchema, UserManager, FullTextIndexing
+from brainannex import Categories, Collections, GraphSchema, UserManager, FullTextIndexing
 
 from app_libraries.data_manager import DataManager
 from app_libraries.media_manager import MediaManager
@@ -26,7 +26,7 @@ class InitializeBrainAnnex:
         DataManager.db = db_handle
         Categories.db = db_handle
         Collections.db = db_handle
-        NeoSchema.db = db_handle
+        GraphSchema.db = db_handle
         FlaskUserManagement.db = db_handle
         NodeExplorer.db = db_handle
         FullTextIndexing.db = db_handle
