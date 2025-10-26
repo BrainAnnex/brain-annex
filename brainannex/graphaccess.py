@@ -266,7 +266,7 @@ class GraphAccess(InterGraph):
         :param return_internal_id:  Flag indicating whether to also include the Neo4j internal node ID in the returned data
                                     (using "internal_id" as its key in the returned dictionary)
         :param return_labels:   Flag indicating whether to also include the Neo4j label names in the returned data
-                                    (using "neo4j_labels" as its key in the returned dictionary)
+                                    (using "node_labels" as its key in the returned dictionary)
 
         :param order_by:        (OPTIONAL) String with the key (field) name to order by, in ascending order
                                     Caution: lower and uppercase names are treated differently in the sort order
@@ -295,10 +295,10 @@ class GraphAccess(InterGraph):
                                     If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
                                             of the form     "internal_id": some integer with the Neo4j internal node ID
                                     If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
-                                            of the form     "neo4j_labels": [list of Neo4j label(s) attached to that node]
+                                            of the form     "node_labels": [list of Neo4j label(s) attached to that node]
                                     EXAMPLE using both of the above flags:
-                                        [  {"internal_id": 145, "neo4j_labels": ["person", "client"], "gender": "M", "condition_id": 3},
-                                           {"internal_id": 222, "neo4j_labels": ["person"], "gender": "M", "location": "Berkeley"}
+                                        [  {"internal_id": 145, "node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
+                                           {"internal_id": 222, "node_labels": ["person"], "gender": "M", "location": "Berkeley"}
                                         ]
         # TODO: provide an option to specify the desired fields
 
@@ -319,13 +319,13 @@ class GraphAccess(InterGraph):
         #       rather than dictionaries indexes by "n"
         if return_internal_id and return_labels:
             result_list = self.query_extended(cypher, data_binding, flatten=True)
-            # Note: query_extended() provides both 'internal_id' and 'neo4j_labels'
+            # Note: query_extended() provides both 'internal_id' and 'node_labels'
         elif return_internal_id:    # but not return_labels
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['neo4j_labels'])
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['node_labels'])
         elif return_labels:         # but not return_internal_id
             result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id'])
         else:
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id', 'neo4j_labels'])
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id', 'node_labels'])
 
         # Deal with empty result lists
         if len(result_list) == 0:   # If no results were produced
@@ -1745,10 +1745,10 @@ class GraphAccess(InterGraph):
         :param order_by:    (OPTIONAL) If specified, it must be the name of a field in
                                 the sibling nodes, to order the results by; capitalization is ignored
         :return:            A list of dictionaries, with one element for each "sibling";
-                                each element contains the 'internal_id' and 'neo4j_labels' keys,
+                                each element contains the 'internal_id' and 'node_labels' keys,
                                 plus whatever attributes are stored on that node.
                                 EXAMPLE of single element:
-                                {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories']}
+                                {'name': 'French', 'internal_id': 123, 'node_labels': ['Categories']}
         """
         #TODO: test order_by
         #TODO: test scenarios that are affected by the DISTINCT ; eg: 2 siblings that share the same 2 parent,
@@ -2612,6 +2612,66 @@ class GraphAccess(InterGraph):
 
         return f"Successful import of {num_nodes_imported} node(s) and {num_rels_imported} relationship(s)"
 
+
+
+
+
+    #####################################################################################################
+
+    '''                                   ~   VISUALIZATION   ~                                   '''
+
+    def ________VISUALIZATION________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    def node_tabular_display(self, node_list :list, fields=None, dummy_name="n", limit=15) -> pd.DataFrame:
+        """
+        Simplified tabular display of a selected fields from the given list of nodes data,
+        typically as returned from get_nodes() or simular functions.
+        Node labels and internal ID's are included in the table *if* they are part of the passed data
+
+        :param node_list:   A list whose elements are dict's with the following keys:
+                                "node_labels" [OPTIONAL]
+                                "internal_id" [OPTIONAL]
+                                "n" (or other dummy name, as passed in the argument)
+
+        :param fields:      A string, or list/tuple of strings, with the name(s) of the desired field(s) to include.
+                                If None, only the node labels and internal ID's are included.
+        :param dummy_name:
+        :param limit:       Max number of records (nodes) to include
+
+        :return:            A Panda's DataFrame with a tabular view of the specified fields (properties)
+        """
+        print(f"{len(node_list)} nodes.  Showing the first {limit}\n")
+
+        row_list = []   # Running list of records (dict's with node data of interest)
+
+        if type(fields) == str:
+            fields = [fields]
+
+        for i, node in enumerate(node_list):
+            if i >= limit:
+                break
+
+            d = node[dummy_name]
+
+            d_simple = {}
+
+            if "NODE_LABELS" in node:
+                d_simple["NODE_LABELS"] = node["NODE_LABELS"]
+
+            if fields is not None:
+                for f in fields:
+                    d_simple[f] = d[f]
+
+            if "internal_id" in node:
+                d_simple["internal_id"] = node["internal_id"]
+
+            #print(d_simple)
+            row_list.append(d_simple)
+
+        return pd.DataFrame(row_list)
 
 
 

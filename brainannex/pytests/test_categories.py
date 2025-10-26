@@ -194,20 +194,20 @@ def test_get_sibling_categories(db):
     assert entry["name"] == "Italian"   # The sibling of "French" is "Italian"
     assert entry["uri"] == italian_uri
     assert entry["internal_id"] == italian_internal_id
-    #assert compare_unordered_lists(entry["neo4j_labels"], ['Category', 'BA'])
+    #assert compare_unordered_lists(entry["node_labels"], ['Category', 'BA'])
 
     result = Categories.get_sibling_categories(italian_internal_id)
     assert len(result) == 1
     entry = result[0]
     assert entry["name"] == "French"   # The sibling of "Italian" is "French"
 
-    expected = {"name": "French", "uri": french_uri, "internal_id": french_internal_id, "neo4j_labels": ['BA', 'Category']}
+    expected = {"name": "French", "uri": french_uri, "internal_id": french_internal_id, "node_labels": ['BA', 'Category']}
 
     # We'll check the node labels separately, because their order may be reshuffled
-    assert compare_unordered_lists(entry["neo4j_labels"], expected["neo4j_labels"])
+    assert compare_unordered_lists(entry["node_labels"], expected["node_labels"])
 
-    del entry["neo4j_labels"]
-    del expected["neo4j_labels"]
+    del entry["node_labels"]
+    del expected["node_labels"]
     assert entry == expected
 
     # Add a new Categories ("German") as a subcategories of "Languages"

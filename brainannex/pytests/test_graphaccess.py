@@ -195,16 +195,16 @@ def test_get_nodes(db):
     # Retrieve nodes REGARDLESS of label (and also retrieve the labels)
     match = db.match(properties={"gender": "M"})       # Locate all males, across all node labels
     retrieved_records = db.get_nodes(match, return_labels=True)
-    expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
+    expected_records = [{'node_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
+                        {'node_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
     assert compare_recordsets(retrieved_records, expected_records)
 
     # Retrieve ALL nodes in the database (and also retrieve the labels)
     match = db.match()
     retrieved_records = db.get_nodes(match, return_labels=True)
-    expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 123, 'gender': 'F', 'age': 21}]
+    expected_records = [{'node_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
+                        {'node_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
+                        {'node_labels': ['my 2nd label'], 'client id': 123, 'gender': 'F', 'age': 21}]
     assert compare_recordsets(retrieved_records, expected_records)
 
     # Re-use of same key names in subquery data-binding and in properties dictionaries is ok, because the keys in
@@ -543,11 +543,11 @@ def test_get_siblings(db):
 
     # The single sibling of "French" is "German"
     result = db.get_siblings(internal_id=french_id, rel_name="subcategory_of", rel_dir="OUT")
-    assert result == [{'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']}]
+    assert result == [{'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']}]
 
     # Conversely, the single sibling of "German" is "French"
     result = db.get_siblings(internal_id=german_id, rel_name="subcategory_of", rel_dir="OUT")
-    assert result == [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']}]
+    assert result == [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']}]
 
     # But attempting to follow the links in the opposite directions will yield no results
     result = db.get_siblings(internal_id=german_id, rel_name="subcategory_of", rel_dir="IN")    # "wrong" direction
@@ -559,14 +559,14 @@ def test_get_siblings(db):
 
     # Now, "French" will have 2 siblings instead of 1
     result = db.get_siblings(internal_id=french_id, rel_name="subcategory_of", rel_dir="OUT")
-    expected = [{'name': 'Italian', 'internal_id': italian_id, 'neo4j_labels': ['Categories']},
-                {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'Italian', 'internal_id': italian_id, 'node_labels': ['Categories']},
+                {'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # "Italian" will also have 2 siblings
     result = db.get_siblings(internal_id=italian_id, rel_name="subcategory_of", rel_dir="OUT")
-    expected = [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']},
-                {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']},
+                {'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # Add a node that is a "parent" of "French" and "Italian" thru a different relationship
@@ -575,18 +575,18 @@ def test_get_siblings(db):
 
     # Now, "French" will also have a sibling thru the "contains" relationship
     result = db.get_siblings(internal_id=french_id, rel_name="contains", rel_dir="IN")
-    expected = [{'name': 'Italian', 'internal_id': italian_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'Italian', 'internal_id': italian_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # Likewise for the "Italian" node
     result = db.get_siblings(internal_id=italian_id, rel_name="contains", rel_dir="IN")
-    expected = [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # "Italian" still has 2 siblings thru the other relationship "subcategory_of"
     result = db.get_siblings(internal_id=italian_id, rel_name="subcategory_of", rel_dir="OUT")
-    expected = [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']},
-                {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']},
+                {'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # Add an unattached node
@@ -597,9 +597,9 @@ def test_get_siblings(db):
     # After connecting the "Brazilian" node to the "Language" node, it has 3 siblings
     db.add_links_fast(match_from=brazilian_id, match_to=language_id, rel_name="subcategory_of")
     result = db.get_siblings(internal_id=brazilian_id, rel_name="subcategory_of", rel_dir="OUT")
-    expected = [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']},
-                {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']},
-                {'name': 'Italian', 'internal_id': italian_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']},
+                {'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']},
+                {'name': 'Italian', 'internal_id': italian_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
 

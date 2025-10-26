@@ -208,7 +208,7 @@ class PyGraphVisual:
 
         Each dictionary entry is expected to have a key named "internal_id";
         if not present, it will be silently ignored.
-        Though not required, a key named "neo4j_labels" is typically present as well.
+        Though not required, a key named "node_labels" is typically present as well.
 
         :param result_dataset:  A list of dictionary data about graph-database nodes
         :param add_edges:       If True, all existing edges among the displayed nodes
@@ -224,9 +224,9 @@ class PyGraphVisual:
 
             node_list.append(internal_id)
 
-            if "neo4j_labels" in node:
-                labels = node["neo4j_labels"]
-                del node["neo4j_labels"]
+            if "node_labels" in node:
+                labels = node["node_labels"]
+                del node["node_labels"]
             else:
                 labels = ""
 

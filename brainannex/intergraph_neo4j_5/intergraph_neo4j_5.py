@@ -341,16 +341,16 @@ class InterGraph:
                                 were returned in the Cypher query.
 
                         EXAMPLE with flatten=True for a query returning nodes "MATCH n RETURN n":
-                                [   {'year': 2023, 'make': 'Ford', 'internal_id': 123, 'neo4j_labels': ['Motor Vehicle']},
-                                    {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'neo4j_labels': ['Motor Vehicle']}
+                                [   {'year': 2023, 'make': 'Ford', 'internal_id': 123, 'node_labels': ['Motor Vehicle']},
+                                    {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'node_labels': ['Motor Vehicle']}
                                 ]
                         EXAMPLE with flatten=False for that same query returning nodes "MATCH n RETURN n":
-                                [   [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'neo4j_labels': ['Motor Vehicle']}],
-                                    [{'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'neo4j_labels': ['Motor Vehicle']}]
+                                [   [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'node_labels': ['Motor Vehicle']}],
+                                    [{'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'node_labels': ['Motor Vehicle']}]
                                 ]
 
                         EXAMPLE of *individual items* - for a returned NODE
-                            {'gender': 'M', 'age': 20, 'internal_id': 123, 'neo4j_labels': ['patient']}
+                            {'gender': 'M', 'age': 20, 'internal_id': 123, 'node_labels': ['patient']}
 
                         EXAMPLE of *individual items* - for a returned RELATIONSHIP (note that 'neo4j_type' is the link name,
                             and that any properties of the relationships, such as 'price', appear as key/values in the dict)
@@ -359,7 +359,7 @@ class InterGraph:
                              'neo4j_end_node': <Node id=14 labels=frozenset() properties={}>,
                              'neo4j_type': 'bought_by'}]
         """
-        #TODO: rename neo4j_labels to node_labels; rename neo4j_start_node to start_node, etc
+        #TODO: rename node_labels to node_labels; rename neo4j_start_node to start_node, etc
         if self.debug or self.block_query_execution:
             self.debug_query_print(q, data_binding, method="query_extended")
             print(f"    flatten: {flatten} , fields_to_exclude: {fields_to_exclude}")
@@ -407,7 +407,7 @@ class InterGraph:
 
                     if isinstance(item, neo4j.graph.Node):
                         neo4j_properties["internal_id"] = item.id               # Example: 227
-                        neo4j_properties["neo4j_labels"] = list(item.labels)    # Example: ['person', 'client']
+                        neo4j_properties["node_labels"] = list(item.labels)    # Example: ['person', 'client']
 
                     elif isinstance(item, neo4j.graph.Relationship):
                         neo4j_properties["internal_id"] = item.id               # Example: 227

@@ -1185,8 +1185,8 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1211,9 +1211,9 @@ class DataManager:
             
             new_result = []     # SET OUTSIDE of this loop
             
-            labels = node["neo4j_labels"]
+            labels = node["node_labels"]
             del node["internal_id"]
-            del node["neo4j_labels"]
+            del node["node_labels"]
             dn = GraphSchema.DataNode(internal_id=internal_id, labels=labels], properties=node)
             # All the above lines would be un-necessary if FullTextIndexing.search_word returned a DataNode object!
             
@@ -1267,8 +1267,8 @@ class DataManager:
 
         result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:

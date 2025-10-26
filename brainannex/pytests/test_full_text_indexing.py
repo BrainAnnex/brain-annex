@@ -419,7 +419,7 @@ def test_search_word(db):
     assert FullTextIndexing.search_word("ab") == [content_id_1]         # This will match both "lab" and "absence"
 
     result = FullTextIndexing.search_word("  Shipping   ", all_properties=True)
-    assert result == [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, 'neo4j_labels': ['Content Item']}]
+    assert result == [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, 'node_labels': ['Content Item']}]
 
 
     # Add a 2nd data node of type "Content Item"...
@@ -437,8 +437,8 @@ def test_search_word(db):
     assert compare_unordered_lists(FullTextIndexing.search_word("ship"), [content_id_1, content_id_2])  # ...while "ship" matches both
 
     result = FullTextIndexing.search_word("ship", all_properties=True)
-    expected = [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, 'neo4j_labels': ['Content Item']},
-                {'filename': 'some_other_file.txt', 'internal_id': content_id_2, 'neo4j_labels': ['Content Item']}
+    expected = [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, 'node_labels': ['Content Item']},
+                {'filename': 'some_other_file.txt', 'internal_id': content_id_2, 'node_labels': ['Content Item']}
                ]
 
     assert compare_recordsets(result, expected)

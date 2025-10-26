@@ -1331,10 +1331,10 @@ def test_get_all_data_nodes_of_class(db):
     db_id_car1 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Car")
-    assert result == [{'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, 'neo4j_labels': ['Car']}]
+    assert result == [{'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, 'node_labels': ['Car']}]
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Car", hide_schema=False)
-    assert result == [{'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, 'neo4j_labels': ['Car']}]
+    assert result == [{'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, 'node_labels': ['Car']}]
 
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Boat")
@@ -1345,15 +1345,15 @@ def test_get_all_data_nodes_of_class(db):
     db_id_boat1 = GraphSchema.create_data_node(class_name="Boat", properties={"make": "C&C", "type": "sloop"})
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Boat")
-    assert result == [{'make': 'C&C', 'type': 'sloop', 'internal_id': db_id_boat1, 'neo4j_labels': ['Boat']}]
+    assert result == [{'make': 'C&C', 'type': 'sloop', 'internal_id': db_id_boat1, 'node_labels': ['Boat']}]
 
     # Create a data node with uri field
     db_id_car2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Fiat", "color": "blue"}, new_uri="cincilla")
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Car")
 
-    expected = [{'make': 'Toyota', 'color': 'white', 'internal_id': db_id_car1, 'neo4j_labels': ['Car']},
-                {'make': 'Fiat', 'color': 'blue', 'internal_id': db_id_car2, 'neo4j_labels': ['Car'], 'uri': 'cincilla'}
+    expected = [{'make': 'Toyota', 'color': 'white', 'internal_id': db_id_car1, 'node_labels': ['Car']},
+                {'make': 'Fiat', 'color': 'blue', 'internal_id': db_id_car2, 'node_labels': ['Car'], 'uri': 'cincilla'}
                ]
 
     assert compare_recordsets(result, expected)
@@ -1571,7 +1571,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]   # No other properties were set
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]   # No other properties were set
 
 
     with pytest.raises(Exception):
@@ -1595,7 +1595,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]   # No other properties were set
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]   # No other properties were set
 
 
     # Successfully adding a 3rd data point
@@ -1614,7 +1614,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'neo4j_labels': ['Car'], 'color': 'white', '_SCHEMA': "Car"}]]   # This time the properties got set
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'white', '_SCHEMA': "Car"}]]   # This time the properties got set
 
 
     # Again expand the allowed class properties
@@ -1641,7 +1641,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'neo4j_labels': ['Car'], 'color': 'red', '_SCHEMA': "Car"}]]   # The "color" got set, while the "make" got dropped
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'red', '_SCHEMA': "Car"}]]   # The "color" got set, while the "make" got dropped
 
 
     # Successfully adding a 5th data point
@@ -1659,7 +1659,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'neo4j_labels': ['Car'], 'color': 'blue', 'year': 2000, '_SCHEMA': "Car"}]]
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'blue', 'year': 2000, '_SCHEMA': "Car"}]]
     # The "color" and "year" got set, while the "make" got dropped
 
 
@@ -1678,7 +1678,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'neo4j_labels': ['Car'], 'color': 'green', 'year': 2022, '_SCHEMA': "Car"}]]
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'green', 'year': 2022, '_SCHEMA': "Car"}]]
     # All properties got set
 
 
@@ -1952,7 +1952,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
 
 
     with pytest.raises(Exception):
@@ -1974,7 +1974,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]   # Same as before
+    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]   # Same as before
 
 
     # Successfully adding a new (2nd) data point
@@ -1991,7 +1991,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'red', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
 
 
     # Again expand the allowed class properties
@@ -2015,7 +2015,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'blue', 'year': 2023, 'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'blue', 'year': 2023, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
 
 
     # Successfully adding a 4th data point
@@ -2032,7 +2032,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'blue', 'year': 2000, 'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'blue', 'year': 2000, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
     # We can have 2 red blue because they differ in the other attribute (i.e. the year)
 
 
@@ -2064,7 +2064,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'year': 1999, 'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'red', 'year': 1999, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
 
 
     # Attempting to re-add the "red, 1999" car will have no effect...
@@ -2089,7 +2089,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'year': 1999, 'make': 'Toyota', 'internal_id': new_datanode_id, 'neo4j_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'red', 'year': 1999, 'make': 'Toyota', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
 
 
     # Now, set up an irregular scenario where there's a database node that will match the attributes and labels

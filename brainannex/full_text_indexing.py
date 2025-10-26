@@ -664,8 +664,8 @@ class FullTextIndexing:
                         If all_properties is True,
                             a (possibly empty) list of dictionaries with all the data
                             of all the found nodes; each dict contain all of the nodes' attributes,
-                            plus keys called 'internal_id' and 'neo4j_labels'
-                            EXAMPLE: [{'filename': 'My_Document.pdf', 'internal_id': 66, 'neo4j_labels': ['Content Item']}]
+                            plus keys called 'internal_id' and 'node_labels'
+                            EXAMPLE: [{'filename': 'My_Document.pdf', 'internal_id': 66, 'node_labels': ['Content Item']}]
         """
         clean_term = word.strip()   # Zap leading/trailing blanks
 

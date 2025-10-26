@@ -2462,8 +2462,8 @@ class GraphSchema:
         Return all the values stored at all the Data Nodes of the specified Class.
         Each values comprises all the node fields, the internal database ID and the node labels.
 
-        EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'neo4j_labels': ['Motor Vehicle']},
-                  {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'neo4j_labels': ['Motor Vehicle']}
+        EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'node_labels': ['Motor Vehicle']},
+                  {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'node_labels': ['Motor Vehicle']}
                  ]
 
         See also: data_nodes_of_class()
@@ -4992,11 +4992,11 @@ class GraphSchema:
     
         all_nodes = cls.db.get_nodes(match, return_labels=True)
         for node in all_nodes:
-            labels = node['neo4j_labels']
+            labels = node['node_labels']
             class_name = labels[0]
             print(f"ENTITY: `{class_name}`")
             properties = list(node)
-            properties.remove('neo4j_labels')
+            properties.remove('node_labels')
             print("PROPERTIES:", properties)
             print()
             cls.create_class_with_properties(name=class_name, properties=properties, strict=False)
