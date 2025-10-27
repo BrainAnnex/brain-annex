@@ -2009,14 +2009,130 @@ def test_pd_datetime_to_neo4j_datetime(db):
 
 
 
-###  ~ JSON IMPORT/EXPORT ~
+######  ~ JSON IMPORT/EXPORT ~
 
 # =>  SEE test_graphaccess_import_export.py
 
 
 
+######   ~   VISUALIZATION   ~
 
-###  ~ DEBUGGING SUPPORT ~
+
+def test_node_tabular_display_1(db):
+
+    assert db.node_tabular_display(node_list=[]) is None
+
+    node_list = [{"n": {"a": 3}}]       # Outer dict with dummy name "n"
+
+    df = db.node_tabular_display(node_list=node_list, fields=[])
+    assert df.empty
+
+    df = db.node_tabular_display(node_list=node_list, fields="a", dummy_name="n")
+    expected = pd.DataFrame([[3]], columns = ["a"])
+    assert df.equals(expected)
+
+
+    node_list = [{"a": 3,   "b": "hello"},
+                 {"ZZZ": 8, "b": "hi"}]     # Flat dicts, mismatched fields
+
+    # Only select the common field "b"
+    df = db.node_tabular_display(node_list=node_list, fields="b", dummy_name=None)
+    expected = pd.DataFrame([["hello"], ["hi"]], columns = ["b"])
+    assert df.equals(expected)
+
+    # Select all fields
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name=None)
+    expected = pd.DataFrame({"a": [3, np.nan], "b": ["hello", "hi"], "ZZZ": [np.nan, 8]})
+    assert df.equals(expected)
+
+
+    node_list = [{"a": 3,   "b": "hello", "internal_id": 123},
+                 {"ZZZ": 8, "b": "hi",    "internal_id": 999}]     # Mismatched fields, and a special field
+
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name=None)
+    expected = pd.DataFrame({"a": [3, np.nan], "b": ["hello", "hi"], "ZZZ": [np.nan, 8], "internal_id": [123, 999]})
+    assert df.equals(expected)
+
+
+    node_list = [{"a": 3, "b": "hello", "internal_id": 123, "node_labels": ["Car", "Vehicle"]},
+                 {"a": 8, "b": "hi", "internal_id": 999, "node_labels": ["Person"]}]
+
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name=None)
+    expected = pd.DataFrame([[ ["Car", "Vehicle"], 3, "hello", 123],
+                               [["Person"],        8, "hi",    999]],
+                            columns = ["node_labels", "a", "b", "internal_id"])
+    assert df.equals(expected)
+
+
+    node_list = [{"x": {"a": 3, "b": "hello"}},
+                 {"x": {"a": 8, "b": "hi"}}]        # Dummy name "x"
+
+    df = db.node_tabular_display(node_list=node_list, fields="b", dummy_name="x")
+    expected = pd.DataFrame([["hello"], ["hi"]], columns = ["b"])
+    assert df.equals(expected)
+
+    df = db.node_tabular_display(node_list=node_list, fields=["a", "b"], dummy_name="x")
+    expected = pd.DataFrame([[3, "hello"], [8, "hi"]], columns = ["a", "b"])
+    assert df.equals(expected)
+
+    df = db.node_tabular_display(node_list=node_list, fields=["b", "a"], dummy_name="x")
+    expected = pd.DataFrame([["hello", 3], ["hi", 8]], columns = ["b", "a"])
+    assert df.equals(expected)
+
+
+    # Special fields in OUTER dict
+    node_list = [{ "internal_id": 123, "x": {"a": 3, "b": "hello"} },
+                 { "internal_id": 999, "x": {"a": 8, "b": "hi"} }
+                ]
+
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name="x")
+    expected = pd.DataFrame([[3, "hello", 123], [8, "hi", 999]], columns = ["a", "b", "internal_id"])
+    assert df.equals(expected)
+
+
+    node_list = [{ "node_labels": ["Car", "Vehicle"], "internal_id": 123, "x": {"a": 3,   "b": "hello"} },
+                 { "node_labels": ["Person"],        "internal_id": 999,  "x": {"ZZZ": 8, "b": "hi"} }
+                ]
+
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name="x")
+    expected = pd.DataFrame({"node_labels": [["Car", "Vehicle"],["Person"]],
+                             "a": [3, np.nan], "b": ["hello", "hi"], "ZZZ": [np.nan, 8],
+                             "internal_id": [123, 999]})
+    assert df.equals(expected)
+
+
+def test_node_tabular_display_2(db):
+    db.empty_dbase()
+
+    person_id = db.create_node(labels="Person", properties={"city": "Berkeley"})
+
+    node_list = db.get_nodes(person_id)
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name=None)
+    expected = pd.DataFrame([["Berkeley"]], columns = ["city"])
+    assert df.equals(expected)
+
+    node_list = db.get_nodes(person_id, return_internal_id=True)
+    df = db.node_tabular_display(node_list=node_list, fields="city", dummy_name=None)
+    expected = pd.DataFrame({"city": ["Berkeley"], "internal_id": [person_id]})
+    assert df.equals(expected)
+
+    node_list = db.get_nodes(person_id, return_internal_id=True, return_labels=True)
+    df = db.node_tabular_display(node_list=node_list, fields="city", dummy_name=None)
+    expected = pd.DataFrame({"node_labels": [["Person"]], "city": ["Berkeley"], "internal_id": [person_id]})
+    assert df.equals(expected)
+
+
+    q = "MATCH (x:Person) RETURN x, id(x) AS internal_id"
+    node_list = db.query(q)
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name="x")
+    expected = pd.DataFrame({"city": ["Berkeley"], "internal_id": [person_id]})
+    assert df.equals(expected)
+
+
+
+
+
+######  ~ DEBUGGING SUPPORT ~
 
 
 def test_debug_trim(db):

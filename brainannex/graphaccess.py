@@ -139,6 +139,145 @@ class GraphAccess(InterGraph):
 
 
 
+    def get_nodes(self, match :int|str|CypherBuilder,
+                  return_internal_id=False, return_labels=False, order_by=None, limit=None,
+                  single_row=False, single_cell=""):
+        """
+        By default, it returns a list of the records (as dictionaries of ALL the key/value node properties)
+        corresponding to all the Neo4j nodes specified by the given match data.
+        However, if the flags "single_row" or "single_cell" are set, simpler data structures are returned
+
+        :param match:           EITHER an integer or string with an internal database node id,
+                                    OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
+
+        :param return_internal_id:  Flag indicating whether to also include the internal database node ID in the returned data
+                                    (using "internal_id" as its key in the returned dictionary)
+        :param return_labels:   Flag indicating whether to also include the database label names in the returned data
+                                    (using "node_labels" as its key in the returned dictionary)
+
+        :param order_by:        (OPTIONAL) String with the key (field) name to order by, in ascending order
+                                    Caution: lower and uppercase names are treated differently in the sort order
+                                    TODO: standardize the case; provide support for DESC and for multiple fields
+
+        :param limit:           (OPTIONAL) Integer to specify the maximum number of nodes returned
+                                    TODO: provide support for SKIP
+
+        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one.
+                                    If True and a record or records were found, a dict will be returned instead of a list (containing the 1st record);
+                                    if nothing was found, None will be returned [to distinguish it from a found record with no fields!]
+
+        :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
+                                If single_cell is specified, return the value of the field by that name in the first node
+                                Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
+                                TODO: test and give examples.  single_cell="name" will return result[0].get("name")
+
+        :return:                If single_cell is specified, return the value of the field by that name in the first node.
+                                If single_row is True, return a dictionary with the information of the first record (or None if no record exists)
+                                Otherwise, return a (possibly-empty) list whose entries are dictionaries with each record's information
+                                    (the node's attribute names are the keys)
+                                    EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
+                                                {"gender": "M", "age": 76, "location": "Berkeley"}
+                                             ]
+                                    Note that ALL the attributes of each node are returned - and that they may vary across records.
+                                    If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
+                                            of the form     "internal_id": some integer with the Neo4j internal node ID
+                                    If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
+                                            of the form     "node_labels": [list of Neo4j label(s) attached to that node]
+                                    EXAMPLE using both of the above flags:
+                                        [  {"internal_id": 145, "node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
+                                           {"internal_id": 222, "node_labels": ["person"], "gender": "M", "location": "Berkeley"}
+                                        ]
+        # TODO: provide an option to specify the desired fields
+
+        """
+        # Unpack needed values from the Cypher builder
+        (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
+        #print(node, where, data_binding, dummy_node_name)
+        cypher = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN {dummy_node_name}"
+
+        if order_by:
+            cypher += f" ORDER BY n.{order_by}"
+
+        if limit:
+            cypher += f" LIMIT {limit}"
+
+
+        # Note: the flatten=True takes care of returning just the fields of the matched node "n",
+        #       rather than dictionaries indexes by "n"
+        if return_internal_id and return_labels:
+            result_list = self.query_extended(cypher, data_binding, flatten=True)
+            # Note: query_extended() provides both 'internal_id' and 'node_labels'
+        elif return_internal_id:    # but not return_labels
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['node_labels'])
+        elif return_labels:         # but not return_internal_id
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id'])
+        else:
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id', 'node_labels'])
+
+        # Deal with empty result lists
+        if len(result_list) == 0:   # If no results were produced
+            if single_row:
+                return None             # representing a record not found (different from a record with no fields, which will be {})
+            if single_cell:
+                return None             # representing a field not found
+            return []
+
+        # Note: we already checked that result_list isn't empty
+        if single_row:
+            return result_list[0]
+
+        if single_cell:
+            return result_list[0].get(single_cell)
+
+        return result_list
+
+
+
+    def get_df(self, match: Union[int, CypherBuilder], order_by=None, limit=None) -> pd.DataFrame:
+        """
+        Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
+
+        [See get_nodes() for more information about the arguments]
+
+        :param match:       EITHER an integer with an internal database node id,
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
+        :param order_by:    Optional string with the key (field) name to order by, in ascending order
+                                Note: lower and uppercase names are treated differently in the sort order
+        :param limit:       Optional integer to specify the maximum number of nodes returned
+
+        :return:            A Pandas dataframe
+        """
+        result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
+        return pd.DataFrame(result_list)
+
+
+
+    def get_node_internal_id(self, match :CypherBuilder) -> int|str:
+        """
+        Return the internal database ID of a SINGLE node identified by the "match" data
+        created by a call to match().
+
+        If not found, or if more than 1 found, an Exception is raised
+
+        :param match:   A "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
+        :return:        An integer or string with the internal database ID of the located node,
+                        if exactly 1 node is found; otherwise, raise an Exception
+        """
+        # Unpack needed values from the match dictionary
+        (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_node_internal_id")
+
+        q = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN id(n) AS INTERNAL_ID"
+
+        result = self.query(q, data_binding, single_column="INTERNAL_ID")
+
+        assert len(result) != 0, "get_node_internal_id(): node NOT found"
+
+        assert len(result) <= 1, f"get_node_internal_id(): node NOT uniquely identified ({len(result)} matches found)"
+
+        return result[0]
+
+
+
     def get_record_by_primary_key(self, labels: str, primary_key_name: str, primary_key_value,
                                   return_internal_id=False) -> Union[dict, None]:
         """
@@ -249,147 +388,6 @@ class GraphAccess(InterGraph):
         single_field_list = [record.get(field_name) for record in record_list]
 
         return single_field_list
-
-
-
-    def get_nodes(self, match :int|CypherBuilder,
-                  return_internal_id=False, return_labels=False, order_by=None, limit=None,
-                  single_row=False, single_cell=""):
-        """
-        By default, it returns a list of the records (as dictionaries of ALL the key/value node properties)
-        corresponding to all the Neo4j nodes specified by the given match data.
-        However, if the flags "single_row" or "single_cell" are set, simpler data structures are returned
-
-        :param match:           EITHER an integer or string with an internal database node id,
-                                    OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-
-        :param return_internal_id:  Flag indicating whether to also include the Neo4j internal node ID in the returned data
-                                    (using "internal_id" as its key in the returned dictionary)
-        :param return_labels:   Flag indicating whether to also include the Neo4j label names in the returned data
-                                    (using "node_labels" as its key in the returned dictionary)
-
-        :param order_by:        (OPTIONAL) String with the key (field) name to order by, in ascending order
-                                    Caution: lower and uppercase names are treated differently in the sort order
-                                    TODO: standardize the case; provide support for DESC and for multiple fields
-
-        :param limit:           (OPTIONAL) Integer to specify the maximum number of nodes returned
-                                    TODO: provide support for SKIP
-
-        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one.
-                                    If True and a record or records were found, a dict will be returned instead of a list (containing the 1st record);
-                                    if nothing was found, None will be returned [to distinguish it from a found record with no fields!]
-
-        :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
-                                If single_cell is specified, return the value of the field by that name in the first node
-                                Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
-                                TODO: test and give examples.  single_cell="name" will return result[0].get("name")
-
-        :return:                If single_cell is specified, return the value of the field by that name in the first node.
-                                If single_row is True, return a dictionary with the information of the first record (or None if no record exists)
-                                Otherwise, return a (possibly-empty) list whose entries are dictionaries with each record's information
-                                    (the node's attribute names are the keys)
-                                    EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
-                                                {"gender": "M", "age": 76, "location": "Berkeley"}
-                                             ]
-                                    Note that ALL the attributes of each node are returned - and that they may vary across records.
-                                    If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
-                                            of the form     "internal_id": some integer with the Neo4j internal node ID
-                                    If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
-                                            of the form     "node_labels": [list of Neo4j label(s) attached to that node]
-                                    EXAMPLE using both of the above flags:
-                                        [  {"internal_id": 145, "node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
-                                           {"internal_id": 222, "node_labels": ["person"], "gender": "M", "location": "Berkeley"}
-                                        ]
-        # TODO: provide an option to specify the desired fields
-
-        """
-        # Unpack needed values from the Cypher builder
-        (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
-        #print(node, where, data_binding, dummy_node_name)
-        cypher = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN {dummy_node_name}"
-
-        if order_by:
-            cypher += f" ORDER BY n.{order_by}"
-
-        if limit:
-            cypher += f" LIMIT {limit}"
-
-
-        # Note: the flatten=True takes care of returning just the fields of the matched node "n",
-        #       rather than dictionaries indexes by "n"
-        if return_internal_id and return_labels:
-            result_list = self.query_extended(cypher, data_binding, flatten=True)
-            # Note: query_extended() provides both 'internal_id' and 'node_labels'
-        elif return_internal_id:    # but not return_labels
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['node_labels'])
-        elif return_labels:         # but not return_internal_id
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id'])
-        else:
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id', 'node_labels'])
-
-        # Deal with empty result lists
-        if len(result_list) == 0:   # If no results were produced
-            if single_row:
-                return None             # representing a record not found (different from a record with no fields, which will be {})
-            if single_cell:
-                return None             # representing a field not found
-            return []
-
-        # Note: we already checked that result_list isn't empty
-        if single_row:
-            return result_list[0]
-
-        if single_cell:
-            return result_list[0].get(single_cell)
-
-        return result_list
-
-
-
-    def get_df(self, match: Union[int, CypherBuilder], order_by=None, limit=None) -> pd.DataFrame:
-        """
-        Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
-
-        [See get_nodes() for more information about the arguments]
-
-        :param match:       EITHER an integer with an internal database node id,
-                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-        :param order_by:    Optional string with the key (field) name to order by, in ascending order
-                                Note: lower and uppercase names are treated differently in the sort order
-        :param limit:       Optional integer to specify the maximum number of nodes returned
-
-        :return:            A Pandas dataframe
-        """
-        result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
-        return pd.DataFrame(result_list)
-
-
-
-    def get_node_internal_id(self, match: CypherBuilder) -> int:
-        """
-        Return the internal database ID of a SINGLE node identified by the "match" data
-        created by a call to match().
-
-        If not found, or if more than 1 found, an Exception is raised
-
-        :param match:   A "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-        :return:        An integer with the internal database ID of the located node,
-                        if exactly 1 node is found; otherwise, raise an Exception
-        """
-        #match_structure = CypherUtils.process_match_structure(match, caller_method="get_node_internal_id")
-
-        # Unpack needed values from the match dictionary
-        (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_node_internal_id")
-
-        q = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN id(n) AS INTERNAL_ID"
-
-        result = self.query(q, data_binding, single_column="INTERNAL_ID")
-
-        assert len(result) != 0, "get_node_internal_id(): node NOT found"
-
-        assert len(result) <= 1, f"get_node_internal_id(): node NOT uniquely identified ({len(result)} matches found)"
-
-        return result[0]
 
 
 
@@ -2625,53 +2623,95 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def node_tabular_display(self, node_list :list, fields=None, dummy_name="n", limit=15) -> pd.DataFrame:
+    def node_tabular_display(self, node_list :list, fields=None, dummy_name=None, limit=15) -> pd.DataFrame|None:
         """
-        Simplified tabular display of a selected fields from the given list of nodes data,
-        typically as returned from get_nodes() or simular functions.
-        Node labels and internal ID's are included in the table *if* they are part of the passed data
+        Tabular display of the requested fields from the given list of nodes data,
+        typically as returned from get_nodes()
+        or from the queries such as "MATCH (x:Person) RETURN x, id(x) AS internal_id"
 
-        :param node_list:   A list whose elements are dict's with the following keys:
-                                "node_labels" [OPTIONAL]
-                                "internal_id" [OPTIONAL]
-                                "n" (or other dummy name, as passed in the argument)
+        Node labels and their internal ID's are included in the table *if* they are part of the passed data
+
+        :param node_list:   A list whose elements represent data from nodes;
+                                the following EXAMPLES show the different formats can be used for the list elements:
+
+                                {"field_1": 3, "field_2": "hello"}                          # Simple dict of node properties
+                                {"field_1": 3, "field_2": "hello",
+                                    "internal_id": 123, "node_labels": ["Car", "Vehicle"]}  # Optionally include "internal_id" and/or "node_labels"
+                                { "n":  {"field_1": 3, "field_2": "hello"} }                # Outer dict with dummy name
+                                { "internal_id": 123, "node_labels": ["Car", "Vehicle"] ,
+                                        "n":  {"field_1": 3, "field_2": "hello"} }          # Optionally include "internal_id" and/or "node_labels" in outer list
+
 
         :param fields:      A string, or list/tuple of strings, with the name(s) of the desired field(s) to include.
-                                If None, only the node labels and internal ID's are included.
-        :param dummy_name:
+                                If None, ALL fields are included (plus the node labels and internal ID's, if present);
+                                if the fields don't match across all records, NaN's will be inserted into the dataframe
+        :param dummy_name:  A string to identify where the node data resides in the elements of `node_list`, if not at top level
         :param limit:       Max number of records (nodes) to include
 
-        :return:            A Panda's DataFrame with a tabular view of the specified fields (properties)
+        :return:            If the list of node is empty, None is returned;
+                                otherwise, a Panda's DataFrame with a tabular view of the specified fields (properties),
+                                with columns in the following order: "node_labels" (if present), all the fields in the order of
+                                the `fields` list, "internal_id" (if present)
+                                Note: "internal_id" might not show up at the far right if `fields` is None, and different records
+                                      have variable field lists
         """
-        print(f"{len(node_list)} nodes.  Showing the first {limit}\n")
+        if (n_nodes := len(node_list)) == 0:
+            print("node_tabular_display(): EMPTY list of nodes.")
+            return
+
+        feedback = "" if n_nodes <= limit else "  Showing the first {limit}"    # Give feedback about omission of results, if applicable
+        print(f"node_tabular_display(): {n_nodes} node(s).  {feedback}\n")
+
 
         row_list = []   # Running list of records (dict's with node data of interest)
 
         if type(fields) == str:
-            fields = [fields]
+            fields = [fields]       # Turn into list
 
         for i, node in enumerate(node_list):
             if i >= limit:
-                break
-
-            d = node[dummy_name]
+                break               # Exceeded the max
 
             d_simple = {}
 
-            if "NODE_LABELS" in node:
-                d_simple["NODE_LABELS"] = node["NODE_LABELS"]
+            if dummy_name:  # If there is an outer dict
+                d = node[dummy_name]    # A dictionary of node properties
+                outer = node
+            else:
+                d = node
+                outer = d
+
+            #  Include "node_labels" and/or "internal_id", if present
+            if "internal_id" in outer:
+                d_simple["internal_id"] = outer["internal_id"]  # Placed first; later will be moved to last column
+            if "node_labels" in outer:
+                d_simple["node_labels"] = outer["node_labels"]
+
 
             if fields is not None:
+                # Copy over the requested fields
                 for f in fields:
                     d_simple[f] = d[f]
-
-            if "internal_id" in node:
-                d_simple["internal_id"] = node["internal_id"]
+            else:
+                # Copy over ALL fields, except "node_labels" and "internal_id" (which are handled separately)
+                 for k, v in d.items():
+                    if (k != "node_labels") and (k != "internal_id"):
+                        d_simple[k] = v
 
             #print(d_simple)
             row_list.append(d_simple)
 
-        return pd.DataFrame(row_list)
+
+        df = pd.DataFrame(row_list)   # Turn a list of dict's into a Pandas dataframe
+
+        # Re-oder the columns, to place "internal_id" (if present) last
+        if ("internal_id" in df.columns) and (df.columns[0] == "internal_id"):
+            col_data = df["internal_id"]          # save the "internal_id" column
+            del df["internal_id"]                 # remove it from the DataFrame
+            df["internal_id"] = col_data          # reinsert it as the last column
+
+        return df
+
 
 
 
