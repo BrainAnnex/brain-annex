@@ -181,7 +181,7 @@ def test_new_indexing(db):
     assert FullTextIndexing.number_of_indexed_words(content_id) == 3
 
     q = '''
-        MATCH (i:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
+        MATCH (i:Indexer {`_CLASS`: "Indexer"})<-[:occurs]-(w:Word {`_CLASS`: "Word"})
         RETURN w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -203,9 +203,9 @@ def test_new_indexing(db):
     assert FullTextIndexing.number_of_indexed_words(content_id) == 2
 
     q = '''
-        MATCH (w:Word {`_SCHEMA`: "Word"})-[:occurs]
+        MATCH (w:Word {`_CLASS`: "Word"})-[:occurs]
         ->(:Indexer)
-        <-[:has_index]-(:`Content Item` {`_SCHEMA`: "Content Item"})
+        <-[:has_index]-(:`Content Item` {`_CLASS`: "Content Item"})
         RETURN DISTINCT w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -244,7 +244,7 @@ def test_add_words_to_index(db):
     assert FullTextIndexing.number_of_indexed_words(content_id) == 3
 
     q = '''
-        MATCH (i:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
+        MATCH (i:Indexer {`_CLASS`: "Indexer"})<-[:occurs]-(w:Word {`_CLASS`: "Word"})
         RETURN w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -271,9 +271,9 @@ def test_add_words_to_index(db):
     assert FullTextIndexing.number_of_indexed_words(content_id) == 2
 
     q = '''
-        MATCH (w:Word {`_SCHEMA`: "Word"})-[:occurs]
+        MATCH (w:Word {`_CLASS`: "Word"})-[:occurs]
         ->(:Indexer)
-        <-[:has_index]-(:`Content Item` {`_SCHEMA`: "Content Item"})
+        <-[:has_index]-(:`Content Item` {`_CLASS`: "Content Item"})
         RETURN DISTINCT w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -308,7 +308,7 @@ def test_update_indexing(db):
     assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     q = '''
-        MATCH (:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
+        MATCH (:Indexer {`_CLASS`: "Indexer"})<-[:occurs]-(w:Word {`_CLASS`: "Word"})
         RETURN w.name AS name
         '''
     res = db.query(q, single_column="name")
@@ -325,7 +325,7 @@ def test_update_indexing(db):
     assert GraphSchema.count_data_nodes_of_class(class_name="Indexer") == 1
 
     q = '''
-        MATCH (:Indexer {`_SCHEMA`: "Indexer"})<-[:occurs]-(w:Word {`_SCHEMA`: "Word"})
+        MATCH (:Indexer {`_CLASS`: "Indexer"})<-[:occurs]-(w:Word {`_CLASS`: "Word"})
         RETURN w.name AS name
         '''
     res = db.query(q, single_column="name")

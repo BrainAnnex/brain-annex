@@ -261,7 +261,7 @@ def test_rename_class(db):
 
     q = f'''
         MATCH (n :`Recreational Vehicle`:`West Coast`) 
-        WHERE id(n) = {data_node_id} AND n.`_SCHEMA` = "Recreational Vehicle" AND n.color = "white"
+        WHERE id(n) = {data_node_id} AND n.`_CLASS` = "Recreational Vehicle" AND n.color = "white"
         RETURN count(n) AS number_found
         '''
 
@@ -553,7 +553,7 @@ def test_delete_class(db):
 
     q = '''
     MATCH (d :quotes)
-    WHERE d.`_SCHEMA` IS NOT NULL
+    WHERE d.`_CLASS` IS NOT NULL
     RETURN count(d) AS number_orphaned
     '''
     assert db.query(q, single_cell="number_orphaned") == 1  # Now there's an "orphaned" data node
@@ -964,7 +964,7 @@ def test_get_data_node(db):
     assert result == {'color': 'white', 'make': 'Toyota'}
 
     result = GraphSchema.get_data_node(class_name="Car", node_id=db_id, hide_schema=False)
-    assert result == {'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota'}
+    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
 
     # Now try it on a generic database node that is NOT a Data Node
     db_id = db.create_node(labels="Car", properties={"make": "BMW", "color": "red"})
@@ -1072,10 +1072,10 @@ def test_get_nodes_by_filter(db):
     assert result == []
 
     result = GraphSchema.get_nodes_by_filter(class_name="Car")    # This locates 1 node
-    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}]
+    assert result == [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}]
 
     result = GraphSchema.get_nodes_by_filter(labels="Car")        # This locates 3 nodes
-    expected = [{"_SCHEMA": "Car", "color": "grey", "make": "Toyota"},
+    expected = [{"_CLASS": "Car", "color": "grey", "make": "Toyota"},
                 {"color": "yellow", "year": 1999},
                 {"color": "black", "trim": "yellow", "year": 1999}
                ]
@@ -1092,29 +1092,29 @@ def test_get_nodes_by_filter(db):
     assert result == []
 
     result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="yota", string_match="ENDS WITH")
-    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}]
+    assert result == [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}]
 
     result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="Toy", string_match="STARTS WITH")
-    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}]
+    assert result == [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}]
 
     result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="Toy", string_match="CONTAINS")
-    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}]
+    assert result == [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}]
 
     # Add a new Car node
     GraphSchema.create_data_node(class_name="Car", properties={"make": "Chevrolet", "color": "pink", "year": 1955})
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="year, color")
-    assert result == [{'_SCHEMA': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'},
+    assert result == [{'_CLASS': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'},
                       {'color': 'black', 'trim': 'yellow', 'year': 1999},
                       {'color': 'yellow', 'year': 1999},
-                      {'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'}
+                      {'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}
                      ]          # The record with no date will be at the end, when sorting in ascending order
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="  year    DESC  , color  ")
-    assert result == [{'_SCHEMA': 'Car', 'color': 'grey', 'make': 'Toyota'},
+    assert result == [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'},
                       {'color': 'black', 'trim': 'yellow', 'year': 1999},
                       {'color': 'yellow', 'year': 1999},
-                      {'_SCHEMA': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'}
+                      {'_CLASS': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'}
                      ]          #  The record with no date will be at the end, when sorting in descending order
 
 
@@ -1125,64 +1125,64 @@ def test_get_nodes_by_filter(db):
     GraphSchema.create_data_node(class_name="Car", properties={"make": "Chevrolet", "color": "green", "year": 1970})
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC, color DESC")
-    assert result == [  {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
-                        {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
-                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
-                        {'make': 'Toyota','year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
+    assert result == [  {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
+                        {'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
+                        {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'},
+                        {'make': 'Toyota','year': 1988, '_CLASS': 'Car', 'color': 'white'},
                         {'color': 'yellow', 'year': 1999},
                         {'color': 'black', 'trim': 'yellow', 'year': 1999}]     # Records with no 'make' will appear last
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC", limit=4)
-    assert result == [  {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
-                        {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
-                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
-                        {'make': 'Toyota','year': 1988, '_SCHEMA': 'Car', 'color': 'white'}]
+    assert result == [  {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
+                        {'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
+                        {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'},
+                        {'make': 'Toyota','year': 1988, '_CLASS': 'Car', 'color': 'white'}]
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC, color DESC", skip=2, limit=3)
-    assert result == [  {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
-                        {'make': 'Toyota','year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
+    assert result == [  {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'},
+                        {'make': 'Toyota','year': 1988, '_CLASS': 'Car', 'color': 'white'},
                         {'color': 'yellow', 'year': 1999}]
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="   make   , year   DESC   ", skip=2, limit=1)
-    assert result == [  {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'}]
+    assert result == [  {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'}]
 
     # Add a new Car node; notice the lower case in the "make"
     GraphSchema.create_data_node(class_name="Car", properties={"make": "fiat", "color": "blue", "year": 1970})
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year,color")
-    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
-                        {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
-                        {'make': 'Toyota', 'year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
-                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
-                        {'make': 'fiat', 'year': 1970, '_SCHEMA': 'Car', 'color': 'blue'},
+    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
+                        {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
+                        {'make': 'Toyota', 'year': 1988, '_CLASS': 'Car', 'color': 'white'},
+                        {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'},
+                        {'make': 'fiat', 'year': 1970, '_CLASS': 'Car', 'color': 'blue'},
                         {'color': 'black', 'trim': 'yellow', 'year': 1999},
                         {'color': 'yellow', 'year': 1999}]   # "fiat" comes after "Toyota" due to capitalization
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year,  color  ", sort_ignore_case=["make"])
-    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
-                        {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
-                        {'make': 'fiat', 'year': 1970, '_SCHEMA': 'Car', 'color': 'blue'},
-                        {'make': 'Toyota', 'year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
-                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'},
+    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
+                        {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
+                        {'make': 'fiat', 'year': 1970, '_CLASS': 'Car', 'color': 'blue'},
+                        {'make': 'Toyota', 'year': 1988, '_CLASS': 'Car', 'color': 'white'},
+                        {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'},
                         {'color': 'black', 'trim': 'yellow', 'year': 1999},
                         {'color': 'yellow', 'year': 1999}]  # The "fiat" is now alphabetized regardless of case
 
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="year, make DESC, color DESC", sort_ignore_case=["make"])
-    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_SCHEMA': 'Car', 'color': 'pink'},
-                        {'make': 'fiat', 'year': 1970, '_SCHEMA': 'Car', 'color': 'blue'},
-                        {'make': 'Chevrolet', 'year': 1970,'_SCHEMA': 'Car', 'color': 'green' },
-                        {'make': 'Toyota', 'year': 1988, '_SCHEMA': 'Car', 'color': 'white'},
+    assert result == [  {'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
+                        {'make': 'fiat', 'year': 1970, '_CLASS': 'Car', 'color': 'blue'},
+                        {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
+                        {'make': 'Toyota', 'year': 1988, '_CLASS': 'Car', 'color': 'white'},
                         {'color': 'yellow', 'year': 1999},
                         {'color': 'black', 'trim': 'yellow', 'year': 1999},
-                        {'make': 'Toyota', '_SCHEMA': 'Car', 'color': 'grey'}]
+                        {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'}]
 
     # Add a new Car node; notice the blank in the new field name
     db.create_node(labels="Car", properties={"year": 2003, "decommission year": 2025})      # A GENERIC node (not a Data Node)
 
     result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="decommission year, make, year", sort_ignore_case=["make"], limit=2)
     assert result == [{'decommission year': 2025, 'year': 2003},
-                      {'_SCHEMA': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'}]
+                      {'_CLASS': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'}]
 
     with pytest.raises(Exception):
         # Trying to sort by a property (field) name unregistered with the Schema
@@ -1279,7 +1279,7 @@ def test_search_data_node(db):
     assert result == {'color': 'white', 'make': 'Toyota'}
 
     result = GraphSchema.search_data_node(internal_id=db_id, hide_schema=False)
-    assert result == {'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota'}
+    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
 
     result = GraphSchema.search_data_node(internal_id=99999)
     assert result is None   # Not found
@@ -1334,7 +1334,7 @@ def test_get_all_data_nodes_of_class(db):
     assert result == [{'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, 'node_labels': ['Car']}]
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Car", hide_schema=False)
-    assert result == [{'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, 'node_labels': ['Car']}]
+    assert result == [{'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, 'node_labels': ['Car']}]
 
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Boat")
@@ -1431,14 +1431,14 @@ def test_create_data_node_1(db):
                                                new_uri=None, silently_drop=False)
 
     q = '''
-        MATCH (dn :doctor {name: "Dr. Preeti", specialty: "sports medicine", `_SCHEMA`: "doctor"}) 
+        MATCH (dn :doctor {name: "Dr. Preeti", specialty: "sports medicine", `_CLASS`: "doctor"}) 
         WHERE id(dn) = $internal_id
         RETURN dn
         '''
 
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
-    assert result[0] == {'dn': {'specialty': 'sports medicine', 'name': 'Dr. Preeti', '_SCHEMA': "doctor"}}
+    assert result[0] == {'dn': {'specialty': 'sports medicine', 'name': 'Dr. Preeti', '_CLASS': "doctor"}}
 
 
     # Create a 2nd "doctor" data node, this time assigning an extra label and storing a URI
@@ -1449,13 +1449,13 @@ def test_create_data_node_1(db):
                                                new_uri=uri, silently_drop=False)
 
     q = '''
-        MATCH (dn :doctor:Nobelist {name: "Dr. Watson", specialty: "genetics", `_SCHEMA`: "doctor"}) 
+        MATCH (dn :doctor:Nobelist {name: "Dr. Watson", specialty: "genetics", `_CLASS`: "doctor"}) 
         WHERE id(dn) = $internal_id
         RETURN dn
         '''
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
-    assert result[0] == {'dn': {'specialty': 'genetics', 'name': 'Dr. Watson', 'uri': uri, '_SCHEMA': "doctor"}}
+    assert result[0] == {'dn': {'specialty': 'genetics', 'name': 'Dr. Watson', 'uri': uri, '_CLASS': "doctor"}}
 
 
     # Create a 3rd "doctor" data node, this time assigning 2 extra labels and also assigning a URI
@@ -1466,14 +1466,14 @@ def test_create_data_node_1(db):
                                                new_uri=uri, silently_drop=False)
 
     q = '''
-        MATCH (dn :doctor:retired:person {name: "Dr. Lewis", specialty: "radiology", `_SCHEMA`: "doctor"}) 
+        MATCH (dn :doctor:retired:person {name: "Dr. Lewis", specialty: "radiology", `_CLASS`: "doctor"}) 
         WHERE id(dn) = $internal_id
         RETURN dn
         '''
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
 
-    assert result[0] == {'dn': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'uri': uri, '_SCHEMA': "doctor"}}
+    assert result[0] == {'dn': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'uri': uri, '_CLASS': "doctor"}}
 
 
     # Create a 4th "doctor" data node, this time using a tuple rather than a list to assign 2 extra labels
@@ -1484,14 +1484,14 @@ def test_create_data_node_1(db):
                                                new_uri=uri, silently_drop=False)
 
     q = '''
-        MATCH (dn :doctor:retired:person {name: "Dr. Clark", specialty: "pediatrics", `_SCHEMA`: "doctor"}) 
+        MATCH (dn :doctor:retired:person {name: "Dr. Clark", specialty: "pediatrics", `_CLASS`: "doctor"}) 
         WHERE id(dn) = $internal_id
         RETURN dn
         '''
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
 
-    assert result[0] == {'dn': {'specialty': 'pediatrics', 'name': 'Dr. Clark', 'uri': uri, '_SCHEMA': "doctor"}}
+    assert result[0] == {'dn': {'specialty': 'pediatrics', 'name': 'Dr. Clark', 'uri': uri, '_CLASS': "doctor"}}
 
 
 
@@ -1516,14 +1516,14 @@ def test_create_data_node_2(db):
                                                extra_labels = None, new_uri=None,
                                                silently_drop=True)
     q = '''
-        MATCH (p :person {age: 22, `_SCHEMA`: "person"}) 
+        MATCH (p :person {age: 22, `_CLASS`: "person"}) 
         WHERE id(p) = $internal_id
         RETURN p
         '''
 
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
-    assert result[0] == {'p': {'age': 22, '_SCHEMA': "person"}}      # Notice that the address never made it into the database
+    assert result[0] == {'p': {'age': 22, '_CLASS': "person"}}      # Notice that the address never made it into the database
 
 
     # Switch a new class, of type "lenient"
@@ -1536,14 +1536,14 @@ def test_create_data_node_2(db):
                                                extra_labels = None, new_uri=None,
                                                silently_drop=False)
     q = '''
-        MATCH (c :car {brand: "Toyota", color: "white", `_SCHEMA`: "car"}) 
+        MATCH (c :car {brand: "Toyota", color: "white", `_CLASS`: "car"}) 
         WHERE id(c) = $internal_id
         RETURN c
         '''
 
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
-    assert result[0] == {'c': {"brand": "Toyota", "color": "white", '_SCHEMA': "car"}}  # The color, though undeclared in the Schema, got set
+    assert result[0] == {'c': {"brand": "Toyota", "color": "white", '_CLASS': "car"}}  # The color, though undeclared in the Schema, got set
 
 
 
@@ -1565,13 +1565,13 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_internal_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]   # No other properties were set
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]   # No other properties were set
 
 
     with pytest.raises(Exception):
@@ -1589,13 +1589,13 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_internal_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]   # No other properties were set
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]   # No other properties were set
 
 
     # Successfully adding a 3rd data point
@@ -1608,13 +1608,13 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_internal_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'white', '_SCHEMA': "Car"}]]   # This time the properties got set
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'white', '_CLASS': "Car"}]]   # This time the properties got set
 
 
     # Again expand the allowed class properties
@@ -1635,13 +1635,13 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_internal_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'red', '_SCHEMA': "Car"}]]   # The "color" got set, while the "make" got dropped
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'red', '_CLASS': "Car"}]]   # The "color" got set, while the "make" got dropped
 
 
     # Successfully adding a 5th data point
@@ -1653,13 +1653,13 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_internal_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'blue', 'year': 2000, '_SCHEMA': "Car"}]]
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'blue', 'year': 2000, '_CLASS': "Car"}]]
     # The "color" and "year" got set, while the "make" got dropped
 
 
@@ -1672,13 +1672,13 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_internal_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'green', 'year': 2022, '_SCHEMA': "Car"}]]
+    assert result == [[{'internal_id': new_datanode_internal_id, 'node_labels': ['Car'], 'color': 'green', 'year': 2022, '_CLASS': "Car"}]]
     # All properties got set
 
 
@@ -1706,8 +1706,8 @@ def test_create_data_node_4(db):
                                                        )
 
     q = '''
-        MATCH (p :patient {name: "Jill", age: 22, balance: 145, `_SCHEMA`:"patient"})-[:IS_ATTENDED_BY]
-        -> (d :doctor {name:"Dr. Preeti", specialty:"sports medicine", `_SCHEMA`:"doctor"})
+        MATCH (p :patient {name: "Jill", age: 22, balance: 145, `_CLASS`:"patient"})-[:IS_ATTENDED_BY]
+        -> (d :doctor {name:"Dr. Preeti", specialty:"sports medicine", `_CLASS`:"doctor"})
         WHERE id(d) = $doctor_internal_id AND id(p) = $patient_internal_id
         RETURN p, d
         '''
@@ -1723,9 +1723,9 @@ def test_create_data_node_4(db):
                                                       new_uri= "RESULT-1")
     q = '''
         MATCH 
-        (p :patient {name: "Jill", age: 22, balance: 145, `_SCHEMA`:"patient"})
+        (p :patient {name: "Jill", age: 22, balance: 145, `_CLASS`:"patient"})
         -[:HAS_RESULT]->
-        (r :result {biomarker: "glucose", value: 99, `_SCHEMA`:"result"})
+        (r :result {biomarker: "glucose", value: 99, `_CLASS`:"result"})
         WHERE id(p) = $patient_internal_id AND id(r) = $result_internal_id
         RETURN p, r
         '''
@@ -1745,11 +1745,11 @@ def test_create_data_node_4(db):
                                                        new_uri="RESULT-2")
     q = '''
         MATCH 
-        (r1 :result {biomarker: "glucose", value: 99, `_SCHEMA`:"result"})
+        (r1 :result {biomarker: "glucose", value: 99, `_CLASS`:"result"})
         <-[:HAS_RESULT]-
-        (p :patient {name: "Jill", age: 22, balance: 145, `_SCHEMA`:"patient"})
+        (p :patient {name: "Jill", age: 22, balance: 145, `_CLASS`:"patient"})
         -[:HAS_RESULT]->
-        (r2 :result {biomarker: "cholesterol", value: 180, `_SCHEMA`:"result"})
+        (r2 :result {biomarker: "cholesterol", value: 180, `_CLASS`:"result"})
         WHERE id(p) = $patient_internal_id AND id(r2) = $result_internal_id
         RETURN p, r1, r2
         '''
@@ -1773,9 +1773,9 @@ def test_create_data_node_4(db):
                                                          )
 
     q = '''
-        MATCH (p :patient {name: "Jack", age: 99, balance: 8000, `_SCHEMA`:"patient"})
+        MATCH (p :patient {name: "Jack", age: 99, balance: 8000, `_CLASS`:"patient"})
         -[r :IS_ATTENDED_BY]-> 
-        (d :doctor {name:"Dr. Preeti", specialty:"sports medicine", `_SCHEMA`:"doctor"})
+        (d :doctor {name:"Dr. Preeti", specialty:"sports medicine", `_CLASS`:"doctor"})
         WHERE id(d) = $doctor_internal_id AND id(p) = $patient_internal_id
             AND r.since = 1999
         RETURN p, d
@@ -1849,7 +1849,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Dr. Watson", "specialty": "ob/gyn", "_SCHEMA": "doctor"}]
+    assert result == [{'uri': uri, "name": "Dr. Watson", "specialty": "ob/gyn", "_CLASS": "doctor"}]
 
 
     # Completely drop the specialty field
@@ -1858,7 +1858,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Dr. Watson", "_SCHEMA": "doctor"}]
+    assert result == [{'uri': uri, "name": "Dr. Watson", "_CLASS": "doctor"}]
 
 
     # Turn the name value blank, but don't drop the field
@@ -1867,7 +1867,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "", "_SCHEMA": "doctor"}]
+    assert result == [{'uri': uri, "name": "", "_CLASS": "doctor"}]
 
 
     # Set the name, this time locating the record by its URI
@@ -1876,7 +1876,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "_SCHEMA": "doctor"}]
+    assert result == [{'uri': uri, "name": "Prof. Fleming", "_CLASS": "doctor"}]
 
 
     # Add 2 extra fields: notice the junk leading/trailing blanks in the string
@@ -1885,7 +1885,7 @@ def test_update_data_node(db):
     assert count == 2
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_SCHEMA": "doctor"}]
+    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
 
 
     # A vacuous "change" that doesn't actually do anything
@@ -1894,7 +1894,7 @@ def test_update_data_node(db):
     assert count == 0
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_SCHEMA": "doctor"}]
+    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
 
 
     # A "change" that doesn't actually change anything, but nonetheless is counted as 1 property set
@@ -1902,7 +1902,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_SCHEMA": "doctor"}]
+    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
 
 
     # A "change" that causes a field of blanks to get dropped
@@ -1910,7 +1910,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "location": "San Francisco", "retired": False, "_SCHEMA": "doctor"}]
+    assert result == [{'uri': uri, "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
 
 
 
@@ -1946,13 +1946,13 @@ def test_add_data_node_merge(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     with pytest.raises(Exception):
@@ -1968,13 +1968,13 @@ def test_add_data_node_merge(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]   # Same as before
+    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]   # Same as before
 
 
     # Successfully adding a new (2nd) data point
@@ -1985,13 +1985,13 @@ def test_add_data_node_merge(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'red', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     # Again expand the allowed class properties
@@ -2009,13 +2009,13 @@ def test_add_data_node_merge(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'blue', 'year': 2023, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'blue', 'year': 2023, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     # Successfully adding a 4th data point
@@ -2026,13 +2026,13 @@ def test_add_data_node_merge(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}})  
+    MATCH (n :Car {{`_CLASS`: "Car"}})  
     WHERE id(n) = {new_datanode_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'blue', 'year': 2000, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'blue', 'year': 2000, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]
     # We can have 2 red blue because they differ in the other attribute (i.e. the year)
 
 
@@ -2058,13 +2058,13 @@ def test_add_data_node_merge(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}})  
+    MATCH (n :Car {{`_CLASS`: "Car"}})  
     WHERE id(n) = {new_datanode_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'year': 1999, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'red', 'year': 1999, 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     # Attempting to re-add the "red, 1999" car will have no effect...
@@ -2083,13 +2083,13 @@ def test_add_data_node_merge(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_SCHEMA`: "Car"}}) 
+    MATCH (n :Car {{`_CLASS`: "Car"}}) 
     WHERE id(n) = {new_datanode_id}
     RETURN n
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'year': 1999, 'make': 'Toyota', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_SCHEMA': "Car"}]]
+    assert result == [[{'color': 'red', 'year': 1999, 'make': 'Toyota', 'internal_id': new_datanode_id, 'node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     # Now, set up an irregular scenario where there's a database node that will match the attributes and labels
@@ -2376,7 +2376,7 @@ def test_class_of_data_point(db):
     # Create a forbidden scenario with a data node having 2 Schema classes
     q = f'''
         MATCH (n {{uri: '{uri}' }})
-        SET n.`_SCHEMA` = 666
+        SET n.`_CLASS` = 666
         '''
     #db.debug_print(q, {}, "test")
     db.update_query(q)
@@ -2598,17 +2598,17 @@ def test_prepare_match_cypher_clause():
 
     result = GraphSchema.prepare_match_cypher_clause(class_name="Car")
     assert result[0] == ":`Car`"
-    assert result[1] == "WHERE dn.`_SCHEMA` = $class_name"
+    assert result[1] == "WHERE dn.`_CLASS` = $class_name"
     assert result[2] == {"class_name": "Car"}
 
     result = GraphSchema.prepare_match_cypher_clause(node_id=123, class_name="Car")
     assert result[0] == ":`Car`"
-    assert result[1] == "WHERE id(dn) = $node_id AND dn.`_SCHEMA` = $class_name"
+    assert result[1] == "WHERE id(dn) = $node_id AND dn.`_CLASS` = $class_name"
     assert result[2] == {"node_id": 123, "class_name": "Car"}
 
     result = GraphSchema.prepare_match_cypher_clause(node_id="c-88", id_key="uri", class_name="Car")
     assert result[0] == ":`Car`"
-    assert result[1] == "WHERE dn.`uri` = $node_id AND dn.`_SCHEMA` = $class_name"
+    assert result[1] == "WHERE dn.`uri` = $node_id AND dn.`_CLASS` = $class_name"
     assert result[2] == {"node_id": "c-88", "class_name": "Car"}
 
     with pytest.raises(Exception):

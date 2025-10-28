@@ -350,7 +350,7 @@ class FullTextIndexing:
         # Validate indexer_id
         CypherUtils.assert_valid_internal_id(indexer_id)
         q = '''
-            MATCH (i :Indexer {`_SCHEMA`: "Indexer"})
+            MATCH (i :Indexer {`_CLASS`: "Indexer"})
             WHERE id(i) = $indexer_id 
             RETURN count(i) AS number_of_nodes
             '''
@@ -376,7 +376,7 @@ class FullTextIndexing:
             WHERE id(ind) = $indexer_id
             WITH ind
             UNWIND $word_list AS word
-            MERGE (w :`Word` {name : word, `_SCHEMA`: "Word"})
+            MERGE (w :`Word` {name : word, `_CLASS`: "Word"})
             MERGE (ind)<-[:occurs]-(w)
             '''
 
@@ -397,7 +397,7 @@ class FullTextIndexing:
         assert result.get('properties_set', 0) == 2 * number_word_nodes_added, \
             f"add_words_to_index(): internal consistency error; " \
             f"the number of properties being set ({result.get('properties_set', 0)}) should be equal to twice the number of nodes created ({number_word_nodes_added})"
-            # Note: this check requires a knowledge of the Schema layer internal organization!  Each new 'Word' node has 2 properties set: `name` and `_SCHEMA`
+            # Note: this check requires a knowledge of the Schema layer internal organization!  Each new 'Word' node has 2 properties set: `name` and `_CLASS`
 
         # To determine a lower and upper bound on the the number of relationships added,
         # consider that ech newly-create Word data node adds 1 relationship (to the "Indexer" node);
@@ -467,7 +467,7 @@ class FullTextIndexing:
         """
         # Prepare a Cypher query
         q = '''
-            MATCH (ci)-[:has_index]->(i:Indexer {`_SCHEMA`: "Indexer"})
+            MATCH (ci)-[:has_index]->(i:Indexer {`_CLASS`: "Indexer"})
             WHERE id(ci) = $content_uri
             RETURN id(i) AS indexer_id
             '''
@@ -522,7 +522,7 @@ class FullTextIndexing:
             raise Exception("number_of_indexed_words(): at least one argument must be specified")
 
         q = f'''
-            MATCH (w :Word {{`_SCHEMA`: "Word"}})-[:occurs]->(i :Indexer)<-[:has_index]-(ci) 
+            MATCH (w :Word {{`_CLASS`: "Word"}})-[:occurs]->(i :Indexer)<-[:has_index]-(ci) 
             {clause}
             RETURN count(w) AS word_count
             '''
@@ -696,7 +696,7 @@ class FullTextIndexing:
 
 
         q = f'''
-            MATCH (w:Word {{`_SCHEMA`: "Word"}})-[:occurs]->(:Indexer)<-[:has_index]-(ci)
+            MATCH (w:Word {{`_CLASS`: "Word"}})-[:occurs]->(:Indexer)<-[:has_index]-(ci)
             {additional_matching}
             WHERE w.name CONTAINS toLower('{clean_term}')
             {where_additional_clause}

@@ -134,7 +134,7 @@ class Categories:
 
         # TODO: switch to using the Schema library datanode operations
         q =  f'''
-             MATCH (cat :Category {{`_SCHEMA`: "Category"}})
+             MATCH (cat :Category {{`_CLASS`: "Category"}})
              {clause}
              RETURN cat.uri AS uri, cat.name AS name, cat.pinned AS pinned {remarks_subquery}
              ORDER BY toLower(cat.name)
@@ -878,7 +878,7 @@ class Categories:
         q = '''
             MATCH (n) -[r :BA_in_category]-> (:Category {uri:$category_id}),
             (cl :CLASS)
-            WHERE cl.name = n.`_SCHEMA`
+            WHERE cl.name = n.`_CLASS`
             RETURN n, r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code
             ORDER BY r.pos
             '''
@@ -1140,10 +1140,10 @@ class Categories:
         """
         # Locate the names of the Classes of all the Content Items attached to the given Category
         q = '''
-            MATCH  (cat :Category {uri: $category_uri, `_SCHEMA`: "Category"}) 
+            MATCH  (cat :Category {uri: $category_uri, `_CLASS`: "Category"}) 
                     <-[:BA_in_category]- (content_item),
                     (cl:CLASS)
-            WHERE cl.name = content_item.`_SCHEMA`
+            WHERE cl.name = content_item.`_CLASS`
             RETURN DISTINCT cl.name AS class_name
             '''
         #cls.db.debug_query_print(q, data_binding={"category_uri": category_uri})

@@ -316,13 +316,14 @@ class GraphAccess(InterGraph):
     def exists_by_key(self, labels: str, key_name: str, key_value) -> bool:
         """
         Return True if a node with the given labels and key_name/key_value exists, or False otherwise
-        TODO: test for multiple labels
+
         :param labels:      A string or list/tuple of strings
         :param key_name:    A string with the name of a node attribute
         :param key_value:   The desired value of the key_name attribute
         :return:            True if a node with the given labels and key_name/key_value exists,
                                 or False otherwise
         """
+        # TODO: test for multiple labels
         record = self.get_record_by_primary_key(labels, key_name, key_value)
 
         if record is None:

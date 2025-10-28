@@ -482,11 +482,11 @@ class GraphSchema:
             f"rename_class(): failed to rename Class `{old_name}`. Maybe it doesn't exist?  No change made to Data Nodes."
 
 
-        # Change the `_SCHEMA` property value, and the label, on all the Data Notes for this Class
+        # Change the `_CLASS` property value, and the label, on all the Data Notes for this Class
         q = f'''
             MATCH (dn) 
-            WHERE dn.`_SCHEMA` = $old_name
-            SET dn.`_SCHEMA` = $new_name, dn:`{new_name}`
+            WHERE dn.`_CLASS` = $old_name
+            SET dn.`_CLASS` = $new_name, dn:`{new_name}`
             REMOVE dn:`{old_name}`
             '''
 
@@ -522,7 +522,7 @@ class GraphSchema:
             q = '''
             MATCH (c :CLASS {name: $name})
             WHERE NOT EXISTS {
-                MATCH (dn {`_SCHEMA`: $name})
+                MATCH (dn {`_CLASS`: $name})
             }
             WITH c
             OPTIONAL MATCH (c)-[:HAS_PROPERTY]->(p :PROPERTY)         
@@ -756,10 +756,8 @@ class GraphSchema:
     @classmethod
     def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:
         """
-        #### TODO: NOT IN CURRENT USE
+
         Rename the old relationship between the specified classes
-        TODO: if more than 1 relationship exists between the given Classes,
-              then they will all be replaced??  TO FIX!  (the old name ought be provided)
 
         :param from_class:
         :param to_class:
@@ -767,6 +765,10 @@ class GraphSchema:
         :return:            True if another relationship was found, and successfully renamed;
                             otherwise, False
         """
+        #### TODO: NOT IN CURRENT USE
+        # TODO: if more than 1 relationship exists between the given Classes,
+        #               then they will all be replaced??  TO FIX!  (the old name ought be provided)
+
         q = f'''
             MATCH (from :`CLASS` {{ uri: '{from_class}' }})
                   -[rel]
@@ -1738,7 +1740,7 @@ class GraphSchema:
         """
         q = f'''
             MATCH  (d :`{label}` {{ {primary_key_name}: $primary_key_value}})
-            WITH dn.`_SCHEMA` AS schema_name
+            WITH dn.`_CLASS` AS schema_name
             MATCH (c :`CLASS` {{name: schema_name}})
                   -[r :HAS_PROPERTY]->(p :`PROPERTY`)        
             RETURN p.name AS prop_name
@@ -1748,7 +1750,7 @@ class GraphSchema:
         # EXAMPLE:
         '''
         MATCH (dn: `my data label` {uri: $primary_key_value})
-        WITH dn._SCHEMA AS schema_name
+        WITH dn._CLASS AS schema_name
         MATCH (c :`CLASS` {name: schema_name})
               -[r :HAS_PROPERTY]->(p :`PROPERTY`)
         RETURN p.name AS prop_name
@@ -1839,7 +1841,7 @@ class GraphSchema:
             if where_clause != "":
                 where_clause += " AND "
 
-            where_clause += f" {dummy_node_name}.`_SCHEMA` = $class_name"
+            where_clause += f" {dummy_node_name}.`_CLASS` = $class_name"
             data_binding["class_name"] = class_name
 
         # Prepare a Cypher query to locate the number of the data nodes
@@ -1888,7 +1890,7 @@ class GraphSchema:
             clause = f"WHERE dn.`{id_key}` = $node_id"
 
         if class_name:
-            schema_clause = "AND dn.`_SCHEMA` = $class_name"
+            schema_clause = "AND dn.`_CLASS` = $class_name"
         else:
             schema_clause = ""
 
@@ -2031,7 +2033,7 @@ class GraphSchema:
         :param node_id:     Either an internal database ID or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
                                 Leave blank to use the internal database ID
-        :param hide_schema: [OPTIONAL] By default (True), the special schema field `_SCHEMA` is omitted
+        :param hide_schema: [OPTIONAL] By default (True), the special schema field `_CLASS` is omitted
         :return:            If not found, return None;
                                 otherwise, return a dict with the name/values of the node's properties
         """
@@ -2042,7 +2044,7 @@ class GraphSchema:
 
         q = f'''
             MATCH (dn)
-            {where_clause} AND (dn.`_SCHEMA` = $class_name)
+            {where_clause} AND (dn.`_CLASS` = $class_name)
             RETURN dn
             '''
 
@@ -2058,10 +2060,10 @@ class GraphSchema:
         assert len(result) == 1, \
             f"get_data_node(): the specified key ({id_key}) is not unique - multiple records were located"
 
-        d = result["dn"]    # EXAMPLE:  {'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota'}
+        d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
 
         if hide_schema:
-            del d["_SCHEMA"]
+            del d["_CLASS"]
 
         return d
 
@@ -2106,7 +2108,7 @@ class GraphSchema:
 
         :return:            A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
                                 Notes: The internal database ID is *not* included.
-                                       The `_SCHEMA` special property, if present, will be included.
+                                       The `_CLASS` special property, if present, will be included.
                                        Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
         """
         allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
@@ -2159,7 +2161,7 @@ class GraphSchema:
                         f"cannot sort recordset (`{class_name}`) by the unknown property `{order_by}`"
 
             data_binding["class_name"] = class_name
-            clause_list.append("(n.`_SCHEMA` = $class_name)")
+            clause_list.append("(n.`_CLASS` = $class_name)")
 
 
         if clause_list == []:
@@ -2341,7 +2343,7 @@ class GraphSchema:
                                 cannot specify both `uri` and `internal_id` arguments
 
         :param hide_schema: [OPTIONAL] By default (True),
-                                the special schema field `_SCHEMA` is omitted from the results
+                                the special schema field `_CLASS` is omitted from the results
 
         :return:            A dictionary with all the key/value pairs, if node is found; or None if not
         """
@@ -2361,16 +2363,16 @@ class GraphSchema:
             match = cls.db.match(internal_id=internal_id)
 
 
-        d = cls.db.get_nodes(match, single_row=True)    # EXAMPLE:  {'_SCHEMA': 'Car', 'color': 'white', 'make': 'Toyota'}
+        d = cls.db.get_nodes(match, single_row=True)    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
 
         if d is None:               # No matching node found
             return  None
 
-        if "_SCHEMA" not in d:      # If not a Data Node
+        if "_CLASS" not in d:      # If not a Data Node
             return None
 
         if hide_schema:
-            del d["_SCHEMA"]
+            del d["_CLASS"]
 
         return d
 
@@ -2428,7 +2430,7 @@ class GraphSchema:
         q = f'''
             MATCH  {node}
             {where_clause}
-            RETURN {dummy_node_name}.`_SCHEMA` AS class_name
+            RETURN {dummy_node_name}.`_CLASS` AS class_name
             '''
         #cls.db.debug_query_print(q, data_binding, "class_of_data_node")
 
@@ -2443,14 +2445,14 @@ class GraphSchema:
                 raise Exception(f"The requested data node (internal database id: {node_id}) "
                                 f"does not exist")
 
-        # Note: if the `_SCHEMA` field was missing, result = [{'class_name': None}]
+        # Note: if the `_CLASS` field was missing, result = [{'class_name': None}]
         class_name = result[0].get("class_name")
 
         assert class_name is not None, \
-            "class_of_data_node(): The given data node ({id_key}: `{node_id}`) lacks a `_SCHEMA` field"
+            "class_of_data_node(): The given data node ({id_key}: `{node_id}`) lacks a `_CLASS` field"
 
         assert type(class_name) == str, \
-            f"class_of_data_node(): The given data node ({id_key}: `{node_id}`) has a `_SCHEMA` value ({class_name}) that isn't valid, " \
+            f"class_of_data_node(): The given data node ({id_key}: `{node_id}`) has a `_CLASS` value ({class_name}) that isn't valid, " \
             f"of type {type(class_name)} rather than a string"
 
         return class_name
@@ -2471,7 +2473,7 @@ class GraphSchema:
 
         :param class_name:  The name of a Class in the Schema
         :param hide_schema: [OPTIONAL] By default (True),
-                                the special schema field `_SCHEMA` is omitted from the results
+                                the special schema field `_CLASS` is omitted from the results
         :return:            A (possibly-empty) list of dicts; each list item contains data from a node
         """
         #TODO: add new arguments `clause` (eg, "dn.root <> true OR dn.root is NULL"),
@@ -2479,7 +2481,7 @@ class GraphSchema:
         cls.assert_valid_class_name(class_name)
 
         q = '''
-            MATCH (dn {_SCHEMA: $class_name})
+            MATCH (dn {_CLASS: $class_name})
             RETURN dn
             '''
         node_list = cls.db.query_extended(q, data_binding={"class_name": class_name}, flatten=True)
@@ -2487,7 +2489,7 @@ class GraphSchema:
         if not hide_schema:
             return node_list
 
-        filtered_list = [{k: v for k, v in d.items() if k != '_SCHEMA'} for d in node_list]
+        filtered_list = [{k: v for k, v in d.items() if k != '_CLASS'} for d in node_list]
         return filtered_list
 
 
@@ -2514,7 +2516,7 @@ class GraphSchema:
             "data_nodes_of_class(): the argument `return_option` must be either 'uri' or 'internal_id'"
 
         q = '''
-            MATCH (n {_SCHEMA: $class_name}) 
+            MATCH (n {_CLASS: $class_name}) 
             '''
 
         if return_option == "uri":
@@ -2546,7 +2548,7 @@ class GraphSchema:
             f"count_data_nodes_of_class(): there is no Class named `{class_name}`"
 
         q = '''
-            MATCH (dn {_SCHEMA: $class_name})
+            MATCH (dn {_CLASS: $class_name})
             RETURN count(dn) AS number_datanodes
             '''
         #print(q)
@@ -2570,7 +2572,7 @@ class GraphSchema:
 
         q = f'''
             MATCH  (n :`{label}`)
-            WHERE  n._SCHEMA IS NULL
+            WHERE  n._CLASS IS NULL
             RETURN id(n)
             '''
 
@@ -2669,8 +2671,8 @@ class GraphSchema:
         """
         # Ditch Schema-related attributes in each dict in the list
         for item in dataset:
-            if "_SCHEMA" in item:
-                del item["_SCHEMA"]
+            if "_CLASS" in item:
+                del item["_CLASS"]
 
 
 
@@ -2807,7 +2809,7 @@ class GraphSchema:
                 assert unexpected_keys == set(), \
                     f"GraphSchema.create_data_node(): the `links` argument must be a list of dicts whose keys are one of {allowed_keys}; the dict in question: {d}"
 
-            properties_to_set["_SCHEMA"] = class_name       # Expand the dictionary, to also include the Schema data
+            properties_to_set["_CLASS"] = class_name       # Expand the dictionary, to also include the Schema data
             new_internal_id = cls.db.create_node_with_links(labels=labels,
                                                properties=properties_to_set,
                                                links=links, merge=False)
@@ -2866,7 +2868,7 @@ class GraphSchema:
                 WITH $record AS rec
                 MERGE (dn {labels_str} {{`{primary_key}`: rec['{primary_key}']}}) 
                 SET dn {set_operator}= rec 
-                SET dn.`_SCHEMA` = "{class_name}" 
+                SET dn.`_CLASS` = "{class_name}" 
                 RETURN id(dn) as internal_id 
                 '''
             # EXAMPLE, with data_binding {'record': {'name': 'CA'}},
@@ -2875,7 +2877,7 @@ class GraphSchema:
                 WITH $record AS rec
                 MERGE (dn :`State` {`name`: rec['name']}) 
                 SET dn += rec 
-                SET dn.`_SCHEMA` = "my class name" 
+                SET dn.`_CLASS` = "my class name" 
                 RETURN id(dn) as internal_id 
             '''
 
@@ -2888,7 +2890,7 @@ class GraphSchema:
             #       see the counterpart  NeoAccess.load_pandas()
             q = f'''          
                 CREATE (dn {labels_str} {cypher_props_str})
-                SET dn.`_SCHEMA` = "{class_name}"        
+                SET dn.`_CLASS` = "{class_name}"        
                 RETURN id(dn) AS internal_id
                 '''
 
@@ -2944,10 +2946,10 @@ class GraphSchema:
 
         # From the dictionary of attribute names/values,
         #       create a part of a Cypher query, with its accompanying data dictionary
-        properties["_SCHEMA"] = class_name
+        properties["_CLASS"] = class_name
         (attributes_str, data_dictionary) = CypherUtils.dict_to_cypher(properties)
-        # EXAMPLE - if properties is {'cost': 1.99, 'item description': 'the "red" button', '_SCHEMA': 'accessories'} then:
-        #       attributes_str = '{`cost`: $par_1, `item description`: $par_2, `item _SCHEMA`: $par_3}'
+        # EXAMPLE - if properties is {'cost': 1.99, 'item description': 'the "red" button', '_CLASS': 'accessories'} then:
+        #       attributes_str = '{`cost`: $par_1, `item description`: $par_2, `item _CLASS`: $par_3}'
         #       data_dictionary = {'par_1': 1.99, 'par_2': 'the "red" button', par_3': 'accessories'}
 
         q = f'''
@@ -3000,7 +3002,7 @@ class GraphSchema:
         new_id_list = []
         existing_id_list = []
         for value in value_list:
-            properties = {property_name : value, "_SCHEMA": class_name}
+            properties = {property_name : value, "_CLASS": class_name}
             # From the dictionary of attribute names/values,
             #       create a part of a Cypher query, with its accompanying data dictionary
             (attributes_str, data_dictionary) = CypherUtils.dict_to_cypher(properties)
@@ -3091,7 +3093,7 @@ class GraphSchema:
             remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
 
         if class_name:
-            match_str = f"MATCH (n {{`_SCHEMA`: '{class_name}'}}) "
+            match_str = f"MATCH (n {{`_CLASS`: '{class_name}'}}) "
         else:
             match_str = f"MATCH (n) "
 
@@ -3187,7 +3189,7 @@ class GraphSchema:
         # Verify that the data node doesn't already have a SCHEMA relationship
         q = f'''
             MATCH (n) 
-            WHERE id(n)={existing_neo_id} AND n.`_SCHEMA` IS NOT NULL
+            WHERE id(n)={existing_neo_id} AND n.`_CLASS` IS NOT NULL
             RETURN count(n) AS number_found
             '''
         number_found = cls.db.query(q, single_cell="number_found")
@@ -3208,7 +3210,7 @@ class GraphSchema:
         # Link the existing data node, with a "SCHEMA" relationship, to its Class node, and also set some properties on the data node
         q = f'''
             MATCH (existing) WHERE id(existing) = $existing_neo_id
-            SET existing.uri = $new_uri , existing.`_SCHEMA` = $class_name
+            SET existing.uri = $new_uri , existing.`_CLASS` = $class_name
             '''
 
         #cls.db.debug_query_print(q, data_binding, "register_existing_data_node") # Note: this is the special debug print for NeoAccess
@@ -3878,7 +3880,7 @@ class GraphSchema:
                     WITH cl, $data AS data 
                     UNWIND data AS record 
                     CREATE (dn {labels_str}) 
-                    SET dn = record , dn.`_SCHEMA` = $class_name
+                    SET dn = record , dn.`_CLASS` = $class_name
                     RETURN id(dn) as internal_id 
                     '''
 
@@ -3891,7 +3893,7 @@ class GraphSchema:
                     WITH cl, $data AS data 
                     UNWIND data AS record 
                     MERGE (dn {labels_str} {primary_key_s}) 
-                    SET dn {set_operator}= record , dn.`_SCHEMA` = $class_name
+                    SET dn {set_operator}= record , dn.`_CLASS` = $class_name
                     RETURN id(dn) as internal_id 
                     '''
 
@@ -5534,7 +5536,7 @@ class GraphSchema:
 
         if class_name is not None:
             cls.assert_valid_class_name(class_name)
-            clause_list.append("dn.`_SCHEMA` = $class_name")
+            clause_list.append("dn.`_CLASS` = $class_name")
             data_binding["class_name"] = class_name
 
         assert clause_list != [], \
