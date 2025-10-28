@@ -1,5 +1,5 @@
 import pytest
-from brainannex import NeoAccess, NeoSchema, Collections, Categories
+from brainannex import GraphAccess, GraphSchema, Collections, Categories
 from utilities.comparisons import compare_recordsets
 from app_libraries.data_manager import DataManager
 
@@ -8,8 +8,8 @@ from app_libraries.data_manager import DataManager
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
-    #NeoSchema.set_database(neo_obj)
+    neo_obj = GraphAccess(debug=False)
+    #GraphSchema.set_database(neo_obj)
     #Categories.db = neo_obj
     #Collections.set_database(neo_obj)
     DataManager.set_database(neo_obj)
@@ -78,36 +78,36 @@ def test_update_content_item(db):
     _, root_uri = initialize_categories(db)
 
     # Create a Content Item, and attach it to the Root Category
-    NeoSchema.create_class_with_properties(name="Photo", strict=True,
-                                           properties=["caption", "remarks", "uri"])
+    GraphSchema.create_class_with_properties(name="Photo", strict=True,
+                                             properties=["caption", "remarks", "uri"])
     Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
                                   item_properties={"caption": "beach at sunrise"}, new_uri="photo_1")
 
     # Alter the Content Item
     DataManager.update_content_item(uri="photo_1", class_name="Photo",
                                     update_data={"caption": "beach at sunrise"})    # No actual change
-    result = NeoSchema.search_data_node(uri="photo_1")
+    result = GraphSchema.search_data_node(uri="photo_1")
     assert result.get("caption") == "beach at sunrise"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter the Content Item
     DataManager.update_content_item(uri="photo_1", class_name="Photo",
                                     update_data={"caption": "    beach under full moon  "})
-    result = NeoSchema.search_data_node(uri="photo_1")
+    result = GraphSchema.search_data_node(uri="photo_1")
     assert result.get("caption") == "beach under full moon"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter again the Content Item
     DataManager.update_content_item(uri="photo_1", class_name="Photo",
                                     update_data={"caption": "      "})
-    result = NeoSchema.search_data_node(uri="photo_1")
+    result = GraphSchema.search_data_node(uri="photo_1")
     assert result.get("caption") is None        # That field is now gone altogether
     assert result.get("remarks") is None
 
     # Alter yet again the Content Item
     DataManager.update_content_item(uri="photo_1", class_name="Photo",
                                     update_data={"remarks": "3 is a charm!  ", "caption": "  beach in the late afternoon"})
-    result = NeoSchema.search_data_node(uri="photo_1")
+    result = GraphSchema.search_data_node(uri="photo_1")
     assert result.get("caption") == "beach in the late afternoon"
     assert result.get("remarks") == "3 is a charm!"
 
@@ -125,13 +125,13 @@ def test_switch_category(db):
                                              "subcategory_remarks": "Summer trip to Greece"})
 
     # Create 2 Content Items, and initially attach them to the Root Category
-    NeoSchema.create_class_with_properties(name="Photo",
-                                           properties=["name", "uri"])
+    GraphSchema.create_class_with_properties(name="Photo",
+                                             properties=["name", "uri"])
 
-    NeoSchema.create_namespace(name="PHOTOS", prefix="photo-")
+    GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
     all_photo_uris = []
     for i in range(4):
-        photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
+        photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
         all_photo_uris.append(photo_uri)
         Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
                                       item_properties={"caption": "photo_"+str(i+1)}, new_uri=photo_uri)
@@ -149,7 +149,7 @@ def test_switch_category(db):
 
 
     # Separately, add a new photo to the "Greece" Category
-    photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
+    photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
     Categories.add_content_at_end(category_uri=greece_uri, item_class_name="Photo",
                                   item_properties={"caption": "photo_extra"}, new_uri=photo_uri)
 

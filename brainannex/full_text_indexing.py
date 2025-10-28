@@ -1,7 +1,7 @@
 import re
 import html
 from typing import Union, List, Set
-from brainannex import CypherUtils, NeoSchema
+from brainannex import CypherUtils, GraphSchema
 import brainannex.exceptions as exceptions
 
 
@@ -19,8 +19,8 @@ class FullTextIndexing:
     """
 
     # The "db" class properties gets set by InitializeBrainAnnex.set_dbase()
-    db = None           # Object of class "NeoAccess".  MUST be set before using this class!
-                        # TODO: add a method set_database(), as done for NeoSchema
+    db = None           # Object of class "GraphAccess".  MUST be set before using this class!
+                        # TODO: add a method set_database(), as done for GraphSchema
 
 
     TAG_RE = re.compile(r'<[^>]+>')         # Use regex to strip off all HTML
@@ -269,22 +269,22 @@ class FullTextIndexing:
         #         TODO: manage indexing.  If done in Cypher:
         #                                 CREATE TEXT INDEX word_lookup FOR (n:Word) ON (n.name)
 
-        assert NeoSchema.is_valid_class_name(content_item_class_name), \
+        assert GraphSchema.is_valid_class_name(content_item_class_name), \
             "initialize_schema(): a non-empty string is required for argument `content_item_class_name`"
 
-        if NeoSchema.class_name_exists(content_item_class_name):
-            content_item_class_id = NeoSchema.get_class_internal_id(class_name=content_item_class_name)
+        if GraphSchema.class_name_exists(content_item_class_name):
+            content_item_class_id = GraphSchema.get_class_internal_id(class_name=content_item_class_name)
         else:
-            content_item_class_id, _ = NeoSchema.create_class(name=content_item_class_name, strict=False)
+            content_item_class_id, _ = GraphSchema.create_class(name=content_item_class_name, strict=False)
 
 
-        indexer_class_id, _ = NeoSchema.create_class(name="Indexer", strict=True)
+        indexer_class_id, _ = GraphSchema.create_class(name="Indexer", strict=True)
 
-        NeoSchema.create_class_with_properties(name="Word", strict=True,
-                                               properties=["name"],
-                                               class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
+        GraphSchema.create_class_with_properties(name="Word", strict=True,
+                                                 properties=["name"],
+                                                 class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
 
-        NeoSchema.create_class_relationship(from_class=content_item_class_id, to_class=indexer_class_id, rel_name="has_index")
+        GraphSchema.create_class_relationship(from_class=content_item_class_id, to_class=indexer_class_id, rel_name="has_index")
 
 
 
@@ -320,12 +320,12 @@ class FullTextIndexing:
 
         # Create a data node of type "Indexer", and link it up to the passed Content Item data node
         '''
-        indexer_id = NeoSchema.add_data_node_with_links(class_name ="Indexer",
+        indexer_id = GraphSchema.add_data_node_with_links(class_name ="Indexer",
                                                         links =[{"internal_id": internal_id, "rel_name": "has_index",
                                                                   "rel_dir": "IN"}])
         '''
-        indexer_id = NeoSchema.create_data_node(class_name="Indexer",
-                                                links =[{"internal_id": internal_id, "rel_name": "has_index",
+        indexer_id = GraphSchema.create_data_node(class_name="Indexer",
+                                                  links =[{"internal_id": internal_id, "rel_name": "has_index",
                                                           "rel_dir": "IN"}])
 
         cls.add_words_to_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)
@@ -350,7 +350,7 @@ class FullTextIndexing:
         # Validate indexer_id
         CypherUtils.assert_valid_internal_id(indexer_id)
         q = '''
-            MATCH (i :Indexer {`_SCHEMA`: "Indexer"})
+            MATCH (i :Indexer {`_CLASS`: "Indexer"})
             WHERE id(i) = $indexer_id 
             RETURN count(i) AS number_of_nodes
             '''
@@ -376,7 +376,7 @@ class FullTextIndexing:
             WHERE id(ind) = $indexer_id
             WITH ind
             UNWIND $word_list AS word
-            MERGE (w :`Word` {name : word, `_SCHEMA`: "Word"})
+            MERGE (w :`Word` {name : word, `_CLASS`: "Word"})
             MERGE (ind)<-[:occurs]-(w)
             '''
 
@@ -397,7 +397,7 @@ class FullTextIndexing:
         assert result.get('properties_set', 0) == 2 * number_word_nodes_added, \
             f"add_words_to_index(): internal consistency error; " \
             f"the number of properties being set ({result.get('properties_set', 0)}) should be equal to twice the number of nodes created ({number_word_nodes_added})"
-            # Note: this check requires a knowledge of the Schema layer internal organization!  Each new 'Word' node has 2 properties set: `name` and `_SCHEMA`
+            # Note: this check requires a knowledge of the Schema layer internal organization!  Each new 'Word' node has 2 properties set: `name` and `_CLASS`
 
         # To determine a lower and upper bound on the the number of relationships added,
         # consider that ech newly-create Word data node adds 1 relationship (to the "Indexer" node);
@@ -440,7 +440,7 @@ class FullTextIndexing:
 
         # Sever all the existing "occurs" relationships to the "Indexer" data node
         # i.e. give a "clean slate" to the "Indexer" data node
-        NeoSchema.remove_multiple_data_relationships(node_id=indexer_id, rel_name="occurs", rel_dir="IN", labels="Word")
+        GraphSchema.remove_multiple_data_relationships(node_id=indexer_id, rel_name="occurs", rel_dir="IN", labels="Word")
 
         try:
             #print("update_indexing(): about to calling add_words_to_index()")
@@ -467,7 +467,7 @@ class FullTextIndexing:
         """
         # Prepare a Cypher query
         q = '''
-            MATCH (ci)-[:has_index]->(i:Indexer {`_SCHEMA`: "Indexer"})
+            MATCH (ci)-[:has_index]->(i:Indexer {`_CLASS`: "Indexer"})
             WHERE id(ci) = $content_uri
             RETURN id(i) AS indexer_id
             '''
@@ -492,8 +492,8 @@ class FullTextIndexing:
             f"remove_indexing(): unable to find an index for the given Content Item node" \
             f" (internal id {content_uri}).  Maybe you already removed it?"
 
-        number_deleted = NeoSchema.delete_data_nodes(node_id=indexer_id, class_name="Indexer")
-        #NeoSchema.delete_data_node_OLD(node_id=indexer_id, labels="Indexer", class_node="Indexer")
+        number_deleted = GraphSchema.delete_data_nodes(node_id=indexer_id, class_name="Indexer")
+        #GraphSchema.delete_data_node_OLD(node_id=indexer_id, labels="Indexer", class_node="Indexer")
         assert number_deleted == 1, \
             f"remove_indexing(): failed to remove the Index node.  Number of nodes deleted: {number_deleted}"
 
@@ -522,7 +522,7 @@ class FullTextIndexing:
             raise Exception("number_of_indexed_words(): at least one argument must be specified")
 
         q = f'''
-            MATCH (w :Word {{`_SCHEMA`: "Word"}})-[:occurs]->(i :Indexer)<-[:has_index]-(ci) 
+            MATCH (w :Word {{`_CLASS`: "Word"}})-[:occurs]->(i :Indexer)<-[:has_index]-(ci) 
             {clause}
             RETURN count(w) AS word_count
             '''
@@ -664,8 +664,8 @@ class FullTextIndexing:
                         If all_properties is True,
                             a (possibly empty) list of dictionaries with all the data
                             of all the found nodes; each dict contain all of the nodes' attributes,
-                            plus keys called 'internal_id' and 'neo4j_labels'
-                            EXAMPLE: [{'filename': 'My_Document.pdf', 'internal_id': 66, 'neo4j_labels': ['Content Item']}]
+                            plus keys called 'internal_id' and 'node_labels'
+                            EXAMPLE: [{'filename': 'My_Document.pdf', 'internal_id': 66, 'node_labels': ['Content Item']}]
         """
         clean_term = word.strip()   # Zap leading/trailing blanks
 
@@ -696,7 +696,7 @@ class FullTextIndexing:
 
 
         q = f'''
-            MATCH (w:Word {{`_SCHEMA`: "Word"}})-[:occurs]->(:Indexer)<-[:has_index]-(ci)
+            MATCH (w:Word {{`_CLASS`: "Word"}})-[:occurs]->(:Indexer)<-[:has_index]-(ci)
             {additional_matching}
             WHERE w.name CONTAINS toLower('{clean_term}')
             {where_additional_clause}
@@ -708,7 +708,7 @@ class FullTextIndexing:
 
         if all_properties:
             result = cls.db.query_extended(q, data_binding=data_binding, flatten=True)
-            NeoSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
+            GraphSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
         else:
             result = cls.db.query(q, data_binding=data_binding, single_column="content_id")
 

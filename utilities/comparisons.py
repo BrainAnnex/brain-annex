@@ -1,4 +1,4 @@
-# Utilities for comparisons
+# Utilities for comparisons of lists
 
 import collections
 

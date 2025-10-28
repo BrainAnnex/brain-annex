@@ -12,6 +12,8 @@ div.content-item {
 
 div.content-item-separate-line {
     display: block;
+    position: relative;     /* This has the effect of moving some content Items (such as records)
+                               in front of the Categories sidebar, when being edited */
     vertical-align: top;
     margin-bottom: 20px;
 }

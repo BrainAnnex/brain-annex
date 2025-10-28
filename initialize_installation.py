@@ -14,7 +14,7 @@
 import os
 import getpass
 from configparser import ConfigParser
-from brainannex import NeoAccess, NeoSchema, UserManager
+from brainannex import GraphAccess, GraphSchema, UserManager
 
 
 print("\n--- INITIALIZING (if needed) the BrainAnnex web app, and creating a new admin user...\n")
@@ -94,15 +94,15 @@ if not NEO4J_HOST \
 
 
 # Attempt to connect to the Neo4j database from credentials in the config file(s)
-db = NeoAccess(host=NEO4J_HOST,
-               credentials=(NEO4J_USER, NEO4J_PASSWORD),
-               debug=False, autoconnect=True)
+db = GraphAccess(host=NEO4J_HOST,
+                 credentials=(NEO4J_USER, NEO4J_PASSWORD),
+                 debug=False, autoconnect=True)
 
 print("Version of the Neo4j driver: ", db.version())
 
 print("\nThe stored credentials were successfully validated; now checking if data is already present in the database")
 
-NeoSchema.set_database(db)
+GraphSchema.set_database(db)
 UserManager.set_database(db)
 
 number_nodes = db.count_nodes()

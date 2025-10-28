@@ -1,4 +1,4 @@
-from brainannex import NeoAccess, NeoSchema, \
+from brainannex import GraphAccess, GraphSchema, \
                        Categories, FullTextIndexing, PyGraphVisual
 
 import app_libraries.PLUGINS.plugin_support as plugin_support
@@ -37,7 +37,7 @@ class DataManager:
     """
     # The "db" and several other class properties get set by InitializeBrainAnnex.set_dbase()
 
-    db = None           # Object of class "NeoAccess"
+    db = None           # Object of class "GraphAccess"
                         # MUST be set, with a call to set_database(), before using this class!
 
     LOG_FOLDER = None   # Location where the log file is stored
@@ -52,16 +52,16 @@ class DataManager:
 
 
     @classmethod
-    def set_database(cls, db :NeoAccess) -> None:
+    def set_database(cls, db :GraphAccess) -> None:
         """
         IMPORTANT: this method MUST be called before using this class!
 
-        :param db:  Database-interface object, created with the NeoAccess library
+        :param db:  Database-interface object, created with the GraphAccess library
         :return:    None
         """
 
-        assert type(db) == NeoAccess, \
-            "NeoSchema.set_database(): argument passed isn't a valid `NeoAccess` object"
+        assert type(db) == GraphAccess, \
+            "GraphSchema.set_database(): argument passed isn't a valid `GraphAccess` object"
 
         cls.db = db     # Save the database object
 
@@ -82,7 +82,7 @@ class DataManager:
 
         :return:    A list of strings, sorted alphabetically
         """
-        # TODO: move to NeoAccess
+        # TODO: move to GraphAccess
         label_list = cls.db.get_labels()    # Fetch all the node labels in the database
 
         return sorted(label_list)
@@ -97,7 +97,7 @@ class DataManager:
 
         :return:    The internal database ID of the new node
         """
-        # TODO: move to NeoAccess
+        # TODO: move to GraphAccess
         return  cls.db.create_node(label)
 
 
@@ -200,7 +200,7 @@ class DataManager:
     def ________SCHEMA_RELATED________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
-    # TODO: possibly move to separate class, such as NeoSchema
+    # TODO: possibly move to separate class, such as GraphSchema
 
     @classmethod
     def all_schema_classes(cls) -> [str]:
@@ -208,7 +208,7 @@ class DataManager:
         Return a list of all the existing Schema classes
         :return:
         """
-        return NeoSchema.get_all_classes()
+        return GraphSchema.get_all_classes()
 
 
 
@@ -315,14 +315,14 @@ class DataManager:
 
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
-        new_id, _ = NeoSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
-                                                           class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
+        new_id, _ = GraphSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
+                                                             class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
 
 
         # If requested, link to another existing class
         if ("linked_to" in class_specs) and ("rel_name" in class_specs) and ("rel_dir" in class_specs):
             linked_to = class_specs["linked_to"]
-            #linked_to_id = NeoSchema.get_class_id(class_name = linked_to)
+            #linked_to_id = GraphSchema.get_class_id(class_name = linked_to)
             #print(f"Linking the new class to the existing class `{linked_to}`, which has ID {linked_to_id}")
             print(f"Linking the new class to the existing class `{linked_to}`")
             rel_name = class_specs["rel_name"]
@@ -333,9 +333,9 @@ class DataManager:
 
             try:
                 if rel_dir == "OUT":
-                    NeoSchema.create_class_relationship(from_class=new_id, to_class=linked_to, rel_name=rel_name)
+                    GraphSchema.create_class_relationship(from_class=new_id, to_class=linked_to, rel_name=rel_name)
                 elif rel_dir == "IN":
-                    NeoSchema.create_class_relationship(from_class=linked_to, to_class=new_id, rel_name=rel_name)
+                    GraphSchema.create_class_relationship(from_class=linked_to, to_class=new_id, rel_name=rel_name)
             except Exception as ex:
                 raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
@@ -367,7 +367,7 @@ class DataManager:
         rel_name = rel_name.strip()
         #print("rel_name: ", rel_name)
 
-        NeoSchema.create_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
+        GraphSchema.create_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
 
 
 
@@ -396,8 +396,8 @@ class DataManager:
 
 
         # Locate the internal ID of the Class node
-        class_internal_id = NeoSchema.get_class_internal_id(class_name.strip())
-        number_prop_added = NeoSchema.add_properties_to_class(class_node= class_internal_id, property_list = [prop_name])
+        class_internal_id = GraphSchema.get_class_internal_id(class_name.strip())
+        number_prop_added = GraphSchema.add_properties_to_class(class_node= class_internal_id, property_list = [prop_name])
         if number_prop_added != 1:
             raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}` (internal ID {class_internal_id})")
 
@@ -433,7 +433,7 @@ class DataManager:
         #print("rel_name: ", rel_name)
 
         # Delete the relationship(s)
-        NeoSchema.delete_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
+        GraphSchema.delete_class_relationship(from_class=from_class_name, to_class=to_class_name, rel_name=rel_name)
 
 
 
@@ -473,8 +473,8 @@ class DataManager:
                                                rel_name=rel_name)       # Category-specific action
 
         # The adding of the relationship is done here
-        NeoSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="uri",
-                                            rel_name=rel_name)
+        GraphSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="uri",
+                                          rel_name=rel_name)
 
 
 
@@ -502,8 +502,8 @@ class DataManager:
             Categories.remove_relationship_before(from_id=from_uri, to_id=to_uri,
                                                   rel_name=rel_name)       # Category-specific action
 
-        NeoSchema.remove_data_relationship(from_id=from_uri, to_id=to_uri,
-                                           rel_name=rel_name, labels="BA")
+        GraphSchema.remove_data_relationship(from_id=from_uri, to_id=to_uri,
+                                             rel_name=rel_name, labels="BA")
 
 
 
@@ -523,7 +523,7 @@ class DataManager:
                     ["Cuisine Type","Entrees","French Vocabulary","German Vocabulary","Restaurants","Site Link"]
         """
 
-        return NeoSchema.get_class_instances("Records", leaf_only=True)
+        return GraphSchema.get_class_instances("Records", leaf_only=True)
 
 
 
@@ -549,7 +549,7 @@ class DataManager:
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
-        match = cls.db.match(labels="BA", properties=properties)    # TODO: switch to NeoSchema layer, also using class_name
+        match = cls.db.match(labels="BA", properties=properties)    # TODO: switch to GraphSchema layer, also using class_name
         content_node = cls.db.get_nodes(match, single_row=True)
         #print("content_node:", content_node)
         if content_node is None:    # Metadata not found
@@ -576,7 +576,7 @@ class DataManager:
         :param order_by:
         :return:            A list of values
         """
-        # TODO: generalize, and move to NeoSchema
+        # TODO: generalize, and move to GraphSchema
         match = cls.db.match(labels=class_name)
         return cls.db.get_single_field(match=match, field_name=field_name, order_by=order_by)
 
@@ -642,7 +642,7 @@ class DataManager:
                                     ]
                                 }
         """
-        # TODO: use NeoAccess.get_link_summary() instead, after it is generalized to accept match structures
+        # TODO: use GraphAccess.get_link_summary() instead, after it is generalized to accept match structures
         if omit_names:
             assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
             where_clause = f"WHERE NOT type(r) IN {omit_names}"
@@ -696,11 +696,11 @@ class DataManager:
         :return:            None
         """
 
-        assert NeoSchema.class_name_exists(class_name), \
+        assert GraphSchema.class_name_exists(class_name), \
                 f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
-        assert NeoSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
+        assert GraphSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
                 f"update_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 
@@ -712,7 +712,7 @@ class DataManager:
         #       (which place a burden on the front end),
         #       get them from the database, and just pass all the node attributes to the plugin-specific modules
         #       Try:
-        #           db_data = NeoSchema.fetch_data_node(uri=uri)
+        #           db_data = GraphSchema.fetch_data_node(uri=uri)
         #           Then pass db_data as a parameter to the plugin-specific modules
 
         if class_name == "Note":
@@ -725,8 +725,8 @@ class DataManager:
 
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        number_updated = NeoSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks=True,
-                                                    class_name=class_name)
+        number_updated = GraphSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks=True,
+                                                      class_name=class_name)
 
 
         if class_name == "Note":
@@ -737,7 +737,7 @@ class DataManager:
         # verify that some fields indeed got updated
         # Note: an update with the same value as before is considered legit, and counts as an update
         if class_name != "Note" and number_updated == 0:
-            if not NeoSchema.class_name_exists(class_name):
+            if not GraphSchema.class_name_exists(class_name):
                 raise Exception(f"update_content_item(): Requested Class ({class_name}) doesn't exist; no update performed")
             else:
                 raise Exception("update_content_item(): No update performed")
@@ -760,7 +760,7 @@ class DataManager:
         assert uri, "delete_content_item(): argument `uri` is missing"
 
         # Make sure that the requested Content Item exists
-        assert NeoSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
+        assert GraphSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
             f"delete_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 
@@ -781,8 +781,8 @@ class DataManager:
 
 
         # Perform the actual deletion of the Content Item node
-        #number_deleted = NeoSchema.delete_data_point(uri=uri, labels=class_name)
-        number_deleted = NeoSchema.delete_data_nodes(node_id=uri, id_key="uri", class_name=class_name)
+        #number_deleted = GraphSchema.delete_data_point(uri=uri, labels=class_name)
+        number_deleted = GraphSchema.delete_data_nodes(node_id=uri, id_key="uri", class_name=class_name)
 
 
         if number_deleted == 1:
@@ -817,10 +817,10 @@ class DataManager:
         """
         # TODO: more Schema enforcement
         # TODO: make the generation of the URI optional
-        new_uri = NeoSchema.generate_uri(class_name)
+        new_uri = GraphSchema.generate_uri(class_name)
         #print(f"create_new_content_item() - New item will be assigned URI: '{new_uri}'")
 
-        internal_id = NeoSchema.create_data_node(class_name=class_name, properties=item_data, new_uri=new_uri)
+        internal_id = GraphSchema.create_data_node(class_name=class_name, properties=item_data, new_uri=new_uri)
 
         return {"internal_id": internal_id, "uri": new_uri}
 
@@ -850,19 +850,19 @@ class DataManager:
         # Generate a unique URI for the new Data Item (which is needed by some plugin-specific modules)
 
         # TODO: switch to using:
-        #       new_uri = NeoSchema.generate_uri(class_name)
+        #       new_uri = GraphSchema.generate_uri(class_name)
         # First, check if a specific namespace, or the general data node namespace, is to be used
-        class_id = NeoSchema.get_class_internal_id(class_name)
-        namespace_links = NeoSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
-                                        properties="namespace")
+        class_id = GraphSchema.get_class_internal_id(class_name)
+        namespace_links = GraphSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
+                                                   properties="namespace")
         print("add_new_content_item_to_category() - namespace_links: ", namespace_links)
         if len(namespace_links) == 1:
             namespace = namespace_links[0]
             print(f"    Using namespace '{namespace}'")
-            new_uri = NeoSchema.reserve_next_uri(namespace=namespace)
+            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)
         else:
             print(f"    Using default namespace")
-            new_uri = NeoSchema.reserve_next_uri()
+            new_uri = GraphSchema.reserve_next_uri()
         # TODO: --- end of portion to replace
 
         #print(f"add_new_content_item_to_category() - New item will be assigned URI: '{new_uri}'")
@@ -969,7 +969,7 @@ class DataManager:
         if schema_uri:
             del post_data["schema_uri"]
         #else:
-            #schema_uri = NeoSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
+            #schema_uri = GraphSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
             #print("schema_uri looked up as: ", schema_uri)
             #if schema_uri == "":
                 #raise Exception(f"Missing Schema URI for schema_code `{schema_code}`")
@@ -979,12 +979,12 @@ class DataManager:
         del post_data["class_name"]     # Note: it's now a required parameter
         #else:
             # If not provided, look it up from the schema_uri
-            #class_name = NeoSchema.get_class_name_by_schema_uri(schema_uri)
+            #class_name = GraphSchema.get_class_name_by_schema_uri(schema_uri)
             #print(f"class_name looked up as: `{class_name}`")
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_uri = NeoSchema.reserve_next_uri()      # TODO: switch to using specific namespaces
+        new_uri = GraphSchema.reserve_next_uri()      # TODO: switch to using specific namespaces
         #print(f"New item will be assigned URI: '{new_uri}'")
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
@@ -1160,7 +1160,7 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_name = NeoSchema.search_data_node(uri=search_category).get("name")
+            category_name = GraphSchema.search_data_node(uri=search_category).get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
         return (content_items, caption)
@@ -1185,8 +1185,8 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1211,14 +1211,14 @@ class DataManager:
             
             new_result = []     # SET OUTSIDE of this loop
             
-            labels = node["neo4j_labels"]
+            labels = node["node_labels"]
             del node["internal_id"]
-            del node["neo4j_labels"]
-            dn = NeoSchema.DataNode(internal_id=internal_id, labels=labels], properties=node)
+            del node["node_labels"]
+            dn = GraphSchema.DataNode(internal_id=internal_id, labels=labels], properties=node)
             # All the above lines would be un-necessary if FullTextIndexing.search_word returned a DataNode object!
             
             for neighbor_data in neighbor_props:
-                neighbor_node = NeoSchema.DataNode(internal_id=None, labels="Category", properties=neighbor_data)
+                neighbor_node = GraphSchema.DataNode(internal_id=None, labels="Category", properties=neighbor_data)
                 dn.add_relationship(link_name="BA_in_category", link_direction="OUT", link_properties=None, node_obj=neighbor_node)
                 
             new_result.append(dn)
@@ -1267,8 +1267,8 @@ class DataManager:
 
         result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'neo4j_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'neo4j_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1419,7 +1419,7 @@ class DataManager:
                                 including a field called "internal_id" that has the internal database ID,
                                 and a field called "node_labels" with a list of the node's label names
         """
-        #TODO: parse the filter_dict here, but move the body of the computation to NeoSchema
+        #TODO: parse the filter_dict here, but move the body of the computation to GraphSchema
 
         #print(f"In get_nodes_by_filter().  filter_dict: {filter_dict}")
 
@@ -1462,10 +1462,10 @@ class DataManager:
         #print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | clause: {clause} | limit: {limit}")
 
 
-        return NeoSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
-                                             string_match="CONTAINS", case_sensitive=case_sensitive,
-                                             include_id=True, include_labels=True,
-                                             order_by=order_by, skip=skip, limit=limit)
+        return GraphSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
+                                               string_match="CONTAINS", case_sensitive=case_sensitive,
+                                               include_id=True, include_labels=True,
+                                               order_by=order_by, skip=skip, limit=limit)
 
 
 
@@ -1606,7 +1606,7 @@ class DataManager:
 
         # Import the JSON data into the database
         if post_pars["use_schema"] == "SCHEMA":
-            new_ids = NeoSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
+            new_ids = GraphSchema.import_json_data(file_contents, post_pars["schema_class"], provenance=original_name)
         else:
             new_ids = cls.db.import_json(file_contents, post_pars["import_root_label"], provenance=original_name)
 
@@ -1732,7 +1732,7 @@ class DataManager:
             cls.append_to_log(log_msg)
 
             # ** THE ACTUAL IMPORT
-            new_ids = NeoSchema.import_json_data(file_contents, schema_class, provenance=f)
+            new_ids = GraphSchema.import_json_data(file_contents, schema_class, provenance=f)
 
             cls.import_file_count += 1
 
@@ -1807,7 +1807,7 @@ class DataManager:
 
         # Zap leading/trailing blanks from all entries, and add 2 extra fields (for uri and schema_code)
         '''
-        id_offset = NeoSchema.next_available_datanode_id()
+        id_offset = GraphSchema.next_available_datanode_id()
         
         all_matches = [list(map(lambda s: s.strip(), val)) + [i+id_offset] + ["r"]
                        for i, val in enumerate(all_matches)]

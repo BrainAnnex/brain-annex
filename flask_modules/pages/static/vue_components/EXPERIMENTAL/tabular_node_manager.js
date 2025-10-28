@@ -145,7 +145,7 @@ Vue.component('vue-show-nodes-tabular',
                     //alert("pushing");
                     render_array.push([]);
                     for (let col_n = 0; col_n < original_records[row_n].length; col_n++) {
-                        if (headers[col_n][1] == "NEO4J_LABELS")
+                        if (headers[col_n][1] == "node_labels")
                             render_array[row_n].push(3);    // Code for cells containing Neo4j labels
                         else if (this.is_relationship_header(headers, col_n))
                             //render_array[row_n][col_n] = 1;

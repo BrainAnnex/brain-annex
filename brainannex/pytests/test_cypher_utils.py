@@ -460,6 +460,21 @@ def test_prepare_where():
 
 
 
+def test_prepare_data_binding():
+    d1 = {"a": 4, "b": "hello"}
+    d2 = {"c": 8, "d": "hi!"}
+    assert CypherUtils.prepare_data_binding(d1, d2) == {"a": 4, "b": "hello", "c": 8, "d": "hi!"}
+    assert d1 == {"a": 4, "b": "hello"}     # No side effects
+    assert d2 == {"c": 8, "d": "hi!"}       # No side effects
+
+    with pytest.raises(Exception):
+        assert CypherUtils.prepare_data_binding(123, d2)
+
+    with pytest.raises(Exception):
+        assert CypherUtils.prepare_data_binding(d1, "do I look like a dictionary")
+
+
+
 def test_dict_to_cypher():
     d = {'since': 2003, 'code': 'xyz'}
     assert CypherUtils.dict_to_cypher(d) == ('{`since`: $par_1, `code`: $par_2}', {'par_1': 2003, 'par_2': 'xyz'})
@@ -484,3 +499,24 @@ def test_dict_to_cypher():
 
     d = {}
     assert CypherUtils.dict_to_cypher(d) == ("", {})
+
+
+
+def test_avoid_links_in_path():
+    assert CypherUtils.avoid_links_in_path(None) == ""
+
+    assert CypherUtils.avoid_links_in_path("") == ""
+
+    assert CypherUtils.avoid_links_in_path("bad_rel") == "NONE(r IN relationships(p) WHERE type(r) = 'bad_rel')"
+
+    assert CypherUtils.avoid_links_in_path("bad_rel", path_dummy_name="path1") \
+                                                == "NONE(r IN relationships(path1) WHERE type(r) = 'bad_rel')"
+
+    assert CypherUtils.avoid_links_in_path(["r1", "r2"]) \
+            == "NONE(r IN relationships(p) WHERE type(r) = 'r1' OR type(r) = 'r2')"
+
+    assert CypherUtils.avoid_links_in_path(["r1", "r2"], path_dummy_name="path1") \
+            == "NONE(r IN relationships(path1) WHERE type(r) = 'r1' OR type(r) = 'r2')"
+
+    with pytest.raises(Exception):
+        CypherUtils.avoid_links_in_path(123)

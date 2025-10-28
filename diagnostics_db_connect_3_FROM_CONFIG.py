@@ -7,7 +7,7 @@
 
 import os
 from configparser import ConfigParser
-from brainannex import NeoAccess
+from brainannex import GraphAccess
 
 print("About to test the database connection, using the credentials STORED in the configuration file(s)...\n")
 
@@ -86,9 +86,9 @@ if not NEO4J_HOST \
 
 else:
     # Attempt to connect to the Neo4j database from credentials in the config file(s)
-    obj = NeoAccess(host=NEO4J_HOST,
-                    credentials=(NEO4J_USER, NEO4J_PASSWORD),
-                    debug=False, autoconnect=True)
+    obj = GraphAccess(host=NEO4J_HOST,
+                      credentials=(NEO4J_USER, NEO4J_PASSWORD),
+                      debug=False, autoconnect=True)
 
     print("Version of the Neo4j driver: ", obj.version())
 

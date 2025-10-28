@@ -1,14 +1,14 @@
 import pytest
-from brainannex import NeoAccess, NeoSchema, UserManager
+from brainannex import GraphAccess, GraphSchema, UserManager
 
 
 
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
+    neo_obj = GraphAccess(debug=False)
     neo_obj.empty_dbase()
-    NeoSchema.set_database(neo_obj)
+    GraphSchema.set_database(neo_obj)
     UserManager.set_database(neo_obj)
     UserManager.create_schema()
 
@@ -48,7 +48,7 @@ def test_create_user(db):
     user_id = UserManager.create_user(username="julian", password="top_secret!!", email="me@you.com", admin=True)
 
     q = '''
-        MATCH (u :User {user_id: $user_id, username: $username, email: $email, admin: $admin, `_SCHEMA`: "User"}) 
+        MATCH (u :User {user_id: $user_id, username: $username, email: $email, admin: $admin, `_CLASS`: "User"}) 
         RETURN count(u) AS number_users
         '''
     result = db.query(q, data_binding={"user_id": user_id, "username": "julian", "email": "me@you.com", "admin": True},
@@ -62,7 +62,7 @@ def test_create_user(db):
     user_id = UserManager.create_user(username="einstein", password="e=mc^2", email="", admin=False, min_pass_len=6)
 
     q = '''
-        MATCH (u :User {user_id: $user_id, username: $username, admin: $admin, `_SCHEMA`: "User"}) 
+        MATCH (u :User {user_id: $user_id, username: $username, admin: $admin, `_CLASS`: "User"}) 
         RETURN count(u) AS number_users
         '''
     result = db.query(q, data_binding={"user_id": user_id, "username": "einstein", "admin": False},

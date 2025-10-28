@@ -1,6 +1,6 @@
 import pytest
 import os
-from brainannex import NeoAccess, NeoSchema
+from brainannex import GraphAccess, GraphSchema
 from app_libraries.media_manager import MediaManager
 import app_libraries.PLUGINS.plugin_support as plugin_support
 from app_libraries.PLUGINS.documents import Documents
@@ -13,8 +13,8 @@ from app_libraries.PLUGINS.notes import Notes
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
-    NeoSchema.set_database(neo_obj)
+    neo_obj = GraphAccess(debug=False)
+    GraphSchema.set_database(neo_obj)
 
     MediaManager.set_media_folder("D:/media/my_media_folder/")
     MediaManager.set_default_folders(plugin_support.all_default_folders())
@@ -40,8 +40,8 @@ def test_retrieve_full_path(db):
     Images.initialize_schema()
 
     # Create an Image node, with the default folder for its type    TODO: turn all the various sample setup into a utility function
-    NeoSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
-                               new_uri="image-1")
+    GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
+                                 new_uri="image-1")
 
     assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/"
     assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == "D:/media/my_media_folder/images/resized/"
@@ -50,11 +50,11 @@ def test_retrieve_full_path(db):
         assert MediaManager.retrieve_full_path("unknown_uri")
 
     # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
-    NeoSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
-                               new_uri="dir-1")
+    GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
+                                 new_uri="dir-1")
 
 
-    NeoSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
     assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/Tahiti vacation/"
     assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == "D:/media/my_media_folder/images/Tahiti vacation/resized/"
@@ -66,8 +66,8 @@ def test_lookup_media_file(db):
     Images.initialize_schema()
 
     # Create an Image node, with the default folder for its type
-    NeoSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
-                               new_uri="image-1")
+    GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
+                                 new_uri="image-1")
 
     assert MediaManager.lookup_media_file(uri="image-1") == ("D:/media/my_media_folder/images/", "snap1", "jpg")
     assert MediaManager.lookup_media_file(uri="image-1", thumb=True) == ("D:/media/my_media_folder/images/resized/", "snap1", "jpg")
@@ -76,11 +76,11 @@ def test_lookup_media_file(db):
         assert MediaManager.lookup_media_file("unknown_uri")
 
     # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
-    NeoSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
-                               new_uri="dir-1")
+    GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
+                                 new_uri="dir-1")
 
 
-    NeoSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
     assert MediaManager.lookup_media_file(uri="image-1") == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
     assert MediaManager.lookup_media_file(uri="image-1", thumb=True) == ("D:/media/my_media_folder/images/Tahiti vacation/resized/", "snap1", "jpg")
@@ -93,8 +93,8 @@ def test_get_full_filename(db):
     Images.initialize_schema()
 
     # Create an Image node, with the default folder for its type
-    NeoSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
-                               new_uri="image-1")
+    GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
+                                 new_uri="image-1")
 
     assert MediaManager.get_full_filename("image-1") == "D:/media/my_media_folder/images/snap1.jpg"
     assert MediaManager.get_full_filename("image-1", thumb=True) == "D:/media/my_media_folder/images/resized/snap1.jpg"
@@ -103,11 +103,11 @@ def test_get_full_filename(db):
         assert MediaManager.get_full_filename("unknown_uri")
 
     # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
-    NeoSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
-                               new_uri="dir-1")
+    GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
+                                 new_uri="dir-1")
 
 
-    NeoSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
     assert MediaManager.get_full_filename("image-1") == "D:/media/my_media_folder/images/Tahiti vacation/snap1.jpg"
     assert MediaManager.get_full_filename("image-1", thumb=True) == "D:/media/my_media_folder/images/Tahiti vacation/resized/snap1.jpg"

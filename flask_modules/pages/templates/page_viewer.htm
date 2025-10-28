@@ -929,7 +929,7 @@ new Vue({
 
         cancel_edit(item)
         {
-            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , id ${item.uri} , pos ${item.pos}`);
+            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , uri ${item.uri} , pos ${item.pos}`);
             if (item.uri == -1)  {
                 // If we're aborting the edit of a new Content Item, delete it from the page
                 index = this.locate_item_pos(item.schema_code, item.uri, item.pos);
@@ -1046,7 +1046,7 @@ new Vue({
             const schema_code = item.schema_code;
             const uri = item.uri;
 
-            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , id ${uri}`);
+            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , uri ${uri}`);
 
             const number_items = this.content_array.length;
 
@@ -1072,7 +1072,6 @@ new Vue({
             console.log(url_server);
 
             ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_move_up, custom_data: i});
-            //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_up, i);
 
         }, // move_up_content_item
 
@@ -1151,17 +1150,18 @@ new Vue({
            item:       pre-edit record
            new_data:   post-edit record
 
-           Note that the values of the special key "uri" on the item and the new_data will differ if this is a
-           newly-created Content Item, which was tentatively assigned an autoincr negative value as temp uri.
+           Note that the values of the special key "uri" on `new_data` will only appear
+           (and differ from the corresponding field on `item`)
+           if this is a newly-created Content Item,
+           which was tentatively assigned an autoincr negative value as temp uri.
 
            The special keys "schema_code" and "pos" are not changed.
 
-           EXAMPLE of item, for a newly-created one:
-                                {uri: -2,
-                                 schema_code: "h", class_name: "Header", pos: -12}
-           EXAMPLE of new_data: {uri: "h-243",
-                                 schema_code: "h", class_name: "Header", pos: -12,
-                                 text: "Some Header"}
+           EXAMPLE of `item` and `new_data`, for a NEWLY-CREATED item:
+               item:     {uri: -2,
+                          schema_code: "h", class_name: "Header", pos: -12}
+               new_data: {uri: "h-243",
+                          text: "Some Header"}    [Notice: no control fields, except for `uri`]
          */
         {
             console.log("In absorb_item_updates()");
@@ -1178,8 +1178,12 @@ new Vue({
             console.log(`    Data for the update:`);
             console.log(new_data);
 
-            if (old_uri < 0)
+            var uri = old_uri;
+
+            if (old_uri < 0)  {
                 console.log(`    A temporary URI of ${old_uri} is being replaced by the newly-assigned permanent URI '${new_data.uri}'`);
+                uri = new_data.uri;
+            }
             else if (new_data.uri !== undefined  &&  new_data.uri != old_uri)  {
                 console.error(`    Unexpected attempt to update a permanent URI ('${old_uri}'), with a different value ('${new_data.uri}')`);
                 alert("Attempting to update a permanent URI on the display.  Save your work and refresh the page");
@@ -1187,7 +1191,7 @@ new Vue({
             }
 
             // Locate the Content Item to update
-            const index = this.locate_item(schema_code, old_uri);         // TODO: switch to internal dbase ID's
+            const index = this.locate_item(schema_code, old_uri);         // TODO: perhaps switch to internal dbase ID's
 
             if (index == -1)  {    // If the Item is not found on the page
                 console.log(`    Failed to locate Content Item with schema_code '${schema_code}', uri '${old_uri}'`);
@@ -1201,14 +1205,21 @@ new Vue({
             // This object will replace the element in content_array at our index position
             // (to later do a complete array element replacement for Vue reactivity)
 
-            // Restore the special unchangeable keys "schema_code" and "class_name"
-            // [this should not be necessary, unless the plugin component messed up]
+            // Restore the special control keys "schema_code" and "class_name"
+            // (because they were NOT returned by the `new_data` object that just got cloned)
             updated_record["schema_code"] = schema_code;
             updated_record["class_name"] = class_name;
+
+            // Also set (in the case of new items) or restore (in the case of existing items) the control field "uri"
+            updated_record["uri"] = uri;
 
             // Note about the special key "pos":
             //      1) existing records will have a value not changed thru edits (a separate mechanism is used to reposition items)
             //      2) newly-created Items will lack it; currently, it's created in the server, but not returned to the plugin components
+            //                         (TODO: this current situation seems to create problems when attempting to cancel the creation of a new Item)
+
+            if ("pos" in item)
+                updated_record["pos"] = item.pos;
 
             if ("insert_after" in updated_record)
                 delete updated_record.insert_after;    // Ditch ("insert_after" is a temporary value, not to be saved)
@@ -1419,10 +1430,10 @@ new Vue({
 
 
         locate_item_pos(schema_code, uri, pos)
-        /*  Same as locate_item(), but also requiring a match on position.  ONLY USED TO TAKE OUT NEW ITEMS WHOSE ADDITION GOT CANCELLED
+        /*  Same as locate_item(), but also requiring a match on position.  ONLY USED TO DROP NEW ITEMS WHOSE ADDITION GOT CANCELLED
          */
         {
-            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${uri}, pos ${pos}`);
+            //console.log(`Attempting to locate content item of type '${schema_code}' , uri ${uri}, pos ${pos}`);
 
             const number_items = this.content_array.length;
 
