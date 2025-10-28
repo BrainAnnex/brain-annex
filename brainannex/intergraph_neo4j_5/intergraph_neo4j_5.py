@@ -1,5 +1,6 @@
 from neo4j import GraphDatabase                         # The Neo4j python connectivity library "Neo4j Python Driver"
 from neo4j import __version__ as neo4j_driver_version   # The version of the Neo4j driver being used
+from neo4j.exceptions import ServiceUnavailable         # To catch inactivity timeout errors (new to v. 5 of Neo4j)
 from neo4j.time import DateTime                         # To convert datetimes (and dates) between neo4j.time.DateTime and python
 import neo4j.graph                                      # To check returned data types
 import pandas as pd
@@ -193,8 +194,29 @@ class InterGraph:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+    def run_cypher_query(self, q :str, data_binding :dict, session):
+        """
+        Single entry point for ALL Cypher query executions
 
-    def query(self, q: str, data_binding=None, single_row=False, single_cell="", single_column=""):
+        :param q:               A string with a Cypher query
+        :param data_binding:    An optional Cypher dictionary
+        :param session:
+        :return:
+        """
+        try:
+            result = session.run(q, data_binding)
+        except ServiceUnavailable as ex:
+            print("*** NOTICE - ServiceUnavailable condition: attempting to reconnect to the database...")
+            self.connect()
+            #  Details: {ex}
+            raise Exception(f"ServiceUnavailable signal received, probably from a timeout.\n"
+                            f"Automatically re-connected.  Please RE-RUN your last command")
+
+        return result
+
+
+
+    def query(self, q :str, data_binding=None, single_row=False, single_cell="", single_column=""):
         """
         Run a Cypher query.  Best suited for Cypher queries that return individual values,
         but may also be used with queries that return nodes or relationships or paths - or nothing.
@@ -264,7 +286,8 @@ class InterGraph:
 
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
-            result = new_session.run(q, data_binding)
+            #result = new_session.run(q, data_binding)
+            result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 
 
             # Note: A neo4j.Result object (printing it, shows an object of type "neo4j.work.result.Result")
@@ -359,7 +382,7 @@ class InterGraph:
                              'neo4j_end_node': <Node id=14 labels=frozenset() properties={}>,
                              'neo4j_type': 'bought_by'}]
         """
-        #TODO: rename node_labels to node_labels; rename neo4j_start_node to start_node, etc
+        #TODO: rename neo4j_start_node to start_node, etc
         if self.debug or self.block_query_execution:
             self.debug_query_print(q, data_binding, method="query_extended")
             print(f"    flatten: {flatten} , fields_to_exclude: {fields_to_exclude}")
@@ -368,7 +391,8 @@ class InterGraph:
 
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
-            result = new_session.run(q, data_binding)
+            #result = new_session.run(q, data_binding)
+            result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 
             # Note: A neo4j.Result iterable object (printing it, shows an object of type "neo4j.work.result.Result")
             #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
@@ -407,7 +431,7 @@ class InterGraph:
 
                     if isinstance(item, neo4j.graph.Node):
                         neo4j_properties["internal_id"] = item.id               # Example: 227
-                        neo4j_properties["node_labels"] = list(item.labels)    # Example: ['person', 'client']
+                        neo4j_properties["node_labels"] = list(item.labels)     # Example: ['person', 'client']
 
                     elif isinstance(item, neo4j.graph.Relationship):
                         neo4j_properties["internal_id"] = item.id               # Example: 227
@@ -478,7 +502,8 @@ class InterGraph:
 
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
-            result = new_session.run(q, data_binding)
+            #result = new_session.run(q, data_binding)
+            result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 
             # Note: result is a neo4j.Result iterable object
             #       See https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.Result
