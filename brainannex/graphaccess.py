@@ -409,16 +409,16 @@ class GraphAccess(InterGraph):
 
 
 
-    def find_first_duplicate(self, labels, property_name) -> Union[dict, None]:
+    def find_first_duplicate(self, labels :str, property_name :str) -> Union[dict, None]:
         """
         Search the database for node duplicates based on the given labels/property_name pairing;
         return the first duplicate, or None if not found
 
-        :param labels:  For now, just 1 label
-        :param property_name:
-        :return:        If no duplicates are present, return None;
-                        otherwise return a dict such as
-                        {'FIRST_INTERNAL_ID': 123, 'SECOND_INTERNAL_ID': 999, 'my_property_name': "I'm a duplicate"}
+        :param labels:          For now, just 1 label
+        :param property_name:   A string with the name of the node property of interest
+        :return:                If no duplicates are present, return None;
+                                otherwise return a dict such as
+                                {'FIRST_INTERNAL_ID': 123, 'SECOND_INTERNAL_ID': 999, 'my_property_name': "I'm a duplicate"}
         """
         #TODO: generalize labels; pytest
         q = f'''
