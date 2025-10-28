@@ -499,3 +499,24 @@ def test_dict_to_cypher():
 
     d = {}
     assert CypherUtils.dict_to_cypher(d) == ("", {})
+
+
+
+def test_avoid_links_in_path():
+    assert CypherUtils.avoid_links_in_path(None) == ""
+
+    assert CypherUtils.avoid_links_in_path("") == ""
+
+    assert CypherUtils.avoid_links_in_path("bad_rel") == "NONE(r IN relationships(p) WHERE type(r) = 'bad_rel')"
+
+    assert CypherUtils.avoid_links_in_path("bad_rel", path_dummy_name="path1") \
+                                                == "NONE(r IN relationships(path1) WHERE type(r) = 'bad_rel')"
+
+    assert CypherUtils.avoid_links_in_path(["r1", "r2"]) \
+            == "NONE(r IN relationships(p) WHERE type(r) = 'r1' OR type(r) = 'r2')"
+
+    assert CypherUtils.avoid_links_in_path(["r1", "r2"], path_dummy_name="path1") \
+            == "NONE(r IN relationships(path1) WHERE type(r) = 'r1' OR type(r) = 'r2')"
+
+    with pytest.raises(Exception):
+        CypherUtils.avoid_links_in_path(123)

@@ -2080,6 +2080,7 @@ class GraphSchema:
         :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
         :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
         :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
+                                An implicit OR is used if there's more than 1
         :param key_value:   [OPTIONAL] Only applicable if arg `key_names` is present: match nodes with the
                                 specified key name/value (for each key, with an implicit OR, if there's more than 1).
                                 If key_value is a string, the match is case-sensitive;

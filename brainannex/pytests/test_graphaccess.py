@@ -634,6 +634,73 @@ def test_get_link_summary(db):
 
 
 
+def test_explore_neighborhood(db):
+    db.empty_dbase()
+
+    result = db.explore_neighborhood(start_id=123)  # Non-existent node
+    assert result == []
+
+    start_node_id = db.create_node(labels="Person", properties={"name": "Julian"})
+
+    result = db.explore_neighborhood(start_id=start_node_id)
+    assert result == []
+
+    n_1 = db.create_node_with_links(labels="Person", properties={"name": "Rese"},
+                                    links=[{"internal_id": start_node_id, "rel_name": "FRIENDS OF"}])
+    result = db.explore_neighborhood(start_id=start_node_id)
+    assert result == [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']}]
+
+    n_2 = db.create_node_with_links(labels="Person", properties={"name": "Val"},
+                                    links=[{"internal_id": start_node_id, "rel_name": "FRIENDS OF"}])
+    result = db.explore_neighborhood(start_id=start_node_id)
+    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
+                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    n_3 = db.create_node_with_links(labels="Car", properties={"color": "red"},
+                                    links=[{"internal_id": n_2, "rel_name": "IS OWNED BY"}])
+    result = db.explore_neighborhood(start_id=start_node_id)
+    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
+                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']},
+                {'f': {'color': 'red'},   'internal_id': n_3, 'node_labels': ['Car']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=start_node_id, avoid_links="IS OWNED BY") # Won't reach the `Car` node
+    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
+                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=start_node_id, max_hops=1)    # Won't reach the `Car` node
+    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
+                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3)  # Start at the `Car` node (Val's car); only doing default 2 hops max
+    expected = [{'f': {'name': 'Val'},   'internal_id': n_2,           'node_labels': ['Person']},
+                {'f': {'name': 'Julian'},'internal_id': start_node_id, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3)  # Start at the `Car` node (Val's car)
+    expected = [{'f': {'name': 'Val'},   'internal_id': n_2,           'node_labels': ['Person']},
+                {'f': {'name': 'Julian'},'internal_id': start_node_id, 'node_labels': ['Person']},
+                {'f': {'name': 'Rese'},  'internal_id': n_1,           'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links="FRIENDS OF")  # Start at Val's car
+    expected = [{'f': {'name': 'Val'},   'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links=["FRIENDS OF", "IRRELEVANT NAME"])  # Start at Val's car
+    expected = [{'f': {'name': 'Val'},   'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links=["FRIENDS OF", "IS OWNED BY"])  # Start at Val's car
+    assert result == []
+
+    with pytest.raises(Exception):
+        db.explore_neighborhood(start_id=n_3, max_hops= 0)
+
+
 
 
 ###  ~ CREATE NODES ~

@@ -619,7 +619,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def create_node_with_links(self, labels, properties=None, links=None, merge=False) -> int:
+    def create_node_with_links(self, labels :str|list|tuple, properties=None, links=None, merge=False) -> int|str:
         """
         Create a new node, with the given labels and optional properties,
         and link it up to all the EXISTING nodes that are specified
@@ -658,10 +658,12 @@ class GraphAccess(InterGraph):
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
         :param merge:       (OPTIONAL; default False) If True, a new node gets created only if there's no existing node
-                                with the same properties and labels     TODO: test more
+                                with the same properties and labels
 
-        :return:            An integer with the Neo4j ID of the newly-created node
+        :return:            An integer or string with the internal database ID of the newly-created node
         """
+        # TODO:  test more the `merge` arg
+
         assert properties is None or type(properties) == dict, \
             f"GraphAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
 
@@ -1843,6 +1845,42 @@ class GraphAccess(InterGraph):
 
         return  {"in": rel_in, "out": rel_out}
 
+
+
+    def explore_neighborhood(self, start_id :int|str, max_hops=2, avoid_links=None) -> [str]:
+        """
+        Return nearby nodes, from a given start node, by following a max number of link,
+        and optionally avoiding traversing links with some specified names.
+
+        :param start_id:    An int or string with an internal database ID
+        :param max_hops:    Integer >= 1 with the maximum number of links to follow in the graph traversal
+        :param avoid_links: Name, or list/tuple of names, of links to avoid in the graph traversal
+        :return:            A (possibly empty) list of dict's, with the properties of all the located nodes,
+                                plus the 2 special keys "internal_id" and "node_labels".
+                                The start node is NOT included.
+        """
+        assert max_hops >= 1, \
+            f"explore_neighborhood(): argument `max_hops` " \
+            f"must be an integer >= 1 (passed value was {max_hops})"
+
+        path_clause = CypherUtils.avoid_links_in_path(avoid_links, prefix_and=True)
+
+        q = f'''
+            MATCH  p=(n)-[*1..{max_hops}]-(f)
+            WHERE id(n) = {start_id}
+            {path_clause}
+            RETURN f, id(f) AS internal_id, labels(f) AS node_labels
+        '''
+
+        data_dict={}
+
+        #self.debug_query_print(q=q, data_binding=data_dict)
+
+        result = self.query(q, data_binding=data_dict)
+
+        #print(f"{len(result)} neighbor node(s) found")
+
+        return result
 
 
 

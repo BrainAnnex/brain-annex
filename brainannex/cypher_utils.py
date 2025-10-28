@@ -704,3 +704,39 @@ class CypherUtils:
         rel_props_str = "{" + rel_props_str + "}"
 
         return (rel_props_str, data_binding)
+
+
+
+    @classmethod
+    def avoid_links_in_path(cls, avoid_links : None | str | list | tuple,
+                            path_dummy_name="p", prefix_and=False) -> str:
+        """
+        Create a clause for a Cypher query to traverse a graph while avoid links with specific names.
+
+        EXAMPLE:   MATCH p=(:start_Label)-[*]->(:end_label) WHERE {here insert the clause returned by this function} RETURN ...
+
+        :param avoid_links:     Name, or list/tuple of names, of links to avoid in the graph traversal
+        :param path_dummy_name: Whatever dummy name is being used in the overall Cypher query, to refer to the paths
+        :param prefix_and:      [OPTIONAL] If True, prefix "AND " in cases where the returned value isn't a blank string;
+                                    by default, False
+        :return:                A Cypher clause fragment
+        """
+        # TODO: zap leading/trailing blanks
+
+        if avoid_links is None or avoid_links == "":
+            return ""
+
+        match avoid_links:
+            case str():     # Note: `str()` is class pattern
+                clause = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{avoid_links}')"
+            case list() | tuple():
+                substring = "' OR type(r) = '".join(avoid_links)    # Example:  "s1' OR type(r) = 's2"
+                clause = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{substring}')"
+            case _ :
+                raise Exception(f"cypher_avoid_links(): argument `avoid_links`, if provided, "
+                            f"must be a string, or list/tuple of strings. The type passed was {type(avoid_links)}")
+
+        if prefix_and:
+            return f"AND {clause}"
+
+        return clause
