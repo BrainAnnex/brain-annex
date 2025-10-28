@@ -1,4 +1,4 @@
-from brainannex import Categories, Collections, NeoSchema, UserManager, FullTextIndexing
+from brainannex import Categories, Collections, GraphSchema, UserManager, FullTextIndexing
 
 from app_libraries.data_manager import DataManager
 from app_libraries.media_manager import MediaManager
@@ -17,16 +17,16 @@ class InitializeBrainAnnex:
     @classmethod
     def set_dbase(cls, db_handle) -> None:
         """
-        Initialize various static classes that need the "NeoAccess" database object
+        Initialize various static classes that need the "GraphAccess" database object
         (to avoid multiple dbase connections)
 
-        :param db_handle:   Object of class "NeoAccess"
+        :param db_handle:   Object of class "GraphAccess"
         :return:            None
         """
         DataManager.db = db_handle
         Categories.db = db_handle
         Collections.db = db_handle
-        NeoSchema.db = db_handle
+        GraphSchema.db = db_handle
         FlaskUserManagement.db = db_handle
         NodeExplorer.db = db_handle
         FullTextIndexing.db = db_handle

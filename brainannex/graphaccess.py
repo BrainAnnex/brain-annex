@@ -12,24 +12,32 @@ import time
 from typing import Union, List, Tuple
 
 
-'''
-    NOTE: this class was being released independently for some time, but
-          eventually got re-incorporated in its parent project BrainAnnex.org
-          
+'''        
     ----------------------------------------------------------------------------------
     HISTORY and AUTHORS:
-        - NeoAccess (this library) is a fork of NeoInterface;
-                NeoAccess was created, and is being maintained, by Julian West,
-                primarily in the context of the BrainAnnex.org open-source project.
-                It started out in late 2021; for change log,
-                see the "LIBRARIES" entries in https://brainannex.org/history
+    
+        GraphAccess was created, and is being maintained, primarily by Julian West,
+        in the context of the BrainAnnex.org open-source project.
+        For change log, see the "LIBRARIES" entries in https://brainannex.org/history
+                
+        Reverse chronological order:
+               
+        - Name changed to GraphAccess, from NeoAccess, in 2025, 
+                to emphasize potential use with other graph databases besides Neo4j.
+                The database-specific portions were extracted and separated 
+                into a family of parent classes ("InterGraph"), one per supported database
+                (currently supported are versions 4 and 5 of the Neo4j database)
+        
+        - NeoAccess is a fork of NeoInterface; it started out in late 2021.
+                This library was released independently on PyPI for a period of time, but
+                eventually got re-incorporated into the broader library `brainannex`
 
         - NeoInterface (the parent library)
                 was co-authored by Alexey Kuznetsov and Julian West in 2021,
                 and is maintained by GSK pharmaceuticals
                 with an Apache License 2.0 (https://github.com/GSK-Biostatistics/neointerface).
                 NeoInterface is in part based on the earlier library Neo4jLiaison,
-                as well as a library developed by Alexey Kuznetsov.
+                as well as on a library developed by Alexey Kuznetsov.
 
         - Neo4jLiaison, an ancestor library now obsoleted, was authored by Julian West in 2020
                 (https://github.com/BrainAnnex/neo4j-liaison)
@@ -46,7 +54,7 @@ from typing import Union, List, Tuple
 '''
 
 
-class NeoAccess(InterGraph):
+class GraphAccess(InterGraph):
     """
     IMPORTANT : this works with various versions of the Neo4j database (and, possibly,
                 other graph databases), depending on the version of the underlying InterGraph library)
@@ -131,6 +139,145 @@ class NeoAccess(InterGraph):
 
 
 
+    def get_nodes(self, match :int|str|CypherBuilder,
+                  return_internal_id=False, return_labels=False, order_by=None, limit=None,
+                  single_row=False, single_cell=""):
+        """
+        By default, it returns a list of the records (as dictionaries of ALL the key/value node properties)
+        corresponding to all the Neo4j nodes specified by the given match data.
+        However, if the flags "single_row" or "single_cell" are set, simpler data structures are returned
+
+        :param match:           EITHER an integer or string with an internal database node id,
+                                    OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
+
+        :param return_internal_id:  Flag indicating whether to also include the internal database node ID in the returned data
+                                    (using "internal_id" as its key in the returned dictionary)
+        :param return_labels:   Flag indicating whether to also include the database label names in the returned data
+                                    (using "node_labels" as its key in the returned dictionary)
+
+        :param order_by:        (OPTIONAL) String with the key (field) name to order by, in ascending order
+                                    Caution: lower and uppercase names are treated differently in the sort order
+                                    TODO: standardize the case; provide support for DESC and for multiple fields
+
+        :param limit:           (OPTIONAL) Integer to specify the maximum number of nodes returned
+                                    TODO: provide support for SKIP
+
+        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one.
+                                    If True and a record or records were found, a dict will be returned instead of a list (containing the 1st record);
+                                    if nothing was found, None will be returned [to distinguish it from a found record with no fields!]
+
+        :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
+                                If single_cell is specified, return the value of the field by that name in the first node
+                                Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
+                                TODO: test and give examples.  single_cell="name" will return result[0].get("name")
+
+        :return:                If single_cell is specified, return the value of the field by that name in the first node.
+                                If single_row is True, return a dictionary with the information of the first record (or None if no record exists)
+                                Otherwise, return a (possibly-empty) list whose entries are dictionaries with each record's information
+                                    (the node's attribute names are the keys)
+                                    EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
+                                                {"gender": "M", "age": 76, "location": "Berkeley"}
+                                             ]
+                                    Note that ALL the attributes of each node are returned - and that they may vary across records.
+                                    If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
+                                            of the form     "internal_id": some integer with the Neo4j internal node ID
+                                    If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
+                                            of the form     "node_labels": [list of Neo4j label(s) attached to that node]
+                                    EXAMPLE using both of the above flags:
+                                        [  {"internal_id": 145, "node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
+                                           {"internal_id": 222, "node_labels": ["person"], "gender": "M", "location": "Berkeley"}
+                                        ]
+        # TODO: provide an option to specify the desired fields
+
+        """
+        # Unpack needed values from the Cypher builder
+        (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
+        #print(node, where, data_binding, dummy_node_name)
+        cypher = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN {dummy_node_name}"
+
+        if order_by:
+            cypher += f" ORDER BY n.{order_by}"
+
+        if limit:
+            cypher += f" LIMIT {limit}"
+
+
+        # Note: the flatten=True takes care of returning just the fields of the matched node "n",
+        #       rather than dictionaries indexes by "n"
+        if return_internal_id and return_labels:
+            result_list = self.query_extended(cypher, data_binding, flatten=True)
+            # Note: query_extended() provides both 'internal_id' and 'node_labels'
+        elif return_internal_id:    # but not return_labels
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['node_labels'])
+        elif return_labels:         # but not return_internal_id
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id'])
+        else:
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id', 'node_labels'])
+
+        # Deal with empty result lists
+        if len(result_list) == 0:   # If no results were produced
+            if single_row:
+                return None             # representing a record not found (different from a record with no fields, which will be {})
+            if single_cell:
+                return None             # representing a field not found
+            return []
+
+        # Note: we already checked that result_list isn't empty
+        if single_row:
+            return result_list[0]
+
+        if single_cell:
+            return result_list[0].get(single_cell)
+
+        return result_list
+
+
+
+    def get_df(self, match: Union[int, CypherBuilder], order_by=None, limit=None) -> pd.DataFrame:
+        """
+        Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
+
+        [See get_nodes() for more information about the arguments]
+
+        :param match:       EITHER an integer with an internal database node id,
+                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
+        :param order_by:    Optional string with the key (field) name to order by, in ascending order
+                                Note: lower and uppercase names are treated differently in the sort order
+        :param limit:       Optional integer to specify the maximum number of nodes returned
+
+        :return:            A Pandas dataframe
+        """
+        result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
+        return pd.DataFrame(result_list)
+
+
+
+    def get_node_internal_id(self, match :CypherBuilder) -> int|str:
+        """
+        Return the internal database ID of a SINGLE node identified by the "match" data
+        created by a call to match().
+
+        If not found, or if more than 1 found, an Exception is raised
+
+        :param match:   A "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
+        :return:        An integer or string with the internal database ID of the located node,
+                        if exactly 1 node is found; otherwise, raise an Exception
+        """
+        # Unpack needed values from the match dictionary
+        (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_node_internal_id")
+
+        q = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN id(n) AS INTERNAL_ID"
+
+        result = self.query(q, data_binding, single_column="INTERNAL_ID")
+
+        assert len(result) != 0, "get_node_internal_id(): node NOT found"
+
+        assert len(result) <= 1, f"get_node_internal_id(): node NOT uniquely identified ({len(result)} matches found)"
+
+        return result[0]
+
+
+
     def get_record_by_primary_key(self, labels: str, primary_key_name: str, primary_key_value,
                                   return_internal_id=False) -> Union[dict, None]:
         """
@@ -148,10 +295,10 @@ class NeoAccess(InterGraph):
         :return:                    A dictionary, if a unique record was found; or None if not found
         """
         assert primary_key_name, \
-            f"NeoAccess.get_record_by_primary_key(): the primary key name cannot be absent or empty (value: {primary_key_name})"
+            f"GraphAccess.get_record_by_primary_key(): the primary key name cannot be absent or empty (value: {primary_key_name})"
 
         assert primary_key_value is not None, \
-            "NeoAccess.get_record_by_primary_key(): the primary key value cannot be None" # Note: 0 or "" could be legit
+            "GraphAccess.get_record_by_primary_key(): the primary key value cannot be None" # Note: 0 or "" could be legit
 
         match = self.match(labels=labels, key_name=primary_key_name, key_value=primary_key_value)
         #print(match)
@@ -160,7 +307,7 @@ class NeoAccess(InterGraph):
         if len(result) == 0:
             return None
         if len(result) > 1:
-            raise Exception(f"NeoAccess.get_record_by_primary_key(): multiple records ({len(result)}) share the value (`{primary_key_value}`) in the primary key ({primary_key_name})")
+            raise Exception(f"GraphAccess.get_record_by_primary_key(): multiple records ({len(result)}) share the value (`{primary_key_value}`) in the primary key ({primary_key_name})")
 
         return result[0]
 
@@ -169,13 +316,14 @@ class NeoAccess(InterGraph):
     def exists_by_key(self, labels: str, key_name: str, key_value) -> bool:
         """
         Return True if a node with the given labels and key_name/key_value exists, or False otherwise
-        TODO: test for multiple labels
+
         :param labels:      A string or list/tuple of strings
         :param key_name:    A string with the name of a node attribute
         :param key_value:   The desired value of the key_name attribute
         :return:            True if a node with the given labels and key_name/key_value exists,
                                 or False otherwise
         """
+        # TODO: test for multiple labels
         record = self.get_record_by_primary_key(labels, key_name, key_value)
 
         if record is None:
@@ -241,147 +389,6 @@ class NeoAccess(InterGraph):
         single_field_list = [record.get(field_name) for record in record_list]
 
         return single_field_list
-
-
-
-    def get_nodes(self, match: Union[int, str, CypherBuilder],
-                  return_internal_id=False, return_labels=False, order_by=None, limit=None,
-                  single_row=False, single_cell=""):
-        """
-        By default, it returns a list of the records (as dictionaries of ALL the key/value node properties)
-        corresponding to all the Neo4j nodes specified by the given match data.
-        However, if the flags "single_row" or "single_cell" are set, simpler data structures are returned
-
-        :param match:           EITHER an integer or string with an internal database node id,
-                                    OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-
-        :param return_internal_id:  Flag indicating whether to also include the Neo4j internal node ID in the returned data
-                                    (using "internal_id" as its key in the returned dictionary)
-        :param return_labels:   Flag indicating whether to also include the Neo4j label names in the returned data
-                                    (using "neo4j_labels" as its key in the returned dictionary)
-
-        :param order_by:        (OPTIONAL) String with the key (field) name to order by, in ascending order
-                                    Caution: lower and uppercase names are treated differently in the sort order
-                                    TODO: standardize the case; provide support for DESC and for multiple fields
-
-        :param limit:           (OPTIONAL) Integer to specify the maximum number of nodes returned
-                                    TODO: provide support for SKIP
-
-        :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one.
-                                    If True and a record or records were found, a dict will be returned instead of a list (containing the 1st record);
-                                    if nothing was found, None will be returned [to distinguish it from a found record with no fields!]
-
-        :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
-                                If single_cell is specified, return the value of the field by that name in the first node
-                                Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
-                                TODO: test and give examples.  single_cell="name" will return result[0].get("name")
-
-        :return:                If single_cell is specified, return the value of the field by that name in the first node.
-                                If single_row is True, return a dictionary with the information of the first record (or None if no record exists)
-                                Otherwise, return a (possibly-empty) list whose entries are dictionaries with each record's information
-                                    (the node's attribute names are the keys)
-                                    EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
-                                                {"gender": "M", "age": 76, "location": "Berkeley"}
-                                             ]
-                                    Note that ALL the attributes of each node are returned - and that they may vary across records.
-                                    If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
-                                            of the form     "internal_id": some integer with the Neo4j internal node ID
-                                    If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
-                                            of the form     "neo4j_labels": [list of Neo4j label(s) attached to that node]
-                                    EXAMPLE using both of the above flags:
-                                        [  {"internal_id": 145, "neo4j_labels": ["person", "client"], "gender": "M", "condition_id": 3},
-                                           {"internal_id": 222, "neo4j_labels": ["person"], "gender": "M", "location": "Berkeley"}
-                                        ]
-        # TODO: provide an option to specify the desired fields
-
-        """
-        # Unpack needed values from the Cypher builder
-        (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
-        #print(node, where, data_binding, dummy_node_name)
-        cypher = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN {dummy_node_name}"
-
-        if order_by:
-            cypher += f" ORDER BY n.{order_by}"
-
-        if limit:
-            cypher += f" LIMIT {limit}"
-
-
-        # Note: the flatten=True takes care of returning just the fields of the matched node "n",
-        #       rather than dictionaries indexes by "n"
-        if return_internal_id and return_labels:
-            result_list = self.query_extended(cypher, data_binding, flatten=True)
-            # Note: query_extended() provides both 'internal_id' and 'neo4j_labels'
-        elif return_internal_id:    # but not return_labels
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['neo4j_labels'])
-        elif return_labels:         # but not return_internal_id
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id'])
-        else:
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id', 'neo4j_labels'])
-
-        # Deal with empty result lists
-        if len(result_list) == 0:   # If no results were produced
-            if single_row:
-                return None             # representing a record not found (different from a record with no fields, which will be {})
-            if single_cell:
-                return None             # representing a field not found
-            return []
-
-        # Note: we already checked that result_list isn't empty
-        if single_row:
-            return result_list[0]
-
-        if single_cell:
-            return result_list[0].get(single_cell)
-
-        return result_list
-
-
-
-    def get_df(self, match: Union[int, CypherBuilder], order_by=None, limit=None) -> pd.DataFrame:
-        """
-        Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
-
-        [See get_nodes() for more information about the arguments]
-
-        :param match:       EITHER an integer with an internal database node id,
-                                OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-        :param order_by:    Optional string with the key (field) name to order by, in ascending order
-                                Note: lower and uppercase names are treated differently in the sort order
-        :param limit:       Optional integer to specify the maximum number of nodes returned
-
-        :return:            A Pandas dataframe
-        """
-        result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
-        return pd.DataFrame(result_list)
-
-
-
-    def get_node_internal_id(self, match: CypherBuilder) -> int:
-        """
-        Return the internal database ID of a SINGLE node identified by the "match" data
-        created by a call to match().
-
-        If not found, or if more than 1 found, an Exception is raised
-
-        :param match:   A "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-        :return:        An integer with the internal database ID of the located node,
-                        if exactly 1 node is found; otherwise, raise an Exception
-        """
-        #match_structure = CypherUtils.process_match_structure(match, caller_method="get_node_internal_id")
-
-        # Unpack needed values from the match dictionary
-        (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_node_internal_id")
-
-        q = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN id(n) AS INTERNAL_ID"
-
-        result = self.query(q, data_binding, single_column="INTERNAL_ID")
-
-        assert len(result) != 0, "get_node_internal_id(): node NOT found"
-
-        assert len(result) <= 1, f"get_node_internal_id(): node NOT uniquely identified ({len(result)} matches found)"
-
-        return result[0]
 
 
 
@@ -497,7 +504,7 @@ class NeoAccess(InterGraph):
 
         result_list = self.query_extended(q, data_dictionary, flatten=True)  # TODO: switch to update_query(), and verify the creation
         if len(result_list) != 1:
-            raise Exception("NeoAccess.create_node(): failed to create the requested new node")
+            raise Exception("GraphAccess.create_node(): failed to create the requested new node")
 
         return result_list[0]['internal_id']           # Return the Neo4j internal ID of the node just created
 
@@ -613,7 +620,7 @@ class NeoAccess(InterGraph):
 
 
 
-    def create_node_with_links(self, labels, properties=None, links=None, merge=False) -> int:
+    def create_node_with_links(self, labels :str|list|tuple, properties=None, links=None, merge=False) -> int|str:
         """
         Create a new node, with the given labels and optional properties,
         and link it up to all the EXISTING nodes that are specified
@@ -652,15 +659,17 @@ class NeoAccess(InterGraph):
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
         :param merge:       (OPTIONAL; default False) If True, a new node gets created only if there's no existing node
-                                with the same properties and labels     TODO: test more
+                                with the same properties and labels
 
-        :return:            An integer with the Neo4j ID of the newly-created node
+        :return:            An integer or string with the internal database ID of the newly-created node
         """
+        # TODO:  test more the `merge` arg
+
         assert properties is None or type(properties) == dict, \
-            f"NeoAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
+            f"GraphAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
 
         assert links is None or type(links) == list, \
-            f"NeoAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
+            f"GraphAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
 
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
@@ -712,7 +721,7 @@ class NeoAccess(InterGraph):
         # Assert that the query produced the expected actions
         if not merge:
             if result.get("nodes_created", 0) != 1:
-                raise Exception("NeoAccess.create_node_with_links(): failed to create the new node "
+                raise Exception("GraphAccess.create_node_with_links(): failed to create the new node "
                                 "(check whether the requested link-to nodes exist)")
 
             if not labels:
@@ -723,26 +732,26 @@ class NeoAccess(InterGraph):
                 expected_number_labels = len(labels)
 
             if result.get("labels_added", 0) != expected_number_labels:
-                raise Exception(f"NeoAccess.create_node_with_links(): failed to set the {expected_number_labels} label(s) expected on the new node")
+                raise Exception(f"GraphAccess.create_node_with_links(): failed to set the {expected_number_labels} label(s) expected on the new node")
 
 
         if result.get("relationships_created", 0) != len(links):
-            raise Exception(f"NeoAccess.create_node_with_links(): failed to create all the {len(links)} requested relationships")
+            raise Exception(f"GraphAccess.create_node_with_links(): failed to create all the {len(links)} requested relationships")
 
         # Determine the number of entries in the data_binding dict, where the value isn't None
         expected_number_properties = sum(1 for v in data_binding.values() if v is not None)
         if result.get("properties_set", 0) != expected_number_properties:
-            raise Exception(f"NeoAccess.create_node_with_links(): Was expecting to set {expected_number_properties} properties on the new node and its relationships; "
+            raise Exception(f"GraphAccess.create_node_with_links(): Was expecting to set {expected_number_properties} properties on the new node and its relationships; "
                             f"instead, {result.get('properties_set')} got set")
 
         returned_data = result.get("returned_data")
         #print("returned_data", returned_data)
         if len(returned_data) == 0:
-            raise Exception("NeoAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
+            raise Exception("GraphAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
         internal_id = returned_data[0].get("internal_id", None)
         if internal_id is None:    # Note: internal_id might be zero
-            raise Exception("NeoAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
+            raise Exception("GraphAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
         return internal_id    # Return the Neo4j ID of the new node
 
@@ -766,7 +775,7 @@ class NeoAccess(InterGraph):
         """
 
         assert links and type(links) == list and len(links) > 0, \
-            f"NeoAccess._assemble_query_for_linking(): the argument must be a non-empty list"
+            f"GraphAccess._assemble_query_for_linking(): the argument must be a non-empty list"
 
         # Define the portion of the Cypher query to locate the existing nodes
         q_MATCH = "MATCH"
@@ -779,14 +788,14 @@ class NeoAccess(InterGraph):
         for i, edge in enumerate(links):
             match_internal_id = edge.get("internal_id")
             if match_internal_id is None:    # Caution: it might be zero
-                raise Exception(f"NeoAccess._assemble_query_for_linking(): Missing 'internal_id' key for the node to link to (in list element {edge})")
+                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing 'internal_id' key for the node to link to (in list element {edge})")
 
             assert type(match_internal_id) == int, \
-                f"NeoAccess._assemble_query_for_linking(): The value of the 'internal_id' key must be an integer. The type was {type(match_internal_id)}"
+                f"GraphAccess._assemble_query_for_linking(): The value of the 'internal_id' key must be an integer. The type was {type(match_internal_id)}"
 
             rel_name = edge.get("rel_name")
             if not rel_name:
-                raise Exception(f"NeoAccess._assemble_query_for_linking(): Missing name ('rel_name' key) for the new relationship (in list element {edge})")
+                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing name ('rel_name' key) for the new relationship (in list element {edge})")
 
             node_dummy_name = f"ex{i}"  # EXAMPLE: "ex3".   The "ex" stands for "existing node"
             q_MATCH += f" (ex{i})"      # EXAMPLE: " (ex3)"
@@ -1191,14 +1200,11 @@ class NeoAccess(InterGraph):
 
         :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
         """
-        #print(match_from)
         (nodes_from, where_from, data_binding_from, _) = \
                 CypherUtils.assemble_cypher_blocks(handle=match_from, dummy_node_name="from", caller_method="add_links")
-        #print("1 ********** data_binding_from: ", data_binding_from)
 
         (nodes_to, where_to, data_binding_to, _) = \
                 CypherUtils.assemble_cypher_blocks(handle=match_to, dummy_node_name="to", caller_method="add_links")
-        #print("2 ********** data_binding_to: ", data_binding_to)
 
         where_clause = CypherUtils.prepare_where([where_from, where_to])
 
@@ -1209,11 +1215,8 @@ class NeoAccess(InterGraph):
             MERGE (from) -[:`{rel_name}`]-> (to)           
             '''
 
-        # Merge the data-binding dict's   TODO: turn this into a CypherUtils method
-        combined_data_binding = data_binding_from.copy()        # Clone
-        combined_data_binding.update(data_binding_to)  # Merge the second dict into the first one
-        #print("3 ********** combined_data_binding: ", combined_data_binding)
-        #print(q)
+        # Merge the data-binding dict's
+        combined_data_binding = CypherUtils.prepare_data_binding(data_binding_from, data_binding_to)
 
         result = self.update_query(q, combined_data_binding)
 
@@ -1256,7 +1259,7 @@ class NeoAccess(InterGraph):
 
 
 
-    def remove_links(self, match_from: Union[int, CypherBuilder], match_to: Union[int, CypherBuilder], rel_name) -> int:
+    def remove_links(self, match_from :int|CypherBuilder, match_to :int|CypherBuilder, rel_name) -> int:
         """
         Remove one or more links (aka relationships/edges)
         originating in any of the nodes specified by the match_from specifications,
@@ -1283,24 +1286,23 @@ class NeoAccess(InterGraph):
                                 if None or a blank string, all relationships between those 2 nodes will get deleted.
                                 Blanks allowed.
 
-        :return:            The number of edges removed.  If none got deleted, or in case of error, an Exception is raised
+        :return:            The number of edges removed, if edges were found.
+                                If none got deleted, an Exception is raised
         """
         # TODO: add a method to remove all links of a given name emanating to or from a given node
         #       - as done for Schema.remove_all_data_relationship()
         # TODO: add a rename_link() method
 
-        # TODO: this will fail if match_from and match_to are the same object; proceed as done in add_links()
-        match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from", caller_method="remove_links")
-        match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to", caller_method="remove_links")
+        (nodes_from, where_from, data_binding_from, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_from, dummy_node_name="from", caller_method="remove_links")
 
+        (nodes_to, where_to, data_binding_to, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_to, dummy_node_name="to", caller_method="remove_links")
 
-        # Unpack needed values from the match_from and match_to structures
-        nodes_from = match_from.extract_node()
-        nodes_to   = match_to.extract_node()
 
         # Combine the two WHERE clauses from each of the matches,
         # and also prefix (if appropriate) the WHERE keyword
-        where_clause = CypherUtils.combined_where(match_from, match_to, check_compatibility=True)
+        where_clause = CypherUtils.prepare_where([where_from, where_to])
 
         # Prepare the query
         if rel_name is None or rel_name == "":  # Delete ALL relationships
@@ -1317,7 +1319,7 @@ class NeoAccess(InterGraph):
                 '''
 
         # Merge the data-binding dict's
-        combined_data_binding = CypherUtils.combined_data_binding(match_from, match_to)
+        combined_data_binding = CypherUtils.prepare_data_binding(data_binding_from, data_binding_to)
 
 
         result = self.update_query(q, combined_data_binding)
@@ -1350,7 +1352,7 @@ class NeoAccess(InterGraph):
 
         :return:            True if one or more relationships were found, or False if not
         """
-        # TODO: maybe rename arguments from_match and to_match, for consistency with NeoSchema
+        # TODO: maybe rename arguments from_match and to_match, for consistency with GraphSchema
         return self.number_of_links(match_from=match_from, match_to=match_to, rel_name=rel_name) >= 1   # True if at least 1
 
 
@@ -1374,19 +1376,19 @@ class NeoAccess(InterGraph):
 
         :return:            The number of links (relationships) that were found
         """
-        # TODO: maybe rename arguments from_match and to_match, for consistency with NeoSchema
-        #TODO: allow unspecified relationship names
-        #TODO: allow specifying properties that must be in the relationship
-        match_from = CypherUtils.process_match_structure(match_from, dummy_node_name="from", caller_method="number_of_links")
-        match_to   = CypherUtils.process_match_structure(match_to, dummy_node_name="to", caller_method="number_of_links")
+        # TODO: maybe rename arguments from_match and to_match, for consistency with GraphSchema
+        # TODO: allow unspecified relationship names
+        # TODO: allow specifying properties that must be in the relationship
+        (nodes_from, where_from, data_binding_from, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_from, dummy_node_name="from", caller_method="number_of_links")
 
-        # Unpack needed values from the match_from and match_to structures
-        nodes_from = match_from.extract_node()
-        nodes_to   = match_to.extract_node()
+        (nodes_to, where_to, data_binding_to, _) = \
+                CypherUtils.assemble_cypher_blocks(handle=match_to, dummy_node_name="to", caller_method="number_of_links")
 
         # Combine the two WHERE clauses from each of the matches,
+        # Combine the two WHERE clauses from each of the matches,
         # and also prefix (if appropriate) the WHERE keyword
-        where_clause = CypherUtils.combined_where(match_from, match_to, check_compatibility=True)
+        where_clause = CypherUtils.prepare_where([where_from, where_to])
 
         # Prepare the query.   TODO: to be more efficient, do something like p=MATCH ....  RETURN COUNT(p) AS link_number
         q = f'''
@@ -1396,7 +1398,7 @@ class NeoAccess(InterGraph):
             '''
 
         # Merge the data-binding dict's
-        combined_data_binding = CypherUtils.combined_data_binding(match_from, match_to)
+        combined_data_binding = CypherUtils.prepare_data_binding(data_binding_from, data_binding_to)
 
         result = self.query(q, combined_data_binding)
 
@@ -1744,10 +1746,10 @@ class NeoAccess(InterGraph):
         :param order_by:    (OPTIONAL) If specified, it must be the name of a field in
                                 the sibling nodes, to order the results by; capitalization is ignored
         :return:            A list of dictionaries, with one element for each "sibling";
-                                each element contains the 'internal_id' and 'neo4j_labels' keys,
+                                each element contains the 'internal_id' and 'node_labels' keys,
                                 plus whatever attributes are stored on that node.
                                 EXAMPLE of single element:
-                                {'name': 'French', 'internal_id': 123, 'neo4j_labels': ['Categories']}
+                                {'name': 'French', 'internal_id': 123, 'node_labels': ['Categories']}
         """
         #TODO: test order_by
         #TODO: test scenarios that are affected by the DISTINCT ; eg: 2 siblings that share the same 2 parent,
@@ -1846,6 +1848,42 @@ class NeoAccess(InterGraph):
 
 
 
+    def explore_neighborhood(self, start_id :int|str, max_hops=2, avoid_links=None) -> [str]:
+        """
+        Return nearby nodes, from a given start node, by following a max number of link,
+        and optionally avoiding traversing links with some specified names.
+
+        :param start_id:    An int or string with an internal database ID
+        :param max_hops:    Integer >= 1 with the maximum number of links to follow in the graph traversal
+        :param avoid_links: Name, or list/tuple of names, of links to avoid in the graph traversal
+        :return:            A (possibly empty) list of dict's, with the properties of all the located nodes,
+                                plus the 2 special keys "internal_id" and "node_labels".
+                                The start node is NOT included.
+        """
+        assert max_hops >= 1, \
+            f"explore_neighborhood(): argument `max_hops` " \
+            f"must be an integer >= 1 (passed value was {max_hops})"
+
+        path_clause = CypherUtils.avoid_links_in_path(avoid_links, prefix_and=True)
+
+        q = f'''
+            MATCH  p=(n)-[*1..{max_hops}]-(f)
+            WHERE id(n) = {start_id}
+            {path_clause}
+            RETURN f, id(f) AS internal_id, labels(f) AS node_labels
+        '''
+
+        data_dict={}
+
+        #self.debug_query_print(q=q, data_binding=data_dict)
+
+        result = self.query(q, data_binding=data_dict)
+
+        #print(f"{len(result)} neighbor node(s) found")
+
+        return result
+
+
 
 
 
@@ -1903,7 +1941,7 @@ class NeoAccess(InterGraph):
         :return:                A (possibly-empty) list of the internal database ID's of the created nodes
         """
         # TODO: ditch empty strings; trim leading/trailing blanks from strings
-        #       Consider using the approach from NeoSchema.import_pandas_nodes()
+        #       Consider using the approach from GraphSchema.import_pandas_nodes()
 
         if isinstance(df, pd.Series):
             # Convert a Pandas Series into a Data Frame
@@ -2610,6 +2648,108 @@ class NeoAccess(InterGraph):
 
 
         return f"Successful import of {num_nodes_imported} node(s) and {num_rels_imported} relationship(s)"
+
+
+
+
+
+    #####################################################################################################
+
+    '''                                   ~   VISUALIZATION   ~                                   '''
+
+    def ________VISUALIZATION________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    def node_tabular_display(self, node_list :list, fields=None, dummy_name=None, limit=15) -> pd.DataFrame|None:
+        """
+        Tabular display of the requested fields from the given list of nodes data,
+        typically as returned from get_nodes()
+        or from the queries such as "MATCH (x:Person) RETURN x, id(x) AS internal_id"
+
+        Node labels and their internal ID's are included in the table *if* they are part of the passed data
+
+        :param node_list:   A list whose elements represent data from nodes;
+                                the following EXAMPLES show the different formats can be used for the list elements:
+
+                                {"field_1": 3, "field_2": "hello"}                          # Simple dict of node properties
+                                {"field_1": 3, "field_2": "hello",
+                                    "internal_id": 123, "node_labels": ["Car", "Vehicle"]}  # Optionally include "internal_id" and/or "node_labels"
+                                { "n":  {"field_1": 3, "field_2": "hello"} }                # Outer dict with dummy name
+                                { "internal_id": 123, "node_labels": ["Car", "Vehicle"] ,
+                                        "n":  {"field_1": 3, "field_2": "hello"} }          # Optionally include "internal_id" and/or "node_labels" in outer list
+
+
+        :param fields:      A string, or list/tuple of strings, with the name(s) of the desired field(s) to include.
+                                If None, ALL fields are included (plus the node labels and internal ID's, if present);
+                                if the fields don't match across all records, NaN's will be inserted into the dataframe
+        :param dummy_name:  A string to identify where the node data resides in the elements of `node_list`, if not at top level
+        :param limit:       Max number of records (nodes) to include
+
+        :return:            If the list of node is empty, None is returned;
+                                otherwise, a Panda's DataFrame with a tabular view of the specified fields (properties),
+                                with columns in the following order: "node_labels" (if present), all the fields in the order of
+                                the `fields` list, "internal_id" (if present)
+                                Note: "internal_id" might not show up at the far right if `fields` is None, and different records
+                                      have variable field lists
+        """
+        if (n_nodes := len(node_list)) == 0:
+            print("node_tabular_display(): EMPTY list of nodes.")
+            return
+
+        feedback = "" if n_nodes <= limit else "  Showing the first {limit}"    # Give feedback about omission of results, if applicable
+        print(f"node_tabular_display(): {n_nodes} node(s).  {feedback}\n")
+
+
+        row_list = []   # Running list of records (dict's with node data of interest)
+
+        if type(fields) == str:
+            fields = [fields]       # Turn into list
+
+        for i, node in enumerate(node_list):
+            if i >= limit:
+                break               # Exceeded the max
+
+            d_simple = {}
+
+            if dummy_name:  # If there is an outer dict
+                d = node[dummy_name]    # A dictionary of node properties
+                outer = node
+            else:
+                d = node
+                outer = d
+
+            #  Include "node_labels" and/or "internal_id", if present
+            if "internal_id" in outer:
+                d_simple["internal_id"] = outer["internal_id"]  # Placed first; later will be moved to last column
+            if "node_labels" in outer:
+                d_simple["node_labels"] = outer["node_labels"]
+
+
+            if fields is not None:
+                # Copy over the requested fields
+                for f in fields:
+                    d_simple[f] = d[f]
+            else:
+                # Copy over ALL fields, except "node_labels" and "internal_id" (which are handled separately)
+                 for k, v in d.items():
+                    if (k != "node_labels") and (k != "internal_id"):
+                        d_simple[k] = v
+
+            #print(d_simple)
+            row_list.append(d_simple)
+
+
+        df = pd.DataFrame(row_list)   # Turn a list of dict's into a Pandas dataframe
+
+        # Re-oder the columns, to place "internal_id" (if present) last
+        if ("internal_id" in df.columns) and (df.columns[0] == "internal_id"):
+            col_data = df["internal_id"]          # save the "internal_id" column
+            del df["internal_id"]                 # remove it from the DataFrame
+            df["internal_id"] = col_data          # reinsert it as the last column
+
+        return df
 
 
 

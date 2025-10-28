@@ -7,17 +7,17 @@
 import pytest
 import pandas as pd
 import numpy as np
-from brainannex import NeoAccess, NeoSchema, SchemaCache
-from test_neoschema import create_sample_schema_1, create_sample_schema_2
+from brainannex import GraphAccess, GraphSchema, SchemaCache
+from test_graphschema import create_sample_schema_1, create_sample_schema_2
 from utilities.comparisons import *
 
 
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
-    NeoSchema.set_database(neo_obj)
-    NeoSchema.debug = False
+    neo_obj = GraphAccess(debug=False)
+    GraphSchema.set_database(neo_obj)
+    GraphSchema.debug = False
     yield neo_obj
 
 
@@ -28,24 +28,24 @@ def create_sample_city_state_dbase(db):
     # and populate it with 4 cities and 3 states
 
     db.empty_dbase()
-    NeoSchema.set_database(db)
+    GraphSchema.set_database(db)
 
     # Create "City" and "State" Class node - together with their respective Properties - based on the data to import
-    NeoSchema.create_class_with_properties(name="City", properties=["city_id", "name"])
-    NeoSchema.create_class_with_properties(name="State", properties=["state_id", "name", "2-letter abbr"])
+    GraphSchema.create_class_with_properties(name="City", properties=["city_id", "name"])
+    GraphSchema.create_class_with_properties(name="State", properties=["state_id", "name", "2-letter abbr"])
 
     # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
-    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+    GraphSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
 
     # Now import some node data
     city_df = pd.DataFrame({"city_id": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
     state_df = pd.DataFrame({"state_id": [1, 2, 3],  "name": ["California", "Illinois", "New York"], "2-letter abbr": ["CA", "IL", "NY"]})
 
     # Import the data nodes
-    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City", report=False)
+    result = GraphSchema.import_pandas_nodes(df=city_df, class_name="City", report=False)
     assert result["number_nodes_created"] == 4
 
-    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State", report=False)
+    result = GraphSchema.import_pandas_nodes(df=state_df, class_name="State", report=False)
     assert result["number_nodes_created"] == 3
 
 
@@ -56,25 +56,25 @@ def test_import_pandas_nodes_1(db):
     df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
 
     with pytest.raises(Exception):
-        NeoSchema.import_pandas_nodes(df=df, class_name="State")    # Undefined Class
+        GraphSchema.import_pandas_nodes(df=df, class_name="State")    # Undefined Class
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="State",
-                                           properties=["name"], strict=True)
+    GraphSchema.create_class_with_properties(name="State",
+                                             properties=["name"], strict=True)
 
 
     # Import all state with a particular batch size
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=1)
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=1)
     assert import_result["number_nodes_created"] == 3
     import_state_list = import_result["affected_nodes_ids"]
 
     # Verify that 3 Data Node were imported
     assert len(import_state_list) == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="State") == 3
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
+        MATCH (s :State {name:state_name, `_CLASS`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -82,20 +82,20 @@ def test_import_pandas_nodes_1(db):
 
 
     # Delete all state Data Nodes, and re-do import with a different batch size
-    n_deleted = NeoSchema.delete_data_nodes(class_name="State")
+    n_deleted = GraphSchema.delete_data_nodes(class_name="State")
     assert n_deleted == 3
 
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=2)
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=2)
     assert import_result["number_nodes_created"] == 3
     import_state_list = import_result["affected_nodes_ids"]
 
     # Verify that 3 Data Node were imported
     assert len(import_state_list) == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="State") == 3
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
+        MATCH (s :State {name:state_name, `_CLASS`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -103,18 +103,18 @@ def test_import_pandas_nodes_1(db):
 
 
     # Delete all state Data Nodes, and re-do import with a different batch size
-    NeoSchema.delete_data_nodes(class_name="State")
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=3)
+    GraphSchema.delete_data_nodes(class_name="State")
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=3)
     assert import_result["number_nodes_created"] == 3
     import_state_list = import_result["affected_nodes_ids"]
 
     # Verify that 3 Data Node were imported
     assert len(import_state_list) == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="State") == 3
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
+        MATCH (s :State {name:state_name, `_CLASS`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -122,18 +122,18 @@ def test_import_pandas_nodes_1(db):
 
 
     # Delete all state Data Nodes, and re-do import with a different batch size
-    NeoSchema.delete_data_nodes(class_name="State")
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=100)
+    GraphSchema.delete_data_nodes(class_name="State")
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=100)
     assert import_result["number_nodes_created"] == 3
     import_state_list = import_result["affected_nodes_ids"]
 
     # Verify that 3 Data Node were imported
     assert len(import_state_list) == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="State") == 3
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
+        MATCH (s :State {name:state_name, `_CLASS`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -145,14 +145,14 @@ def test_import_pandas_nodes_2(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="State",
-                                           properties=["name"], strict=True)
+    GraphSchema.create_class_with_properties(name="State",
+                                             properties=["name"], strict=True)
 
 
     df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
 
     # Import all states with a large batch size, as done in test_import_pandas_nodes_1()
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=100)
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="State", max_batch_size=100)
     assert import_result["number_nodes_created"] == 3
 
 
@@ -161,8 +161,8 @@ def test_import_pandas_nodes_2(db):
                                                                 # and that "FL" occurs twice
 
     # Import this second dataset with a medium batch size - and treat "name" as a unique primary key
-    import_result = NeoSchema.import_pandas_nodes(df=df_2, class_name="State", primary_key="name",
-                                                  max_batch_size=2)
+    import_result = GraphSchema.import_pandas_nodes(df=df_2, class_name="State", primary_key="name",
+                                                    max_batch_size=2)
     assert import_result["number_nodes_created"] == 2       # 2 of the 4 imports already existed
 
 
@@ -171,15 +171,15 @@ def test_import_pandas_nodes_3(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="Motor Vehicle",
-                                           properties=["vehicle ID", "make", "year"], strict=True)
+    GraphSchema.create_class_with_properties(name="Motor Vehicle",
+                                             properties=["vehicle ID", "make", "year"], strict=True)
 
     df = pd.DataFrame({"vehicle ID": ["c1",    "c2",     "c3"],
                              "make": ["Honda", "Toyota", "Ford"],
                              "year": [2003,    2013,     2023]})
 
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                                  max_batch_size=2)
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                    max_batch_size=2)
     assert import_result["number_nodes_created"] == 3
     assert len(import_result["affected_nodes_ids"]) == 3
 
@@ -191,40 +191,40 @@ def test_import_pandas_nodes_3(db):
                               "color": ["red",       "white", "blue"]})
 
     with pytest.raises(Exception):      # "color" in not in the Schema
-        NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
-                                      primary_key="vehicle ID")
+        GraphSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
+                                        primary_key="vehicle ID")
 
     # Expand the Schema, to also include "color"
-    NeoSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
+    GraphSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
 
-    import_result_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
-                                                    max_batch_size=2,
-                                                    primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
+    import_result_2 = GraphSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
+                                                      max_batch_size=2,
+                                                      primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
     assert import_result_2["number_nodes_created"] == 2         # One of the 3 imports doesn't lead to node creation
     assert len(import_result_2["affected_nodes_ids"]) == 3      # 3 nodes were either created or updated
 
     q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'         # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
-    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013, '_SCHEMA': 'Motor Vehicle'} # The duplicate record 'c2' was updated by the new one
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013, '_CLASS': 'Motor Vehicle'} # The duplicate record 'c2' was updated by the new one
                                                                                                 # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                                 # and the 'year' value was left untouched
     assert result[0]["internal_id"] in import_result_2["affected_nodes_ids"]
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
     # A fresh start with "Motor Vehicle" data nodes
     db.delete_nodes_by_label(delete_labels="Motor Vehicle")
 
     # Re-import the first 3 records
-    import_result_1 = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle", max_batch_size=2)
+    import_result_1 = GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle", max_batch_size=2)
     assert import_result_1["number_nodes_created"] == 3
     assert len(import_result_1["affected_nodes_ids"]) == 3
 
     # Re-import the next 3 records (one of which has a duplicate)
-    import_result_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
-                                                    max_batch_size=2,
-                                                    primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be REPLACED (not "merged") this time
+    import_result_2 = GraphSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
+                                                      max_batch_size=2,
+                                                      primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be REPLACED (not "merged") this time
     assert import_result_2["number_nodes_created"] == 2         # One of the 3 imports doesn't lead to node creation
     assert len(import_result_2["affected_nodes_ids"]) == 3      # 3 nodes were either created or updated
 
@@ -232,11 +232,11 @@ def test_import_pandas_nodes_3(db):
     result = db.query(q)
     assert len(result) == 1
 
-    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', '_SCHEMA': 'Motor Vehicle'}  # The duplicate record 'c2' was completely replaced by the new one
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', '_CLASS': 'Motor Vehicle'}  # The duplicate record 'c2' was completely replaced by the new one
                                                                                     # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                     # and (unlike before) the 'year' value is gone
     assert result[0]["internal_id"] in import_result_2["affected_nodes_ids"]
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
 
@@ -244,25 +244,25 @@ def test_import_pandas_nodes_4(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="Motor Vehicle",
-                                           properties=["VID", "manufacturer", "year", "color"], strict=True)
+    GraphSchema.create_class_with_properties(name="Motor Vehicle",
+                                             properties=["VID", "manufacturer", "year", "color"], strict=True)
 
     df = pd.DataFrame({"vehicle ID": ["c1",    "c2",     "c3"],
                              "make": ["Honda", "Toyota", "Ford"],
                              "year": [2003,    2013,     2023]})
 
-    import_result_1 = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                                    max_batch_size=2,
-                                                    rename={"vehicle ID": "VID", "make": "manufacturer"})
+    import_result_1 = GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                      max_batch_size=2,
+                                                      rename={"vehicle ID": "VID", "make": "manufacturer"})
     assert import_result_1['number_nodes_created'] == 3
     import_car_list_1 = import_result_1['affected_nodes_ids']
     assert len(import_car_list_1) == 3
 
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'node_labels': ['Motor Vehicle']}
                ]
     assert compare_recordsets(result, expected)
 
@@ -274,23 +274,23 @@ def test_import_pandas_nodes_4(db):
                               "color": ["red",       "white", "blue"]
                         })
 
-    import_result_2 = NeoSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
-                                                    primary_key="vehicle ID", duplicate_option="merge",
-                                                    rename={"vehicle ID": "VID", "make": "manufacturer"},
-                                                    max_batch_size=2)
+    import_result_2 = GraphSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
+                                                      primary_key="vehicle ID", duplicate_option="merge",
+                                                      rename={"vehicle ID": "VID", "make": "manufacturer"},
+                                                      max_batch_size=2)
     assert import_result_2['number_nodes_created'] == 2     # Only 2 of the 3 records imported led to the creation of a new node
     import_car_list_2 = import_result_2['affected_nodes_ids']
     assert len(import_car_list_2) == 3                      # 3 nodes were either created or updated
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], 'neo4j_labels': ['Motor Vehicle'], 'color': 'white'},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], 'node_labels': ['Motor Vehicle'], 'color': 'white'},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'node_labels': ['Motor Vehicle']},
 
-                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[2], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[2], 'node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -303,8 +303,8 @@ def test_import_pandas_nodes_5(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="Motor Vehicle",
-                                           properties=["VID", "make", "year", "color"], strict=True)
+    GraphSchema.create_class_with_properties(name="Motor Vehicle",
+                                             properties=["VID", "make", "year", "color"], strict=True)
 
     # Notice that "c2" is a duplicate
     df = pd.DataFrame({  "VID":   ["c1",    "c2",     "c3",     "c4",        "c2",     "c5"],
@@ -312,22 +312,22 @@ def test_import_pandas_nodes_5(db):
                          "year":  [2003,    2013,     2023,     2005,        2015,     2025],
                          "color": ["red",  "white",   "black",  "pink",      "yellow", "blue"]})
 
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                                  primary_key="VID", duplicate_option="merge",
-                                                  max_batch_size=3, drop="year")
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                    primary_key="VID", duplicate_option="merge",
+                                                    max_batch_size=3, drop="year")
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
     assert import_result['number_nodes_created'] == 5
     import_car_list = import_result['affected_nodes_ids']
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
 
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -336,25 +336,25 @@ def test_import_pandas_nodes_5(db):
     # A fresh start with "Motor Vehicle" data nodes
     db.delete_nodes_by_label(delete_labels="Motor Vehicle")
 
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                                  primary_key="VID", duplicate_option="merge",
-                                                  max_batch_size=2, select=["VID", "make", "color"])
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                    primary_key="VID", duplicate_option="merge",
+                                                    max_batch_size=2, select=["VID", "make", "color"])
     # Notice that the 3 fields we're selected have the identical effect as the dropping of "year" we did before;
     # also, changing the max_chunk_size.  All the results will be identical to before
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
     assert import_result['number_nodes_created'] == 5
     import_car_list = import_result['affected_nodes_ids']
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
 
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -365,8 +365,8 @@ def test_import_pandas_nodes_6(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="Motor Vehicle",
-                                           properties=["VID", "make", "year", "color"], strict=True)
+    GraphSchema.create_class_with_properties(name="Motor Vehicle",
+                                             properties=["VID", "make", "year", "color"], strict=True)
 
     # Notice that "c2" is a duplicate
     df = pd.DataFrame({  "VID":   ["c1",    "c2",     "c3",     "c4",        "c2",     "c5"],
@@ -374,23 +374,23 @@ def test_import_pandas_nodes_6(db):
                          "year":  [2003,    2013,     2023,     2005,        2015,     2025],
                          "color": ["red",  "white",   "black",  "pink",      "yellow", "blue"]})
 
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                                  primary_key="VID", duplicate_option="merge",
-                                                  max_batch_size=4, drop=["make", "color"])
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                    primary_key="VID", duplicate_option="merge",
+                                                    max_batch_size=4, drop=["make", "color"])
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
     assert import_result['number_nodes_created'] == 5
     import_car_list = import_result['affected_nodes_ids']
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
 
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'year': 2005, 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'year': 2025, 'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, 'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'year': 2005, 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'year': 2025, 'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -399,23 +399,23 @@ def test_import_pandas_nodes_6(db):
     # A fresh start with "Motor Vehicle" data nodes
     db.delete_nodes_by_label(delete_labels="Motor Vehicle")
 
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                                  primary_key="VID", duplicate_option="merge",
-                                                  max_batch_size=10, select="VID")
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                    primary_key="VID", duplicate_option="merge",
+                                                    max_batch_size=10, select="VID")
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
     assert import_result['number_nodes_created'] == 5
     import_car_list = import_result['affected_nodes_ids']
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
 
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
                ]
 
     assert compare_recordsets(result, expected)
@@ -424,24 +424,24 @@ def test_import_pandas_nodes_6(db):
     # Another fresh start with "Motor Vehicle" data nodes
     db.delete_nodes_by_label(delete_labels="Motor Vehicle")
 
-    import_result = NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                                  max_batch_size=10, select="VID")
+    import_result = GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                                    max_batch_size=10, select="VID")
     # This time, NOT specifying a primary_key
 
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 6      # Verify that ALL Data Nodes were imported this time
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 6      # Verify that ALL Data Nodes were imported this time
     assert import_result['number_nodes_created'] == 6
     import_car_list = import_result['affected_nodes_ids']
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 6                   # 6 unique values (the internal ID for node "c2" repeats twice)
 
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'internal_id': import_car_list[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[1], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'internal_id': import_car_list[2], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'internal_id': import_car_list[3], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[4], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'internal_id': import_car_list[5], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[4], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
                ]
 
     assert compare_recordsets(result, expected)
@@ -452,24 +452,24 @@ def test_import_pandas_nodes_7(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="Motor Vehicle",
-                                           properties=["VID", "manufacturer", "year", "color"], strict=True)
+    GraphSchema.create_class_with_properties(name="Motor Vehicle",
+                                             properties=["VID", "manufacturer", "year", "color"], strict=True)
 
     df = pd.DataFrame({"VID": ["c1",    "c2",     "c3"],
                       "make": ["Honda", "Toyota", "Ford"],
                       "year": [2003,    2013,     2023]})
 
     with pytest.raises(Exception):
-        NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                      primary_key="non_existent")     # Primary key not in the dataframe
+        GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                        primary_key="non_existent")     # Primary key not in the dataframe
 
     with pytest.raises(Exception):
-        NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                      primary_key="VID", drop="VID")     # Primary key is a dropped column
+        GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                        primary_key="VID", drop="VID")     # Primary key is a dropped column
 
     with pytest.raises(Exception):
-        NeoSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
-                                      primary_key="VID", drop=["VID", "year"])     # Primary key is a dropped column
+        GraphSchema.import_pandas_nodes(df=df, class_name="Motor Vehicle",
+                                        primary_key="VID", drop=["VID", "year"])     # Primary key is a dropped column
 
 
 
@@ -481,22 +481,22 @@ def test_import_pandas_nodes_1_OLD(db):
     df = pd.DataFrame({"name": ["CA", "NY", "OR"]})
 
     with pytest.raises(Exception):
-        NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="State")    # Undefined Class
+        GraphSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="State")    # Undefined Class
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="State",
-                                           properties=["name"], strict=True)
+    GraphSchema.create_class_with_properties(name="State",
+                                             properties=["name"], strict=True)
 
-    import_state_list_1 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="State")
+    import_state_list_1 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="State")
 
     # Verify that 3 Data Node were imported
     assert len(import_state_list_1) == 3
-    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 3
+    assert GraphSchema.count_data_nodes_of_class(class_name="State") == 3
 
     # Make sure our 3 states are present in the import
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
-        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
+        MATCH (s :State {name:state_name, `_CLASS`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -507,17 +507,17 @@ def test_import_pandas_nodes_1_OLD(db):
     # Duplicate entry: "CA" (from new dataset to be added to the previous one)
     df_2 = pd.DataFrame({"name": ["NV", "CA", "WA"]})
 
-    import_state_list_2 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="State",
-                                                                 primary_key="name")
+    import_state_list_2 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="State",
+                                                                   primary_key="name")
 
     # Verify that a grand total of only 5 Data Node were imported (i.e.,
     # the duplicate didn't lead to an extra record)
     assert len(import_state_list_2) == 2
-    assert NeoSchema.count_data_nodes_of_class(class_name="State") == 5
+    assert GraphSchema.count_data_nodes_of_class(class_name="State") == 5
 
     q = '''
         UNWIND ["CA", "NY", "OR", "NV", "WA"] AS state_name
-        MATCH (s :State {name:state_name, `_SCHEMA`: "State"})
+        MATCH (s :State {name:state_name, `_CLASS`: "State"})
         RETURN id(s) AS internal_id
         '''
     result = db.query(q, single_column="internal_id")
@@ -526,14 +526,14 @@ def test_import_pandas_nodes_1_OLD(db):
 
 
     # Expand the Schema with a new Class
-    NeoSchema.create_class_with_properties(name="Motor Vehicle",
-                                           properties=["vehicle ID", "make", "year"], strict=True)
+    GraphSchema.create_class_with_properties(name="Motor Vehicle",
+                                             properties=["vehicle ID", "make", "year"], strict=True)
 
     df = pd.DataFrame({"vehicle ID": ["c1",    "c2",     "c3"],
                              "make": ["Honda", "Toyota", "Ford"],
                              "year": [2003,    2013,     2023]})
 
-    import_car_list_1 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle")
+    import_car_list_1 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle")
 
 
     assert len(import_car_list_1) == 3
@@ -545,46 +545,46 @@ def test_import_pandas_nodes_1_OLD(db):
                               "color": ["red",       "white", "blue"]})
 
     with pytest.raises(Exception):      # "color" in not in the Schema
-        NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
-                                               primary_key="vehicle ID")
+        GraphSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
+                                                 primary_key="vehicle ID")
 
-    NeoSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
+    GraphSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
 
-    import_car_list_2 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
-                                                               primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
+    import_car_list_2 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
+                                                                 primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
     assert len(import_car_list_2) == 2
 
     q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'         # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
-    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013, '_SCHEMA': 'Motor Vehicle'} # The duplicate record 'c2' was updated by the new one
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013, '_CLASS': 'Motor Vehicle'} # The duplicate record 'c2' was updated by the new one
                                                                                                 # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                                 # and the 'year' value was left untouched
     assert result[0]["internal_id"] in import_car_list_1
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
     # A fresh start with "Motor Vehicle" data nodes
     db.delete_nodes_by_label(delete_labels="Motor Vehicle")
 
     # Re-import the first 3 records
-    import_car_list_1 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle")
+    import_car_list_1 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle")
     assert len(import_car_list_1) == 3
 
     # Re-import the next 3 records (one of which has a duplicate)
-    import_car_list_2 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
-                                                               primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be REPLACED (not "merged") this time
+    import_car_list_2 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
+                                                                 primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be REPLACED (not "merged") this time
     assert len(import_car_list_2) == 2
 
     q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'     # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
 
-    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', '_SCHEMA': 'Motor Vehicle'}  # The duplicate record 'c2' was completely replaced by the new one
+    assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', '_CLASS': 'Motor Vehicle'}  # The duplicate record 'c2' was completely replaced by the new one
                                                                                     # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                     # and (unlike before) the 'year' value is gone
     assert result[0]["internal_id"] in import_car_list_1
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
 
@@ -592,22 +592,22 @@ def test_import_pandas_nodes_2_OLD(db):
     db.empty_dbase()
 
     # Populate the Schema
-    NeoSchema.create_class_with_properties(name="Motor Vehicle",
-                                           properties=["VID", "manufacturer", "year", "color"], strict=True)
+    GraphSchema.create_class_with_properties(name="Motor Vehicle",
+                                             properties=["VID", "manufacturer", "year", "color"], strict=True)
 
     df = pd.DataFrame({"vehicle ID": ["c1",    "c2",     "c3"],
                              "make": ["Honda", "Toyota", "Ford"],
                              "year": [2003,    2013,     2023]})
 
-    import_car_list_1 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle",
-                                                               rename={"vehicle ID": "VID", "make": "manufacturer"})
+    import_car_list_1 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df, class_name="Motor Vehicle",
+                                                                 rename={"vehicle ID": "VID", "make": "manufacturer"})
     assert len(import_car_list_1) == 3
 
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'node_labels': ['Motor Vehicle']}
                ]
     assert compare_recordsets(result, expected)
 
@@ -619,19 +619,19 @@ def test_import_pandas_nodes_2_OLD(db):
                               "color": ["red",       "white", "blue"]
                         })
 
-    import_car_list_2 = NeoSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
-                                                               primary_key="vehicle ID", duplicate_option="merge",
-                                                               rename={"vehicle ID": "VID", "make": "manufacturer"})
+    import_car_list_2 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
+                                                                 primary_key="vehicle ID", duplicate_option="merge",
+                                                                 rename={"vehicle ID": "VID", "make": "manufacturer"})
     assert len(import_car_list_2) == 2
-    assert NeoSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
-    result = NeoSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
+    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], 'neo4j_labels': ['Motor Vehicle'], 'color': 'white'},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'neo4j_labels': ['Motor Vehicle']},
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], 'node_labels': ['Motor Vehicle'], 'color': 'white'},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'node_labels': ['Motor Vehicle']},
 
-                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], 'neo4j_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[1], 'neo4j_labels': ['Motor Vehicle']}
+                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[1], 'node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -649,14 +649,14 @@ def test_import_pandas_nodes_2_OLD(db):
 
 def test_import_pandas_links_NO_BATCH(db):
     db.empty_dbase()
-    NeoSchema.set_database(db)
+    GraphSchema.set_database(db)
 
     # Create "City" and "State" Class node - together with their respective Properties, based on the data to import
-    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
-    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+    GraphSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    GraphSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
 
     # Now add a relationship named "IS_IN", from the "City" Class to the "State" Class
-    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+    GraphSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
 
     # Now import some data
     city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
@@ -668,23 +668,23 @@ def test_import_pandas_links_NO_BATCH(db):
     state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4]})
 
     # Import the data nodes
-    city_node_ids = NeoSchema.import_pandas_nodes_NO_BATCH(df=city_df, class_name="City")
+    city_node_ids = GraphSchema.import_pandas_nodes_NO_BATCH(df=city_df, class_name="City")
     assert len(city_node_ids) == 4
 
-    state_node_ids = NeoSchema.import_pandas_nodes_NO_BATCH(df=state_df, class_name="State")
+    state_node_ids = GraphSchema.import_pandas_nodes_NO_BATCH(df=state_df, class_name="State")
     assert len(state_node_ids) == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links_NO_BATCH(df=state_city_links_df,
-                                             class_from="City", class_to="State",
-                                             col_from="City ID", col_to="State ID",
-                                             link_name="IS_IN")
+    link_ids = GraphSchema.import_pandas_links_NO_BATCH(df=state_city_links_df,
+                                                        class_from="City", class_to="State",
+                                                        col_from="City ID", col_to="State ID",
+                                                        link_name="IS_IN")
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
     q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"
     result = db.query(q, single_column="rel_id")
@@ -694,14 +694,14 @@ def test_import_pandas_links_NO_BATCH(db):
 
 def test_import_pandas_links_OLD_1(db):
     db.empty_dbase()
-    NeoSchema.set_database(db)
+    GraphSchema.set_database(db)
 
     # Create "City" and "State" Class node - together with their respective Properties, based on the data to import
-    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
-    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+    GraphSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    GraphSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
 
     # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
-    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+    GraphSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
 
     # Now import some data
     city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
@@ -713,24 +713,24 @@ def test_import_pandas_links_OLD_1(db):
     state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4]})
 
     # Import the data nodes
-    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
+    result = GraphSchema.import_pandas_nodes(df=city_df, class_name="City")
     assert result["number_nodes_created"] == 4
 
-    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
+    result = GraphSchema.import_pandas_nodes(df=state_df, class_name="State")
     assert result["number_nodes_created"] == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
-                                                 class_from="City", class_to="State",
-                                                 col_from="City ID", col_to="State ID",
-                                                 link_name="IS_IN",
-                                                 max_batch_size=4)      # This will lead to 1 batch
+    link_ids = GraphSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                   class_from="City", class_to="State",
+                                                   col_from="City ID", col_to="State ID",
+                                                   link_name="IS_IN",
+                                                   max_batch_size=4)      # This will lead to 1 batch
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
     q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"  # Get the dbase IDs of all the "IS_IN" links created
     result = db.query(q, single_column="rel_id")
@@ -742,17 +742,17 @@ def test_import_pandas_links_OLD_1(db):
     result = db.update_query(q)
     assert result["relationships_deleted"] == 4
 
-    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
-                                                 class_from="City", class_to="State",
-                                                 col_from="City ID", col_to="State ID",
-                                                 link_name="IS_IN",
-                                                 max_batch_size=3)      # This will lead to 2 batches
+    link_ids = GraphSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                   class_from="City", class_to="State",
+                                                   col_from="City ID", col_to="State ID",
+                                                   link_name="IS_IN",
+                                                   max_batch_size=3)      # This will lead to 2 batches
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
     q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id" # Get the dbase IDs of all the "IS_IN" links created
     result = db.query(q, single_column="rel_id")
@@ -764,17 +764,17 @@ def test_import_pandas_links_OLD_1(db):
     result = db.update_query(q)
     assert result["relationships_deleted"] == 4
 
-    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
-                                                 class_from="City", class_to="State",
-                                                 col_from="City ID", col_to="State ID",
-                                                 link_name="IS_IN",
-                                                 max_batch_size=1)      # This will lead to 4 batches
+    link_ids = GraphSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                   class_from="City", class_to="State",
+                                                   col_from="City ID", col_to="State ID",
+                                                   link_name="IS_IN",
+                                                   max_batch_size=1)      # This will lead to 4 batches
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
     q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id" # Get the dbase IDs of all the "IS_IN" links created
     result = db.query(q, single_column="rel_id")
@@ -784,14 +784,14 @@ def test_import_pandas_links_OLD_1(db):
 
 def test_import_pandas_links_OLD_2(db):
     db.empty_dbase()
-    NeoSchema.set_database(db)
+    GraphSchema.set_database(db)
 
     # Create "City" and "State" Class node - together with their respective Properties, based on the data to import
-    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
-    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+    GraphSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    GraphSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
 
     # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
-    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+    GraphSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
 
     # Now import some node data
     city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
@@ -804,40 +804,40 @@ def test_import_pandas_links_OLD_2(db):
     # The None value in the "Rank" will appear as a NaN in the data frame
 
     # Import the data nodes
-    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
+    result = GraphSchema.import_pandas_nodes(df=city_df, class_name="City")
     assert result["number_nodes_created"] == 4
 
-    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
+    result = GraphSchema.import_pandas_nodes(df=state_df, class_name="State")
     assert result["number_nodes_created"] == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
-                                                 class_from="City", class_to="State",
-                                                 col_from="City ID", col_to="State ID",
-                                                 link_name="IS_IN", col_link_props="Rank",
-                                                 max_batch_size=4)      # This will lead to 1 batch
+    link_ids = GraphSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                   class_from="City", class_to="State",
+                                                   col_from="City ID", col_to="State ID",
+                                                   link_name="IS_IN", col_link_props="Rank",
+                                                   max_batch_size=4)      # This will lead to 1 batch
     assert len(link_ids) == 4
 
-    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=True)
+    result = GraphSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 10
     assert result[0]["internal_id"] in link_ids
 
-    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
-                                                link_name="IS_IN", include_internal_id=True)
+    result = GraphSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 12
     assert result[0]["internal_id"] in link_ids
 
-    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
-                                                link_name="IS_IN", include_internal_id=True)
+    result = GraphSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 13
     assert result[0]["internal_id"] in link_ids
 
-    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=True)
+    result = GraphSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert "Rank" not in result[0]      # No value got set, because it was a missing value (NaN) in the imported dataframe
     assert result[0]["internal_id"] in link_ids
@@ -846,14 +846,14 @@ def test_import_pandas_links_OLD_2(db):
 
 def test_import_pandas_links_OLD_3(db):
     db.empty_dbase()
-    NeoSchema.set_database(db)
+    GraphSchema.set_database(db)
 
     # Create "City" and "State" Class node - together with their respective Properties, based on the data to import
-    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
-    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+    GraphSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    GraphSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
 
     # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
-    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+    GraphSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
 
     # Now import some node data
     city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
@@ -866,25 +866,25 @@ def test_import_pandas_links_OLD_3(db):
     # The None value in the "Rank" will appear as a NaN in the data frame
 
     # Import the data nodes
-    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
+    result = GraphSchema.import_pandas_nodes(df=city_df, class_name="City")
     assert result["number_nodes_created"] == 4
 
-    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
+    result = GraphSchema.import_pandas_nodes(df=state_df, class_name="State")
     assert result["number_nodes_created"] == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
-                                                 class_from="City", class_to="State",
-                                                 col_from="city_id", col_to="state_id",
-                                                 rename={"city_id": "City ID", "state_id": "State ID"},
-                                                 link_name="IS_IN",
-                                                 max_batch_size=4)      # This will lead to 1 batch
+    link_ids = GraphSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                   class_from="City", class_to="State",
+                                                   col_from="city_id", col_to="state_id",
+                                                   rename={"city_id": "City ID", "state_id": "State ID"},
+                                                   link_name="IS_IN",
+                                                   max_batch_size=4)      # This will lead to 1 batch
     assert len(link_ids) == 4
 
-    assert NeoSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
-    assert NeoSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
 
     q = "MATCH (:City)-[r :IS_IN]-(:State) RETURN id(r) AS rel_id"  # Get the dbase IDs of all the "IS_IN" links created
     result = db.query(q, single_column="rel_id")
@@ -910,12 +910,12 @@ def test_import_pandas_links_1(db):
     '''
 
     # Import in batches of 1
-    link_ids = NeoSchema.import_pandas_links(df=city_state_df,
-                                             class_from="City", class_to="State",
-                                             col_from="city_id", col_to="state_id",
-                                             link_name="IS_IN",
-                                             cols_link_props=["rank", "region"],
-                                             report=False, max_batch_size=1)
+    link_ids = GraphSchema.import_pandas_links(df=city_state_df,
+                                               class_from="City", class_to="State",
+                                               col_from="city_id", col_to="state_id",
+                                               link_name="IS_IN",
+                                               cols_link_props=["rank", "region"],
+                                               report=False, max_batch_size=1)
 
     assert len(link_ids) == 4       # Verify the number of the links reported to have been imported
     # Verify the values of the imported links' internal dbase ID's
@@ -923,20 +923,20 @@ def test_import_pandas_links_1(db):
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
 
-    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 53, "region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 4, "region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 1, "region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 1, "region": "south"}]
 
 
@@ -960,12 +960,12 @@ def test_import_pandas_links_2(db):
     '''
 
     # Import in batches of 2
-    link_ids = NeoSchema.import_pandas_links(df=city_state_df,
-                                             class_from="City", class_to="State",
-                                             col_from="city_id", col_to="state_id",
-                                             link_name="IS_IN",
-                                             cols_link_props=["rank", "region"],
-                                             report=False, max_batch_size=2)
+    link_ids = GraphSchema.import_pandas_links(df=city_state_df,
+                                               class_from="City", class_to="State",
+                                               col_from="city_id", col_to="state_id",
+                                               link_name="IS_IN",
+                                               cols_link_props=["rank", "region"],
+                                               report=False, max_batch_size=2)
 
     assert len(link_ids) == 4       # Verify the number of the links reported to have been imported
     # Verify the values of the imported links' internal dbase ID's
@@ -973,20 +973,20 @@ def test_import_pandas_links_2(db):
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
 
-    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 53, "region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 4, "region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 1, "region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 1, "region": "south"}]
 
 
@@ -1012,12 +1012,12 @@ def test_import_pandas_links_3(db):
     '''
 
     # Import in batches of 4, i.e. all the data at once
-    link_ids = NeoSchema.import_pandas_links(df=city_state_df,
-                                             class_from="City", class_to="State",
-                                             col_from="city_id", col_to="state_id",
-                                             link_name="IS_IN",
-                                             cols_link_props=["rank", "region"],
-                                             report=False, max_batch_size=4)
+    link_ids = GraphSchema.import_pandas_links(df=city_state_df,
+                                               class_from="City", class_to="State",
+                                               col_from="city_id", col_to="state_id",
+                                               link_name="IS_IN",
+                                               cols_link_props=["rank", "region"],
+                                               report=False, max_batch_size=4)
 
     assert len(link_ids) == 4       # Verify the number of the links reported to have been imported
     # Verify the values of the imported links' internal dbase ID's
@@ -1025,20 +1025,20 @@ def test_import_pandas_links_3(db):
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
 
-    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 4.0}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 1.0, "region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"rank": 1.0}]
 
 
@@ -1062,12 +1062,12 @@ def test_import_pandas_links_4(db):
     '''
 
     # Import in batches of 2  (Note: the "rank" column is NOT imported)
-    link_ids = NeoSchema.import_pandas_links(df=city_state_df,
-                                             class_from="City", class_to="State",
-                                             col_from="city_id", col_to="state_id",
-                                             link_name="IS_IN",
-                                             cols_link_props="region",
-                                             report=False, max_batch_size=2)
+    link_ids = GraphSchema.import_pandas_links(df=city_state_df,
+                                               class_from="City", class_to="State",
+                                               col_from="city_id", col_to="state_id",
+                                               link_name="IS_IN",
+                                               cols_link_props="region",
+                                               report=False, max_batch_size=2)
 
     assert len(link_ids) == 4       # Verify the number of the links reported to have been imported
     # Verify the values of the imported links' internal dbase ID's
@@ -1075,20 +1075,20 @@ def test_import_pandas_links_4(db):
     result = db.query(q, single_column="rel_id")
     assert compare_unordered_lists(result, link_ids)
 
-    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"region": "north"}]
 
-    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
-                                                link_name="IS_IN", include_internal_id=False)
+    result = GraphSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=False)
     assert result == [{"region": "south"}]
 
 
@@ -1108,12 +1108,12 @@ def test__restructure_df():
     1  2  y  20  200  2000
     2  3  z  30  300  3000
     '''
-    result = NeoSchema._restructure_df(df=df, col_from="A", col_to="B", cols_other=["C","E"])
+    result = GraphSchema._restructure_df(df=df, col_from="A", col_to="B", cols_other=["C", "E"])
     assert result == [{'FROM': 1, 'TO': 'x', 'OTHER_FIELDS': {'C': 10, 'E': 1000}},
                       {'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {'C': 20, 'E': 2000}},
                       {'FROM': 3, 'TO': 'z', 'OTHER_FIELDS': {'C': 30, 'E': 3000}}]
 
-    result = NeoSchema._restructure_df(df=df, col_from="A", col_to="B", cols_other=[])
+    result = GraphSchema._restructure_df(df=df, col_from="A", col_to="B", cols_other=[])
     assert result == [{'FROM': 1, 'TO': 'x', 'OTHER_FIELDS': {}},
                       {'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {}},
                       {'FROM': 3, 'TO': 'z', 'OTHER_FIELDS': {}}]
@@ -1134,7 +1134,7 @@ def test__restructure_df():
     1  2  y   20    NaN   beta
     2  3  z   30  300.0   None
     '''
-    result = NeoSchema._restructure_df(df=df, col_from="A", col_to="C", cols_other=["B", "D","E"])
+    result = GraphSchema._restructure_df(df=df, col_from="A", col_to="C", cols_other=["B", "D", "E"])
 
     assert result == [  {'FROM': 1, 'TO': 10, 'OTHER_FIELDS': {'D': 100.0, 'E': 'alpha'}},
                         {'FROM': 2, 'TO': 20, 'OTHER_FIELDS': {'B': 'y',   'E': 'beta'}},
@@ -1144,28 +1144,28 @@ def test__restructure_df():
 
 
 def test__not_junk():
-    assert NeoSchema._not_junk(5)
-    assert NeoSchema._not_junk(3.14)
-    assert NeoSchema._not_junk("hello")
-    assert NeoSchema._not_junk([1,2])
+    assert GraphSchema._not_junk(5)
+    assert GraphSchema._not_junk(3.14)
+    assert GraphSchema._not_junk("hello")
+    assert GraphSchema._not_junk([1, 2])
 
-    assert not NeoSchema._not_junk(None)
-    assert not NeoSchema._not_junk("")
-    assert not NeoSchema._not_junk(np.nan)
+    assert not GraphSchema._not_junk(None)
+    assert not GraphSchema._not_junk("")
+    assert not GraphSchema._not_junk(np.nan)
 
 
 
 
 def test_import_pandas_links_4(db):
     db.empty_dbase()
-    NeoSchema.set_database(db)
+    GraphSchema.set_database(db)
 
     # Create "City" and "State" Class node - together with their respective Properties - based on the data to import
-    NeoSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
-    NeoSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+    GraphSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+    GraphSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
 
     # Add a relationship named "IS_IN", from the "City" Class to the "State" Class
-    NeoSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+    GraphSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
 
     # Now import some node data
     city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
@@ -1178,41 +1178,41 @@ def test_import_pandas_links_4(db):
     # The None value in the "Rank" will appear as a NaN in the data frame
 
     # Import the data nodes
-    result = NeoSchema.import_pandas_nodes(df=city_df, class_name="City")
+    result = GraphSchema.import_pandas_nodes(df=city_df, class_name="City")
     assert result["number_nodes_created"] == 4
 
-    result = NeoSchema.import_pandas_nodes(df=state_df, class_name="State")
+    result = GraphSchema.import_pandas_nodes(df=state_df, class_name="State")
     assert result["number_nodes_created"] == 3
 
     # Now import the links
-    link_ids = NeoSchema.import_pandas_links_OLD(df=state_city_links_df,
-                                                 class_from="City", class_to="State",
-                                                 col_from="city_id", col_to="state_id",
-                                                 link_name="IS_IN", col_link_props="rank_value",
-                                                 rename={"city_id": "City ID", "state_id": "State ID", "rank_value": "Rank"},
-                                                 max_batch_size=2)      # This will lead to 2 batches
+    link_ids = GraphSchema.import_pandas_links_OLD(df=state_city_links_df,
+                                                   class_from="City", class_to="State",
+                                                   col_from="city_id", col_to="state_id",
+                                                   link_name="IS_IN", col_link_props="rank_value",
+                                                   rename={"city_id": "City ID", "state_id": "State ID", "rank_value": "Rank"},
+                                                   max_batch_size=2)      # This will lead to 2 batches
     assert len(link_ids) == 4
 
-    result = NeoSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=True)
+    result = GraphSchema.get_data_link_properties(node1_id="Berkeley", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 10
     assert result[0]["internal_id"] in link_ids
 
-    result = NeoSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
-                                                link_name="IS_IN", include_internal_id=True)
+    result = GraphSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 12
     assert result[0]["internal_id"] in link_ids
 
-    result = NeoSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
-                                                link_name="IS_IN", include_internal_id=True)
+    result = GraphSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 13
     assert result[0]["internal_id"] in link_ids
 
-    result = NeoSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
-                                                link_name="IS_IN", include_internal_id=True)
+    result = GraphSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
+                                                  link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert "Rank" not in result[0]      # No value got set, because it was a missing value (NaN) in the imported dataframe
     assert result[0]["internal_id"] in link_ids
@@ -1223,26 +1223,26 @@ def test_create_tree_from_dict_1(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="address",
-                                           properties=["state", "city"])
+    GraphSchema.create_class_with_properties(name="address",
+                                             properties=["state", "city"])
 
     # Import a data dictionary
     data = {"state": "California", "city": "Berkeley"}
     cache = SchemaCache()    # All needed Schema-related data will be automatically queried and cached here
 
     # This import will result in the creation of a new node, with 2 attributes, named "state" and "city"
-    root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="address", cache=cache)
+    root_neo_id = GraphSchema.create_tree_from_dict(data, class_name="address", cache=cache)
     #print(root_neo_id)
     assert root_neo_id is not None
 
     q = '''
-        MATCH (root :address {state: "California", city: "Berkeley", `_SCHEMA`: "address"})
+        MATCH (root :address {state: "California", city: "Berkeley", `_CLASS`: "address"})
         WHERE id(root) = $root_neo_id
         RETURN root
     '''
 
     root_node = db.query(q, data_binding={"root_neo_id": root_neo_id})
-    assert root_node == [{'root': {'city': 'Berkeley', 'state': 'California', '_SCHEMA': 'address'}}]
+    assert root_node == [{'root': {'city': 'Berkeley', 'state': 'California', '_CLASS': 'address'}}]
 
 
 
@@ -1250,12 +1250,12 @@ def test_create_tree_from_dict_2(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="person",
-                                           properties=["name"])
-    NeoSchema.create_class_with_properties(name="address",
-                                           properties=["state", "city"])
+    GraphSchema.create_class_with_properties(name="person",
+                                             properties=["name"])
+    GraphSchema.create_class_with_properties(name="address",
+                                             properties=["state", "city"])
 
-    NeoSchema.create_class_relationship(from_class="person", to_class="address", rel_name="address")
+    GraphSchema.create_class_relationship(from_class="person", to_class="address", rel_name="address")
 
     # Import a data dictionary
     data = {"name": "Julian", "address": {"state": "California", "city": "Berkeley"}}
@@ -1263,21 +1263,21 @@ def test_create_tree_from_dict_2(db):
 
     # This import will result in the creation of 2 nodes, namely the tree root (with a single attribute "name"), with
     # an outbound link named "address" to another node (the subtree) that has the "state" and "city" attributes
-    root_neo_id = NeoSchema.create_tree_from_dict(data, class_name="person", cache=cache)
+    root_neo_id = GraphSchema.create_tree_from_dict(data, class_name="person", cache=cache)
     #print(root_neo_id)
 
     assert root_neo_id is not None
 
 
     q = '''
-        MATCH (root :person {name: "Julian", `_SCHEMA`: "person"})-[:address]->
-        (a :address {state: "California", city: "Berkeley", `_SCHEMA`: "address"})
+        MATCH (root :person {name: "Julian", `_CLASS`: "person"})-[:address]->
+        (a :address {state: "California", city: "Berkeley", `_CLASS`: "address"})
         WHERE id(root) = $root_neo_id
         RETURN root
     '''
 
     root_node = db.query(q, data_binding={"root_neo_id": root_neo_id})
-    assert root_node == [{'root': {'name': 'Julian', '_SCHEMA': 'person'}}]
+    assert root_node == [{'root': {'name': 'Julian', '_CLASS': 'person'}}]
 
 
 
@@ -1288,8 +1288,8 @@ def test_create_tree_from_list_1(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="address",
-                                           properties=["state", "city"])
+    GraphSchema.create_class_with_properties(name="address",
+                                             properties=["state", "city"])
 
     # Import a data dictionary
     data = [{"state": "California", "city": "Berkeley"}, {"state": "Texas", "city": "Dallas"}]
@@ -1297,15 +1297,15 @@ def test_create_tree_from_list_1(db):
 
 
     # This import will result in the creation of two new nodes, each with 2 attributes, named "state" and "city"
-    root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address", cache=cache)
+    root_neo_id_list = GraphSchema.create_trees_from_list(data, class_name="address", cache=cache)
     #print(root_neo_id_list)
 
     assert root_neo_id_list is not None
 
     q = '''
     MATCH 
-        (root1 :address {state: "California", city: "Berkeley", `_SCHEMA`: "address"}),
-        (root2 :address {state: "Texas", city: "Dallas", `_SCHEMA`: "address"})
+        (root1 :address {state: "California", city: "Berkeley", `_CLASS`: "address"}),
+        (root2 :address {state: "Texas", city: "Dallas", `_CLASS`: "address"})
     RETURN id(root1) as id_1, id(root2) as id_2
     '''
 
@@ -1323,8 +1323,8 @@ def test_create_tree_from_list_2(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="address",
-                                           properties=["value"])
+    GraphSchema.create_class_with_properties(name="address",
+                                             properties=["value"])
 
     # Import a data dictionary
     data = ["California", "Texas"]
@@ -1332,15 +1332,15 @@ def test_create_tree_from_list_2(db):
 
 
     # This import will result in the creation of two new nodes, each with a property by default named "value"
-    root_neo_id_list = NeoSchema.create_trees_from_list(data, class_name="address", cache=cache)
+    root_neo_id_list = GraphSchema.create_trees_from_list(data, class_name="address", cache=cache)
     #print("root_neo_id_list: ", root_neo_id_list)
 
     assert len(root_neo_id_list) == 2
 
     q = '''
         MATCH 
-            (root1 :address {value: "California", `_SCHEMA`: "address"}),
-            (root2 :address {value: "Texas", `_SCHEMA`: "address"})
+            (root1 :address {value: "California", `_CLASS`: "address"}),
+            (root2 :address {value: "Texas", `_CLASS`: "address"})
         RETURN id(root1) as id_1, id(root2) as id_2
     '''
 
@@ -1362,28 +1362,28 @@ def test_create_data_nodes_from_python_data_1(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
 
-    NeoSchema.create_class_with_properties(name="my_class_1",
-                                           properties=["legit", "other"])
+    GraphSchema.create_class_with_properties(name="my_class_1",
+                                             properties=["legit", "other"])
 
-    NeoSchema.create_class_relationship(from_class="Import Data", to_class="my_class_1", rel_name="imported_data")
+    GraphSchema.create_class_relationship(from_class="Import Data", to_class="my_class_1", rel_name="imported_data")
 
 
     # 1-layer dictionary, with a key in the Schema and one not
 
     data = {"legit": 123, "unexpected": 456}
     # Import step
-    node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="my_class_1")
+    node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="my_class_1")
 
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
     q = '''
-        MATCH (n1:`Import Data` {`_SCHEMA`: "Import Data"})
+        MATCH (n1:`Import Data` {`_CLASS`: "Import Data"})
             -[:imported_data]->
-            (n2:my_class_1 {`_SCHEMA`: "my_class_1"})
+            (n2:my_class_1 {`_CLASS`: "my_class_1"})
         WHERE id(n2) = $uri
         RETURN n2
         '''
@@ -1400,15 +1400,15 @@ def test_create_data_nodes_from_python_data_2(db):
     db.empty_dbase()
 
     # Set up the Schema.  Nothing in it yet, other than the "Import Data" node
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
 
 
     data = {"arbitrary": "Doesn't matter"}
 
     # Import step
     with pytest.raises(Exception):
-        NeoSchema.create_data_nodes_from_python_data(data, class_name="non_existent_class")
+        GraphSchema.create_data_nodes_from_python_data(data, class_name="non_existent_class")
 
     # Even though the import got aborted and raised an Exception, the `Import Data` is left behind;
     # locate it by its date stamp
@@ -1424,11 +1424,11 @@ def test_create_data_nodes_from_python_data_3(db):
     db.empty_dbase()
 
     # Set up Schema that only contains parts of the attributes in the data - and lacks the "result" relationship
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
-    NeoSchema.create_class_with_properties(name="patient",
-                                           properties=["age", "balance"])
-    NeoSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
+    GraphSchema.create_class_with_properties(name="patient",
+                                             properties=["age", "balance"])
+    GraphSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
 
 
     data = {    "name": "Stephanie",
@@ -1444,15 +1444,15 @@ def test_create_data_nodes_from_python_data_3(db):
                 }
 
     # Import
-    node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="patient")
+    node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="patient")
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
     q = '''
         MATCH 
-            (n1:`Import Data` {`_SCHEMA`: "Import Data"})
+            (n1:`Import Data` {`_CLASS`: "Import Data"})
             -[:imported_data]->
-            (n2:patient {`_SCHEMA`: "patient"})
+            (n2:patient {`_CLASS`: "patient"})
         WHERE id(n2) = $uri
         RETURN n2
         '''
@@ -1462,7 +1462,7 @@ def test_create_data_nodes_from_python_data_3(db):
     root_record = root_node["n2"]
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
-    assert root_record["_SCHEMA"] == "patient"
+    assert root_record["_CLASS"] == "patient"
     #assert "uri" in root_record            # Not currently is use
     assert len(root_record) == 3            # Only the keys in the Schema gets imported
 
@@ -1478,9 +1478,9 @@ def test_create_data_nodes_from_python_data_4(db):
     create_sample_schema_1()     # Schema with patient/result/doctor
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
-    NeoSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
+    GraphSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
 
 
     data = {    "name": "Stephanie",
@@ -1496,15 +1496,15 @@ def test_create_data_nodes_from_python_data_4(db):
                 }
 
     # Import
-    node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="patient")
+    node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="patient")
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
     q = '''
         MATCH 
-            (n1:`Import Data` {`_SCHEMA`: "Import Data"})
+            (n1:`Import Data` {`_CLASS`: "Import Data"})
             -[:imported_data]->
-            (n2:patient {`_SCHEMA`: "patient"})
+            (n2:patient {`_CLASS`: "patient"})
         WHERE id(n2) = $root_id
         RETURN n2
         '''
@@ -1516,7 +1516,7 @@ def test_create_data_nodes_from_python_data_4(db):
     assert root_record["name"] == "Stephanie"
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
-    assert root_record["_SCHEMA"] == "patient"
+    assert root_record["_CLASS"] == "patient"
     #assert "uri" in root_record        # Not currently is use
     assert len(root_record) == 4            # Only the keys in the Schema gets imported
 
@@ -1536,9 +1536,9 @@ def test_create_data_nodes_from_python_data_5(db):
     create_sample_schema_1()     # Schema with patient/result/doctor
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
-    NeoSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
+    GraphSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
 
 
     data = {    "name": "Stephanie",
@@ -1560,15 +1560,15 @@ def test_create_data_nodes_from_python_data_5(db):
             }
 
     # Import
-    node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="patient")
+    node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="patient")
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
     q = '''
         MATCH 
             (i: `Import Data`)-[:imported_data]->
-            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_SCHEMA`: "patient"})-[:HAS_RESULT]->
-            (r:result {biomarker:"insulin", value: 123.0, `_SCHEMA`: "result"})
+            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_CLASS`: "patient"})-[:HAS_RESULT]->
+            (r:result {biomarker:"insulin", value: 123.0, `_CLASS`: "result"})
         WHERE i.date = date() AND id(p) = $root_id
         RETURN p, r, i
         '''
@@ -1601,9 +1601,9 @@ def test_create_data_nodes_from_python_data_6(db):
     create_sample_schema_1()     # Schema with patient/result/doctor
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
-    NeoSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
+    GraphSchema.create_class_relationship(from_class="Import Data", to_class="patient", rel_name="imported_data")
 
     # Some of the data below is not registered in the Schema
     data = {    "name": "Stephanie",
@@ -1625,7 +1625,7 @@ def test_create_data_nodes_from_python_data_6(db):
                 }
 
     # Import
-    node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="patient")
+    node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="patient")
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
 
@@ -1633,8 +1633,8 @@ def test_create_data_nodes_from_python_data_6(db):
     q = '''
         MATCH 
             (i: `Import Data`)-[:imported_data]->
-            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_SCHEMA`: "patient"})-[:HAS_RESULT]->
-            (r:result {biomarker:"insulin", value: 123.0, `_SCHEMA`: "result"})
+            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_CLASS`: "patient"})-[:HAS_RESULT]->
+            (r:result {biomarker:"insulin", value: 123.0, `_CLASS`: "result"})
         WHERE i.date = date() AND id(p) = $root_id
         RETURN p, r, i
         '''
@@ -1646,8 +1646,8 @@ def test_create_data_nodes_from_python_data_6(db):
     # but this time going thru the `doctor` data node
     q = '''
         MATCH 
-            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_SCHEMA`: "patient"})-[:IS_ATTENDED_BY]->
-            (d:doctor {name:"Dr. Kane", specialty: "OB/GYN", `_SCHEMA`: "doctor"})
+            (p:patient {name: "Stephanie", age: 23, balance: 150.25, `_CLASS`: "patient"})-[:IS_ATTENDED_BY]->
+            (d:doctor {name:"Dr. Kane", specialty: "OB/GYN", `_CLASS`: "doctor"})
         WHERE id(p) = $root_id
         RETURN p, d
         '''
@@ -1681,9 +1681,9 @@ def test_create_data_nodes_from_python_data_7(db):
     create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "Category"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
-    NeoSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
+    GraphSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
 
     data = [
                 {   "quote": "I wasn't kissing her. I was whispering in her mouth",
@@ -1692,7 +1692,7 @@ def test_create_data_nodes_from_python_data_7(db):
            ]
 
     # Import
-    node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="quotes")
+    node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="quotes")
     #print("node_id_list: ", node_id_list)
     assert len(node_id_list) == 1
     root_id = node_id_list[0]
@@ -1701,8 +1701,8 @@ def test_create_data_nodes_from_python_data_7(db):
     # going thru the data and schema nodes
     q = '''
         MATCH 
-            (i: `Import Data` {`_SCHEMA`: "Import Data"})-[:imported_data]->
-            (q :quotes {attribution: "Chico Marx", quote: "I wasn't kissing her. I was whispering in her mouth", `_SCHEMA`: "quotes"})
+            (i: `Import Data` {`_CLASS`: "Import Data"})-[:imported_data]->
+            (q :quotes {attribution: "Chico Marx", quote: "I wasn't kissing her. I was whispering in her mouth", `_CLASS`: "quotes"})
         WHERE i.date = date() AND id(q) = $quote_id
         RETURN q
         '''
@@ -1727,9 +1727,9 @@ def test_create_data_nodes_from_python_data_8(db):
     create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "Category"
 
     # Add to the Schema the "Import Data" node, and a link to the Class of the import's root
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
-    NeoSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
+    GraphSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
 
     data = [
                 {   "quote": "I wasn't kissing her. I was whispering in her mouth",
@@ -1744,7 +1744,7 @@ def test_create_data_nodes_from_python_data_8(db):
     ]
 
     # Import
-    node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="quotes")
+    node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="quotes")
     #print("node_id_list: ", node_id_list)
     assert len(node_id_list) == 2
 
@@ -1756,8 +1756,8 @@ def test_create_data_nodes_from_python_data_8(db):
         # Traverse a loop in the graph, from the `quotes` data node, back to itself,
         # going thru the data and schema nodes
         q = '''
-            MATCH (i: `Import Data` {`_SCHEMA`: "Import Data"})
-                  -[:imported_data]->(q :quotes {`_SCHEMA`: "quotes"})
+            MATCH (i: `Import Data` {`_CLASS`: "Import Data"})
+                  -[:imported_data]->(q :quotes {`_CLASS`: "quotes"})
             WHERE i.date = date() AND id(q) = $quote_id
             RETURN q
             '''
@@ -1776,9 +1776,9 @@ def test_create_data_nodes_from_python_data_9(db):
     create_sample_schema_2()     # Class "quotes", with a relationship "in_category" to class "Category"
 
     # Add to the Schema the "Import Data" Class node, and a link to the Class of the import's root
-    NeoSchema.create_class_with_properties(name="Import Data",
-                                           properties=["source", "date"])
-    NeoSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
+    GraphSchema.create_class_with_properties(name="Import Data",
+                                             properties=["source", "date"])
+    GraphSchema.create_class_relationship(from_class="Import Data", to_class="quotes", rel_name="imported_data")
 
     data = [
             {   "quote": "I wasn't kissing her. I was whispering in her mouth",
@@ -1796,7 +1796,7 @@ def test_create_data_nodes_from_python_data_9(db):
     ]
 
     # Import
-    node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="quotes")
+    node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="quotes")
     #print("node_id_list: ", node_id_list)
     assert len(node_id_list) == 2
 
@@ -1810,8 +1810,8 @@ def test_create_data_nodes_from_python_data_9(db):
         assert db.count_links(match=root_id, rel_name="in_category", rel_dir="OUT", neighbor_labels="Category") == 1
 
         q = '''
-            MATCH (i: `Import Data` {`_SCHEMA`: "Import Data"})
-                  -[:imported_data]->(q :quotes {`_SCHEMA`: "quotes"})
+            MATCH (i: `Import Data` {`_CLASS`: "Import Data"})
+                  -[:imported_data]->(q :quotes {`_CLASS`: "quotes"})
             WHERE i.date = date() AND id(q) = $quote_id
             RETURN q
             '''
@@ -1821,9 +1821,9 @@ def test_create_data_nodes_from_python_data_9(db):
 
         # Traverse the graph, but this time also passing thru the category data and schema nodes
         q = '''
-            MATCH (i: `Import Data` {`_SCHEMA`: "Import Data"})
-                  -[:imported_data]->(q :quotes {`_SCHEMA`: "quotes"})
-                  -[:in_category]->(cat :Category {`_SCHEMA`: "Category"})
+            MATCH (i: `Import Data` {`_CLASS`: "Import Data"})
+                  -[:imported_data]->(q :quotes {`_CLASS`: "quotes"})
+                  -[:in_category]->(cat :Category {`_CLASS`: "Category"})
             WHERE i.date = date() AND id(q) = $quote_id
             RETURN q, cat 
             '''
@@ -1859,7 +1859,7 @@ def test_create_data_nodes_from_python_data_9(db):
            }
 
     # Import
-    new_node_id_list = NeoSchema.create_data_nodes_from_python_data(data, class_name="quotes")
+    new_node_id_list = GraphSchema.create_data_nodes_from_python_data(data, class_name="quotes")
     #print("new_node_id_list: ", new_node_id_list)
     assert len(new_node_id_list) == 1
     new_root_id = new_node_id_list[0]
@@ -1871,8 +1871,8 @@ def test_create_data_nodes_from_python_data_9(db):
     # Traverse the graph, going thru the 2 category data nodes
     q = '''
             MATCH 
-                (cat2 :Category {name: "Philosophy", `_SCHEMA`: "Category"})
-                <-[:in_category]-(q :quotes)-[:in_category]->(cat1 :Category {name: "French Literature", `_SCHEMA`: "Category"})
+                (cat2 :Category {name: "Philosophy", `_CLASS`: "Category"})
+                <-[:in_category]-(q :quotes)-[:in_category]->(cat1 :Category {name: "French Literature", `_CLASS`: "Category"})
             WHERE id(q) = $quote_id
             RETURN q, cat1, cat2
             '''
@@ -1895,7 +1895,7 @@ def test_create_data_nodes_from_python_data_9(db):
     '''
     data_types = db.query(q, data_binding={"quote_id": new_root_id}, single_cell="data_types")
     #print(data_types)
-    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING', '_SCHEMA': 'STRING'}    # 'uri': 'INTEGER' (not in current use)
+    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING', '_CLASS': 'STRING'}    # 'uri': 'INTEGER' (not in current use)
 
 
 
@@ -1903,21 +1903,21 @@ def test_import_triplestore(db):
     db.empty_dbase()
 
     # Set up the Schema
-    NeoSchema.create_class_with_properties(name="Course", strict=True,
-                                           properties=["uri", "Course Title", "School", "Semester"])
+    GraphSchema.create_class_with_properties(name="Course", strict=True,
+                                             properties=["uri", "Course Title", "School", "Semester"])
 
     df = pd.DataFrame({"subject": [57, 57, 57],
                        "predicate": [1, 2, 3],
                        "object": ["Advanced Graph Databases", "New York University", "Fall 2024"]})
 
-    result = NeoSchema.import_triplestore(df=df, class_node="Course",
-                                          col_names = {1: "Course Title", 2: "School", 3: "Semester"},
-                                          uri_prefix = "r-")
+    result = GraphSchema.import_triplestore(df=df, class_node="Course",
+                                            col_names = {1: "Course Title", 2: "School", 3: "Semester"},
+                                            uri_prefix = "r-")
     assert len(result) == 1
 
     internal_id = result[0]
     lookup = db.get_nodes(internal_id)
-    assert lookup == [{'School': 'New York University', 'Semester': 'Fall 2024', 'Course Title': 'Advanced Graph Databases', 'uri': 'r-57', '_SCHEMA': 'Course'}]
+    assert lookup == [{'School': 'New York University', 'Semester': 'Fall 2024', 'Course Title': 'Advanced Graph Databases', 'uri': 'r-57', '_CLASS': 'Course'}]
 
 
     # A second 1-entity import
@@ -1925,12 +1925,12 @@ def test_import_triplestore(db):
                        "predicate": ["Course Title", "School", "Semester"],
                        "object": ["Systems Biology", "UC Berkeley", "Spring 2023"]})
 
-    result = NeoSchema.import_triplestore(df=df, class_node="Course")
+    result = GraphSchema.import_triplestore(df=df, class_node="Course")
     assert len(result) == 1
 
     internal_id = result[0]
     lookup = db.get_nodes(internal_id)
-    assert lookup == [{'School': 'UC Berkeley', 'Semester': 'Spring 2023', 'Course Title': 'Systems Biology', 'uri': 'MCB 273', '_SCHEMA': 'Course'}]
+    assert lookup == [{'School': 'UC Berkeley', 'Semester': 'Spring 2023', 'Course Title': 'Systems Biology', 'uri': 'MCB 273', '_CLASS': 'Course'}]
 
 
 
@@ -1941,7 +1941,7 @@ def test_scrub_dict():
          "f": "", "g": "            ",
          "h": (1, 2)}
 
-    result = NeoSchema.scrub_dict(d)
+    result = GraphSchema.scrub_dict(d)
     assert result == {"a": 1,
                       "b": 3.5,
                       "d": "some value", "e": "needs  cleaning!",

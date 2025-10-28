@@ -137,7 +137,7 @@ class DocumentationGenerator:
         """
         Pattern for the creation of documentation from python files.
 
-        The python files has some expectations about their formatting; for example, as used in neoschema.py
+        The python files has some expectations about their formatting; for example, as used in GraphSchema.py
 
         Compose and return a REGEX pattern for parsing of data files, for use in import_datafile()
 
@@ -201,8 +201,8 @@ class DocumentationGenerator:
         PART B - Python Class Names
         '''
         # Match and capture a python class name
-        #       EXAMPLE 1:  "class NeoAccessCore:"
-        #       EXAMPLE 2:  "class NeoAccess(NeoAccessCore):"
+        #       EXAMPLE 1:  "class GraphAccessCore:"
+        #       EXAMPLE 2:  "class GraphAccess(NeoAccessCore):"
         pattern_1 = R'class\s+([a-zA-Z][a-zA-Z0-9_]*)(?:\([a-zA-Z][a-zA-Z0-9_]*\))?\s*:'
         '''
             class               Literal "class"

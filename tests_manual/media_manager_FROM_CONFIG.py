@@ -1,5 +1,5 @@
 from brainannex.media_manager import MediaManager
-from brainannex.neoschema.neo_schema import NeoSchema
+from brainannex.graphschema.neo_schema import GraphSchema
 from brainannex.data_manager import DataManager
 from neoaccess import NeoAccess
 import pytest
@@ -104,7 +104,7 @@ print("Version of the Neo4j driver: ", db_obj.version())
 
 
 
-NeoSchema.set_database(db_obj)
+GraphSchema.set_database(db_obj)
 #Categories.db = neo_obj
 #Collections.set_database(neo_obj)
 DataManager.set_database(db_obj)

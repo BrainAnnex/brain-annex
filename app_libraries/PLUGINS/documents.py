@@ -1,5 +1,5 @@
 from app_libraries.media_manager import MediaManager
-from brainannex import NeoSchema, FullTextIndexing
+from brainannex import GraphSchema, FullTextIndexing
 from typing import Set
 import fitz                     # For PDF parsing
 #from pypdf import PdfReader    # Alternate library for PDF parsing; currently not in use
@@ -133,8 +133,8 @@ class Documents:
                       (dir :Directory {name: $upload_folder}) 
                 MERGE (doc)-[:BA_stored_in]->(dir)
                 '''
-            #NeoSchema.db.debug_query_print(q, data_binding={"uri": uri, "upload_folder": upload_folder})
-            NeoSchema.db.query(q, data_binding={"uri": uri, "upload_folder": upload_folder})
+            #GraphSchema.db.debug_query_print(q, data_binding={"uri": uri, "upload_folder": upload_folder})
+            GraphSchema.db.query(q, data_binding={"uri": uri, "upload_folder": upload_folder})
             path = MediaManager.MEDIA_FOLDER + upload_folder + "/"
 
 
@@ -164,7 +164,7 @@ class Documents:
 
 
         # Carry out the actual indexing in the database
-        content_id = NeoSchema.get_data_node_internal_id(uri=uri)
+        content_id = GraphSchema.get_data_node_internal_id(uri=uri)
 
         # TODO: this ought to be done in a separate execution thread or process
         FullTextIndexing.new_indexing(internal_id=content_id, unique_words=unique_words)

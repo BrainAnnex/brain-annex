@@ -1,11 +1,11 @@
 import pytest
-from neoaccess import NeoAccess
+from neoaccess import GraphAccess
 
 
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=True)
+    neo_obj = GraphAccess(debug=True)
     yield neo_obj
 
 

@@ -1,5 +1,5 @@
 from app_libraries.media_manager import MediaManager
-from brainannex import NeoSchema
+from brainannex import GraphSchema
 
 
 class Images:
@@ -27,18 +27,18 @@ class Images:
 
         :return:    None
         """
-        assert NeoSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
+        assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
-        if not NeoSchema.class_name_exists("Media"):
-            NeoSchema.create_class_with_properties(name="Media", strict=True,
-                                               properties=["basename", "suffix"])
+        if not GraphSchema.class_name_exists("Media"):
+            GraphSchema.create_class_with_properties(name="Media", strict=True,
+                                                     properties=["basename", "suffix"])
 
-        NeoSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="i",
-                                               properties=["width", "height", "caption", "date_created"],
-                                               class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
+        GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="i",
+                                                 properties=["width", "height", "caption", "date_created"],
+                                                 class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
 
-        if not NeoSchema.class_name_exists("Directory"):
-            NeoSchema.create_class_with_properties(name="Directory", strict=True,
-                                                   properties=["name", "description"])
-            NeoSchema.create_class_relationship(from_class="Media", to_class="Directory", rel_name="BA_stored_in")
+        if not GraphSchema.class_name_exists("Directory"):
+            GraphSchema.create_class_with_properties(name="Directory", strict=True,
+                                                     properties=["name", "description"])
+            GraphSchema.create_class_relationship(from_class="Media", to_class="Directory", rel_name="BA_stored_in")

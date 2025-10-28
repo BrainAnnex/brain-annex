@@ -2,7 +2,7 @@
 
 
 import pytest
-from brainannex import NeoAccess, NeoSchema, Collections, Categories
+from brainannex import GraphAccess, GraphSchema, Collections, Categories
 from utilities.comparisons import compare_unordered_lists, compare_recordsets
 
 
@@ -10,8 +10,8 @@ from utilities.comparisons import compare_unordered_lists, compare_recordsets
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
-    NeoSchema.set_database(neo_obj)
+    neo_obj = GraphAccess(debug=False)
+    GraphSchema.set_database(neo_obj)
     Categories.db = neo_obj
     Collections.set_database(neo_obj)
     yield neo_obj
@@ -185,8 +185,8 @@ def test_get_sibling_categories(db):
     french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
     italian_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "Italian"})
 
-    french_internal_id = NeoSchema.get_data_node_internal_id(uri = french_uri)
-    italian_internal_id = NeoSchema.get_data_node_internal_id(uri = italian_uri)
+    french_internal_id = GraphSchema.get_data_node_internal_id(uri = french_uri)
+    italian_internal_id = GraphSchema.get_data_node_internal_id(uri = italian_uri)
 
     result = Categories.get_sibling_categories(french_internal_id)
     assert len(result) == 1
@@ -194,20 +194,20 @@ def test_get_sibling_categories(db):
     assert entry["name"] == "Italian"   # The sibling of "French" is "Italian"
     assert entry["uri"] == italian_uri
     assert entry["internal_id"] == italian_internal_id
-    #assert compare_unordered_lists(entry["neo4j_labels"], ['Category', 'BA'])
+    #assert compare_unordered_lists(entry["node_labels"], ['Category', 'BA'])
 
     result = Categories.get_sibling_categories(italian_internal_id)
     assert len(result) == 1
     entry = result[0]
     assert entry["name"] == "French"   # The sibling of "Italian" is "French"
 
-    expected = {"name": "French", "uri": french_uri, "internal_id": french_internal_id, "neo4j_labels": ['BA', 'Category']}
+    expected = {"name": "French", "uri": french_uri, "internal_id": french_internal_id, "node_labels": ['BA', 'Category']}
 
     # We'll check the node labels separately, because their order may be reshuffled
-    assert compare_unordered_lists(entry["neo4j_labels"], expected["neo4j_labels"])
+    assert compare_unordered_lists(entry["node_labels"], expected["node_labels"])
 
-    del entry["neo4j_labels"]
-    del expected["neo4j_labels"]
+    del entry["node_labels"]
+    del expected["node_labels"]
     assert entry == expected
 
     # Add a new Categories ("German") as a subcategories of "Languages"
@@ -285,8 +285,8 @@ def test_get_items_schema_data(db):
     res = Categories.get_items_schema_data(category_uri=root_uri)
     assert res == {}    # There are no Contents Items yet attached to the Category
 
-    NeoSchema.create_class_with_properties(name="Note", properties=["title", "basename", "suffix"])
-    NeoSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "uri"])
+    GraphSchema.create_class_with_properties(name="Note", properties=["title", "basename", "suffix"])
+    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "uri"])
 
     # Add some Content Items to the above Category
     Categories.add_content_at_end(category_uri=root_uri, item_class_name="Note",
@@ -301,8 +301,8 @@ def test_get_items_schema_data(db):
     assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix', 'uri']}
 
     # Make the "uri" property of the Class "Image" to be a "system" property
-    NeoSchema.set_property_attribute(class_name="Image", prop_name="uri",
-                                     attribute_name="system", attribute_value=True)
+    GraphSchema.set_property_attribute(class_name="Image", prop_name="uri",
+                                       attribute_name="system", attribute_value=True)
     res = Categories.get_items_schema_data(category_uri=root_uri)
     assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix']}   # 'uri' is no longer included
 
@@ -312,23 +312,23 @@ def test_link_content_at_end(db):
     _, root_uri = initialize_categories(db)
     #print("root URI is: ", root_uri)
 
-    NeoSchema.create_class_with_properties(name="Image",
-                                           properties=["caption", "basename", "suffix", "uri"])
-    NeoSchema.create_class_relationship(from_class="Image", to_class="Category",
-                                        rel_name="BA_in_category")
+    GraphSchema.create_class_with_properties(name="Image",
+                                             properties=["caption", "basename", "suffix", "uri"])
+    GraphSchema.create_class_relationship(from_class="Image", to_class="Category",
+                                          rel_name="BA_in_category")
 
     # Create a new Data Node
-    NeoSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
-                               new_uri="i-100")
+    GraphSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
+                                 new_uri="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
     # Verify that all nodes and links are in place
     q = f'''
         MATCH p=
-        (:Image {{caption:"my_pic", uri:"i-100", `_SCHEMA`:"Image"}})
+        (:Image {{caption:"my_pic", uri:"i-100", `_CLASS`:"Image"}})
         -[:BA_in_category]->
-        (:Category {{uri: "{root_uri}", `_SCHEMA`:"Category"}})
+        (:Category {{uri: "{root_uri}", `_CLASS`:"Category"}})
         RETURN COUNT(p) AS path_count
         '''
     result = db.query(q, single_cell="path_count")
@@ -346,13 +346,13 @@ def test_detach_from_category(db):
     _, root_uri = initialize_categories(db)
     #print("root URI is: ", root_uri)
 
-    NeoSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "uri"])
-    NeoSchema.create_class_relationship(from_class="Image", to_class="Category",
-                                        rel_name="BA_in_category")
+    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "uri"])
+    GraphSchema.create_class_relationship(from_class="Image", to_class="Category",
+                                          rel_name="BA_in_category")
 
     # Create a new Data Node
-    NeoSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
-                               new_uri="i-100")
+    GraphSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
+                                 new_uri="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
@@ -371,9 +371,9 @@ def test_detach_from_category(db):
     # Verify that nodes and links are in place
     q = f'''
         MATCH p=
-        (:Image {{caption:"my_pic", uri:"i-100", `_SCHEMA`:"Image"}})
+        (:Image {{caption:"my_pic", uri:"i-100", `_CLASS`:"Image"}})
         -[:BA_in_category]->
-        (:Category {{uri: "{new_cat_uri}", `_SCHEMA`:"Category"}})
+        (:Category {{uri: "{new_cat_uri}", `_CLASS`:"Category"}})
         RETURN COUNT(p) AS path_count
         '''
     result = db.query(q, single_cell="path_count")

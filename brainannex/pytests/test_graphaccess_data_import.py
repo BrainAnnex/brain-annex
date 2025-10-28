@@ -2,7 +2,7 @@
 ####  WARNING : the database will get erased!!!
 
 import pytest
-from brainannex import neoaccess as neo_access
+from brainannex import graphaccess as neo_access
 from utilities.comparisons import *
 
 
@@ -10,7 +10,7 @@ from utilities.comparisons import *
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = neo_access.NeoAccess(debug=False)
+    neo_obj = neo_access.GraphAccess(debug=False)
     yield neo_obj
 
 

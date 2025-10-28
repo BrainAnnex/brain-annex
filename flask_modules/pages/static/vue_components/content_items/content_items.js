@@ -102,17 +102,31 @@ Vue.component('vue-content-items',
                 <b>UPLOAD IMAGES or DOCUMENTS</b>:<br>
 
                 <!-- Provide a drag-and-drop area, which makes use of the "Dropzone" module.
-                    The id and the class of the FORM element are meant for "Dropzone" -->
-                <form v-bind:id="'myDropzone_' + item.uri" class='dropzone' action='/BA/api/upload_media' style='padding-top:5px; margin-bottom:8px'>
+                    The id and the class of the FORM element below are meant for use by "Dropzone" -->
+                <form  class='dropzone'
+                       v-bind:id="'myDropzone_' + item.uri"
+                       action='/BA/api/upload_media'
+                       style='padding-top:5px; margin-bottom:8px'
+                >
                     <input v-bind:value="category_uri" type='hidden' name='category_id'>
                     <input v-bind:value="item.uri" type='hidden' name='insert_after'>
                 </form>
 
 
-                <!--  The "DONE" button simply reloads the viewer page -->
-                <a href='' style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'>Done</a>
-                <span style='color:gray; margin-left:20px; font-size:10px'>Press the "Done" button when all uploads bars are gone, to reload the page</span><br>
-                <!-- TODO:  Uploads started: 0   completed: 0   errors: 0 -->
+                <!--  The "DONE" button (a link made to look like a button) simply reloads the viewer page -->
+                <button v-if="uploads_in_progress"  disabled  style='padding:4px'>
+                    Upload in progress. WAITING until all uploads are complete...
+                </button>
+                <a v-else href=''
+                    style='font-size:18px; border:1px solid #660000; background-color:#00cc00; text-decoration:none; color:#fff; border-radius:5px; padding:4px'
+                >
+                    Done
+                </a>
+
+                <span style='color:gray; margin-left:20px; font-size:10px'>Press the "Done" button when all uploads are complete, to reload the page</span><br>
+                <br><b>Uploads</b> &nbsp; started: {{upload_started}} &nbsp;&nbsp;&nbsp;
+                completed: <span style="color:green">{{upload_completed}}</span> &nbsp;&nbsp;&nbsp;
+                errors: <span style="color:red">{{upload_errors}}</span>
 
             </div>
 
@@ -173,6 +187,11 @@ Vue.component('vue-content-items',
                 category_to_add: "",        // Object with data about the Category chosen to tag this Content Item with
                                             //      Attributes are "uri" and "name" (Note: "" indicates no selection in the menu)
 
+                uploads_in_progress: false, // Flag indicating whether any uploaded started but have not yet completed
+                upload_started: 0,          // Number of file upload started
+                upload_completed: 0,        // Number of file upload completed
+                upload_errors: 0,           // Number of errors in file uploads
+
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -213,16 +232,14 @@ Vue.component('vue-content-items',
                 console.log(`About to dynamically create a 'Dropzone' element, immediately below Content Item '${this.item.uri}'`);
                 var myDropzone = new Dropzone("form#myDropzone_" + this.item.uri);
 
-                // IMPORTANT: for the above line to work, the DIV element that contains it, must do
+                // IMPORTANT: for the above line to work, the DIV element that contains it must use
                 //            Vue conditional rendering with "v-show" rather than "v-if"
 
-                /*
-                TODO - see file D:/Docs/DreamWeaver/DreamHost/brainannex/core/viewer.js :
-                myDropzone.on("addedfile", dropzoneHandler_addedfile);
-                myDropzone.on("success", dropzoneHandler_success);
-                myDropzone.on("queuecomplete", dropzoneHandler_queuecomplete);
-                myDropzone.on("error", dropzoneHandler_error);
-                */
+                // Register a number of event handlers with the newly-created Dropzone object
+                myDropzone.on("addedfile", this.dropzoneHandler_addedfile);          // A new file gets added to the to-upload list
+                myDropzone.on("success", this.dropzoneHandler_success);              // The file has been uploaded successfully
+                myDropzone.on("queuecomplete", this.dropzoneHandler_queuecomplete);  // All files in the queue finish uploading
+                myDropzone.on("error", this.dropzoneHandler_error);                  // If the server returns anything other than a normal status
             },
 
 
@@ -230,56 +247,74 @@ Vue.component('vue-content-items',
                     DROPZONE-RELATED
              ***********************************/
 
-            /*	TODO: use in the future, to provide a listing of the files being uploaded - and a handy way to change their metadata */
+            /*	TODO: perhaps provide a listing of the files being uploaded - and a handy way to change their metadata */
+
             dropzoneHandler_addedfile(evt)
-            // TODO: This handler is invoked by the Dropzone object whenever a new file gets added to the to-upload list
+            /* Handler for the Dropzone event "addedfile" :  generated as soon as each file is dragged and released (one per file), BEFORE upload;
+               i.e. whenever a new file gets added to the to-upload list
+             */
             {
-                alert("Dropzone event: 'addedfile'.  File name: '" + evt.name + "' | size:  " + evt.size + " bytes");
-                // Look up the "Done" link
-                linkElement = document.getElementById("image_upload_done");
-                linkElement.innerHTML = "Upload in progress. WAITING until all uploads are complete...";
-                linkElement.style.backgroundColor = "gray";
+                /* The event object for "addedfile" includes:
+                    lastModifiedDate
+                    name (filename)
+                    size (bytes)
+                    previewTemplate.innerText  (for example "500 b\nmyFile.txt")
+                    upload.bytesSent
+                    upload.progress
+                    upload.total
+                */
+                console.log(`Dropzone event: 'addedfile'.  File name: "${evt.name}" | size:  ${evt.size} bytes`);
+                //alert("Dropzone event: 'addedfile'.  File name: '" + evt.name + "' | size:  " + evt.size + " bytes");
+
+                // Inactivate the "Done" button
+                this.uploads_in_progress = true;
 
                 // Update the number of "Uploads started"
-                spanElement = document.getElementById("image_upload_started");
-                currentValue = Number(spanElement.innerHTML);
-                spanElement.innerHTML = currentValue + 1;
+                this.upload_started += 1;
             },
 
 
             dropzoneHandler_error(evt)
-            // TODO: Display the server message in case of Dropzone upload errors
+            /* Handler for the Dropzone event "error" : apparently activated if the server returns anything other than a normal status
+               Update the count of upload errors
+             */
             {
+                /* The event object for error includes:
+
+                    name
+                    size (bytes)
+                    xhr.status  (server error status code; e.g. 415)
+                    xhr.statusText   (server error status text; e.g. "Unsupported Media Type")
+                    xhr.responseText   (anything output in the body of the server response)
+                */
                 alert("***ERROR: FAILED UPLOAD of file \"" + evt.name + "\".  Reason: " + evt.xhr.responseText);
 
                 // Update the number of "Upload errors"
-                spanElement = document.getElementById("image_upload_errors");
-                currentValue = Number(spanElement.innerHTML);
-                spanElement.innerHTML = currentValue + 1;
-
-                //alert("Dropzone event: error.  File name: '" + evt.name + "' | Size:  " + evt.size + " bytes");
-                //alert("XHR data about the error. Status: '" + evt.xhr.status + "' | Status text:  '" + evt.xhr.statusText + "' | Response text:  '" + evt.xhr.responseText + "'");
+                this.upload_errors += 1;
             },
 
             dropzoneHandler_success(evt)
-            // TODO: Display the server message in case of Dropzone upload errors
+            /* Handler for the Dropzone event "success" : the file has been uploaded successfully; gets the server response as second argument (not tried)
+               Update the count of completed successful uploads
+             */
             {
-                alert("Dropzone event: 'success'");
+                console.log("Dropzone event: 'success'");
+
                 // Update the number of "Uploads completed"
-                spanElement = document.getElementById("image_upload_completed");
-                currentValue = Number(spanElement.innerHTML);
-                spanElement.innerHTML = currentValue + 1;
+                this.upload_completed += 1;
             },
 
             dropzoneHandler_queuecomplete(evt)
-            // TODO: This handler is invoked by the Dropzone object whenever ALL pending uploads are complete
+            /* Handler for the Dropzone event "queuecomplete": called when all files in the queue finish uploading,
+               i.e. ALL pending uploads are complete
+             */
             {
-                alert("Dropzone event: 'queuecomplete'");
-                // Look up the "Done" link
-                linkElement = document.getElementById("image_upload_done");
-                linkElement.innerHTML = "Done";
-                linkElement.style.backgroundColor = "green";
+                console.log("Dropzone event: 'queuecomplete'");
+
+                // Restore the "Done" button
+                this.uploads_in_progress = false;
             },
+
 
 
 

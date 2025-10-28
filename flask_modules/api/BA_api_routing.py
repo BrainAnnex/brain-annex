@@ -10,7 +10,7 @@ from app_libraries.documentation_generator import DocumentationGenerator
 from app_libraries.media_manager import MediaManager, ImageProcessing
 from app_libraries.PLUGINS.documents import Documents
 from app_libraries.upload_helper import UploadHelper
-from brainannex import NeoSchema, Categories
+from brainannex import GraphSchema, Categories
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
@@ -389,7 +389,7 @@ class ApiRouting:
                     import urllib.parse
                     urllib.parse.quote(json.dumps(d))
 
-            For details, see NeoSchema.get_class_properties()
+            For details, see GraphSchema.get_class_properties()
 
             :return:  A JSON with a list of the Property names of the specified Class,
                       optionally including indirect ones that arise thru
@@ -444,7 +444,7 @@ class ApiRouting:
 
             try:
                 # Fetch all the Properties
-                prop_list = NeoSchema.get_class_properties(**json_data, class_node=class_name)
+                prop_list = GraphSchema.get_class_properties(**json_data, class_node=class_name)
                 response_data = {"status": "ok", "payload": prop_list}
             except Exception as ex:
                 response_data = {"status": "error", "error_message": str(ex)}
@@ -483,7 +483,7 @@ class ApiRouting:
 
             # Fetch all the relationship names
             try:
-                rel_names = NeoSchema.get_class_relationships(class_name=class_name, omit_instance=True)
+                rel_names = GraphSchema.get_class_relationships(class_name=class_name, omit_instance=True)
                 payload = {"in": rel_names["in"], "out": rel_names["out"]}
                 response = {"status": "ok", "payload": payload}    # Successful termination
             except Exception as ex:
@@ -541,8 +541,8 @@ class ApiRouting:
 
             try:
                 # Fetch all the Properties
-                prop_list = NeoSchema.get_class_properties(class_name, include_ancestors=True, exclude_system=True)
-                rel_names = NeoSchema.get_class_relationships(class_name=class_name, omit_instance=True)
+                prop_list = GraphSchema.get_class_properties(class_name, include_ancestors=True, exclude_system=True)
+                rel_names = GraphSchema.get_class_relationships(class_name=class_name, omit_instance=True)
                 payload = {"properties": prop_list, "in_links": rel_names["in"], "out_links": rel_names["out"]}
                 response = {"status": "ok", "payload": payload}
             except Exception as ex:
@@ -598,7 +598,7 @@ class ApiRouting:
                                       "French"
                                     ]
             """
-            prop_list = NeoSchema.all_properties("BA", "uri", uri)
+            prop_list = GraphSchema.all_properties("BA", "uri", uri)
             response = {"status": "ok", "payload": prop_list}
             # TODO: handle error scenarios
 
@@ -684,7 +684,7 @@ class ApiRouting:
 
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=["class_name"])
-                NeoSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
+                GraphSchema.delete_class(name=pars_dict["class_name"], safe_delete=True)
                 response_data = {"status": "ok"}                                    # Success
             except Exception as ex:
                 err_details = f"Unable to delete the class.  {exceptions.exception_helper(ex)}"
@@ -957,7 +957,7 @@ class ApiRouting:
                                     }
             """
             try:
-                link_data = NeoSchema.db.get_link_summary(internal_id=internal_id)
+                link_data = GraphSchema.db.get_link_summary(internal_id=internal_id)
                 # Transform the format      TODO: maybe move to DataManager
                 payload = []
                 for l in link_data["in"]:   # Process the inbound links
@@ -1225,8 +1225,8 @@ class ApiRouting:
             else:
                 # Scenario where `internal_id` is used
                 try:
-                    number_properties_set = NeoSchema.db.set_fields(match=internal_id,
-                                                                    set_dict=data_dict, drop_blanks=True)
+                    number_properties_set = GraphSchema.db.set_fields(match=internal_id,
+                                                                      set_dict=data_dict, drop_blanks=True)
                     assert number_properties_set > 0, f"No node found with internal_id {internal_id}"
                     response_data = {"status": "ok"}                                    # If no errors
                 except Exception as ex:
@@ -1916,7 +1916,7 @@ class ApiRouting:
             #TODO: for now, we're just searching by label, rather than by Class
             try:
                 # Fetch all the Properties of the given Class
-                all_props = NeoSchema.db.sample_properties(label=class_name, sample_size=10)    # Set of strings
+                all_props = GraphSchema.db.sample_properties(label=class_name, sample_size=10)    # Set of strings
                 payload = list(all_props)       # Convert set to list
                 response = {"status": "ok", "payload": payload}    # Successful termination
             except Exception as ex:
@@ -2007,8 +2007,8 @@ class ApiRouting:
                                        for record in recordset]
 
                 if "label" in json_data:
-                    #total_count = NeoSchema.count_data_nodes_of_class(json_data["label"])
-                    total_count = NeoSchema.db.count_nodes(labels=json_data["label"])
+                    #total_count = GraphSchema.count_data_nodes_of_class(json_data["label"])
+                    total_count = GraphSchema.db.count_nodes(labels=json_data["label"])
                 else:
                     total_count = None
                 response = {"status": "ok",
@@ -2463,7 +2463,7 @@ class ApiRouting:
                     result = DataManager.export_full_dbase()
                     export_filename = "exported_dbase.json"
                 elif download_type == "schema":
-                    result = NeoSchema.export_schema()
+                    result = GraphSchema.export_schema()
                     export_filename = "exported_schema.json"
                 else:
                     return f"Unknown requested type of download: {download_type}"

@@ -1,5 +1,5 @@
 import pytest
-from brainannex import NeoAccess, NeoSchema
+from brainannex import GraphAccess, GraphSchema
 from app_libraries.data_manager import DataManager
 from app_libraries.upload_helper import UploadHelper
 
@@ -11,9 +11,9 @@ from app_libraries.upload_helper import UploadHelper
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=True)
+    neo_obj = GraphAccess(debug=True)
     DataManager.db = neo_obj
-    NeoSchema.set_database(neo_obj)
+    GraphSchema.set_database(neo_obj)
     yield neo_obj
 
 

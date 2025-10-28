@@ -1,4 +1,4 @@
-# This file contains 2 helper classes for the NeoAccess library:
+# This file contains 2 helper classes for the GraphAccess library:
 #       - CypherBuilder     To store the specs to identify one or more nodes,
 #                           and to store Cypher fragments & data-binding dict, to identify one or more nodes (the "PROCESSED match structure")
 #       - CypherUtils       Static class to pre-process node specs, plus misc. Cypher-related utilities
@@ -476,12 +476,11 @@ class CypherUtils:
 
 
     @classmethod
-    def assemble_cypher_blocks(cls, handle :Union[int, str, dict, CypherBuilder],
+    def assemble_cypher_blocks(cls, handle :Union[int, str, CypherBuilder],
                               dummy_node_name=None, caller_method=None) -> tuple:
         """
 
         :param handle:          EITHER a valid internal database ID (int or string),
-                                    OR a python dictionary (with property matches to require),
                                     OR a "CypherBuilder" object (containing data to identify a node or set of nodes)
 
         :param dummy_node_name: [OPTIONAL] A string that will be used inside a Cypher query, to refer to nodes
@@ -520,52 +519,6 @@ class CypherUtils:
             f"using the same dummy node name (`{match1.extract_dummy_name()}`). " \
             f"Make sure to pass different dummy names"
 
-
-
-    @classmethod
-    def combined_where(cls, match1: CypherBuilder, match2: CypherBuilder, check_compatibility=True) -> str:
-        """
-        Given the two "CypherBuilder" objects,
-        return the combined version of all their WHERE statements.
-        Also prefix the WHERE keyword to the result (if appropriate);
-        if there are no clauses, an empty string is returned (without the WHERE keyword.)
-        For details, see prepare_where()
-
-        :param match1:  A "CypherBuilder" object to be used to identify a node, or group of nodes
-        :param match2:  A "CypherBuilder" object to be used to identify a node, or group of nodes
-        :param check_compatibility: Use True if the individual matches are meant to refer to different nodes,
-                                        and need to make sure there's no conflict in the dummy node names
-        :return:        A string with the combined WHERE statement,
-                            suitable for inclusion into a Cypher query (empty if there were no subclauses)
-        """
-        if check_compatibility:
-            cls.check_match_compatibility(match1, match2)
-
-        where_list = [match1.where, match2.where]
-        return cls.prepare_where(where_list)
-
-
-    @classmethod
-    def combined_data_binding(cls, match1: CypherBuilder, match2: CypherBuilder) -> dict:
-        """
-        Given the two "CypherBuilder" objects,
-        return the combined version of all their data binding dictionaries.
-        NOTE:  if the individual matches are meant to refer to different nodes,
-                    need to first make sure there's no conflict in the dummy node names -
-                    use check_match_compatibility() as needed.
-                    In practice, combined_where() is typically run whenever combined_data_binding() is -
-                    and the former can take care of checking for compatibility
-
-        :param match1:  A "CypherBuilder" object to be used to identify a node, or group of nodes
-        :param match2:  A "CypherBuilder" object to be used to identify a node, or group of nodes
-        :return:        A (possibly empty) dict with the combined data binding dictionaries,
-                            suitable for inclusion into a Cypher query
-        """
-        combined_data_binding = match1.data_binding     # Our 1st dict
-        new_data_binding = match2.data_binding          # Our 2nd dict
-        combined_data_binding.update(new_data_binding)  # Merge the second dict into the first one
-
-        return combined_data_binding
 
 
 
@@ -678,6 +631,25 @@ class CypherUtils:
 
 
     @classmethod
+    def prepare_data_binding(cls, data_binding_1 :dict, data_binding_2 :dict) -> dict:
+        """
+        Return the combined version of two data binding dictionaries
+        (without altering the original dictionaries)
+
+        :return:    A (possibly empty) dict with the combined data binding dictionaries,
+                        suitable for inclusion into a Cypher query
+        """
+        assert type(data_binding_1) == dict, "prepare_data_binding(): all arguments must be python dictionaries"
+        assert type(data_binding_2) == dict, "prepare_data_binding(): all arguments must be python dictionaries"
+
+        combined_data_binding = data_binding_1.copy()   # Clone the 1st dict, to avoid side effects on it, from the mergebelow
+        combined_data_binding.update(data_binding_2)    # Merge the second dict into the clone of the first one
+
+        return combined_data_binding
+
+
+
+    @classmethod
     def dict_to_cypher(cls, data_dict: {}, prefix="par_") -> (str, {}):
         """
         Turn a Python dictionary (meant for specifying node or relationship attributes)
@@ -732,3 +704,39 @@ class CypherUtils:
         rel_props_str = "{" + rel_props_str + "}"
 
         return (rel_props_str, data_binding)
+
+
+
+    @classmethod
+    def avoid_links_in_path(cls, avoid_links : None | str | list | tuple,
+                            path_dummy_name="p", prefix_and=False) -> str:
+        """
+        Create a clause for a Cypher query to traverse a graph while avoid links with specific names.
+
+        EXAMPLE:   MATCH p=(:start_Label)-[*]->(:end_label) WHERE {here insert the clause returned by this function} RETURN ...
+
+        :param avoid_links:     Name, or list/tuple of names, of links to avoid in the graph traversal
+        :param path_dummy_name: Whatever dummy name is being used in the overall Cypher query, to refer to the paths
+        :param prefix_and:      [OPTIONAL] If True, prefix "AND " in cases where the returned value isn't a blank string;
+                                    by default, False
+        :return:                A Cypher clause fragment
+        """
+        # TODO: zap leading/trailing blanks
+
+        if avoid_links is None or avoid_links == "":
+            return ""
+
+        match avoid_links:
+            case str():     # Note: `str()` is class pattern
+                clause = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{avoid_links}')"
+            case list() | tuple():
+                substring = "' OR type(r) = '".join(avoid_links)    # Example:  "s1' OR type(r) = 's2"
+                clause = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{substring}')"
+            case _ :
+                raise Exception(f"cypher_avoid_links(): argument `avoid_links`, if provided, "
+                            f"must be a string, or list/tuple of strings. The type passed was {type(avoid_links)}")
+
+        if prefix_and:
+            return f"AND {clause}"
+
+        return clause

@@ -1,4 +1,4 @@
-from brainannex import NeoSchema
+from brainannex import GraphSchema
 
 
 
@@ -18,13 +18,13 @@ class SiteLinks:
 
         :return:    None
         """
-        assert NeoSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
+        assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
-        NeoSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="sl",
-                                               properties=["url", "name", "date", "comments", "rating", "read", "date_created"],
-                                               class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
+        GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="sl",
+                                                 properties=["url", "name", "date", "comments", "rating", "read", "date_created"],
+                                                 class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 
         # Ensure that the URL's will be constrained to be unique
-        NeoSchema.db.create_constraint(label="Site Link", key="url", name="unique_bookmarks")
+        GraphSchema.db.create_constraint(label="Site Link", key="url", name="unique_bookmarks")
 

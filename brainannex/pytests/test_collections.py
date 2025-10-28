@@ -2,14 +2,14 @@
 
 
 import pytest
-from brainannex import NeoAccess, NeoSchema, Collections
+from brainannex import GraphAccess, GraphSchema, Collections
 
 
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=False)
-    NeoSchema.set_database(neo_obj)
+    neo_obj = GraphAccess(debug=False)
+    GraphSchema.set_database(neo_obj)
     Collections.set_database(neo_obj)
 
     yield neo_obj
@@ -25,18 +25,18 @@ def create_sample_collections_class(db):
 
     Collections.initialize_collections()
 
-    NeoSchema.create_class_with_properties(name="Photo Album",
-                                           properties=["name", "uri"])
+    GraphSchema.create_class_with_properties(name="Photo Album",
+                                             properties=["name", "uri"])
 
-    NeoSchema.create_class_relationship(from_class="Photo Album", to_class="Collections",
-                                        rel_name="INSTANCE_OF", use_link_node=False)
+    GraphSchema.create_class_relationship(from_class="Photo Album", to_class="Collections",
+                                          rel_name="INSTANCE_OF", use_link_node=False)
 
 
 
 def create_sample_collection_item_class():
     # Creates a "Photo" Class
-    NeoSchema.create_class_with_properties(name="Photo",
-                                           properties=["caption", "uri"])
+    GraphSchema.create_class_with_properties(name="Photo",
+                                             properties=["caption", "uri"])
 
 
 
@@ -46,8 +46,8 @@ def setup_test_collection(db):
     create_sample_collection_item_class()   # Creates a "Photo" Class
 
     # Create a Collection: a "Photo Album" named "Brazil vacation"
-    new_uri = NeoSchema.reserve_next_uri(prefix="album-")
-    NeoSchema.create_data_node(class_name="Photo Album", properties ={"name": "Brazil vacation"}, new_uri=new_uri)
+    new_uri = GraphSchema.reserve_next_uri(prefix="album-")
+    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Brazil vacation"}, new_uri=new_uri)
 
     return new_uri
 
@@ -61,10 +61,10 @@ def test_link_to_collection_at_end(db):
     brazil_album_uri = setup_test_collection(db)
 
     # Create a 1st Collection Item : a Carnaval photo
-    NeoSchema.create_namespace(name="PHOTOS", prefix="photo-")
-    carnaval_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
-    NeoSchema.create_data_node(class_name="Photo",
-                               properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
+    GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
+    carnaval_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    GraphSchema.create_data_node(class_name="Photo",
+                                 properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
                                           collection_uri=brazil_album_uri,
@@ -83,9 +83,9 @@ def test_link_to_collection_at_end(db):
 
 
     # Create a 2nd Collection Item : a canoeing photo
-    canoe_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
-    NeoSchema.create_data_node(class_name="Photo",
-                               properties ={"caption": "canoeing on the Amazon"}, new_uri=canoe_photo_uri)
+    canoe_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
+    GraphSchema.create_data_node(class_name="Photo",
+                                 properties ={"caption": "canoeing on the Amazon"}, new_uri=canoe_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=canoe_photo_uri,
                                           collection_uri=brazil_album_uri,
@@ -112,11 +112,11 @@ def test_is_collection(db):
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
     # Create a Collection
-    new_uri = NeoSchema.reserve_next_uri(prefix="album-")   # This starts a namespace with autoincrement
+    new_uri = GraphSchema.reserve_next_uri(prefix="album-")   # This starts a namespace with autoincrement
     assert new_uri == "album-1"
 
-    NeoSchema.create_data_node(class_name="Photo Album",
-                               properties ={"name": "Jamaica vacation"}, new_uri=new_uri)
+    GraphSchema.create_data_node(class_name="Photo Album",
+                                 properties ={"name": "Jamaica vacation"}, new_uri=new_uri)
 
     assert Collections.is_collection(collection_uri=new_uri)
 
@@ -125,11 +125,11 @@ def test_is_collection(db):
 
 
     # Create something that is NOT a collection
-    NeoSchema.create_class_with_properties(name="Car",
-                                           properties=["color", "uri"])
-    NeoSchema.create_namespace(name="cars", prefix="c-")
-    car_uri = NeoSchema.reserve_next_uri(namespace="cars")
-    NeoSchema.create_data_node(class_name="Car", properties ={"color": "white"}, new_uri=car_uri)
+    GraphSchema.create_class_with_properties(name="Car",
+                                             properties=["color", "uri"])
+    GraphSchema.create_namespace(name="cars", prefix="c-")
+    car_uri = GraphSchema.reserve_next_uri(namespace="cars")
+    GraphSchema.create_data_node(class_name="Car", properties ={"color": "white"}, new_uri=car_uri)
     assert not Collections.is_collection(collection_uri=car_uri)
 
 
@@ -138,19 +138,19 @@ def test_relocate_to_other_collection_at_end(db):
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
     # Create 2 Collections : "Jamaica" and a "Brazil" photo albums
-    NeoSchema.create_namespace(name="ALBUMS", prefix="album-")
-    jamaica_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
-    NeoSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
-    brazil_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
-    NeoSchema.create_data_node(class_name="Photo Album",
-                               properties ={"name": "Winter in Brazil"}, new_uri=brazil_uri)
+    GraphSchema.create_namespace(name="ALBUMS", prefix="album-")
+    jamaica_uri = GraphSchema.reserve_next_uri(namespace="ALBUMS")
+    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
+    brazil_uri = GraphSchema.reserve_next_uri(namespace="ALBUMS")
+    GraphSchema.create_data_node(class_name="Photo Album",
+                                 properties ={"name": "Winter in Brazil"}, new_uri=brazil_uri)
 
     # Create a Collection Item : a Carnaval photo "accidentally" placed in the Jamaica album
     create_sample_collection_item_class()
-    NeoSchema.create_namespace(name="PHOTOS", prefix="photo-")
-    carnaval_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
-    NeoSchema.create_data_node(class_name="Photo",
-                               properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
+    GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
+    carnaval_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    GraphSchema.create_data_node(class_name="Photo",
+                                 properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
                                           collection_uri=jamaica_uri,
@@ -206,13 +206,13 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Create 2 other Collection Items : a photo of landing in Jamaica and a photo at a Jamaica resort,
     # both "accidentally" placed in the Brazil album
-    landing_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
-    NeoSchema.create_data_node(class_name="Photo",
-                               properties ={"caption": "Landing in Jamaica"}, new_uri=landing_photo_uri)
+    landing_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    GraphSchema.create_data_node(class_name="Photo",
+                                 properties ={"caption": "Landing in Jamaica"}, new_uri=landing_photo_uri)
 
-    resort_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
-    NeoSchema.create_data_node(class_name="Photo",
-                               properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
+    resort_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    GraphSchema.create_data_node(class_name="Photo",
+                                 properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
                                           membership_link_name="in_album")
@@ -257,19 +257,19 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
     # Create 2 Collections : "Jamaica" and a "Brazil" photo albums
-    NeoSchema.create_namespace(name="ALBUMS", prefix="album-")
-    jamaica_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
-    NeoSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
-    brazil_uri = NeoSchema.reserve_next_uri(namespace="ALBUMS")
-    NeoSchema.create_data_node(class_name="Photo Album",
-                               properties ={"name": "Winter in Brazil"}, new_uri=brazil_uri)
+    GraphSchema.create_namespace(name="ALBUMS", prefix="album-")
+    jamaica_uri = GraphSchema.reserve_next_uri(namespace="ALBUMS")
+    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
+    brazil_uri = GraphSchema.reserve_next_uri(namespace="ALBUMS")
+    GraphSchema.create_data_node(class_name="Photo Album",
+                                 properties ={"name": "Winter in Brazil"}, new_uri=brazil_uri)
 
     # Create a Collection Item : a Carnaval photo "accidentally" placed in the Jamaica album
     create_sample_collection_item_class()
-    NeoSchema.create_namespace(name="PHOTOS", prefix="photo-")
-    carnaval_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
-    NeoSchema.create_data_node(class_name="Photo",
-                               properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
+    GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
+    carnaval_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
+    GraphSchema.create_data_node(class_name="Photo",
+                                 properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
                                           collection_uri=jamaica_uri,
@@ -328,13 +328,13 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Create 2 other Collection Items : a photo of landing in Jamaica and a photo at a Jamaica resort,
     # both "accidentally" placed in the Brazil album
-    landing_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
-    NeoSchema.create_data_node(class_name="Photo",
-                               properties ={"caption": "Landing in Jamaica"}, new_uri=landing_photo_uri)
+    landing_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    GraphSchema.create_data_node(class_name="Photo",
+                                 properties ={"caption": "Landing in Jamaica"}, new_uri=landing_photo_uri)
 
-    resort_photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
-    NeoSchema.create_data_node(class_name="Photo",
-                               properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
+    resort_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    GraphSchema.create_data_node(class_name="Photo",
+                                 properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
                                           membership_link_name="in_album")
@@ -372,10 +372,10 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     # Add 2 photos to the Brazil album
     all_photo_uris = [0, 0]
     for i in range(2):
-        photo_uri = NeoSchema.reserve_next_uri(namespace="PHOTOS")
+        photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
         all_photo_uris[i] = photo_uri
-        NeoSchema.create_data_node(class_name="Photo",
-                                   properties ={"caption": f"photo_{i}"}, new_uri=photo_uri)
+        GraphSchema.create_data_node(class_name="Photo",
+                                     properties ={"caption": f"photo_{i}"}, new_uri=photo_uri)
         Collections.link_to_collection_at_end(item_uri=photo_uri, collection_uri=brazil_uri,
                                               membership_link_name="in_album")
 

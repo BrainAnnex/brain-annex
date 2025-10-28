@@ -12,7 +12,7 @@ IMPORTANT - to run the pytests in this file, the following ENVIRONMENT VARIABLES
 """
 
 import pytest
-from brainannex import neoaccess as neo_access
+from brainannex import graphaccess as neo_access
 from utilities.comparisons import compare_unordered_lists, compare_recordsets
 from datetime import datetime, date
 import pandas as pd
@@ -25,7 +25,7 @@ import neo4j.time
 @pytest.fixture(scope="module")
 def db():
     # MAKE SURE TO FIRST SET THE ENVIRONMENT VARIABLES, prior to run the pytests in this file!
-    neo_obj = neo_access.NeoAccess(debug=False)     # Change the debug option to True if desired
+    neo_obj = neo_access.GraphAccess(debug=False)     # Change the debug option to True if desired
     yield neo_obj
 
 
@@ -195,16 +195,16 @@ def test_get_nodes(db):
     # Retrieve nodes REGARDLESS of label (and also retrieve the labels)
     match = db.match(properties={"gender": "M"})       # Locate all males, across all node labels
     retrieved_records = db.get_nodes(match, return_labels=True)
-    expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
+    expected_records = [{'node_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
+                        {'node_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
     assert compare_recordsets(retrieved_records, expected_records)
 
     # Retrieve ALL nodes in the database (and also retrieve the labels)
     match = db.match()
     retrieved_records = db.get_nodes(match, return_labels=True)
-    expected_records = [{'neo4j_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
-                        {'neo4j_labels': ['my 2nd label'], 'client id': 123, 'gender': 'F', 'age': 21}]
+    expected_records = [{'node_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
+                        {'node_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
+                        {'node_labels': ['my 2nd label'], 'client id': 123, 'gender': 'F', 'age': 21}]
     assert compare_recordsets(retrieved_records, expected_records)
 
     # Re-use of same key names in subquery data-binding and in properties dictionaries is ok, because the keys in
@@ -543,11 +543,11 @@ def test_get_siblings(db):
 
     # The single sibling of "French" is "German"
     result = db.get_siblings(internal_id=french_id, rel_name="subcategory_of", rel_dir="OUT")
-    assert result == [{'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']}]
+    assert result == [{'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']}]
 
     # Conversely, the single sibling of "German" is "French"
     result = db.get_siblings(internal_id=german_id, rel_name="subcategory_of", rel_dir="OUT")
-    assert result == [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']}]
+    assert result == [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']}]
 
     # But attempting to follow the links in the opposite directions will yield no results
     result = db.get_siblings(internal_id=german_id, rel_name="subcategory_of", rel_dir="IN")    # "wrong" direction
@@ -559,14 +559,14 @@ def test_get_siblings(db):
 
     # Now, "French" will have 2 siblings instead of 1
     result = db.get_siblings(internal_id=french_id, rel_name="subcategory_of", rel_dir="OUT")
-    expected = [{'name': 'Italian', 'internal_id': italian_id, 'neo4j_labels': ['Categories']},
-                {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'Italian', 'internal_id': italian_id, 'node_labels': ['Categories']},
+                {'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # "Italian" will also have 2 siblings
     result = db.get_siblings(internal_id=italian_id, rel_name="subcategory_of", rel_dir="OUT")
-    expected = [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']},
-                {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']},
+                {'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # Add a node that is a "parent" of "French" and "Italian" thru a different relationship
@@ -575,18 +575,18 @@ def test_get_siblings(db):
 
     # Now, "French" will also have a sibling thru the "contains" relationship
     result = db.get_siblings(internal_id=french_id, rel_name="contains", rel_dir="IN")
-    expected = [{'name': 'Italian', 'internal_id': italian_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'Italian', 'internal_id': italian_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # Likewise for the "Italian" node
     result = db.get_siblings(internal_id=italian_id, rel_name="contains", rel_dir="IN")
-    expected = [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # "Italian" still has 2 siblings thru the other relationship "subcategory_of"
     result = db.get_siblings(internal_id=italian_id, rel_name="subcategory_of", rel_dir="OUT")
-    expected = [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']},
-                {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']},
+                {'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
     # Add an unattached node
@@ -597,9 +597,9 @@ def test_get_siblings(db):
     # After connecting the "Brazilian" node to the "Language" node, it has 3 siblings
     db.add_links_fast(match_from=brazilian_id, match_to=language_id, rel_name="subcategory_of")
     result = db.get_siblings(internal_id=brazilian_id, rel_name="subcategory_of", rel_dir="OUT")
-    expected = [{'name': 'French', 'internal_id': french_id, 'neo4j_labels': ['Categories']},
-                {'name': 'German', 'internal_id': german_id, 'neo4j_labels': ['Categories']},
-                {'name': 'Italian', 'internal_id': italian_id, 'neo4j_labels': ['Categories']}]
+    expected = [{'name': 'French', 'internal_id': french_id, 'node_labels': ['Categories']},
+                {'name': 'German', 'internal_id': german_id, 'node_labels': ['Categories']},
+                {'name': 'Italian', 'internal_id': italian_id, 'node_labels': ['Categories']}]
     assert compare_recordsets(result, expected)
 
 
@@ -632,6 +632,73 @@ def test_get_link_summary(db):
 
     #TODO: additional tests
 
+
+
+def test_explore_neighborhood(db):
+    db.empty_dbase()
+
+    result = db.explore_neighborhood(start_id=123)  # Non-existent node
+    assert result == []
+
+    start_node_id = db.create_node(labels="Person", properties={"name": "Julian"})
+
+    result = db.explore_neighborhood(start_id=start_node_id)
+    assert result == []
+
+    n_1 = db.create_node_with_links(labels="Person", properties={"name": "Rese"},
+                                    links=[{"internal_id": start_node_id, "rel_name": "FRIENDS OF"}])
+    result = db.explore_neighborhood(start_id=start_node_id)
+    assert result == [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']}]
+
+    n_2 = db.create_node_with_links(labels="Person", properties={"name": "Val"},
+                                    links=[{"internal_id": start_node_id, "rel_name": "FRIENDS OF"}])
+    result = db.explore_neighborhood(start_id=start_node_id)
+    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
+                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    n_3 = db.create_node_with_links(labels="Car", properties={"color": "red"},
+                                    links=[{"internal_id": n_2, "rel_name": "IS OWNED BY"}])
+    result = db.explore_neighborhood(start_id=start_node_id)
+    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
+                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']},
+                {'f': {'color': 'red'},   'internal_id': n_3, 'node_labels': ['Car']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=start_node_id, avoid_links="IS OWNED BY") # Won't reach the `Car` node
+    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
+                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=start_node_id, max_hops=1)    # Won't reach the `Car` node
+    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
+                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3)  # Start at the `Car` node (Val's car); only doing default 2 hops max
+    expected = [{'f': {'name': 'Val'},   'internal_id': n_2,           'node_labels': ['Person']},
+                {'f': {'name': 'Julian'},'internal_id': start_node_id, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3)  # Start at the `Car` node (Val's car)
+    expected = [{'f': {'name': 'Val'},   'internal_id': n_2,           'node_labels': ['Person']},
+                {'f': {'name': 'Julian'},'internal_id': start_node_id, 'node_labels': ['Person']},
+                {'f': {'name': 'Rese'},  'internal_id': n_1,           'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links="FRIENDS OF")  # Start at Val's car
+    expected = [{'f': {'name': 'Val'},   'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links=["FRIENDS OF", "IRRELEVANT NAME"])  # Start at Val's car
+    expected = [{'f': {'name': 'Val'},   'internal_id': n_2, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links=["FRIENDS OF", "IS OWNED BY"])  # Start at Val's car
+    assert result == []
+
+    with pytest.raises(Exception):
+        db.explore_neighborhood(start_id=n_3, max_hops= 0)
 
 
 
@@ -1237,7 +1304,7 @@ def test_add_links_fast(db):
 
 
 
-def test_remove_edges(db):
+def test_remove_links(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_car = db.create_node("car", {'color': 'white'})
@@ -1381,8 +1448,23 @@ def test_remove_edges(db):
     assert result[0]["n_relationships"] == 0    # All gone
 
 
+def test_remove_links_2(db):
+    # This set of test focuses on removing edges between a node and itself
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
-def test_remove_edges_2(db):
+    node_id = db.create_node("Being", {'name': 'Narcissus'})
+
+    number_added = db.add_links(node_id, node_id, rel_name="LOVES")
+    assert number_added == 1
+
+    with pytest.raises(Exception):
+        db.remove_links(node_id, node_id, rel_name="SOME_RANDOM_NAME")
+
+    number_removed = db.remove_links(node_id, node_id, rel_name=None)
+    assert number_removed == 1
+
+
+def test_remove_links_3(db):
     # This set of test focuses on removing edges between GROUPS of nodes
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
@@ -1420,7 +1502,7 @@ def test_remove_edges_2(db):
 
 
 
-def test_edges_exists(db):
+def test_links_exist(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
     neo_car = db.create_node("car", {'color': 'white'})
@@ -1994,14 +2076,130 @@ def test_pd_datetime_to_neo4j_datetime(db):
 
 
 
-###  ~ JSON IMPORT/EXPORT ~
+######  ~ JSON IMPORT/EXPORT ~
 
-# =>  SEE test_neoaccess_import_export.py
-
-
+# =>  SEE test_graphaccess_import_export.py
 
 
-###  ~ DEBUGGING SUPPORT ~
+
+######   ~   VISUALIZATION   ~
+
+
+def test_node_tabular_display_1(db):
+
+    assert db.node_tabular_display(node_list=[]) is None
+
+    node_list = [{"n": {"a": 3}}]       # Outer dict with dummy name "n"
+
+    df = db.node_tabular_display(node_list=node_list, fields=[])
+    assert df.empty
+
+    df = db.node_tabular_display(node_list=node_list, fields="a", dummy_name="n")
+    expected = pd.DataFrame([[3]], columns = ["a"])
+    assert df.equals(expected)
+
+
+    node_list = [{"a": 3,   "b": "hello"},
+                 {"ZZZ": 8, "b": "hi"}]     # Flat dicts, mismatched fields
+
+    # Only select the common field "b"
+    df = db.node_tabular_display(node_list=node_list, fields="b", dummy_name=None)
+    expected = pd.DataFrame([["hello"], ["hi"]], columns = ["b"])
+    assert df.equals(expected)
+
+    # Select all fields
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name=None)
+    expected = pd.DataFrame({"a": [3, np.nan], "b": ["hello", "hi"], "ZZZ": [np.nan, 8]})
+    assert df.equals(expected)
+
+
+    node_list = [{"a": 3,   "b": "hello", "internal_id": 123},
+                 {"ZZZ": 8, "b": "hi",    "internal_id": 999}]     # Mismatched fields, and a special field
+
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name=None)
+    expected = pd.DataFrame({"a": [3, np.nan], "b": ["hello", "hi"], "ZZZ": [np.nan, 8], "internal_id": [123, 999]})
+    assert df.equals(expected)
+
+
+    node_list = [{"a": 3, "b": "hello", "internal_id": 123, "node_labels": ["Car", "Vehicle"]},
+                 {"a": 8, "b": "hi", "internal_id": 999, "node_labels": ["Person"]}]
+
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name=None)
+    expected = pd.DataFrame([[ ["Car", "Vehicle"], 3, "hello", 123],
+                               [["Person"],        8, "hi",    999]],
+                            columns = ["node_labels", "a", "b", "internal_id"])
+    assert df.equals(expected)
+
+
+    node_list = [{"x": {"a": 3, "b": "hello"}},
+                 {"x": {"a": 8, "b": "hi"}}]        # Dummy name "x"
+
+    df = db.node_tabular_display(node_list=node_list, fields="b", dummy_name="x")
+    expected = pd.DataFrame([["hello"], ["hi"]], columns = ["b"])
+    assert df.equals(expected)
+
+    df = db.node_tabular_display(node_list=node_list, fields=["a", "b"], dummy_name="x")
+    expected = pd.DataFrame([[3, "hello"], [8, "hi"]], columns = ["a", "b"])
+    assert df.equals(expected)
+
+    df = db.node_tabular_display(node_list=node_list, fields=["b", "a"], dummy_name="x")
+    expected = pd.DataFrame([["hello", 3], ["hi", 8]], columns = ["b", "a"])
+    assert df.equals(expected)
+
+
+    # Special fields in OUTER dict
+    node_list = [{ "internal_id": 123, "x": {"a": 3, "b": "hello"} },
+                 { "internal_id": 999, "x": {"a": 8, "b": "hi"} }
+                ]
+
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name="x")
+    expected = pd.DataFrame([[3, "hello", 123], [8, "hi", 999]], columns = ["a", "b", "internal_id"])
+    assert df.equals(expected)
+
+
+    node_list = [{ "node_labels": ["Car", "Vehicle"], "internal_id": 123, "x": {"a": 3,   "b": "hello"} },
+                 { "node_labels": ["Person"],        "internal_id": 999,  "x": {"ZZZ": 8, "b": "hi"} }
+                ]
+
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name="x")
+    expected = pd.DataFrame({"node_labels": [["Car", "Vehicle"],["Person"]],
+                             "a": [3, np.nan], "b": ["hello", "hi"], "ZZZ": [np.nan, 8],
+                             "internal_id": [123, 999]})
+    assert df.equals(expected)
+
+
+def test_node_tabular_display_2(db):
+    db.empty_dbase()
+
+    person_id = db.create_node(labels="Person", properties={"city": "Berkeley"})
+
+    node_list = db.get_nodes(person_id)
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name=None)
+    expected = pd.DataFrame([["Berkeley"]], columns = ["city"])
+    assert df.equals(expected)
+
+    node_list = db.get_nodes(person_id, return_internal_id=True)
+    df = db.node_tabular_display(node_list=node_list, fields="city", dummy_name=None)
+    expected = pd.DataFrame({"city": ["Berkeley"], "internal_id": [person_id]})
+    assert df.equals(expected)
+
+    node_list = db.get_nodes(person_id, return_internal_id=True, return_labels=True)
+    df = db.node_tabular_display(node_list=node_list, fields="city", dummy_name=None)
+    expected = pd.DataFrame({"node_labels": [["Person"]], "city": ["Berkeley"], "internal_id": [person_id]})
+    assert df.equals(expected)
+
+
+    q = "MATCH (x:Person) RETURN x, id(x) AS internal_id"
+    node_list = db.query(q)
+    df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name="x")
+    expected = pd.DataFrame({"city": ["Berkeley"], "internal_id": [person_id]})
+    assert df.equals(expected)
+
+
+
+
+
+######  ~ DEBUGGING SUPPORT ~
 
 
 def test_debug_trim(db):

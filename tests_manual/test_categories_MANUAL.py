@@ -1,15 +1,15 @@
 import pytest
-from neoaccess import NeoAccess
-from brainannex.neoschema.neo_schema import NeoSchema
+from neoaccess import GraphAccess
+from brainannex.graphschema.neo_schema import GraphSchema
 from brainannex.categories import Categories
 
 
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = NeoAccess(debug=True)
+    neo_obj = GraphAccess(debug=True)
     Categories.db = neo_obj
-    NeoSchema.db = neo_obj
+    GraphSchema.db = neo_obj
     yield neo_obj
 
 
