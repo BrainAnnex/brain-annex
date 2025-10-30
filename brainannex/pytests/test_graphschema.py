@@ -914,14 +914,6 @@ def test_get_data_node_id(db):
 
 
 
-def test_data_node_exists_EXPERIMENTAL(db):
-    db.empty_dbase()
-
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(match=123)
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(match={"uri": "c-88"}, class_name="Car")
-
-
-
 def test_data_node_exists(db):
     db.empty_dbase()
 

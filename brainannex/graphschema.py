@@ -1723,6 +1723,263 @@ class GraphSchema:
 
 
     @classmethod
+    def get_data_node(cls, class_name :str, node_id, id_key=None, hide_schema=True) -> dict|None:
+        """
+        Return a dictionary with all the key/value pairs of the attributes of a Data Node
+        specified by its Class name, and by a unique identifier.
+        If there's more than 1 match, an Exception is raised.
+
+        :param class_name:  The name of the Schema Class that this Data Node is associated to
+        :param node_id:     Either an internal database ID (int or str), or a primary key value
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+                                Leave blank to use the internal database ID
+        :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS` is omitted
+        :return:            If not found, return None;
+                                otherwise, return a dict with the name/values of the node's properties
+        """
+        # TODO: use the argument standards of data_node_exists()
+        if id_key is None:
+            where_clause = "WHERE (id(dn) = $node_id)"
+        else:
+            where_clause = f"WHERE (dn.`{id_key}` = $node_id)"
+
+        q = f'''
+            MATCH (dn)
+            {where_clause} AND (dn.`_CLASS` = $class_name)
+            RETURN dn
+            '''
+
+        data_binding = {"class_name": class_name, "node_id": node_id}
+
+        #cls.db.debug_query_print(q, data_binding, "get_data_node")
+
+        result = cls.db.query(q, data_binding, single_row=True)
+
+        if result is None:
+            return None
+
+        assert len(result) == 1, \
+            f"get_data_node(): the specified key ({id_key}) is not unique - multiple records were located"
+
+        d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+        if hide_schema:
+            del d["_CLASS"]
+
+        return d
+
+
+
+    @classmethod
+    def search_data_node(cls, uri = None, internal_id = None, hide_schema=True) -> Union[dict, None]:
+        """
+        Return a dictionary with all the key/value pairs of the properties of given (single) data node
+
+        See also get_data_node() and locate_node()
+
+        :param uri:         The `uri` field value to uniquely identify the data node
+        :param internal_id: Alternate way to specify the data node;
+                                cannot specify both `uri` and `internal_id` arguments
+
+        :param hide_schema: [OPTIONAL] By default (True),
+                                the special schema field `_CLASS` is omitted from the results
+
+        :return:            A dictionary with all the key/value pairs, if node is found; or None if not
+        """
+        # TODO: merge with get_data_node() and perhaps also with locate_node()
+        # TODO: add function that only returns a specified single Property, or specified list of Properties
+        # TODO: optionally also return node label
+        # TODO: standardize the way to specify the node, as done by data_node_exists()
+
+        if uri is not None:
+            assert internal_id is None, \
+                "GraphSchema.search_data_node(): arguments `uri` and `internal_id` cannot both be specified"
+
+            match = cls.db.match(key_name="uri", key_value=uri)
+        else:   # uri is None
+            assert internal_id is not None, \
+                "GraphSchema.search_data_node(): one of arguments `uri` and `internal_id` must be specified"
+
+            match = cls.db.match(internal_id=internal_id)
+
+
+        d = cls.db.get_nodes(match, single_row=True)    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+        if d is None:               # No matching node found
+            return  None
+
+        if "_CLASS" not in d:      # If not a Data Node
+            return None
+
+        if hide_schema:
+            del d["_CLASS"]
+
+        return d
+
+
+
+    @classmethod
+    def locate_node(cls, node_id :int|str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
+        """
+        EXPERIMENTAL - a generalization of get_data_node()
+
+        Return the "match" structure to later use to locate a node identified
+        either by its internal database ID (default), or by a primary key (with optional label.)
+
+        NOTE: No database operation is actually performed.
+
+        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
+        :param id_type: For example, "uri";
+                            if not specified, the node ID is assumed to be the internal database ID's
+        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
+        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
+
+        :return:        A "CypherBuilder" object
+        """
+        # TODO: use the argument standards of data_node_exists()
+        if id_type:
+            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
+        else:
+            match_structure = cls.db.match(internal_id=node_id)
+
+        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
+
+
+
+    @classmethod
+    def get_nodes_by_filter(cls, class_name=None, labels=None,
+                            key_names=None, key_value=None, string_match=None, case_sensitive=True,
+                            include_id=False, include_labels=False,
+                            order_by=None, sort_ignore_case=None,
+                            skip=None, limit=100) -> [dict]:
+        """
+        Locate the nodes that match the given parameters, and return their properties as specified,
+        in the form of a list of dicts
+
+        :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
+        :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
+        :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
+                                An implicit OR is used if there's more than 1
+        :param key_value:   [OPTIONAL] Only applicable if arg `key_names` is present: match nodes with the
+                                specified key name/value (for each key, with an implicit OR, if there's more than 1).
+                                If key_value is a string, the match is case-sensitive;
+                                weather must a partial match is accepted will depend on the `string_match` arg
+        :param string_match:[OPTIONAL] Only applies if key_value is a string.
+                                Valid choices: "CONTAINS", "STARTS WITH", "ENDS WITH"
+        :param case_sensitive:[OPTIONAL] Only applies if key_value is a string.
+                                By default True; use False, to disregard case in string matches
+        :param include_id:  [OPTIONAL] If True, also return an extra field named "internal_id",
+                                with the internal database ID value; by default, False
+        :param include_labels:  [OPTIONAL] If True, also return an extra field named "node_labels",
+                                with a list of the node labels; by default, False
+        :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive instructions.
+                                EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
+                                Note: nodes lacking the order-by fields, will appear at the end of the
+                                      returned sorted list when sorting in ascending order, or at the start
+                                      when in descending order
+        :param sort_ignore_case: [OPTIONAL] List of names of string-valued fields, for which sorting
+                                should ignore the case of the sorted values.  MUST be string-valued fields,
+                                or an Exception will result
+        :param skip:        [OPTIONAL] An integer
+        :param limit:       [OPTIONAL] An integer specifying the max number of items to return
+
+        :return:            A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
+                                Notes: The internal database ID is *not* included.
+                                       The `_CLASS` special property, if present, will be included.
+                                       Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
+        """
+        allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
+        if string_match:
+            assert string_match in allowed_patters, \
+                "get_data_nodes_by_filter(): argument `string_match`, if specified, must be one of {allowed_patters}"
+
+
+        # Start preparing a Cypher query to extract the requested data
+
+        labels_str = CypherUtils.prepare_labels(labels)     # EXAMPLE: ":`my label`:`my other label`"
+
+        clause_list = []        # List of clauses that all must be satisfied (i.e. "AND" will go between them)
+                                # Each entry is a string that contains outer round parentheses
+                                # EXAMPLE:  "(n.`age` = 22)"
+        data_binding = {}
+
+        if key_names == []:
+            key_names = None
+
+        if (key_value is not None) and (key_value != ""):
+            assert key_names is not None, \
+                f"get_data_nodes_by_filter(): since argument `key_value` is present ({key_value}), then so must be `key_names`"
+
+        if (key_names is not None) and (key_names != ""):
+            assert key_value is not None, \
+                f"get_data_nodes_by_filter(): since argument `key_names` is present ({key_names}), then so must be `key_value`"
+
+            data_binding["key_value"] = key_value
+
+            if type(key_names) == list:
+                # Process each individual key name in turn, and put an OR between the Cypher fragments of them
+                or_list = [cls._process_key_name_value(key_name=name, key_value=key_value, string_match=string_match, case_sensitive=case_sensitive)
+                            for name in key_names]
+                clause = "(" + " OR ".join(or_list) + ")"
+                # EXAMPLE:  "((n.`color` = $key_value) OR (n.`trim` = $key_value))"
+                clause_list.append(clause)
+            else:
+                clause_list.append(cls._process_key_name_value(key_name=key_names, key_value=key_value,
+                                                               string_match=string_match, case_sensitive=case_sensitive))
+
+
+        if class_name is not None:
+            # The following validation is to remedy a Cypher/Neo4j bug
+            # about unexpected results when using "SKIP" and "LIMIT" together with a "ORDER BY" by an unknown field
+            if order_by is not None:
+                if "," not in order_by:    # "ORDER BY" is present and doesn't contain multiple parts
+                                           # (i.e. we're sorting by just one field)
+                    assert order_by in GraphSchema.get_class_properties(class_node=class_name, include_ancestors=True), \
+                        f"cannot sort recordset (`{class_name}`) by the unknown property `{order_by}`"
+
+            data_binding["class_name"] = class_name
+            clause_list.append("(n.`_CLASS` = $class_name)")
+
+
+        if clause_list == []:
+            clause = ""
+        else:
+            clause = "WHERE " + "AND".join(clause_list)     # "WHERE", followed by AND-separated clauses
+
+
+        q = f'''
+            MATCH (n {labels_str})
+            {clause}
+            RETURN n
+            '''
+
+        if include_id:
+            q += ''' , id(n) AS internal_id
+                 '''
+
+        if include_labels:
+            q += ''' , labels(n) AS node_labels
+                 '''
+
+        if order_by:
+            revised_order_by = cls._process_order_by(s=order_by, dummy_node_name="n", ignore_case=sort_ignore_case)
+            q += f"ORDER BY {revised_order_by} \n"
+
+        if skip:
+            q += f"SKIP {skip} \n"
+
+        if limit:
+            q += f"LIMIT {limit}"
+
+
+        #cls.db.debug_query_print(q, data_binding)
+        result = cls.db.query(q, data_binding=data_binding)
+
+        return cls.db.standardize_recordset(recordset=result)
+
+
+
+    @classmethod
     def all_properties(cls, label :str, primary_key_name :str, primary_key_value) -> [str]:
         """
         Return the list of the *names* of all the Properties associated with the specified DATA node,
@@ -1738,6 +1995,7 @@ class GraphSchema:
         :return:                    A list of the names of the Properties associated
                                         with the given DATA node
         """
+        # TODO: standardize the way to specify the node, as done by data_node_exists()
         q = f'''
             MATCH  (d :`{label}` {{ {primary_key_name}: $primary_key_value}})
             WITH dn.`_CLASS` AS schema_name
@@ -1822,62 +2080,19 @@ class GraphSchema:
 
 
     @classmethod
-    def data_node_exists_EXPERIMENTAL(cls, match: Union[int, str, dict, CypherBuilder], class_name=None) -> bool:
-        """
-        ALTERNATE APPROACH, NOT CURRENTLY IN USE.
-
-        Return True if the specified Data Node exists, or False otherwise.
-
-        :param match:
-        :param class_name:
-        :return:            True if the specified Data Node exists, or False otherwise
-        """
-
-        # Unpack the parts needed to put together a Cypher query
-        (match_str, where_clause, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="data_node_exists")
-
-        if class_name:
-            # Add an extra property match requirement
-            if where_clause != "":
-                where_clause += " AND "
-
-            where_clause += f" {dummy_node_name}.`_CLASS` = $class_name"
-            data_binding["class_name"] = class_name
-
-        # Prepare a Cypher query to locate the number of the data nodes
-        q = f'''
-            MATCH {match_str}
-            WHERE {where_clause} 
-            RETURN COUNT({dummy_node_name}) AS number_found           
-            '''
-
-        cls.db.debug_query_print(q, data_binding)
-        number_found = cls.db.query(q, data_binding,
-                                    single_cell="number_found")
-
-        if number_found == 0:
-            return False
-        elif number_found == 1:
-            return True
-        else:
-            raise Exception(f"data_node_exists(): non-unique identification of Data Node; more than 1  was found ")
-
-
-
-    @classmethod
     def data_node_exists(cls, node_id, id_key=None, class_name=None) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
         If opting to search by primary key, and more than 1 node comes up, an Exception is raised
 
-        :param node_id:     Either an internal database ID or a primary key value
+        :param node_id:     Either an internal database ID (int or str), or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
                                 Leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :return:            True if the specified Data Node exists, or False otherwise
         """
         #TODO: consider adding an `include_ancestors` option
-        #TODO: use this as a MODEL for other functions
+        #TODO: use this as a MODEL for other functions, as far as argument passing goes
 
         # Prepare the clause part of a Cypher query
         if id_key is None:
@@ -2024,185 +2239,6 @@ class GraphSchema:
 
 
     @classmethod
-    def get_data_node(cls, class_name :str, node_id, id_key=None, hide_schema=True) -> Union[dict, None]:
-        """
-        Return a dictionary with all the key/value pairs of the attributes of given Data Node,
-        specified by its Class name, and a unique identifier
-
-        :param class_name:  The name of the Schema Class that this Data Node is associated to
-        :param node_id:     Either an internal database ID or a primary key value
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
-                                Leave blank to use the internal database ID
-        :param hide_schema: [OPTIONAL] By default (True), the special schema field `_CLASS` is omitted
-        :return:            If not found, return None;
-                                otherwise, return a dict with the name/values of the node's properties
-        """
-        if id_key is None:
-            where_clause = "WHERE (id(dn) = $node_id)"
-        else:
-            where_clause = f"WHERE (dn.`{id_key}` = $node_id)"
-
-        q = f'''
-            MATCH (dn)
-            {where_clause} AND (dn.`_CLASS` = $class_name)
-            RETURN dn
-            '''
-
-        data_binding = {"class_name": class_name, "node_id": node_id}
-
-        #cls.db.debug_query_print(q, data_binding, "get_data_node")
-
-        result = cls.db.query(q, data_binding, single_row=True)
-
-        if result is None:
-            return None
-
-        assert len(result) == 1, \
-            f"get_data_node(): the specified key ({id_key}) is not unique - multiple records were located"
-
-        d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-        if hide_schema:
-            del d["_CLASS"]
-
-        return d
-
-
-
-    @classmethod
-    def get_nodes_by_filter(cls, class_name=None, labels=None,
-                            key_names=None, key_value=None, string_match=None, case_sensitive=True,
-                            include_id=False, include_labels=False,
-                            order_by=None, sort_ignore_case=None,
-                            skip=None, limit=100) -> [dict]:
-        """
-        Locate the nodes that match the given parameters, and return them in the specified way,
-        as a list of dicts
-
-        :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
-        :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
-        :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
-                                An implicit OR is used if there's more than 1
-        :param key_value:   [OPTIONAL] Only applicable if arg `key_names` is present: match nodes with the
-                                specified key name/value (for each key, with an implicit OR, if there's more than 1).
-                                If key_value is a string, the match is case-sensitive;
-                                weather must a partial match is accepted will depend on the `string_match` arg
-        :param string_match:[OPTIONAL] Only applies if key_value is a string.
-                                Valid choices: "CONTAINS", "STARTS WITH", "ENDS WITH"
-        :param case_sensitive:[OPTIONAL] Only applies if key_value is a string.
-                                By default True; use False, to disregard case in string matches
-        :param include_id:  [OPTIONAL] If True, also return an extra field named "internal_id",
-                                with the internal database ID value; by default, False
-        :param include_labels:  [OPTIONAL] If True, also return an extra field named "node_labels",
-                                with a list of the node labels; by default, False
-        :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive instructions.
-                                EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
-                                Note: nodes lacking the order-by fields, will appear at the end of the
-                                      returned sorted list when sorting in ascending order, or at the start
-                                      when in descending order
-        :param sort_ignore_case: [OPTIONAL] List of names of string-valued fields, for which sorting
-                                should ignore the case of the sorted values.  MUST be string-valued fields,
-                                or an Exception will result
-        :param skip:        [OPTIONAL] An integer
-        :param limit:       [OPTIONAL] An integer specifying the max number of items to return
-
-        :return:            A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
-                                Notes: The internal database ID is *not* included.
-                                       The `_CLASS` special property, if present, will be included.
-                                       Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
-        """
-        allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
-        if string_match:
-            assert string_match in allowed_patters, \
-                "get_data_nodes_by_filter(): argument `string_match`, if specified, must be one of {allowed_patters}"
-
-
-        # Start preparing a Cypher query to extract the requested data
-
-        labels_str = CypherUtils.prepare_labels(labels)     # EXAMPLE: ":`my label`:`my other label`"
-
-        clause_list = []        # List of clauses that all must be satisfied (i.e. "AND" will go between them)
-                                # Each entry is a string that contains outer round parentheses
-                                # EXAMPLE:  "(n.`age` = 22)"
-        data_binding = {}
-
-        if key_names == []:
-            key_names = None
-
-        if (key_value is not None) and (key_value != ""):
-            assert key_names is not None, \
-                f"get_data_nodes_by_filter(): since argument `key_value` is present ({key_value}), then so must be `key_names`"
-
-        if (key_names is not None) and (key_names != ""):
-            assert key_value is not None, \
-                f"get_data_nodes_by_filter(): since argument `key_names` is present ({key_names}), then so must be `key_value`"
-
-            data_binding["key_value"] = key_value
-
-            if type(key_names) == list:
-                # Process each individual key name in turn, and put an OR between the Cypher fragments of them
-                or_list = [cls._process_key_name_value(key_name=name, key_value=key_value, string_match=string_match, case_sensitive=case_sensitive)
-                            for name in key_names]
-                clause = "(" + " OR ".join(or_list) + ")"
-                # EXAMPLE:  "((n.`color` = $key_value) OR (n.`trim` = $key_value))"
-                clause_list.append(clause)
-            else:
-                clause_list.append(cls._process_key_name_value(key_name=key_names, key_value=key_value,
-                                                               string_match=string_match, case_sensitive=case_sensitive))
-
-
-        if class_name is not None:
-            # The following validation is to remedy a Cypher/Neo4j bug
-            # about unexpected results when using "SKIP" and "LIMIT" together with a "ORDER BY" by an unknown field
-            if order_by is not None:
-                if "," not in order_by:    # "ORDER BY" is present and doesn't contain multiple parts
-                                           # (i.e. we're sorting by just one field)
-                    assert order_by in GraphSchema.get_class_properties(class_node=class_name, include_ancestors=True), \
-                        f"cannot sort recordset (`{class_name}`) by the unknown property `{order_by}`"
-
-            data_binding["class_name"] = class_name
-            clause_list.append("(n.`_CLASS` = $class_name)")
-
-
-        if clause_list == []:
-            clause = ""
-        else:
-            clause = "WHERE " + "AND".join(clause_list)     # "WHERE", followed by AND-separated clauses
-
-
-        q = f'''
-            MATCH (n {labels_str})
-            {clause}
-            RETURN n
-            '''
-
-        if include_id:
-            q += ''' , id(n) AS internal_id
-                 '''
-
-        if include_labels:
-            q += ''' , labels(n) AS node_labels
-                 '''
-
-        if order_by:
-            revised_order_by = cls._process_order_by(s=order_by, dummy_node_name="n", ignore_case=sort_ignore_case)
-            q += f"ORDER BY {revised_order_by} \n"
-
-        if skip:
-            q += f"SKIP {skip} \n"
-
-        if limit:
-            q += f"LIMIT {limit}"
-
-
-        #cls.db.debug_query_print(q, data_binding)
-        result = cls.db.query(q, data_binding=data_binding)
-
-        return cls.db.standardize_recordset(recordset=result)
-
-
-
-    @classmethod
     def _process_key_name_value(cls, key_name :str, key_value, string_match=None, case_sensitive=True) -> str:
         """
         Helper method for get_nodes_by_filter()
@@ -2328,80 +2364,6 @@ class GraphSchema:
                     result.append(wrapped_field_name)
 
         return ", ".join(result)
-
-
-
-    @classmethod
-    def search_data_node(cls, uri = None, internal_id = None, hide_schema=True) -> Union[dict, None]:
-        """
-        Return a dictionary with all the key/value pairs of the properties of given (single) data node
-
-        See also get_data_node() and locate_node()
-
-        :param uri:         The `uri` field value to uniquely identify the data node
-        :param internal_id: Alternate way to specify the data node;
-                                cannot specify both `uri` and `internal_id` arguments
-
-        :param hide_schema: [OPTIONAL] By default (True),
-                                the special schema field `_CLASS` is omitted from the results
-
-        :return:            A dictionary with all the key/value pairs, if node is found; or None if not
-        """
-        # TODO: merge with get_data_node() and perhaps also with locate_node()
-        # TODO: add function that only returns a specified single Property, or specified list of Properties
-        # TODO: optionally also return node label
-
-        if uri is not None:
-            assert internal_id is None, \
-                "GraphSchema.search_data_node(): arguments `uri` and `internal_id` cannot both be specified"
-
-            match = cls.db.match(key_name="uri", key_value=uri)
-        else:   # uri is None
-            assert internal_id is not None, \
-                "GraphSchema.search_data_node(): one of arguments `uri` and `internal_id` must be specified"
-
-            match = cls.db.match(internal_id=internal_id)
-
-
-        d = cls.db.get_nodes(match, single_row=True)    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-        if d is None:               # No matching node found
-            return  None
-
-        if "_CLASS" not in d:      # If not a Data Node
-            return None
-
-        if hide_schema:
-            del d["_CLASS"]
-
-        return d
-
-
-
-    @classmethod
-    def locate_node(cls, node_id: int | str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
-        """
-        EXPERIMENTAL - a generalization of get_data_node()
-
-        Return the "match" structure to later use to locate a node identified
-        either by its internal database ID (default), or by a primary key (with optional label.)
-
-        NOTE: No database operation is actually performed.
-
-        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
-        :param id_type: For example, "uri";
-                            if not specified, the node ID is assumed to be the internal database ID's
-        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
-        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
-
-        :return:        A "CypherBuilder" object
-        """
-        if id_type:
-            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
-        else:
-            match_structure = cls.db.match(internal_id=node_id)
-
-        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
 
 
 
