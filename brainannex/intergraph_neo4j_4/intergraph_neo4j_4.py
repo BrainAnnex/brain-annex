@@ -27,6 +27,10 @@ class InterGraph:
     A thin wrapper around the Neo4j python connectivity library "Neo4j Python Driver",
     which is documented at: https://neo4j.com/docs/api/python-driver/4.4/index.html
 
+    This is a bottom layer that is dependent on the specific graph database
+    (for operations such as connection, indexes, constraints),
+    and insulates the higher layers from it.
+
     This "CORE" library allows the execution of arbitrary Cypher (query language) commands,
     and helps manage the complex data structures that they return.
     It may be used independently,

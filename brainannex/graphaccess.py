@@ -59,11 +59,11 @@ class GraphAccess(InterGraph):
     IMPORTANT : this works with various versions of the Neo4j database (and, possibly,
                 other graph databases), depending on the version of the underlying InterGraph library)
 
-    High-level class to interface with the Neo4j graph database from Python.
+    High-level class to interface with the underlying graph database from Python.
 
     This class is a layer above its base class "InterGraph" (which is database-specific)
         and it provides a higher-level functionality for common database operations,
-        such as lookup, creation, deletion, modification, import, indices, etc.
+        such as lookup, creation, deletion, modification, import, etc.
 
     It makes use of separate helper classes (NOT meant for the end user) in the file cypher_utils.py
     """
