@@ -203,7 +203,7 @@ class GraphSchema:
 
 
     @classmethod
-    def create_class(cls, name :str, code = None, strict = False, no_datanodes = False) -> (int, str):
+    def create_class(cls, name :str, code=None, strict=False, no_datanodes=False, create_index=True) -> (int|str, str):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -215,18 +215,21 @@ class GraphSchema:
         NOTE: if you want to add Properties at the same time that you create a new Class,
               use the function create_class_with_properties() instead.
 
-        :param name:        Name to give to the new Class
-        :param code:        Optional string indicative of the software handler for this Class and its subclasses
-        :param strict:      If True, the Class will be of the "S" (Strict) type;
-                                otherwise, it'll be of the "L" (Lenient) type
+        :param name:        Name to give to the new Class (any leading/trailing blank will first be stripped off)
+        :param code:        [OPTIONAL] String indicative of the software handler for this Class and its subclasses
+        :param strict:      [OPTIONAL] If True, the Class will be of the "Strict" type;
+                                otherwise (default), it'll be of the "Lenient" type
                             Explained under the comments for the GraphSchema class
 
-        :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
-                                typically used by Classes having an intermediate role in the context of other Classes
+        :param no_datanodes:[OPTIONAL] If True, it means that this Class does not allow data node
+                                to have a "SCHEMA" relationship to it;
+                                typically used by Classes having an intermediate role in the context of other Classes.
+                                By default, False
+        :param create_index:[OPTIONAL] 
 
-        :return:            An (int, str) pair of integers with the internal database ID and the unique uri
+        :return:            A pair of values with the internal database ID and the unique `uri`
                                 assigned to the node just created, if it was created;
-                                an Exception is raised if a class by that name already exists
+                                an Exception is raised if a Class by that name already exists
         """
         #TODO: offer the option to link to an existing Class, like create_class_with_properties() does
         #       link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
@@ -248,8 +251,14 @@ class GraphSchema:
         if no_datanodes:
             attributes["no_datanodes"] = True
 
-        #print(f"create_class(): about to call db.create_node with parameters `CLASS` and `{attributes}`")
+
+        # Create the database node for this new class
         internal_id = cls.db.create_node(labels=["CLASS", "SCHEMA"], properties=attributes)
+
+        #TODO: create an index and constraint for the pair (label=name, properties="uri") , unless user selects create_index=False
+        if create_index:
+            cls.db.create_constraint(label=name, key="uri")
+
         return (internal_id, schema_uri)
 
 

@@ -2730,7 +2730,7 @@ class GraphAccess(InterGraph):
             if fields is not None:
                 # Copy over the requested fields
                 for f in fields:
-                    d_simple[f] = d[f]
+                    d_simple[f] = d.get(f)
             else:
                 # Copy over ALL fields, except "node_labels" and "internal_id" (which are handled separately)
                  for k, v in d.items():
