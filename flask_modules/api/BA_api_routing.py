@@ -823,7 +823,7 @@ class ApiRouting:
                             and an "error_message" key with details
             """
             try:
-                payload = DataManager.get_text_media_content(uri)
+                payload = DataManager.get_text_media_content(uri, class_name="Note")
                 #print(f"get_text_media() is returning the following text [first 30 chars]: `{payload[:30]}`")
                 response_data = {"status": "ok", "payload": payload}                     # Successful termination
             except Exception as ex:
@@ -846,7 +846,7 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/remote_access_note/123
             """
             try:
-                payload = DataManager.get_text_media_content(uri, "n", public_required=True)
+                payload = DataManager.get_text_media_content(uri=uri, class_name="Note", public_required=True)
                 #print(f"remote_access_note() is returning the following text [first 30 chars]: `{payload[:30]}`")
                 response_data = {"status": "ok", "payload": payload}    # Successful
                 response = jsonify(response_data)
@@ -864,17 +864,21 @@ class ApiRouting:
 
 
 
-        @bp.route('/serve_media/<uri>')
-        @bp.route('/serve_media/<uri>/<th>')
+        @bp.route('/serve_media/<class_name>/<uri>')
+        @bp.route('/serve_media/<class_name>/<uri>/<th>')
         @login_required
-        def serve_media(uri, th=None):
+        def serve_media(class_name, uri, th=None):
             """
-            Retrieve and return the contents of a data media item (for now, just Images or Documents).
+            Retrieve and return the contents of a data media item.
             If ANY value is specified for the argument "th", then the thumbnail version is returned (only
                 applicable to images)
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/serve_media/1234
+            EXAMPLES of invocation:
+                http://localhost:5000/BA/api/serve_media/Image/1234
+                http://localhost:5000/BA/api/serve_media/Image/1234/th
+                http://localhost:5000/BA/api/serve_media/Document/888
 
+            :param class_name:
             :param uri: The URI of a data node representing a media Item (such as an "Image" or "Document")
             :param th:  Only applicable to Images.  If not None, then the thumbnail version is returned
             :return:    A Flask Response object containing the data for the requested media,
@@ -883,7 +887,7 @@ class ApiRouting:
                             together with an error message
             """
             try:
-                (suffix, content) = MediaManager.get_binary_content(uri, th=th)
+                (suffix, content) = MediaManager.get_binary_content(uri, class_name=class_name, th=th)
                 response = make_response(content)
                 # Set the MIME type
                 mime_type = MediaManager.get_mime_type(suffix)
@@ -891,7 +895,7 @@ class ApiRouting:
                 #print(f"serve_media() is returning the contents of data file, with file suffix `{suffix}`.  "
                 #      f"Serving with MIME type `{mime_type}`")
             except Exception as ex:
-                err_details = f"Unable to retrieve Media Item with URI `{uri}`. {exceptions.exception_helper(ex)}"
+                err_details = f'Unable to retrieve Media Item of Class "{class_name}" with uri "{uri}". {exceptions.exception_helper(ex)}'
                 #print(f"serve_media() encountered the following error: {err_details}")
                 response = make_response(err_details, 404)
 

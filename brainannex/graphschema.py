@@ -1765,7 +1765,7 @@ class GraphSchema:
         """
         Return a dictionary with all the key/value pairs of the attributes of a single Data Node,
         specified either by its internal database ID, or by its Class name and primary key.
-        If there's more than 1 match, an Exception is raised.
+        If opting to search by primary key, and more than 1 match comes up, an Exception is raised.
 
         :param node_id:     Either an internal database ID (int or str), or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
@@ -1775,6 +1775,9 @@ class GraphSchema:
         :return:            If not found, return None;
                                 otherwise, return a dict with the name/values of the node's properties
         """
+        # TODO: add function that only returns a specified single Property, or specified list of Properties
+        # TODO: optionally also return node label
+
         # Prepare a Cypher query
         where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key,
                                                                   class_name=class_name, method="get_data_node")
@@ -1802,54 +1805,6 @@ class GraphSchema:
         d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
 
         if hide_schema and ("_CLASS" in d):
-            del d["_CLASS"]
-
-        return d
-
-
-
-    @classmethod
-    def search_data_node(cls, uri = None, internal_id = None, hide_schema=True) -> Union[dict, None]:
-        """
-        Return a dictionary with all the key/value pairs of the properties of given (single) data node
-
-        See also get_data_node() and locate_node()
-
-        :param uri:         The `uri` field value to uniquely identify the data node
-        :param internal_id: Alternate way to specify the data node;
-                                cannot specify both `uri` and `internal_id` arguments
-
-        :param hide_schema: [OPTIONAL] By default (True),
-                                the special schema field `_CLASS` is omitted from the results
-
-        :return:            A dictionary with all the key/value pairs, if node is found; or None if not
-        """
-        # TODO: merge with get_data_node() and perhaps also with locate_node()
-        # TODO: add function that only returns a specified single Property, or specified list of Properties
-        # TODO: optionally also return node label
-        # TODO: standardize the way to specify the node, as done by data_node_exists()
-
-        if uri is not None:
-            assert internal_id is None, \
-                "GraphSchema.search_data_node(): arguments `uri` and `internal_id` cannot both be specified"
-
-            match = cls.db.match(key_name="uri", key_value=uri)
-        else:   # uri is None
-            assert internal_id is not None, \
-                "GraphSchema.search_data_node(): one of arguments `uri` and `internal_id` must be specified"
-
-            match = cls.db.match(internal_id=internal_id)
-
-
-        d = cls.db.get_nodes(match, single_row=True)    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-        if d is None:               # No matching node found
-            return  None
-
-        if "_CLASS" not in d:      # If not a Data Node
-            return None
-
-        if hide_schema:
             del d["_CLASS"]
 
         return d
@@ -2121,7 +2076,7 @@ class GraphSchema:
     def data_node_exists(cls, node_id, id_key=None, class_name=None) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
-        If opting to search by primary key, and more than 1 node comes up, an Exception is raised
+        If opting to search by primary key, and more than 1 node comes up, an Exception is raised.
 
         :param node_id:     Either an internal database ID (int or str), or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
@@ -2133,15 +2088,13 @@ class GraphSchema:
         #TODO: use this as a MODEL for other functions, as far as argument passing goes
 
         # Prepare a Cypher query to locate the number of the data nodes
-        where_clause, class_clause = cls._assemble_cypher_clauses(id_key=id_key, class_name=class_name, method="data_node_exists")
+        where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key, class_name=class_name, method="data_node_exists")
 
         q = f'''
             MATCH (dn) 
-            {where_clause} {class_clause}
+            {where_clause}
             RETURN COUNT(dn) AS number_found
             '''
-
-        data_binding = {"node_id" : node_id, "class_name": class_name}
 
         #cls.db.debug_query_print(q, data_binding)
         number_found = cls.db.query(q, data_binding=data_binding,
@@ -2152,8 +2105,8 @@ class GraphSchema:
         elif number_found == 1:
             return True
         else:
-            raise Exception(f"data_node_exists(): more than 1 node was found "
-                            f"with the same URI ({node_id}), which ought to be unique")
+            raise Exception(f"data_node_exists(): more than 1 `{class_name}` node was found "
+                            f"with the same `{id_key}` ({node_id}), which ought to be unique")
 
 
 

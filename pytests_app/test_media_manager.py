@@ -69,11 +69,11 @@ def test_lookup_media_file(db):
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
                                  new_uri="image-1")
 
-    assert MediaManager.lookup_media_file(uri="image-1") == ("D:/media/my_media_folder/images/", "snap1", "jpg")
-    assert MediaManager.lookup_media_file(uri="image-1", thumb=True) == ("D:/media/my_media_folder/images/resized/", "snap1", "jpg")
+    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image") == ("D:/media/my_media_folder/images/", "snap1", "jpg")
+    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) == ("D:/media/my_media_folder/images/resized/", "snap1", "jpg")
 
     with pytest.raises(Exception):
-        assert MediaManager.lookup_media_file("unknown_uri")
+        assert MediaManager.lookup_media_file("unknown_uri", class_name="Image")
 
     # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
     GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
@@ -82,9 +82,8 @@ def test_lookup_media_file(db):
 
     GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
-    assert MediaManager.lookup_media_file(uri="image-1") == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
-    assert MediaManager.lookup_media_file(uri="image-1", thumb=True) == ("D:/media/my_media_folder/images/Tahiti vacation/resized/", "snap1", "jpg")
-
+    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image") == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
+    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) == ("D:/media/my_media_folder/images/Tahiti vacation/resized/", "snap1", "jpg")
 
 
 
@@ -96,11 +95,11 @@ def test_get_full_filename(db):
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
                                  new_uri="image-1")
 
-    assert MediaManager.get_full_filename("image-1") == "D:/media/my_media_folder/images/snap1.jpg"
-    assert MediaManager.get_full_filename("image-1", thumb=True) == "D:/media/my_media_folder/images/resized/snap1.jpg"
+    assert MediaManager.get_full_filename("image-1", class_name="Image") == "D:/media/my_media_folder/images/snap1.jpg"
+    assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) == "D:/media/my_media_folder/images/resized/snap1.jpg"
 
     with pytest.raises(Exception):
-        assert MediaManager.get_full_filename("unknown_uri")
+        assert MediaManager.get_full_filename("unknown_uri", class_name="Image")
 
     # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
     GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
@@ -109,8 +108,9 @@ def test_get_full_filename(db):
 
     GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
-    assert MediaManager.get_full_filename("image-1") == "D:/media/my_media_folder/images/Tahiti vacation/snap1.jpg"
-    assert MediaManager.get_full_filename("image-1", thumb=True) == "D:/media/my_media_folder/images/Tahiti vacation/resized/snap1.jpg"
+    assert MediaManager.get_full_filename("image-1", class_name="Image") == "D:/media/my_media_folder/images/Tahiti vacation/snap1.jpg"
+    assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) == \
+                                "D:/media/my_media_folder/images/Tahiti vacation/resized/snap1.jpg"
 
 
 

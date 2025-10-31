@@ -86,28 +86,28 @@ def test_update_content_item(db):
     # Alter the Content Item
     DataManager.update_content_item(uri="photo_1", class_name="Photo",
                                     update_data={"caption": "beach at sunrise"})    # No actual change
-    result = GraphSchema.search_data_node(uri="photo_1")
+    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="uri", class_name="Photo")
     assert result.get("caption") == "beach at sunrise"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter the Content Item
     DataManager.update_content_item(uri="photo_1", class_name="Photo",
                                     update_data={"caption": "    beach under full moon  "})
-    result = GraphSchema.search_data_node(uri="photo_1")
+    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="uri", class_name="Photo")
     assert result.get("caption") == "beach under full moon"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter again the Content Item
     DataManager.update_content_item(uri="photo_1", class_name="Photo",
                                     update_data={"caption": "      "})
-    result = GraphSchema.search_data_node(uri="photo_1")
+    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="uri", class_name="Photo")
     assert result.get("caption") is None        # That field is now gone altogether
     assert result.get("remarks") is None
 
     # Alter yet again the Content Item
     DataManager.update_content_item(uri="photo_1", class_name="Photo",
                                     update_data={"remarks": "3 is a charm!  ", "caption": "  beach in the late afternoon"})
-    result = GraphSchema.search_data_node(uri="photo_1")
+    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="uri", class_name="Photo")
     assert result.get("caption") == "beach in the late afternoon"
     assert result.get("remarks") == "3 is a charm!"
 
