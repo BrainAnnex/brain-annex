@@ -1723,47 +1723,85 @@ class GraphSchema:
 
 
     @classmethod
-    def get_data_node(cls, class_name :str, node_id, id_key=None, hide_schema=True) -> dict|None:
+    def _assemble_cypher_clauses(cls, node_id, id_key, class_name, dummy_name="dn", method=None) -> (str, dict):
         """
-        Return a dictionary with all the key/value pairs of the attributes of a Data Node
-        specified by its Class name, and by a unique identifier.
-        If there's more than 1 match, an Exception is raised.
+        Helper function to prepare two clause to be used in forming a Cypher query.
 
-        :param class_name:  The name of the Schema Class that this Data Node is associated to
         :param node_id:     Either an internal database ID (int or str), or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
-                                Leave blank to use the internal database ID
+                                Alternatively, leave blank to use the internal database ID
+        :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
+        :param method:      [OPTIONAL] Name of the calling function; used only in case of error messages
+        :return:            Pair (where_clause, data_binding)
+        """
+        # Prepare the clause part of a Cypher query
+        if id_key is None:
+            if class_name:
+                # Searching by internal database ID and by Class Name
+                where_clause = f"WHERE (id({dummy_name}) = $node_id) AND (dn.`_CLASS` = $class_name)"
+                data_binding = {"node_id" : node_id, "class_name": class_name}
+            else:
+                # Searching purely by internal database ID
+                where_clause = f"WHERE (id({dummy_name}) = $node_id)"
+                data_binding = {"node_id" : node_id}
+        else:
+            # Searching by primary key, plus by Class name
+            if not class_name:
+                if not method:
+                    method = "_assemble_cypher_clauses"
+
+                raise Exception(f"{method}(): argument `class_name` is required when searching by primary key")
+
+            where_clause = f"WHERE (dn.`{id_key}` = $node_id) AND (dn.`_CLASS` = $class_name)"
+            data_binding = {"node_id" : node_id, "class_name": class_name}
+
+
+        return (where_clause, data_binding)
+
+
+
+    @classmethod
+    def get_single_data_node(cls, node_id, id_key=None, class_name=None, hide_schema=True) -> dict | None:
+        """
+        Return a dictionary with all the key/value pairs of the attributes of a single Data Node,
+        specified either by its internal database ID, or by its Class name and primary key.
+        If there's more than 1 match, an Exception is raised.
+
+        :param node_id:     Either an internal database ID (int or str), or a primary key value
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+                                Alternatively, leave blank to use the internal database ID
+        :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS` is omitted
         :return:            If not found, return None;
                                 otherwise, return a dict with the name/values of the node's properties
         """
-        # TODO: use the argument standards of data_node_exists()
-        if id_key is None:
-            where_clause = "WHERE (id(dn) = $node_id)"
-        else:
-            where_clause = f"WHERE (dn.`{id_key}` = $node_id)"
+        # Prepare a Cypher query
+        where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key,
+                                                                  class_name=class_name, method="get_data_node")
 
         q = f'''
             MATCH (dn)
-            {where_clause} AND (dn.`_CLASS` = $class_name)
+            {where_clause}
             RETURN dn
+            LIMIT 2
             '''
-
-        data_binding = {"class_name": class_name, "node_id": node_id}
+            # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
 
         #cls.db.debug_query_print(q, data_binding, "get_data_node")
+        result = cls.db.query(q, data_binding=data_binding)
 
-        result = cls.db.query(q, data_binding, single_row=True)
-
-        if result is None:
+        if result == []:
             return None
 
         assert len(result) == 1, \
-            f"get_data_node(): the specified key ({id_key}) is not unique - multiple records were located"
+            f"get_data_node(): the specified key (`{id_key}`) is not primary - multiple records were located for (`{id_key}`={node_id})"
+
+
+        result = result[0]  # Extract the single element from the list
 
         d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
 
-        if hide_schema:
+        if hide_schema and ("_CLASS" in d):
             del d["_CLASS"]
 
         return d
@@ -2087,39 +2125,26 @@ class GraphSchema:
 
         :param node_id:     Either an internal database ID (int or str), or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
-                                Leave blank to use the internal database ID
+                                Alternatively, leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :return:            True if the specified Data Node exists, or False otherwise
         """
         #TODO: consider adding an `include_ancestors` option
         #TODO: use this as a MODEL for other functions, as far as argument passing goes
 
-        # Prepare the clause part of a Cypher query
-        if id_key is None:
-            # Using the internal database ID
-            clause = "WHERE id(dn) = $node_id"
-        else:
-            # Using a primary key and the Class name
-            assert class_name is not None, "" \
-                "data_node_exists(): argument `class_name` is required when searching by primary key"
-            clause = f"WHERE dn.`{id_key}` = $node_id"
-
-        if class_name:
-            schema_clause = "AND dn.`_CLASS` = $class_name"
-        else:
-            schema_clause = ""
-
-
-
         # Prepare a Cypher query to locate the number of the data nodes
+        where_clause, class_clause = cls._assemble_cypher_clauses(id_key=id_key, class_name=class_name, method="data_node_exists")
+
         q = f'''
             MATCH (dn) 
-            {clause} {schema_clause}
+            {where_clause} {class_clause}
             RETURN COUNT(dn) AS number_found
             '''
 
-        #cls.db.debug_query_print(q, {"node_id" : node_id, "class_name": class_name})
-        number_found = cls.db.query(q, {"node_id" : node_id, "class_name": class_name},
+        data_binding = {"node_id" : node_id, "class_name": class_name}
+
+        #cls.db.debug_query_print(q, data_binding)
+        number_found = cls.db.query(q, data_binding=data_binding,
                                     single_cell="number_found")
 
         if number_found == 0:

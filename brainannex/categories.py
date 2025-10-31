@@ -88,9 +88,7 @@ class Categories:
         :return:                The Category's name (or a blank dictionary if not found)
                                     EXAMPLE:  {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
         """
-        # Note: since the category_uri is a primary key,
-        #       specifying a value for the labels and the "schema_code" property is for redundancy
-        return GraphSchema.get_data_node(class_name="Category", node_id=category_uri, id_key="uri")
+        return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
 
 
 

@@ -903,6 +903,78 @@ def test_get_schema_uri(db):
 
 ################   DATA NODES : READING   ##############
 
+def test__assemble_cypher_clauses():
+    result = GraphSchema._assemble_cypher_clauses(node_id=123, id_key=None, class_name=None)
+    assert result == ( "WHERE (id(dn) = $node_id)" , {"node_id": 123} )
+
+    result = GraphSchema._assemble_cypher_clauses(node_id=123, id_key=None, class_name="Car")
+    assert result == ( "WHERE (id(dn) = $node_id) AND (dn.`_CLASS` = $class_name)" ,
+                       {"node_id": 123, "class_name": "Car"} )
+
+    result = GraphSchema._assemble_cypher_clauses(node_id="white", id_key="color", class_name="Car")
+    assert result == ( "WHERE (dn.`color` = $node_id) AND (dn.`_CLASS` = $class_name)" ,
+                        {"node_id": "white", "class_name": "Car"} )
+
+    with pytest.raises(Exception):
+        GraphSchema._assemble_cypher_clauses(node_id="white", id_key="color", class_name="")
+
+    with pytest.raises(Exception):
+        GraphSchema._assemble_cypher_clauses(node_id="white", id_key="color", class_name=None, method="caller_fn")
+
+
+
+def test_get_data_node(db):
+    db.empty_dbase()
+
+    assert GraphSchema.get_single_data_node(node_id=1234) is None      # Database is empty
+
+
+    # Create a 1st Car node
+    GraphSchema.create_class(name="Car", strict=False)
+
+    db_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
+
+    result = GraphSchema.get_single_data_node(node_id=db_id)
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node(node_id=db_id, class_name="Car")     # Redundant use of class_name
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node(node_id=db_id, class_name="Car", hide_schema=False)
+    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node(node_id="yellow", id_key="color", class_name="Car")
+    assert result is None   # Not found
+
+
+    # Create a 2nd Car node: another Toyota, but this time red
+    GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "red"})
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node(node_id="Toyota", id_key="color") # Missing class_name
+
+    result = GraphSchema.get_single_data_node(node_id="white", id_key="color", class_name="Car")   # Using "color" as primary key
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node(node_id="Toyota", id_key="make", class_name="Car")   # Using "make" as primary key will fail uniqueness
+
+
+    # Create a 3rd Car node, this time with a "uri" field
+    GraphSchema.create_data_node(class_name="Car",
+                                 properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
+
+    result = GraphSchema.get_single_data_node(node_id="car-1", id_key="uri", class_name="Car")
+    assert result == {'color': 'blue', 'make': 'Honda', 'uri': 'car-1'}
+
+
+    # Now try it on a generic database node that is NOT a Data Node
+    db_id = db.create_node(labels="Truck", properties={"make": "BMW", "color": "black"})
+    result = GraphSchema.get_single_data_node(class_name="Truck", node_id=db_id)
+    assert result is None
+
+
+
 def test_all_properties(db):
     pass    # TODO
 
@@ -943,25 +1015,6 @@ def test_data_link_exists(db):
 
 def test_get_data_link_properties(db):
     pass    # TODO
-
-
-
-def test_get_data_node(db):
-    db.empty_dbase()
-
-    GraphSchema.create_class(name="Car")
-    db_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
-
-    result = GraphSchema.get_data_node(class_name="Car", node_id=db_id)
-    assert result == {'color': 'white', 'make': 'Toyota'}
-
-    result = GraphSchema.get_data_node(class_name="Car", node_id=db_id, hide_schema=False)
-    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-    # Now try it on a generic database node that is NOT a Data Node
-    db_id = db.create_node(labels="Car", properties={"make": "BMW", "color": "red"})
-    result = GraphSchema.get_data_node(class_name="Car", node_id=db_id)
-    assert result is None
 
 
 
