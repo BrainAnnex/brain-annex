@@ -188,6 +188,26 @@ class InterGraph:
 
 
 
+    def empty_dbase(self, keep_labels=None, drop_indexes=False, drop_constraints=False) -> None:
+        """
+        Use this to get rid of everything in the database,
+        including all the indexes and constraints (unless otherwise specified.)
+        Optionally, keep nodes with a given label, or keep the indexes, or keep the constraints
+
+        :param keep_labels:     An optional list of strings, indicating specific labels to KEEP
+        :param drop_indexes:    Flag indicating whether to also ditch all indexes (by default, True)
+        :param drop_constraints:Flag indicating whether to also ditch all constraints (by default, True)
+
+        :return:                None
+        """
+        self.delete_nodes_by_label(keep_labels=keep_labels)
+
+        if drop_indexes:
+            self.drop_all_indexes(including_constraints=drop_constraints)
+
+
+
+
 
 
     #####################################################################################################
@@ -553,24 +573,6 @@ class InterGraph:
 
             return stats_dict
 
-
-
-    def empty_dbase(self, keep_labels=None, drop_indexes=False, drop_constraints=False) -> None:
-        """
-        Use this to get rid of everything in the database,
-        including all the indexes and constraints (unless otherwise specified.)
-        Optionally, keep nodes with a given label, or keep the indexes, or keep the constraints
-
-        :param keep_labels:     An optional list of strings, indicating specific labels to KEEP
-        :param drop_indexes:    Flag indicating whether to also ditch all indexes (by default, True)
-        :param drop_constraints:Flag indicating whether to also ditch all constraints (by default, True)
-
-        :return:                None
-        """
-        self.delete_nodes_by_label(keep_labels=keep_labels)
-
-        if drop_indexes:
-            self.drop_all_indexes(including_constraints=drop_constraints)
 
 
 

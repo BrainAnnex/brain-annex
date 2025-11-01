@@ -34,7 +34,7 @@ class InterGraph:
     This "CORE" library allows the execution of arbitrary Cypher (query language) commands,
     and helps manage the complex data structures that they return.
     It may be used independently,
-    or as the foundation of the higher-level child class, "NeoAccess"
+    or as the foundation of the higher-level child class, "GraphAccess"
 
     SECTIONS IN THIS CLASS:
         * INIT (constructor) and DATABASE CONNECTION
@@ -81,11 +81,11 @@ class InterGraph:
 
         self.driver = None
 
-        assert host, "Cannot instantiate the NeoAccess object with an undefined argument`host`; " \
+        assert host, "Cannot instantiate the GraphAccess object with an undefined argument`host`; " \
                      "unable to obtain a default value from getenv('NEO4J_HOST') . You need to pass a value, " \
                      "or to set that environment variable"
 
-        assert credentials, "Cannot instantiate the NeoAccess object with an undefined argument `credentials`; " \
+        assert credentials, "Cannot instantiate the GraphAccess object with an undefined argument `credentials`; " \
                             "unable to obtain a default value from getenv('NEO4J_USER') and getenv('NEO4J_PASSWORD') . You need to pass a value, " \
                             "or to set those environment variables"
 
@@ -184,6 +184,25 @@ class InterGraph:
         """
         if self.driver is not None:
             self.driver.close()
+
+
+
+    def empty_dbase(self, keep_labels=None, drop_indexes=False, drop_constraints=False) -> None:
+        """
+        Use this to get rid of everything in the database,
+        including all the indexes and constraints (unless otherwise specified.)
+        Optionally, keep nodes with a given label, or keep the indexes, or keep the constraints
+
+        :param keep_labels:     An optional list of strings, indicating specific labels to KEEP
+        :param drop_indexes:    Flag indicating whether to also ditch all indexes (by default, True)
+        :param drop_constraints:Flag indicating whether to also ditch all constraints (by default, True)
+
+        :return:                None
+        """
+        self.delete_nodes_by_label(keep_labels=keep_labels)
+
+        if drop_indexes:
+            self.drop_all_indexes(including_constraints=drop_constraints)
 
 
 
@@ -527,25 +546,6 @@ class InterGraph:
             stats_dict['returned_data'] = data_as_list  # Add an extra entry to the dictionary, with the data returned by the query
 
             return stats_dict
-
-
-
-    def empty_dbase(self, keep_labels=None, drop_indexes=False, drop_constraints=False) -> None:
-        """
-        Use this to get rid of everything in the database,
-        including all the indexes and constraints (unless otherwise specified.)
-        Optionally, keep nodes with a given label, or keep the indexes, or keep the constraints
-
-        :param keep_labels:     An optional list of strings, indicating specific labels to KEEP
-        :param drop_indexes:    Flag indicating whether to also ditch all indexes (by default, True)
-        :param drop_constraints:Flag indicating whether to also ditch all constraints (by default, True)
-
-        :return:                None
-        """
-        self.delete_nodes_by_label(keep_labels=keep_labels)
-
-        if drop_indexes:
-            self.drop_all_indexes(including_constraints=drop_constraints)
 
 
 
