@@ -71,11 +71,11 @@ Vue.component('vue-plugin-timer',
 
                         <tr style='height:100px'>
                             <td align="center" colspan="3">
-                                <button @click="set_limit(0)" class="btn btn-primary btn-lg">Start</button>
+                                <button @click="set_limit(false)" class="btn btn-primary btn-lg">Start</button>
 
                                 <button @click="timer_pause()" class="btn btn-warning" >Pause</button>
 
-                                <button @click="rset_tmr()" id="stop" class="btn btn-danger">Reset</button>
+                                <button @click="reset_timer()" id="stop" class="btn btn-danger">Reset</button>
                             </td>
                         </tr>
                     </tbody>
@@ -98,8 +98,9 @@ Vue.component('vue-plugin-timer',
         // ----------------  DATA  -----------------
         data: function() {
             return {
-                show_timer: "00:00:00",
+                show_timer: "00:00:00",     // The timer's display
 
+                // The following 3 are the parts of the value that the alarm gets set to
                 hrs: 0,
                 min: 0,
                 sec: 0,
@@ -108,13 +109,10 @@ Vue.component('vue-plugin-timer',
 
                 timeup_message: "TIME UP",	// Time-is-up message (shown in lieu of the time display)
 
-                parselimit:0,
+                parselimit: 1,              // Number of seconds to the alarm; the alarm rings when parselimit gets down to 1
 
                 st:0,
-                limit:null,
-                curhour:null,
-                curmin:null,
-                cursec:null
+                limit:null
             }
         },
 
@@ -156,7 +154,7 @@ Vue.component('vue-plugin-timer',
                 units: Either 'hrs', 'min' or 'sec'
              */
             {
-                console.log(`In add_time_clock(): units = "${units}"`);
+                //console.log(`In add_time_clock(): units = "${units}"`);
 
                 if (units == "hrs")
                     this.hrs = this.increment_time(this.hrs, 23);
@@ -171,7 +169,7 @@ Vue.component('vue-plugin-timer',
                 units: Either 'hrs', 'min' or 'sec'
              */
             {
-                console.log(`In sub_time_clock(): units = "${units}"`);
+                //console.log(`In sub_time_clock(): units = "${units}"`);
 
                 if (units == "hrs")
                     this.hrs = this.decrement_time(this.hrs, 23);
@@ -198,34 +196,37 @@ Vue.component('vue-plugin-timer',
 
 
             set_limit(strtstop)
-            // strtstop is either 0 or 1
+            // strtstop is a boolean, indicating whether the timer is being stopped
             {
-                console.log(`In set_limit(): strtstop = "${strtstop}"`);
+                console.log(`In set_limit(): strtstop = ${strtstop}`);
 
                 // Prevent multiple settimeouts
                 if (this.st)
                     clearTimeout(this.st);
 
-                if (this.pause == 1)    // If in a paused state
+                if (this.pause)  {  // If in a paused state
                     limit = this.show_timer;
+                    console.log(`    limit = "${limit}"`);      // EXAMPLE: "00:00:05"
+                    var parselimit_str = limit.split(":");
+                    var parselimit_arr = [parseInt(parselimit_str[0]), parseInt(parselimit_str[1]), parseInt(parselimit_str[2])];
+                }
                 else
-                    limit = this.format(this.hrs) + ":" + this.format(this.min) + ":" + this.format(this.sec);
+                    //limit = this.format(this.hrs) + ":" + this.format(this.min) + ":" + this.format(this.sec);
+                    var parselimit_arr = [this.hrs, this.min, this.sec];
                     //limit=document.getElementById("hours").value + ":" + document.getElementById("min").value + ":" + document.getElementById("sec").value;
 
-                console.log(`    limit = "${limit}"`);      // EXAMPLE: "00:00:05"
+                console.log(`    parselimit_arr = ${parselimit_arr}`);      // EXAMPLE: [1, 23, 40]
 
-                parselimit = limit.split(":");
+
                 // Convert to seconds
-                parselimit = parselimit[0]*3600 + parselimit[1]*60 + parselimit[2];
-
-                this.parselimit = parseInt(parselimit);  // Convert to integer
-
-                // exit if timer wasn't set
-                console.log(`    this.parselimit = ${this.parselimit}`);    // EXAMPLE: 5
+                this.parselimit = parselimit_arr[0]*3600 + parselimit_arr[1]*60 + parselimit_arr[2];       
+                console.log(`    this.parselimit = ${this.parselimit}`);    // EXAMPLE: 105
+                
+                // Exit if timer wasn't set
                 if (this.parselimit <= 0)
                     return;
 
-                if (strtstop == 1)  {
+                if (strtstop)  {
                     console.log(`    calling clearTimeout()`);
                     clearTimeout(this.st);
                 }
@@ -237,6 +238,7 @@ Vue.component('vue-plugin-timer',
 
 
             begintimer()
+            // Handler function for JavaScript's setTimeout()
             {
                 console.log(`In begintimer(): this.parselimit = ${this.parselimit}`);
 
@@ -249,7 +251,6 @@ Vue.component('vue-plugin-timer',
 
                     x.play();
 
-                    //$(".my_audio").trigger('play');
                     //alert(timeup_message);
                     return;
                 }
@@ -257,43 +258,37 @@ Vue.component('vue-plugin-timer',
                     console.log("    decreasing this.parselimit");
                     this.parselimit-=1;
 
-                    this.curhour = Math.floor(this.parselimit/3600);
+                    // Asseble the 3 parts of what is shown in the display
+                    var curhour = Math.floor(this.parselimit/3600);
+                    var curmin;
+                    var cursec;
 
                     //alert(parselimit)
                     /* 	if greater than an hour divide by
                         60 but subtract the hours */
                     if (this.parselimit > 3600) {
                         //first convert hours back into seconds
-                        this.curmin = this.curhour * 3600;
+                        curmin = curhour * 3600;
                         //subtract that from total to get minutes left.
-                        this.curmin = this.parselimit - this.curmin;
-                        this.curmin = Math.floor(this.curmin/60);
+                        curmin = this.parselimit - curmin;
+                        curmin = Math.floor(curmin/60);
                         //alert(curmin);
                     }
                     else {
-                        this.curmin = Math.floor(this.parselimit/60);
+                        curmin = Math.floor(this.parselimit/60);
                     }
-                    this.cursec = this.parselimit%60;
+                    cursec = this.parselimit%60;
                 }
 
-                this.curhour = this.format(this.curhour);   // Convert to zero-padded 2-char string
+                curhour = this.format(curhour);   // Convert to zero-padded 2-char string
+                curmin = this.format(curmin);     // Convert to zero-padded 2-char string
+                cursec = this.format(cursec);     // Convert to zero-padded 2-char string
 
-                this.curmin += "";      // Convert to string
-                if(this.curmin.length == 1 || this.curmin==9) {
-                    this.curmin = "0" + this.curmin;
-                }
-                this.cursec += "";      // Convert to string
-                //alert(cursec);
-                if(this.cursec.length == 1 || this.cursec==9)
-                    this.cursec = "0" + this.cursec;
+                //console.log(`    curhour = ${curhour} | curmin = ${curmin} | cursec = ${cursec}`);
 
-                console.log(`    this.curhour = ${this.curhour} | this.curmin = ${this.curmin} | this.cursec = ${this.cursec}`);
-                this.curtime = this.curhour + ":" + this.curmin + ":" + this.cursec;
+                this.show_timer = curhour + ":" + curmin + ":" + cursec;
 
-                //alert(document.getElementById("show_timer").innerHTML);
-                this.show_timer = this.curtime;
-
-                this.st = setTimeout(this.begintimer, 1000);
+                this.st = setTimeout(this.begintimer, 1000);    // 1-sec timeout
             },
 
 
@@ -301,13 +296,13 @@ Vue.component('vue-plugin-timer',
             timer_pause()
             // Set the timer in a paused state
             {
-                this.set_limit('1');
+                this.set_limit(true);
                 this.pause = true;           // Set in paused state
             },
 
 
 
-            rset_tmr()
+            reset_timer()
             // Reset the timer
             {
                 this.show_timer = "00:00:00";
