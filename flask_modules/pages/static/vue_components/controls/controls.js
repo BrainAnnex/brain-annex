@@ -47,7 +47,7 @@ Vue.component('vue-controls',
                      class="control" title="Move DOWN" alt="Move DOWN">
 
                 <img v-show="!controls_to_hide.includes('tag')" @click="edit_tags" src="/BA/pages/static/graphics/tag_16.png"
-                     class="control" title="Edit TAGS/Metadata (TBA)" alt="Edit TAGS/Metadata (TBA)">
+                     class="control" title="Edit TAGS/Metadata" alt="Edit TAGS/Metadata">
 
                 <img @click="add_content_below" src="/BA/pages/static/graphics/plusCircle3_16_183316.png"
                      class="control" title="Add new item below" alt="Add new item below">

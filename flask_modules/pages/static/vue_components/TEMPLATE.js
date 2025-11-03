@@ -30,7 +30,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
 
             </div>		<!-- End of outer container -->
-            `,
+        `,
 
 
 
@@ -166,7 +166,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                //...
+                   //...
             },
 
         }  // METHODS

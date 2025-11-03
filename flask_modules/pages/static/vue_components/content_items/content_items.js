@@ -87,6 +87,8 @@ Vue.component('vue-content-items',
                 <button @click="add_new_item_below('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
                 <button @click="add_new_item_below('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
                 <button @click="add_new_item_below('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation</button>
+                &nbsp;&nbsp;&nbsp;
+                <button @click="add_new_item_below('timer', 'Timer Widget')" style="margin-right:10px">Timer Widget</button>
 
                 <!-- All leaf Classes that are instances of "Records" -->
                 <br>Add new record of type:
@@ -492,19 +494,24 @@ Vue.component('vue-content-items',
 
 
             add_new_item_below(schema_code, class_name)
-            /*  Add a new Content Item of the specified type, placed at the bottom of the page (past the last Item);
-                class_name is an OPTIONAL argument, only used for Content Item of type 'r'.
+            /*  Add a new Content Item of the specified type, placed just below the current Item.
+                TODO: consider an "add immediately" option, as done in v. 4
              */
             {
                 console.log(`In 'vue-content-items' component, add_new_item_below().`);
                 console.log(`    Request to insert new Content Item below Item with URI '${this.item.uri}'`);
                 console.log(`    New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
                 console.log("    `vue-content-items` component is sending 'insert-new-item' signal to its parent");
-                // This signal will be handled in the root component
+                // This signal will be handled by the root component
                 this.$emit('insert-new-item', {
                                                 schema_code: schema_code,
                                                 class_name: class_name
                                               });
+                // Note: after the signal is processed, the new Content Item will
+                //       appear in editing mode in its handler Vue component,
+                //       but not yet added to the database; it will be the Vue component's responsibility to save it,
+                //       or cancel the operation
+
                 this.insert_box = false;    // Hide the box that was used for the selection of the type of new Content
             },
 
@@ -550,7 +557,7 @@ Vue.component('vue-content-items',
                 if (registered_plugins.includes(item.schema_code))
                     return "vue-plugin-" + item.schema_code;
                 else
-                    return "vue-plugin-r"
+                    return "vue-plugin-r";      // Default to the generic "r" (general records) handler
             }
 
         }  // METHODS
