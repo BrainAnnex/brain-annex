@@ -71,7 +71,9 @@ Vue.component('vue-plugin-timer',
 
                         <tr style='height:100px'>
                             <td align="center" colspan="3">
-                                <button @click="set_limit(false)" class="btn btn-primary btn-lg">Start</button>
+                                <button @click="set_limit(false)" class="btn btn-primary btn-lg">
+                                    {{button_name()}}
+                                </button>
 
                                 <button @click="timer_pause()" class="btn btn-warning" >Pause</button>
 
@@ -126,6 +128,14 @@ Vue.component('vue-plugin-timer',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
+            button_name()
+            {
+                if (this.pause)
+                    return "RESUME!";
+
+                return "Start";
+            },
+
             format(num)
             // Convert the given integer value to zero-padded 2-char string
             {
@@ -202,6 +212,7 @@ Vue.component('vue-plugin-timer',
 
 
             set_limit(strtstop)
+            // Invoked by clicking on the Start/Resume button, as well as by clicking on the Pause button
             // strtstop is a boolean, indicating whether the timer is being stopped
             {
                 console.log(`In set_limit(): strtstop = ${strtstop}`);
@@ -213,14 +224,13 @@ Vue.component('vue-plugin-timer',
                 if (this.pause)  {  // If in a paused state
                     limit = this.show_timer;
                     console.log(`    limit = "${limit}" [NO LONGER USED]`);      // EXAMPLE: "00:00:05"
-                    //var parselimit_str = limit.split(":");      // TODO: warning - `limit` could be "TIME UP" !!
-                    //var parselimit_arr = [parseInt(parselimit_str[0]), parseInt(parselimit_str[1]), parseInt(parselimit_str[2])];
                     var parselimit_arr = [this.show_hrs, this.show_min, this.show_sec];
+
+                    if (!strtstop)
+                        this.pause = false;     // Take out of paused state
                 }
                 else
-                    //limit = this.format(this.hrs) + ":" + this.format(this.min) + ":" + this.format(this.sec);
                     var parselimit_arr = [this.hrs, this.min, this.sec];
-                    //limit=document.getElementById("hours").value + ":" + document.getElementById("min").value + ":" + document.getElementById("sec").value;
 
                 console.log(`    parselimit_arr = ${parselimit_arr}`);      // EXAMPLE: [1, 23, 40]
 
@@ -289,18 +299,13 @@ Vue.component('vue-plugin-timer',
                     cursec = this.parselimit % 60;
                 }
 
+                //console.log(`    curhour = ${curhour} | curmin = ${curmin} | cursec = ${cursec}`);
+
                 this.show_hrs = curhour;
                 this.show_min = curmin;
                 this.show_sec = cursec;
 
-                /*
-                this.show_hrs = this.format(curhour);   // Convert to zero-padded 2-char string
-                this.show_min = this.format(curmin);     // Convert to zero-padded 2-char string
-                this.show_sec = this.format(cursec);     // Convert to zero-padded 2-char string
-                */
-
-                //console.log(`    curhour = ${curhour} | curmin = ${curmin} | cursec = ${cursec}`);
-
+                // Format as 3 padded groups of characters, separated by ":"
                 this.show_timer = this.format(this.show_hrs) + ":" + this.format(this.show_min) + ":" + this.format(this.show_sec);
 
                 this.st = setTimeout(this.begintimer, 1000);    // 1-sec timeout
