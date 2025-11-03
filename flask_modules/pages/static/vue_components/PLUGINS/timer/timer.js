@@ -105,6 +105,12 @@ Vue.component('vue-plugin-timer',
                 min: 0,
                 sec: 0,
 
+                // The following 3 are the parts of the display
+                show_hrs: 0,
+                show_min: 0,
+                show_sec: 0,
+
+
                 pause: false,               // Boolean indicating whether timer is in pause mode
 
                 timeup_message: "TIME UP",	// Time-is-up message (shown in lieu of the time display)
@@ -206,9 +212,10 @@ Vue.component('vue-plugin-timer',
 
                 if (this.pause)  {  // If in a paused state
                     limit = this.show_timer;
-                    console.log(`    limit = "${limit}"`);      // EXAMPLE: "00:00:05"
-                    var parselimit_str = limit.split(":");
-                    var parselimit_arr = [parseInt(parselimit_str[0]), parseInt(parselimit_str[1]), parseInt(parselimit_str[2])];
+                    console.log(`    limit = "${limit}" [NO LONGER USED]`);      // EXAMPLE: "00:00:05"
+                    //var parselimit_str = limit.split(":");      // TODO: warning - `limit` could be "TIME UP" !!
+                    //var parselimit_arr = [parseInt(parselimit_str[0]), parseInt(parselimit_str[1]), parseInt(parselimit_str[2])];
+                    var parselimit_arr = [this.show_hrs, this.show_min, this.show_sec];
                 }
                 else
                     //limit = this.format(this.hrs) + ":" + this.format(this.min) + ":" + this.format(this.sec);
@@ -219,7 +226,7 @@ Vue.component('vue-plugin-timer',
 
 
                 // Convert to seconds
-                this.parselimit = parselimit_arr[0]*3600 + parselimit_arr[1]*60 + parselimit_arr[2];       
+                this.parselimit = parselimit_arr[0]*3600 + parselimit_arr[1]*60 + parselimit_arr[2];   // TODO: in some cases, this could be NaN !
                 console.log(`    this.parselimit = ${this.parselimit}`);    // EXAMPLE: 105
                 
                 // Exit if timer wasn't set
@@ -251,6 +258,8 @@ Vue.component('vue-plugin-timer',
 
                     x.play();
 
+                    this.pause = false;         // Clear the paused state (if applicable)  [TODO: experimental]
+
                     //alert(timeup_message);
                     return;
                 }
@@ -277,16 +286,22 @@ Vue.component('vue-plugin-timer',
                     else {
                         curmin = Math.floor(this.parselimit/60);
                     }
-                    cursec = this.parselimit%60;
+                    cursec = this.parselimit % 60;
                 }
 
-                curhour = this.format(curhour);   // Convert to zero-padded 2-char string
-                curmin = this.format(curmin);     // Convert to zero-padded 2-char string
-                cursec = this.format(cursec);     // Convert to zero-padded 2-char string
+                this.show_hrs = curhour;
+                this.show_min = curmin;
+                this.show_sec = cursec;
+
+                /*
+                this.show_hrs = this.format(curhour);   // Convert to zero-padded 2-char string
+                this.show_min = this.format(curmin);     // Convert to zero-padded 2-char string
+                this.show_sec = this.format(cursec);     // Convert to zero-padded 2-char string
+                */
 
                 //console.log(`    curhour = ${curhour} | curmin = ${curmin} | cursec = ${cursec}`);
 
-                this.show_timer = curhour + ":" + curmin + ":" + cursec;
+                this.show_timer = this.format(this.show_hrs) + ":" + this.format(this.show_min) + ":" + this.format(this.show_sec);
 
                 this.st = setTimeout(this.begintimer, 1000);    // 1-sec timeout
             },
