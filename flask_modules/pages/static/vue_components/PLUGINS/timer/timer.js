@@ -1,25 +1,31 @@
-/*  Vue component to display and edit Content Items of type "timer" (clock timer)
+/*  Vue component to display and edit Content Items of type "timer" (clock timer).
+    Set the desired amount of time, and the clock will count down until it reaches zero - then ring an alarm.
+
+    Adapted from "Javascript Countdown Timer", by Jason Russo http://thescriptcenter.com (modified Jason Chan with sound).
+    Alarms courtesy of https://pixabay.com/sound-effects/search/alarm%20clock%20gentle
+    and https://www.zedge.net/find/alarm%20gentle
+
+    TODO: maybe pass volume as a parameter.  Grey out "Reset" as appropriate
  */
 
 Vue.component('vue-plugin-timer',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:      EXAMPLE :    {class_name:"Recordset",
-                                          class:"YouTube Channel"
-                                          n_group:10,
-                                          order_by:"name",
-                                          pos:100,
-                                          schema_code:"rs",
-                                          uri:"rs-7"
-                                         }
+        /*  item_data:      EXAMPLE :
+                                        {"class_name":"Timer Widget",
+                                        "pos":0,
+                                        "ringtone":"dreamscape-alarm-clock-117680.mp3",
+                                        "schema_code":"timer",
+                                        "uri":"8809"
+                                        }
                                       (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
                             TODO: take "pos" and "class_name" out of item_data !
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Recordset on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    A list of field names (for the Recordset entity, not its records!), in Schema order.
-                                EXAMPLE: ["class", "order_by", "clause", "n_group", "caption"]
+            schema_data:    A list of field names, in Schema order.
+                                EXAMPLE: ["ringtone"]
          */
 
         template: `
@@ -69,7 +75,7 @@ Vue.component('vue-plugin-timer',
                             </td>
                         </tr>
 
-                        <tr style='height:100px'>
+                        <tr style='height:80px'>
                             <td align="center" colspan="3">
                                 <button @click="set_limit(false)" class="btn btn-primary btn-lg">
                                     {{button_name()}}
@@ -80,15 +86,22 @@ Vue.component('vue-plugin-timer',
                                 <button @click="reset_timer()" id="stop" class="btn btn-danger">Reset</button>
                             </td>
                         </tr>
+
+
+                        <tr style='height:40px'>
+                            <td align="center" colspan="3">
+                                <!-- preload="none"  -->
+                                <audio id="my_audio" controls style="display:none" >
+                                    <source v-bind:src="'/BA/pages/static/vue_components/PLUGINS/timer/alarms/' + audio_file" type="audio/mpeg">
+                                </audio>
+                                <button @click="play_audio('stop')" class='alarmButtons' style="color:red">SILENCE ALARM</button>
+                                <button @click="play_audio('play')" class='alarmButtons' style="color:gray">TEST ALARM</button>
+                                <br><span style="color:#999">{{audio_file}}</span><br>
+                            </td>
+                        </tr>
+
                     </tbody>
                     </table>
-
-                    <!-- preload="none"  -->
-                    <audio id="my_audio" controls style="display:none" >
-                        <source src="/BA/pages/static/vue_components/PLUGINS/timer/alarm_ringing.mp3" type="audio/mpeg">
-                    </audio>
-                    <button @click="play_audio('stop')" class='alarmButtons' style="color:red">SILENCE ALARM</button>
-                    <button @click="play_audio('play')" class='alarmButtons' style="color:gray">TEST ALARM</button>
 
                 </div>      <!-- End class='timerShell' -->
 
@@ -100,7 +113,9 @@ Vue.component('vue-plugin-timer',
         // ----------------  DATA  -----------------
         data: function() {
             return {
-                show_timer: "00:00:00",     // The timer's display
+                audio_file: this.item_data.ringtone,    // See list of available files in "alarms" subfolder
+
+                show_timer: "00:00:00",                 // The timer's display
 
                 // The following 3 are the parts of the value that the alarm gets set to
                 hrs: 0,
@@ -112,15 +127,14 @@ Vue.component('vue-plugin-timer',
                 show_min: 0,
                 show_sec: 0,
 
-
+                stopped: true,              // Boolean indicating whether timer is in stopped state (initially, and upon reaching final time)
                 pause: false,               // Boolean indicating whether timer is in pause mode
 
                 timeup_message: "TIME UP",	// Time-is-up message (shown in lieu of the time display)
 
                 parselimit: 1,              // Number of seconds to the alarm; the alarm rings when parselimit gets down to 1
 
-                st:0,
-                limit:null
+                st: 0                       // Timer ID from JavaScript setTimeout() method invocation
             }
         },
 
@@ -129,12 +143,18 @@ Vue.component('vue-plugin-timer',
         // ------------------------------   METHODS   ------------------------------
         methods: {
             button_name()
+            // Pick a name for the Start/Resume button
             {
+                if (this.stopped)
+                    return "Start";
+
                 if (this.pause)
                     return "RESUME!";
 
                 return "Start";
             },
+
+
 
             format(num)
             // Convert the given integer value to zero-padded 2-char string
@@ -152,15 +172,18 @@ Vue.component('vue-plugin-timer',
             {
                 console.log(`In play_audio(): task = "${task}"`);
 
-                var x = document.getElementById("my_audio");    // Audio object
+                var audio = document.getElementById("my_audio");    // HTML DOM Audio Object.  It inherits from HTMLMediaElement
+                                                                    // https://www.w3schools.com/jsref/dom_obj_audio.asp
 
                 if (task == 'play')  {
-                    //alert("about to play alarm. x = " + x);
-                    x.play();
+                    audio.volume = 0.04;    // Play at low volume (note: 1.0 = 100% volume)
+                    console.log(`    volume = "${audio.volume}"`);
+                    audio.play();
                 }
-                if (task == 'stop')  {
-                    x.pause();
-                }
+
+                if (task == 'stop')
+                    audio.pause();
+                    audio.currentTime = 0;  // Reset the current playback position to the start
             },
 
 
@@ -226,11 +249,16 @@ Vue.component('vue-plugin-timer',
                     console.log(`    limit = "${limit}" [NO LONGER USED]`);      // EXAMPLE: "00:00:05"
                     var parselimit_arr = [this.show_hrs, this.show_min, this.show_sec];
 
-                    if (!strtstop)
+                    if (!strtstop)  {
                         this.pause = false;     // Take out of paused state
+                        this.stopped = false;
+                    }
                 }
-                else
+                else  {
                     var parselimit_arr = [this.hrs, this.min, this.sec];
+                    if (!strtstop)
+                        this.stopped = false;
+                }
 
                 console.log(`    parselimit_arr = ${parselimit_arr}`);      // EXAMPLE: [1, 23, 40]
 
@@ -249,32 +277,29 @@ Vue.component('vue-plugin-timer',
                 }
                 else  {
                     console.log(`    calling setTimeout()`);
-                    this.st = setTimeout(this.begintimer, 1000);
+                    this.st = setTimeout(this.begin_timer, 1000);
                 }
             },
 
 
-            begintimer()
+            begin_timer()
             // Handler function for JavaScript's setTimeout()
             {
-                console.log(`In begintimer(): this.parselimit = ${this.parselimit}`);
+                //console.log(`In begin_timer(): this.parselimit = ${this.parselimit}`);
 
-                if (this.parselimit==1) {
-                    console.log("    ringing alarm...");
-                    //ding ding ding
+                if (this.parselimit==1) {       // It's time to ring the alarm
+                    //console.log("    ringing alarm...");
                     this.show_timer = this.timeup_message;	    // Show our standard time-is-up message
 
-                    var x = document.getElementById("my_audio");
+                    this.play_audio("play");
 
-                    x.play();
+                    this.pause = false;         // Clear the paused state (if applicable)
+                    this.stopped = true;
 
-                    this.pause = false;         // Clear the paused state (if applicable)  [TODO: experimental]
-
-                    //alert(timeup_message);
                     return;
                 }
                 else {
-                    console.log("    decreasing this.parselimit");
+                    //console.log("    decreasing this.parselimit");
                     this.parselimit-=1;
 
                     // Asseble the 3 parts of what is shown in the display
@@ -308,7 +333,7 @@ Vue.component('vue-plugin-timer',
                 // Format as 3 padded groups of characters, separated by ":"
                 this.show_timer = this.format(this.show_hrs) + ":" + this.format(this.show_min) + ":" + this.format(this.show_sec);
 
-                this.st = setTimeout(this.begintimer, 1000);    // 1-sec timeout
+                this.st = setTimeout(this.begin_timer, 1000);    // 1-sec timeout
             },
 
 
@@ -327,6 +352,7 @@ Vue.component('vue-plugin-timer',
             {
                 this.show_timer = "00:00:00";
                 this.pause = false;         // Clear the paused state (if applicable)
+                this.stopped = true;
             }
 
         }  // METHODS
