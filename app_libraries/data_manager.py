@@ -680,7 +680,7 @@ class DataManager:
     ##############   MODIFYING CONTENT ITEMS   ##############
 
     @classmethod
-    def update_content_item(cls, uri :str, class_name :str, label :str, update_data: dict) -> None:
+    def update_content_item(cls, uri :str, class_name :str, update_data: dict, label=None) -> None:
         """
         Update an existing Content Item.
         No harm if new values are identical to the earlier old values.
@@ -693,7 +693,7 @@ class DataManager:
 
         :param uri:         String with a unique identifier for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
-        :param label:       String with a Label of the Content Item
+        :param label:       [OPTIONAL] String with a Label of the Content Item
         :param update_data: A dict of data field names and their desired new values
         :return:            None
         """

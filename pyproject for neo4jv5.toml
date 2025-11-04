@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brainannex-neo4jv5"
-version = "5.0-rc.6"
+version = "5.0-rc.7"
 authors = [
   { name = "Julian West BrainAnnex.org" },
 ]
