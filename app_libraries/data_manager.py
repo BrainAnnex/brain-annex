@@ -680,7 +680,7 @@ class DataManager:
     ##############   MODIFYING CONTENT ITEMS   ##############
 
     @classmethod
-    def update_content_item(cls, uri :str, class_name :str, update_data: dict) -> None:
+    def update_content_item(cls, uri :str, class_name :str, label :str, update_data: dict) -> None:
         """
         Update an existing Content Item.
         No harm if new values are identical to the earlier old values.
@@ -693,6 +693,7 @@ class DataManager:
 
         :param uri:         String with a unique identifier for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
+        :param label:       String with a Label of the Content Item
         :param update_data: A dict of data field names and their desired new values
         :return:            None
         """
@@ -701,8 +702,9 @@ class DataManager:
                 f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
-        assert GraphSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
-                f"update_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
+        if class_name:
+            assert GraphSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
+                    f"update_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
@@ -727,7 +729,7 @@ class DataManager:
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
         number_updated = GraphSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks=True,
-                                                      class_name=class_name)
+                                                      class_name=class_name, label=label)
 
 
         if class_name == "Note":

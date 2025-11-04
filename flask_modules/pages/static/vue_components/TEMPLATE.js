@@ -34,7 +34,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
 
-        // ----------------  DATA  -----------------
+        // --------------------------  DATA  --------------------------
         data: function() {
             return {
                 count: 0,
@@ -48,7 +48,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
 
-        // ----------------  WATCH  -----------------
+        // --------------------------  WATCH  --------------------------
         watch: {
             /*
             some_data_b() {
@@ -58,7 +58,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
         },
 
 
-
+        // --------------------------  MOUNTED  --------------------------
         mounted() {
             /* Note: the "mounted" Vue hook is invoked later in the process of launching this component
              */
@@ -67,7 +67,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
 
-        // ----------------  COMPUTED  -----------------
+        // --------------------------  COMPUTED  --------------------------
         computed: {
             example() {
                 return this.my_count+ 10;
@@ -76,7 +76,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
 
-        // ----------------  METHODS  -----------------
+        // --------------------------  METHODS  --------------------------
         methods: {
             foo() {
                 console.log("In foo. some_data_a= " + this.some_data_a);

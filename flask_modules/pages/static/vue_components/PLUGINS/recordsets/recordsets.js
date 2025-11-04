@@ -121,7 +121,7 @@ Vue.component('vue-plugin-rs',
                 </p>
 
 
-                <!-- RECORDSET EDITOR : VIEWING VERSION -->
+                <!-- RECORDSET EDITOR : in VIEWING MODE -->
                 <div v-if="edit_mode && !recordset_editing"
                      style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b>
@@ -130,13 +130,14 @@ Vue.component('vue-plugin-rs',
 
                     <p style="margin-left: 10px">
                         Class: {{current_metadata.class}}<br>
+                        Label: {{current_metadata.label}}<br>
                         Order by: {{current_metadata.order_by}}<br>
                         Number records shown per page: {{current_metadata.n_group}}
                     </p>
                 </div>
 
 
-                <!-- RECORDSET EDITOR : EDITING MODE -->
+                <!-- RECORDSET EDITOR : in EDITING MODE -->
                 <div v-if="recordset_editing" style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b><br>
                     <table>
@@ -152,12 +153,21 @@ Vue.component('vue-plugin-rs',
                                 <span v-if="waiting" class="waiting">Performing the update</span>
                             </td>
                         </tr>
+
+                        <tr>
+                            <td style="text-align: right">Label</td>
+                            <td>
+                                <input v-model="current_metadata.label" size="40">
+                            </td>
+                        </tr>
+
                         <tr>
                             <td style="text-align: right">Order by</td>
                             <td>
                                 <input v-model="current_metadata.order_by" size="40">
                                 </td>
                         </tr>
+
                         <tr>
                             <td style="text-align: right">Number records shown per page</td>
                             <td>
@@ -511,7 +521,10 @@ Vue.component('vue-plugin-rs',
                                     class_name: this.item_data.class_name,
                                     insert_after: this.item_data.insert_after,   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
-                                    class: this.current_metadata.class,
+                                    // Node properties (in particular,
+                                    //     note that "class" and "label" are properties, not Schema data)
+                                    class: this.current_metadata.class,     // To identify nodes considered part of  this Recordset
+                                    label: this.current_metadata.label,     // To identify nodes considered part of  this Recordset
                                     n_group: parseInt(this.current_metadata.n_group),
                                     order_by: this.current_metadata.order_by
                                    };
@@ -522,6 +535,7 @@ Vue.component('vue-plugin-rs',
 
                     var post_obj = {uri: this.current_metadata.uri,
                                     class_name: this.item_data.class_name,
+                                    label: this.item_data.label,
 
                                     class: this.current_metadata.class,
                                     n_group: parseInt(this.current_metadata.n_group),
@@ -599,6 +613,7 @@ Vue.component('vue-plugin-rs',
                 const url_server_api = "/BA/api/get_class_properties";
 
                 const data_obj = {class_name: this.current_metadata.class,
+                                  label: this.current_metadata.label,
                                   include_ancestors: true,
                                   exclude_system: true
                                  };
@@ -626,17 +641,14 @@ Vue.component('vue-plugin-rs',
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
                     this.headers = server_payload;
-                    //...
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    //...
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                //...
 
             }, // finish_get_fields
 
@@ -659,7 +671,8 @@ Vue.component('vue-plugin-rs',
 
                 // Note: for now, we're actually doing a database search by node label,
                 //       rather than by Schema Class
-                const get_obj = {label: this.current_metadata.class,
+                const get_obj = {label: this.current_metadata.label,
+                                 class: this.current_metadata.class,
                                  order_by: this.current_metadata.order_by,
                                  limit: this.current_metadata.n_group,
                                  skip: skip};

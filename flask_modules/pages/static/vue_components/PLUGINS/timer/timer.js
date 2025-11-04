@@ -5,7 +5,8 @@
     Alarms courtesy of https://pixabay.com/sound-effects/search/alarm%20clock%20gentle
     and https://www.zedge.net/find/alarm%20gentle
 
-    TODO: maybe pass volume as a parameter.  Grey out "Reset" as appropriate
+    TODO: maybe pass volume as a parameter and/or provide a control for it.
+          Grey out "Reset" as appropriate
  */
 
 Vue.component('vue-plugin-timer',
@@ -105,15 +106,35 @@ Vue.component('vue-plugin-timer',
 
                 </div>      <!-- End class='timerShell' -->
 
+                <br>
+
+                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls),
+                      EXCEPT for the "edit" control, which is provided by this Vue component itself.
+                      Signals from the Vue child component "vue-controls", below,
+                      get relayed to the parent of this component;
+                      none get intercepted and handled here
+                -->
+                    <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
+
+                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                                  v-bind:controls_to_hide="['edit']"
+                                  v-on="$listeners"
+                    >
+                    </vue-controls>
+
+                    <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
+
+
             </div>		<!-- End of outer container -->
         `,
 
 
 
-        // ----------------  DATA  -----------------
+        // -------------------  DATA  --------------------
         data: function() {
             return {
                 audio_file: this.item_data.ringtone,    // See list of available files in "alarms" subfolder
+                                                        // TODO: it might be good to have a default here
 
                 show_timer: "00:00:00",                 // The timer's display
 
@@ -140,7 +161,7 @@ Vue.component('vue-plugin-timer',
 
 
 
-        // ------------------------------   METHODS   ------------------------------
+        // --------------------------   METHODS   --------------------------
         methods: {
             button_name()
             // Pick a name for the Start/Resume button
@@ -176,7 +197,7 @@ Vue.component('vue-plugin-timer',
                                                                     // https://www.w3schools.com/jsref/dom_obj_audio.asp
 
                 if (task == 'play')  {
-                    audio.volume = 0.04;    // Play at low volume (note: 1.0 = 100% volume)
+                    audio.volume = 0.1;    // Play at low volume (note: 1.0 = 100% volume)
                     console.log(`    volume = "${audio.volume}"`);
                     audio.play();
                 }

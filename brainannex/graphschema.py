@@ -2980,7 +2980,7 @@ class GraphSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node : int | str, set_dict :dict, drop_blanks=True, class_name=None) -> int:
+    def update_data_node(cls, data_node :int|str, set_dict :dict, drop_blanks=True, class_name=None, label=None) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
@@ -2990,18 +2990,20 @@ class GraphSchema:
                                 Blanks at the start/end of string values are zapped
         :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
-        :param class_name:  [OPTIONAL] The name of the Class to which the given Data Note is part of;
+        :param class_name:  [OPTIONAL] The name of the Class to which the given Data Node is part of;
                                 if provided, it gets enforced
+        :param label:       [OPTIONAL] The name of a Label on the given Data Node;
+                                if provided, it gets enforced (but `class_name` takes priority over `label`, FOR NOW)
         :return:            The number of properties set or removed;
                                 if the record wasn't found, or an empty `set_dict` was passed, return 0
                                 Important: a property is counted as being "set" even if the new value is
                                            identical to the old value!
         """
-        #TODO: test the class_name argument
+        #TODO: test the class_name and label argument
         #TODO: check whether the Schema allows the added/dropped fields, if applicable;
         #      compare the keys of set_dict against the Properties of the Class of the Data Node
         #TODO: check for data integrity (data types, etc) of the new values
-        #TODO: make use of NeoAccess.set_fields()
+        #TODO: make use of GraphAccess.set_fields()
 
         if set_dict == {}:
             return 0            # Nothing to do!
@@ -3041,10 +3043,18 @@ class GraphSchema:
         if drop_blanks and remove_list:
             remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
 
+        class_name_clause = ""
+        label_clause = ""
         if class_name:
+            class_name_clause = f"{{`_CLASS`: '{class_name}'}}"
             match_str = f"MATCH (n {{`_CLASS`: '{class_name}'}}) "
+        elif label:
+            label_clause = f":`{label}`"
+            match_str = f"MATCH (n :`{label}`) "
         else:
             match_str = f"MATCH (n) "
+
+        #match_str = f"MATCH (n) {label_clause} {class_name_clause})"   # TODO: try this approach
 
         q = f'''
             {match_str} 

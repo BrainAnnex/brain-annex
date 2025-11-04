@@ -365,14 +365,16 @@ class ApiRouting:
             optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class.
 
+            If `class_name` is missing, and `label` is used instead,
+            the Property list is *estimated* by the label instead (and all other parameters are disregarded)
+
+
             GET VARIABLE:
                 json    A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
-                class_name          REQUIRED
-                include_ancestors   OPTIONAL
-                sort_by_path_len    OPTIONAL
-                exclude_system      OPTIONAL
+                class_name , label , include_ancestors , sort_by_path_len , exclude_system
+                Either `class_name` or `label` must be present
 
             EXAMPLE invocations:
                 http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%7D
@@ -409,7 +411,7 @@ class ApiRouting:
 
             try:
                 # This operation might fail - if there are problems in the JSON encoding
-                data_dict = cls.extract_get_pars(get_data, required_par_list=["json"])
+                data_dict = cls.extract_get_pars(get_data)      # required_par_list=["json"]
             except Exception as ex:
                 err_details = exceptions.exception_helper(ex)
                 response_data = {"status": "error", "error_message": err_details}        # Error termination
@@ -433,18 +435,30 @@ class ApiRouting:
                 print(response_data["error_message"])
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
 
-            if "class_name" not in json_data:
-                response_data = {"status": "error", "error_message": "Missing required value for `class_name` in the JSON data"}
+            if ("class_name" not in json_data) and ("label" not in json_data):
+                response_data = {"status": "error", "error_message": "Missing required value for either `class_name` or `label` in the JSON data"}
                 print(response_data["error_message"])
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
 
-            class_name =  json_data["class_name"]
+            class_name = json_data.get("class_name")
+            label = json_data.get("label")
             #print("class_name: ", class_name)
-            del json_data["class_name"]
+            if "class_name" in json_data:
+                del json_data["class_name"]
+            if "label" in json_data:
+                del json_data["label"]
 
             try:
                 # Fetch all the Properties
-                prop_list = GraphSchema.get_class_properties(**json_data, class_node=class_name)
+                if class_name:
+                    prop_list = GraphSchema.get_class_properties(**json_data, class_node=class_name)
+                else:
+                    prop_set = GraphSchema.db.sample_properties(label=label, sample_size=30)    # Estimate the list of properties by label
+                    # Take out Schema-related properties, if present
+                    prop_set.discard("_CLASS")      # Remove if present
+                    prop_set.discard("uri")         # Remove if present
+                    prop_list = list(prop_set)
+
                 response_data = {"status": "ok", "payload": prop_list}
             except Exception as ex:
                 response_data = {"status": "error", "error_message": str(ex)}
@@ -1195,9 +1209,10 @@ class ApiRouting:
             print("In update_content_item_JSON() -  data_dict: ", data_dict)
 
             # TODO: create a helper function for the unpacking/validation below
-             # The following values will be None if missing
+            # The following values will be None if missing
             uri = data_dict.get('uri')
             class_name = data_dict.get('class_name')
+            label = data_dict.get('label')
             internal_id = data_dict.get('internal_id')
 
             # Enforce required parameters (TODO: turn this into a general utility function)
@@ -1208,17 +1223,20 @@ class ApiRouting:
                 return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
 
 
+            # Take out special fields that aren't meant to be set in the Data Node being edited
             if uri:
                 del data_dict["uri"]
             if class_name:
                 del data_dict["class_name"]
+            if label:
+                del data_dict["label"]
             if internal_id:
                 del data_dict["internal_id"]
 
             if uri:
-                # Scenario where `uri` and `class_name` are used
+                # Scenario where `uri` and (`class_name` and/or `label`) are used
                 try:
-                    DataManager.update_content_item(uri=uri, class_name=class_name,
+                    DataManager.update_content_item(uri=uri, class_name=class_name, label=label,
                                                     update_data=data_dict)
                     response_data = {"status": "ok"}                                    # If no errors
                 except Exception as ex:
@@ -1227,7 +1245,7 @@ class ApiRouting:
                                             #TODO: consider a "500 Internal Server Error" in this case
                                             #      or maybe a "422 Unprocessable Entity"
             else:
-                # Scenario where `internal_id` is used
+                # Scenario where `internal_id` is used  (TODO: maybe this branch should be prioritized)
                 try:
                     number_properties_set = GraphSchema.db.set_fields(match=internal_id,
                                                                       set_dict=data_dict, drop_blanks=True)
@@ -1447,6 +1465,7 @@ class ApiRouting:
                 del pars_dict["class_name"]
                 del pars_dict["insert_after"]
 
+                #print("Creating new Content Item with following properties: ", pars_dict)
                 payload = DataManager.add_new_content_item_to_category(category_uri=category_uri, class_name=class_name, insert_after=insert_after,
                                                                        item_data=pars_dict)     # It returns the URI of the newly-created Data Node
                 response_data = {"status": "ok", "payload": payload}
@@ -1945,6 +1964,7 @@ class ApiRouting:
                 json    A JSON-encoded dict, containing the following entries:
 
                     label       The name of a database node label
+                    class       Not yet used (will get turned into `label` if label is missing)
                     key_name    A string, or list of strings, with the name of a node attribute;
                                     if provided, key_value must be passed, too
                     key_value   The required value for the above key; if provided, key_name must be passed, too.
@@ -1996,6 +2016,15 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": f"Failed parsing of JSON string in request. Incorrectly formatted.  {ex}"}
                 #print(response_data["error_message"])
                 return jsonify(response_data)    # This function also takes care of the Content-Type header
+
+
+            #  TODO: for now, we're actually doing a database search by node label,
+            #         rather than by Schema Class
+            if "label" not in json_data:
+                json_data["label"] = json_data.get("class")     # Use "class" in lieu of "label"
+
+            if "class" in json_data:
+                del json_data["class"]      # For now, "class" is not being passed
 
 
             try:
