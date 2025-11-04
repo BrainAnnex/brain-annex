@@ -2112,6 +2112,11 @@ def test_node_tabular_display_1(db):
     expected = pd.DataFrame({"a": [3, np.nan], "b": ["hello", "hi"], "ZZZ": [np.nan, 8]})
     assert df.equals(expected)
 
+    # Select a field tha occurs in the 2nd record, but not the 1st one
+    df = db.node_tabular_display(node_list=node_list, fields="ZZZ", dummy_name=None)
+    expected = pd.DataFrame({"ZZZ": [np.nan, 8]})
+    assert df.equals(expected)
+
 
     node_list = [{"a": 3,   "b": "hello", "internal_id": 123},
                  {"ZZZ": 8, "b": "hi",    "internal_id": 999}]     # Mismatched fields, and a special field

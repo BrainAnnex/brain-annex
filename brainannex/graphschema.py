@@ -203,7 +203,7 @@ class GraphSchema:
 
 
     @classmethod
-    def create_class(cls, name :str, code = None, strict = False, no_datanodes = False) -> (int, str):
+    def create_class(cls, name :str, code=None, strict=False, no_datanodes=False, create_index=True) -> (int|str, str):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -215,18 +215,21 @@ class GraphSchema:
         NOTE: if you want to add Properties at the same time that you create a new Class,
               use the function create_class_with_properties() instead.
 
-        :param name:        Name to give to the new Class
-        :param code:        Optional string indicative of the software handler for this Class and its subclasses
-        :param strict:      If True, the Class will be of the "S" (Strict) type;
-                                otherwise, it'll be of the "L" (Lenient) type
+        :param name:        Name to give to the new Class (any leading/trailing blank will first be stripped off)
+        :param code:        [OPTIONAL] String indicative of the software handler for this Class and its subclasses
+        :param strict:      [OPTIONAL] If True, the Class will be of the "Strict" type;
+                                otherwise (default), it'll be of the "Lenient" type
                             Explained under the comments for the GraphSchema class
 
-        :param no_datanodes If True, it means that this Class does not allow data node to have a "SCHEMA" relationship to it;
-                                typically used by Classes having an intermediate role in the context of other Classes
+        :param no_datanodes:[OPTIONAL] If True, it means that this Class does not allow data node
+                                to have a "SCHEMA" relationship to it;
+                                typically used by Classes having an intermediate role in the context of other Classes.
+                                By default, False
+        :param create_index:[OPTIONAL] 
 
-        :return:            An (int, str) pair of integers with the internal database ID and the unique uri
+        :return:            A pair of values with the internal database ID and the unique `uri`
                                 assigned to the node just created, if it was created;
-                                an Exception is raised if a class by that name already exists
+                                an Exception is raised if a Class by that name already exists
         """
         #TODO: offer the option to link to an existing Class, like create_class_with_properties() does
         #       link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
@@ -248,8 +251,14 @@ class GraphSchema:
         if no_datanodes:
             attributes["no_datanodes"] = True
 
-        #print(f"create_class(): about to call db.create_node with parameters `CLASS` and `{attributes}`")
+
+        # Create the database node for this new class
         internal_id = cls.db.create_node(labels=["CLASS", "SCHEMA"], properties=attributes)
+
+        #TODO: create an index and constraint for the pair (label=name, properties="uri") , unless user selects create_index=False
+        if create_index:
+            cls.db.create_constraint(label=name, key="uri")
+
         return (internal_id, schema_uri)
 
 
@@ -1723,349 +1732,119 @@ class GraphSchema:
 
 
     @classmethod
-    def all_properties(cls, label :str, primary_key_name :str, primary_key_value) -> [str]:
+    def _assemble_cypher_clauses(cls, node_id, id_key, class_name, dummy_name="dn", method=None) -> (str, dict):
         """
-        Return the list of the *names* of all the Properties associated with the specified DATA node,
-        based on the Schema it is associated with, sorted their by position stored in the Schema.
-        The desired node is identified by specifying which one of its attributes is a primary key,
-        and providing a value for it.
+        Helper function to prepare two clause to be used in forming a Cypher query.
 
-        IMPORTANT : this function returns the NAMES of the Properties; not their values
-
-        :param label:               Required label on the node to look up
-        :param primary_key_name:    A field name used to identify our desired Data Node
-        :param primary_key_value:   The corresponding field value to identify our desired Data Node
-        :return:                    A list of the names of the Properties associated
-                                        with the given DATA node
-        """
-        q = f'''
-            MATCH  (d :`{label}` {{ {primary_key_name}: $primary_key_value}})
-            WITH dn.`_CLASS` AS schema_name
-            MATCH (c :`CLASS` {{name: schema_name}})
-                  -[r :HAS_PROPERTY]->(p :`PROPERTY`)        
-            RETURN p.name AS prop_name
-            ORDER BY r.index
-            '''
-
-        # EXAMPLE:
-        '''
-        MATCH (dn: `my data label` {uri: $primary_key_value})
-        WITH dn._CLASS AS schema_name
-        MATCH (c :`CLASS` {name: schema_name})
-              -[r :HAS_PROPERTY]->(p :`PROPERTY`)
-        RETURN p.name AS prop_name
-        ORDER BY r.index
-        '''
-
-        result_list = cls.db.query(q, {"primary_key_value": primary_key_value})
-
-        name_list = [item["prop_name"] for item in result_list]
-
-        return name_list
-
-
-
-    @classmethod
-    def get_data_node_internal_id(cls, uri :str, label=None) -> int:
-        """
-        Returns the internal database ID of the given Data Node,
-        specified by the value of its uri attribute
-        (and optionally by a label)
-
-        :param uri:     A string to identify a Data Node by the value of its "uri" attribute
-        :param label:   (OPTIONAL) String to require the Data Node to have (redundant,
-                            since "uri" already uniquely specifies a Data Node - but
-                            could be used for speed or data integrity)
-
-        :return:        The internal database ID of the specified Data Node;
-                            if none (or more than one) found, an Exception is raised
-        """
-        #TODO: merge with get_data_node_id()
-
-        match = cls.db.match(key_name="uri", key_value=uri, labels=label)
-        result = cls.db.get_nodes(match, return_internal_id=True)
-
-        if label:
-            assert result, f"GraphSchema.get_data_node_internal_id(): " \
-                           f"no Data Node with the given uri ('{uri}') and label ('{label}') was found"
-        else:
-            assert result, f"GraphSchema.get_data_node_internal_id(): " \
-                           f"no Data Node with the given uri ('{uri}') was found"
-
-        if len(result) > 1:
-            raise Exception(f"GraphSchema.get_data_node_internal_id(): more than 1 Data Node "
-                            f"with the given uri ('{uri}') was found ({len(result)} were found)")
-
-        return result[0]["internal_id"]
-
-
-
-    @classmethod
-    def get_data_node_id(cls, key_value :str, key_name="uri") -> int:
-        """
-        Get the internal database ID of a Data Node, given some other primary key
-
-        :param key_value:   The name of a primary key to use for the node lookup
-        :param key_name:    The value of the above primary key
-        :return:            The internal database ID of the specified Data Node
-        """
-        #TODO: merge with get_data_node_internal_id()
-
-        match = cls.db.match(key_name=key_name, key_value=key_value)
-        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
-
-        assert result is not None, \
-            f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`"
-
-        return result
-
-
-
-    @classmethod
-    def data_node_exists_EXPERIMENTAL(cls, match: Union[int, str, dict, CypherBuilder], class_name=None) -> bool:
-        """
-        ALTERNATE APPROACH, NOT CURRENTLY IN USE.
-
-        Return True if the specified Data Node exists, or False otherwise.
-
-        :param match:
-        :param class_name:
-        :return:            True if the specified Data Node exists, or False otherwise
-        """
-
-        # Unpack the parts needed to put together a Cypher query
-        (match_str, where_clause, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="data_node_exists")
-
-        if class_name:
-            # Add an extra property match requirement
-            if where_clause != "":
-                where_clause += " AND "
-
-            where_clause += f" {dummy_node_name}.`_CLASS` = $class_name"
-            data_binding["class_name"] = class_name
-
-        # Prepare a Cypher query to locate the number of the data nodes
-        q = f'''
-            MATCH {match_str}
-            WHERE {where_clause} 
-            RETURN COUNT({dummy_node_name}) AS number_found           
-            '''
-
-        cls.db.debug_query_print(q, data_binding)
-        number_found = cls.db.query(q, data_binding,
-                                    single_cell="number_found")
-
-        if number_found == 0:
-            return False
-        elif number_found == 1:
-            return True
-        else:
-            raise Exception(f"data_node_exists(): non-unique identification of Data Node; more than 1  was found ")
-
-
-
-    @classmethod
-    def data_node_exists(cls, node_id, id_key=None, class_name=None) -> bool:
-        """
-        Return True if the specified Data Node exists, or False otherwise.
-        If opting to search by primary key, and more than 1 node comes up, an Exception is raised
-
-        :param node_id:     Either an internal database ID or a primary key value
+        :param node_id:     Either an internal database ID (int or str), or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
-                                Leave blank to use the internal database ID
+                                Alternatively, leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
-        :return:            True if the specified Data Node exists, or False otherwise
+        :param method:      [OPTIONAL] Name of the calling function; used only in case of error messages
+        :return:            Pair (where_clause, data_binding)
         """
-        #TODO: consider adding an `include_ancestors` option
-        #TODO: use this as a MODEL for other functions
-
         # Prepare the clause part of a Cypher query
         if id_key is None:
-            # Using the internal database ID
-            clause = "WHERE id(dn) = $node_id"
+            if class_name:
+                # Searching by internal database ID and by Class Name
+                where_clause = f"WHERE (id({dummy_name}) = $node_id) AND (dn.`_CLASS` = $class_name)"
+                data_binding = {"node_id" : node_id, "class_name": class_name}
+            else:
+                # Searching purely by internal database ID
+                where_clause = f"WHERE (id({dummy_name}) = $node_id)"
+                data_binding = {"node_id" : node_id}
         else:
-            # Using a primary key and the Class name
-            assert class_name is not None, "" \
-                "data_node_exists(): argument `class_name` is required when searching by primary key"
-            clause = f"WHERE dn.`{id_key}` = $node_id"
+            # Searching by primary key, plus by Class name
+            if not class_name:
+                if not method:
+                    method = "_assemble_cypher_clauses"
 
-        if class_name:
-            schema_clause = "AND dn.`_CLASS` = $class_name"
-        else:
-            schema_clause = ""
+                raise Exception(f"{method}(): argument `class_name` is required when searching by primary key")
+
+            where_clause = f"WHERE (dn.`{id_key}` = $node_id) AND (dn.`_CLASS` = $class_name)"
+            data_binding = {"node_id" : node_id, "class_name": class_name}
 
 
-
-        # Prepare a Cypher query to locate the number of the data nodes
-        q = f'''
-            MATCH (dn) 
-            {clause} {schema_clause}
-            RETURN COUNT(dn) AS number_found
-            '''
-
-        #cls.db.debug_query_print(q, {"node_id" : node_id, "class_name": class_name})
-        number_found = cls.db.query(q, {"node_id" : node_id, "class_name": class_name},
-                                    single_cell="number_found")
-
-        if number_found == 0:
-            return False
-        elif number_found == 1:
-            return True
-        else:
-            raise Exception(f"data_node_exists(): more than 1 node was found "
-                            f"with the same URI ({node_id}), which ought to be unique")
+        return (where_clause, data_binding)
 
 
 
     @classmethod
-    def data_link_exists(cls, node1_id, node2_id, link_name :str, id_key=None) -> bool:
+    def get_single_data_node(cls, node_id, id_key=None, class_name=None, hide_schema=True) -> dict | None:
         """
-        Return True if the specified link exists, in the direction from the Data Node node_1 to node_2,
-        or False otherwise.
-        Note that more than 1 link by the same name may exist between any two given nodes, if
-        the links have different properties; as long as at least 1 link exists, True is returned
+        Return a dictionary with all the key/value pairs of the attributes of a single Data Node,
+        specified either by its internal database ID, or by its Class name and primary key.
+        If opting to search by primary key, and more than 1 match comes up, an Exception is raised.
 
-        :param node1_id:    A unique value to identify the 1st data node:
-                                either an internal database ID or a primary key value
-        :param node2_id:    A unique value to identify the 1st data node:
-                                either an internal database ID or a primary key value
-        :param link_name:   The name of the link (relationship) to look for
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
-                                Leave blank to use the internal database ID
-
-        :return:            True if the specified Data Node link, or False otherwise
-        """
-        # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
-        # TODO: maybe make a version of this function for GraphAccess
-
-        # Prepare the clause part of a Cypher query
-        if id_key is None:
-            clause = "WHERE id(dn1) = $data_node_1 AND id(dn2) = $data_node_2"
-        else:
-            clause = f"WHERE dn1.{id_key} = $data_node_1 AND dn2.{id_key} = $data_node_2"
-
-
-        # Prepare a Cypher query to locate the link count
-        q = f'''
-            MATCH (dn1) -[r :`{link_name}`]-> (dn2)
-            {clause} 
-            RETURN COUNT(r) AS number_found
-            '''
-        data_dict = {"data_node_1": node1_id, "data_node_2": node2_id}
-        #cls.db.debug_query_print(q, data_dict)
-
-        number_found = cls.db.query(q, data_dict, single_cell="number_found")
-
-        if number_found == 0:
-            return False
-        else:   # 1 link, or possibly more, found
-            return True
-
-
-
-    @classmethod
-    def get_data_link_properties(cls, node1_id, node2_id, link_name :str, id_key=None, include_internal_id=False) -> [dict]:
-        """
-        Return all the properties of the link(s), of the specified name, between the two given Data nodes.
-
-        Note that more than 1 link by the same name may exist between any two given nodes, if
-        the links have different properties; as long as at least 1 link exists, True is returned
-
-        :param node1_id:   A unique value to identify the 1st data node:
-                                either an internal database ID or a primary key value
-        :param node2_id:   A unique value to identify the 1st data node:
-                                either an internal database ID or a primary key value
-        :param link_name:   The name of the link (relationship) to look for
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
-                                Leave blank to use the internal database ID
-        :param include_internal_id: [OPTIONAL] If True, then the internal database ID of the relationships is also
-                                        included in the dict's, using the key "internal_id"
-
-        :return:            A list of dict, with key/values for the properties of each link.
-                                If include_internal_id is True, an extra key named "internal_id" will be present.
-                                EXAMPLE, with include_internal_id = False:
-                                    [{'Rank': 99}, {'Rank': 123}, {}]     (Two links with properties, and one without)
-        """
-        # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
-        # TODO: maybe make a version of this function for GraphAccess
-        # TODO: pytest
-
-        # Prepare the clause part of a Cypher query
-        if id_key is None:
-            clause = "WHERE id(dn1) = $data_node_1 AND id(dn2) = $data_node_2"
-        else:
-            clause = f"WHERE dn1.{id_key} = $data_node_1 AND dn2.{id_key} = $data_node_2"
-
-
-        data_dict = {"data_node_1": node1_id, "data_node_2": node2_id}
-
-        # Prepare a Cypher query to locate the link count
-        if include_internal_id:
-            q = f'''
-                MATCH (dn1) -[r :`{link_name}`]-> (dn2)
-                {clause} 
-                RETURN r
-                '''
-            result = cls.db.query_extended(q, data_dict, flatten=True,
-                fields_to_exclude=['neo4j_start_node', 'neo4j_end_node', 'neo4j_type'])
-        else:
-            q = f'''
-                MATCH (dn1) -[r :`{link_name}`]-> (dn2)
-                {clause} 
-                RETURN properties(r) AS props
-                '''
-
-            result = cls.db.query(q, data_dict, single_column="props")
-
-        #cls.db.debug_query_print(q, data_dict)
-
-        return result
-
-
-
-    @classmethod
-    def get_data_node(cls, class_name :str, node_id, id_key=None, hide_schema=True) -> Union[dict, None]:
-        """
-        Return a dictionary with all the key/value pairs of the attributes of given Data Node,
-        specified by its Class name, and a unique identifier
-
-        :param class_name:  The name of the Schema Class that this Data Node is associated to
-        :param node_id:     Either an internal database ID or a primary key value
+        :param node_id:     Either an internal database ID (int or str), or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
-                                Leave blank to use the internal database ID
-        :param hide_schema: [OPTIONAL] By default (True), the special schema field `_CLASS` is omitted
+                                Alternatively, leave blank to use the internal database ID
+        :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
+        :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS` is omitted
         :return:            If not found, return None;
                                 otherwise, return a dict with the name/values of the node's properties
         """
-        if id_key is None:
-            where_clause = "WHERE (id(dn) = $node_id)"
-        else:
-            where_clause = f"WHERE (dn.`{id_key}` = $node_id)"
+        # TODO: add function that only returns a specified single Property, or specified list of Properties
+        # TODO: optionally also return node label
+
+        # Prepare a Cypher query
+        where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key,
+                                                                  class_name=class_name, method="get_data_node")
 
         q = f'''
             MATCH (dn)
-            {where_clause} AND (dn.`_CLASS` = $class_name)
+            {where_clause}
             RETURN dn
+            LIMIT 2
             '''
-
-        data_binding = {"class_name": class_name, "node_id": node_id}
+            # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
 
         #cls.db.debug_query_print(q, data_binding, "get_data_node")
+        result = cls.db.query(q, data_binding=data_binding)
 
-        result = cls.db.query(q, data_binding, single_row=True)
-
-        if result is None:
+        if result == []:
             return None
 
         assert len(result) == 1, \
-            f"get_data_node(): the specified key ({id_key}) is not unique - multiple records were located"
+            f"get_data_node(): the specified key (`{id_key}`) is not primary - multiple records were located for (`{id_key}`={node_id})"
+
+
+        result = result[0]  # Extract the single element from the list
 
         d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
 
-        if hide_schema:
+        if hide_schema and ("_CLASS" in d):
             del d["_CLASS"]
 
         return d
+
+
+
+    @classmethod
+    def locate_node(cls, node_id :int|str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
+        """
+        EXPERIMENTAL - a generalization of get_data_node()
+
+        Return the "match" structure to later use to locate a node identified
+        either by its internal database ID (default), or by a primary key (with optional label.)
+
+        NOTE: No database operation is actually performed.
+
+        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
+        :param id_type: For example, "uri";
+                            if not specified, the node ID is assumed to be the internal database ID's
+        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
+        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
+
+        :return:        A "CypherBuilder" object
+        """
+        # TODO: use the argument standards of data_node_exists()
+        if id_type:
+            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
+        else:
+            match_structure = cls.db.match(internal_id=node_id)
+
+        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
 
 
 
@@ -2076,8 +1855,8 @@ class GraphSchema:
                             order_by=None, sort_ignore_case=None,
                             skip=None, limit=100) -> [dict]:
         """
-        Locate the nodes that match the given parameters, and return them in the specified way,
-        as a list of dicts
+        Locate the nodes that match the given parameters, and return their properties as specified,
+        in the form of a list of dicts
 
         :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
         :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
@@ -2199,6 +1978,250 @@ class GraphSchema:
         result = cls.db.query(q, data_binding=data_binding)
 
         return cls.db.standardize_recordset(recordset=result)
+
+
+
+    @classmethod
+    def all_properties(cls, label :str, primary_key_name :str, primary_key_value) -> [str]:
+        """
+        Return the list of the *names* of all the Properties associated with the specified DATA node,
+        based on the Schema it is associated with, sorted their by position stored in the Schema.
+        The desired node is identified by specifying which one of its attributes is a primary key,
+        and providing a value for it.
+
+        IMPORTANT : this function returns the NAMES of the Properties; not their values
+
+        :param label:               Required label on the node to look up
+        :param primary_key_name:    A field name used to identify our desired Data Node
+        :param primary_key_value:   The corresponding field value to identify our desired Data Node
+        :return:                    A list of the names of the Properties associated
+                                        with the given DATA node
+        """
+        # TODO: standardize the way to specify the node, as done by data_node_exists()
+        q = f'''
+            MATCH  (d :`{label}` {{ {primary_key_name}: $primary_key_value}})
+            WITH dn.`_CLASS` AS schema_name
+            MATCH (c :`CLASS` {{name: schema_name}})
+                  -[r :HAS_PROPERTY]->(p :`PROPERTY`)        
+            RETURN p.name AS prop_name
+            ORDER BY r.index
+            '''
+
+        # EXAMPLE:
+        '''
+        MATCH (dn: `my data label` {uri: $primary_key_value})
+        WITH dn._CLASS AS schema_name
+        MATCH (c :`CLASS` {name: schema_name})
+              -[r :HAS_PROPERTY]->(p :`PROPERTY`)
+        RETURN p.name AS prop_name
+        ORDER BY r.index
+        '''
+
+        result_list = cls.db.query(q, {"primary_key_value": primary_key_value})
+
+        name_list = [item["prop_name"] for item in result_list]
+
+        return name_list
+
+
+
+    @classmethod
+    def get_data_node_internal_id(cls, uri :str, label=None) -> int:
+        """
+        Returns the internal database ID of the given Data Node,
+        specified by the value of its uri attribute
+        (and optionally by a label)
+
+        :param uri:     A string to identify a Data Node by the value of its "uri" attribute
+        :param label:   (OPTIONAL) String to require the Data Node to have (redundant,
+                            since "uri" already uniquely specifies a Data Node - but
+                            could be used for speed or data integrity)
+
+        :return:        The internal database ID of the specified Data Node;
+                            if none (or more than one) found, an Exception is raised
+        """
+        #TODO: merge with get_data_node_id()
+
+        match = cls.db.match(key_name="uri", key_value=uri, labels=label)
+        result = cls.db.get_nodes(match, return_internal_id=True)
+
+        if label:
+            assert result, f"GraphSchema.get_data_node_internal_id(): " \
+                           f"no Data Node with the given uri ('{uri}') and label ('{label}') was found"
+        else:
+            assert result, f"GraphSchema.get_data_node_internal_id(): " \
+                           f"no Data Node with the given uri ('{uri}') was found"
+
+        if len(result) > 1:
+            raise Exception(f"GraphSchema.get_data_node_internal_id(): more than 1 Data Node "
+                            f"with the given uri ('{uri}') was found ({len(result)} were found)")
+
+        return result[0]["internal_id"]
+
+
+
+    @classmethod
+    def get_data_node_id(cls, key_value :str, key_name="uri") -> int:
+        """
+        Get the internal database ID of a Data Node, given some other primary key
+
+        :param key_value:   The name of a primary key to use for the node lookup
+        :param key_name:    The value of the above primary key
+        :return:            The internal database ID of the specified Data Node
+        """
+        #TODO: merge with get_data_node_internal_id()
+
+        match = cls.db.match(key_name=key_name, key_value=key_value)
+        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
+
+        assert result is not None, \
+            f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`"
+
+        return result
+
+
+
+    @classmethod
+    def data_node_exists(cls, node_id, id_key=None, class_name=None) -> bool:
+        """
+        Return True if the specified Data Node exists, or False otherwise.
+        If opting to search by primary key, and more than 1 node comes up, an Exception is raised.
+
+        :param node_id:     Either an internal database ID (int or str), or a primary key value
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+                                Alternatively, leave blank to use the internal database ID
+        :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
+        :return:            True if the specified Data Node exists, or False otherwise
+        """
+        #TODO: consider adding an `include_ancestors` option
+        #TODO: use this as a MODEL for other functions, as far as argument passing goes
+
+        # Prepare a Cypher query to locate the number of the data nodes
+        where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key, class_name=class_name, method="data_node_exists")
+
+        q = f'''
+            MATCH (dn) 
+            {where_clause}
+            RETURN COUNT(dn) AS number_found
+            '''
+
+        #cls.db.debug_query_print(q, data_binding)
+        number_found = cls.db.query(q, data_binding=data_binding,
+                                    single_cell="number_found")
+
+        if number_found == 0:
+            return False
+        elif number_found == 1:
+            return True
+        else:
+            raise Exception(f"data_node_exists(): more than 1 `{class_name}` node was found "
+                            f"with the same `{id_key}` ({node_id}), which ought to be unique")
+
+
+
+    @classmethod
+    def data_link_exists(cls, node1_id, node2_id, link_name :str, id_key=None) -> bool:
+        """
+        Return True if the specified link exists, in the direction from the Data Node node_1 to node_2,
+        or False otherwise.
+        Note that more than 1 link by the same name may exist between any two given nodes, if
+        the links have different properties; as long as at least 1 link exists, True is returned
+
+        :param node1_id:    A unique value to identify the 1st data node:
+                                either an internal database ID or a primary key value
+        :param node2_id:    A unique value to identify the 1st data node:
+                                either an internal database ID or a primary key value
+        :param link_name:   The name of the link (relationship) to look for
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
+                                Leave blank to use the internal database ID
+
+        :return:            True if the specified Data Node link, or False otherwise
+        """
+        # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
+        # TODO: maybe make a version of this function for GraphAccess
+
+        # Prepare the clause part of a Cypher query
+        if id_key is None:
+            clause = "WHERE id(dn1) = $data_node_1 AND id(dn2) = $data_node_2"
+        else:
+            clause = f"WHERE dn1.{id_key} = $data_node_1 AND dn2.{id_key} = $data_node_2"
+
+
+        # Prepare a Cypher query to locate the link count
+        q = f'''
+            MATCH (dn1) -[r :`{link_name}`]-> (dn2)
+            {clause} 
+            RETURN COUNT(r) AS number_found
+            '''
+        data_dict = {"data_node_1": node1_id, "data_node_2": node2_id}
+        #cls.db.debug_query_print(q, data_dict)
+
+        number_found = cls.db.query(q, data_dict, single_cell="number_found")
+
+        if number_found == 0:
+            return False
+        else:   # 1 link, or possibly more, found
+            return True
+
+
+
+    @classmethod
+    def get_data_link_properties(cls, node1_id, node2_id, link_name :str, id_key=None, include_internal_id=False) -> [dict]:
+        """
+        Return all the properties of the link(s), of the specified name, between the two given Data nodes.
+
+        Note that more than 1 link by the same name may exist between any two given nodes, if
+        the links have different properties; as long as at least 1 link exists, True is returned
+
+        :param node1_id:   A unique value to identify the 1st data node:
+                                either an internal database ID or a primary key value
+        :param node2_id:   A unique value to identify the 1st data node:
+                                either an internal database ID or a primary key value
+        :param link_name:   The name of the link (relationship) to look for
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
+                                Leave blank to use the internal database ID
+        :param include_internal_id: [OPTIONAL] If True, then the internal database ID of the relationships is also
+                                        included in the dict's, using the key "internal_id"
+
+        :return:            A list of dict, with key/values for the properties of each link.
+                                If include_internal_id is True, an extra key named "internal_id" will be present.
+                                EXAMPLE, with include_internal_id = False:
+                                    [{'Rank': 99}, {'Rank': 123}, {}]     (Two links with properties, and one without)
+        """
+        # TODO: also allow to optionally pass Class names for double-check (and for efficiency of search)
+        # TODO: maybe make a version of this function for GraphAccess
+        # TODO: pytest
+
+        # Prepare the clause part of a Cypher query
+        if id_key is None:
+            clause = "WHERE id(dn1) = $data_node_1 AND id(dn2) = $data_node_2"
+        else:
+            clause = f"WHERE dn1.{id_key} = $data_node_1 AND dn2.{id_key} = $data_node_2"
+
+
+        data_dict = {"data_node_1": node1_id, "data_node_2": node2_id}
+
+        # Prepare a Cypher query to locate the link count
+        if include_internal_id:
+            q = f'''
+                MATCH (dn1) -[r :`{link_name}`]-> (dn2)
+                {clause} 
+                RETURN r
+                '''
+            result = cls.db.query_extended(q, data_dict, flatten=True,
+                fields_to_exclude=['neo4j_start_node', 'neo4j_end_node', 'neo4j_type'])
+        else:
+            q = f'''
+                MATCH (dn1) -[r :`{link_name}`]-> (dn2)
+                {clause} 
+                RETURN properties(r) AS props
+                '''
+
+            result = cls.db.query(q, data_dict, single_column="props")
+
+        #cls.db.debug_query_print(q, data_dict)
+
+        return result
 
 
 
@@ -2328,80 +2351,6 @@ class GraphSchema:
                     result.append(wrapped_field_name)
 
         return ", ".join(result)
-
-
-
-    @classmethod
-    def search_data_node(cls, uri = None, internal_id = None, hide_schema=True) -> Union[dict, None]:
-        """
-        Return a dictionary with all the key/value pairs of the properties of given (single) data node
-
-        See also get_data_node() and locate_node()
-
-        :param uri:         The `uri` field value to uniquely identify the data node
-        :param internal_id: Alternate way to specify the data node;
-                                cannot specify both `uri` and `internal_id` arguments
-
-        :param hide_schema: [OPTIONAL] By default (True),
-                                the special schema field `_CLASS` is omitted from the results
-
-        :return:            A dictionary with all the key/value pairs, if node is found; or None if not
-        """
-        # TODO: merge with get_data_node() and perhaps also with locate_node()
-        # TODO: add function that only returns a specified single Property, or specified list of Properties
-        # TODO: optionally also return node label
-
-        if uri is not None:
-            assert internal_id is None, \
-                "GraphSchema.search_data_node(): arguments `uri` and `internal_id` cannot both be specified"
-
-            match = cls.db.match(key_name="uri", key_value=uri)
-        else:   # uri is None
-            assert internal_id is not None, \
-                "GraphSchema.search_data_node(): one of arguments `uri` and `internal_id` must be specified"
-
-            match = cls.db.match(internal_id=internal_id)
-
-
-        d = cls.db.get_nodes(match, single_row=True)    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-        if d is None:               # No matching node found
-            return  None
-
-        if "_CLASS" not in d:      # If not a Data Node
-            return None
-
-        if hide_schema:
-            del d["_CLASS"]
-
-        return d
-
-
-
-    @classmethod
-    def locate_node(cls, node_id: int | str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
-        """
-        EXPERIMENTAL - a generalization of get_data_node()
-
-        Return the "match" structure to later use to locate a node identified
-        either by its internal database ID (default), or by a primary key (with optional label.)
-
-        NOTE: No database operation is actually performed.
-
-        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
-        :param id_type: For example, "uri";
-                            if not specified, the node ID is assumed to be the internal database ID's
-        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
-        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
-
-        :return:        A "CypherBuilder" object
-        """
-        if id_type:
-            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
-        else:
-            match_structure = cls.db.match(internal_id=node_id)
-
-        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
 
 
 
@@ -3031,7 +2980,7 @@ class GraphSchema:
 
 
     @classmethod
-    def update_data_node(cls, data_node : int | str, set_dict :dict, drop_blanks=True, class_name=None) -> int:
+    def update_data_node(cls, data_node :int|str, set_dict :dict, drop_blanks=True, class_name=None, label=None) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing Data Node
 
@@ -3041,18 +2990,20 @@ class GraphSchema:
                                 Blanks at the start/end of string values are zapped
         :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
-        :param class_name:  [OPTIONAL] The name of the Class to which the given Data Note is part of;
+        :param class_name:  [OPTIONAL] The name of the Class to which the given Data Node is part of;
                                 if provided, it gets enforced
+        :param label:       [OPTIONAL] The name of a Label on the given Data Node;
+                                if provided, it gets enforced (but `class_name` takes priority over `label`, FOR NOW)
         :return:            The number of properties set or removed;
                                 if the record wasn't found, or an empty `set_dict` was passed, return 0
                                 Important: a property is counted as being "set" even if the new value is
                                            identical to the old value!
         """
-        #TODO: test the class_name argument
+        #TODO: test the class_name and label argument
         #TODO: check whether the Schema allows the added/dropped fields, if applicable;
         #      compare the keys of set_dict against the Properties of the Class of the Data Node
         #TODO: check for data integrity (data types, etc) of the new values
-        #TODO: make use of NeoAccess.set_fields()
+        #TODO: make use of GraphAccess.set_fields()
 
         if set_dict == {}:
             return 0            # Nothing to do!
@@ -3092,10 +3043,18 @@ class GraphSchema:
         if drop_blanks and remove_list:
             remove_clause = "REMOVE " + ", ".join(remove_list)   # Example:  "REMOVE n.`color`, n.`max quantity`
 
+        class_name_clause = ""
+        label_clause = ""
         if class_name:
+            class_name_clause = f"{{`_CLASS`: '{class_name}'}}"
             match_str = f"MATCH (n {{`_CLASS`: '{class_name}'}}) "
+        elif label:
+            label_clause = f":`{label}`"
+            match_str = f"MATCH (n :`{label}`) "
         else:
             match_str = f"MATCH (n) "
+
+        #match_str = f"MATCH (n) {label_clause} {class_name_clause})"   # TODO: try this approach
 
         q = f'''
             {match_str} 

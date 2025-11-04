@@ -532,12 +532,13 @@ class DataManager:
     #######################     CONTENT-ITEM RELATED      #######################
 
     @classmethod
-    def get_text_media_content(cls, uri :str, public_required = False) -> str:
+    def get_text_media_content(cls, uri :str, class_name :str, public_required = False) -> str:
         """
         Fetch and return the contents of a media item stored on a local file,
         optionally requiring it to be marked as "public".
 
         :param uri:             A string identifying the desired Content Item, which ought to be text media
+        :param class_name:
         :param public_required: If True, the Content Item is returned
                                     only if its database node has an the attribute "public: true"
 
@@ -555,7 +556,7 @@ class DataManager:
         if content_node is None:    # Metadata not found
             raise Exception(f"The metadata for the Content Item (uri: `{uri}`) wasn't found, or the item is not publicly accessible")
 
-        full_filename = MediaManager.get_full_filename(uri)
+        full_filename = MediaManager.get_full_filename(uri, class_name=class_name)
 
         try:
             file_contents = MediaManager.get_from_text_file(filename=full_filename, encoding="utf8")
@@ -679,7 +680,7 @@ class DataManager:
     ##############   MODIFYING CONTENT ITEMS   ##############
 
     @classmethod
-    def update_content_item(cls, uri :str, class_name :str, update_data: dict) -> None:
+    def update_content_item(cls, uri :str, class_name :str, update_data: dict, label=None) -> None:
         """
         Update an existing Content Item.
         No harm if new values are identical to the earlier old values.
@@ -692,6 +693,7 @@ class DataManager:
 
         :param uri:         String with a unique identifier for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
+        :param label:       [OPTIONAL] String with a Label of the Content Item
         :param update_data: A dict of data field names and their desired new values
         :return:            None
         """
@@ -700,8 +702,9 @@ class DataManager:
                 f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
-        assert GraphSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
-                f"update_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
+        if class_name:
+            assert GraphSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
+                    f"update_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
@@ -726,7 +729,7 @@ class DataManager:
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
         number_updated = GraphSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks=True,
-                                                      class_name=class_name)
+                                                      class_name=class_name, label=label)
 
 
         if class_name == "Note":
@@ -767,14 +770,14 @@ class DataManager:
         # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
         if plugin_support.is_media_class(class_name):
             # If there's media involved, delete the media, too
-            MediaManager.delete_media_file(uri=uri)
+            MediaManager.delete_media_file(uri=uri, class_name=class_name)
 
         if class_name == "Image":
             # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             #record = cls.lookup_media_record(uri)
             #if record is not None:
-            MediaManager.delete_media_file(uri=uri, thumb=True)
+            MediaManager.delete_media_file(uri=uri, class_name=class_name, thumb=True)
 
         if class_name == "Note":
             Notes.delete_content_before(uri)
@@ -1160,7 +1163,7 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_name = GraphSchema.search_data_node(uri=search_category).get("name")
+            category_name = GraphSchema.get_single_data_node(node_id=search_category, id_key="uri").get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
         return (content_items, caption)

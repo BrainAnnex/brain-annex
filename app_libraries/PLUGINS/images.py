@@ -14,7 +14,7 @@ class Images:
     @classmethod
     def default_folder(cls):
         """
-        Specify the desired name for the default folder to contain image media
+        Specify the desired name for the default subfolder (of the media folder) to contain image media
         """
         return "images"
 

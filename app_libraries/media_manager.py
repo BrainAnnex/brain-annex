@@ -118,10 +118,11 @@ class MediaManager:
 
 
     @classmethod
-    def lookup_media_file(cls, uri :str, thumb=False) -> (str, str, str):
+    def lookup_media_file(cls, uri :str, class_name, thumb=False) -> (str, str, str):
         """
 
-        :param uri:     Unique identifier for the Media Item of Interest
+        :param uri:     Unique identifier for the Media Item of interest
+        :param class_name:
         :param thumb:   If True, return the folder for the thumbnail image instead;
                                 ignored if the file suffix is "svg" (regardless of case),
                                 because SVG files cannot be resized
@@ -134,10 +135,10 @@ class MediaManager:
         """
         #TODO: maybe combine this method and retrieve_full_path()
 
-        content_node = GraphSchema.search_data_node(uri = uri)
+        content_node = GraphSchema.get_single_data_node(node_id=uri, id_key="uri", class_name=class_name)
         #print("content_node:", content_node)
         if content_node is None:
-            raise Exception(f"lookup_media_file(): Metadata not found for the Media file with URI '{uri}'")
+            raise Exception(f'lookup_media_file(): Metadata not found for the Media file of Class `{class_name}` and uri="{uri}"')
 
         basename = content_node['basename']
         suffix = content_node['suffix']
@@ -155,16 +156,17 @@ class MediaManager:
 
 
     @classmethod
-    def get_full_filename(cls, uri : str, thumb=False) -> str:
+    def get_full_filename(cls, uri : str, class_name, thumb=False) -> str:
         """
 
         :param uri:     Unique identifier for the Media Item of Interest
+        :param class_name:
         :param thumb:   If True, return the folder for the thumbnail image instead;
                                 ignored if the file suffix is "svg" (regardless of case),
                                 because SVG files cannot be resized
         :return:        EXAMPLE: "D:/media/my_media_folder/images/Tahiti vacation/"
         """
-        (filepath, basename, suffix) = cls.lookup_media_file(uri, thumb)
+        (filepath, basename, suffix) = cls.lookup_media_file(uri=uri, class_name=class_name, thumb=thumb)
         filename = basename + "." + suffix
 
         full_path = cls.retrieve_full_path(uri=uri, thumb=thumb)
@@ -215,17 +217,18 @@ class MediaManager:
 
 
     @classmethod
-    def get_binary_content(cls, uri :str, th) -> (str, bytes):
+    def get_binary_content(cls, uri :str, class_name :str, th) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored in a local file.
         In case of error, raise an Exception
 
-        :param uri: String identifier for a media item
-        :param th:  If not None, then the thumbnail version is returned (only
-                        applicable to images).
-                        If the thumbnail version is not found, but the full-size image
-                        is present, create and save a thumbnail file, prior to
-                        returning the contents of the newly-created file
+        :param uri:         String identifier for a media item
+        :param class_name:
+        :param th:          If not None, then the thumbnail version is returned (only
+                                applicable to images).
+                                If the thumbnail version is not found, but the full-size image
+                                is present, create and save a thumbnail file, prior to
+                                returning the contents of the newly-created file
 
         :return:    The pair (filename suffix, binary data in the file)
         """
@@ -244,7 +247,7 @@ class MediaManager:
 
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder, basename, suffix = cls.lookup_media_file(uri, thumb=th)
+        folder, basename, suffix = cls.lookup_media_file(uri, class_name=class_name, thumb=th)
 
         filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "my_pic.jpg"
 
@@ -308,7 +311,7 @@ class MediaManager:
 
         :param uri:         Unique identifier for the Media Item of Interest
         :param set_dict:    A dict of field values to eventually set into the database
-        :param class_name:  (Redundant, since implied by the uri; TODO: maybe eventually drop)
+        :param class_name:
         :return:            None
         """
         #print(f"In before_update_content() - uri: `{uri}` | class_name: `{class_name}` | set_dict: {set_dict}")
@@ -321,7 +324,7 @@ class MediaManager:
                 assert check == "", \
                     f"before_update_content(): Non-acceptable character found in destination file name: {check}"
 
-            folder, old_basename, old_suffix = cls.lookup_media_file(uri)
+            folder, old_basename, old_suffix = cls.lookup_media_file(uri, class_name=class_name)
             #folder = cls.lookup_file_path(class_name=class_name)
             old_full_name = f"{folder}{old_basename}.{old_suffix}"
 
@@ -366,16 +369,17 @@ class MediaManager:
 
 
     @classmethod
-    def delete_media_file(cls, uri: str, thumb=False) -> bool:
+    def delete_media_file(cls, uri: str, class_name :str, thumb=False) -> bool:
         """
         Delete the specified media file, assumed in a standard location
 
         :param uri:         Unique identifier for the Media Item of Interest
+        :param class_name:
         :param thumb:       If True, then the "thumbnail" version is deleted
                                 (only applicable to some media types, such as images)
         :return:            True if successful, or False otherwise
         """
-        full_file_name = cls.get_full_filename(uri, thumb)
+        full_file_name = cls.get_full_filename(uri, class_name=class_name, thumb=thumb)
 
         return cls.delete_file(full_file_name)
 

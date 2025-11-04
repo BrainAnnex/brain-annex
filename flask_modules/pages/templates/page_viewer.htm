@@ -92,6 +92,7 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/timer/timer.css">
 
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -282,12 +283,12 @@
                                                         A list of field names, in order.
                                                         EXAMPLE: ["French", "English", "notes"]
 
-     Intercept various SIGNALS from descendant components:
+     Intercept various SIGNALS from *descendant* components:
         Originating in grandchildren:
             v-on:delete-content-item
             v-on:move-up-content-item
             v-on:move-down-content-item
-        Originating in children:
+        Originating in *direct children* compoments:
             v-on:cancel-edit
             v-on:updated-item
             v-on:insert-new-item
@@ -452,6 +453,8 @@
     <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
     <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
     <button @click="add_new_item_at_bottom('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation</button>
+    &nbsp;&nbsp;&nbsp;
+    <button @click="add_new_item_at_bottom('timer', 'Timer Widget')" style="margin-right:10px">Timer Widget</button>
 
     <!-- Show all leaf Classes that are direct instances of "Records" -->
     <br>Add new record of type:
@@ -596,6 +599,7 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/timer/timer.js"></script>
 
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
@@ -618,10 +622,11 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
-        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs"], // "r" not included here, because a generic core one
-                                                                    // TODO: either pass from the database, or infer from some config file
-                                                                    // IMPORTANT: the items in the list MUST correspond to the folders in
-                                                                    //      flask_modules/pages/static/vue_components/PLUGINS
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs", "timer"],
+                                    // "r" not included here, because a generic core one - see plugin_component_name()
+                                    // TODO: either pass from the database, or infer from some config file
+                                    // IMPORTANT: the items in the list MUST correspond to the folders in
+                                    //            flask_modules/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
                                     // Array containing objects with the data for all the Content Items on the page
@@ -973,22 +978,27 @@ new Vue({
             // Using an auto-incremented negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)     // If a class name was passed, store it
                 blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: insert_after_uri};
-            else                // No class name was provided
+            else  {               // No class name was provided.  TODO: obsolete - this branch no longer in use
                 blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: insert_after_uri};
+                alert("create_new_item_after(): adding new Content Item that lacks a Class name");
+            }
 
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
             // Insert the newly-created record after the specified existing element
             this.content_array.splice(insert_after_index + 1, 0, blank_record);
 
+            // Note: the new Content Item will now appear in editing mode in its handler Vue component,
+            //       but not yet added to the database; it will be the Vue component's responsibility to save it,
+            //       or cancel the operation
+
         }, // create_new_item_after
 
 
 
         add_new_item_at_bottom(schema_code, class_name)
-        /*  Add a new Content Item of the specified type, placed at the bottom of the page (past the last Item);
-            class_name is an OPTIONAL argument, historically only used for Content Item of type 'r' - but being
-            phased in for other types
+        /*  Add a new Content Item of the specified type,
+            placed at the bottom of the page (past the last Item)
          */
         {
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
@@ -996,8 +1006,10 @@ new Vue({
             // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)   // If a class name was passed, store it
                 blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: "BOTTOM"};
-            else             // No class name was provided
+            else {            // No class name was provided.  TODO: obsolete - this branch no longer in use
                 blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: "BOTTOM"};
+                alert("add_new_item_at_bottom(): adding new Content Item that lacks a Class name");
+            }
 
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 

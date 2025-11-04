@@ -903,6 +903,78 @@ def test_get_schema_uri(db):
 
 ################   DATA NODES : READING   ##############
 
+def test__assemble_cypher_clauses():
+    result = GraphSchema._assemble_cypher_clauses(node_id=123, id_key=None, class_name=None)
+    assert result == ( "WHERE (id(dn) = $node_id)" , {"node_id": 123} )
+
+    result = GraphSchema._assemble_cypher_clauses(node_id=123, id_key=None, class_name="Car")
+    assert result == ( "WHERE (id(dn) = $node_id) AND (dn.`_CLASS` = $class_name)" ,
+                       {"node_id": 123, "class_name": "Car"} )
+
+    result = GraphSchema._assemble_cypher_clauses(node_id="white", id_key="color", class_name="Car")
+    assert result == ( "WHERE (dn.`color` = $node_id) AND (dn.`_CLASS` = $class_name)" ,
+                        {"node_id": "white", "class_name": "Car"} )
+
+    with pytest.raises(Exception):
+        GraphSchema._assemble_cypher_clauses(node_id="white", id_key="color", class_name="")
+
+    with pytest.raises(Exception):
+        GraphSchema._assemble_cypher_clauses(node_id="white", id_key="color", class_name=None, method="caller_fn")
+
+
+
+def test_get_data_node(db):
+    db.empty_dbase()
+
+    assert GraphSchema.get_single_data_node(node_id=1234) is None      # Database is empty
+
+
+    # Create a 1st Car node
+    GraphSchema.create_class(name="Car", strict=False)
+
+    db_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
+
+    result = GraphSchema.get_single_data_node(node_id=db_id)
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node(node_id=db_id, class_name="Car")     # Redundant use of class_name
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node(node_id=db_id, class_name="Car", hide_schema=False)
+    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node(node_id="yellow", id_key="color", class_name="Car")
+    assert result is None   # Not found
+
+
+    # Create a 2nd Car node: another Toyota, but this time red
+    GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "red"})
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node(node_id="Toyota", id_key="color") # Missing class_name
+
+    result = GraphSchema.get_single_data_node(node_id="white", id_key="color", class_name="Car")   # Using "color" as primary key
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node(node_id="Toyota", id_key="make", class_name="Car")   # Using "make" as primary key will fail uniqueness
+
+
+    # Create a 3rd Car node, this time with a "uri" field
+    GraphSchema.create_data_node(class_name="Car",
+                                 properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
+
+    result = GraphSchema.get_single_data_node(node_id="car-1", id_key="uri", class_name="Car")
+    assert result == {'color': 'blue', 'make': 'Honda', 'uri': 'car-1'}
+
+
+    # Now try it on a generic database node that is NOT a Data Node
+    db_id = db.create_node(labels="Truck", properties={"make": "BMW", "color": "black"})
+    result = GraphSchema.get_single_data_node(class_name="Truck", node_id=db_id)
+    assert result is None
+
+
+
 def test_all_properties(db):
     pass    # TODO
 
@@ -911,14 +983,6 @@ def test_get_data_node_internal_id(db):
 
 def test_get_data_node_id(db):
     pass    # TODO
-
-
-
-def test_data_node_exists_EXPERIMENTAL(db):
-    db.empty_dbase()
-
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(match=123)
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(match={"uri": "c-88"}, class_name="Car")
 
 
 
@@ -937,12 +1001,18 @@ def test_data_node_exists(db):
     assert GraphSchema.data_node_exists(node_id="c-88", id_key="uri", class_name="Car")
     assert not GraphSchema.data_node_exists(node_id="c-88", id_key="uri", class_name="BOAT")
 
-    GraphSchema.create_class_with_properties(name="Employee", properties=["employee id"], strict=True)
+    GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
     GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
     assert GraphSchema.data_node_exists(node_id=45, id_key="employee id", class_name="Employee")
+    assert not GraphSchema.data_node_exists(node_id=666, id_key="employee id", class_name="Employee")   # Non-existent
 
     with pytest.raises(Exception):
         GraphSchema.data_node_exists(node_id=45, id_key="employee id")    # Missing `class_name`
+
+    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45, "remarks": "duplicate"})
+
+    with pytest.raises(Exception):
+        GraphSchema.data_node_exists(node_id=45, id_key="employee id", class_name="Employee")   # Bad primary key
 
 
 
@@ -951,25 +1021,6 @@ def test_data_link_exists(db):
 
 def test_get_data_link_properties(db):
     pass    # TODO
-
-
-
-def test_get_data_node(db):
-    db.empty_dbase()
-
-    GraphSchema.create_class(name="Car")
-    db_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
-
-    result = GraphSchema.get_data_node(class_name="Car", node_id=db_id)
-    assert result == {'color': 'white', 'make': 'Toyota'}
-
-    result = GraphSchema.get_data_node(class_name="Car", node_id=db_id, hide_schema=False)
-    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-    # Now try it on a generic database node that is NOT a Data Node
-    db_id = db.create_node(labels="Car", properties={"make": "BMW", "color": "red"})
-    result = GraphSchema.get_data_node(class_name="Car", node_id=db_id)
-    assert result is None
 
 
 
@@ -1264,45 +1315,6 @@ def test__process_order_by():
     s="Alice DESC,Bob,   Carol   DESC   ,Disc Number    "
     result = GraphSchema._process_order_by(s, ignore_case = ["Carol"])
     assert result == "n.`Alice` DESC, n.`Bob`, toLower(n.`Carol`) DESC, n.`Disc Number`"
-
-
-
-def test_search_data_node(db):
-    db.empty_dbase()
-
-    GraphSchema.create_class(name="Car")
-
-    # Create a data node without uri field
-    db_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
-
-    result = GraphSchema.search_data_node(internal_id=db_id)
-    assert result == {'color': 'white', 'make': 'Toyota'}
-
-    result = GraphSchema.search_data_node(internal_id=db_id, hide_schema=False)
-    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-    result = GraphSchema.search_data_node(internal_id=99999)
-    assert result is None   # Not found
-
-    result = GraphSchema.search_data_node(uri="I don't exist")
-    assert result is None   # Not found
-
-
-    # Now try it on a generic database node that is NOT a Data Node
-    db_id = db.create_node(labels="Car", properties={"make": "BMW", "color": "red"})
-    result = GraphSchema.search_data_node(internal_id=db_id)
-    assert result is None
-
-
-    # Create data node with uri field
-    GraphSchema.create_data_node(class_name="Car",
-                                 properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
-
-    with pytest.raises(Exception):
-        GraphSchema.search_data_node()
-
-    result = GraphSchema.search_data_node(uri="car-1")
-    assert result == {'make': 'Honda', 'color': 'blue', 'uri': 'car-1'}
 
 
 
@@ -2146,7 +2158,7 @@ def test_add_data_column_merge(db):
     assert GraphSchema.count_data_nodes_of_class("Car") == 4
 
     id_green_car = result["new_nodes"][0]
-    data_point = GraphSchema.search_data_node(internal_id=id_green_car)
+    data_point = GraphSchema.get_single_data_node(node_id=id_green_car)
     assert data_point["color"] == "green"
 
 
@@ -2182,10 +2194,10 @@ def test_delete_data_nodes(db):
     GraphSchema.create_data_node(class_name="result", properties={"biomarker": "insulin ", "value": 10})
     GraphSchema.create_data_node(class_name="result", properties={"biomarker": "bilirubin ", "value": 1})
 
-    doctor = GraphSchema.search_data_node(internal_id=doctor_internal_id)
+    doctor = GraphSchema.get_single_data_node(node_id=doctor_internal_id)
     assert doctor == {'name': 'Dr. Preeti', 'specialty': 'sports medicine'}
 
-    patient = GraphSchema.search_data_node(internal_id=patient_internal_id)
+    patient = GraphSchema.get_single_data_node(node_id=patient_internal_id)
     assert patient == {'name': 'Val', 'age': 22}
 
     assert GraphSchema.count_data_nodes_of_class("result") == 2
@@ -2197,17 +2209,17 @@ def test_delete_data_nodes(db):
 
     result = GraphSchema.delete_data_nodes(node_id=doctor_internal_id)
     assert result == 1
-    doctor = GraphSchema.search_data_node(internal_id=doctor_internal_id)
+    doctor = GraphSchema.get_single_data_node(node_id=doctor_internal_id)
     assert doctor is None       # The doctor got deleted
 
     result = GraphSchema.delete_data_nodes(node_id='Liz', id_key='name')  # Non-existent node
     assert result == 0
-    patient = GraphSchema.search_data_node(internal_id=patient_internal_id)
+    patient = GraphSchema.get_single_data_node(node_id=patient_internal_id)
     assert patient == {'name': 'Val', 'age': 22}        # Still there
 
     result = GraphSchema.delete_data_nodes(node_id='Val', id_key='name')  # Correct node
     assert result == 1
-    patient = GraphSchema.search_data_node(internal_id=patient_internal_id)
+    patient = GraphSchema.get_single_data_node(node_id=patient_internal_id)
     assert patient is None      # The patient got deleted
 
     result = GraphSchema.delete_data_nodes(class_name="result", node_id='LDL', id_key='biomarker')

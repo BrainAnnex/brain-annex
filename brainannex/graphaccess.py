@@ -59,11 +59,11 @@ class GraphAccess(InterGraph):
     IMPORTANT : this works with various versions of the Neo4j database (and, possibly,
                 other graph databases), depending on the version of the underlying InterGraph library)
 
-    High-level class to interface with the Neo4j graph database from Python.
+    High-level class to interface with the underlying graph database from Python.
 
     This class is a layer above its base class "InterGraph" (which is database-specific)
         and it provides a higher-level functionality for common database operations,
-        such as lookup, creation, deletion, modification, import, indices, etc.
+        such as lookup, creation, deletion, modification, import, etc.
 
     It makes use of separate helper classes (NOT meant for the end user) in the file cypher_utils.py
     """
@@ -460,13 +460,13 @@ class GraphAccess(InterGraph):
     def sample_properties(self, label :str, sample_size=10) -> {str}:
         """
         Take a sample of the given size of the database nodes with the given label,
-        and form a set of ALL the properties that are set on any of those nodes.
+        and assemble the set of ALL the properties that are present on any of those nodes.
 
         Meant as an estimate of the properties (typically) used, in current usage of the database,
         for nodes of a given label.
 
         CAUTION: In a graph database, any node may freely deviate - and have, or not have, any Properties
-                 it wishes.  If any type of standardization is desired, make use of the Schema layer
+                 it wishes.  If any type of standardization is desired, make use of the GraphSchema layer
 
         :param label:       Name of the database label of interest
         :param sample_size: Number of nodes to use as a representative sampler
@@ -2755,7 +2755,7 @@ class GraphAccess(InterGraph):
             if fields is not None:
                 # Copy over the requested fields
                 for f in fields:
-                    d_simple[f] = d[f]
+                    d_simple[f] = d.get(f)
             else:
                 # Copy over ALL fields, except "node_labels" and "internal_id" (which are handled separately)
                  for k, v in d.items():

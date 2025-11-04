@@ -27,10 +27,14 @@ class InterGraph:
     A thin wrapper around the Neo4j python connectivity library "Neo4j Python Driver",
     which is documented at: https://neo4j.com/docs/api/python-driver/4.4/index.html
 
+    This is a bottom layer that is dependent on the specific graph database
+    (for operations such as connection, indexes, constraints),
+    and insulates the higher layers from it.
+
     This "CORE" library allows the execution of arbitrary Cypher (query language) commands,
     and helps manage the complex data structures that they return.
     It may be used independently,
-    or as the foundation of the higher-level child class, "NeoAccess"
+    or as the foundation of the higher-level child class, "GraphAccess"
 
     SECTIONS IN THIS CLASS:
         * INIT (constructor) and DATABASE CONNECTION
@@ -77,11 +81,11 @@ class InterGraph:
 
         self.driver = None
 
-        assert host, "Cannot instantiate the NeoAccess object with an undefined argument`host`; " \
+        assert host, "Cannot instantiate the GraphAccess object with an undefined argument`host`; " \
                      "unable to obtain a default value from getenv('NEO4J_HOST') . You need to pass a value, " \
                      "or to set that environment variable"
 
-        assert credentials, "Cannot instantiate the NeoAccess object with an undefined argument `credentials`; " \
+        assert credentials, "Cannot instantiate the GraphAccess object with an undefined argument `credentials`; " \
                             "unable to obtain a default value from getenv('NEO4J_USER') and getenv('NEO4J_PASSWORD') . You need to pass a value, " \
                             "or to set those environment variables"
 
@@ -180,6 +184,25 @@ class InterGraph:
         """
         if self.driver is not None:
             self.driver.close()
+
+
+
+    def empty_dbase(self, keep_labels=None, drop_indexes=False, drop_constraints=False) -> None:
+        """
+        Use this to get rid of everything in the database,
+        including all the indexes and constraints (unless otherwise specified.)
+        Optionally, keep nodes with a given label, or keep the indexes, or keep the constraints
+
+        :param keep_labels:     An optional list of strings, indicating specific labels to KEEP
+        :param drop_indexes:    Flag indicating whether to also ditch all indexes (by default, True)
+        :param drop_constraints:Flag indicating whether to also ditch all constraints (by default, True)
+
+        :return:                None
+        """
+        self.delete_nodes_by_label(keep_labels=keep_labels)
+
+        if drop_indexes:
+            self.drop_all_indexes(including_constraints=drop_constraints)
 
 
 
@@ -526,25 +549,6 @@ class InterGraph:
 
 
 
-    def empty_dbase(self, keep_labels=None, drop_indexes=False, drop_constraints=False) -> None:
-        """
-        Use this to get rid of everything in the database,
-        including all the indexes and constraints (unless otherwise specified.)
-        Optionally, keep nodes with a given label, or keep the indexes, or keep the constraints
-
-        :param keep_labels:     An optional list of strings, indicating specific labels to KEEP
-        :param drop_indexes:    Flag indicating whether to also ditch all indexes (by default, True)
-        :param drop_constraints:Flag indicating whether to also ditch all constraints (by default, True)
-
-        :return:                None
-        """
-        self.delete_nodes_by_label(keep_labels=keep_labels)
-
-        if drop_indexes:
-            self.drop_all_indexes(including_constraints=drop_constraints)
-
-
-
 
 
     #####################################################################################################
@@ -708,11 +712,12 @@ class InterGraph:
     def create_index(self, label :str, key :str) -> bool:
         """
         Create a new database index, unless it already exists,
-        to be applied to the specified label and key (property).
-        The standard name given to the new index is of the form label.key
+        to be applied to the pairing of the specified label and key (property).
+        The standard name automatically given to the new index is of the form label.key
         EXAMPLE - to index nodes labeled "car" by their key "color", use:
-                        create_index("car", "color")
+                        create_index(label="car", key="color")
                   This new index - if not already in existence - will be named "car.color"
+
         If an existing index entry contains a list of labels (or types) such as ["l1", "l2"] ,
         and a list of properties such as ["p1", "p2"] ,
         then the given pair (label, key) is checked against ("l1_l2", "p1_p2"), to decide whether it already exists.
@@ -721,6 +726,7 @@ class InterGraph:
         :param key:     A string with the key (property) name to which the index is to be applied
         :return:        True if a new index was created, or False otherwise
         """
+        # TODO: offer option to specify a custom name.  Allow use of multiple keys
         existing_indexes = self.get_indexes()   # A Pandas dataframe with info about indexes;
                                                 #       in particular 2 columns named "labelsOrTypes" and "properties"
 
@@ -729,14 +735,17 @@ class InterGraph:
         existing_standard_name_pairs = list(existing_indexes.apply(
             lambda x: ("_".join(x['labelsOrTypes']), "_".join(x['properties'])), axis=1))   # Proceed by row
         """
-        For example, if the Pandas dataframe existing_indexes contains the following columns: 
+        For example, if the Pandas dataframe `existing_indexes` contains the following columns: 
                             labelsOrTypes     properties
                 0                   [car]  [color, make]
                 1                [person]          [sex]
                 
-        then existing_standard_names will be:  [('car', 'color_make'), ('person', 'sex')]
+        then `existing_standard_names` will be:  [('car', 'color_make'), ('person', 'sex')]
         """
 
+
+        # Index is created if not already exists;
+        # a standard name for the index is assigned: `{label}.{key}`
         if (label, key) not in existing_standard_name_pairs:
             q = f'CREATE INDEX `{label}.{key}` FOR (s:`{label}`) ON (s.`{key}`)'
             self.query(q)
