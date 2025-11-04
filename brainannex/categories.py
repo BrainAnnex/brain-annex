@@ -88,9 +88,7 @@ class Categories:
         :return:                The Category's name (or a blank dictionary if not found)
                                     EXAMPLE:  {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
         """
-        # Note: since the category_uri is a primary key,
-        #       specifying a value for the labels and the "schema_code" property is for redundancy
-        return GraphSchema.get_data_node(class_name="Category", node_id=category_uri, id_key="uri")
+        return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
 
 
 
@@ -485,13 +483,6 @@ class Categories:
                                              "rel_name": "BA_subcategory_of"}],
                                      new_uri=new_uri)
 
-        '''
-        new_data_point = GraphSchema.search_data_node(internal_id = new_internal_id)
-        assert new_data_point is not None, \
-            "add_subcategory(): failure to fetch data node for the newly created subcategory"
-
-        return new_data_point["uri"]
-        '''
         return new_uri
 
 
@@ -697,7 +688,7 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True or False
         """
-        all_props = GraphSchema.search_data_node(uri=uri)    # Returns a dict, or None.   # labels="Category"
+        all_props = GraphSchema.get_single_data_node(node_id=uri, id_key="uri")    # Returns a dict, or None.   # labels="Category"
         assert all_props, "is_pinned(): unable to locate the specified Category node"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't

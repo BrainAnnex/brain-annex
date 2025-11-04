@@ -10,11 +10,13 @@ class Documents:
     Plugin-provided custom interface for "documents"
     """
 
+    SCHEMA_CLASS_NAME = "Document"
+
 
     @classmethod
     def default_folder(cls):
         """
-        Specify the desired name for the default folder to contain document media
+        Specify the desired name for the default subfolder (of the media folder) to contain document media
         """
         return "documents"
 
