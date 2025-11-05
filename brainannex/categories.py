@@ -85,7 +85,7 @@ class Categories:
         Return the Name and Remarks field values attached to the given Category
 
         :param category_uri:    A string identifying the desired Category
-        :return:                The Category's name (or a blank dictionary if not found)
+        :return:                The Category's properties (or a blank dictionary if not found)
                                     EXAMPLE:  {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
         """
         return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
@@ -161,11 +161,11 @@ class Categories:
     def count_subcategories(cls, category_uri :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of GraphSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) Subcategories of the given Category; possibly, zero
         """
+        # TODO: maybe turn into a method of GraphSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         match = cls.db.match(labels="Category",
                              properties={"uri": category_uri})
@@ -177,11 +177,11 @@ class Categories:
     def count_parent_categories(cls, category_uri :str) -> int:
         """
         Return the number of (direct) Subcategories of the given Category
-        TODO: maybe turn into a method of GraphSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
         """
+        # TODO: maybe turn into a method of GraphSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         match = cls.db.match(labels="Category",
                              properties={"uri": category_uri})
@@ -246,8 +246,7 @@ class Categories:
                                             EXAMPLE of single element:
                                             {'name': 'French', 'internal_id': 123, 'node_labels': ['Category', 'BA']}
         """
-
-        #TODO: switch to this after the next update of GraphAccess
+        #TODO: switch to this after testing it
         #result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of", order_by="name")
 
         q = f"""
@@ -347,13 +346,14 @@ class Categories:
 
         # Put together a block (to be turned into an HTML element by the front end) depicting all possible
         # breadcrumb paths from the ROOT to the current category
-        return ["START_CONTAINER", cls.recursive(category_uri, parents_map) , "END_CONTAINER"]
+        return ["START_CONTAINER", cls._recursive(category_uri, parents_map) , "END_CONTAINER"]
 
 
 
     @classmethod
-    def recursive(cls, category_uri :str, parents_map :dict) -> list:
+    def _recursive(cls, category_uri :str, parents_map :dict) -> list:
         """
+        Helper method for create_bread_crumbs()
 
         :param category_uri:A string identifying the desired Category
         :param parents_map: The dict structure returned by create_parent_map()
@@ -368,7 +368,7 @@ class Categories:
             return []    # TODO: generate warning
         elif len(parent_list) == 1:     # If just one parent
             parent_id = parent_list[0]
-            bc = cls.recursive(parent_id, parents_map)
+            bc = cls._recursive(parent_id, parents_map)
             bc.append("ARROW")
             bc.append(category_uri)
             return bc
@@ -376,7 +376,7 @@ class Categories:
             bc = ["START_BLOCK"]
             for parent_id in parent_list:
                 bc.append("START_LINE")
-                bc.append(cls.recursive(parent_id, parents_map))
+                bc.append(cls._recursive(parent_id, parents_map))
                 bc.append("END_LINE")
                 if parent_id != parent_list[-1]:    # Skip if we're dealing with last element
                     bc.append("CLEAR_RIGHT")
@@ -512,7 +512,6 @@ class Categories:
         if cls.count_subcategories(category_uri) > 0:
             raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because it has sub-categories. Use the Category manager to first sever those relationships")
 
-        #number_deleted = GraphSchema.delete_data_point(uri=category_uri, labels="BA")
         number_deleted = GraphSchema.delete_data_nodes(node_id=category_uri, id_key="uri", class_name="Category")
 
         if number_deleted != 1:
@@ -540,7 +539,6 @@ class Categories:
 
         subcategory_uri = data_dict["sub"]
         category_uri = data_dict["cat"]
-
 
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
@@ -686,10 +684,10 @@ class Categories:
         Return True if the given Category has a "pinned" status; otherwise, False
 
         :param uri: The URI of a data node representing a Category
-        :return:    True or False
+        :return:    True if the given Category has a "pinned" status; otherwise, False
         """
-        all_props = GraphSchema.get_single_data_node(node_id=uri, id_key="uri")    # Returns a dict, or None.   # labels="Category"
-        assert all_props, "is_pinned(): unable to locate the specified Category node"
+        all_props = GraphSchema.get_single_data_node(node_id=uri, id_key="uri", class_name="Category")    # A dict, or None
+        assert all_props, f"is_pinned(): unable to locate the specified Category node (uri: '{uri}')"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
 
