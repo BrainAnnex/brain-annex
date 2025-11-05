@@ -939,7 +939,7 @@ class DataManager:
         :return:    The URI of the newly-created Data Node.
                     In case of error, an Exception is raised
         """
-
+        #print("In new_content_item_in_category(): post_data = ", post_data)
         # NOTE: the post_data dictionary contains entries are not part of the data dictionary for the new Content Item;
         #       those will be eliminated below
 
@@ -1136,15 +1136,15 @@ class DataManager:
     @classmethod
     def search_for_terms(cls, words :str, search_category="") -> ([dict], str):
         """
-        Carry out a full-text search for a word, or set of words - possibly restricted to some Categories
+        Carry out a full-text search for a word, or a set of words - possibly restricted to some Categories
 
-        :param words:       String containing one or more words to search for
-        :param search_category: (OPTIONAL) URI of Category.  If supplied, all searching will
+        :param words:           String containing one or more words to search for
+        :param search_category: [OPTIONAL] URI of a Category.  If supplied, all searching will
                                     be limited to Content Items in this Category
                                     or in any of its sub-categories
-        :return:            A pair consisting of:
-                                1) list of dictionaries, each with the record data of a search result
-                                2) a string with a caption to describe these search results
+        :return:                A pair consisting of:
+                                    1) list of dictionaries, each with the record data of a search result
+                                    2) a string with a caption to describe these search results
         """
         #print(f"search_for_terms(). Words: `{words}`")
         #print(f"search_category: `{search_category}`")
@@ -1163,7 +1163,8 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_name = GraphSchema.get_single_data_node(node_id=search_category, id_key="uri").get("name")
+            category_properties = GraphSchema.get_single_data_node(node_id=search_category, id_key="uri", class_name="Category")
+            category_name = category_properties.get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
         return (content_items, caption)

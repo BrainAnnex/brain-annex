@@ -550,15 +550,15 @@ class Collections:
         '''
 
         result = cls.db.query(q, data_binding, single_row=True)
-        print(result)
+        print("In add_to_collection_after_element(): result = ", result)
         if result is None:
             # An empty find is indicative of either an "insert at the end" (no n_after found),
             #       or a bad insert_after value that matches no node
-            node = GraphSchema.get_single_data_node(node_id=insert_after, id_key="uri")
+            node = GraphSchema.get_single_data_node(node_id=insert_after, id_key="uri", class_name=item_class_name)
             if node is None:
-                raise Exception(f"There is no node with the `uri` value ({insert_after}) passed by `insert_after`")
+                raise Exception(f"There is no node of class `{item_class_name}` with the `uri` value ({insert_after}) passed by `insert_after`")
 
-            print("It's case of insert AT THE END")
+            print("It's case of 'insert AT THE END'")
             return cls.add_to_collection_at_end(collection_uri, membership_rel_name, item_class_name, item_properties, new_uri=new_uri)
 
 
