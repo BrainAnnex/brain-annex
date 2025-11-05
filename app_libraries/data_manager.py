@@ -939,7 +939,7 @@ class DataManager:
         :return:    The URI of the newly-created Data Node.
                     In case of error, an Exception is raised
         """
-
+        #print("In new_content_item_in_category(): post_data = ", post_data)
         # NOTE: the post_data dictionary contains entries are not part of the data dictionary for the new Content Item;
         #       those will be eliminated below
 

@@ -14,9 +14,13 @@ Vue.component('vue-plugin-h',
                                                              "text":"SOME SECTION"}
                                 EXAMPLE of newly-created Header: {"uri":-2, "insert_after":"h-7", "schema_code":"h", "class_name":"Header",
                                                              "text":"SOME SECTION"}
-                                TODO: maybe take "pos" and "class_name" out of item_data !
+                                TODO: separate regular properties from control values
+                                     (`class_name`, `schema_code`, `insert_after`, `pos`)
 
             edit_mode:      A boolean indicating whether in editing mode
+                            TODO: possibly add a new parameter "create_mode" that won't show the usual
+                                  delete/tag/move controls
+
             category_id:    The URI of the Category page where this Header is displayed (used when creating new records)
             index:          The zero-based position of this Header item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -69,6 +73,10 @@ Vue.component('vue-plugin-h',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
+                //      Note: for new Content Items, it only contains
+                //              `class_name`, `schema_code`, `uri`, `insert_after`, PLUS anything dynamically added by v-model during data entry
+                //            For existing Content Items, it contains
+                //              `class_name`, `schema_code`, `uri`, `pos`, and Content-specific fields
                 current_data:   Object.assign({}, this.item_data),
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
@@ -112,11 +120,11 @@ Vue.component('vue-plugin-h',
 
 
             /*
-                ---  SERVER CALLS  ---
+                --------  SERVER CALLS  --------
              */
 
             save()
-            // Conclude an EDIT operation
+            // Conclude an EDIT operation.  TODO: maybe save/cancel should be a sub-component shared among various plugins?
             {
                 // Start the body of the POST to send to the server
                 var post_obj = {class_name: this.item_data.class_name};
@@ -128,14 +136,14 @@ Vue.component('vue-plugin-h',
 
                      url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
-                else {   // Update an EXISTING header
+                else {   // Update an EXISTING Content Item
                     post_obj.uri = this.item_data.uri;
 
                     url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
 
                 // Enforce required field
-                if ('text' in this.current_data)
+                if ('text' in this.current_data)    // For new records, this attribute gets dynamically added by v-model during data entry
                     post_obj.text = this.current_data.text;
                 else  {
                     alert("Cannot save an empty header text. If you want to get rid of this header, delete it instead");

@@ -1789,7 +1789,7 @@ class GraphSchema:
 
         # Prepare a Cypher query
         where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key,
-                                                                  class_name=class_name, method="get_data_node")
+                                                                  class_name=class_name, method="get_single_data_node")
 
         q = f'''
             MATCH (dn)
@@ -1806,7 +1806,7 @@ class GraphSchema:
             return None
 
         assert len(result) == 1, \
-            f"get_data_node(): the specified key (`{id_key}`) is not primary - multiple records were located for (`{id_key}`={node_id})"
+            f"get_single_data_node(): the specified key (`{id_key}`) is not primary - multiple records were located for (`{id_key}`={node_id})"
 
 
         result = result[0]  # Extract the single element from the list
@@ -1823,7 +1823,7 @@ class GraphSchema:
     @classmethod
     def locate_node(cls, node_id :int|str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
         """
-        EXPERIMENTAL - a generalization of get_data_node()
+        EXPERIMENTAL - a generalization of get_single_data_node()
 
         Return the "match" structure to later use to locate a node identified
         either by its internal database ID (default), or by a primary key (with optional label.)
