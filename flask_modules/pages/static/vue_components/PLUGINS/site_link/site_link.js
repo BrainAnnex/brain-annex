@@ -8,6 +8,9 @@ Vue.component('vue-plugin-sl',
             item_data:      An object with the relevant data about this Site Link item;
                                 if the "uri" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
+                                TODO: separate regular properties from control values
+                                     (`class_name`, `schema_code`, `insert_after`, `pos`)
+
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of this Site Link item on the page
@@ -123,6 +126,10 @@ Vue.component('vue-plugin-sl',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
+                //      Note: for new Content Items, it only contains
+                //              `class_name`, `schema_code`, `uri`, `insert_after`, PLUS anything dynamically added by v-model during data entry
+                //            For existing Content Items, it contains
+                //              `class_name`, `schema_code`, `uri`, `pos`, and Content-specific fields
                 current_data:   Object.assign({}, this.item_data),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
@@ -297,7 +304,7 @@ Vue.component('vue-plugin-sl',
 
 
             save()
-            // Conclude an EDIT operation
+            // Conclude an EDIT operation.  TODO: maybe save/cancel should be a sub-component shared among various plugins?
             {
                 // Enforce required field
                 if (! 'url' in this.current_data) {
