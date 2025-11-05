@@ -98,7 +98,7 @@ Vue.component('vue-plugin-timer',
                         <tr style='height:40px'>
                             <td align="center" colspan="3">
                                 <!-- preload="none"  -->
-                                <audio id="my_audio" controls style="display:none">
+                                <audio v-bind:id="'my_audio' + item_data.uri" controls style="display:none">
                                     <source v-bind:src="'/BA/pages/static/vue_components/PLUGINS/timer/alarms/' + current_data.audio_file" type="audio/mpeg">
                                 </audio>
                                 <button @click="play_audio('stop')" class='alarmButtons' style="color:red">SILENCE ALARM</button>
@@ -116,11 +116,13 @@ Vue.component('vue-plugin-timer',
                 <!-- Display when in EDITING MODE -->
                 <div v-if="editing_mode" style="border: 1px solid #888; box-shadow: 5px 5px 10px #555; padding: 10px; background-color: #d0ffff">
                     <span style="font-size:22px"><b>TIMER WIDGET</b></span>
-                    <br>
-                    Desired ringtone <span style="color:gray">(audio filename, such as dreamscape-alarm-clock-117680.mp3)</span>:
+                    <br><br>
+                    Desired ringtone <span style="color:gray">(audio filename)</span>:
                     <input type="text" size="40" v-model="current_data.audio_file">
                     <button @click="save">SAVE</button>
                     <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
+                    <br><br>
+                    <span style="color:gray">AVAILABLE: alarm_good_morning_song.mp3 , dreamscape-alarm-clock-117680.mp3 , gentle_alarm.mp3</span>
                 </div>
 
 
@@ -224,7 +226,7 @@ Vue.component('vue-plugin-timer',
             {
                 console.log(`In play_audio(): task = "${task}"`);
 
-                var audio = document.getElementById("my_audio");    // HTML DOM Audio Object.  It inherits from HTMLMediaElement
+                var audio = document.getElementById("my_audio"+ this.item_data.uri);    // HTML DOM Audio Object.  It inherits from HTMLMediaElement
                                                                     // https://www.w3schools.com/jsref/dom_obj_audio.asp
 
                 if (task == 'play')  {
