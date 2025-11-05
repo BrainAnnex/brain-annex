@@ -1784,7 +1784,7 @@ class GraphSchema:
         :return:            If not found, return None;
                                 otherwise, return a dict with the name/values of the node's properties
         """
-        # TODO: add function that only returns a specified single Property, or specified list of Properties
+        # TODO: possibly add a function that only returns a specified single Property, or specified list of Properties
         # TODO: optionally also return node label
 
         # Prepare a Cypher query

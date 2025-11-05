@@ -433,8 +433,8 @@ Vue.component('vue-plugin-timer',
                     url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
 
-                console.log("this.current_data: ");
-                console.log(this.current_data);
+                //console.log("this.current_data: ");
+                //console.log(this.current_data);
 
                 // Enforce required field
                 if ('audio_file' in this.current_data) // For new records, this attribute gets dynamically added by v-model during data entry
