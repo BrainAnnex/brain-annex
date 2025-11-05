@@ -52,7 +52,7 @@ class Categories:
         """
         (int_dbase_id, uri) = GraphSchema.create_class_with_properties(name="Category",
                                                                        properties=["name", "remarks", "uri", "root"],
-                                                                       strict=True)
+                                                                       strict=False)
 
         GraphSchema.create_class_relationship(from_class="Category", to_class="Category",
                                               rel_name="BA_subcategory_of", use_link_node=False)
@@ -86,7 +86,8 @@ class Categories:
 
         :param category_uri:    A string identifying the desired Category
         :return:                The Category's properties (or a blank dictionary if not found)
-                                    EXAMPLE:  {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
+                                    EXAMPLES:   {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
+                                                {"uri": "1", "name": "HOME", "root": true}
         """
         return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
 
@@ -103,9 +104,16 @@ class Categories:
         assert GraphSchema.is_valid_uri(category_uri), \
             "is_root_category(): the argument `category_uri` is not a valid URI string"
 
-        # NOTE: historically, "1" has been used for the ROOT Category; however, now that uri is shared
-        #       among all types of plugins, maybe a different approach would be better (such as an attribute in the node)
-        return True if category_uri == "1" else False    # TODO: this will eventually have to be managed differently
+        # NOTE: historically, "1" has been used for the ROOT Category; this is deprecated.  TODO: ditch
+        if category_uri == "1":
+            return True
+
+        category_properties = cls.get_category_info(category_uri)
+
+        if category_properties.get("root"):
+            return True
+
+        return False
 
 
 
@@ -145,7 +153,7 @@ class Categories:
         # Ditch all the MISSING "pinned" values  (TODO: let the Schema layer handle this!)
         for item in result:
             if item["pinned"] is None:
-                del item["pinned"]     # To avoid a dictionary entry of the type  'pinned': None
+                del item["pinned"]          # To avoid a dictionary entry of the type  'pinned': None
 
         # If remarks are being included, ditch all the MISSING "remarks" values
         if include_remarks:
@@ -246,7 +254,7 @@ class Categories:
                                             EXAMPLE of single element:
                                             {'name': 'French', 'internal_id': 123, 'node_labels': ['Category', 'BA']}
         """
-        #TODO: switch to this after testing it
+        #TODO: switch to the following commented line, after testing it
         #result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of", order_by="name")
 
         q = f"""
@@ -315,79 +323,6 @@ class Categories:
 
 
 
-    @classmethod
-    def create_bread_crumbs(cls, category_uri :str) -> list:
-        """
-        Return a list of Category ID's together with token strings, providing directives for the HTML structure of
-        the bread crumbs
-
-        :param category_uri:A string with the URI of the Category whose "ancestry bread crumbs" we want to construct
-        :return:            A list of Category URI's together with token strings,
-                            providing directives for the HTML structure of the bread crumbs
-                            EXAMPLE 1:  ['1']
-                            EXAMPLE 2:  ['START_CONTAINER', ['1', 'ARROW', '799', 'ARROW', '876'], 'END_CONTAINER']
-                            EXAMPLE 3:
-                                [
-                                    'START_CONTAINER',
-                                    ['START_BLOCK',
-                                                    'START_LINE', ['1', 'ARROW', '799', 'ARROW', '526'], 'END_LINE', 'CLEAR_RIGHT',
-                                                    'START_LINE', ['1', 'ARROW', '61'], 'END_LINE',
-                                     'END_BLOCK', 'ARROW', '814'],
-                                    'END_CONTAINER'
-                                ]
-        """
-        if category_uri == "1":    # If it is the root
-            return ["1"]
-
-        # If we get here, we're NOT at the root.
-
-        parents_map = cls.create_parent_map(category_uri)
-        #print("In create_bread_crumbs().  parents_map: ", parents_map)
-
-        # Put together a block (to be turned into an HTML element by the front end) depicting all possible
-        # breadcrumb paths from the ROOT to the current category
-        return ["START_CONTAINER", cls._recursive(category_uri, parents_map) , "END_CONTAINER"]
-
-
-
-    @classmethod
-    def _recursive(cls, category_uri :str, parents_map :dict) -> list:
-        """
-        Helper method for create_bread_crumbs()
-
-        :param category_uri:A string identifying the desired Category
-        :param parents_map: The dict structure returned by create_parent_map()
-        :return:
-        """
-        if cls.is_root_category(category_uri):
-            return ["1"]    # TODO: this will eventually have to be managed differently
-
-        parent_list = parents_map.get(category_uri, [])
-
-        if len(parent_list) == 0:
-            return []    # TODO: generate warning
-        elif len(parent_list) == 1:     # If just one parent
-            parent_id = parent_list[0]
-            bc = cls._recursive(parent_id, parents_map)
-            bc.append("ARROW")
-            bc.append(category_uri)
-            return bc
-        else:                           # If multiple parents
-            bc = ["START_BLOCK"]
-            for parent_id in parent_list:
-                bc.append("START_LINE")
-                bc.append(cls._recursive(parent_id, parents_map))
-                bc.append("END_LINE")
-                if parent_id != parent_list[-1]:    # Skip if we're dealing with last element
-                    bc.append("CLEAR_RIGHT")
-
-            bc.append("END_BLOCK")
-            bc.append("ARROW")
-            bc.append(category_uri)
-            return bc
-
-
-
 
 
     #####################################################################################################
@@ -405,7 +340,7 @@ class Categories:
         Create a ROOT Category node;
         and return its internal database ID and its URI
 
-        :param data_dict:   (OPTIONAL) Dict to specify alternate desired values
+        :param data_dict:   [OPTIONAL] Dict to specify alternate desired values
                                 for the "name" and "remarks" fields of the Root Category
                                 (by default, "HOME" and "top level", respectively)
         :return:            The pair (internal database ID, string URI)
@@ -469,13 +404,6 @@ class Categories:
 
         parent_category_internal_id = GraphSchema.get_data_node_id(key_value=category_uri, key_name="uri")
 
-        '''
-        new_internal_id = GraphSchema.add_data_node_with_links(
-                                class_name = "Category",
-                                properties = data_dict, labels = ["BA", "Category"],
-                                links = [{"internal_id": parent_category_internal_id, "rel_name": "BA_subcategory_of"}],
-                                assign_uri=True)
-        '''
         new_uri = GraphSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
         GraphSchema.create_data_node(class_name="Category", extra_labels ="BA",
                                      properties = data_dict,
@@ -550,76 +478,6 @@ class Categories:
 
 
 
-
-    """
-    NOTE: the next 2 methods, below, may be the future prototype of plugin-specific methods...
-          Nothing is returned if all is good, but an Exception is raised in case of problems.
-          The methods only handle the plugin-specific part; the "main action" is done by the core method,
-          AFTER calling this method (if provided)
-    """
-
-    @classmethod
-    def add_relationship_before(cls, from_id :str, to_id :str,
-                                rel_name :str) -> None:
-        """
-        A handler to be invoked by the core module before a relationship involving Categories is called.
-
-        If any restriction would apply to adding the parent/child relationship between the specified categories,
-        raise an Exception.
-
-        IMPORTANT: NO RELATIONSHIP IS ACTUALLY ADDED
-
-        The restriction are:
-            1) the subcategory node cannot be the Root Category
-            2) a category cannot be a subcategory of itself
-
-        NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
-
-        :param from_id:     String with the uri of the subcategory node
-        :param to_id:       String with the uri of the parent-category node
-        :param rel_name:    NOT USED
-        :return:            None.  If the requested new relationship should not be created, raise an Exception
-        """
-        # If the sub-category is the Root Category, raise an Exception
-        if cls.is_root_category(from_id):        # TODO: this will eventually have to be managed differently
-            raise Exception("Cannot add the relationship because the Root Category cannot be made a subcategory of something else")
-
-        # If the parent and the child are the same, raise an Exception
-        assert from_id != to_id, \
-            "Cannot add a relationship from a Category to itself"
-
-
-
-    @classmethod
-    def remove_relationship_before(cls, from_id: str, to_id :str,
-                                   rel_name: str) -> None:
-        """
-        A handler to be invoked by the core module before a relationship involving Categories is called.
-
-        If any restriction would apply to removing the parent/child relationship between the specified categories,
-        raise an Exception.
-
-        IMPORTANT: NO RELATIONSHIP IS ACTUALLY REMOVED
-
-        The restriction is:
-            *) the subcategory node cannot become orphaned as a result of the deletion
-
-        NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
-
-        :param from_id:     String with the uri of the subcategory node
-        :param to_id:       NOT USED.  String with the uri of the parent-category node
-        :param rel_name:    NOT USED
-        :return:            None.  If the requested new relationship should not be deleted, raise an Exception
-        """
-        # If the sub-category has only one parent, raise an Exception
-        #print(f"In Category.remove_relationship(). from_id = {from_id}  Parent categories : {cls.get_parent_categories(from_id)}")
-        assert len(cls.get_parent_categories(from_id)) != 1, \
-            "Cannot sever the relationship because that would leave " \
-            "the sub-category orphaned (i.e. with no parent categories)"
-
-
-
-
     @classmethod
     def switch_parent_category_relationship(cls, child_id :str, old_parent_id :str, new_parent_id :str) -> None:
         """
@@ -652,46 +510,6 @@ class Categories:
         """
         #TODO: make use of cls.db.reattach_node()
         pass    # switchChildNode($parentID, $oldChildID, $newChildID)
-
-
-
-    @classmethod
-    def pin_category(cls, uri, op :str) -> None:
-        """
-        Set or unset the "pinned" property of the specified Category
-
-        :param uri: The URI of a data node representing a Category
-        :param op:  Either "set" or "unset"
-        :return:    None
-        """
-        # TODO: verify that the node is indeed a Category - or make sure that the Schema is enforced
-        #       Maybe first locate the data node by multiple criteria
-
-        if op == "set":
-            number_set = GraphSchema.update_data_node(data_node=uri, set_dict={"pinned": True})
-        elif op == "unset":
-            number_set = GraphSchema.update_data_node(data_node=uri, set_dict={"pinned": False})
-        else:
-            raise Exception("pin_category(): the argument `op` must be equal to either 'set' or 'unset'")
-
-        assert number_set == 1, "pin_category(): no change could be made to the database"
-
-
-
-    @classmethod
-    def is_pinned(cls, uri :str) -> bool:
-        """
-        Return True if the given Category has a "pinned" status; otherwise, False
-
-        :param uri: The URI of a data node representing a Category
-        :return:    True if the given Category has a "pinned" status; otherwise, False
-        """
-        all_props = GraphSchema.get_single_data_node(node_id=uri, id_key="uri", class_name="Category")    # A dict, or None
-        assert all_props, f"is_pinned(): unable to locate the specified Category node (uri: '{uri}')"
-
-        value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
-
-        return value
 
 
 
@@ -818,6 +636,220 @@ class Categories:
 
 
 
+
+    #####################################################################################################
+
+    '''                                  ~   CATEGORY PAGES   ~                                         '''
+
+    def ________CATEGORY_PAGES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    @classmethod
+    def viewer_handler(cls, category_uri :str):
+        """
+        Handler function for the Flask page generator "BA_pages_routing.py"
+
+        :param category_uri: A string identifying the desired Category
+        :return:             A list of dictionaries, with one element for each "sibling";
+                                each element contains the 'internal_id' and 'node_labels' keys,
+                                plus whatever attributes are stored on that node.
+                                EXAMPLE of single element:
+                                {'name': 'French', 'internal_id': 123, 'node_labels': ['Category', 'BA']}
+        """
+        # TODO: expand to cover all the data needs of BA_pages_routing.py
+        # TODO: maybe move to DataManager layer
+
+        category_internal_id = GraphSchema.get_data_node_internal_id(uri = category_uri)
+        siblings_categories = Categories.get_sibling_categories(category_internal_id)
+
+        return siblings_categories
+
+
+    """
+    NOTE: the next 2 methods, below, may be the future prototype of plugin-specific methods...
+          Nothing is returned if all is good, but an Exception is raised in case of problems.
+          The methods only handle the plugin-specific part; the "main action" is done by the core method,
+          AFTER calling this method (if provided)
+    """
+
+    @classmethod
+    def add_relationship_before(cls, from_id :str, to_id :str,
+                                rel_name :str) -> None:
+        """
+        A handler to be invoked by the core module before a relationship involving Categories is called.
+
+        If any restriction would apply to adding the parent/child relationship between the specified categories,
+        raise an Exception.
+
+        IMPORTANT: NO RELATIONSHIP IS ACTUALLY ADDED
+
+        The restriction are:
+            1) the subcategory node cannot be the Root Category
+            2) a category cannot be a subcategory of itself
+
+        NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
+
+        :param from_id:     String with the uri of the subcategory node
+        :param to_id:       String with the uri of the parent-category node
+        :param rel_name:    NOT USED
+        :return:            None.  If the requested new relationship should not be created, raise an Exception
+        """
+        # If the sub-category is the Root Category, raise an Exception
+        if cls.is_root_category(from_id):        # TODO: this will eventually have to be managed differently
+            raise Exception("Cannot add the relationship because the Root Category cannot be made a subcategory of something else")
+
+        # If the parent and the child are the same, raise an Exception
+        assert from_id != to_id, \
+            "Cannot add a relationship from a Category to itself"
+
+
+
+    @classmethod
+    def remove_relationship_before(cls, from_id: str, to_id :str,
+                                   rel_name: str) -> None:
+        """
+        A handler to be invoked by the core module before a relationship involving Categories is called.
+
+        If any restriction would apply to removing the parent/child relationship between the specified categories,
+        raise an Exception.
+
+        IMPORTANT: NO RELATIONSHIP IS ACTUALLY REMOVED
+
+        The restriction is:
+            *) the subcategory node cannot become orphaned as a result of the deletion
+
+        NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
+
+        :param from_id:     String with the uri of the subcategory node
+        :param to_id:       NOT USED.  String with the uri of the parent-category node
+        :param rel_name:    NOT USED
+        :return:            None.  If the requested new relationship should not be deleted, raise an Exception
+        """
+        # If the sub-category has only one parent, raise an Exception
+        #print(f"In Category.remove_relationship(). from_id = {from_id}  Parent categories : {cls.get_parent_categories(from_id)}")
+        assert len(cls.get_parent_categories(from_id)) != 1, \
+            "Cannot sever the relationship because that would leave " \
+            "the sub-category orphaned (i.e. with no parent categories)"
+
+
+
+
+    @classmethod
+    def create_bread_crumbs(cls, category_uri :str) -> list:
+        """
+        Return a list of Category ID's together with token strings, providing directives for the HTML structure of
+        the bread crumbs
+
+        :param category_uri:A string with the URI of the Category whose "ancestry bread crumbs" we want to construct
+        :return:            A list of Category URI's together with token strings,
+                            providing directives for the HTML structure of the bread crumbs
+                            EXAMPLE 1:  ['1']
+                            EXAMPLE 2:  ['START_CONTAINER', ['1', 'ARROW', '799', 'ARROW', '876'], 'END_CONTAINER']
+                            EXAMPLE 3:
+                                [
+                                    'START_CONTAINER',
+                                    ['START_BLOCK',
+                                                    'START_LINE', ['1', 'ARROW', '799', 'ARROW', '526'], 'END_LINE', 'CLEAR_RIGHT',
+                                                    'START_LINE', ['1', 'ARROW', '61'], 'END_LINE',
+                                     'END_BLOCK', 'ARROW', '814'],
+                                    'END_CONTAINER'
+                                ]
+        """
+        if category_uri == "1":    # If it is the root
+            return ["1"]
+
+        # If we get here, we're NOT at the root.
+
+        parents_map = cls.create_parent_map(category_uri)
+        #print("In create_bread_crumbs().  parents_map: ", parents_map)
+
+        # Put together a block (to be turned into an HTML element by the front end) depicting all possible
+        # breadcrumb paths from the ROOT to the current category
+        return ["START_CONTAINER", cls._recursive(category_uri, parents_map) , "END_CONTAINER"]
+
+
+
+    @classmethod
+    def _recursive(cls, category_uri :str, parents_map :dict) -> list:
+        """
+        Helper method for create_bread_crumbs()
+
+        :param category_uri:A string identifying the desired Category
+        :param parents_map: The dict structure returned by create_parent_map()
+        :return:
+        """
+        if cls.is_root_category(category_uri):
+            return ["1"]    # TODO: this will eventually have to be managed differently
+
+        parent_list = parents_map.get(category_uri, [])
+
+        if len(parent_list) == 0:
+            return []    # TODO: generate warning
+        elif len(parent_list) == 1:     # If just one parent
+            parent_id = parent_list[0]
+            bc = cls._recursive(parent_id, parents_map)
+            bc.append("ARROW")
+            bc.append(category_uri)
+            return bc
+        else:                           # If multiple parents
+            bc = ["START_BLOCK"]
+            for parent_id in parent_list:
+                bc.append("START_LINE")
+                bc.append(cls._recursive(parent_id, parents_map))
+                bc.append("END_LINE")
+                if parent_id != parent_list[-1]:    # Skip if we're dealing with last element
+                    bc.append("CLEAR_RIGHT")
+
+            bc.append("END_BLOCK")
+            bc.append("ARROW")
+            bc.append(category_uri)
+            return bc
+
+
+
+    @classmethod
+    def pin_category(cls, uri, op :str) -> None:
+        """
+        Set or unset the "pinned" property of the specified Category
+
+        :param uri: The URI of a data node representing a Category
+        :param op:  Either "set" or "unset"
+        :return:    None
+        """
+        # TODO: verify that the node is indeed a Category - or make sure that the Schema is enforced
+        #       Maybe first locate the data node by multiple criteria
+
+        if op == "set":
+            number_set = GraphSchema.update_data_node(data_node=uri, set_dict={"pinned": True})
+        elif op == "unset":
+            number_set = GraphSchema.update_data_node(data_node=uri, set_dict={"pinned": False})
+        else:
+            raise Exception("pin_category(): the argument `op` must be equal to either 'set' or 'unset'")
+
+        assert number_set == 1, "pin_category(): no change could be made to the database"
+
+
+
+    @classmethod
+    def is_pinned(cls, uri :str) -> bool:
+        """
+        Return True if the given Category has a "pinned" status; otherwise, False
+
+        :param uri: The URI of a data node representing a Category
+        :return:    True if the given Category has a "pinned" status; otherwise, False
+        """
+        all_props = GraphSchema.get_single_data_node(node_id=uri, id_key="uri", class_name="Category")    # A dict, or None
+        assert all_props, f"is_pinned(): unable to locate the specified Category node (uri: '{uri}')"
+
+        value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
+
+        return value
+
+
+
+
     #####################################################################################################
 
     '''                                ~   VIEW ITEMS IN CATEGORIES   ~                                '''
@@ -836,6 +868,7 @@ class Categories:
         :return:            A list of dicts that have the keys "uri", "name", "remarks";
                                 any missing value will appear as None
         """
+        # TODO: `item_uri` is no longer a universally-unique identifier
         q = '''
             MATCH (:BA {uri: $item_uri}) - [:BA_in_category] -> (cat :Category)
             RETURN cat.uri AS uri, cat.name AS name, cat.remarks AS remarks
@@ -912,6 +945,8 @@ class Categories:
         GraphSchema.remove_schema_info(content_item_list)    # Zap any low-level Schema-related data
 
         return content_item_list
+
+
 
 
 
@@ -1088,8 +1123,6 @@ class Categories:
         return Collections.bulk_relocate_to_other_collection_at_end(items=items,
                                                              from_collection=from_category, to_collection=to_category,
                                                              membership_rel_name="BA_in_category")
-
-
 
 
 
@@ -1413,34 +1446,3 @@ class Categories:
         assert number_properties_set == 2, \
             f"Irregularity detected in swap action: {number_properties_set} properties were set," \
             f" instead of the expected 2"
-
-
-
-
-    #####################################################################################################
-
-    '''                                  ~   PAGE HANDLER   ~                                         '''
-
-    def ________PAGE_HANDLER________(DIVIDER):
-        pass        # Used to get a better structure view in IDEs
-    #####################################################################################################
-
-    @classmethod
-    def viewer_handler(cls, category_uri :str):
-        """
-        Handler function for the Flask page generator "BA_pages_routing.py"
-
-        :param category_uri: A string identifying the desired Category
-        :return:             A list of dictionaries, with one element for each "sibling";
-                                each element contains the 'internal_id' and 'node_labels' keys,
-                                plus whatever attributes are stored on that node.
-                                EXAMPLE of single element:
-                                {'name': 'French', 'internal_id': 123, 'node_labels': ['Category', 'BA']}
-        """
-        # TODO: expand to cover all the data needs of BA_pages_routing.py
-        # TODO: maybe move to DataManager layer
-
-        category_internal_id = GraphSchema.get_data_node_internal_id(uri = category_uri)
-        siblings_categories = Categories.get_sibling_categories(category_internal_id)
-
-        return siblings_categories
