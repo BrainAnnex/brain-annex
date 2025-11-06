@@ -173,7 +173,8 @@ class GraphSchema:
     @classmethod
     def is_valid_class_name(cls, class_name: str) -> bool:
         """
-        Return True if the passed argument is a valid Class name, or False otherwise
+        Return True if the passed argument is a valid Class name, or False otherwise.
+        If you want to check whether that Class actually exists, use class_name_exists()
 
         :param class_name:  A string with the putative name of a Schema Class
         :return:            None
@@ -2485,13 +2486,13 @@ class GraphSchema:
 
 
     @classmethod
-    def count_data_nodes_of_class(cls, class_name: str) -> [int]:
+    def count_data_nodes_of_class(cls, class_name :str) -> [int]:
         """
         Return the count of all the Data Nodes attached to the given Class.
         If the Class doesn't exist, an Exception is raised
 
         :param class_name:  The name of the Schema Class of interest
-        :return:            The count of all the Data Nodes attached to the given Class
+        :return:            The count of all the Data Nodes attached to the above Class
         """
         assert cls.class_name_exists(class_name), \
             f"count_data_nodes_of_class(): there is no Class named `{class_name}`"

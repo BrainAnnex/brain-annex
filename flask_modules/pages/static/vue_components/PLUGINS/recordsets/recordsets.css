@@ -30,3 +30,17 @@ table.rs-main td {
     padding:5px;
     font-size:12px;
 }
+
+
+/* To navigate between pages */
+div.navigator-controls {
+    display: inline-block;
+
+    border: 1px solid gray;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    padding-top: 3px;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 8px;
+}
