@@ -123,6 +123,8 @@ class GraphSchema:
     #TODO:   - continue the process of making the methods more efficient,
     #          by directly generate Cypher code, rather than using high-level methods in GraphAccess;
     #          for example, as done by create_data_node()
+    #          Maybe replace `node_id`, `id_key`
+    #          with `key_value`, `key_name` (and use None for `key_name` when `key_value` is the internal ID)?
 
 
 
@@ -1782,8 +1784,9 @@ class GraphSchema:
                                 Alternatively, leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS` is omitted
-        :return:            If not found, return None;
-                                otherwise, return a dict with the name/values of the node's properties
+
+        :return:            If not found, return None; if more than 1, an Exception is raised.
+                                If exactly 1 is found, return a dict with the name/values of the node's properties
         """
         # TODO: possibly add a function that only returns a specified single Property, or specified list of Properties
         # TODO: optionally also return node label
