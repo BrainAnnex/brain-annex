@@ -1463,8 +1463,7 @@ class DataManager:
         if limit > 1000:
             limit = 1000     # Set a sensible upper bound
 
-        #print(f"labels: {labels} | key_name: {key_name} | key_value: {key_value} | clause: {clause} | limit: {limit}")
-
+        #print(f"labels: {label} | key_name: {key_name} | key_value: {key_value} | case_sensitive: {case_sensitive} | order_by: {order_by} | skip: {skip} | limit: {limit}")
 
         return GraphSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
                                                string_match="CONTAINS", case_sensitive=case_sensitive,

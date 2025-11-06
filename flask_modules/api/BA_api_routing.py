@@ -2020,8 +2020,11 @@ class ApiRouting:
 
             #  TODO: for now, we're actually doing a database search by node label,
             #         rather than by Schema Class
+            class_name = json_data.get("class")
+            label_name = json_data.get("label")
+
             if "label" not in json_data:
-                json_data["label"] = json_data.get("class")     # Use "class" in lieu of "label"
+                json_data["label"] = class_name     # Use "class" in lieu of "label"
 
             if "class" in json_data:
                 del json_data["class"]      # For now, "class" is not being passed
@@ -2039,11 +2042,20 @@ class ApiRouting:
                                             if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list) }
                                        for record in recordset]
 
-                if "label" in json_data:
-                    #total_count = GraphSchema.count_data_nodes_of_class(json_data["label"])
-                    total_count = GraphSchema.db.count_nodes(labels=json_data["label"])
+                # `total_count` is what the length of `recordset` would have been, in the absence of limit/skip value
+                # TODO: maybe modify get_nodes_by_filter() to also return that value;
+                #       the approach below will stop working as soon as clauses are allowed!
+                if class_name:
+                    if GraphSchema.class_name_exists(class_name):
+                        total_count = GraphSchema.count_data_nodes_of_class(class_name)
+                    else:
+                        total_count = None
+                elif label_name:
+                    total_count = GraphSchema.db.count_nodes(labels=label_name)
                 else:
                     total_count = None
+
+
                 response = {"status": "ok",
                             "payload": {"recordset": sanitized_recordset, "total_count": total_count}}   # Successful termination
                 #print(f"get_filtered() is returning successfully: `{response}`")

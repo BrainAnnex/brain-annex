@@ -23,9 +23,34 @@ Vue.component('vue-plugin-rs',
          */
 
         template: `
-            <div>	<!-- Outer container box, serving as Vue-required template root  -->
+            <div @dblclick="enter_editing_mode">	<!-- Outer container, serving as Vue-required template root  -->
 
-                <span style="font-weight:bold; color:gray">{{this.pre_edit_metadata.class}}</span>
+                <span style="font-weight:bold; color:gray">{{this.pre_edit_metadata.class}}</span><br>
+
+
+                <!-- Recordset NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
+                <div v-if="this.pre_edit_metadata.class" class="navigator-controls">
+
+                    <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
+                    <span v-if="current_page > 2" @click="get_recordset(1)"
+                        class="clickable-icon" style="color:blue; font-size:16px" title="first"> &laquo; </span>
+                    <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
+                            class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
+
+                    <span style="margin-left:20px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+
+                    <!-- If not on last page, show right arrows -->
+                    <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
+                            class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="next"> > </span>
+                    <span v-if="current_page < number_of_pages-1" @click="get_recordset(number_of_pages)"
+                        class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="last"> &raquo; </span>
+
+                    <span v-if="total_count" style="margin-left: 60px; color: gray">
+                        {{recordset.length}} records &nbsp; ({{page_range[0]}} &ndash; {{page_range[1]}} of total {{total_count}})
+                    </span>
+
+                </div>
+
 
                 <!-- For the max-width attribute to work, there must not be a 'display: inline-block' in any of its ancestors -->
                 <div class="dragscroll" style="margin-top: 0; max-width: 99%; overflow: auto">
@@ -36,7 +61,7 @@ Vue.component('vue-plugin-rs',
                             <th v-for="field_name in headers">
                                 {{insert_blanks(field_name)}}
                             </th>
-                            <th v-show="edit_mode">
+                            <th v-show="editing_mode">
                                 EDIT
                             </th>
                         </tr>
@@ -67,7 +92,7 @@ Vue.component('vue-plugin-rs',
                             </td>
 
                             <!-- The control cell (for editing) -->
-                            <td v-show="edit_mode" style="background-color: #f2f2f2">
+                            <td v-show="editing_mode" style="background-color: #f2f2f2">
                                 <span v-if="record.internal_id == record_being_editing">
                                     <button @click="save_record_edit">SAVE</button>
                                     <a @click.prevent="cancel_record_edit" href="#" style="margin-left:15px">Cancel</a>
@@ -85,19 +110,19 @@ Vue.component('vue-plugin-rs',
                             <th v-for="field_name in headers" class="repeated">
                                 {{insert_blanks(field_name)}}
                             </th>
-                            <th v-show="edit_mode">
+                            <th v-show="editing_mode">
                                 NEW RECORD
                             </th>
                         </tr>
 
                         <!-- Row for entry of new data, if in editing mode  -->
-                        <tr v-if="edit_mode">
+                        <tr v-if="editing_mode">
                             <td v-for="field_name in headers">
                                 <input v-model="new_record[field_name]">
                             </td>
-                            <td v-show="edit_mode">
+                            <td v-show="editing_mode">
                                 <button @click="save_new_record" style="">SAVE</button>
-                                Cancel
+                                <span @click="editing_mode=false" class="clickable-icon" style="color:blue">Cancel</span>
                             </td>
                         </tr>
 
@@ -105,33 +130,48 @@ Vue.component('vue-plugin-rs',
                 </div>
 
 
-                <!-- Recordset NAVIGATION (hidden if newly-created recordset) -->
-                <template v-if="this.pre_edit_metadata.class">
-                    <span v-if="current_page > 1" @click="get_recordset(1)" class="clickable-icon" style="color:blue; font-size:16px"> &laquo; </span>
-                    <span v-if="current_page > 1" @click="get_recordset(current_page-1)" class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px"> < </span>
-                    <span style="margin-left:20px; margin-right:20px">Page <b>{{current_page}}</b></span>
-                    <span @click="get_recordset(current_page+1)" class="clickable-icon" style="color:blue; font-size:16px"> > </span>
-                    <span v-if="total_count" style="margin-left: 60px; color: gray">{{recordset.length}} records of total {{total_count}} </span>
-                </template>
+                <!-- Recordset NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
+                <div v-if="this.pre_edit_metadata.class" class="navigator-controls">
+
+                    <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
+                    <span v-if="current_page > 2" @click="get_recordset(1)"
+                        class="clickable-icon" style="color:blue; font-size:16px" title="first"> &laquo; </span>
+                    <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
+                            class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
+
+                    <span style="margin-left:20px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+
+                    <!-- If not on last page, show right arrows -->
+                    <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
+                            class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="next"> > </span>
+                    <span v-if="current_page < number_of_pages-1" @click="get_recordset(number_of_pages)"
+                        class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="last"> &raquo; </span>
+
+                    <span v-if="total_count" style="margin-left: 60px; color: gray">
+                        {{recordset.length}} records &nbsp; ({{page_range[0]}} &ndash; {{page_range[1]}} of total {{total_count}})
+                    </span>
+
+                </div>
+
 
                 <!-- Status info -->
-                <p style="float: right; display: inline-block; padding-top: 0; margin-top: 8px; margin-right: 5px; text-align: right">
+                <p style="float: right; display: inline-block; padding: 5px; margin-top: 8px; margin-right: 5px; text-align: right; background-color:#f4f7f9">
                     <span v-if="waiting" class="waiting">Contacting the server...</span>
                     <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
                 </p>
 
 
                 <!-- RECORDSET EDITOR : in VIEWING MODE -->
-                <div v-if="edit_mode && !recordset_editing"
+                <div v-if="editing_mode && !recordset_editing"
                      style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b>
                     <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 30px"
                          @click="edit_recordset"  class="control" title="EDIT" alt="EDIT">
 
                     <p style="margin-left: 10px">
-                        Class: {{current_metadata.class}}<br>
-                        Label: {{current_metadata.label}}<br>
-                        Order by: {{current_metadata.order_by}}<br>
+                        Class: "{{current_metadata.class}}"<br>
+                        Label: "{{current_metadata.label}}"<br>
+                        Order by: "{{current_metadata.order_by}}"<br>
                         Number records shown per page: {{current_metadata.n_group}}
                     </p>
                 </div>
@@ -216,6 +256,9 @@ Vue.component('vue-plugin-rs',
                 record_being_editing: null, // The "ID" of the record currently being edited, if any;
                                             // for now, only one record at a time may be edited
 
+                editing_mode: ((this.item_data.uri < 0) || this.edit_mode  ? true : false), // Flag indicating whether this record is being edited
+                                                                                            // Negative uri means "new Item"
+
                 recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
@@ -266,6 +309,26 @@ Vue.component('vue-plugin-rs',
         },
 
 
+        computed: {
+
+            number_of_pages()
+            // For page navigation
+            {
+                return Math.ceil(this.total_count / this.current_metadata.n_group);        // this.item_data.n_group
+            },
+
+            page_range()
+            // For page navigation
+            {
+                var from = (this.current_page - 1) * this.current_metadata.n_group + 1;
+                var to =   from + this.recordset.length - 1;
+                return [from, to];
+            }
+
+        },
+
+
+
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
@@ -283,6 +346,19 @@ Vue.component('vue-plugin-rs',
             },
 
 
+
+            enter_editing_mode()
+            // Enter the editing mode when a double-click is detected
+            {
+                console.log(`In enter_editing_mode()`);
+
+                // Clear any old value
+                //this.waiting = false;
+                //this.error = false;
+                //this.status_message = "";
+
+                this.editing_mode = true;       // Enter editing mode
+            },
 
 
             edit_recordset()
@@ -703,7 +779,7 @@ Vue.component('vue-plugin-rs',
                 console.log(`Custom data passed: ${custom_data}`);
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
-                    this.status_message = `Operation completed`;
+                    this.status_message = "";       // `Operation completed`
                     this.recordset = server_payload.recordset;
                     this.total_count = server_payload.total_count;
                     this.current_page = custom_data;
