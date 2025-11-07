@@ -24,6 +24,15 @@ table.rs-main th.repeated {
     font-size:12px;
 }
 
+table.rs-main tr:nth-child(odd)  {
+    /* formatting for odd-numbered rows */
+    background-color: white;
+}
+table.rs-main tr:nth-child(even)  {
+    /* formatting for even-numbered rows */
+    background-color: grey;
+}
+
 /* Table cells */
 table.rs-main td {
     border:1px solid #DDD;
@@ -37,10 +46,10 @@ div.navigator-controls {
     display: inline-block;
 
     border: 1px solid gray;
-    border-radius: 10px;
+    border-radius: 14px;
     background-color: #f9f9f9;
     padding-top: 3px;
     padding-left: 20px;
-    padding-right: 20px;
+    padding-right: 10px;
     padding-bottom: 8px;
 }

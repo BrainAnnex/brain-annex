@@ -705,7 +705,7 @@ new Vue({
         bulk_checkbox_clicked(uri)
         // Invoked whenever the user clicks on any of the bulk-edit checkboxes
         {
-            console.log(`Clicked checkbox for Content Item with URI: '${uri}'`);
+            //console.log(`Clicked checkbox for Content Item with URI: '${uri}'`);
 
             //console.log(this.$refs);                // Shows an array
             const checkbox_element = this.$refs[uri]; // Pluck out the specific checkbox HTML element that invoked this function
@@ -1314,7 +1314,6 @@ new Vue({
             console.log(url_server);
 
             ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_relocate_content_item, custom_data: i});
-            //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_relocate_content_item, i);
 
         }, // relocate_content_item
 
@@ -1430,124 +1429,8 @@ new Vue({
             }
 
             return -1;    // Didn't find it
-        },
-
-
-        plugin_component_name_MOVED(item)
-        // Compose the name of the plugin-provided Vue component to handle the given item (based on its type)
-        {
-            // TODO: make sure that item.schema_code is known, or return a special "generic" type
-            return "vue-plugin-" + item.schema_code;
-        },
-
-
-
-
-        /*  -------------------------------------------------------------------------------------------
-                    The methods below are used to implement GROUPING of similar consecutive
-                    content items of type "Record"
-            -------------------------------------------------------------------------------------------
-         */
-
-        canonical_field_list(content_item)
-        /*  Canonical order means the Item's fields in the schema go first, in the schema order,
-            followed by any other field not in the Schema, in order of appearance.
-
-            Standard fields (i.e. all fields that won't appear in a tabular format) are ignored.
-            TODO: simplify with Lodash
-
-            EXAMPLES (assuming that the Schema for "Quote" is ["quote", "attribution", "notes"]):
-                {"pos":10, "uri":1, "extra": "some value"}
-                    ->  [ "extra" ]
-                {"pos":10, "uri":1, "extra": "some value", class_name:"Quote"}
-                    ->  [ "extra" ]
-                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quote"}
-                    ->  [ "notes", "extra" ]
-                {"pos":10, "notes": "my note", "uri":1, "extra": "some value", class_name:"Quote", "quote": "My quote"}
-                    ->  [ "quote", "notes", "extra" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quote", "quote": "My quote"}
-                    ->  [ "quote", "attribution", "notes", "extra" ]
-                {"attribution": "Napoleon", "pos":10, "notes": "my note", "uri":1,  class_name:"Quote", "quote": "My quote"}
-                    ->  [ "quote", "attribution", "notes" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"Quote", "quote": "My quote"}
-                    ->  [ "quote", "attribution", "notes", "extra", "extra2" ]
-                {"extra": "some value", "attribution": "Napoleon", "pos":10, "notes": "my note", "extra2": "some other value", "uri":1,  class_name:"UNKNOWN", "quote": "My quote"}
-                    ->  [ "extra", "attribution", "notes", "extra2", "quote" ]
-         */
-        {
-            let field_list = this.extract_fields(content_item);
-
-            if (! ("class_name" in content_item))
-                return field_list;      // No Schema field found
-
-
-            const class_name = content_item.class_name;
-
-            if (! (class_name in this.items_schema_data))  {
-                console.log(`No Schema information available for class '${class_name}'`);
-                return field_list;  // No Schema information available for this class; TODO: query server
-            }
-
-            const schema_list = this.items_schema_data[class_name];
-
-            let canonical_list = [];
-            // Add all the Schema fields that are in the item's field list
-            for (let i = 0; i < schema_list.length; i++)
-                if (field_list.includes(schema_list[i]))
-                    canonical_list.push(schema_list[i]);
-
-            // Add all the item's fields that aren't in its Schema (non-standard fields, if any)
-            for (let i = 0; i < field_list.length; i++)
-                if (! schema_list.includes(field_list[i]))
-                    canonical_list.push(field_list[i]);
-
-            return canonical_list;
-        },
-
-
-
-        extract_fields(content_item)
-        /*  Scrub out all the standard fields (i.e. all fields that won't appear in a tabular format)
-            EXAMPLE:  {"pos":10, "uri":1, "schema_code":"r", class_name:"German Vocabulary",
-                             "German":"Leben", "English":"life"}
-                       will return  [ "German", "English" ]
-
-            TODO: maybe the objects in content_array ought to keep the 2 types of fields separate
-         */
-        {
-            let shown_fields = [];
-            let all_fields = Object.keys(content_item);
-
-            // TODO: maybe use Lodash _.difference function
-            for (i in all_fields) {
-                key = all_fields[i];
-                if (key != "pos" && key != "uri" && key != "schema_code" && key != "class_name")
-                    shown_fields.push(key);
-            }
-
-            return shown_fields;
-        },
-
-
-        compare_arrays(a1, a2)
-        /*  Compare two flat arrays regardless of element order.
-            Return true if have the same elements, whether in same or scrambled order - or false otherwise.
-            TODO: maybe there's a Lodash method
-         */
-        {
-            if (a1.length != a2.length)
-                return false;
-
-            // The "slice" method clones the array (otherwise, the passed variable will be altered)
-            const a1_sorted = a1.slice().sort();
-            const a2_sorted = a2.slice().sort();
-
-            for (let i = 0; i < a1.length; i++)
-                if (a1_sorted[i] != a2_sorted[i])
-                    return false;   // A difference was found
-
-            return true;
         }
+
 
     } // METHODS
 

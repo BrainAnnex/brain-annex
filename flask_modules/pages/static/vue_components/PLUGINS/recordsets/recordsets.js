@@ -29,7 +29,7 @@ Vue.component('vue-plugin-rs',
 
 
                 <!-- Recordset NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
-                <div v-if="this.pre_edit_metadata.class" class="navigator-controls">
+                <div class="navigator-controls">
 
                     <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
                     <span v-if="current_page > 2" @click="get_recordset(1)"
@@ -37,7 +37,7 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
                             class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
 
-                    <span style="margin-left:20px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
 
                     <!-- If not on last page, show right arrows -->
                     <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
@@ -45,7 +45,8 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page < number_of_pages-1" @click="get_recordset(number_of_pages)"
                         class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="last"> &raquo; </span>
 
-                    <span v-if="total_count" style="margin-left: 60px; color: gray">
+                    <!-- Show a summary -->
+                    <span v-if="total_count" style="margin-left: 60px; color: white; background-color:#6cb5b5; padding: 4px; padding-left:10px; padding-right:10px;">
                         {{recordset.length}} records &nbsp; ({{page_range[0]}} &ndash; {{page_range[1]}} of total {{total_count}})
                     </span>
 
@@ -131,7 +132,7 @@ Vue.component('vue-plugin-rs',
 
 
                 <!-- Recordset NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
-                <div v-if="this.pre_edit_metadata.class" class="navigator-controls">
+                <div class="navigator-controls">
 
                     <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
                     <span v-if="current_page > 2" @click="get_recordset(1)"
@@ -139,7 +140,7 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
                             class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
 
-                    <span style="margin-left:20px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
 
                     <!-- If not on last page, show right arrows -->
                     <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
@@ -147,7 +148,8 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page < number_of_pages-1" @click="get_recordset(number_of_pages)"
                         class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="last"> &raquo; </span>
 
-                    <span v-if="total_count" style="margin-left: 60px; color: gray">
+                    <!-- Show a summary -->
+                    <span v-if="total_count" style="margin-left: 60px; color: white; background-color:#6cb5b5; padding: 4px; padding-left:10px; padding-right:10px;">
                         {{recordset.length}} records &nbsp; ({{page_range[0]}} &ndash; {{page_range[1]}} of total {{total_count}})
                     </span>
 
