@@ -20,17 +20,17 @@ table.rs-main th {
 /* For the header row repeated at bottom of table */
 table.rs-main th.repeated {
     background-color: #777;
-    color:#BBB;
+    color:#E3E3E3;
     font-size:12px;
 }
 
 table.rs-main tr:nth-child(odd)  {
     /* formatting for odd-numbered rows */
-    background-color: white;
+    background-color: #e3e3e3;
 }
 table.rs-main tr:nth-child(even)  {
     /* formatting for even-numbered rows */
-    background-color: grey;
+    background-color: #d2d2d2;
 }
 
 /* Table cells */
