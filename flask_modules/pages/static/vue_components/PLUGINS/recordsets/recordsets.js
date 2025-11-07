@@ -28,8 +28,8 @@ Vue.component('vue-plugin-rs',
                 <span style="font-weight:bold; color:gray">{{this.pre_edit_metadata.class}}</span><br>
 
 
-                <!-- Recordset NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
-                <div v-if="this.pre_edit_metadata.class" class="navigator-controls">
+                <!-- Recordset PAGE NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
+                <div class="navigator-controls">
 
                     <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
                     <span v-if="current_page > 2" @click="get_recordset(1)"
@@ -37,7 +37,7 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
                             class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
 
-                    <span style="margin-left:20px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
 
                     <!-- If not on last page, show right arrows -->
                     <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
@@ -45,7 +45,8 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page < number_of_pages-1" @click="get_recordset(number_of_pages)"
                         class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="last"> &raquo; </span>
 
-                    <span v-if="total_count" style="margin-left: 60px; color: gray">
+                    <!-- Show a summary -->
+                    <span v-if="total_count" style="margin-left: 60px; color: white; background-color:#6cb5b5; padding: 4px; padding-left:10px; padding-right:10px;">
                         {{recordset.length}} records &nbsp; ({{page_range[0]}} &ndash; {{page_range[1]}} of total {{total_count}})
                     </span>
 
@@ -58,7 +59,7 @@ Vue.component('vue-plugin-rs',
 
                         <!-- HEADER row  -->
                         <tr>
-                            <th v-for="field_name in headers">
+                            <th v-for="field_name in headers_to_include">
                                 {{insert_blanks(field_name)}}
                             </th>
                             <th v-show="editing_mode">
@@ -72,7 +73,7 @@ Vue.component('vue-plugin-rs',
                         <tr v-for="record in recordset">
 
                             <!-- The various data fields -->
-                            <td v-for="field_name in headers">
+                            <td v-for="field_name in headers_to_include">
 
                                 <!-- VIEW mode -->
                                 <span v-if="record.internal_id != record_being_editing"
@@ -107,7 +108,7 @@ Vue.component('vue-plugin-rs',
 
                         <!-- Header row, repeated at bottom of table  -->
                         <tr>
-                            <th v-for="field_name in headers" class="repeated">
+                            <th v-for="field_name in headers_to_include" class="repeated">
                                 {{insert_blanks(field_name)}}
                             </th>
                             <th v-show="editing_mode">
@@ -117,7 +118,7 @@ Vue.component('vue-plugin-rs',
 
                         <!-- Row for entry of new data, if in editing mode  -->
                         <tr v-if="editing_mode">
-                            <td v-for="field_name in headers">
+                            <td v-for="field_name in headers_to_include">
                                 <input v-model="new_record[field_name]">
                             </td>
                             <td v-show="editing_mode">
@@ -130,8 +131,8 @@ Vue.component('vue-plugin-rs',
                 </div>
 
 
-                <!-- Recordset NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
-                <div v-if="this.pre_edit_metadata.class" class="navigator-controls">
+                <!-- Recordset PAGE NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
+                <div class="navigator-controls">
 
                     <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
                     <span v-if="current_page > 2" @click="get_recordset(1)"
@@ -139,7 +140,7 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
                             class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
 
-                    <span style="margin-left:20px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
 
                     <!-- If not on last page, show right arrows -->
                     <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
@@ -147,7 +148,8 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page < number_of_pages-1" @click="get_recordset(number_of_pages)"
                         class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="last"> &raquo; </span>
 
-                    <span v-if="total_count" style="margin-left: 60px; color: gray">
+                    <!-- Show a summary -->
+                    <span v-if="total_count" style="margin-left: 60px; color: white; background-color:#6cb5b5; padding: 4px; padding-left:10px; padding-right:10px;">
                         {{recordset.length}} records &nbsp; ({{page_range[0]}} &ndash; {{page_range[1]}} of total {{total_count}})
                     </span>
 
@@ -172,6 +174,7 @@ Vue.component('vue-plugin-rs',
                         Class: "{{current_metadata.class}}"<br>
                         Label: "{{current_metadata.label}}"<br>
                         Order by: "{{current_metadata.order_by}}"<br>
+                        Fields: "{{current_metadata.fields}}"<br>
                         Number records shown per page: {{current_metadata.n_group}}
                     </p>
                 </div>
@@ -183,12 +186,12 @@ Vue.component('vue-plugin-rs',
                     <table>
                         <tr>
                             <td style="text-align: right">Class</td>
-                            <td style="text-align: right">
+                            <td>
                                 <input v-model="current_metadata.class" size="35" style="font-weight: bold">
                             </td>
                             <td rowspan=3 style="vertical-align: bottom; padding-left: 50px">
-                                <span @click="cancel_recordset_edit" class="clickable-icon" style="color:blue">CANCEL</span>
-                                <button @click="save_recordset_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
+                                <button @click="save_recordset_edit" style="font-size: 14px; font-weight: bold; padding: 10px">SAVE</button>
+                                <span @click="cancel_recordset_edit" class="clickable-icon" style="color:blue; margin-left: 15px; font-size: 11px">CANCEL</span>
                                 <br>
                                 <span v-if="waiting" class="waiting">Performing the update</span>
                             </td>
@@ -209,9 +212,16 @@ Vue.component('vue-plugin-rs',
                         </tr>
 
                         <tr>
+                            <td style="text-align: right">Fields</td>
+                            <td>
+                                <input v-model="current_metadata.fields" size="70">
+                            </td>
+                        </tr>
+
+                        <tr>
                             <td style="text-align: right">Number records shown per page</td>
                             <td>
-                                <input v-model="current_metadata.n_group" size="4">
+                                <input v-model="current_metadata.n_group" size="2">
                                 </td>
                         </tr>
                     </table>
@@ -309,6 +319,9 @@ Vue.component('vue-plugin-rs',
         },
 
 
+
+        // ------------------------------------   COMPUTED   ------------------------------------
+
         computed: {
 
             number_of_pages()
@@ -323,6 +336,27 @@ Vue.component('vue-plugin-rs',
                 var from = (this.current_page - 1) * this.current_metadata.n_group + 1;
                 var to =   from + this.recordset.length - 1;
                 return [from, to];
+            },
+
+            headers_to_include()
+            {
+                //console.log(`this.current_metadata`);
+                //console.log(this.current_metadata);
+                if (! ("fields" in this.current_metadata))  {
+                    //console.log(`"fields" is NOT in the object`);
+                    return this.headers;    // Use all the headers
+                }
+                //else
+                    //console.log(`"fields" is in the object`);
+
+                const fields = this.current_metadata.fields;
+
+                if (fields.trim() == "")
+                    return this.headers;    // Use all the headers
+
+                const arr = fields.split(",").map(x => x.trim());    // Turn into array, and zap leading/trailing blanks from each entry
+
+                return arr;
             }
 
         },
@@ -614,6 +648,7 @@ Vue.component('vue-plugin-rs',
                                     label: this.item_data.label,
 
                                     class: this.current_metadata.class,
+                                    fields: this.current_metadata.fields,
                                     n_group: parseInt(this.current_metadata.n_group),
                                     order_by: this.current_metadata.order_by
                                    };

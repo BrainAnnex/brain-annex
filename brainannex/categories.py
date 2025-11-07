@@ -8,16 +8,22 @@ class Categories:
     """
     Library for Category-related operations.
 
-    An entity to which a variety of nodes (e.g. representing records or media)
-    is attached, with a positional attribute.
+    Categories have some attributes, such as "name" and "remarks",
+    as well as "BA_subcategory" and "BA_see_also" relationships with other categories.
 
-    Categories also have "subcategory" and "see_also" relationships with other categories.
+    The 1st part of this library handles the above entity.
+
+    The 2nd part (possibly to be split off in the future) manages a (for now conflated)
+    entity of "Category Page", to which a variety of nodes (e.g. representing records or media)
+    are attached with positional attributes - for example to implement an ordered sequence
+    of multimedia content on the page of a content-management UI.
     """
 
     db = None   # MUST be set before using this class!
                 # Database-interface object is a CLASS variable, accessible as cls.db
 
-    DELTA_POS = 20      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large
+    DELTA_POS = 20      # Arbitrary shift in "pos" value; best to be even, and not too small nor too large.
+                        # This is used in conjunction with the positional attributes of the "BA_in_category" links
 
 
 
@@ -65,6 +71,8 @@ class Categories:
             GraphSchema.create_class_relationship(from_class="Category", to_class="Collections",
                                                   rel_name="INSTANCE_OF", use_link_node=False)
 
+        # cls.create_categories_root()      # TODO: maybe also create the root category here?
+
         return (int_dbase_id, uri)
 
 
@@ -104,16 +112,26 @@ class Categories:
         assert GraphSchema.is_valid_uri(category_uri), \
             "is_root_category(): the argument `category_uri` is not a valid URI string"
 
-        # NOTE: historically, "1" has been used for the ROOT Category; this is deprecated.  TODO: ditch
-        if category_uri == "1":
-            return True
-
         category_properties = cls.get_category_info(category_uri)
 
         if category_properties.get("root"):
             return True
 
         return False
+
+
+    @classmethod
+    def get_root_uri(cls) -> str|None:
+        """
+        Fetch the URI of the root category
+
+        :return:    The URI of the root category; if not found, return None.
+                    If more than one root exists, raise an Exception
+        """
+        #match = cls.db.match(label="Category", properties={"root": True})
+        root_category = GraphSchema.get_single_data_node(node_id=True, id_key="root", class_name="Category")
+        if root_category:
+            return root_category.get("uri")
 
 
 
@@ -335,7 +353,7 @@ class Categories:
 
 
     @classmethod
-    def create_categories_root(cls, data_dict=None) -> (int, str):
+    def create_categories_root(cls, data_dict=None) -> (int|str, str):
         """
         Create a ROOT Category node;
         and return its internal database ID and its URI
@@ -739,26 +757,27 @@ class Categories:
     @classmethod
     def create_bread_crumbs(cls, category_uri :str) -> list:
         """
-        Return a list of Category ID's together with token strings, providing directives for the HTML structure of
+        Return a list of Category uri's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
         :param category_uri:A string with the URI of the Category whose "ancestry bread crumbs" we want to construct
         :return:            A list of Category URI's together with token strings,
                             providing directives for the HTML structure of the bread crumbs
-                            EXAMPLE 1:  ['1']
-                            EXAMPLE 2:  ['START_CONTAINER', ['1', 'ARROW', '799', 'ARROW', '876'], 'END_CONTAINER']
+                            EXAMPLE 1:  ['cat-root']
+                            EXAMPLE 2:  ['START_CONTAINER', ['cat-root', 'ARROW', '799', 'ARROW', '876'], 'END_CONTAINER']
                             EXAMPLE 3:
                                 [
                                     'START_CONTAINER',
                                     ['START_BLOCK',
-                                                    'START_LINE', ['1', 'ARROW', '799', 'ARROW', '526'], 'END_LINE', 'CLEAR_RIGHT',
-                                                    'START_LINE', ['1', 'ARROW', '61'], 'END_LINE',
+                                                    'START_LINE', ['cat-root', 'ARROW', '799', 'ARROW', '526'], 'END_LINE', 'CLEAR_RIGHT',
+                                                    'START_LINE', ['cat-root', 'ARROW', '61'], 'END_LINE',
                                      'END_BLOCK', 'ARROW', '814'],
                                     'END_CONTAINER'
                                 ]
         """
-        if category_uri == "1":    # If it is the root
-            return ["1"]
+        root_uri = cls.get_root_uri()
+        if category_uri == root_uri:  # If it is the root
+            return [root_uri]
 
         # If we get here, we're NOT at the root.
 
@@ -767,21 +786,22 @@ class Categories:
 
         # Put together a block (to be turned into an HTML element by the front end) depicting all possible
         # breadcrumb paths from the ROOT to the current category
-        return ["START_CONTAINER", cls._recursive(category_uri, parents_map) , "END_CONTAINER"]
+        return ["START_CONTAINER", cls._recursive(category_uri=category_uri, parents_map=parents_map, root_uri=root_uri) , "END_CONTAINER"]
 
 
 
     @classmethod
-    def _recursive(cls, category_uri :str, parents_map :dict) -> list:
+    def _recursive(cls, category_uri :str, parents_map :dict, root_uri :str) -> list:
         """
         Helper method for create_bread_crumbs()
 
         :param category_uri:A string identifying the desired Category
         :param parents_map: The dict structure returned by create_parent_map()
+        :param root_uri:
         :return:
         """
         if cls.is_root_category(category_uri):
-            return ["1"]    # TODO: this will eventually have to be managed differently
+            return [root_uri]
 
         parent_list = parents_map.get(category_uri, [])
 
@@ -789,7 +809,7 @@ class Categories:
             return []    # TODO: generate warning
         elif len(parent_list) == 1:     # If just one parent
             parent_id = parent_list[0]
-            bc = cls._recursive(parent_id, parents_map)
+            bc = cls._recursive(parent_id, parents_map, root_uri)
             bc.append("ARROW")
             bc.append(category_uri)
             return bc
@@ -797,7 +817,7 @@ class Categories:
             bc = ["START_BLOCK"]
             for parent_id in parent_list:
                 bc.append("START_LINE")
-                bc.append(cls._recursive(parent_id, parents_map))
+                bc.append(cls._recursive(parent_id, parents_map, root_uri))
                 bc.append("END_LINE")
                 if parent_id != parent_list[-1]:    # Skip if we're dealing with last element
                     bc.append("CLEAR_RIGHT")

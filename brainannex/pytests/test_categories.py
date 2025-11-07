@@ -38,6 +38,32 @@ def initialize_categories(db):
 
 # ************  THE ACTUAL TESTS  ************
 
+def test_get_category_info(db):
+    _, root_uri = initialize_categories(db)
+
+    result = Categories.get_category_info(root_uri)
+
+    assert result == {'root': True, 'name': 'HOME', 'uri': 'cat-root', 'remarks': 'top level'}
+    #TODO: more tests
+
+
+
+def test_is_root_category(db):
+    _, root_uri = initialize_categories(db)
+
+    assert Categories.is_root_category(root_uri)
+    #TODO: more tests
+
+
+
+def test_get_root_uri(db):
+    _, root_uri = initialize_categories(db)
+
+    assert Categories.get_root_uri() == root_uri
+    #TODO: more tests
+
+
+
 def test_get_all_categories(db):
 
     _, root_uri = initialize_categories(db)
