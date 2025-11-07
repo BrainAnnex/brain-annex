@@ -43,9 +43,9 @@
 
         content_items:  A list of dictionaries
                         EXAMPLE:
-                            [{'schema_code': 'i', 'uri': 1,'width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
-                             {'schema_code': 'h', 'uri': 1, 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-                             {'schema_code': 'n', 'uri': 1', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
+                            [{'schema_code': 'i', 'uri': 'i-1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
+                             {'schema_code': 'h', 'uri': 'h-23', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
+                             {'schema_code': 'n', 'uri': 'n-41', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
                              {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
                                                          'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
@@ -253,14 +253,14 @@
  **************************************************************** -->
 
 <!-- Depending on whether the EDITING CONTROLS are shown or hidden,
-     one of the following 2 blocks gets shown
+     one of the following 3 blocks gets shown
   -->
 
 
-<!--  ---------------  (CASE 1 of 2 : editing controls SHOWN)  ---------------
+<!--  ---------------  SCENARIO 1 : When editing controls SHOWN   ---------------
 
-     Original version, to be used when the EDITING CONTROLS are SHOWN.
-     This version separates all the Content Items into individual entities.
+     To be used when the EDITING CONTROLS are SHOWN.
+     All the Content Items are shown as individual entities, handled by their respective Vue components
 
      For each Content Item on this page, make use of the 'vue-content-items' Vue component,
      which in turn dispatches to the appropriate Vue component (picked dynamically based on the Content Item's type).
@@ -325,12 +325,12 @@
 
 
 
-<!-- For BULK OPERATIONS -->
+<!-- ---------------   SCENARIO 2 : For BULK OPERATIONS  ---------------  -->
 
 <template v-if="bulk_operations"  v-for="(item, index) in content_array">
 
     <vue-content-items
-            v-bind:key="item.uri"
+            v-bind:key="item.uri + '_bulk'"
 
             v-bind:item="item"
             v-bind:expose_controls="false"
@@ -385,53 +385,39 @@
 
 
 
-<!-- ---------------  (CASE 2 of 2 : editing controls HIDDEN)  ---------------
+<!-- ---------------  SCENARIO 3 : editing controls HIDDEN)  ---------------
 
-    New version, to be used when the EDITING CONTROLS are HIDDEN (i.e. in viewing mode.)
-    This version groups together similar adjacent records
+    To be used when the EDITING CONTROLS are HIDDEN (i.e. in viewing mode.)
   -->
 
-<template v-if="!expose_controls"  v-for="group in element_grouping">
+<template v-if="!expose_controls"  v-for="(item, index) in content_array">
 
-    <!-- If it's "UN-grouped", show it here as an INDIVIDUAL Content Item-->
-    <vue-content-items  v-if="!group.use_group"
-            v-bind:key="content_array[group.index].schema_code + '_' + content_array[group.index].uri + '_' + group.index + '_bis'"
+    <!-- Show here the individual Content Item -->
+    <vue-content-items
+            v-bind:key="index + '_' + item.uri"
 
-            v-bind:item="content_array[group.index]"
+            v-bind:item="item"
             v-bind:expose_controls="expose_controls"
             v-bind:category_uri="category_uri"
-            v-bind:index="group.index"
+            v-bind:index="index"
             v-bind:item_count="content_array.length"
 
             v-bind:registered_plugins = "registered_plugins"
             v-bind:records_types="records_types"
 
-            v-bind:schema_data="get_schema_data(content_array[group.index])"
+            v-bind:schema_data="get_schema_data(item)"
 
-            v-on:delete-content-item-highlighted="delete_content_item(content_array[group.index])"
-            v-on:move-up-content-item="move_up_content_item(content_array[group.index])"  v-on:move-down-content-item="move_down_content_item(content_array[group.index])"
-            v-on:relocate-content-item="relocate_content_item(content_array[group.index], $event)"
-            v-on:cancel-edit="cancel_edit(content_array[group.index])"
-            v-on:updated-item="absorb_item_updates(content_array[group.index], $event)"
-            v-on:insert-new-item="insert_new_item_after(content_array[group.index], $event)"
+            v-on:delete-content-item-highlighted="delete_content_item(item)"
+            v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
+            v-on:relocate-content-item="relocate_content_item(item, $event)"
+            v-on:cancel-edit="cancel_edit(item)"
+            v-on:updated-item="absorb_item_updates(item, $event)"
+            v-on:insert-new-item="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
 
 
-    <!-- By contrast, if it's "GROUPED", show the WHOLE GROUP of records here -->
-    <vue-plugin-table v-if="group.use_group"
-                      v-bind:key="group.index"
-
-                      v-bind:record_data_list="content_array.slice(group.index, group.index + group.group_size)"
-                      v-bind:common_fields="group.fields"
-
-                      v-on:updated-item="absorb_updates_existing_item($event)"
-    ></vue-plugin-table>
-
 </template>
-
-
-
 
 
 
@@ -705,21 +691,8 @@ new Vue({
                 return true;
             else
                 return false;
-        },
-
-
-        element_grouping()
-        /*  A list of "lumped" records, and other "singleton" Content Items, on the page
-            EXAMPLE:
-                [{index:0, group_size: 2, use_group: true, fields: ["German", "English"]},
-                 {index:2, group_size: 1, use_group: true, fields: ["German", "English", "notes"]},
-                 {index:3, group_size: 1, use_group: false},
-                 {index:4, group_size: 1, use_group: false}
-                ]
-         */
-        {
-            return this.build_groupings();
         }
+
 
     }, // COMPUTED
 
@@ -1531,85 +1504,6 @@ new Vue({
             return canonical_list;
         },
 
-
-        build_groupings()
-        // Lump together consecutive Content Items, if they meet a set of criteria
-        {
-            groupings_list = [];
-
-            const num_items = this.content_array.length;
-            const parsing = [];     // Helper intermediate structure
-
-            for (let i = 0; i < num_items-1; i++) {     // Stop 1 before the last Content Item on the page
-                let merge = this.should_group_with_next(i);
-                parsing.push(merge);
-            }
-            parsing.push(false);    // The last Content Item cannot be merged with a "next" one
-
-            //console.log('parsing array: ', parsing);
-
-            let active_index = -1;
-
-            for (let i = 0; i < num_items; i++) {
-                if (active_index == -1)  {   // If there no group-in-progress
-                    if (parsing[i])
-                        active_index = i;                                                   // Reset group start
-                    else  {
-                        // Export singleton
-                        if (this.content_array[i].schema_code == "r")  {
-                            let field_list = this.canonical_field_list(this.content_array[i]);
-                            groupings_list.push({index: i, group_size: 1, use_group: true, fields: field_list});
-                        }
-                        else
-                            groupings_list.push({index: i, group_size: 1, use_group: false});
-                    }
-                }
-                else  {                     // If there's a group-in-progress
-                    if (!parsing[i])  {
-                        let field_list = this.canonical_field_list(this.content_array[active_index]);
-                        // Export group
-                        groupings_list.push({index: active_index, group_size: i-active_index+1, use_group: true, fields: field_list});
-                        active_index = -1;  // terminate the current group-in-progress
-                    }
-                    // if (parsing[i]), no action is needed
-                }
-            }
-
-            return groupings_list;
-
-        }, // build_groupings()
-
-
-
-        should_group_with_next(i)
-        /*  Return a Boolean depending on whether Content Item i and the next one should be merged
-            based on their structure similarity
-         */
-        {
-            const item_i = this.content_array[i];
-            const item_j = this.content_array[i+1];
-
-            if (item_i.schema_code != "r"  ||  item_j.schema_code != "r")
-                return false;       // We're only grouping Content Items of type "record"
-
-            if (item_i.class_name != item_j.class_name)
-                return false;
-
-            const fields_i = this.extract_fields(item_i);
-            const fields_j = this.extract_fields(item_j);
-
-            //console.log('Examining record with index: ', i);
-            //console.log('  fields_i: ', fields_i);
-            //console.log('  fields_j: ', fields_j);
-
-            if (!this.compare_arrays(fields_i, fields_j)) {  // Allows variations in field order
-                //console.log('    the field lists differ');
-                return false;
-            }
-
-            //console.log('    the field lists are the same');
-            return true;
-        },
 
 
         extract_fields(content_item)
