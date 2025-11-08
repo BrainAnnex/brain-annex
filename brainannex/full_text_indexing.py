@@ -1,7 +1,7 @@
 import re
 import html
 from typing import Union, List, Set
-from brainannex import CypherUtils, GraphSchema
+from brainannex import CypherUtils, GraphAccess, GraphSchema
 import brainannex.exceptions as exceptions
 
 
@@ -20,7 +20,6 @@ class FullTextIndexing:
 
     # The "db" class properties gets set by InitializeBrainAnnex.set_dbase()
     db = None           # Object of class "GraphAccess".  MUST be set before using this class!
-                        # TODO: add a method set_database(), as done for GraphSchema
 
 
     TAG_RE = re.compile(r'<[^>]+>')         # Use regex to strip off all HTML
@@ -125,6 +124,24 @@ class FullTextIndexing:
 
 
     # TODO: allow user-specific words, from a configuration file.  For example, for German: ich, du, er, sie, wir, ihr
+
+
+
+    @classmethod
+    def set_database(cls, db :GraphAccess) -> None:
+        """
+        IMPORTANT: this method MUST be called before using this class!
+
+        :param db:  Database-interface object, created with the GraphAccess library
+        :return:    None
+        """
+
+        assert type(db) == GraphAccess, \
+            "FullTextIndexing.set_database(): argument passed isn't a valid `GraphAccess` object"
+
+        cls.db = db
+
+
 
 
 

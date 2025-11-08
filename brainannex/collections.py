@@ -21,7 +21,7 @@ class Collections:
 
     # Class variables
 
-    db = None                       # MUST be set before using this class!
+    db = None                       # Object of class "GraphAccess".  MUST be set before using this class!
 
     DELTA_POS = 20                  # Arbitrary default shift in "pos" value between Collection Items that are adjacent
                                     # (i.e. next in sequence);
@@ -48,13 +48,14 @@ class Collections:
 
 
     @classmethod
-    def initialize_collections(cls) -> (int, str):
+    def initialize_collections(cls) -> (int|str, str):
         """
         Create a new Schema Class node that represents a "Collection"
 
-        :return:    An (int, str) pair of integers with the internal database ID
+        :return:    A pair of values with the internal database ID,
                         and the unique uri assigned to the node just created
         """
+        #TODO: rename to add_to_schema()
         return GraphSchema.create_class(name="Collections", strict = False)
 
 

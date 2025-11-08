@@ -27,6 +27,8 @@ class Images:
 
         :return:    None
         """
+        # TODO: rename to add_to_schema()
+
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
@@ -34,7 +36,7 @@ class Images:
             GraphSchema.create_class_with_properties(name="Media", strict=True,
                                                      properties=["basename", "suffix"])
 
-        GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="i",
+        GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="i",
                                                  properties=["width", "height", "caption", "date_created"],
                                                  class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
 

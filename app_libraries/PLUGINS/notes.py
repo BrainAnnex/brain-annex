@@ -19,7 +19,7 @@ class Notes:
 
 
     @classmethod
-    def initialize_schema(cls) -> None:
+    def add_to_schema(cls) -> None:
         """
         Initialize the Schema needed by this plugin
 
