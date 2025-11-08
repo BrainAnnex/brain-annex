@@ -1,6 +1,8 @@
 # If the database is empty, attempt to read in the Schema file "init/MINIMAL_SCHEMA_TO_IMPORT.json"
 # Then prompt to create a new admin user.  The `User` Schema gets created if needed.
-# At a future date, this script will probably be generalized to a broader initialization process.
+# At a future date, this script will probably be generalized to a broader initialization process,
+# and the import of the Schema file will be replaced by calls to initialization functions of all
+# the applicable modules and plugin.
 
 # It will connect to the Neo4j database from the credentials
 # in config file(s) variables NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD
