@@ -56,6 +56,7 @@ class Categories:
         :return:    An (int, str) pair of integers with the internal database ID
                         and the unique uri assigned to the new Class node
         """
+        #TODO: rename to add_to_schema()
         (int_dbase_id, uri) = GraphSchema.create_class_with_properties(name="Category",
                                                                        properties=["name", "remarks", "uri", "root"],
                                                                        strict=False)
@@ -370,7 +371,8 @@ class Categories:
         data_dict["root"] = True        # Flag to mark this node as the root of the Category graph
 
         #new_uri = GraphSchema.reserve_next_uri(namespace="Category", prefix="cat-")
-        new_uri = "cat-root"    # use a special URI
+        #new_uri = "cat-root"   # use a special URI
+        new_uri = "1"           # For historical reasons.  TODO: phase out (also change default page for '/pages/viewer')
 
         internal_id = GraphSchema.create_data_node(class_name="Category",
                                                    properties = data_dict,

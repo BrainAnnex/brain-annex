@@ -18,6 +18,8 @@ class Recordsets:
 
         :return:    None
         """
+        # TODO: rename to add_to_schema()
+
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
