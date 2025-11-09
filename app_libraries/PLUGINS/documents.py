@@ -29,7 +29,25 @@ class Documents:
 
         :return:    None
         """
-        pass    # TODO: follow the example in Images
+        assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
+            f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
+
+        if not GraphSchema.class_name_exists("Media"):
+            GraphSchema.create_class_with_properties(name="Media", strict=True,
+                                                     properties=["basename", "suffix"])
+
+        GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="d",
+                                                 properties=["caption", "date_created", "url", "comments", "year", "month", "read", "rating", "authors"],
+                                                 class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
+
+        if not GraphSchema.class_name_exists("Directory"):
+            GraphSchema.create_class_with_properties(name="Directory", strict=True,
+                                                     properties=["name", "description"])
+            GraphSchema.create_class_relationship(from_class="Media", to_class="Directory", rel_name="BA_stored_in")
+
+        if GraphSchema.class_name_exists("Indexer"):
+            GraphSchema.create_class_relationship(from_class=cls.SCHEMA_CLASS_NAME, to_class="Indexer", rel_name="has_index")
+
 
 
 

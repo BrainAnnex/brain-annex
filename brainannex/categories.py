@@ -69,8 +69,9 @@ class Categories:
 
         if not GraphSchema.class_name_exists("Collections"):
             Collections.initialize_collections()
-            GraphSchema.create_class_relationship(from_class="Category", to_class="Collections",
-                                                  rel_name="INSTANCE_OF", use_link_node=False)
+
+        GraphSchema.create_class_relationship(from_class="Category", to_class="Collections",
+                                              rel_name="INSTANCE_OF", use_link_node=False)
 
         # cls.create_categories_root()      # TODO: maybe also create the root category here?
 
@@ -321,7 +322,7 @@ class Categories:
         #       where the child c is any ancestor node of the given Category node.
         #       A limit is imposed on the max length of the path
         q = '''
-            MATCH (start :BA:Category {uri:$category_uri})-[:BA_subcategory_of*0..9]->
+            MATCH (start :Category {uri:$category_uri})-[:BA_subcategory_of*0..9]->
                   (c :Category)-[:BA_subcategory_of]->(p :Category)
             WITH c, collect(DISTINCT p.uri) AS all_parents
             RETURN c.uri AS uri, all_parents
@@ -1324,7 +1325,7 @@ class Categories:
         # Collect a subset of the first sorted "pos" values: enough values to cover across the insertion point
         number_to_consider = move_after_n + 1
         q = f'''
-            MATCH (c:BA:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos
             ORDER by pos
             LIMIT {number_to_consider}
@@ -1365,7 +1366,7 @@ class Categories:
 
         # Change the "pos" attribute of the relationship to the Content Item being moved
         q = f'''
-            MATCH (:BA:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
+            MATCH (:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
             SET r.pos = {new_pos}
             '''
 
@@ -1411,7 +1412,7 @@ class Categories:
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
 
         q = f'''
-            MATCH (c:BA:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos, r
             ORDER by pos
             SKIP {n_to_skip}
@@ -1436,14 +1437,14 @@ class Categories:
 
         # Validate the arguments
         assert uri_1 != uri_2, \
-            f"Attempt to swap a Content Item (URI `{uri_1}`) with itself!"
+            f"swap_content_items(): Attempt to swap a Content Item (URI `{uri_1}`) with itself!"
 
 
         # Look for a Category node (c) that is connected to 2 Content Items (n1 and n2)
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
         q = '''
             MATCH (n1 {uri: $uri_1})
-                        -[r1:BA_in_category]->(c:BA:Category {uri: $cat_id})<-[r2:BA_in_category]-
+                        -[r1:BA_in_category]->(c:Category {uri: $cat_id})<-[r2:BA_in_category]-
                   (n2 {uri: $uri_2})
             WITH r1.pos AS tmp, r1, r2
             SET r1.pos = r2.pos, r2.pos = tmp
@@ -1455,7 +1456,7 @@ class Categories:
         #print(data_binding)
 
         stats = cls.db.update_query(q, data_binding)
-        #print("stats of query: ", stats)
+        #cls.db.debug_print_query(q, data_binding)
 
         assert stats != {},  \
             f"Irregularity detected in swap action: Unable to determine the success of the operation"
@@ -1463,7 +1464,8 @@ class Categories:
         number_properties_set = stats.get("properties_set")
 
         assert number_properties_set, \
-            f"Failure to swap content items `{uri_1}` and `{uri_2}` within Category `{cat_id}`. Query: {q}"
+            f"Failure to swap content items with uri's of `{uri_1}` and `{uri_2}` within Category `{cat_id}`. " \
+            f"Query: {q} , data_binding: {data_binding}"
 
         assert number_properties_set == 2, \
             f"Irregularity detected in swap action: {number_properties_set} properties were set," \

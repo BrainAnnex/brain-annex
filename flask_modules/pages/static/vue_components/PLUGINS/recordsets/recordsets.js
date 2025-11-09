@@ -25,11 +25,9 @@ Vue.component('vue-plugin-rs',
         template: `
             <div @dblclick="enter_editing_mode">	<!-- Outer container, serving as Vue-required template root  -->
 
-                <span style="font-weight:bold; color:gray">{{this.pre_edit_metadata.class}}</span><br>
-
-
                 <!-- Recordset PAGE NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
                 <div class="navigator-controls">
+                    <span class="table-caption" style="margin-right:15px">{{this.pre_edit_metadata.class}} &nbsp; {{this.pre_edit_metadata.label}}</span>
 
                     <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
                     <span v-if="current_page > 2" @click="get_recordset(1)"
@@ -133,6 +131,7 @@ Vue.component('vue-plugin-rs',
 
                 <!-- Recordset PAGE NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
                 <div class="navigator-controls">
+                    <span class="table-caption" style="margin-right:15px">{{this.pre_edit_metadata.class}} &nbsp; {{this.pre_edit_metadata.label}}</span>
 
                     <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
                     <span v-if="current_page > 2" @click="get_recordset(1)"

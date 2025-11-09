@@ -143,9 +143,26 @@ class FullTextIndexing:
 
 
 
+    @classmethod
+    def add_to_schema(cls) -> None:
+        """
+        Initialize the Schema needed by this module
+
+        :return:    None
+        """
+        if not GraphSchema.class_name_exists("Indexer"):
+            GraphSchema.create_class(name="Indexer", strict=False)
+
+        if not GraphSchema.class_name_exists("Word"):
+            GraphSchema.create_class_with_properties(name="Word", strict=False,
+                                                 properties=["name"],
+                                                 class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
 
 
-    ##########   STRING METHODS   ##########
+
+
+
+    ################   STRING METHODS   ################
 
     @classmethod
     def split_into_words(cls, text: str, to_lower_case=True, drop_html=True) -> [str]:
