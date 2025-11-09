@@ -12,14 +12,12 @@ class Recordsets:
 
 
     @classmethod
-    def initialize_schema(cls) -> None:
+    def add_to_schema(cls) -> None:
         """
         Initialize the Schema needed by this plugin
 
         :return:    None
         """
-        # TODO: rename to add_to_schema()
-
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
@@ -28,7 +26,7 @@ class Recordsets:
                                                      properties=["uri"])    # TODO: this ought to be done by plugin_support.py
 
         db_id, _ = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="rs",
-                                                            properties=["class", "order_by", "clause", "n_group", "caption"],
+                                                            properties=["class", "order_by", "clause", "n_group", "caption", "label", "fields"],
                                                             class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 
         # Set data types for some Properties
