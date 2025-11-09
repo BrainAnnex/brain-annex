@@ -10,6 +10,8 @@ class Notes:
     
     SCHEMA_CLASS_NAME = "Note"
 
+    SCHEMA_CLASS_NAME = "Note"
+
 
     @classmethod
     def default_folder(cls):

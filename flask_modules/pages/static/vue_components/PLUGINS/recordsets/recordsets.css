@@ -41,6 +41,13 @@ table.rs-main td {
 }
 
 
+span.table-caption {
+    font-weight: bold;
+    color: rgb(108, 181, 181);
+    font-size: 14px;
+}
+
+
 /* To navigate between pages */
 div.navigator-controls {
     display: inline-block;

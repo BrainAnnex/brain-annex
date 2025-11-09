@@ -45,6 +45,8 @@ class Documents:
                                                      properties=["name", "description"])
             GraphSchema.create_class_relationship(from_class="Media", to_class="Directory", rel_name="BA_stored_in")
 
+        if GraphSchema.class_name_exists("Indexer"):
+            GraphSchema.create_class_relationship(from_class=cls.SCHEMA_CLASS_NAME, to_class="Indexer", rel_name="has_index")
 
 
 

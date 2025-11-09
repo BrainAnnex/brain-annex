@@ -23,9 +23,12 @@ class TimerWidget:
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
+        # TODO: this ought to be done by plugin_support.py
         if not GraphSchema.class_name_exists("Content Item"):
             GraphSchema.create_class_with_properties(name="Content Item", strict=True,
-                                                     properties=["uri"])    # TODO: this ought to be done by plugin_support.py
+                                                     properties=["uri"])
+            GraphSchema.create_class_relationship(from_class="Content Item", to_class="Category",
+                                                  rel_name="BA_in_category")
 
         db_id, _ = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="timer",
                                                             properties=["ringtone"],

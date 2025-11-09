@@ -161,7 +161,8 @@ class FullTextIndexing:
 
 
 
-    ##########   STRING METHODS   ##########
+
+    ################   STRING METHODS   ################
 
     @classmethod
     def split_into_words(cls, text: str, to_lower_case=True, drop_html=True) -> [str]:
