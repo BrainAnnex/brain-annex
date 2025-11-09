@@ -1443,7 +1443,7 @@ class Categories:
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
         q = '''
             MATCH (n1 {uri: $uri_1})
-                        -[r1:BA_in_category]->(c:BA:Category {uri: $cat_id})<-[r2:BA_in_category]-
+                        -[r1:BA_in_category]->(c:Category {uri: $cat_id})<-[r2:BA_in_category]-
                   (n2 {uri: $uri_2})
             WITH r1.pos AS tmp, r1, r2
             SET r1.pos = r2.pos, r2.pos = tmp
@@ -1455,7 +1455,7 @@ class Categories:
         #print(data_binding)
 
         stats = cls.db.update_query(q, data_binding)
-        #print("stats of query: ", stats)
+        #cls.db.debug_print_query(q, data_binding)
 
         assert stats != {},  \
             f"Irregularity detected in swap action: Unable to determine the success of the operation"

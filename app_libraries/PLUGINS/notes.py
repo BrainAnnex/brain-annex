@@ -7,6 +7,8 @@ class Notes:
     """
     Plugin-provided handlers for "notes"  (HTML-formatted text)
     """
+    
+    SCHEMA_CLASS_NAME = "Note"
 
 
     @classmethod
@@ -25,7 +27,16 @@ class Notes:
 
         :return:    None
         """
-        pass    # TODO: follow the example in Images
+        assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
+            f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
+
+        if not GraphSchema.class_name_exists("Media"):
+            GraphSchema.create_class_with_properties(name="Media", strict=True,
+                                                     properties=["basename", "suffix"])
+
+        GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="n",
+                                                 properties=["title", "public", "date_created"],
+                                                 class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
 
 
 
