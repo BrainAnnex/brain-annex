@@ -37,7 +37,7 @@ def test_default_file_path():
 
 def test_retrieve_full_path(db):
     db.empty_dbase()
-    Images.initialize_schema()
+    Images.add_to_schema()
 
     # Create an Image node, with the default folder for its type    TODO: turn all the various sample setup into a utility function
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
@@ -63,7 +63,7 @@ def test_retrieve_full_path(db):
 
 def test_lookup_media_file(db):
     db.empty_dbase()
-    Images.initialize_schema()
+    Images.add_to_schema()
 
     # Create an Image node, with the default folder for its type
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
@@ -89,7 +89,7 @@ def test_lookup_media_file(db):
 
 def test_get_full_filename(db):
     db.empty_dbase()
-    Images.initialize_schema()
+    Images.add_to_schema()
 
     # Create an Image node, with the default folder for its type
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},

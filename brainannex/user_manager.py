@@ -33,23 +33,28 @@ class UserManager:
 
 
     @classmethod
-    def create_schema(cls) -> None:
+    def add_to_schema(cls) -> None:
         """
-        Create the database Schema used by this class
+        Create, as needed, the database Schema needed by this class
 
         :return:    None
         """
-        GraphSchema.create_class_with_properties(name="User",
-                                                 properties=["user_id", "username", "password", "email", "admin"], strict=True)
+        if not GraphSchema.class_name_exists("User"):
+            db_id, _ = GraphSchema.create_class_with_properties(name="User",
+                                                     properties=["user_id", "username", "password", "email", "admin"], strict=True)
 
-        GraphSchema.set_property_attribute(class_name="User", prop_name="user_id", attribute_name="dtype", attribute_value="int")
-        GraphSchema.set_property_attribute(class_name="User", prop_name="admin", attribute_name="dtype", attribute_value="bool")
+            GraphSchema.set_property_attribute(class_name="User", prop_name="user_id", attribute_name="dtype", attribute_value="int")
+            GraphSchema.set_property_attribute(class_name="User", prop_name="admin", attribute_name="dtype", attribute_value="bool")
 
-        GraphSchema.set_property_attribute(class_name="User", prop_name="user_id", attribute_name="required", attribute_value=True)
-        GraphSchema.set_property_attribute(class_name="User", prop_name="username", attribute_name="required", attribute_value=True)
-        GraphSchema.set_property_attribute(class_name="User", prop_name="password", attribute_name="required", attribute_value=True)
+            GraphSchema.set_property_attribute(class_name="User", prop_name="user_id", attribute_name="required", attribute_value=True)
+            GraphSchema.set_property_attribute(class_name="User", prop_name="username", attribute_name="required", attribute_value=True)
+            GraphSchema.set_property_attribute(class_name="User", prop_name="password", attribute_name="required", attribute_value=True)
 
-        GraphSchema.create_namespace(name="user")
+            # Set up the auto-increment namespace
+            namespace="user"
+            GraphSchema.create_namespace(name=namespace)
+            match_to = GraphSchema.db.match(labels="Schema Autoincrement", key_name="namespace", key_value=namespace)
+            GraphSchema.db.add_links(match_from=db_id, match_to=match_to, rel_name="HAS_URI_GENERATOR")
 
 
 

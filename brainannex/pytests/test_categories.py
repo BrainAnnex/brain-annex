@@ -24,13 +24,13 @@ def initialize_categories(db):
     # Clear the dbase, create the Category Schema, and creates a ROOT Category node;
     # return the pair (internal database ID, URI) of that newly-created root node
 
-    db.empty_dbase()
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
-    Categories.initialize_categories()
+    Categories.add_to_schema()
 
-    return Categories.create_categories_root()  # Returns a pair (int, str)
+    return Categories.create_categories_root()  # Returns a pair (int|str, str)
                                                 # The root node contains the properties:
-                                                # {"name": "HOME", "remarks": "top level", "uri": "cat-root", "root": True}
+                                                # {"name": "HOME", "remarks": "top level", "uri": "1", "root": True}
 
 
 
@@ -43,7 +43,7 @@ def test_get_category_info(db):
 
     result = Categories.get_category_info(root_uri)
 
-    assert result == {'root': True, 'name': 'HOME', 'uri': 'cat-root', 'remarks': 'top level'}
+    assert result == {'root': True, 'name': 'HOME', 'uri': '1', 'remarks': 'top level'}
     #TODO: more tests
 
 
@@ -78,8 +78,9 @@ def test_get_all_categories(db):
     assert result == []
 
     # Add a new Category ("Languages")
-    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
-                                "subcategory_remarks": "Common node for all languages"})
+    language_uri = Categories.add_subcategory(data_dict={"category_uri": root_uri,
+                                                         "subcategory_name": "Languages",
+                                                          "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
     expected = [{'uri': root_uri, 'name': 'HOME', 'remarks': 'top level'},

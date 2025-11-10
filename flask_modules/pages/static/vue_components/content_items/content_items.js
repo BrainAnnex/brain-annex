@@ -86,7 +86,7 @@ Vue.component('vue-content-items',
                 <button @click="add_new_item_below('n', 'Note')" style="margin-right:10px">Note</button>
                 <button @click="add_new_item_below('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
                 <button @click="add_new_item_below('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
-                <button @click="add_new_item_below('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation</button>
+                <button @click="add_new_item_below('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation (deprecated)</button>
                 &nbsp;&nbsp;&nbsp;
                 <button @click="add_new_item_below('timer', 'Timer Widget')" style="margin-right:10px">Timer Widget</button>
 

@@ -30,6 +30,25 @@ class MediaManager:
 
 
     @classmethod
+    def add_to_schema(cls) -> None:
+        """
+        Create, as needed, the database Schema needed by this module;
+        that includes the Classes "Media" and "Directory"
+
+        :return:    None
+        """
+        if not GraphSchema.class_name_exists("Media"):
+            GraphSchema.create_class_with_properties(name="Media", strict=False,
+                                                     properties=["basename", "suffix"])
+
+        if not GraphSchema.class_name_exists("Directory"):
+            GraphSchema.create_class_with_properties(name="Directory", strict=False,
+                                                     properties=["name", "description"])
+            GraphSchema.create_class_relationship(from_class="Media", to_class="Directory", rel_name="BA_stored_in")
+
+
+
+    @classmethod
     def set_media_folder(cls, path_name: str) -> None:
         """
 
@@ -510,6 +529,7 @@ class MediaManager:
                 orphans.append(filename)
 
         return orphans
+
 
 
 

@@ -10,7 +10,7 @@ def db():
     neo_obj.empty_dbase()
     GraphSchema.set_database(neo_obj)
     UserManager.set_database(neo_obj)
-    UserManager.create_schema()
+    UserManager.add_to_schema()
 
     yield neo_obj
 
