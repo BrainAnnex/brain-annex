@@ -386,13 +386,14 @@ class PagesRouting:
 
             words = request.args.get("words", type = str)     # COULD ALSO ADD: , default = "someDefault"    Using Request data in Flask
             search_category = request.args.get("search_category", type = str)
+            #print(f"'/search' web API endpoint.  Searching for word(s) `{words}` IN CATEGORY: \"{search_category}\"")
             #return f"{words}, {search_category}"
 
             if words is None:
                 return "Incorrectly-formed URL; missing query-string parameter `<b>words</b>`"
 
             content_items, page_header = DataManager.search_for_terms(words=words, search_category=search_category)
-            # "Enrich" the nodes with the Content Items with the "schema_code" field,
+            # "Enrich" the returned nodes with the Content Items with the "schema_code" field,
             # which is being phased to being extracted from their Classes
             for item in content_items:
                 #print(item)

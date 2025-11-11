@@ -1147,9 +1147,11 @@ class DataManager:
                                     2) a string with a caption to describe these search results
         """
         #print(f"search_for_terms(). Words: `{words}`")
-        #print(f"search_category: `{search_category}`")
+        #print(f"search_for_terms(). Category: `{search_category}`")
 
         word_list = FullTextIndexing.split_into_words(text=words, to_lower_case=True, drop_html=True)
+
+        #print(f"    word_list: `{word_list}`")
 
         if len(word_list) == 0:
             return []

@@ -1,5 +1,7 @@
 /*  "Record navigator" with recursive drill-down capabilities to follow links
-    and explore neighbor nodes as sub-records
+    and explore neighbor nodes as sub-records.
+
+    Currently used in the filter page.
  */
 
 Vue.component('vue-record-navigator',

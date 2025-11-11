@@ -1,8 +1,8 @@
 table.r-main {
     border:1px solid #DDD;
     border-collapse: collapse;
-    margin-top:10px;
-    margin-bottom:5px;
+    margin-top: 0;
+    margin-bottom: 5px;
 }
 
 table.r-main td, th {
