@@ -187,9 +187,9 @@ class GraphAccess(InterGraph):
                                         [  {"internal_id": 145, "node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
                                            {"internal_id": 222, "node_labels": ["person"], "gender": "M", "location": "Berkeley"}
                                         ]
+        """
         # TODO: provide an option to specify the desired fields
 
-        """
         # Unpack needed values from the Cypher builder
         (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
         #print(node, where, data_binding, dummy_node_name)
@@ -1555,6 +1555,49 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
+    def sanitize_date_times(self, record :dict, drop_time=False,
+                            date_format="%Y/%m/%d", time_format="%H:%M:%S") -> dict:
+        """
+
+        :param record:      A python dictionary whose values might include Neo4j "Date" or "DateTime" data types;
+                                this dictionary does NOT get altered
+        :param drop_time:   [OPTIONAL] If True, any time part in datetime fields will get dropped
+        :param date_format: [OPTIONAL] String with format information for dates,
+                                as used by the python function strftime().
+                                See https://strftime.org/
+        :param time_format: [OPTIONAL] String with format information for times
+
+        :return:            A new dictionary, based on `record` but will all the Date/DateTime values converted to strings.
+                                By default, a format of the type "2019/01/31 , 18:59:35" is used for datetimes.
+        """
+        # TODO: this (database-specific) method belongs to the InterGraph class
+        # TODO: possibly sanitize other Neo4j data types
+
+        assert type(record) == dict, \
+            "sanitize_dates(): argument `record` must be a python dictionary"
+
+        converted_dict = {}
+
+        # Convert any DateTime or Date values to strings
+        for key, val in record.items():
+            if  type(val) == neo4j.time.DateTime:
+                conv = neo4j.time.DateTime.to_native(val)       # This will be of python type datetime.datetime
+                if drop_time:
+                    converted_dict[key] = conv.strftime(date_format)                        # EXAMPLE: "2000/01/31"
+                else:
+                    converted_dict[key] = conv.strftime(f"{date_format} , {time_format}")   # EXAMPLE: "2019/01/31 , 18:59:35"
+
+            elif  type(val) == neo4j.time.Date:
+                conv = neo4j.time.Date.to_native(val)           # This will be of python type datetime.datetime
+                converted_dict[key] = conv.strftime(date_format)                            # EXAMPLE: "2000/01/31"
+
+            else:                                               # NOT a date/time type
+                converted_dict[key] = val
+
+        return converted_dict
+
+
+
     def standardize_recordset(self, recordset :[dict], dummy_name="n"):
         """
         Sanitize and standardize the given recordset, typically as returned by a call to query(),
@@ -1585,23 +1628,18 @@ class GraphAccess(InterGraph):
                                             {"timestamp": 123, "DOB": "2003/07/15", "internal_id": 53}
                                           ]
         """
-        # TODO: possibly sanitize other Neo4j data types
-        # TODO: offer options for how to transform date and datetime fields
         # TODO: perhaps add a flag to query(), to automatically invoke this function at the end;
         #       alternatively, perhaps create a new query_recordset() method that contains query() plus this function.
         result = []
         for record in recordset:
-            data = record[dummy_name]   # A dict of field names and values, comprising the properties of the node n.
-                                        # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+            if dummy_name:
+                data = record[dummy_name]   # A dict of field names and values, comprising the properties of the node n.
+                                            # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+            else:
+                data = record
 
-            # Convert any DateTime or Date values to strings; the time part is dropped.  TODO: make the time dropping optional
-            for key, val in data.items():
-                if  type(val) == neo4j.time.DateTime:
-                    conv = neo4j.time.DateTime.to_native(val)   # This will be of python type datetime.datetime
-                    data[key] = conv.strftime("%Y/%m/%d")       # Overwrite with converted value.  EXAMPLE: "2000/01/31"
-                if  type(val) == neo4j.time.Date:
-                    conv = neo4j.time.Date.to_native(val)       # This will be of python type datetime.datetime
-                    data[key] = conv.strftime("%Y/%m/%d")       # Overwrite with converted value.  EXAMPLE: "2000/01/31"
+            # Convert any DateTime or Date values to strings; the time part is dropped
+            data = self.sanitize_date_times(data, drop_time=True)   # TODO: make the time dropping optional
 
             if "internal_id" in record:
                 data["internal_id"] = record["internal_id"]     # Integrate the internal database ID, if provided, into the record
@@ -1886,6 +1924,8 @@ class GraphAccess(InterGraph):
                                 plus the 2 special keys "internal_id" and "node_labels".
                                 The start node is NOT included.
         """
+        # TODO: flatten the structure!
+
         assert max_hops >= 1, \
             f"explore_neighborhood(): argument `max_hops` " \
             f"must be an integer >= 1 (passed value was {max_hops})"

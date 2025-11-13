@@ -471,6 +471,7 @@ class PyGraphVisual:
 
             result = self.db.query(q, {"node_list": node_list})
 
+            # TODO: sanitize the records!  See GraphAccess.standardize_recordset()
             for edge in result:
                 #print(edge)
                 self.add_edge(from_node=edge["from_node"], to_node=edge["to_node"], name=edge["rel_name"], properties=edge["rel_props"])

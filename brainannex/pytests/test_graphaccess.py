@@ -320,6 +320,43 @@ def test_get_node_labels(db):
 
 
 
+def test_sanitize_dates(db):
+    db.empty_dbase()
+
+    # Include date and datetime values as a property values
+    db.create_node(labels="Car", properties={"color": "red",
+                                             "make": "Honda",
+                                             "bought_on": neo4j.time.Date(2019, 6, 1),
+                                             "certified": neo4j.time.DateTime(2019, 1, 31, 18, 59, 35)
+                                             })
+    q = "MATCH (n) RETURN n"
+    row = db.query(q, single_row=True)
+    record = row["n"]   # record is:
+                        #   {'bought_on': neo4j.time.Date(2019, 6, 1), 'color': 'red',
+                        #    'certified': neo4j.time.DateTime(2019, 1, 31, 18, 59, 35, 0), 'make': 'Honda'}
+
+    result = db.sanitize_date_times(record, drop_time=True)
+    assert result == {'color': 'red', 'make': 'Honda',
+                      'bought_on': '2019/06/01', 'certified': '2019/01/31'}
+    # The original dictionary not changed
+    assert record['bought_on'] == neo4j.time.Date(2019, 6, 1)
+    assert record['certified'] == neo4j.time.DateTime(2019, 1, 31, 18, 59, 35, 0)
+
+    result = db.sanitize_date_times(record, drop_time=True, date_format="%b %d, %Y")
+    assert result == {'color': 'red', 'make': 'Honda',
+                      'bought_on': 'Jun 01, 2019', 'certified': 'Jan 31, 2019'}
+
+    result = db.sanitize_date_times(record, drop_time=False)
+    assert result == {'color': 'red', 'make': 'Honda',
+                    'bought_on': '2019/06/01', 'certified': '2019/01/31 , 18:59:35'}
+
+    result = db.sanitize_date_times(record, drop_time=False, date_format="%b %d, %Y", time_format="%I:%M %p")
+    assert result == {'color': 'red', 'make': 'Honda',
+                      'bought_on': 'Jun 01, 2019', 'certified': 'Jan 31, 2019 , 06:59 PM'}
+
+
+
+
 def test_standardize_recordset(db):
     db.empty_dbase()
 
