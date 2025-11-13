@@ -1,10 +1,8 @@
-/*  Vue component to display and edit Content Items of type "r" (generic Records)
+/*  Vue component to display and edit Content Items that lack any ah-hoc handler.
 
-    At present, this is the default, primary way to display and edit the above Content Items
-    in the Page Viewer.
+    Historically, these Content Items are referred as being of type "r" (generic Records)
 
-    For "grouped" Content Items of type "r" from the same Schema Class,
-    the newer Vue component 'vue-plugin-table' is currently used.
+    At present, this is used in the Category Page Viewer.
  */
 
 Vue.component('vue-plugin-r',
@@ -28,6 +26,8 @@ Vue.component('vue-plugin-r',
 
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
+
+            <span style="color: gray">{{this.item_data.class_name}}</span>
 
             <table class='r-main'>
             <!-- Header row  -->

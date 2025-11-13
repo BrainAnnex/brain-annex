@@ -1,4 +1,8 @@
-/*  Vue component to display and edit a SINGLE table ROW of data (NOT headers)
+/*  CURRENTLY UNUSED!
+
+    Vue sub-component for 'vue-plugin-table', which is currently unused.
+
+    This subcomponent is to display and edit a SINGLE table ROW of data (NOT headers)
     from a Content Item at type "r" (Record).
     Table headers, and <table> tag, are handled by the parent component, in table.js
 

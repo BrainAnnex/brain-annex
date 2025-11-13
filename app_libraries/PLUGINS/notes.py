@@ -23,7 +23,7 @@ class Notes:
     @classmethod
     def add_to_schema(cls) -> None:
         """
-        Initialize the Schema needed by this plugin
+        Create, as needed, the database Schema needed by this plugin
 
         :return:    None
         """
@@ -31,10 +31,11 @@ class Notes:
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
         if not GraphSchema.class_name_exists("Media"):
-            GraphSchema.create_class_with_properties(name="Media", strict=True,
-                                                     properties=["basename", "suffix"])
+            MediaManager.add_to_schema()
 
-        GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="n",
+
+        if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
+            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="n",
                                                  properties=["title", "public", "date_created"],
                                                  class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
 

@@ -146,7 +146,7 @@ class FullTextIndexing:
     @classmethod
     def add_to_schema(cls) -> None:
         """
-        Initialize the Schema needed by this module
+        Create, as needed, the database Schema needed by this class
 
         :return:    None
         """

@@ -48,15 +48,16 @@ class Collections:
 
 
     @classmethod
-    def initialize_collections(cls) -> (int|str, str):
+    def add_to_schema(cls) -> (int|str, str):
         """
-        Create a new Schema Class node that represents a "Collection"
+        Create, as needed, a new Schema Class node that represents a "Collection"
 
         :return:    A pair of values with the internal database ID,
-                        and the unique uri assigned to the node just created
+                        and the unique uri assigned to the node just created;
+                        if nothing was created, return None
         """
-        #TODO: rename to add_to_schema()
-        return GraphSchema.create_class(name="Collections", strict = False)
+        if not GraphSchema.class_name_exists("Collections"):
+            return GraphSchema.create_class(name="Collections", strict = False)
 
 
 

@@ -25,7 +25,7 @@ def initialize_categories(db):
 
     db.empty_dbase()
 
-    Categories.initialize_categories()
+    Categories.add_to_schema()
 
     return Categories.create_categories_root()  # Returns a pair (int, str)
 
