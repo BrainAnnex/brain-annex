@@ -1,12 +1,29 @@
-from brainannex import PyGraphVisual
+# MAKE SURE TO FIRST SET THE ENVIRONMENT VARIABLES, prior to run the pytests in this file!
+
+from brainannex import PyGraphVisual, GraphAccess
 from utilities.comparisons import *
+import pytest
+
+
+
+def test_get_graph_data():
+    graph = PyGraphVisual()
+    graph.structure = ["mylist"]
+    graph.color_mapping = {"a": "red"}
+    graph.caption_mapping = {"z": 99}
+
+    assert graph.get_graph_data() == {
+                    "structure": ["mylist"],
+                    "color_mapping": {"a": "red"},
+                    "caption_mapping": {"z": 99}
+                }
 
 
 
 def test_add_node():
     graph = PyGraphVisual()
 
-    graph.add_node(node_id=123, labels="Person", data={"name": "Julian"})
+    graph.add_node(node_id=123, labels="Person", properties={"name": "Julian"})
 
     result = graph.get_graph_data()
 
@@ -15,20 +32,165 @@ def test_add_node():
     assert graph._all_node_ids == [123]
 
 
-    graph.add_node(node_id=456, labels="Person", data={"name": "Val"})
+    graph.add_node(node_id=456, labels="Person", properties={"name": "Val"})
 
     result = graph.get_graph_data().get("structure")
 
-    expected = [{'name': 'Julian', 'id': 123, 'labels': ['Person']},
-                {'name': 'Val', 'id': 456, 'labels': ['Person']}]
+    expected = [{'id': 123, 'name': 'Julian', 'labels': ['Person']},
+                {'id': 456, 'name': 'Val', 'labels': ['Person']}]
 
     assert compare_recordsets(result , expected)
     assert graph._all_node_ids == [123, 456]
 
 
-    graph.add_node(node_id=456, labels="Person", data={"name": "it doesn't matter"})
+    # Duplicate node_id
+    graph.add_node(node_id=456, labels="Person", properties={"name": "it doesn't matter"})
 
     result = graph.get_graph_data().get("structure")
 
     assert compare_recordsets(result , expected)    # No change from before
     assert graph._all_node_ids == [123, 456]
+
+
+    with pytest.raises(Exception):
+        graph.add_node(node_id=["??"])
+
+    with pytest.raises(Exception):
+        graph.add_node(node_id="")
+
+
+
+def test_add_edge():
+    graph = PyGraphVisual()
+
+    graph.add_node(node_id=123, labels="Person", properties={"name": "Julian"})
+    graph.add_node(node_id=456, labels="Person", properties={"name": "Val"})
+
+    graph.add_edge(from_node=123, to_node=456, name="KNOWS")
+
+    result = graph.get_graph_data()
+    assert result["color_mapping"] == {}
+    assert result["caption_mapping"] == {}
+    assert result["structure"] == [ {'id': 123, 'name': 'Julian', 'labels': ['Person']},
+                                    {'id': 456, 'name': 'Val', 'labels': ['Person']},
+                                    {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456}
+                                  ]
+
+    graph.add_node(node_id="car-1", labels=["Car", "Vehicle"], properties={"color": "white"})
+    graph.add_edge(from_node=123, to_node="car-1", name="OWNS", properties={"paid": 100})
+
+    result = graph.get_graph_data()
+    assert result["color_mapping"] == {}
+    assert result["caption_mapping"] == {}
+    assert result["structure"] == [ {'id': 123, 'name': 'Julian', 'labels': ['Person']},
+                                    {'id': 456, 'name': 'Val', 'labels': ['Person']},
+                                    {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456},
+                                    {'id': 'car-1', 'color': 'white', 'labels': ["Car", "Vehicle"]},
+                                    {'id': 'edge-2', 'name': 'OWNS', 'source': 123, 'target': 'car-1', 'paid':100}
+                                  ]
+
+
+
+def test_assign_caption():
+    pass        # TODO
+
+
+
+def test_assign_color_mapping():
+    graph = PyGraphVisual()
+
+    graph.assign_color_mapping(label = "my_label_1", color = "yellow")
+    assert graph.get_graph_data().get("color_mapping") == {"my_label_1": "yellow"}
+
+    graph.assign_color_mapping(label = "my_label_2", color = "#FF0088")
+    assert graph.get_graph_data().get("color_mapping") == {"my_label_1": "yellow", "my_label_2": "#FF0088"}
+
+    graph.assign_color_mapping(label = "my_label_3", color = "graph_orange")
+    assert graph.get_graph_data().get("color_mapping") \
+        == {"my_label_1": "yellow", "my_label_2": "#FF0088", "my_label_3": "#F79768"}
+
+
+
+def test_prepare_graph_1():
+    graph = PyGraphVisual()
+
+    dataset = [  {"internal_id": 123, "node_labels": ["Person"], 'name': 'Julian'},
+                 {"internal_id": 456, "node_labels": ["Person"], 'name': 'Val'}
+              ]
+
+    result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
+    assert result == [123, 456]
+
+    internal_data = graph.get_graph_data()
+
+    assert internal_data['color_mapping'] == {}
+    assert internal_data['caption_mapping'] == {}
+
+    expected_structure = [{'id': 123, 'name': 'Julian', 'labels': ['Person']},
+                          {'id': 456, 'name': 'Val', 'labels': ['Person']}]
+
+    assert compare_recordsets(internal_data["structure"] , expected_structure)
+    assert graph._all_node_ids == [123, 456]
+
+
+
+def test_prepare_graph_2():
+    # Prepare the database with 3 nodes and 2 links
+    db = GraphAccess(debug=False)
+    db.empty_dbase()
+
+    p_1 = db.create_node(labels="Person", properties={'name': 'Julian'})
+    p_2 = db.create_node(labels="Person", properties={'name': 'Val'})
+    db.add_links(match_from=p_1, match_to=p_2, rel_name="KNOWS")
+
+    c_1 = db.create_node(labels=["Car"], properties={"color": "white"})
+    db.add_links_fast(match_from=p_1, match_to=c_1, rel_name="OWNS", rel_props={"paid": 100})
+
+
+    match = db.match()      # This will pull all the 3 nodes in the database
+    dataset = db.get_nodes(match=match, return_internal_id=True, return_labels=True)
+
+    graph = PyGraphVisual()
+    result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
+    assert compare_unordered_lists(result, [p_1, p_2, c_1])
+    assert compare_unordered_lists(graph._all_node_ids, [p_1, p_2, c_1])
+
+    expected_structure_1 = [{'id': p_1, 'name': 'Julian', 'labels': ['Person']},
+                          {'id': p_2, 'name': 'Val', 'labels': ['Person']},
+                          {'id': c_1, 'color': 'white', 'labels': ['Car']}]
+
+    internal_data = graph.get_graph_data()
+    assert compare_recordsets(internal_data["structure"] , expected_structure_1)
+
+
+    # Repeat, but now also automatically fetch all edges
+    graph = PyGraphVisual(db=db)
+
+    result = graph.prepare_graph(result_dataset=dataset, add_edges=True)
+    assert compare_unordered_lists(graph._all_node_ids, [p_1, p_2, c_1])
+
+    assert compare_unordered_lists(result, [p_1, p_2, c_1])
+    internal_structure = graph.get_graph_data().get("structure")
+
+    expected_structure_1 = [  {'id': p_1, 'name': 'Julian', 'labels': ['Person']},
+                              {'id': p_2, 'name': 'Val', 'labels': ['Person']},
+                              {'id': c_1, 'color': 'white', 'labels': ['Car']},
+                              {'name': 'OWNS', 'source': p_1, 'target': c_1, 'id': 'edge-1', 'paid':100},
+                              {'name': 'KNOWS', 'source': p_1, 'target': p_2, 'id': 'edge-2'}
+                           ]
+
+    # Make allowance for the fact that the edges could be returned in any order (and thus have reversed id's)
+    expected_structure_2 = [  {'id': p_1, 'name': 'Julian', 'labels': ['Person']},
+                              {'id': p_2, 'name': 'Val', 'labels': ['Person']},
+                              {'id': c_1, 'color': 'white', 'labels': ['Car']},
+                              {'name': 'OWNS', 'source': p_1, 'target': c_1, 'id': 'edge-2', 'paid':100},
+                              {'name': 'KNOWS', 'source': p_1, 'target': p_2, 'id': 'edge-1'}
+                           ]
+
+    assert compare_recordsets(internal_structure , expected_structure_1) \
+                or compare_recordsets(internal_structure , expected_structure_2)
+
+
+
+def test_link_node_groups():
+    pass    # TODO

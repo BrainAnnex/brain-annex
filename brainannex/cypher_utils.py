@@ -685,7 +685,8 @@ class CypherUtils:
         if data_dict is None or data_dict == {}:
             return ("", {})
 
-        assert type(data_dict) == dict, f"The data_dict argument passed to dict_to_cypher() is not a dictionary. Value: {data_dict}"
+        assert type(data_dict) == dict, \
+            f"dict_to_cypher(): The `data_dict` argument is not a dictionary. Value: {data_dict}"
 
         rel_props_list = []     # A list of strings
         data_binding = {}

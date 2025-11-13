@@ -12,7 +12,7 @@ IMPORTANT - to run the pytests in this file, the following ENVIRONMENT VARIABLES
 """
 
 import pytest
-from brainannex import graphaccess as neo_access
+from brainannex import GraphAccess
 from utilities.comparisons import compare_unordered_lists, compare_recordsets
 from datetime import datetime, date
 import pandas as pd
@@ -25,8 +25,8 @@ import neo4j.time
 @pytest.fixture(scope="module")
 def db():
     # MAKE SURE TO FIRST SET THE ENVIRONMENT VARIABLES, prior to run the pytests in this file!
-    neo_obj = neo_access.GraphAccess(debug=False)     # Change the debug option to True if desired
-    yield neo_obj
+    graph_obj = GraphAccess(debug=False)     # Change the debug option to True if desired
+    yield graph_obj
 
 
 
