@@ -61,27 +61,40 @@ Vue.component('vue-toc-sidebar',
                                     <br>
                                 </p>
 
-                                <p v-if="item.schema_code == 'i'">&nbsp; &diams;
+                                <p v-else-if="item.schema_code == 'i'">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
                                     <img src='/BA/pages/static/graphics/image_14_1814111.png' title="image" alt="image">
                                     <br>
                                 </p>
 
-                                <p v-if="item.schema_code == 'd'">&nbsp; &diams;
+                                <p v-else-if="item.schema_code == 'd'">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
                                     <img src='/BA/pages/static/graphics/document_14_2124302.png' title="document" alt="document">
                                     <br>
                                 </p>
 
-                                <p v-if="item.schema_code == 'n' && item.title">&nbsp; &diams;
+                                <p v-else-if="item.schema_code == 'n' && item.title">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.title}}</a>
                                     <br>
                                 </p>
 
-                                <p v-if="item.schema_code == 'rs' && item.class">&nbsp; &diams;
+                                <p v-else-if="item.schema_code == 'rs' && item.class">&nbsp; &diams;
                                     <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.class}}</a>
                                     <img src='/BA/pages/static/graphics/tabular_16_9040670.png' title="recordset" alt="recordset">
                                     <br>
+                                </p>
+
+                                <p v-else-if="item.schema_code == 'sl' && item.name">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" title="Bookmark (site link)">{{item.name}}</a>
+                                    <img src='/BA/pages/static/graphics/16_bookmark_1904655.png' title="bookmark" alt="bookmark">
+                                    <br>
+                                </p>
+
+                                <p v-else-if="item.schema_code != 'h'">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" title="Bookmark (site link)">
+                                        <span style="color:gray">[RECORD]</span> {{item.class_name}}
+                                    </a>
+                                    <img src='/BA/pages/static/graphics/13_database_record.png' title="database record" alt="database record">
                                 </p>
                             </template>
 

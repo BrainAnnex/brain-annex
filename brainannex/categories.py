@@ -32,6 +32,8 @@ class Categories:
         """
         IMPORTANT: this method MUST be called before using this class!
 
+        This method also takes care of setting the database for the class "Collections"
+
         :param db:  Database-interface object, created with the GraphAccess library
         :return:    None
         """
@@ -48,34 +50,40 @@ class Categories:
 
 
     @classmethod
-    def initialize_categories(cls) -> (int, str):
+    def add_to_schema(cls) -> None:
         """
-        Create a new Schema Class node that represents "Categories",
-        and make it an "INSTANCE_OF" of the "Collections" Class
+        Create, as needed, a new Schema Class node that represents "Categories",
+        and make it an "INSTANCE_OF" of the "Collections" Class (also created as needed)
 
-        :return:    An (int, str) pair of integers with the internal database ID
-                        and the unique uri assigned to the new Class node
+        :return:    None
         """
-        #TODO: rename to add_to_schema()
-        (int_dbase_id, uri) = GraphSchema.create_class_with_properties(name="Category",
-                                                                       properties=["name", "remarks", "uri", "root"],
-                                                                       strict=False)
+        if not GraphSchema.class_name_exists("Category"):
+            GraphSchema.create_class_with_properties(name="Category",
+                                                     properties=["name", "remarks", "uri", "root"],
+                                                     strict=False)
 
-        GraphSchema.create_class_relationship(from_class="Category", to_class="Category",
-                                              rel_name="BA_subcategory_of", use_link_node=False)
+            GraphSchema.create_class_relationship(from_class="Category", to_class="Category",
+                                                  rel_name="BA_subcategory_of", use_link_node=False)
 
-        GraphSchema.create_class_relationship(from_class="Category", to_class="Category",
-                                              rel_name="BA_see_also", use_link_node=False)
+            GraphSchema.create_class_relationship(from_class="Category", to_class="Category",
+                                                  rel_name="BA_see_also", use_link_node=False)
 
-        if not GraphSchema.class_name_exists("Collections"):
-            Collections.initialize_collections()
+            Collections.add_to_schema()     # Will be created as needed
 
-        GraphSchema.create_class_relationship(from_class="Category", to_class="Collections",
-                                              rel_name="INSTANCE_OF", use_link_node=False)
+            GraphSchema.create_class_relationship(from_class="Category", to_class="Collections",
+                                                  rel_name="INSTANCE_OF", use_link_node=False)
 
-        # cls.create_categories_root()      # TODO: maybe also create the root category here?
+            # cls.create_categories_root()      # TODO: maybe also create the root category here?
 
-        return (int_dbase_id, uri)
+
+        # The rest of this function is, strictly speaking, about the CategoryPages
+        if not GraphSchema.class_name_exists("Content Item"):
+            GraphSchema.create_class_with_properties(name="Content Item", strict=False,
+                                                     properties=["uri"])
+            GraphSchema.create_class_relationship(from_class="Content Item", to_class="Category",
+                                                  rel_name="BA_in_category")
+
+
 
 
 
@@ -374,8 +382,9 @@ class Categories:
         #new_uri = GraphSchema.reserve_next_uri(namespace="Category", prefix="cat-")
         #new_uri = "cat-root"   # use a special URI
         new_uri = "1"           # For historical reasons.  TODO: phase out (also change default page for '/pages/viewer')
+        GraphSchema.reserve_next_uri()      # To make sure that the "1" value won't be available anymore
 
-        internal_id = GraphSchema.create_data_node(class_name="Category",
+        internal_id = GraphSchema.create_data_node(class_name="Category", extra_labels ="BA",
                                                    properties = data_dict,
                                                    new_uri=new_uri)
         return (internal_id, new_uri)
@@ -393,7 +402,7 @@ class Categories:
                                 subcategory_name        The name to give to the new Subcategory
                                 subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
 
-        :param category_uri: Optional way to specify the parent Category
+        :param category_uri: [OPTIONAL] Way to specify the parent Category
 
         :return:            A string with the "uri" of the Category node just created
                                 (which makes use of an auto-increment value)
@@ -426,6 +435,7 @@ class Categories:
         parent_category_internal_id = GraphSchema.get_data_node_id(key_value=category_uri, key_name="uri")
 
         new_uri = GraphSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
+
         GraphSchema.create_data_node(class_name="Category", extra_labels ="BA",
                                      properties = data_dict,
                                      links = [{"internal_id": parent_category_internal_id,

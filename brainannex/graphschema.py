@@ -238,6 +238,8 @@ class GraphSchema:
         #       link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
         #TODO: maybe an option to add multiple Classes of the same type at once???
         #TODO: maybe stop returning the uri ?
+        #TODO: add a constraint for `uri` of `SCHEMA` nodes, if not already present :
+        #      CREATE CONSTRAINT unique_schema_uri ON (n:SCHEMA) ASSERT n.uri IS UNIQUE
 
         name = name.strip()     # Strip any leading/trailing whitespace at the ends
         assert name != "", \
@@ -5111,6 +5113,9 @@ class GraphSchema:
                             it will be stored in the database
         :return:        None
         """
+        # TODO: offer an option to link the new namespace to a given Class,
+        #       using the "HAS_URI_GENERATOR" from the class to the new namespace node
+
         assert type(name) == str, \
             f"create_namespace(): the argument `name` must be a string.  " \
             f"The value passed was of type {type(name)}"

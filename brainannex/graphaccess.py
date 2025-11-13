@@ -497,18 +497,18 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def create_node(self, labels, properties=None) -> int:
+    def create_node(self, labels, properties=None) -> int|str:
         """
         Create a new node with the given label(s),
         and with the attributes/values specified in the properties dictionary.
-        Return the Neo4j internal ID of the node just created.
+        Return the internal database ID of the node just created.
 
         :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces);
                                 it's acceptable to be None
         :param properties:  OPTIONAL (possibly empty or None) dictionary of properties to set for the new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
 
-        :return:            An integer with the internal database ID of the node just created
+        :return:            The value of the internal database ID of the node just created
         """
 
         if properties is None:
@@ -1208,9 +1208,6 @@ class GraphAccess(InterGraph):
         Notes:  - if a relationship with the same name already exists, nothing gets created (and an Exception is raised)
                 - more than 1 node could be present in either of the matches
 
-        TODO: add a `rel_props` argument
-              (Unclear what multiple calls would do in this case: update the props or create a new relationship??)
-
         :param match_from:  EITHER an integer or string with an internal database node id,
                                 OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param match_to:    EITHER an integer or string with an internal database node id,
@@ -1225,6 +1222,9 @@ class GraphAccess(InterGraph):
 
         :return:            The number of edges added.  If none got added, or in case of error, an Exception is raised
         """
+        #         TODO: add a `rel_props` argument - see approach done in add_links_fast()
+        #               (Unclear what multiple calls would do in this case: update the props or create a new relationship??)
+
         (nodes_from, where_from, data_binding_from, _) = \
                 CypherUtils.assemble_cypher_blocks(handle=match_from, dummy_node_name="from", caller_method="add_links")
 
@@ -1253,7 +1253,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def add_links_fast(self, match_from :Union[int, str], match_to :Union[int, str], rel_name :str) -> int:
+    def add_links_fast(self, match_from :int|str, match_to :int|str, rel_name :str, rel_props=None) -> int:
         """
         Method optimized for speed.  Only internal database ID's are used.
 
@@ -1264,14 +1264,40 @@ class GraphAccess(InterGraph):
         :param match_from:  An integer or string with an internal database node id
         :param match_to:    An integer or string with an internal database node id
         :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed
+        :param rel_props:   [OPTIONAL] A dict with properties to store on the newly-created link.
+                                Currently, no double quotes are allowed in the values.
+                                Any entry with None for a value are disregarded.
 
         :return:            The number of links added.  If none got added, or in case of error, an Exception is raised
         """
+        # TODO: allow double quotes in values of rel_props entries
+        # TODO: (Unclear what multiple calls would do in this case: update the props or create a new relationship??)
+
         # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
+        if rel_props:
+            # Convert the dict into a string suitable for inclusion into Cypher; e.g. {"since": 2025, "from": "John"}
+            # will be turned into the string '{since: 2025, from: "John"}'
+            entries = []
+            for k, v in rel_props.items():
+                if v is None:
+                    continue        # Disregard dictionary entries with None values
+
+                if type(v) == str:
+                    v_str = f'"{v}"'
+                else:
+                    v_str = str(v)
+
+                entries.append(f"{k}: {v_str}")
+
+            rel_props_cypher = "{" + ", ".join(entries) + "}"
+            #print(f"rel_props_cypher: {rel_props_cypher}")
+        else:
+            rel_props_cypher = ""
+
         q = f'''
             MATCH (from), (to)
             WHERE id(from) = {match_from} AND id(to) = {match_to}
-            MERGE (from) -[:`{rel_name}`]-> (to)           
+            MERGE (from) -[:`{rel_name}` {rel_props_cypher}]-> (to)           
             '''
 
         result = self.update_query(q)

@@ -23,7 +23,7 @@ def create_sample_collections_class(db):
 
     db.empty_dbase()
 
-    Collections.initialize_collections()
+    Collections.add_to_schema()
 
     GraphSchema.create_class_with_properties(name="Photo Album",
                                              properties=["name", "uri"])

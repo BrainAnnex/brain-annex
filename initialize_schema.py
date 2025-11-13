@@ -1,28 +1,23 @@
-# If the database is empty, attempt to read in the Schema file "init/MINIMAL_SCHEMA_TO_IMPORT.json"
-# Then prompt to create a new admin user.  The `User` Schema gets created if needed.
-
-# At a future date, this script will be generalized to a broader initialization process,
-# and the import of the Schema file will be replaced by calls to initialization functions of all
-# the applicable modules and desired plugins (this process will also set indexes/constraints)
-
-# It will connect to the Neo4j database from the credentials
-# in config file(s) variables NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD
-
-# IMPORTANT: this file is expected to be in the main folder (where the config files are stored)
-
-# NOTE: if running inside PyCharm, go to Run > Edit Configurations...
-#       then select "initialize_installation" under Python (left pane), and check box "Emulate terminal in output console"
-
 
 import os
-import getpass
 from configparser import ConfigParser
-from brainannex import GraphAccess, GraphSchema, UserManager
+from brainannex import GraphAccess, GraphSchema, Categories, UserManager, FullTextIndexing
+
+from app_libraries.PLUGINS.timer_widget import TimerWidget
+from app_libraries.PLUGINS.site_links import SiteLinks
+from app_libraries.PLUGINS.header import Header
+from app_libraries.PLUGINS.images import Images
+from app_libraries.PLUGINS.documents import Documents
+from app_libraries.PLUGINS.notes import Notes
+from app_libraries.PLUGINS.recordsets import Recordsets
 
 
-print("\n--- Adding `User` Schema nodes (if needed) to the database, "
-      "and creating a new admin user to log into the BrainAnnex web app...\n")
+print("\n--- INITIALIZING (as needed) the Schema for the BrainAnnex web app - both for core modules "
+      "and for plugins.  A few nodes, as needed, will be added to the database, "
+      "all with a `SCHEMA` or `Schema Autoincrement` label (except for the root `Category` node)...\n")
+
 print("Reading the credentials STORED in the configuration file(s):\n")
+
 
 
 ###  IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS  ###
@@ -110,61 +105,95 @@ print("\nThe stored credentials were successfully validated; now checking if dat
 GraphSchema.set_database(db)
 UserManager.set_database(db)
 
-'''
 number_nodes = db.count_nodes()
 
 if number_nodes > 0:
     print(f"\nData already present in the database ({number_nodes} nodes found); "
-          f"the Schema is assumed to be present, and will NOT be imported\n")
+          f"Schema will be added as needed...\n")
 else:
     print("\nThe database is empty; now importing/creating the Schema...")
 
-    schema_datafile = "init/MINIMAL_SCHEMA_TO_IMPORT.json"
-    try:
-        with open(schema_datafile, 'r') as fh:
-            file_contents = fh.read()
-            #print(f"Contents of schema file to import:\n{file_contents}")
-    except Exception:
-        raise Exception(f"File I/O failure to read schema datafile `{schema_datafile}`.  Make sure the file is present.")
 
-    print(f"The schema datafile `{schema_datafile}` was found and successfully read")
-    try:
-        details = db.import_json_dump(file_contents)    # THE ACTUAL IMPORT TAKES PLACE HERE
-    except Exception as ex:
-       raise Exception("Import of JSON schema data file `{schema_datafile}` failed: {ex}")
+##########################################################################
 
-    print(f"The schema data was successfully imported into the database")
-'''
+def initialize_schema(db):
+    """
+    Create, as needed, the Schema for both the core modules
+    and all the plugins.
+    Also create root Category.
 
+    :param db:
+    :return:
+    """
 
-# Attempt to create the Schema for the `User` class.  If it already exists, no action will be taken
-try:
-    print("Attempt to create the Schema for the `User` class (if needed).......")
+    # Initialize core modules
+
+    Categories.set_database(db)     # Also takes care of the class "Collections
+    Categories.add_to_schema()
+
+    Categories.create_categories_root()
+    print("    Added Schema for `Categories` module, and created a root Category")
+
+    UserManager.set_database(db)
     UserManager.add_to_schema()
-except Exception as ex:
-    print(f"WARNING: `User` Schema missing, and it failed to get created. ", ex)
+    print("    Added Schema for `UserManager` module")
+
+    FullTextIndexing.set_database(db)
+    FullTextIndexing.add_to_schema()
+    print("    Added Schema for `FullTextIndexing` module")
+
+
+    # Initialize plugins (TODO: allow to pick-and-choose what plugins to use
+    try:
+        TimerWidget.add_to_schema()
+        print("    Added Schema for `TimerWidget` plugin")
+    except Exception as ex:
+        print(f"WARNING: `TimerWidget` Schema could NOT be created. ", ex)
+
+    try:
+        Header.add_to_schema()
+        print("    Added Schema for `Header` plugin")
+    except Exception as ex:
+        print(f"WARNING: `Header` Schema could NOT be created. ", ex)
+
+    try:
+        SiteLinks.add_to_schema()
+        print("    Added Schema for `SiteLinks` plugin")
+    except Exception as ex:
+        print(f"WARNING: `SiteLinks` Schema could NOT be created. ", ex)
+
+    try:
+        Images.add_to_schema()
+        print("    Added Schema for `Images` plugin")
+    except Exception as ex:
+        print(f"WARNING: `Images` Schema could NOT be created. ", ex)
+
+    try:
+        Documents.add_to_schema()
+        print("    Added Schema for `Documents` plugin")
+    except Exception as ex:
+        print(f"WARNING: `Documents` Schema could NOT be created. ", ex)
+
+    try:
+        Notes.add_to_schema()
+        print("    Added Schema for `Notes` plugin")
+    except Exception as ex:
+        print(f"WARNING: `Notes` Schema could NOT be created. ", ex)
+
+    try:
+        Recordsets.add_to_schema()
+        print("    Added Schema for `Recordsets` plugin")
+    except Exception as ex:
+        print(f"WARNING: `Recordsets` Schema could NOT be created. ", ex)
+
+
+##########################################################################
+
+
+initialize_schema(db)
 
 
 
-print("\nTime to create a new admin user...\n")
+print("\nEND of database Schema initialization script")
 
-print("Enter the desired username: ")
-username = input()
-
-password = getpass.getpass(f"Enter the desired password for user `{username}` (at least 8 characters): ")
-
-print(f"[OPTIONAL] Enter the email address for user `{username}` :")
-email = input()
-
-
-print(f"Attempting to create a new admin user `{username}` ...")
-#print(f"password:" , password)
-
-try:
-    user_id = UserManager.create_user(username=username, password=password, email=email, admin=True)
-    print(f"New admin user successfully created with username: `{username}`, and assigned user_id: {user_id} ")
-except Exception as ex:
-    print(f"**** ERROR: Unable to create new user. ", ex)
-
-
-print("\nEND of installation initialization script\n")
+print("\n\nNote: to add users to log in into the web app, make sure to run:  python initialize_installation.py\n")

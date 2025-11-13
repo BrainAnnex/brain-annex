@@ -25,27 +25,28 @@ class Documents:
     @classmethod
     def add_to_schema(cls) -> None:
         """
-        Initialize the Schema needed by this plugin
+        Create, as needed, the database Schema needed by this plugin
 
         :return:    None
         """
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
-        if not GraphSchema.class_name_exists("Media"):
-            GraphSchema.create_class_with_properties(name="Media", strict=True,
-                                                     properties=["basename", "suffix"])
+        if not GraphSchema.class_name_exists("Media") or not GraphSchema.class_name_exists("Directory"):
+            MediaManager.add_to_schema()
 
-        GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="d",
+        if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
+            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="d",
                                                  properties=["caption", "date_created", "url", "comments", "year", "month", "read", "rating", "authors"],
                                                  class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
 
-        if not GraphSchema.class_name_exists("Directory"):
-            GraphSchema.create_class_with_properties(name="Directory", strict=True,
-                                                     properties=["name", "description"])
-            GraphSchema.create_class_relationship(from_class="Media", to_class="Directory", rel_name="BA_stored_in")
 
-        if GraphSchema.class_name_exists("Indexer"):
+        # Take care of Indexing
+
+        if not GraphSchema.class_name_exists("Indexer"):
+            FullTextIndexing.add_to_schema()
+
+        if not GraphSchema.class_relationship_exists(from_class=cls.SCHEMA_CLASS_NAME, to_class="Indexer", rel_name="has_index"):
             GraphSchema.create_class_relationship(from_class=cls.SCHEMA_CLASS_NAME, to_class="Indexer", rel_name="has_index")
 
 

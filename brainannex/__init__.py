@@ -1,4 +1,4 @@
-__version__ = "5.0.0rc7_INTERIM_4"        # IN-PROGRESS towards rc7
+__version__ = "5.0.0rc7_INTERIM_5"        # IN-PROGRESS towards rc7
 
 
 # IMPORTANT: ONLY 1 of the following small group of InterGraph imports
@@ -15,7 +15,7 @@ from brainannex.collections import Collections
 from brainannex.categories import Categories
 from brainannex.full_text_indexing import FullTextIndexing
 from brainannex.user_manager import UserManager
-from brainannex.py_graph_visual import PyGraphVisual
+from brainannex.py_graph_visual import (PyGraphVisual, DisplayNetwork)
 
 
 __all__ = [
@@ -29,6 +29,7 @@ __all__ = [
     'Categories',
     'FullTextIndexing',
     'UserManager',
+    'DisplayNetwork',
     'PyGraphVisual',
     'version'
 ]

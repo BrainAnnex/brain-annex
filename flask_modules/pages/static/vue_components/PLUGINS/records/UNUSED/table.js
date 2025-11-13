@@ -1,7 +1,10 @@
-/*  Vue component to display and edit a tabular representation
+/*  CURRENTLY UNUSED!
+
+    Vue component to display and edit a tabular representation
     of a group of Content Items all of type "r" (Record) and all from the same Schema Class.
 
-    This is the current standard way to display and edit GROUPED Content Items of type "r" from the same Schema Class
+    This is the current standard way to display and edit [the now DISCONTINUED]
+    GROUPED Content Items of type "r" from the same Schema Class
     in the Page Viewer.
     For "loose" Content Items of type "r", the Vue component 'vue-plugin-r' is currently used.
  */
