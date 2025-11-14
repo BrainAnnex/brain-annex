@@ -526,7 +526,7 @@ class CypherUtils:
     ############ The following methods make no reference to any "CypherBuilder" object
 
     @classmethod
-    def assert_valid_internal_id(cls, internal_id :Union[int, str]) -> None:
+    def assert_valid_internal_id(cls, internal_id :int|str) -> None:
         """
         Raise an Exception if the argument is not a valid internal graph database ID
 
@@ -540,7 +540,7 @@ class CypherUtils:
 
 
     @classmethod
-    def valid_internal_id(cls, internal_id :Union[int, str]) -> bool:
+    def valid_internal_id(cls, internal_id :int|str) -> bool:
         """
         Return True if `internal_id` is a potentially valid ID for a graph database.
         Note that whether it's actually valid will depend on the specific graph database, which isn't known here.
