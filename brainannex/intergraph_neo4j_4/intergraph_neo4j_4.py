@@ -1,5 +1,6 @@
 from neo4j import GraphDatabase                         # The Neo4j python connectivity library "Neo4j Python Driver"
 from neo4j import __version__ as neo4j_driver_version   # The version of the Neo4j driver being used
+from neo4j.exceptions import ServiceUnavailable         # To catch inactivity timeout errors (new to v. 5 of Neo4j)
 from neo4j.time import DateTime                         # To convert datetimes (and dates) between neo4j.time.DateTime and python
 import neo4j.graph                                      # To check returned data types
 import pandas as pd
@@ -217,17 +218,18 @@ class InterGraph:
     #####################################################################################################
 
 
-    def query(self, q: str, data_binding=None, single_row=False, single_cell="", single_column=""):
+    def query(self, q :str, data_binding=None, single_row=False, single_cell="", single_column=""):
         """
-        Run a Cypher query.  Best suited for Cypher queries that return individual values,
-        but may also be used with queries that return nodes or relationships or paths - or nothing.
+        Run a Cypher query.  Best suited for Cypher queries that return individual values
+        (such as node properties or computed values),
+        but may also be used with queries that return entire nodes or relationships or paths - or nothing.
 
         Execute the query and fetch the returned values as a list of dictionaries.
         In cases of no results, return an empty list.
         A new session to the database driver is started, and then immediately terminated after running the query.
 
         ALTERNATIVES:
-            * if the Cypher query returns nodes, and one wants to extract the internal Neo4j ID's or labels
+            * if the Cypher query returns nodes, and one wants to extract the internal database ID or node labels
               (in addition to all the properties and their values) then use query_extended() instead.
 
             * in case of queries that alter the database (and may or may not return values),
@@ -238,15 +240,15 @@ class InterGraph:
                                 EXAMPLE, assuming that the cypher string contains the substrings "$node_id":
                                         {'node_id': 20}
 
-        :param single_row:      (OPTIONAL) If True, return a dictionary containing just the first (0-th) result row, if present,
+        :param single_row:      [OPTIONAL] If True, return a dictionary containing just the first (0-th) result row, if present,
                                     or None in case of no results.
-                                    Note that if the query returns multiple records, the picked one
+                                    Note that if the query returns multiple records, then the picked one
                                     will be arbitrary, unless an ORDER BY is included in the query
                                     EXAMPLES of returned values:
                                         {"brand": "Toyota", "color": "White"}
                                         {'n': {}}
 
-        :param single_cell:     (OPTIONAL) Meant for situations where only 1 node (record) is expected,
+        :param single_cell:     [OPTIONAL] Meant for situations where only 1 node (record) is expected,
                                     and one wants only 1 specific field of that record.
                                     If a string is provided, return the value of the field by that name
                                     in the first (0-th) retrieved record.
@@ -254,14 +256,14 @@ class InterGraph:
                                     Note that if the query returns multiple records, the picked one
                                     will be arbitrary, unless an ORDER BY is included in the query
 
-        :param single_column:   (OPTIONAL) Name of the column of interest.
-                                If provided, assemble a list (possibly empty)
-                                from all the values of that particular column all records.
-                                Note: can also be used to extract data from a particular node, for queries that return whole nodes
+        :param single_column:   [OPTIONAL] Name of the column of interest.
+                                    If provided, assemble a list (possibly empty)
+                                    from all the values of that particular column all records.
+                                    Note: can also be used to extract data from a particular node, for queries that return whole nodes
 
         :return:        If any of single_row, single_cell or single_column are True, see info under their entries.
                         If those arguments are all False, it returns a (possibly empty) list of dictionaries.
-                        Each dictionary in the list will depend on the nature of the Cypher query.
+                        The structure of ach dictionary in the list will depend on the nature of the Cypher query.
                         EXAMPLES:
                             Cypher returns nodes (after finding or creating them): RETURN n1, n2
                                     -> list item such as {'n1': {'gender': 'M', 'patient_id': 123}
@@ -334,8 +336,9 @@ class InterGraph:
                     "MATCH (n1)-[r]->(n2) RETURN r"
 
         For example, useful in scenarios where nodes were returned,
-        and their internal database IDs and/or labels are desired
-        (in addition to all the properties and their values)
+        and their internal database IDs (using the key "internal_id")
+        and/or node labels (using the key "node_labels") are desired -
+        in addition to all the properties and their values.
 
         Unless the flatten flag is True, individual records are kept as separate lists.
             For example, "MATCH (b:boat), (c:car) RETURN b, c"
@@ -382,7 +385,9 @@ class InterGraph:
                              'neo4j_end_node': <Node id=14 labels=frozenset() properties={}>,
                              'neo4j_type': 'bought_by'}]
         """
-        #TODO: rename node_labels to node_labels; rename neo4j_start_node to start_node, etc
+        #TODO: rename neo4j_start_node to start_node, etc
+        #TODO: perhaps merge with query()
+
         if self.debug or self.block_query_execution:
             self.debug_query_print(q, data_binding, method="query_extended")
             print(f"    flatten: {flatten} , fields_to_exclude: {fields_to_exclude}")

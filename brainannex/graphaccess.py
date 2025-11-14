@@ -187,9 +187,9 @@ class GraphAccess(InterGraph):
                                         [  {"internal_id": 145, "node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
                                            {"internal_id": 222, "node_labels": ["person"], "gender": "M", "location": "Berkeley"}
                                         ]
+        """
         # TODO: provide an option to specify the desired fields
 
-        """
         # Unpack needed values from the Cypher builder
         (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
         #print(node, where, data_binding, dummy_node_name)
@@ -1261,8 +1261,8 @@ class GraphAccess(InterGraph):
         originating in the node identified by match_from,
         and terminating in the node identified by match_to
 
-        :param match_from:  An integer or string with an internal database node id
-        :param match_to:    An integer or string with an internal database node id
+        :param match_from:  Internal database node id of the node from where the new link originates
+        :param match_to:    Internal database node id of the node into which the new link terminates
         :param rel_name:    The name to give to the new relationship between the 2 specified nodes.  Blanks allowed
         :param rel_props:   [OPTIONAL] A dict with properties to store on the newly-created link.
                                 Currently, no double quotes are allowed in the values.
@@ -1270,13 +1270,19 @@ class GraphAccess(InterGraph):
 
         :return:            The number of links added.  If none got added, or in case of error, an Exception is raised
         """
-        # TODO: allow double quotes in values of rel_props entries
         # TODO: (Unclear what multiple calls would do in this case: update the props or create a new relationship??)
 
         # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
         if rel_props:
             # Convert the dict into a string suitable for inclusion into Cypher; e.g. {"since": 2025, "from": "John"}
             # will be turned into the string '{since: 2025, from: "John"}'
+            # TODO: this will fail with datetime values, as well as with values with double quotes;
+            #       use data binding instead
+            #       EXAMPLE:   rel_props_converted = "{bought: $par_1}"
+            #                  MERGE (from) -[:`OWNS` {rel_props_converted}]-> (to)
+            #                  data_binding = {"par_1": neo4j.time.DateTime(2025, 11, 13, 13, 29, 15)}
+            #       Should be able to do:
+            #           rel_props_converted, data_binding = CypherUtils.dict_to_cypher(data_dict=rel_props)
             entries = []
             for k, v in rel_props.items():
                 if v is None:
@@ -1580,66 +1586,6 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def standardize_recordset(self, recordset :[dict], dummy_name="n"):
-        """
-        Sanitize and standardize the given recordset, typically as returned by a call to query(),
-        obtained from a Cypher query that returned a group of nodes (using the dummy name "n"),
-        and optionally also the internal database ID (returned as "internal_id").
-
-        The sanitizing is done by transforming any Neo4j date and datetime format to suitable python counterparts.
-        The time parts get dropped, and the date is returned in the format yyyy_mm_dd
-
-        If applicable, insert into the records the values of the internal database ID (using the key "internal_id"),
-        and/or of the node labels (using the key "node_labels")
-
-        EXAMPLES of queries that generate recordsets in the expected formats, when passed to query():
-                "MATCH (n) RETURN n"
-                "MATCH (n) RETURN n, id(n) AS internal_id"
-
-        :param recordset:   A list of dict's that contain the key "n" and optionally the key "internal_id".
-                                EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "internal_id": 88, "node_labels": ["Car", "Vehicle"]},
-                                           {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "internal_id": 4},
-                                           {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "internal_id": 53},
-                                         ]
-        :param dummy_name:
-
-        :return:            A list of dict's that contain all the node properties - sanitized as needed - and,
-                                optionally, an extra key named "internal_id"
-                                EXAMPLE:  [ {"field1": 1, "field1": "x", "internal_id": 88, "node_labels": ["Car", "Vehicle"]},
-                                            {"PatientID": 123, "DOB": "2000/01/31", "internal_id": 4},
-                                            {"timestamp": 123, "DOB": "2003/07/15", "internal_id": 53}
-                                          ]
-        """
-        # TODO: possibly sanitize other Neo4j data types
-        # TODO: offer options for how to transform date and datetime fields
-        # TODO: perhaps add a flag to query(), to automatically invoke this function at the end;
-        #       alternatively, perhaps create a new query_recordset() method that contains query() plus this function.
-        result = []
-        for record in recordset:
-            data = record[dummy_name]   # A dict of field names and values, comprising the properties of the node n.
-                                        # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
-
-            # Convert any DateTime or Date values to strings; the time part is dropped.  TODO: make the time dropping optional
-            for key, val in data.items():
-                if  type(val) == neo4j.time.DateTime:
-                    conv = neo4j.time.DateTime.to_native(val)   # This will be of python type datetime.datetime
-                    data[key] = conv.strftime("%Y/%m/%d")       # Overwrite with converted value.  EXAMPLE: "2000/01/31"
-                if  type(val) == neo4j.time.Date:
-                    conv = neo4j.time.Date.to_native(val)       # This will be of python type datetime.datetime
-                    data[key] = conv.strftime("%Y/%m/%d")       # Overwrite with converted value.  EXAMPLE: "2000/01/31"
-
-            if "internal_id" in record:
-                data["internal_id"] = record["internal_id"]     # Integrate the internal database ID, if provided, into the record
-
-            if "node_labels" in record:
-                data["node_labels"] = record["node_labels"]     # Integrate the node labels (a list of strings), if provided, into the record
-
-            result.append(data)
-
-        return result
-
-
-
     def follow_links(self, match: Union[int, CypherBuilder], rel_name :str, rel_dir ="OUT",
                            neighbor_labels=None, include_id=False, include_labels=False, limit=100) -> [dict]:
         """
@@ -1899,40 +1845,52 @@ class GraphAccess(InterGraph):
 
 
 
-    def explore_neighborhood(self, start_id :int|str, max_hops=2, avoid_links=None) -> [str]:
+    def explore_neighborhood(self, start_id :int|str, max_hops=2, avoid_links=None, include_start_node=False) -> [str]:
         """
-        Return nearby nodes, from a given start node, by following a max number of link,
+        Return "nearby" database nodes, from a given start node, by following a max number of links,
         and optionally avoiding traversing links with some specified names.
+        Optionally, include the start node as well.
 
-        :param start_id:    An int or string with an internal database ID
+        :param start_id:    The value of the internal database ID of the starting node
         :param max_hops:    Integer >= 1 with the maximum number of links to follow in the graph traversal
         :param avoid_links: Name, or list/tuple of names, of links to avoid in the graph traversal
+        :param include_start_node: [OPTIONAL] If True, include the start node as well.
         :return:            A (possibly empty) list of dict's, with the properties of all the located nodes,
                                 plus the 2 special keys "internal_id" and "node_labels".
-                                The start node is NOT included.
+                                EXAMPLE: [ {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']} ]
         """
+        CypherUtils.assert_valid_internal_id(start_id)
+
         assert max_hops >= 1, \
             f"explore_neighborhood(): argument `max_hops` " \
             f"must be an integer >= 1 (passed value was {max_hops})"
 
         path_clause = CypherUtils.avoid_links_in_path(avoid_links, prefix_and=True)
 
+        # Locate graph paths from the given start node (s) to end nodes (e)
         q = f'''
-            MATCH  p=(n)-[*1..{max_hops}]-(f)
-            WHERE id(n) = {start_id}
+            MATCH  p=(s)-[*1..{max_hops}]-(e)
+            WHERE id(s) = $start_id
             {path_clause}
-            RETURN f, id(f) AS internal_id, labels(f) AS node_labels
+            RETURN e, id(e) AS internal_id, labels(e) AS node_labels
         '''
 
-        data_dict={}
+        if include_start_node:
+            q += '''
+                UNION MATCH (e)
+                WHERE id(e) = $start_id
+                RETURN e, id(e) AS internal_id, labels(e) AS node_labels
+                '''
 
-        #self.debug_query_print(q=q, data_binding=data_dict)
+        data_dict={"start_id": start_id}
+
+        self.debug_query_print(q=q, data_binding=data_dict)
 
         result = self.query(q, data_binding=data_dict)
 
         #print(f"{len(result)} neighbor node(s) found")
 
-        return result
+        return self.standardize_recordset(recordset=result, dummy_name="e")
 
 
 
@@ -2801,6 +2759,154 @@ class GraphAccess(InterGraph):
             df["internal_id"] = col_data          # reinsert it as the last column
 
         return df
+
+
+
+
+
+    #####################################################################################################
+
+    '''                                       ~   UTILS   ~                                           '''
+
+    def ________UTILS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    def sanitize_date_times(self, record :dict, drop_time=False,
+                            date_format="%Y/%m/%d", time_format="%H:%M:%S") -> dict:
+        """
+
+        :param record:      A python dictionary whose values might include Neo4j "Date" or "DateTime" data types;
+                                this dictionary does NOT get altered
+        :param drop_time:   [OPTIONAL] If True, any time part in datetime fields will get dropped
+        :param date_format: [OPTIONAL] String with format information for dates,
+                                as used by the python function strftime().
+                                See https://strftime.org/
+        :param time_format: [OPTIONAL] String with format information for times
+
+        :return:            A new dictionary, based on `record` but will all the Date/DateTime values converted to strings.
+                                By default, a format of the type "2019/01/31 , 18:59:35" is used for datetimes.
+        """
+        # TODO: this (database-specific) method belongs to the InterGraph class
+        # TODO: possibly sanitize other Neo4j data types
+
+        assert type(record) == dict, \
+            "sanitize_dates(): argument `record` must be a python dictionary"
+
+        converted_dict = {}
+
+        # Convert any DateTime or Date values to strings
+        for key, val in record.items():
+            if  type(val) == neo4j.time.DateTime:
+                conv = neo4j.time.DateTime.to_native(val)       # This will be of python type datetime.datetime
+                if drop_time:
+                    converted_dict[key] = conv.strftime(date_format)                        # EXAMPLE: "2000/01/31"
+                else:
+                    converted_dict[key] = conv.strftime(f"{date_format} , {time_format}")   # EXAMPLE: "2019/01/31 , 18:59:35"
+
+            elif  type(val) == neo4j.time.Date:
+                conv = neo4j.time.Date.to_native(val)           # This will be of python type datetime.datetime
+                converted_dict[key] = conv.strftime(date_format)                            # EXAMPLE: "2000/01/31"
+
+            else:                                               # NOT a date/time type
+                converted_dict[key] = val
+
+        return converted_dict
+
+
+
+    def flatten_recordset(self, recordset :[dict], dummy_name=None) -> [dict]:
+        """
+        Transform a list such as  [{"n": {"name": "Julian", "city": "Berkeley"}},
+                                   {"n": {"name": "Val",   "city": "Emeryville"}}]
+        (as typically returned by Cypher queries that match entire nodes, in this example with a dummy name of "n")
+
+        into the flattened list (without the outermost layer) such as:
+                         [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
+
+        :param recordset:   A list whose elements are python dictionaries
+        :param dummy_name:  [OPTIONAL] If not specified, ANY key name will be matched
+        :return:            A flattened list where individual items are no longer "indexed" by "dummy variables"
+        """
+        assert type(recordset) == list, \
+            "flatten_recordset(): argument `recordset` must be a list"
+
+        flattened = []
+
+        for record in recordset:
+            assert type(record) == dict, \
+                "flatten_recordset(): each element in the list passed by `recordset` must be a dictionary"
+
+            if dummy_name:
+                assert dummy_name in record, \
+                    f'flatten_recordset(): each element in the list passed by `recordset` must have a key named "{dummy_name}"'
+                value = record[dummy_name]
+            else:
+                assert len(record) == 1, \
+                    f'flatten_recordset(): each element in the list passed by `recordset` must be a dictionary with exactly 1 key'
+                value = next(iter(record.values()))     # Extract the single value in the `record` dict
+
+            flattened.append(value)
+
+
+        return flattened
+
+
+
+    def standardize_recordset(self, recordset :[dict], dummy_name="n"):
+        """
+        Sanitize and standardize the given recordset, typically as returned by a call to query(),
+        obtained from a Cypher query that returned a group of nodes (using the dummy name "n"),
+        and optionally also the internal database ID (returned as "internal_id").
+
+        The sanitizing is done by transforming any database-specific date and datetime format to suitable python counterparts.
+        The time parts get dropped, and the date is returned in the format yyyy_mm_dd
+
+        If applicable, insert into the records the values of the internal database ID (using the key "internal_id"),
+        and/or of the node labels (using the key "node_labels")
+
+        EXAMPLES of queries that generate recordsets in the expected formats, when passed to query():
+                "MATCH (n) RETURN n"
+                "MATCH (n) RETURN n, id(n) AS internal_id"
+
+        :param recordset:   A list of dict's that contain the key "n" and optionally the key "internal_id".
+                                EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "internal_id": 88, "node_labels": ["Car", "Vehicle"]},
+                                           {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "internal_id": 4},
+                                           {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "internal_id": 53},
+                                         ]
+        :param dummy_name:  [OPTIONAL] If not present, a flattened data structure is assumed - and this function
+                                will just sanitize the date/datetime fields
+
+        :return:            A list of dict's that contain all the node properties - sanitized as needed - and,
+                                optionally, an extra key named "internal_id"
+                                EXAMPLE:  [ {"field1": 1, "field1": "x", "internal_id": 88, "node_labels": ["Car", "Vehicle"]},
+                                            {"PatientID": 123, "DOB": "2000/01/31", "internal_id": 4},
+                                            {"timestamp": 123, "DOB": "2003/07/15", "internal_id": 53}
+                                          ]
+        """
+        # TODO: perhaps add a flag to query(), to automatically invoke this function at the end;
+        #       alternatively, perhaps create a new query_recordset() method that contains query() plus this function.
+        result = []
+        for record in recordset:
+            if dummy_name:
+                data = record[dummy_name]   # A dict of field names and values, comprising the properties of the node n.
+                                            # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+            else:
+                data = record               # A flattened data structure is assumed
+
+            # Convert any DateTime or Date values to strings; the time part is dropped
+            data = self.sanitize_date_times(data, drop_time=True)   # TODO: make the time dropping optional
+
+            if "internal_id" in record:
+                data["internal_id"] = record["internal_id"]     # Integrate the internal database ID, if provided, into the record
+
+            if "node_labels" in record:
+                data["node_labels"] = record["node_labels"]     # Integrate the node labels (a list of strings), if provided, into the record
+
+            result.append(data)
+
+        return result
 
 
 
