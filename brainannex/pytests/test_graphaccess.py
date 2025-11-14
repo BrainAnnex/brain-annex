@@ -320,96 +320,6 @@ def test_get_node_labels(db):
 
 
 
-def test_sanitize_dates(db):
-    db.empty_dbase()
-
-    # Include date and datetime values as a property values
-    db.create_node(labels="Car", properties={"color": "red",
-                                             "make": "Honda",
-                                             "bought_on": neo4j.time.Date(2019, 6, 1),
-                                             "certified": neo4j.time.DateTime(2019, 1, 31, 18, 59, 35)
-                                             })
-    q = "MATCH (n) RETURN n"
-    row = db.query(q, single_row=True)
-    record = row["n"]   # record is:
-                        #   {'bought_on': neo4j.time.Date(2019, 6, 1), 'color': 'red',
-                        #    'certified': neo4j.time.DateTime(2019, 1, 31, 18, 59, 35, 0), 'make': 'Honda'}
-
-    result = db.sanitize_date_times(record, drop_time=True)
-    assert result == {'color': 'red', 'make': 'Honda',
-                      'bought_on': '2019/06/01', 'certified': '2019/01/31'}
-    # The original dictionary not changed
-    assert record['bought_on'] == neo4j.time.Date(2019, 6, 1)
-    assert record['certified'] == neo4j.time.DateTime(2019, 1, 31, 18, 59, 35, 0)
-
-    result = db.sanitize_date_times(record, drop_time=True, date_format="%b %d, %Y")
-    assert result == {'color': 'red', 'make': 'Honda',
-                      'bought_on': 'Jun 01, 2019', 'certified': 'Jan 31, 2019'}
-
-    result = db.sanitize_date_times(record, drop_time=False)
-    assert result == {'color': 'red', 'make': 'Honda',
-                    'bought_on': '2019/06/01', 'certified': '2019/01/31 , 18:59:35'}
-
-    result = db.sanitize_date_times(record, drop_time=False, date_format="%b %d, %Y", time_format="%I:%M %p")
-    assert result == {'color': 'red', 'make': 'Honda',
-                      'bought_on': 'Jun 01, 2019', 'certified': 'Jan 31, 2019 , 06:59 PM'}
-
-
-
-
-def test_standardize_recordset(db):
-    db.empty_dbase()
-
-    # Use a date as a field value
-    car_1 = db.create_node(labels="Car", properties={"color": "red", "make": "Honda",
-                                             "bought_on": neo4j.time.Date(2019, 6, 1),
-                                             "certified": neo4j.time.DateTime(2019, 1, 31, 18, 59, 35)
-                                             })
-    q = "MATCH (n) RETURN n"
-    dataset = db.query(q)
-
-    result = db.standardize_recordset(dataset)
-
-    assert result == [{'color': 'red', 'make': 'Honda',
-                       'bought_on': '2019/06/01', 'certified': '2019/01/31'}]
-
-
-    car_2 = db.create_node(labels="Car", properties={"color": "blue", "make": "Toyota",
-                                             "bought_on": neo4j.time.Date(2025, 10, 4),
-                                             "certified": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)
-                                             })
-
-    q = "MATCH (n) WHERE n.color='blue' RETURN n, id(n) AS internal_id"
-    dataset = db.query(q)
-    result = db.standardize_recordset(dataset)
-
-    assert result == [{'color': 'blue', 'make': 'Toyota',
-                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2}]
-
-
-    q = "MATCH (n) RETURN n, id(n) AS internal_id ORDER BY n.make"
-    dataset = db.query(q)
-
-    result = db.standardize_recordset(dataset)
-
-    assert result == [{'color': 'red', 'make': 'Honda',
-                       'bought_on': '2019/06/01', 'certified': '2019/01/31', 'internal_id': car_1},
-                      {'color': 'blue', 'make': 'Toyota',
-                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2}]
-
-
-    q = "MATCH (n) RETURN n, id(n) AS internal_id, labels(n) AS node_labels ORDER BY n.make"
-    dataset = db.query(q)
-
-    result = db.standardize_recordset(dataset)
-
-    assert result == [{'color': 'red', 'make': 'Honda',
-                       'bought_on': '2019/06/01', 'certified': '2019/01/31', 'internal_id': car_1, 'node_labels': ['Car']},
-                      {'color': 'blue', 'make': 'Toyota',
-                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2, 'node_labels': ['Car']}]
-
-
-
 
 
 ###  ~ FOLLOW LINKS ~
@@ -685,54 +595,79 @@ def test_explore_neighborhood(db):
     n_1 = db.create_node_with_links(labels="Person", properties={"name": "Rese"},
                                     links=[{"internal_id": start_node_id, "rel_name": "FRIENDS OF"}])
     result = db.explore_neighborhood(start_id=start_node_id)
-    assert result == [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']}]
+    assert result == [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']}]
+
+    result = db.explore_neighborhood(start_id=start_node_id, include_start_node=True)
+    expected = [{'name': 'Rese',   'internal_id': n_1,           'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': start_node_id, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
 
     n_2 = db.create_node_with_links(labels="Person", properties={"name": "Val"},
                                     links=[{"internal_id": start_node_id, "rel_name": "FRIENDS OF"}])
     result = db.explore_neighborhood(start_id=start_node_id)
-    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
-                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=start_node_id, include_start_node=True)
+    expected = [{'name': 'Rese',   'internal_id': n_1, 'node_labels': ['Person']},
+                {'name': 'Val',    'internal_id': n_2, 'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': start_node_id, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
 
     n_3 = db.create_node_with_links(labels="Car", properties={"color": "red"},
                                     links=[{"internal_id": n_2, "rel_name": "IS OWNED BY"}])
     result = db.explore_neighborhood(start_id=start_node_id)
-    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
-                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']},
-                {'f': {'color': 'red'},   'internal_id': n_3, 'node_labels': ['Car']}]
+    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']},
+                {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=start_node_id, include_start_node=True)
+    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']},
+                {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']},
+                {'name': 'Julian', 'internal_id': start_node_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=start_node_id, avoid_links="IS OWNED BY") # Won't reach the `Car` node
-    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
-                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=start_node_id, max_hops=1)    # Won't reach the `Car` node
-    expected = [{'f': {'name': 'Rese'}, 'internal_id': n_1, 'node_labels': ['Person']},
-                {'f': {'name': 'Val'},    'internal_id': n_2, 'node_labels': ['Person']}]
+    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=n_3)  # Start at the `Car` node (Val's car); only doing default 2 hops max
-    expected = [{'f': {'name': 'Val'},   'internal_id': n_2,           'node_labels': ['Person']},
-                {'f': {'name': 'Julian'},'internal_id': start_node_id, 'node_labels': ['Person']}]
+    expected = [{'name': 'Val',   'internal_id': n_2,           'node_labels': ['Person']},
+                {'name': 'Julian','internal_id': start_node_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=n_3, max_hops=3)  # Start at the `Car` node (Val's car)
-    expected = [{'f': {'name': 'Val'},   'internal_id': n_2,           'node_labels': ['Person']},
-                {'f': {'name': 'Julian'},'internal_id': start_node_id, 'node_labels': ['Person']},
-                {'f': {'name': 'Rese'},  'internal_id': n_1,           'node_labels': ['Person']}]
+    expected = [{'name': 'Val',    'internal_id': n_2,           'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': start_node_id, 'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': n_1,           'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links="FRIENDS OF")  # Start at Val's car
-    expected = [{'f': {'name': 'Val'},   'internal_id': n_2, 'node_labels': ['Person']}]
+    expected = [{'name': 'Val', 'internal_id': n_2, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links=["FRIENDS OF", "IRRELEVANT NAME"])  # Start at Val's car
-    expected = [{'f': {'name': 'Val'},   'internal_id': n_2, 'node_labels': ['Person']}]
+    expected = [{'name': 'Val', 'internal_id': n_2, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links=["FRIENDS OF", "IS OWNED BY"])  # Start at Val's car
     assert result == []
+
+    result = db.explore_neighborhood(start_id=n_3, max_hops=3,
+                        avoid_links=["FRIENDS OF", "IS OWNED BY"], include_start_node=True)  # Start at Val's car
+    assert result == [{'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']}]
+
 
     with pytest.raises(Exception):
         db.explore_neighborhood(start_id=n_3, max_hops= 0)
@@ -2236,6 +2171,120 @@ def test_node_tabular_display_2(db):
     df = db.node_tabular_display(node_list=node_list, fields=None, dummy_name="x")
     expected = pd.DataFrame({"city": ["Berkeley"], "internal_id": [person_id]})
     assert df.equals(expected)
+
+
+
+
+######  ~ UTILS ~
+
+def test_sanitize_dates(db):
+    db.empty_dbase()
+
+    # Include date and datetime values as a property values
+    db.create_node(labels="Car", properties={"color": "red",
+                                             "make": "Honda",
+                                             "bought_on": neo4j.time.Date(2019, 6, 1),
+                                             "certified": neo4j.time.DateTime(2019, 1, 31, 18, 59, 35)
+                                             })
+    q = "MATCH (n) RETURN n"
+    row = db.query(q, single_row=True)
+    record = row["n"]   # record is:
+                        #   {'bought_on': neo4j.time.Date(2019, 6, 1), 'color': 'red',
+                        #    'certified': neo4j.time.DateTime(2019, 1, 31, 18, 59, 35, 0), 'make': 'Honda'}
+
+    result = db.sanitize_date_times(record, drop_time=True)
+    assert result == {'color': 'red', 'make': 'Honda',
+                      'bought_on': '2019/06/01', 'certified': '2019/01/31'}
+    # The original dictionary not changed
+    assert record['bought_on'] == neo4j.time.Date(2019, 6, 1)
+    assert record['certified'] == neo4j.time.DateTime(2019, 1, 31, 18, 59, 35, 0)
+
+    result = db.sanitize_date_times(record, drop_time=True, date_format="%b %d, %Y")
+    assert result == {'color': 'red', 'make': 'Honda',
+                      'bought_on': 'Jun 01, 2019', 'certified': 'Jan 31, 2019'}
+
+    result = db.sanitize_date_times(record, drop_time=False)
+    assert result == {'color': 'red', 'make': 'Honda',
+                    'bought_on': '2019/06/01', 'certified': '2019/01/31 , 18:59:35'}
+
+    result = db.sanitize_date_times(record, drop_time=False, date_format="%b %d, %Y", time_format="%I:%M %p")
+    assert result == {'color': 'red', 'make': 'Honda',
+                      'bought_on': 'Jun 01, 2019', 'certified': 'Jan 31, 2019 , 06:59 PM'}
+
+
+
+def test_flatten_recordset(db):
+    rs = [{"n": {"name": "Julian", "city": "Berkeley"}},
+          {"n": {"name": "Val",   "city": "Emeryville"}}
+        ]
+
+    assert db.flatten_recordset(rs) == \
+        [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
+
+    assert db.flatten_recordset(rs, dummy_name="n") == \
+        [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
+
+    with pytest.raises(Exception):
+        db.flatten_recordset(rs, dummy_name="unknown")
+
+    with pytest.raises(Exception):
+        db.flatten_recordset(123)
+
+    with pytest.raises(Exception):
+        db.flatten_recordset([123])
+
+
+
+def test_standardize_recordset(db):
+    db.empty_dbase()
+
+    # Use a date as a field value
+    car_1 = db.create_node(labels="Car", properties={"color": "red", "make": "Honda",
+                                             "bought_on": neo4j.time.Date(2019, 6, 1),
+                                             "certified": neo4j.time.DateTime(2019, 1, 31, 18, 59, 35)
+                                             })
+    q = "MATCH (n) RETURN n"
+    dataset = db.query(q)
+
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'red', 'make': 'Honda',
+                       'bought_on': '2019/06/01', 'certified': '2019/01/31'}]
+
+
+    car_2 = db.create_node(labels="Car", properties={"color": "blue", "make": "Toyota",
+                                             "bought_on": neo4j.time.Date(2025, 10, 4),
+                                             "certified": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)
+                                             })
+
+    q = "MATCH (n) WHERE n.color='blue' RETURN n, id(n) AS internal_id"
+    dataset = db.query(q)
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'blue', 'make': 'Toyota',
+                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2}]
+
+
+    q = "MATCH (n) RETURN n, id(n) AS internal_id ORDER BY n.make"
+    dataset = db.query(q)
+
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'red', 'make': 'Honda',
+                       'bought_on': '2019/06/01', 'certified': '2019/01/31', 'internal_id': car_1},
+                      {'color': 'blue', 'make': 'Toyota',
+                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2}]
+
+
+    q = "MATCH (n) RETURN n, id(n) AS internal_id, labels(n) AS node_labels ORDER BY n.make"
+    dataset = db.query(q)
+
+    result = db.standardize_recordset(dataset)
+
+    assert result == [{'color': 'red', 'make': 'Honda',
+                       'bought_on': '2019/06/01', 'certified': '2019/01/31', 'internal_id': car_1, 'node_labels': ['Car']},
+                      {'color': 'blue', 'make': 'Toyota',
+                       'bought_on': '2025/10/04', 'certified': '2003/07/15', 'internal_id': car_2, 'node_labels': ['Car']}]
 
 
 

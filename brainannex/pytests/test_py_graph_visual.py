@@ -3,6 +3,7 @@
 from brainannex import PyGraphVisual, GraphAccess
 from utilities.comparisons import *
 import pytest
+import neo4j.time
 
 
 
@@ -112,7 +113,9 @@ def test_assign_color_mapping():
 
 
 def test_prepare_graph_1():
-    graph = PyGraphVisual()
+    db = GraphAccess(debug=False)
+
+    graph = PyGraphVisual(db=db)
 
     dataset = [  {"internal_id": 123, "node_labels": ["Person"], 'name': 'Julian'},
                  {"internal_id": 456, "node_labels": ["Person"], 'name': 'Val'}
@@ -150,7 +153,7 @@ def test_prepare_graph_2():
     match = db.match()      # This will pull all the 3 nodes in the database
     dataset = db.get_nodes(match=match, return_internal_id=True, return_labels=True)
 
-    graph = PyGraphVisual()
+    graph = PyGraphVisual(db=db)
     result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
     assert compare_unordered_lists(result, [p_1, p_2, c_1])
     assert compare_unordered_lists(graph._all_node_ids, [p_1, p_2, c_1])
@@ -189,6 +192,61 @@ def test_prepare_graph_2():
 
     assert compare_recordsets(internal_structure , expected_structure_1) \
                 or compare_recordsets(internal_structure , expected_structure_2)
+
+
+
+def test_prepare_graph_3():
+    # Prepare the database with nodes and links that contain date(time) fiels
+    db = GraphAccess(debug=False)
+    db.empty_dbase()
+
+    car_id = db.create_node(labels="Car", properties={"color": "red",
+                                             "make": "Honda",
+                                             "manufactured_on": neo4j.time.Date(2019, 6, 1),
+                                             "certified": neo4j.time.DateTime(2019, 8, 31, 18, 59, 35)
+                                             })
+    dataset = db.get_nodes(match=car_id, return_internal_id=True, return_labels=True)
+
+    graph = PyGraphVisual(db=db)
+    result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
+    assert result == [car_id]
+
+    assert graph.get_graph_data()['structure'] == [{'color': 'red', 'make': 'Honda',
+                                                    'manufactured_on': '2019/06/01', 'certified': '2019/08/31',
+                                                    'id': car_id, 'labels': ['Car']}]
+
+    # Add a 2nd node, linked to the 1st one
+    person_id = db.create_node(labels=["Person"], properties={"name": "Julian"})
+
+
+    '''
+    # This won't work yet until a limitation in add_links_fast() is lifted
+    db.add_links_fast(match_from=person_id, match_to=car_id, rel_name="OWNS",
+                      rel_props={"bought": neo4j.time.DateTime(2025, 11, 13, 13, 29, 15)})
+    '''
+    rel_props="{bought: $par_1}"
+    q = f'''
+        MATCH (from), (to)
+        WHERE id(from) = {person_id} AND id(to) = {car_id}
+        MERGE (from) -[:`OWNS` {rel_props}]-> (to)           
+        '''
+    db.update_query(q, {"par_1": neo4j.time.DateTime(2025, 11, 13, 13, 29, 15)})
+
+
+    match = db.match()      # This will fetch all the nodes in the database
+    dataset = db.get_nodes(match=match, return_internal_id=True, return_labels=True)
+
+    graph = PyGraphVisual(db=db)
+    result = graph.prepare_graph(result_dataset=dataset, add_edges=True)
+    assert compare_unordered_lists(result, [car_id, person_id])
+
+    internal_structure = graph.get_graph_data().get("structure")
+
+    expected = [{'color': 'red', 'certified': '2019/08/31', 'make': 'Honda', 'manufactured_on': '2019/06/01', 'id': car_id, 'labels': ['Car']},
+                {'name': 'Julian', 'id': person_id, 'labels': ['Person']},
+                {'name': 'OWNS', 'source': person_id, 'target': car_id, 'id': 'edge-1', 'bought': '2025/11/13'}]
+
+    assert compare_recordsets(internal_structure , expected)
 
 
 

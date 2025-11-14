@@ -413,7 +413,7 @@ class PyGraphVisual:
 
 
 
-    ##########   The method below may require a database connection   ##########
+    ############   The methods below require a database connection   ############
 
 
     def prepare_graph(self, result_dataset :[dict], add_edges=True) -> [int|str]:
@@ -425,12 +425,19 @@ class PyGraphVisual:
         is used by the visualization software.)
         Though not required, a key named "node_labels" is typically present as well; if found, it will be renamed "labels".
 
-        :param result_dataset:  A list of dictionary data about graph-database nodes
+        Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
+        the time portion, if present, will get dropped
+
+        :param result_dataset:  A list of dictionary data about graph-database nodes;
+                                    each dict must contain an entry with the key "internal_id"
         :param add_edges:       If True, all existing edges among the displayed nodes
                                     will also be part of the visualization
         :return:                A list of values with the internal databased IDs
                                     of all the nodes added to the graph structure
         """
+        assert self.db, \
+            "prepare_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
+
         node_list = []      # Running list of internal databased IDs, for nodes in `result_dataset`
         for node in result_dataset:
             internal_id = node.get("internal_id")
@@ -454,13 +461,10 @@ class PyGraphVisual:
                 labels = ""
 
             self.add_node(node_id=internal_id, labels=labels,
-                          properties=node_clone)
+                          properties=self.db.sanitize_date_times(node_clone, drop_time=True))
 
 
         if add_edges:
-            assert self.db, \
-                "prepare_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
-
             # Search the database for any edges among any of the nodes selected for the visualization
             q = '''
                 MATCH (n1)-[r]->(n2) 
@@ -474,7 +478,9 @@ class PyGraphVisual:
             # TODO: sanitize the records!  See GraphAccess.standardize_recordset()
             for edge in result:
                 #print(edge)
-                self.add_edge(from_node=edge["from_node"], to_node=edge["to_node"], name=edge["rel_name"], properties=edge["rel_props"])
+                edge_props = self.db.sanitize_date_times(edge["rel_props"], drop_time=True)
+                self.add_edge(from_node=edge["from_node"], to_node=edge["to_node"],
+                              name=edge["rel_name"], properties=edge_props)
 
         return node_list
 
