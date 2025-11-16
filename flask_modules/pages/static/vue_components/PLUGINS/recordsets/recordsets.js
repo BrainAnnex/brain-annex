@@ -628,7 +628,8 @@ Vue.component('vue-plugin-rs',
                     var url_server_api = "/BA/api/add_item_to_category_JSON";
                     var post_obj = {category_uri: this.category_id,
                                     class_name: this.item_data.class_name,
-                                    insert_after: this.item_data.insert_after,   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                                    insert_after_uri: this.item_data.insert_after_uri,      // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                                    insert_after_class: this.item_data.insert_after_class,  // Class of Content Item to insert after
 
                                     // Node properties (in particular,
                                     //     note that "class" and "label" are properties, not Schema data)

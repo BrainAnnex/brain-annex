@@ -1859,7 +1859,7 @@ class GraphAccess(InterGraph):
 
         data_dict={"start_id": start_id}
 
-        self.debug_query_print(q=q, data_binding=data_dict)
+        #self.debug_query_print(q=q, data_binding=data_dict)
 
         result = self.query(q, data_binding=data_dict)
 

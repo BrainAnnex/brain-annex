@@ -336,11 +336,13 @@ Vue.component('vue-plugin-n',
                 var post_obj = {schema_code: this.item_data.schema_code};
 
                 if (noteID < 0)  {	// Add NEW note
-                    const insert_after = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
 
                     post_obj.category_id = this.category_id;
                     post_obj.body = newBody;
-                    post_obj.insert_after = insert_after;
+                    post_obj.insert_after_uri = insert_after_uri;
+                    post_obj.insert_after_class = insert_after_class;
                     post_obj.class_name = this.item_data.class_name;
                     if (this.current_data['title'] != "")
                         post_obj.title = this.current_data['title'];        // TODO: implement a title creator, if not supplied by user

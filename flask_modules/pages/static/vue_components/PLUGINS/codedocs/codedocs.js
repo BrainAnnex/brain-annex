@@ -135,8 +135,10 @@ Vue.component('vue-plugin-cd',
                 if (this.item_data.uri < 0)  {     // The negative URI is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
                     post_body += "&category_id=" + this.category_id;
-                    const insert_after = this.item_data.insert_after;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    post_body += "&insert_after=" + insert_after;
+                    const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
+                    post_body += "&insert_after_uri=" + insert_after_uri;
+                    post_body += "&insert_after_class=" + insert_after_class;
 
                     url_server = `/BA/api/add_item_to_category`;     // URL to communicate with the server's endpoint
                 }

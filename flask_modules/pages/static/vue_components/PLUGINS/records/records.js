@@ -192,7 +192,7 @@ Vue.component('vue-plugin-r',
                 current_data: this.clone_and_standardize(this.item_data),
                 original_data: this.clone_and_standardize(this.item_data),
                 // Scrub some data, so that it won't show up in the tabular format.
-                //     `uri`, `schema_code`, `class_name`, `insert_after` and `pos` get scrubbed out
+                //     `uri`, `schema_code`, `class_name`, `insert_after_uri` and `pos` get scrubbed out
                 //      TODO: separate display and control data!
                 // NOTE: clone_and_standardize() gets called twice
 
@@ -340,8 +340,9 @@ Vue.component('vue-plugin-r',
                 delete clone_obj.uri;
                 delete clone_obj.schema_code;   // TODO: in the process of getting phased out
                 delete clone_obj.class_name;
-                delete clone_obj.insert_after;  // TODO: is this field still present?
-                delete clone_obj.pos;           // TODO: this might be getting phased out
+                delete clone_obj.insert_after_uri;      // TODO: is this field still present?
+                delete clone_obj.insert_after_class;    // TODO: is this field still present?
+                delete clone_obj.pos;                   // TODO: this might be getting phased out
 
                 return clone_obj;
             },
@@ -559,7 +560,7 @@ Vue.component('vue-plugin-r',
                             "German": "Liebe",
                             "uri": 61,
                             "schema_code": "r",
-                            "insert_after": 123,
+                            "insert_after_uri": 123,
                             "class_name": "German Vocabulary",
                             "pos": 0
                         }
@@ -572,7 +573,8 @@ Vue.component('vue-plugin-r',
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
                     post_obj["class_name"] = this.item_data.class_name;
-                    post_obj["insert_after"] = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj["insert_after_uri"] = this.item_data.insert_after_uri;     // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj["insert_after_class"] = this.item_data.insert_after_class; // Class of Content Item to insert after
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data)  {
@@ -648,7 +650,7 @@ Vue.component('vue-plugin-r',
                     console.log("Records component sending `updated-item` signal to its parent");
                     //console.log(this.current_data);
                     // Note: the signal below ONLY include DISPLAY data, not control data such as
-                    //       `uri`, `schema_code`, `class_name`, `insert_after`, `pos`
+                    //       `uri`, `schema_code`, `class_name`, `insert_after_uri`, `pos`
                     //        WITH THE SINGLE EXCEPTION of `uri` field on newly-added records
                     //        TODO: separate display and control data!
                     this.$emit('updated-item', this.current_data);
