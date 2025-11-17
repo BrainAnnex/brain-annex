@@ -8,9 +8,9 @@ __version__ = "5.0.0rc7_INTERIM_7"        # IN-PROGRESS towards rc7
 from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph      # (Un)comment AS NEEDED!
 #from brainannex.intergraph_neo4j_5.intergraph_neo4j_5 import InterGraph     # (Un)comment AS NEEDED!
 
-from brainannex.graphaccess import GraphAccess
+from brainannex.graph_access import GraphAccess
 from brainannex.cypher_utils import (CypherBuilder, CypherUtils)
-from brainannex.graphschema import (GraphSchema, SchemaCache)
+from brainannex.graph_schema import (GraphSchema, SchemaCache)
 from brainannex.collections import Collections
 from brainannex.categories import Categories
 from brainannex.full_text_indexing import FullTextIndexing

@@ -4,9 +4,14 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*   item_data:  EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm",
+        /*   item_data:  An object with the relevant data about this Note item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created Content Item, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
+                        EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm",
                                    "class_name":"Note","title":"My TO-DO list"}
-                                  (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
+
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this Note is displayed (used when creating new documents)
             index:          The zero-based position of this Document on the page

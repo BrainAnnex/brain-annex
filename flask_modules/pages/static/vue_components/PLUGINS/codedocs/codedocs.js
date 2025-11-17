@@ -4,7 +4,12 @@
 Vue.component('vue-plugin-cd',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  index:          The zero-based position of the Record on the page
+        /*  item_data:      An object with the relevant data about this Content Item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created Content Item, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
+            index:          The zero-based position of the Record on the page
             edit_mode:      A boolean indicating whether in editing mode
             item_count:     The total number of Content Items (of all types) on the page
          */

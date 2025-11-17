@@ -4,7 +4,12 @@
 Vue.component('vue-plugin-rs',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:      EXAMPLE :    {class_name:"Recordset",
+        /*  item_data:      An object with the relevant data about this Recordset item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created header, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
+                                EXAMPLE :    {class_name:"Recordset",
                                           class:"YouTube Channel"
                                           n_group:10,
                                           order_by:"name",

@@ -12,14 +12,19 @@
 Vue.component('vue-plugin-timer',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:      EXAMPLE :
+        /*  item_data:      An object with the relevant data about this Content Item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created header, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
+                                EXAMPLE :
                                         {"class_name":"Timer Widget",
                                         "pos":0,
                                         "ringtone":"dreamscape-alarm-clock-117680.mp3",
                                         "schema_code":"timer",
                                         "uri":"8809"
                                         }
-                                      (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
+
                                 TODO: separate regular properties from control values
                                      (`class_name`, `schema_code`, `insert_after_uri`, `pos`)
 

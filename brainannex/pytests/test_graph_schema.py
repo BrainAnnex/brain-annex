@@ -1016,6 +1016,40 @@ def test_data_node_exists(db):
 
 
 
+def test_data_node_exists_EXPERIMENTAL(db):
+    db.empty_dbase()
+
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL(node_id=123)
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("Car", "c-88"))
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("Employee", 45, "employee id"))
+
+    with pytest.raises(Exception):
+        GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("", "c-88"))     # Bad Class bane
+
+    with pytest.raises(Exception):
+        assert not GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("Employee", 45, [1, 2]))  # Bad key name
+
+    GraphSchema.create_class(name="Car", strict = True)
+    internal_id = GraphSchema.create_data_node(class_name="Car", new_uri="c-88")
+    assert GraphSchema.data_node_exists_EXPERIMENTAL(node_id=internal_id)
+    assert GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("Car", "c-88"))
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("BOAT", "c-88"))
+
+    GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
+    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
+    assert GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("Employee", 45, "employee id"))
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("Employee", 666, "employee id"))   # Non-existent
+
+
+    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45, "remarks": "duplicate"})
+
+    GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("Employee", 666, "employee id"), require_unique=False)
+    with pytest.raises(Exception):
+        GraphSchema.data_node_exists_EXPERIMENTAL(node_id=("Employee", 45, "employee id"), require_unique=True)   # Bad primary key
+
+
+
+
 def test_data_link_exists(db):
     pass    # TODO
 

@@ -8,13 +8,14 @@
 Vue.component('vue-plugin-r',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:  An object with the relevant data about this Record item
+        /*  item_data:  An object with the relevant data about this Record item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created Content Item, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
 
                         EXAMPLE: {"class_name":"German Vocabulary",
                                   "uri":"52", "pos":10, "schema_code":"r",
                                   "German":"Tier", "English":"animal"}
-                                  (if uri is a negative number, it means that it's a newly-created header,
-                                  not yet registered with the server)
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)

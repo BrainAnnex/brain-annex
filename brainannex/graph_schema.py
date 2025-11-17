@@ -181,7 +181,7 @@ class GraphSchema:
         :param class_name:  A string with the putative name of a Schema Class
         :return:            None
         """
-        if type(class_name) == str and class_name != "":
+        if type(class_name) == str and class_name != "":    # TODO: strip leading/trailing blanks
             return True
         else:
             return False
@@ -189,7 +189,7 @@ class GraphSchema:
 
 
     @classmethod
-    def assert_valid_class_identifier(cls, class_node : int | str) -> None:
+    def assert_valid_class_identifier(cls, class_node : int|str) -> None:
         """
         Raise an Exception is the argument is not a valid "identifier" for a Class node,
         meaning either a valid name or a valid internal database ID
@@ -1737,7 +1737,7 @@ class GraphSchema:
 
 
     @classmethod
-    def _assemble_cypher_clauses(cls, node_id, id_key, class_name, dummy_name="dn", method=None) -> (str, dict):
+    def _assemble_cypher_clauses(cls, node_id, id_key=None, class_name=None, dummy_name="dn", method=None) -> (str, dict):
         """
         Helper function to prepare two clause to be used in forming a Cypher query.
 
@@ -2084,6 +2084,81 @@ class GraphSchema:
             f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`"
 
         return result
+
+
+
+    @classmethod
+    def data_node_exists_EXPERIMENTAL(cls, node_id :int|str|(tuple), require_unique=True) -> bool:
+        """
+        Return True if the specified Data Node exists, or False otherwise.
+        Optionally, require the result to be unique.
+
+        :param node_id: Either an internal database ID (int or str),
+                        OR the pair (class_name, `uri` value)
+                        OR the triplet (class_name, key value, key_name)
+
+                        EXAMPLES:   123
+                                    ("Header", "h-88")
+                                    ("Category", True, "root")
+        :param require_unique:  [OPTIONAL]
+        :return:                True if the specified Data Node exists, or False otherwise
+        """
+        #TODO: explore this style of argument passing as a possible model to adopt class-wide
+        #TODO: consider dict option for argument:  node_id = {"class_name": "Header", key_value: "h-88"}
+        #TODO: consider adding an `include_ancestors` option
+
+        #TODO: turn this entire if/else into a helper function
+        if type(node_id) == tuple:
+            if len(node_id) == 2:
+                (class_name, key_value) = node_id
+                key_name = "uri"        # Formerly known as id_key
+            elif len(node_id) == 3:
+                (class_name, key_value, key_name) = node_id
+                assert type(key_name) == str, \
+                    f"data_node_exists(): the value ({key_name}) passed " \
+                    f"as the 3rd tuple element to the argument `node_id` is not a string; it's of type {type(key_name)}"
+            else:
+                raise Exception("data_node_exists(): the length of the tuple passed to `node_id` must be 2 or 3")
+
+            assert cls.is_valid_class_name(class_name), \
+                f"data_node_exists(): the value `{class_name}` passed " \
+                f"as the 1st tuple element to the argument `node_id` is not a valid Schema Class name"
+
+            # Prepare a Cypher query to locate the number of the data nodes
+            where_clause = f"WHERE (dn.`{key_name}` = $key_value) AND (dn.`_CLASS` = $class_name)"
+            data_binding = {"key_value" : key_value, "class_name": class_name}
+            #where_clause, data_binding = cls._assemble_cypher_clauses(node_id=key_value, id_key=key_name, class_name=class_name, method="data_node_exists")
+            label_str = f":`{class_name}`"
+        else:
+            # Match by internal database ID
+            assert CypherUtils.valid_internal_id(node_id), \
+                f"data_node_exists(): the argument `internal_id` ({node_id}) " \
+                f"is not a valid internal database ID value"
+
+            where_clause = f"WHERE (id(dn) = $node_id)"
+            data_binding = {"node_id" : node_id}
+            label_str = ""
+            class_name = None
+
+
+        q = f'''
+            MATCH (dn {label_str}) 
+            {where_clause}
+            RETURN COUNT(dn) AS number_found
+            '''
+
+        #cls.db.debug_query_print(q, data_binding)
+        number_found = cls.db.query(q, data_binding=data_binding,
+                                    single_cell="number_found")
+
+        if number_found == 0:
+            return False
+
+        if require_unique and class_name:
+            assert number_found == 1, f"data_node_exists(): more than 1 `{class_name}` data node was found " \
+                                      f"with the same value ({key_value}) of the primary key `{key_name}`, which ought to be unique"
+
+        return True
 
 
 

@@ -6,6 +6,9 @@
     If in "insert_box" mode, display (below the Vue component for this Content Item) a box
     used to insert a new Content Item below this one.  This special box also includes a "dropzone" element,
     to upload media.
+    TODO: possibly shift this responsibility to the parent (root) element.
+          A potential design:   just like currently being done, add entries with negative uri's
+                                to the `content_array` of page_viewer.html
 
     IMPORTANT: if no handler is registered - as described by the argument 'registered_plugins' -
                it will default to be treated as a generic record, managed by the general "r" handler

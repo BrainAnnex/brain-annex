@@ -7,7 +7,9 @@ Vue.component('vue-plugin-sl',
         /*
             item_data:      An object with the relevant data about this Site Link item;
                                 if the "uri" attribute is negative,
-                                it means that it's a newly-created header, not yet registered with the server
+                                it means that it's a newly-created Content Item, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
                                 TODO: separate regular properties from control values
                                      (`class_name`, `schema_code`, `insert_after_uri`, `pos`)
 
