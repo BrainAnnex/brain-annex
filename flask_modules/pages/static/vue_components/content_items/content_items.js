@@ -1,6 +1,14 @@
-/*  Vue component to display and edit Content Items of ANY type.
-    Depending on its specific type,
-    it DISPATCHES to Vue components customized for that type.
+/*  Vue component to display and edit a Content Item of ANY type.
+
+    Depending on the specific type of the Content Item,
+    it DISPATCHES to Vue component customized for that type.
+
+    If in "insert_box" mode, display (below the Vue component for this Content Item) a box
+    used to insert a new Content Item below this one.  This special box also includes a "dropzone" element,
+    to upload media.
+    TODO: possibly shift this responsibility to the parent (root) element.
+          A potential design:   just like currently being done, add entries with negative uri's
+                                to the `content_array` of page_viewer.html
 
     IMPORTANT: if no handler is registered - as described by the argument 'registered_plugins' -
                it will default to be treated as a generic record, managed by the general "r" handler
@@ -11,8 +19,13 @@ Vue.component('vue-content-items',
         props: ['item', 'expose_controls', 'category_uri', 'index', 'item_count',
                 'registered_plugins', 'records_types', 'schema_data', 'all_categories'],
         /*  item:           EXAMPLE: {uri:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Header"}
-                                     (if uri is a negative number, it means that it's a newly-created Content Item, not yet registered with the server)
-                            Maybe rename to item_data
+
+                            If this is a a newly-created Content Item, not yet registered with the server,
+                            then the `uri` will be a negative number,
+                            and there will be additional fields such as `insert_after_uri` and `insert_after_class`
+                            EXAMPLE: {uri: -2, insert_after_uri: "i-123", "insert_after_class": "Image"}
+
+                            TODO: Maybe rename to item_data
 
             expose_controls:    Flag indicating whether in edit mode
             category_uri:       A string indicating which Category-viewer page is using this component
@@ -26,8 +39,8 @@ Vue.component('vue-content-items',
                                     EXAMPLE: ["French", "English", "notes"]
             all_categories:     A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                     EXAMPLE:
-                                      [{"uri": 1, "name": "HOME"},
-                                       {"uri": 523, "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]
+                                      [{"uri": "1", "name": "HOME"},
+                                       {"uri": "523", "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]
 
             NOTE: some of the data is just passed thru by the child components, on its way to the grand-child 'vue-controls'
                   (TODO: bundle that data into an object)
@@ -67,7 +80,8 @@ Vue.component('vue-content-items',
             >
             </component>
 
-            <p v-if="show_button" class="confirm-question">Confirm DELETE (item URI '{{item.uri}}')?
+            <p v-if="show_button" class="confirm-question">Confirm DELETE
+                <br><span style="font-size:18px">(item URI '{{item.uri}}' of Class '{{item.class_name}}')</span>?
                 <button button @click="confirm_delete" class='confirm-button'>OK</button>
                 <button button @click="cancel_delete" class='cancel-button'>Cancel</button>
             </p>
@@ -104,14 +118,16 @@ Vue.component('vue-content-items',
                 <b>UPLOAD IMAGES or DOCUMENTS</b>:<br>
 
                 <!-- Provide a drag-and-drop area, which makes use of the "Dropzone" module.
-                    The id and the class of the FORM element below are meant for use by "Dropzone" -->
+                    The "id" and the "class" attributes of the FORM element below
+                    are meant for use by the JS package "Dropzone" -->
                 <form  class='dropzone'
                        v-bind:id="'myDropzone_' + item.uri"
                        action='/BA/api/upload_media'
                        style='padding-top:5px; margin-bottom:8px'
                 >
                     <input v-bind:value="category_uri" type='hidden' name='category_id'>
-                    <input v-bind:value="item.uri" type='hidden' name='insert_after'>
+                    <input v-bind:value="item.uri" type='hidden' name='insert_after_uri'>
+                    <input v-bind:value="item.class_name" type='hidden' name='insert_after_class'>
                 </form>
 
 
@@ -181,13 +197,15 @@ Vue.component('vue-content-items',
 
                 highlight: false,       // Whether to highlight this Content Item (e.g. prior to deleting it)
                 show_button: false,
-                insert_box: false,      // Whether to display a box used to insert a new Content Item below this one
+                insert_box: false,      // Whether to display, at the bottom, a box used to insert a new Content Item below this one
 
                 categories_linked_to: [],   // Array of objects representing Categories to which this Content Item is attached to;
                                             //      each object contains the attributes "uri", "name", "remarks"
 
                 category_to_add: "",        // Object with data about the Category chosen to tag this Content Item with
                                             //      Attributes are "uri" and "name" (Note: "" indicates no selection in the menu)
+
+                //dropzone_id: "form#myDropzone_12345",     // This did NOT work
 
                 uploads_in_progress: false, // Flag indicating whether any uploaded started but have not yet completed
                 upload_started: 0,          // Number of file upload started
@@ -229,19 +247,40 @@ Vue.component('vue-content-items',
         methods: {
 
             insert_dropzone_element()
-            // Creating dropzone must be done programmatically, because the form was not present at page load
+            /* Invoked when a signal is received from the Vue controls component, to expose the box to add a new Content Item.
+               Creating a "dropzone" object must be done programmatically, because the form containing the
+               dropzone object was not present at page load.
+               This object is used for the upload of media files.
+             */
             {
-                console.log(`About to dynamically create a 'Dropzone' element, immediately below Content Item '${this.item.uri}'`);
-                var myDropzone = new Dropzone("form#myDropzone_" + this.item.uri);
+                console.log(`About to dynamically create a 'Dropzone' object, `
+                            + `immediately below Content Item URI '${this.item.uri}' of Class '${this.item.class_name}'`);
 
-                // IMPORTANT: for the above line to work, the DIV element that contains it must use
-                //            Vue conditional rendering with "v-show" rather than "v-if"
+                // Note that the ID of the Dropzone FORM element makes reference to the PREVIOUS Content Item; this ID is not actually used, but should be unique
+                // (if attempting to create it a second time, for example by closing and re-opening the add-content box,
+                //  an error "Dropzone already attached" is generated - but it seems to cause absolutely no harm!
 
-                // Register a number of event handlers with the newly-created Dropzone object
-                myDropzone.on("addedfile", this.dropzoneHandler_addedfile);          // A new file gets added to the to-upload list
-                myDropzone.on("success", this.dropzoneHandler_success);              // The file has been uploaded successfully
-                myDropzone.on("queuecomplete", this.dropzoneHandler_queuecomplete);  // All files in the queue finish uploading
-                myDropzone.on("error", this.dropzoneHandler_error);                  // If the server returns anything other than a normal status
+                //const uuid = crypto.randomUUID();                 // This approach did NOT work
+                //this.dropzone_id = "form#myDropzone_" + uuid;
+                //const dropzone_form_id = this.dropzone_id;
+
+                const dropzone_form_id = "myDropzone_" + this.item.uri;     // EXAMPLE: "myDropzone_h-86"   TODO: this ID might not be unique on a page; the URI might contain blanks
+                                                                            // MUST match the value in the "v-bind:id" variable in form definition
+                                                                            // TODO: try to switch to the Internal Database ID instead
+
+                // TODO: look into destroying the Dropzone object when the insert box is closed; should be able to do a:  myDropzone.destroy()
+                //if (! document.getElementById(dropzone_form_id)) {    // This approach removes the error message, BUT prevents the uploads from working!
+                    console.log(`    will create a 'Dropzone' element with ID: '${dropzone_form_id}'`);
+                    var myDropzone = new Dropzone("form#" + dropzone_form_id);
+                    // IMPORTANT: for the above line to work, the DIV element that contains it must use
+                    //            Vue conditional rendering with "v-show" rather than "v-if"
+
+                    // Register a number of event handlers with the newly-created Dropzone object
+                    myDropzone.on("addedfile", this.dropzoneHandler_addedfile);          // A new file gets added to the to-upload list
+                    myDropzone.on("success", this.dropzoneHandler_success);              // The file has been uploaded successfully
+                    myDropzone.on("queuecomplete", this.dropzoneHandler_queuecomplete);  // All files in the queue finish uploading
+                    myDropzone.on("error", this.dropzoneHandler_error);                  // If the server returns anything other than a normal status
+                //}
             },
 
 
@@ -337,7 +376,7 @@ Vue.component('vue-content-items',
             add_content_below()
             // Expose a box below the Item, to let the user enter a new Content Item
             {
-                console.log(`'vue-content-items' component received Event 'add-content'. Showing box to adding new content below Item with URI: ${this.item.uri}`);
+                console.log(`'vue-content-items' component received Event 'add-content'. Showing the box for adding new content below Item with URI: '${this.item.uri}' and Class '${this.item.class_name}'`);
                 this.insert_box = true;
                 this.insert_dropzone_element();
             },
@@ -495,15 +534,17 @@ Vue.component('vue-content-items',
 
             add_new_item_below(schema_code, class_name)
             /*  Add a new Content Item of the specified type, placed just below the current Item.
-                TODO: consider an "add immediately" option, as done in v. 4
+                TODO: consider an "add immediately" option, as done in v. 4 of BA
              */
             {
+                // Send a signal to the parent (the Category Page) to insert a new blank item of the specified type, below this one
                 console.log(`In 'vue-content-items' component, add_new_item_below().`);
-                console.log(`    Request to insert new Content Item below Item with URI '${this.item.uri}'`);
+                console.log(`    Request to insert new Content Item below the Item with URI '${this.item.uri}' and class name '${this.item.class_name}'`);
                 console.log(`    New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
-                console.log("    `vue-content-items` component is sending 'insert-new-item' signal to its parent");
-                // This signal will be handled by the root component
-                this.$emit('insert-new-item', {
+                console.log("    `vue-content-items` component is sending 'insert-new-item-after' signal to its parent");
+
+                // This signal will be handled by the root component: it contains the basic information (known so far) of the new Content Item
+                this.$emit('insert-new-item-after', {
                                                 schema_code: schema_code,
                                                 class_name: class_name
                                               });
@@ -517,9 +558,11 @@ Vue.component('vue-content-items',
 
 
             confirm_delete()
+            // Invoked when the user clicks on the "Confirm DELETE" button
             {
+                // Send a signal to the Vue root component
                 console.log("Confirming delete");
-                console.log("`vue-content-items` component is sending 'delete-content-item-highlighted' signal to its parent");
+                console.log("    `vue-content-items` component is sending 'delete-content-item-highlighted' signal to its parent");
                 this.$emit('delete-content-item-highlighted');
             },
 

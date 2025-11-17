@@ -91,10 +91,10 @@ Vue.component('vue-toc-sidebar',
                                 </p>
 
                                 <p v-else-if="item.schema_code != 'h'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" title="Bookmark (site link)">
-                                        <span style="color:gray">[RECORD]</span> {{item.class_name}}
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri">
+                                        {{item.class_name}}
                                     </a>
-                                    <img src='/BA/pages/static/graphics/13_database_record.png' title="database record" alt="database record">
+                                    <img src='/BA/pages/static/graphics/13_database_record.png'>
                                 </p>
                             </template>
 

@@ -112,7 +112,7 @@ Vue.component('vue-plugin-r-linked',
                 delete clone_obj.uri;
                 delete clone_obj.schema_code;
                 //delete clone_obj.class_name;
-                //delete clone_obj.insert_after;
+                //delete clone_obj.insert_after_uri;
 
                 return clone_obj;
             },

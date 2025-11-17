@@ -830,22 +830,23 @@ class DataManager:
 
 
     @classmethod
-    def add_new_content_item_to_category(cls, category_uri :str, class_name :str, insert_after :str,
+    def add_new_content_item_to_category(cls, category_uri :str, class_name :str, insert_after_uri :str, insert_after_class :str,
                                          item_data: dict) -> str:
         """
         Create a new Content Item attached to a particular Category,
         at a specified position on the Category page
 
-        NOTE: this is a newer version of new_content_item_in_category()
+        :param category_uri:        String to identify the Category that we're linking to
+        :param class_name:          Name of the Class of the new Content Item
+        :param insert_after_uri:    Either the URI of an existing Content Item attached to this Category,
+                                        or one of the special values "TOP" or "BOTTOM"
+        :param insert_after_class:  The name of the Class of the preceding Content Item, if applicable
+        :param item_data:           Dict with all applicable plugin-specific fields (all the key/values for the new Content Item)
 
-        :param category_uri:    String to identify the Category that we're linking to
-        :param class_name:      Name of the Class of the new Content Item
-        :param insert_after:    Either the URI of an existing Content Item attached to this Category,
-                                    or one of the special values "TOP" or "BOTTOM"
-        :param item_data:       Dict with all applicable plugin-specific fields (all the key/values for the new Content Item)
-
-        :return:    The URI of the newly-created Data Node
+        :return:                    The URI of the newly-created Data Node
         """
+        # TODO: this is a newer version of new_content_item_in_category() - BUT it assumes excessive
+        #       involvement of the API level '/add_item_to_category_JSON'
         # TODO: give better error messages; for example, if the requested Category doesn't exist
         # TODO: more Schema enforcement
         # TODO: possibly generalize from "Category" to "Collection"
@@ -896,18 +897,19 @@ class DataManager:
                             "to set a `basename` attribute to the value 'undefined'")
 
         # Create the new node and required relationships
-        if insert_after == "TOP":
+        if insert_after_uri == "TOP":
             Categories.add_content_at_beginning(category_uri=category_uri,
                                                 item_class_name=class_name, item_properties=item_data,
                                                 new_uri=new_uri)
-        elif insert_after == "BOTTOM":
+        elif insert_after_uri == "BOTTOM":
             Categories.add_content_at_end(category_uri=category_uri,
                                           item_class_name=class_name, item_properties=item_data,
                                           new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_uri,
                                                  item_class_name=class_name, item_properties=item_data,
-                                                 insert_after=insert_after, new_uri=new_uri)
+                                                 insert_after_uri=insert_after_uri, insert_after_class=insert_after_class,
+                                                 new_uri=new_uri)
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
@@ -922,7 +924,6 @@ class DataManager:
     @classmethod
     def new_content_item_in_category(cls, post_data: dict) -> str:
         """
-        TODO: this method will be phased out in favor of add_new_content_item_to_category()
         Create a new Content Item attached to a particular Category,
         at a specified position on the Category page
 
@@ -932,13 +933,14 @@ class DataManager:
                     * schema_uri (Optional)
                     * class_name (Required only for Class Items of type "record")
 
-            - insert_after        Either the URI of an existing Content Item attached to this Category,
+            - insert_after_uri        Either the URI of an existing Content Item attached to this Category,
                                   or one of the special values "TOP" or "BOTTOM"
             - *PLUS* all applicable plugin-specific fields (all the key/values for the new Content Item)
 
         :return:    The URI of the newly-created Data Node.
                     In case of error, an Exception is raised
         """
+        # TODO: this method should be merged with add_new_content_item_to_category()
         #print("In new_content_item_in_category(): post_data = ", post_data)
         # NOTE: the post_data dictionary contains entries are not part of the data dictionary for the new Content Item;
         #       those will be eliminated below
@@ -956,34 +958,29 @@ class DataManager:
         del post_data["category_id"]        # Remove this entry from the dictionary
 
         # Positioning within the Category
-        insert_after = post_data.get("insert_after")
-        if not insert_after:
-            raise Exception("Missing insert_after (URI of Item to insert the new one after)")
-        del post_data["insert_after"]
+        insert_after_uri = post_data.get("insert_after_uri")
+        if not insert_after_uri:
+            raise Exception("Missing value for `insert_after_uri` (URI of Item to insert the new one after)")
+        del post_data["insert_after_uri"]
+
+        insert_after_class = post_data.get("insert_after_class")
+        if not insert_after_class:
+            if insert_after_uri not in ["TOP", "BOTTOM"]:
+                raise Exception("Missing value for `insert_after_class` (Class of Item to insert the new one after)")
+        else:
+            del post_data["insert_after_class"]
+
 
         # Schema-related data
-        #schema_code = post_data.get("schema_code")
-        #if not schema_code:
-            #raise Exception("Missing Schema Code (Item Type)")
         if "schema_code" in post_data:
-            del post_data["schema_code"]        # TODO: completely phase out
+            del post_data["schema_code"]    # TODO: completely phase out
 
-        schema_uri = post_data.get("schema_uri")    # TODO: ditch using the schema_uri, in favor of class_name
-        if schema_uri:
-            del post_data["schema_uri"]
-        #else:
-            #schema_uri = GraphSchema.get_schema_uri(schema_code)    # If not passed, try to look it up
-            #print("schema_uri looked up as: ", schema_uri)
-            #if schema_uri == "":
-                #raise Exception(f"Missing Schema URI for schema_code `{schema_code}`")
+        if "schema_uri" in post_data:       # Note: schema_uri was ditched in favor of class_name
+            raise Exception("new_content_item_in_category(): received obsolete variable `schema_uri` ")
 
         class_name = post_data.get("class_name")
         #if class_name:
         del post_data["class_name"]     # Note: it's now a required parameter
-        #else:
-            # If not provided, look it up from the schema_uri
-            #class_name = GraphSchema.get_class_name_by_schema_uri(schema_uri)
-            #print(f"class_name looked up as: `{class_name}`")
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
@@ -1015,18 +1012,19 @@ class DataManager:
                             "to set a `basename` attribute to the value 'undefined'")
 
         # Create the new node and required relationships
-        if insert_after == "TOP":
+        if insert_after_uri == "TOP":
             Categories.add_content_at_beginning(category_uri=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
-        elif insert_after == "BOTTOM":
+        elif insert_after_uri == "BOTTOM":
             Categories.add_content_at_end(category_uri=category_id,
                                           item_class_name=class_name, item_properties=post_data,
                                           new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
-                                                 insert_after=insert_after, new_uri=new_uri)
+                                                 insert_after_uri=insert_after_uri, insert_after_class=insert_after_class,
+                                                 new_uri=new_uri)
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
@@ -1039,23 +1037,24 @@ class DataManager:
 
 
     @classmethod
-    def new_content_item_in_category_final_step(cls, insert_after :str, category_id :str, new_uri, class_name,
+    def new_content_item_in_category_final_step(cls, insert_after_uri :str, insert_after_class :str, category_id :str, new_uri, class_name,
                                                 post_data, original_post_data):
         # TODO: NOT YET IN USE
         #       Meant to take over the final parts of BA_Api_Routing.upload_media() and DataManager.new_content_item_in_category()
         # Create the new node and required relationships
-        if insert_after == "TOP":
+        if insert_after_uri == "TOP":
             Categories.add_content_at_beginning(category_uri=category_id,
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
-        elif insert_after == "BOTTOM":
+        elif insert_after_uri == "BOTTOM":
             Categories.add_content_at_end(category_uri=category_id,
                                           item_class_name=class_name, item_properties=post_data,
                                           new_uri=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
-                                                 insert_after=insert_after, new_uri=new_uri)
+                                                 insert_after_uri=insert_after_uri, insert_after_class=insert_after_class,
+                                                 new_uri=new_uri)
 
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
@@ -1063,6 +1062,7 @@ class DataManager:
             Notes.new_content_item_successful(new_uri, original_post_data)
         elif class_name == "Document":
             Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
+                                                                                                        #TODO: add arg `upload_folder`
 
 
 

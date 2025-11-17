@@ -12,16 +12,21 @@
 Vue.component('vue-plugin-timer',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:      EXAMPLE :
+        /*  item_data:      An object with the relevant data about this Content Item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created header, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
+                                EXAMPLE :
                                         {"class_name":"Timer Widget",
                                         "pos":0,
                                         "ringtone":"dreamscape-alarm-clock-117680.mp3",
                                         "schema_code":"timer",
                                         "uri":"8809"
                                         }
-                                      (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
+
                                 TODO: separate regular properties from control values
-                                     (`class_name`, `schema_code`, `insert_after`, `pos`)
+                                     (`class_name`, `schema_code`, `insert_after_uri`, `pos`)
 
             edit_mode:      A boolean indicating whether in editing mode
                             TODO: possibly add a new parameter "create_mode" that won't show the usual
@@ -158,7 +163,7 @@ Vue.component('vue-plugin-timer',
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
                 //      Note: for new Content Items, it only contains
-                //              `class_name`, `schema_code`, `uri`, `insert_after`, PLUS anything dynamically added by v-model during data entry
+                //              `class_name`, `schema_code`, `uri`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
                 //            For existing Content Items, it contains
                 //              `class_name`, `schema_code`, `uri`, `pos`, and Content-specific fields
                 current_data:   Object.assign({}, this.item_data),
@@ -423,7 +428,8 @@ Vue.component('vue-plugin-timer',
                 if (this.item_data.uri < 0)  {     // Negative uri is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
                      post_obj.category_id = this.category_id;
-                     post_obj.insert_after = this.item_data.insert_after;   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                     post_obj.insert_after_uri = this.item_data.insert_after_uri;       // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                     post_obj.insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
 
                      url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }

@@ -302,7 +302,7 @@ def test_remove_see_also(db):
 
 
 
-##########  VIEW ITEMS IN CATEGORIES  ##########
+##########  ITEMS IN CATEGORIES  ##########
 
 
 def test_get_items_schema_data(db):
@@ -366,6 +366,96 @@ def test_link_content_at_end(db):
         Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
     # TODO: additional testing
+
+
+
+def test_add_content_after_element(db):
+    _, root_uri = initialize_categories(db)
+
+    # Introduce a new test Class, "Image"
+    GraphSchema.create_class_with_properties(name="Image",
+                                             properties=["caption", "basename", "suffix", "uri"])
+    GraphSchema.create_class_relationship(from_class="Image", to_class="Category",
+                                          rel_name="BA_in_category")
+
+    # Create a new Data Node (of class "Image"), positioned at the end (bottom) of the Root Category Page
+    Categories.add_content_at_end(category_uri=root_uri,
+                                  item_class_name="Image", item_properties={"caption": "USA"},
+                                  new_uri="i-USA")
+
+    q = f'''
+        MATCH (c:Category {{uri: "{root_uri}"}})<-[r:BA_in_category]-(ci)
+        RETURN r.pos AS pos, ci.uri AS uri
+        ORDER BY pos
+        '''
+    result = db.query(q, single_column="uri")
+    assert result == ["i-USA"]
+
+    # Create a new Data Node (of class "Image"), positioned after the previously-added "USA" Image on the Root Category Page
+    # Note: this corresponds to an "add at the end"
+    Categories.add_content_after_element(category_uri=root_uri,
+                                  item_class_name="Image", item_properties={"caption": "Brazil"},
+                                  insert_after_uri="i-USA", insert_after_class="Image",
+                                  new_uri="i-Brazil")
+
+    result = db.query(q, single_column="uri")
+    assert result == ["i-USA", "i-Brazil"]
+
+    # Create a new Data Node (of class "Image"), positioned after the initially-added "USA" Image on the Root Category Page
+    Categories.add_content_after_element(category_uri=root_uri,
+                                  item_class_name="Image", item_properties={"caption": "Mexico"},
+                                  insert_after_uri="i-USA", insert_after_class="Image",
+                                  new_uri="i-Mexico")
+
+    result = db.query(q, single_column="uri")
+    assert result == ["i-USA", "i-Mexico", "i-Brazil"]
+
+
+    # Introduce another new test Class, "Header"
+    GraphSchema.create_class_with_properties(name="Header",
+                                             properties=["text", "uri"])
+    GraphSchema.create_class_relationship(from_class="Header", to_class="Category",
+                                          rel_name="BA_in_category")
+
+    # Create a new Data Node (of class "Header"), positioned after the "Mexico" Image on the Root Category Page
+    Categories.add_content_after_element(category_uri=root_uri,
+                                  item_class_name="Header", item_properties={"text": "South America"},
+                                  insert_after_uri="i-Mexico", insert_after_class="Image",
+                                  new_uri="i-Header-1")
+
+    result = db.query(q, single_column="uri")
+    assert result == ["i-USA", "i-Mexico", "i-Header-1", "i-Brazil"]
+
+
+    # Create a new Data Node (of class "Image"), positioned after the Header item on the Root Category Page
+    Categories.add_content_after_element(category_uri=root_uri,
+                                  item_class_name="Image", item_properties={"caption": "Guyana"},
+                                  insert_after_uri="i-Header-1", insert_after_class="Header",
+                                  new_uri="i-Guyana")
+
+    result = db.query(q, single_column="uri")
+    assert result == ["i-USA", "i-Mexico", "i-Header-1", "i-Guyana", "i-Brazil"]
+
+
+    # Create a new Data Node (of class "Image"), positioned after the Header item on the Root Category Page
+    Categories.add_content_after_element(category_uri=root_uri,
+                                  item_class_name="Image", item_properties={"caption": "Venezuela"},
+                                  insert_after_uri="i-Header-1", insert_after_class="Header",
+                                  new_uri="i-Venezuela")
+
+    result = db.query(q, single_column="uri")
+    assert result == ["i-USA", "i-Mexico", "i-Header-1", "i-Venezuela", "i-Guyana", "i-Brazil"]
+
+
+    # Create a new Data Node (of class "Image"), positioned after the Header item on the Root Category Page
+    # Note: this will force a re-numbering of the pos values
+    Categories.add_content_after_element(category_uri=root_uri,
+                                  item_class_name="Image", item_properties={"caption": "Colombia"},
+                                  insert_after_uri="i-Header-1", insert_after_class="Header",
+                                  new_uri="i-Colombia")
+
+    result = db.query(q, single_column="uri")
+    assert result == ["i-USA", "i-Mexico", "i-Header-1","i-Colombia", "i-Venezuela", "i-Guyana", "i-Brazil"]
 
 
 

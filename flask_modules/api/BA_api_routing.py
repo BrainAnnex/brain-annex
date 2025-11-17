@@ -65,7 +65,7 @@ class ApiRouting:
 
 
     # NOTE: To test POST-based web APIs, on the Linux shell or Windows PowerShell issue commands such as:
-    #            curl http://localhost:5000/BA/api/add_item_to_category -d "schema_uri=1&category_uri=60"
+    #            curl http://localhost:5000/BA/api/add_item_to_category -d "class_name=Image&category_uri=60"
 
     # TODO: provide support for API_KEY (or API_TOKEN) authentication
 
@@ -1380,29 +1380,33 @@ class ApiRouting:
 
             EXAMPLE invocation:
             curl http://localhost:5000/BA/api/add_item_to_category
-                            -d "category_id=708&insert_after=711&schema_code=h&text=New Header&class_name=Headers"
+                            -d "category_id=708&insert_after_uri=711&schema_code=h&text=New Header&class_name=Headers"
         
             POST FIELDS:
                 category_id         URI identifying the Category to which attach the new Content Item
                 class_name          The name of the Class of the new Content Item
-                insert_after        Either an URI of an existing Content Item attached to this Category,
+                insert_after_uri    Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
+                insert_after_class  The name of the Class of the preceding Content Item, if applicable
                 *PLUS* any applicable plugin-specific fields
 
             RETURNED PAYLOAD (on success):
                 The URI of the newly-created Data Node
             """
+            # TODO: possibly phase out in favor of '/add_item_to_category_JSON' (below)
             # TODO: switch from "category_id" to "category_uri"
             # TODO: also return the newly-assigned "pos" value
             # Extract the POST values
             post_data = request.form
-            # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('class_name', 'Header'),
-            #                              ('insert_after', '5'), ('text', 'My Header')])
+            # Example: ImmutableMultiDict([('category_id', '123'), ('class_name', 'Header'),
+            #                              ('insert_after_uri', 'i-5'), ('insert_after_class', 'Image'), ('text', 'My Header')])
             #cls.show_post_data(post_data, "add_item_to_category")
         
             # Create a new Content Item with the POST data
             try:
-                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'insert_after', 'class_name'])
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'insert_after_uri', 'class_name'])
+                #print("/add_item_to_category - pars_dict: ", pars_dict)
+                # EXAMPLE: {'class_name': 'Header', 'category_id': '1', 'insert_after_uri': 'BOTTOM', 'text': 'My Header'}
                 payload = DataManager.new_content_item_in_category(pars_dict)        # The URI of the newly-created Data Node
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
@@ -1431,30 +1435,45 @@ class ApiRouting:
             KEYS in the JSON-encoded dict:
                 category_uri        URI identifying the Category to which attach the new Content Item
                 class_name          The name of the Class of the new Content Item
-                insert_after        Either an URI of an existing Content Item attached to this Category,
-                                    or one of the special values "TOP" or "BOTTOM"
+                insert_after_uri    Either an URI of an existing Content Item attached to this Category,
+                                        or one of the special values "TOP" or "BOTTOM"
+                insert_after_class  [OPTIONAL] The name of the Class of the preceding Content Item, if applicable
                 *PLUS* any applicable plugin-specific fields
 
             RETURNED PAYLOAD (on success):
                 The URI of the newly-created Data Node
             """
-            #TODO: explore more Schema enforcements
+            #TODO:
+            '''
+            A possible general API design:
+                required_fields = ["category_uri", "class_name", "insert_after_uri"]
+                other_fields = ["insert_after_class"]
+                allow_extra_fields = True
+                handler = DataManager.add_new_content_item_to_category
+                
+            Then it automatically does field extraction and presence check,
+            and finally makes a call to:  
+                handler(category_uri=..., class_name=..., insert_after_uri=..., insert_after_class=...,
+                        extra_fields=<the remaining dict>)   
+            '''
 
             # Extract and parse the POST value
             pars_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
             # provided that mimetype indicates "application/json"
-            # EXAMPLE: {'category_uri': '6967', 'class_name': 'Header', 'insert_after': 'BOTTOM', 'text': 'My Header'}
+            # EXAMPLE: {'category_uri': '6967', 'class_name': 'Header', 'insert_after_uri': 'BOTTOM', 'text': 'My Header'}
             # See: https://flask.palletsprojects.com/en/1.1.x/api/
             #print("In add_item_to_category_JSON() -  pars_dict: ", pars_dict)
 
             # TODO: create a helper function for the unpacking/validation below
             category_uri = pars_dict.get('category_uri')
             class_name = pars_dict.get('class_name')
-            insert_after = pars_dict.get('insert_after')
+            insert_after_uri = pars_dict.get('insert_after_uri')
+            insert_after_class = pars_dict.get('insert_after_class')    # NOT required if `insert_after_uri` is "TOP" or "BOTTOM"
 
-            if not category_uri or not class_name or not insert_after:
+            # TODO: this check for a required set of variables ought to be the ONLY responsibility of this layer!
+            if not category_uri or not class_name or not insert_after_uri:
                 err_details = f"add_item_to_category_JSON(): some required parameters are missing; " \
-                              f"'category_uri', 'class_name' and 'insert_after' are required"
+                              f"'category_uri', 'class_name' and 'insert_after_uri' are required"
                 response_data = {"status": "error", "error_message": err_details}
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
@@ -1463,10 +1482,13 @@ class ApiRouting:
             try:
                 del pars_dict["category_uri"]
                 del pars_dict["class_name"]
-                del pars_dict["insert_after"]
+                del pars_dict["insert_after_uri"]
+                if "insert_after_class" in pars_dict:
+                    del pars_dict["insert_after_class"]
 
                 #print("Creating new Content Item with following properties: ", pars_dict)
-                payload = DataManager.add_new_content_item_to_category(category_uri=category_uri, class_name=class_name, insert_after=insert_after,
+                payload = DataManager.add_new_content_item_to_category(category_uri=category_uri, class_name=class_name,
+                                                                       insert_after_uri=insert_after_uri, insert_after_class=insert_after_class,
                                                                        item_data=pars_dict)     # It returns the URI of the newly-created Data Node
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
@@ -2199,7 +2221,7 @@ class ApiRouting:
         @login_required
         def upload_media():
             """
-            Upload new media Content, to the (currently hardwired) media folder, and attach it to the Category
+            Upload new media Content, to the (specified or default) media folder, and attach it to the Category
             specified in the POST variable "category_id"
 
             USAGE EXAMPLE:
@@ -2207,27 +2229,30 @@ class ApiRouting:
                     <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
                     <input type="submit" value="Upload your file">
                     <input type='hidden' name='category_id' value='123'>
-                    <input type='hidden' name='insert_after' value='rs-2'>
+                    <input type='hidden' name='insert_after_uri' value='rs-2'>
+                    <input type='hidden' name='insert_after_class' value='Recordset'>
                     <input type='hidden' name='upload_folder' value='documents/Ebooks & Articles'>      <!-- OPTIONAL -->
                 </form>
+
+            The 'insert_after_uri' attribute also can take the special values 'INSERT_AT_BOTTOM' or 'INSERT_AT_TOP'
         
-            (Note: the "Dropzone" front-end module invokes this handler in a similar way)
+            (Note: the "Dropzone" front-end module invokes this handler in a similar way,
+                   and in particular uses name="file")
         
             If the upload is successful, a normal status (200) is returned (no response data);
                 in case of error, a server error status is return (500), with a text error message
             """
             # TODO: move a lot of this function to MediaManager
-            # TODO: media is currently added in a fixed position at the END of the Category page
             # TODO: media is currently added to a folder determined by its media type
 
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('category_id', '3677'),
-                                        #                              ('insert_after', 'rs-2'),
+                                        #                              ('insert_after_uri', 'rs-2'),
                                         #                              ('upload_folder', 'documents/Ebooks & Articles')])
         
             print("Uploading media content thru upload_media()")
             #print("Raw POST data: ", post_data)
-            print("POST variables: ", dict(post_data))  # EXAMPLE: {'category_id': '3677', 'insert_after': 'rs-2',
+            print("POST variables: ", dict(post_data))  # EXAMPLE: {'category_id': '3677', 'insert_after_uri': 'rs-2',
                                                         #           'upload_folder': 'documents/Ebooks & Articles'}
                                                         # Note that 'upload_folder' is optional
         
@@ -2310,16 +2335,18 @@ class ApiRouting:
             # Update the database
             # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
             try:
-                insertion_location = post_data.get('insert_after')
-                if insertion_location == "INSERT_AT_BOTTOM" or not insertion_location:
-                    print(f"    Inserting new Media Item at bottom of Category page")
+                insertion_location = post_data.get('insert_after_uri')
+                insertion_class = post_data.get('insert_after_class')
+                if (insertion_location == "INSERT_AT_BOTTOM") or (not insertion_location) or (not insertion_class):
+                    # Note: in case the insertion position isn't fully specified, the Item will inserted at the bottom of the Category Page
+                    print(f"    Inserting new Media Item at *bottom* of the Category page")
                     new_uri = Categories.add_content_at_end(category_uri=category_uri,
                                                             item_class_name=class_name, item_properties=properties)
                 else:
                     print(f"    Inserting new Media Item after Category page element with URI `{insertion_location}`")
                     new_uri = Categories.add_content_after_element(category_uri=category_uri,
                                                                    item_class_name=class_name, item_properties=properties,
-                                                                   insert_after=insertion_location)
+                                                                   insert_after_uri=insertion_location, insert_after_class=insertion_class)
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Document":    # TODO: move to plugin_support.py

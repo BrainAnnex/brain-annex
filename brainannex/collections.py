@@ -183,6 +183,31 @@ class Collections:
 
 
     @classmethod
+    def link_to_collection_after_element(cls, item_uri :str, collection_uri :str, membership_link_name :str,
+                                         insert_after_uri :str, insert_after_class :str) -> None:
+        """
+        TODO: NOT YET IMPLEMENTED!
+
+        :param item_uri:            The URI of an existing Data Node representing a "Collection Item"
+                                        (for example, a "photo in an album" or a "content item in a category page")
+        :param collection_uri:      The URI of an existing Collection Data Node
+                                        (for example, a "photo album" or "category page")
+        :param membership_link_name:The name to give to the new relationship to be created
+                                        in the direction from the "Collection Item" to the Collection node
+
+        :param insert_after_uri:    The URI of the element after which we want to insert
+        :param insert_after_class:  The name of the Class of the element after which we want to insert.
+                                        Note: (Class + URI) provides a unique identifier
+
+        :return:                    None
+        """
+        # TODO: model after link_to_collection_at_end(), with a database lock;
+        #       see also the deprecated add_to_collection_after_element()
+        pass
+
+
+
+    @classmethod
     def link_to_collection_at_end(cls, item_uri :str, collection_uri :str, membership_link_name :str) -> None:
         """
         Given an existing Data Node (regarded as a "Collection Item"),
@@ -194,7 +219,9 @@ class Collections:
         Note: a database lock is used to deal with multiple concurrent calls.
 
         :param item_uri:            The URI of an existing Data Node representing a "Collection Item"
+                                        (for example, a "photo in an album" or a "content item in a category page")
         :param collection_uri:      The URI of an existing Collection Data Node
+                                        (for example, a "photo album" or "category page")
         :param membership_link_name:The name to give to the new relationship to be created
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    None
@@ -205,13 +232,13 @@ class Collections:
 
         # TODO: validate more thoroughly the URI's
         assert item_uri, \
-            "link_to_collection_at_end: Missing `item_uri` argument"
+            "link_to_collection_at_end(): Missing `item_uri` argument"
 
         assert collection_uri, \
-            "link_to_collection_at_end: Missing `collection_uri` argument"
+            "link_to_collection_at_end(): Missing `collection_uri` argument"
 
         assert membership_link_name, \
-            "link_to_collection_at_end: Missing `item_uri` membership_rel_name"
+            "link_to_collection_at_end(): Missing `item_uri` membership_rel_name"
 
         # Database update, with a DATA LOCK to protect against multiple concurrent calls,
         # that locates the next-available "pos" number, and creates a relationship using it.
@@ -458,6 +485,8 @@ class Collections:
             '''
         data_binding = {"collection_id": collection_uri}
 
+        #cls.db.debug_print(q, data_binding, "add_to_collection_at_end", True)
+
         max_pos = cls.db.query(q, data_binding, single_cell="max_pos")  # This will be None if the Collection has no elements
 
         if max_pos is None:
@@ -467,17 +496,6 @@ class Collections:
 
         data_binding = item_properties
 
-        #cls.db.debug_print(q, data_binding, "add_to_collection_at_end", True)
-        '''
-        return GraphSchema.add_data_point_OLD(class_name=item_class_name,
-                                            data_dict=data_binding,
-                                            labels=["BA", item_class_name],
-                                            connected_to_id=collection_uri, connected_to_labels="BA",
-                                            rel_name=membership_rel_name,
-                                            rel_prop_key="pos", rel_prop_value=pos,
-                                            new_uri=new_uri
-                                            )
-        '''
         collection_id = GraphSchema.get_data_node_internal_id(uri=collection_uri)
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=data_binding,
@@ -493,24 +511,34 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_after_element(cls, collection_uri :str, membership_rel_name: str,
-                                        item_class_name: str, item_properties: dict, insert_after :str,
+    def add_to_collection_after_element(cls, collection_uri :str, collection_class :str,
+                                        membership_rel_name: str,
+                                        item_class_name: str, item_properties: dict,
+                                        insert_after_uri :str, insert_after_class :str,
                                         new_uri=None) -> str:
         """
-        Create a new data node, of the class specified in item_class_name, and with the given properties -
+        Create a new Data Node, of the class specified in `item_class_name`, and with the given properties -
         and add to the specified Collection, linked by the specified relationship and inserted after the given collection Item
         (in the context of the positional order encoded in the relationship attribute "pos")
 
         :param collection_uri:      The uri of a data node whose schema is an instance of the Class "Collections"
+        :param collection_class:    For example, "Category"
+
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply
         :param item_class_name:     Name of the Class for the newly-created node
         :param item_properties:     Dictionary with the properties of the newly-created node
-        :param insert_after:        The URI of the element after which we want to insert
+
+        :param insert_after_uri:    The URI of the element after which we want to insert
+        :param insert_after_class:  The name of the Class of the element after which we want to insert.
+                                        Note: (Class + URI) provides a unique identifier
+
         :param new_uri:             Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
-        #TODO:  the Data Node creation perhaps should be done ahead of time, and doesn't need to be the responsibility of this class!
+        #TODO: the Data Node creation perhaps should be done ahead of time,
+        #       and doesn't need to be the responsibility of this class!  Switch over as soon as link_to_collection_after_element()
+        #       gets implemented.
         #TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in link_to_collection_at_end()
@@ -519,12 +547,14 @@ class Collections:
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
-        assert type(insert_after) == str, "The argument `insert_after` MUST be a string"
+        assert type(insert_after_uri) == str, "The argument `insert_after_uri` MUST be a string"
 
+        # Match the 1st Content Item (node `n_after`) whose position value in the links to the give Collection is greater than
+        # the position value from the specified "Insert After" node (`n_before`)
         q = f'''
-        MATCH (n_before :BA {{uri: $insert_after}})-[r_before :{membership_rel_name}] 
-                    -> (c :BA {{uri: $collection_id}}) <-
-                                            [r_after :{membership_rel_name}]-(n_after :BA)
+        MATCH (n_before :`{insert_after_class}` {{uri: $insert_after_uri}}) - [r_before :{membership_rel_name}] 
+                    -> (c :`{collection_class}` {{uri: $collection_id}})
+                    <-  [r_after :{membership_rel_name}] - (n_after)
         WHERE r_after.pos > r_before.pos
         RETURN r_before.pos AS pos_before, r_after.pos AS pos_after
         ORDER BY pos_after
@@ -532,18 +562,19 @@ class Collections:
         '''
         #EXAMPLE:
         '''
-        MATCH (n_before :BA {uri: 717})-[r_before :BA_in_category] -> (c :BA {uri: 708}) <-[r_after :BA_in_category]-(n_after :BA)
+        MATCH (n_before :`Header` {uri: '717'}) - [r_before :BA_in_category] -> (c :`Category` {uri: '708'}) <- [r_after :BA_in_category] - (n_after)
         WHERE r_after.pos > r_before.pos
         RETURN r_before.pos AS pos_before, r_after.pos AS pos_after
         ORDER BY pos_after
         LIMIT 1
         '''
 
-        data_binding = {"collection_id": collection_uri, "insert_after": insert_after}
+        data_binding = {"collection_id": collection_uri, "insert_after_uri": insert_after_uri}
+        #cls.db.debug_print_query(q, data_binding)
 
         # ALTERNATE WAY OF PHRASING THE QUERY:
         '''
-        MATCH (n_before:BA {uri: 717})-[r_before :BA_in_category] -> (c:BA {uri: 708}) <- [r_after :BA_in_category]-(n_after :BA)
+        MATCH (n_before :`Header` {uri: '717'}) - [r_before :BA_in_category] -> (c :`Category` {uri: '708'}) <- [r_after :BA_in_category] - (n_after)
         WITH r_before.pos AS pos_before, r_after
         WHERE r_after.pos > pos_before
         RETURN pos_before, r_after.pos AS pos_after
@@ -552,39 +583,36 @@ class Collections:
         '''
 
         result = cls.db.query(q, data_binding, single_row=True)
-        print("In add_to_collection_after_element(): result = ", result)
+        #print("In add_to_collection_after_element(): query result = ", result)
+
         if result is None:
             # An empty find is indicative of either an "insert at the end" (no n_after found),
-            #       or a bad insert_after value that matches no node
-            node = GraphSchema.get_single_data_node(node_id=insert_after, id_key="uri", class_name=item_class_name)
-            if node is None:
-                raise Exception(f"There is no node of class `{item_class_name}` with the `uri` value ({insert_after}) passed by `insert_after`")
+            #       or a bad insert_after_uri value that matches no node
 
-            print("It's case of 'insert AT THE END'")
-            return cls.add_to_collection_at_end(collection_uri, membership_rel_name, item_class_name, item_properties, new_uri=new_uri)
+            # Try to locate that Content Item node that we were supposed to try to insert after
+            node = GraphSchema.get_single_data_node(node_id=insert_after_uri, id_key="uri", class_name=insert_after_class)
+            if node is None:
+                raise Exception(f"There is no node of class `{insert_after_class}` with the `uri` value ({insert_after_uri}) that was passed by `insert_after_uri`")
+
+            #print("    It's case of 'insert AT THE END'")
+            return cls.add_to_collection_at_end(collection_uri=collection_uri, membership_rel_name=membership_rel_name,
+                                                item_class_name=item_class_name, item_properties=item_properties,
+                                                new_uri=new_uri)
 
 
         pos_before = result["pos_before"]
         pos_after = result["pos_after"]
+        #print(f"    pos_before: {pos_before} | pos_after: {pos_after}")
 
         if pos_after == pos_before + 1:
             # There's no room; shift everything that is past that position, by a count of DELTA_POS
-            print(f"********* SHIFTING DOWN ITEMS whose `pos` value is {pos_after} and above  ***********")
+            #print(f"    SHIFTING DOWN ITEMS whose `pos` value is {pos_after} and above  ***********")
             cls.shift_down(collection_id=collection_uri, membership_rel_name=membership_rel_name, first_to_move=pos_after)
             new_pos = pos_before + int(cls.DELTA_POS/2)			# This will be now be the empty halfway point
         else:
             new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
 
-        '''
-        return GraphSchema.add_data_point_OLD(class_name=item_class_name,
-                                            data_dict=item_properties,
-                                            labels=["BA", item_class_name],
-                                            connected_to_id=collection_uri, connected_to_labels="BA",
-                                            rel_name=membership_rel_name,
-                                            rel_prop_key="pos", rel_prop_value=new_pos,
-                                            new_uri=new_uri
-                                            )
-        '''
+
         collection_id = GraphSchema.get_data_node_internal_id(uri=collection_uri)
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=item_properties,

@@ -4,7 +4,12 @@
 Vue.component('vue-plugin-cd',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  index:          The zero-based position of the Record on the page
+        /*  item_data:      An object with the relevant data about this Content Item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created Content Item, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
+            index:          The zero-based position of the Record on the page
             edit_mode:      A boolean indicating whether in editing mode
             item_count:     The total number of Content Items (of all types) on the page
          */
@@ -130,13 +135,15 @@ Vue.component('vue-plugin-cd',
             save()
             {
                 // Start the body of the POST to send to the server
-                post_body = "schema_code=" + this.current_data.schema_code;
+                post_body = "class_name=" + this.current_data.class_name;
 
                 if (this.item_data.uri < 0)  {     // The negative URI is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
                     post_body += "&category_id=" + this.category_id;
-                    const insert_after = this.item_data.insert_after;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    post_body += "&insert_after=" + insert_after;
+                    const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
+                    post_body += "&insert_after_uri=" + insert_after_uri;
+                    post_body += "&insert_after_class=" + insert_after_class;
 
                     url_server = `/BA/api/add_item_to_category`;     // URL to communicate with the server's endpoint
                 }

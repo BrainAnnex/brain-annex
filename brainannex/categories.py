@@ -1081,22 +1081,36 @@ class Categories:
 
 
     @classmethod
-    def add_content_after_element(cls, category_uri :str, item_class_name: str, item_properties: dict, insert_after :str, new_uri=None, namespace="data_node") -> str:
+    def add_content_after_element(cls, category_uri :str,
+                                  item_class_name: str, item_properties: dict,
+                                  insert_after_uri :str, insert_after_class :str,
+                                  new_uri=None, namespace="data_node") -> str:
         """
-        Add a NEW Content Item, with the given properties and Class, inserted into the given Category after the specified Item
-        (in the context of the positional order encoded in the relationship attribute "pos")
+        Add a NEW Content Item, with the given properties and Class,
+        positionally inserted into the given Category Page after the specified Item
+        (in the context of the positional order encoded in the "BA_in_category" relationship attribute "pos")
 
-        :param category_uri:    String with a unique "uri" identified of the Category
+        :param category_uri:    String with a unique "uri" identifying the Category
                                     to which this new Content Media is to be attached
-        :param item_class_name: For example, "Image"
-        :param item_properties: A dictionary with keys specific to the new Content Item,
-                                    such as "width", "height", "caption", "basename", "suffix" (TODO: verify against schema)
-        :param insert_after:    The URI of the element after which we want to insert
-        :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
-                                    but it can also be provided (if provided, it MUST be unique)
-        :param namespace:       Only applicable if new_uri is None : the namespace to use for automatically generating a URI
+
+        :param item_class_name: Class of the Content Item being added.  For example, "Image"
+        :param item_properties: A dictionary with keys specific to the new Content Item
+                                    (and depending on its Class),
+                                    such as "width", "height", "caption", "basename", "suffix"
+
+        :param insert_after_uri:    The URI of the Content Item after which we want to insert,
+                                        in the context of the given Category Page
+        :param insert_after_class:  The name of the Class of the element after which we want to insert.
+                                        Note: (Class + URI) provides a unique identifier of the Item.
+
+        :param new_uri:         [OPTIONAL] If None (default) then the new Item URI is auto-generated,
+                                    but it can also be provided (if provided, it MUST be unique for its Class name)
+        :param namespace:       Only applicable if `new_uri` is None : the namespace to use for automatically generating a URI
+
         :return:                The auto-increment "uri" assigned to the newly-created data node
         """
+        # TODO: verify `item_properties` against the new Item's schema
+
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
@@ -1106,9 +1120,10 @@ class Categories:
         # TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in add_content_at_end()
-        new_uri = Collections.add_to_collection_after_element(collection_uri=category_uri, membership_rel_name="BA_in_category",
+        new_uri = Collections.add_to_collection_after_element(collection_uri=category_uri, collection_class="Category",
+                                                              membership_rel_name="BA_in_category",
                                                               item_class_name=item_class_name, item_properties=item_properties,
-                                                              insert_after=insert_after,
+                                                              insert_after_uri=insert_after_uri, insert_after_class=insert_after_class,
                                                               new_uri=new_uri)
         return new_uri
 
