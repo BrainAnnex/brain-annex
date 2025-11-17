@@ -2,7 +2,7 @@
 ####  WARNING : the database will get erased!!!
 
 import pytest
-from brainannex import graphaccess as neo_access
+from brainannex import graph_access as neo_access
 from utilities.comparisons import *
 
 

@@ -4,7 +4,12 @@
 Vue.component('vue-plugin-rs',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:      EXAMPLE :    {class_name:"Recordset",
+        /*  item_data:      An object with the relevant data about this Recordset item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created header, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
+                                EXAMPLE :    {class_name:"Recordset",
                                           class:"YouTube Channel"
                                           n_group:10,
                                           order_by:"name",
@@ -628,7 +633,8 @@ Vue.component('vue-plugin-rs',
                     var url_server_api = "/BA/api/add_item_to_category_JSON";
                     var post_obj = {category_uri: this.category_id,
                                     class_name: this.item_data.class_name,
-                                    insert_after: this.item_data.insert_after,   // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                                    insert_after_uri: this.item_data.insert_after_uri,      // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                                    insert_after_class: this.item_data.insert_after_class,  // Class of Content Item to insert after
 
                                     // Node properties (in particular,
                                     //     note that "class" and "label" are properties, not Schema data)

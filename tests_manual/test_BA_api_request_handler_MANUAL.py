@@ -1,6 +1,6 @@
 import pytest
 from neoaccess import GraphAccess
-from brainannex.graphschema.neo_schema import GraphSchema
+from brainannex.graph_schema.neo_schema import GraphSchema
 from brainannex.data_manager import DataManager
 from brainannex.categories import Categories
 from brainannex.media_manager import ImageProcessing

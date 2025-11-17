@@ -4,9 +4,14 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*   item_data:  EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm",
+        /*   item_data:  An object with the relevant data about this Note item;
+                                if the "uri" attribute is negative,
+                                it means that it's a newly-created Content Item, not yet registered with the server
+                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+
+                        EXAMPLE: {"uri":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm",
                                    "class_name":"Note","title":"My TO-DO list"}
-                                  (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
+
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this Note is displayed (used when creating new documents)
             index:          The zero-based position of this Document on the page
@@ -336,11 +341,13 @@ Vue.component('vue-plugin-n',
                 var post_obj = {schema_code: this.item_data.schema_code};
 
                 if (noteID < 0)  {	// Add NEW note
-                    const insert_after = this.item_data.insert_after;   // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
 
                     post_obj.category_id = this.category_id;
                     post_obj.body = newBody;
-                    post_obj.insert_after = insert_after;
+                    post_obj.insert_after_uri = insert_after_uri;
+                    post_obj.insert_after_class = insert_after_class;
                     post_obj.class_name = this.item_data.class_name;
                     if (this.current_data['title'] != "")
                         post_obj.title = this.current_data['title'];        // TODO: implement a title creator, if not supplied by user

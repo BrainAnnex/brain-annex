@@ -2,7 +2,7 @@
 
 import pytest
 from neoaccess import GraphAccess
-from brainannex.graphschema.neo_schema import GraphSchema
+from brainannex.graph_schema.neo_schema import GraphSchema
 
 
 

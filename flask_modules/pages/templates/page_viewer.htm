@@ -288,10 +288,10 @@
             v-on:delete-content-item
             v-on:move-up-content-item
             v-on:move-down-content-item
-        Originating in *direct children* compoments:
+        Originating in *direct children* components:
             v-on:cancel-edit
             v-on:updated-item
-            v-on:insert-new-item
+            v-on:insert-new-item-after
      -->
 
 <template v-if="expose_controls && !bulk_operations"  v-for="(item, index) in content_array">
@@ -316,7 +316,7 @@
         v-on:relocate-content-item="relocate_content_item(item, $event)"
         v-on:cancel-edit="cancel_edit(item)"
         v-on:updated-item="absorb_item_updates(item, $event)"
-        v-on:insert-new-item="insert_new_item_after(item, $event)"
+        v-on:insert-new-item-after="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
 
@@ -412,7 +412,7 @@
             v-on:relocate-content-item="relocate_content_item(item, $event)"
             v-on:cancel-edit="cancel_edit(item)"
             v-on:updated-item="absorb_item_updates(item, $event)"
-            v-on:insert-new-item="insert_new_item_after(item, $event)"
+            v-on:insert-new-item-after="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
 
@@ -468,7 +468,7 @@
                 {% endfor %}
             </select>
             <input type='hidden' name='category_id' value='{{category_uri}}'>
-            <input type='hidden' name='insert_after' value='INSERT_AT_BOTTOM'>
+            <input type='hidden' name='insert_after_uri' value='INSERT_AT_BOTTOM'>
         </form>
 
         <!--  The "DONE" button simply reloads the viewer page -->
@@ -701,7 +701,7 @@ new Vue({
     methods:  {
 
         bulk_checkbox_clicked(uri)
-        // Invoked whenever the user clicks on any of the bulk-edit checkboxes
+        // Invoked whenever the user clicks on any of the checkboxes visible while in bulk-edit mode
         {
             //console.log(`Clicked checkbox for Content Item with URI: '${uri}'`);
 
@@ -922,25 +922,25 @@ new Vue({
         {
             //console.log(item);
             console.log(`In root component, insert_new_item_after()`);
-            console.log(`    Insert after Item URI '${item.uri}'. New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
+            console.log(`    Insert after Item URI '${item.uri}' of class '${item.class_name}'. New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
 
-            this.create_new_item_after(item.uri, schema_code, class_name);
+            this.create_new_item_after(item.uri, item.class_name, schema_code, class_name);
         },
 
 
-        create_new_item_after(insert_after_uri, schema_code, class_name)
-        /*  Create an empty new record (JS object), with the given schema_code and class_name,
+        create_new_item_after(insert_after_uri, insert_after_class, schema_code, class_name)
+        /*  Create an empty new record (JS object), with the given `schema_code` and `class_name`,
             to be placed after the specified Content Item on the current Category-viewer page.
-            Insert the newly-created record in the appropriate location on the global this.content_array ;
+            Insert the newly-created record in the appropriate location on the global `this.content_array` ;
             this insertion will trigger a Vue re-draw across the page and its components.
          */
         {
-            console.log(`In root component, create_new_item_after().  insert_after_uri: '${insert_after_uri}' | schema_code: '${schema_code}' |  class_name: '${class_name}'`);
+            console.log(`In root component, create_new_item_after().  insert_after_uri: '${insert_after_uri}' | insert_after_class: '${insert_after_class}' | schema_code: '${schema_code}' |  class_name: '${class_name}'`);
 
-            const insert_after_index = this.locate_item_simplified(insert_after_uri);
-            console.log(`    Content Item located in position ${insert_after_index}`);
+            const insert_after_uri_index = this.locate_item_simplified(insert_after_uri, insert_after_class);
+            console.log(`    Content Item located in position ${insert_after_uri_index}`);
 
-            if (insert_after_index == -1)  {
+            if (insert_after_uri_index == -1)  {
                 alert("Unable to locate the element after which to insert. Maybe a change was made on a separate tab...  Try refreshing the page");
                 return;
             }
@@ -948,16 +948,17 @@ new Vue({
             // Assemble the data for a new Content Item.
             // Using an auto-incremented negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)     // If a class name was passed, store it
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: insert_after_uri};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
             else  {               // No class name was provided.  TODO: obsolete - this branch no longer in use
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: insert_after_uri};
-                alert("create_new_item_after(): adding new Content Item that lacks a Class name");
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
+                alert("create_new_item_after(): adding new Content Item that lacks a Class name!");
             }
 
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
-            // Insert the newly-created record after the specified existing element
-            this.content_array.splice(insert_after_index + 1, 0, blank_record);
+            // Insert the newly-created record after the specified existing element.  This change will be detected by Vue,
+            // and will cause the insertion of a new 'vue-content-items' component
+            this.content_array.splice(insert_after_uri_index + 1, 0, blank_record);
 
             // Note: the new Content Item will now appear in editing mode in its handler Vue component,
             //       but not yet added to the database; it will be the Vue component's responsibility to save it,
@@ -976,9 +977,9 @@ new Vue({
 
             // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
             if (class_name)   // If a class name was passed, store it
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after: "BOTTOM"};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: "BOTTOM"};
             else {            // No class name was provided.  TODO: obsolete - this branch no longer in use
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after: "BOTTOM"};
+                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after_uri: "BOTTOM"};
                 alert("add_new_item_at_bottom(): adding new Content Item that lacks a Class name");
             }
 
@@ -993,8 +994,8 @@ new Vue({
         delete_content_item(item)
         // Delete from the page and from the database the specified Content Item
         {
-            console.log(`delete_content_item(): Root element received signal to delete content item of class '${item.class_name}' , uri '${item.uri}'`);
-            const index = this.locate_item_simplified(item.uri);
+            console.log(`delete_content_item(): Root element received signal to delete content item of Class '${item.class_name}' , uri '${item.uri}'`);
+            const index = this.locate_item_simplified(item.uri, item.class_name);
             console.log(`delete_content_item(): Content item located in position ${index}`);
 
             if (index == -1)  {
@@ -1186,7 +1187,7 @@ new Vue({
 
             let updated_record = Object.assign({}, new_data);      // Start with a clone of the record with the new data
             // This object will replace the element in content_array at our index position
-            // (to later do a complete array element replacement for Vue reactivity)
+            // (further below, we do a complete array element replacement for Vue reactivity)
 
             // Restore the special control keys "schema_code" and "class_name"
             // (because they were NOT returned by the `new_data` object that just got cloned)
@@ -1204,8 +1205,12 @@ new Vue({
             if ("pos" in item)
                 updated_record["pos"] = item.pos;
 
-            if ("insert_after" in updated_record)
-                delete updated_record.insert_after;    // Ditch ("insert_after" is a temporary value, not to be saved)
+            if ("insert_after_uri" in updated_record)
+                delete updated_record.insert_after_uri;     // Ditch ("insert_after_uri" is a temporary value, not to be saved)
+
+            if ("insert_after_class" in updated_record)
+                delete updated_record.insert_after_class;   // Ditch ("insert_after_class" is a temporary value, not to be saved)
+
 
             console.log(`   Updating the Content Item found in content_array at index: ${index}, with the following record:`);
             console.log(updated_record);
@@ -1293,7 +1298,7 @@ new Vue({
                 return;
             }
 
-            const i = this.locate_item_simplified(uri);     // Locate the specified Content Item in the array of Content Items
+            const i = this.locate_item_simplified(uri, item.class_name);     // Locate the specified Content Item in the array of Content Items
 
             if (i == -1)  {  // Not found
                 alert(`Item type '${schema_code}' , id ${uri} NOT found. Maybe was deleted in another browser tab? No action taken`);
@@ -1367,7 +1372,7 @@ new Vue({
 
 
 
-        locate_item_simplified(uri)
+        locate_item_simplified(uri, class_name)
         /*  Locate the specified Content Item in the array of Content Items.
             The item is identified by its uri.
             If found, return its index in the array (an int >= 0); otherwise, return -1
@@ -1376,12 +1381,12 @@ new Vue({
                   also include script src="/BA/pages/static/js/utilities.js"
          */
         {
-            //console.log(`Attempting to locate content item with uri '${uri}'`);
+            console.log(`Attempting to locate content item with uri '${uri}' and class_name '${class_name}'`);
 
             const number_items = this.content_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].uri == uri)
+                if (this.content_array[i].uri == uri  &&  this.content_array[i].class_name == class_name)
                     return i;          //  Found it
             }
 

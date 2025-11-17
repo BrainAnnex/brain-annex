@@ -3,7 +3,7 @@
 
 import pytest
 import json
-from brainannex import graphaccess as neo_access
+from brainannex import graph_access as neo_access
 from utilities.comparisons import compare_recordsets
 
 

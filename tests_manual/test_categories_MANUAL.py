@@ -1,6 +1,6 @@
 import pytest
 from neoaccess import GraphAccess
-from brainannex.graphschema.neo_schema import GraphSchema
+from brainannex.graph_schema.neo_schema import GraphSchema
 from brainannex.categories import Categories
 
 
@@ -81,7 +81,7 @@ def test_add_content_after_element(db):
     new_uri = \
         Categories.add_content_after_element(category_uri=708,
                                              item_class_name="Header", item_properties={"text": "Caption 4, inserted 'after element'"},
-                                             insert_after=729)
+                                             insert_after_uri=729)
     print("new_uri: ", new_uri)
 
 
