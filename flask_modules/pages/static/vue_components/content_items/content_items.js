@@ -80,7 +80,8 @@ Vue.component('vue-content-items',
             >
             </component>
 
-            <p v-if="show_button" class="confirm-question">Confirm DELETE (item URI '{{item.uri}}' of Class '{{item.class_name}}')?
+            <p v-if="show_button" class="confirm-question">Confirm DELETE
+                <br><span style="font-size:18px">(item URI '{{item.uri}}' of Class '{{item.class_name}}')</span>?
                 <button button @click="confirm_delete" class='confirm-button'>OK</button>
                 <button button @click="cancel_delete" class='cancel-button'>Cancel</button>
             </p>
@@ -256,21 +257,21 @@ Vue.component('vue-content-items',
                             + `immediately below Content Item URI '${this.item.uri}' of Class '${this.item.class_name}'`);
 
                 // Note that the ID of the Dropzone FORM element makes reference to the PREVIOUS Content Item; this ID is not actually used, but should be unique
-                // (if attempting to create it a second time, an error "Dropzone already attached" is generated - but it seems to cause no harm!)
+                // (if attempting to create it a second time, for example by closing and re-opening the add-content box,
+                //  an error "Dropzone already attached" is generated - but it seems to cause absolutely no harm!
 
                 //const uuid = crypto.randomUUID();                 // This approach did NOT work
                 //this.dropzone_id = "form#myDropzone_" + uuid;
                 //const dropzone_form_id = this.dropzone_id;
 
-                const dropzone_form_id = "form#myDropzone_" + this.item.uri;    // EXAMPLE: "form#myDropzone_h-86"   TODO: this ID might not be unique on a page; the URI might contain blanks
-                                                                                // TODO: try to switch to the Internal Database ID instead
-                                                                                // MUST match the value in the "v-bind:id" variable in form definition
+                const dropzone_form_id = "myDropzone_" + this.item.uri;     // EXAMPLE: "myDropzone_h-86"   TODO: this ID might not be unique on a page; the URI might contain blanks
+                                                                            // MUST match the value in the "v-bind:id" variable in form definition
+                                                                            // TODO: try to switch to the Internal Database ID instead
 
-                // If the Dropzone form element dropzone_form_id already exists (for example, if the insert box had previously been opened and then closed),
-                // then don't create it.  TODO: alternatively, destroy the Dropzone object  when the insert box is closed
-                if (! document.getElementById(dropzone_form_id)) {
+                // TODO: look into destroying the Dropzone object when the insert box is closed; should be able to do a:  myDropzone.destroy()
+                //if (! document.getElementById(dropzone_form_id)) {    // This approach removes the error message, BUT prevents the uploads from working!
                     console.log(`    will create a 'Dropzone' element with ID: '${dropzone_form_id}'`);
-                    var myDropzone = new Dropzone(dropzone_form_id);
+                    var myDropzone = new Dropzone("form#" + dropzone_form_id);
                     // IMPORTANT: for the above line to work, the DIV element that contains it must use
                     //            Vue conditional rendering with "v-show" rather than "v-if"
 
@@ -279,7 +280,7 @@ Vue.component('vue-content-items',
                     myDropzone.on("success", this.dropzoneHandler_success);              // The file has been uploaded successfully
                     myDropzone.on("queuecomplete", this.dropzoneHandler_queuecomplete);  // All files in the queue finish uploading
                     myDropzone.on("error", this.dropzoneHandler_error);                  // If the server returns anything other than a normal status
-                }
+                //}
             },
 
 

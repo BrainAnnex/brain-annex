@@ -135,7 +135,7 @@ Vue.component('vue-plugin-cd',
             save()
             {
                 // Start the body of the POST to send to the server
-                post_body = "schema_code=" + this.current_data.schema_code;
+                post_body = "class_name=" + this.current_data.class_name;
 
                 if (this.item_data.uri < 0)  {     // The negative URI is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items

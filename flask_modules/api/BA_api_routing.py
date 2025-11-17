@@ -65,7 +65,7 @@ class ApiRouting:
 
 
     # NOTE: To test POST-based web APIs, on the Linux shell or Windows PowerShell issue commands such as:
-    #            curl http://localhost:5000/BA/api/add_item_to_category -d "schema_uri=1&category_uri=60"
+    #            curl http://localhost:5000/BA/api/add_item_to_category -d "class_name=Image&category_uri=60"
 
     # TODO: provide support for API_KEY (or API_TOKEN) authentication
 
@@ -1385,25 +1385,28 @@ class ApiRouting:
             POST FIELDS:
                 category_id         URI identifying the Category to which attach the new Content Item
                 class_name          The name of the Class of the new Content Item
-                insert_after_uri        Either an URI of an existing Content Item attached to this Category,
+                insert_after_uri    Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
-                insert_after_class
+                insert_after_class  The name of the Class of the preceding Content Item, if applicable
                 *PLUS* any applicable plugin-specific fields
 
             RETURNED PAYLOAD (on success):
                 The URI of the newly-created Data Node
             """
+            # TODO: possibly phase out in favor of '/add_item_to_category_JSON' (below)
             # TODO: switch from "category_id" to "category_uri"
             # TODO: also return the newly-assigned "pos" value
             # Extract the POST values
             post_data = request.form
-            # Example: ImmutableMultiDict([('category_id', '123'), ('schema_code', 'h'), ('class_name', 'Header'),
-            #                              ('insert_after_uri', '5'), ('text', 'My Header')])
+            # Example: ImmutableMultiDict([('category_id', '123'), ('class_name', 'Header'),
+            #                              ('insert_after_uri', 'i-5'), ('insert_after_class', 'Image'), ('text', 'My Header')])
             #cls.show_post_data(post_data, "add_item_to_category")
         
             # Create a new Content Item with the POST data
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'insert_after_uri', 'class_name'])
+                #print("/add_item_to_category - pars_dict: ", pars_dict)
+                # EXAMPLE: {'class_name': 'Header', 'category_id': '1', 'insert_after_uri': 'BOTTOM', 'text': 'My Header'}
                 payload = DataManager.new_content_item_in_category(pars_dict)        # The URI of the newly-created Data Node
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
@@ -1432,15 +1435,27 @@ class ApiRouting:
             KEYS in the JSON-encoded dict:
                 category_uri        URI identifying the Category to which attach the new Content Item
                 class_name          The name of the Class of the new Content Item
-                insert_after_uri        Either an URI of an existing Content Item attached to this Category,
-                                    or one of the special values "TOP" or "BOTTOM"
-                insert_after_class
+                insert_after_uri    Either an URI of an existing Content Item attached to this Category,
+                                        or one of the special values "TOP" or "BOTTOM"
+                insert_after_class  [OPTIONAL] The name of the Class of the preceding Content Item, if applicable
                 *PLUS* any applicable plugin-specific fields
 
             RETURNED PAYLOAD (on success):
                 The URI of the newly-created Data Node
             """
-            #TODO: explore more Schema enforcements
+            #TODO:
+            '''
+            A possible general API design:
+                required_fields = ["category_uri", "class_name", "insert_after_uri"]
+                other_fields = ["insert_after_class"]
+                allow_extra_fields = True
+                handler = DataManager.add_new_content_item_to_category
+                
+            Then it automatically does field extraction and presence check,
+            and finally makes a call to:  
+                handler(category_uri=..., class_name=..., insert_after_uri=..., insert_after_class=...,
+                        extra_fields=<the remaining dict>)   
+            '''
 
             # Extract and parse the POST value
             pars_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
@@ -1453,8 +1468,9 @@ class ApiRouting:
             category_uri = pars_dict.get('category_uri')
             class_name = pars_dict.get('class_name')
             insert_after_uri = pars_dict.get('insert_after_uri')
-            insert_after_class = pars_dict.get('insert_after_class')
+            insert_after_class = pars_dict.get('insert_after_class')    # NOT required if `insert_after_uri` is "TOP" or "BOTTOM"
 
+            # TODO: this check for a required set of variables ought to be the ONLY responsibility of this layer!
             if not category_uri or not class_name or not insert_after_uri:
                 err_details = f"add_item_to_category_JSON(): some required parameters are missing; " \
                               f"'category_uri', 'class_name' and 'insert_after_uri' are required"
@@ -1467,6 +1483,8 @@ class ApiRouting:
                 del pars_dict["category_uri"]
                 del pars_dict["class_name"]
                 del pars_dict["insert_after_uri"]
+                if "insert_after_class" in pars_dict:
+                    del pars_dict["insert_after_class"]
 
                 #print("Creating new Content Item with following properties: ", pars_dict)
                 payload = DataManager.add_new_content_item_to_category(category_uri=category_uri, class_name=class_name,
