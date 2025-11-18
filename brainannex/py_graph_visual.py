@@ -317,7 +317,7 @@ class PyGraphVisual:
 
 
         if node_id in self._all_node_ids:
-            return      # Silently disregard duplicates
+            return      # Silently disregard duplicates.   TODO: use a "sorted list" for `self._all_node_ids`
 
         if properties is None:
             properties = {}
@@ -356,6 +356,7 @@ class PyGraphVisual:
 
         :return:            None
         """
+        # TODO: check if the edge already exists, with same name
         # TODO: unclear if edge id's are really needed by Cytoscape.js
 
         d = {"name": name, "source": from_node, "target": to_node}
@@ -376,7 +377,8 @@ class PyGraphVisual:
 
     def assign_caption(self, label :str, caption="name") -> None:
         """
-        Assign and store a mapping from label name to caption (name of field to use on the display)
+        Incrementally assign and store a mapping from label name to caption (name of field to use on the display).
+        Additional calls to this function will register further assignments.
 
         EXAMPLES:   assign_caption(label='PERSON', caption='name')
                     assign_caption(label='CAR', caption='color')
@@ -394,7 +396,8 @@ class PyGraphVisual:
 
     def assign_color_mapping(self, label :str, color :str) -> None:
         """
-        Assign and store a mapping from label name to color to use for nodes having that label
+        Incrementally assign and store a mapping from label name to color to use for nodes having that label.
+        Additional calls to this function will register further assignments.
 
         EXAMPLES:   assign_color_mapping(label='PERSON', color='purple')
                     assign_color_mapping(label='CAR', color='#FF0088')
@@ -416,13 +419,14 @@ class PyGraphVisual:
     ############   The methods below require a database connection   ############
 
 
-    def prepare_graph(self, result_dataset :[dict], add_edges=True) -> [int|str]:
+    def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
-        Given a list of dictionary data about graph-database nodes - for example,
+        Given a list of dictionary data containing the properties of graph-database nodes - for example,
         as returned by GraphAccess.get_nodes() - construct and save visualization data for them.
 
-        Each dictionary entry MUST have a key named "internal_id", and cannot have a key named "id" (the latter
-        is used by the visualization software.)
+        Each dictionary entry MUST have a key named "internal_id".
+        If any key named "id" is found, it get automatically renamed "id_original" (since "id" is used by the visualization software);
+        if "id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
         Though not required, a key named "node_labels" is typically present as well; if found, it will be renamed "labels".
 
         Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
@@ -430,27 +434,42 @@ class PyGraphVisual:
 
         :param result_dataset:  A list of dictionary data about graph-database nodes;
                                     each dict must contain an entry with the key "internal_id"
+        :param cumulative:
         :param add_edges:       If True, all existing edges among the displayed nodes
                                     will also be part of the visualization
+        :param avoid_links:     Name or list of name of links to avoid including
         :return:                A list of values with the internal databased IDs
                                     of all the nodes added to the graph structure
         """
         assert self.db, \
             "prepare_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
 
+        if not cumulative:
+            # Reset: clear out any previous graph-structure data, and reset edge number auto-increment
+            self.structure = []
+            self._all_node_ids = []
+            self._next_available_edge_id = 1
+
+
+        id_key_renaming = False
         node_list = []      # Running list of internal databased IDs, for nodes in `result_dataset`
         for node in result_dataset:
             internal_id = node.get("internal_id")
 
-            assert internal_id, \
+            assert internal_id is not None, \
                 f"prepare_graph() - the following record lacks the required `internal_id` key: {node}"
-
-            assert "id" not in node, \
-                f"prepare_graph() - keys named `id` are NOT allowed in records; found in: {node}"
 
             node_clone = node.copy()
 
             del node_clone["internal_id"]
+            
+            if "id" in node_clone:
+                assert "id_original" not in node_clone, \
+                    f"prepare_graph(): keys named `id` are routinely automatically renamed `id_original`, " \
+                    f"but the latter key also already exists!  Found in: {node}"
+                node_clone["id_original"] = node_clone["id"] 
+                del node_clone["id"]
+                id_key_renaming = True
 
             node_list.append(internal_id)
 
@@ -460,28 +479,48 @@ class PyGraphVisual:
             else:
                 labels = ""
 
+
             self.add_node(node_id=internal_id, labels=labels,
                           properties=self.db.sanitize_date_times(node_clone, drop_time=True))
 
 
         if add_edges:
             # Search the database for any edges among any of the nodes selected for the visualization
-            q = '''
+            exclude_clause = ""
+            if avoid_links:
+                if type(avoid_links) == str:
+                    avoid_links = [avoid_links]
+                else:
+                    assert type(avoid_links) == list,  \
+                        f"prepare_graph(): The argument `avoid_links`, if passed, must be a string or a list"
+
+                exclude_clause = f"AND NOT type(r) IN {avoid_links}"
+                
+                
+            q = f'''
                 MATCH (n1)-[r]->(n2) 
                 WHERE ID(n1) IN $node_list AND ID(n2) IN $node_list 
+                {exclude_clause}
                 RETURN DISTINCT id(n1) AS from_node, id(n2) AS to_node, 
                        type(r) AS rel_name, properties(r) AS rel_props
                 '''
 
+            #self.db.debug_print_query(q, {"node_list": node_list})
             result = self.db.query(q, {"node_list": node_list})
 
-            # TODO: sanitize the records!  See GraphAccess.standardize_recordset()
+
+            # "Sanitize" the records, as needed, i.e. make them suitable for JSON serialization, 
+            # in anticipation of eventually passing the data to JavaScript 
             for edge in result:
                 #print(edge)
                 edge_props = self.db.sanitize_date_times(edge["rel_props"], drop_time=True)
                 self.add_edge(from_node=edge["from_node"], to_node=edge["to_node"],
                               name=edge["rel_name"], properties=edge_props)
 
+        if id_key_renaming:
+            print("prepare_graph(): keys named `id` were found in one or more of the records; "
+                  "they were renamed `id_original` to avoid conflict with internal database IDs")
+            
         return node_list
 
 

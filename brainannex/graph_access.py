@@ -2682,7 +2682,7 @@ class GraphAccess(InterGraph):
             print("node_tabular_display(): EMPTY list of nodes.")
             return
 
-        feedback = "" if n_nodes <= limit else "  Showing the first {limit}"    # Give feedback about omission of results, if applicable
+        feedback = "" if n_nodes <= limit  else  f"  Showing the first {limit}"    # Give feedback about omission of results, if applicable
         print(f"node_tabular_display(): {n_nodes} node(s).  {feedback}\n")
 
 
