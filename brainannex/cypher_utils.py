@@ -709,7 +709,7 @@ class CypherUtils:
 
 
     @classmethod
-    def avoid_links_in_path(cls, avoid_links : None | str | list | tuple,
+    def avoid_links_in_path(cls, avoid_links : None|str|list|tuple,
                             path_dummy_name="p", prefix_and=False) -> str:
         """
         Create a clause for a Cypher query to traverse a graph while avoid links with specific names.
@@ -734,7 +734,7 @@ class CypherUtils:
                 substring = "' OR type(r) = '".join(avoid_links)    # Example:  "s1' OR type(r) = 's2"
                 clause = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{substring}')"
             case _ :
-                raise Exception(f"cypher_avoid_links(): argument `avoid_links`, if provided, "
+                raise Exception(f"avoid_links_in_path(): argument `avoid_links`, if provided, "
                             f"must be a string, or list/tuple of strings. The type passed was {type(avoid_links)}")
 
         if prefix_and:
