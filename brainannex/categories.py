@@ -102,12 +102,13 @@ class Categories:
         """
         Return the Name and Remarks field values attached to the given Category
 
-        :param category_uri:    A string identifying the desired Category
+        :param category_uri:    A string uniquely identifying the desired Category
         :return:                The Category's properties (or a blank dictionary if not found)
                                     EXAMPLES:   {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
                                                 {"uri": "1", "name": "HOME", "root": true}
         """
-        return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
+        #return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
+        return GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Category", search=("uri", category_uri))
 
 
 

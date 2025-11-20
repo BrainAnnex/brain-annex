@@ -923,7 +923,106 @@ def test__assemble_cypher_clauses():
 
 
 
-def test_get_data_node(db):
+def test_get_single_data_node_EXPERIMENTAL(db):
+    db.empty_dbase()
+
+    assert GraphSchema.get_single_data_node_EXPERIMENTAL(search=1234) is None      # Database is empty
+
+
+    # Create a 1st Car node
+    GraphSchema.create_class(name="Car", strict=False)
+
+    internal_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL(search=internal_id)
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL(search=internal_id, hide_schema=False)
+    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL(search={"key_name": "color", "key_value": "yellow",  "class_name": "Car"})
+    assert result is None   # Not found
+
+
+    # Create a 2nd Car node: another Toyota, but this time red
+    GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "red"})
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node_EXPERIMENTAL(search={"key_name": "color", "key_value": "Toyota"})  # Missing class_name
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL(search={"key_name": "color", "key_value": "white", "class_name": "Car"})   # Using "color" as primary key
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node_EXPERIMENTAL(search={"key_name": "make", "key_value": "Toyota", "class_name": "Car"})   # Using "make" as primary key will fail uniqueness
+
+
+    # Create a 3rd Car node, this time with a "uri" field
+    GraphSchema.create_data_node(class_name="Car",
+                                 properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL(search={"key_name": "uri", "key_value": "car-1", "class_name": "Car"})
+    assert result == {'color': 'blue', 'make': 'Honda', 'uri': 'car-1'}
+
+
+    # Now try it on a generic database node that is NOT a Data Node
+    internal_id = db.create_node(labels="Truck", properties={"make": "BMW", "color": "black"})
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL(search=internal_id)
+    #assert result is None
+
+
+
+def test_get_single_data_node_EXPERIMENTAL_2(db):
+    db.empty_dbase()
+
+    assert GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=1234, class_name="Unknown") is None      # Database is empty
+
+
+    # Create a 1st Car node
+    GraphSchema.create_class(name="Car", strict=False)
+
+    db_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=db_id, class_name="Car")
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=db_id, class_name="Car", hide_schema=False)
+    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=("color", "yellow"), class_name="Car")
+    assert result is None   # Not found
+
+
+    # Create a 2nd Car node: another Toyota, but this time red
+    GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "red"})
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=("color", "yellow")) # Missing class_name
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=("color", "white"), class_name="Car")   # Using "color" as primary key
+    assert result == {'color': 'white', 'make': 'Toyota'}
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=("make", "Toyota"), class_name="Car")   # Using "make" as primary key will fail uniqueness
+
+
+    # Create a 3rd Car node, this time with a "uri" field
+    GraphSchema.create_data_node(class_name="Car",
+                                 properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
+
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=("uri", "car-1"), class_name="Car")
+    assert result == {'color': 'blue', 'make': 'Honda', 'uri': 'car-1'}
+
+
+    # Now try it on a generic database node that is NOT a Data Node
+    db_id = db.create_node(labels="Truck", properties={"make": "BMW", "color": "black"})
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Truck", search=db_id)
+    assert result is None
+
+
+
+
+def test_get_single_data_node(db):
     db.empty_dbase()
 
     assert GraphSchema.get_single_data_node(node_id=1234) is None      # Database is empty
@@ -1013,6 +1112,49 @@ def test_data_node_exists(db):
 
     with pytest.raises(Exception):
         GraphSchema.data_node_exists(node_id=45, id_key="employee id", class_name="Employee")   # Bad primary key
+
+
+
+
+def test_data_node_exists_EXPERIMENTAL_2(db):
+    db.empty_dbase()
+
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=123, class_name="Unknown")
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("uri", "c-88"), class_name="Car")
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee")
+
+    with pytest.raises(Exception):
+        GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("uri", "c-88"), class_name="")     # Bad Class bane
+
+    with pytest.raises(Exception):
+        assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=([1, 2], 45), class_name="Employee")  # Bad value for "key_name" (1st element of pair)
+
+    GraphSchema.create_class(name="Car", strict = True)
+    internal_id = GraphSchema.create_data_node(class_name="Car", new_uri="c-88")
+    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=internal_id, class_name="Car")
+    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("uri", "c-88"), class_name="Car")
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("uri", "c-88"), class_name="BOAT")
+
+    GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
+    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
+    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee")
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 666),
+                                                           class_name="Employee")   # Non-existent node
+
+
+    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45, "remarks": "duplicate"})
+
+    # A non-unique search
+    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee",
+                                                       require_unique=False)
+    with pytest.raises(Exception):
+        GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee",
+                                                    require_unique=True)   # Bad primary key
+
+
+    # Now try it on a generic database node that is NOT a Data Node
+    internal_id = db.create_node(labels="Truck", properties={"make": "BMW"})    # NOT a Data Node
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=internal_id, class_name="Truck")
 
 
 
