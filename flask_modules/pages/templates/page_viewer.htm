@@ -365,11 +365,11 @@
     <p style="margin-top:0; margin-bottom:40px">
         <input type="checkbox"  v-bind:ref="item.uri"  @click="bulk_checkbox_clicked(item)">
 
-        <a v-if="!group_boundary" @click.prevent="contiguous_group(item, index)" href="#" style="margin-left: 15px">
+        <a v-if="group_boundary === null" @click.prevent="contiguous_group(item, index)" href="#" style="margin-left: 15px">
             Select the FIRST or LAST of a contiguous group
         </a>
 
-        <a v-if="group_boundary" @click.prevent="contiguous_group(item, index)" href="#" style="margin-left: 15px">
+        <a v-if="group_boundary !== null" @click.prevent="contiguous_group(item, index)" href="#" style="margin-left: 15px">
             Select the END of the contiguous group
         </a>
     </p>
@@ -686,6 +686,10 @@ new Vue({
         checkboxes_selected: [],    // Array of "pairs" of strings (i.e. 2-element arrays),
                                     //      containing the Class and URI of the Content Items selected for bulk operations
                                     //      EXAMPLE:  [ ["Site Link" , "8853"] , ["Recordset" , "rs-19"] ]
+        checkboxes_selected_new: [],    // ALTERNATE APPROACH, to preserve page order prior to sending request to server
+                                        // Array of index positions of the Content Items selected for bulk operations
+                                        // The order doesn't matter; it will be sorted prior to sending to server
+                                        // EXAMPLE:  [4, 0, 1, 9, 7, 8]
 
         group_boundary: null,       // The array index (in the array content_array) of
                                     //      the first or last Content Item selected in a contiguous group
@@ -741,6 +745,7 @@ new Vue({
             for (let i = 0; i < this.content_array.length; ++i)  {
                 let ci = this.content_array[i];
                 let uri = ci.uri;
+                console.log(`    resetting checkmark for URI "${uri}"`);
                 let checkbox_element_arr = this.$refs[uri];         // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
                                                                     // that we're looping over
                 //console.log(checkbox_element_arr);                // This reveals an array whose only entry is the <INPUT> element
@@ -790,12 +795,6 @@ new Vue({
                 */
 
                 this.add_new_checkbox_if_not_present(class_name, uri);
-                /*
-                console.log(`    adding Class/URI pair: ${[class_name, uri]}`);
-                this.checkboxes_selected.push([class_name, uri]); // Add a 2-element array to the end of `this.checkboxes_selected`
-                                                                  // Beware: the Vue devtools requires a refresh to
-                                                                  //         show the updated value!
-                */
             }
             else  {
                 console.log(`    removing Class/URI pair: '${[class_name, uri]}'`);
@@ -875,18 +874,20 @@ new Vue({
 
 
         contiguous_group(item, index)
-        // Invoked when user click on a link to select first or last of a group of checkboxes (for bulk operations)
+        // Invoked when user click on a link to select the first or last of a contiguous group of checkboxes (for bulk operations)
         {
-            //console.log(`Clicking next to item of index ${index} for bulk operations.  Item details:`);
+            console.log(`Clicking on link next to item of index ${index} for bulk operations.  Item Class name: "${item.class_name}" , URI: "${item.uri}"`);
+            //console.log(`Item details:`);
             //console.log(item);
+            console.log(`this.group_boundary = ${this.group_boundary}`);
 
             //console.log(this.$refs);                              // Shows an object whose keys are the uri's of
                                                                     // all the various <INPUT> elements that contain v-bind:ref="item.uri"
 
-            if (!this.group_boundary)  {
+            if (this.group_boundary === null)  {
                 const uri = item.uri;
                 const class_name = item.class_name;
-                console.log(`    checking box in index position ${index} for Content Item with URI '${uri}' from Class '${class_name}'`);
+                console.log(`    the link click is resulting in STARTING a contiguous group in index position ${index} for Content Item with URI '${uri}' from Class '${class_name}'`);
 
                 let checkbox_element_arr = this.$refs[uri];           // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
                                                                       // that corresponds to the link we clicked on
@@ -904,29 +905,27 @@ new Vue({
                 // by adding the [class_name, uri] pair, unless already present
                 this.add_new_checkbox_if_not_present(class_name, uri);
 
-                /*
-                console.log(`    adding Class/URI pair: ${[class_name, uri]}, *if* not already present`);
-                if (this.locate_pair([class_name, uri], this.checkboxes_selected) == -1)
-                    this.checkboxes_selected.push([class_name, uri]); // Add a 2-element array to the end of `this.checkboxes_selected`
-                                                                      // Beware: the Vue devtools requires a refresh to
-                                                                      //         show the updated value!
-                 */
                 this.group_boundary = index;        // Make a note of the index of the first group boundary (start or end of the contiguous block),
                                                     // to be used at the next link selection
             }
 
             else {
+                console.log(`    the link click is resulting in **ENDING** contiguous group in index position ${index} for Content Item with URI '${item.uri}' from Class '${item.class_name}'`);
                 // Select all Content Items, from index `this.group_boundary` to the `index` argument
                 var start_pos = Math.min(this.group_boundary, index);
                 var end_pos  =  Math.max(this.group_boundary, index);
 
+                console.log(`    now selecting all checkboxes from index position ${start_pos} to position ${end_pos}`);
+
                 for (let i = start_pos; i <= end_pos; ++i)  {
-                    if (i == this.group_boundary)
+                    if (i == this.group_boundary)  {
+                        console.log(`        skipping the already-handled boundary element of index ${i}`);
                         continue;       // Already handled it when first selected it
+                    }
 
                     let uri = this.content_array[i].uri;
                     let class_name = this.content_array[i].class_name;
-                    console.log(`    checking box in index position ${i} for Content Item with URI ${uri} from Class '${class_name}'`);
+                    console.log(`        checking box in index position ${i} for Content Item with URI ${uri} from Class '${class_name}'`);
 
                     let checkbox_element_arr = this.$refs[uri];           // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
                                                                           // that corresponds to the link we clicked on
@@ -942,13 +941,6 @@ new Vue({
 
                     // Update the array of URI's that are selected for the bulk-update operation
                     this.add_new_checkbox_if_not_present(class_name, uri);
-
-                    /*
-                    console.log(`    adding Class/URI pair: ${[class_name, uri]} to list of selected boxes`);
-                    this.checkboxes_selected.push([class_name, uri]); // Add a 2-element array to the end of `this.checkboxes_selected`
-                                                                      // Beware: the Vue devtools requires a refresh to
-                                                                      //         show the updated value!
-                    */
                 }
 
                 this.group_boundary = null;    // A fresh start for possible more selections of contiguous boxes
@@ -1019,9 +1011,9 @@ new Vue({
                 console.log("    updating page by removing items: ", this.checkboxes_selected);
                 // Update the page, by ditching the Content Items that were moved away
                 //for (var uri of this.checkboxes_selected) {     // Loop over the checkboxes that were selected
-                for (let i = 0 ; i < this.checkboxes_selected.length ; ++i)  {    // Loop over the checkboxes that were selected
-                    let [class_name , uri] = this.checkboxes_selected[i];   // Unpack the entries of the 2-element array
-                    let index = this.locate_item_simplified(uri, class_name);   // Find where the Content Item is stored in the array this.content_array
+                for (let i = 0 ; i < this.checkboxes_selected.length ; ++i)  {  // Loop over the checkboxes that were selected
+                    let [class_name , uri] = this.checkboxes_selected[i];       // Unpack the entries of the 2-element array
+                    let index = this.locate_item_simplified(uri, class_name);   // Find where the Content Item is stored within `this.content_array`
                     if (index == -1)  {     // Unexpected scenario where a Content Item can no longer be located on the page
                         alert("Unable to refresh the page; please try the refresh button on your browser");
                         return;
@@ -1031,7 +1023,9 @@ new Vue({
                 }
 
                 this.checkboxes_selected = [];          // Clear the data about the checkboxes that were selected
-                // Clear all checkmarks (some can be left behind)
+                // Clear all checkmarks
+                // (when page elements are taken out, checkmarks seem to "pass on" to the remaining elements in the same index positions)
+                console.log("Resetting all checkboxes as part of page refresh");
                 this.reset_checkboxes();
             }
             else  {                     // Server reported FAILURE

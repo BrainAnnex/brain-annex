@@ -752,9 +752,9 @@ Vue.component('vue-plugin-rs',
             finish_get_fields(success, server_payload, error_message)
             // Callback function to wrap up the action of get_fields() upon getting a response from the server
             {
-                console.log("Finalizing the get_fields() operation...");
+                //console.log("Finalizing the get_fields() operation...");
                 if (success)  {     // Server reported SUCCESS
-                    console.log("    server call was successful; it returned: ", server_payload);
+                    //console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
                     this.headers = server_payload;
                 }
@@ -815,8 +815,8 @@ Vue.component('vue-plugin-rs',
             finish_get_recordset(success, server_payload, error_message, custom_data)
             // Callback function to wrap up the action of get_recordset() upon getting a response from the server
             {
-                console.log("Finalizing the get_recordset() operation...");
-                console.log(`Custom data passed: ${custom_data}`);
+                //console.log("Finalizing the get_recordset() operation...");
+                //console.log(`Custom data passed: ${custom_data}`);
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = "";       // `Operation completed`

@@ -142,7 +142,7 @@ Vue.component('vue-plugin-n',
         // For debugging purposes, for now...
         {
             //alert(`Invoking the 'beforeDestroy' Vue hook`);
-            console.log(`Invoking the 'beforeDestroy' Vue hook`);
+            console.log(`Notes plugin: Invoking the 'beforeDestroy' Vue hook`);
         },
 
 
