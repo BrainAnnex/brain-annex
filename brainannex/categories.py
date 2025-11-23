@@ -1169,6 +1169,7 @@ class Categories:
         :param to_category:     The URI of a Category Data Node to which the above Content Item(s) needs to be switched to
         :return:                The number of Content Items successfully relocated
         """
+        # TODO: Don't relocate Content Items that are already tagged with the new Category!!
         return Collections.bulk_relocate_to_other_collection_at_end(items=items,
                                                              from_collection=from_category, to_collection=to_category,
                                                              membership_rel_name="BA_in_category")

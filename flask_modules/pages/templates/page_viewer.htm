@@ -683,7 +683,8 @@ new Vue({
 
         // For bulk operations.  TODO: turn into a Vue component
         bulk_operations: false,     // If true, checkboxes for bulk operations of Content Items are revealed
-        checkboxes_selected: [],    // Array of "pairs" of strings (i.e. 2-element arrays),
+        checkboxes_selected: [],    // OBSOLETE: to take out
+                                    // Array of "pairs" of strings (i.e. 2-element arrays),
                                     //      containing the Class and URI of the Content Items selected for bulk operations
                                     //      EXAMPLE:  [ ["Site Link" , "8853"] , ["Recordset" , "rs-19"] ]
         checkboxes_selected_new: [],    // ALTERNATE APPROACH, to preserve page order prior to sending request to server
@@ -710,7 +711,8 @@ new Vue({
 
     // ---------------------  HOOKS  ----------------------
 
-    mounted() {
+    mounted()
+    {
         // If the page is devoid of content and of sub-categories, switch automatically to editing mode
         if (this.is_page_empty)
             this.expose_controls = true;
@@ -756,7 +758,7 @@ new Vue({
             }
 
             // Reset all variables related to those checkboxes
-            this.checkboxes_selected = [];
+            //this.checkboxes_selected = [];
             this.checkboxes_selected_new = [];
             this.group_boundary = null;
         },
@@ -791,7 +793,6 @@ new Vue({
                 console.log(`    new box checked`);   // Note: the switch to checked state happened upon the click, BEFORE we get here
                 /*
                 if (this.checkboxes_selected_new.includes(passed_index))  {  // Unexpected scenario.
-                if (this.checkboxes_selected.includes([class_name, uri]))  {  // Unexpected scenario.  TODO: includes() doesn't work with pairs (deep nesting)
                     alert(`Attempting to select checkbox for Class/URI: '${[class_name, uri]}' more than once; it's recommended to refresh the page and start over`);
                     return;
                 }
@@ -799,28 +800,32 @@ new Vue({
                 if (! this.checkboxes_selected_new.includes(passed_index))
                     this.checkboxes_selected_new.push(passed_index);
 
-                this.add_new_checkbox_if_not_present(class_name, uri);
+                //this.add_new_checkbox_if_not_present(class_name, uri);
             }
             else  {
                 console.log(`    removing Class/URI pair: '${[class_name, uri]}'`);
                 // Remove from this.checkboxes_selected
                 //const index = this.checkboxes_selected.indexOf([class_name, uri]);      // OLD, to delete
+
+                /*
                 const index = this.locate_pair([class_name, uri] , this.checkboxes_selected);   // Locate the position of the pair [class_name, uri] in the array this.checkboxes_selected
                 if (index == -1)    {       // Unexpected scenario
                     alert(`Attempting to un-select checkbox for a Class/URI pair ('${[class_name, uri]}') that wasn't selected; it's recommended to refresh the page and start over`);
                     return;
                 }
                 this.checkboxes_selected.splice(index, 1);      // Removes 1 element from the array, at the specified `index` position
+                */
+
                 this.checkboxes_selected_new.splice(passed_index, 1);      // Removes 1 element from the array, at the specified `index` position
             }
 
-            this.log_checkboxes("Post update - ");
+            //this.log_checkboxes("Post update - ");
             console.log(`Post update - State variable checkboxes_selected_new (indicative of checkboxes that are marked) : ${this.checkboxes_selected_new}`);
         },
 
 
 
-        log_checkboxes(prefix)
+        log_checkboxes_NO_LONGER_IN_USE_TO_DELETE(prefix)
         // Utility function for debugging: neatly send to the console all the elements of `this.checkboxes_selected`,
         // with a header optionally including the given prefix
         {
@@ -837,7 +842,7 @@ new Vue({
 
 
 
-        add_new_checkbox_if_not_present(class_name, uri)
+        add_new_checkbox_if_not_present_NO_LONGER_IN_USE_TO_DELETE(class_name, uri)
         /*  Add the "pair" (2-element array) consisting of [class_name, uri]
             to the end of the array `this.checkboxes_selected`, UNLESS
             already present in it
@@ -913,7 +918,7 @@ new Vue({
                 if (! this.checkboxes_selected_new.includes(index))
                     this.checkboxes_selected_new.push(index);
 
-                this.add_new_checkbox_if_not_present(class_name, uri);
+                //this.add_new_checkbox_if_not_present(class_name, uri);
 
                 this.group_boundary = index;        // Make a note of the index of the first group boundary (start or end of the contiguous block),
                                                     // to be used at the next link selection
@@ -953,7 +958,7 @@ new Vue({
                     if (! this.checkboxes_selected_new.includes(index))
                         this.checkboxes_selected_new.push(index);
 
-                    this.add_new_checkbox_if_not_present(class_name, uri);
+                    //this.add_new_checkbox_if_not_present(class_name, uri);
                 }
 
                 this.group_boundary = null;    // A fresh start for possible more selections of contiguous boxes
@@ -980,20 +985,23 @@ new Vue({
             const category_to_uri = this.category_to_move_to.uri;
             const category_to_name = this.category_to_move_to.name;
 
-            this.log_checkboxes("Bulk reclassifying the following Content Items - ");
-            console.log(`Bulk reclassifying the following Content Items:  [${this.checkboxes_selected}]`);
+            //this.log_checkboxes("Bulk reclassifying the following Content Items - ");
+            //console.log(`Bulk reclassifying the following Content Items:  [${this.checkboxes_selected}]`);
             console.log(`Bulk reclassifying the Content Items in the following index positions:  ${this.checkboxes_selected_new}`);
-            console.log(`    moving them from Category URI '${category_from_uri}' (${this.category_name}) to URI '${category_to_uri}' (${category_to_name})`);
+            console.log(`    moving them from Category URI '${category_from_uri}' ("${this.category_name}") to URI '${category_to_uri}' ("${category_to_name}")`);
 
             //const uri_list = this.checkboxes_selected.map(([class_name, uri]) => uri);   // Extract the URI's from all the 2nd positions
             //console.log(`    uri_list : ${uri_list}`);
 
             this.checkboxes_selected_new.sort();
             console.log(`    checkboxes_selected_new (sorted) : ${this.checkboxes_selected_new}`);
+
             var uri_list_sorted = [];
-            for (let i = 0 ; i < this.checkboxes_selected.length ; ++i)  {  // Loop over the list of selected checkboxes
-                const {class_name, uri} = this.content_array[i];    // Extract some properties from the i-th Content Item on this page
+
+            for (var index of this.checkboxes_selected_new) {     // Loop over the list of selected checkboxes
+                const {class_name, uri} = this.content_array[index];    // Extract some properties from this Content Item
                 // TODO: for now, the class_name isn't being passed to the server
+                console.log(`    Readying Content Item  class_name : ${class_name} , uri : ${uri}`);
                 uri_list_sorted.push(uri);
             }
             console.log(`    uri_list_sorted : ${uri_list_sorted}`);
@@ -1031,8 +1039,18 @@ new Vue({
             console.log("Finalizing the perform_bulk_operation() operation...");
             if (success)  {     // Server reported SUCCESS
                 console.log("    server call was successful");
-                this.status_message = `${this.checkboxes_selected.length} Content Items moved to other category`;
+                this.status_message = `${this.checkboxes_selected_new.length} Content Items moved to other category`;
 
+                // Refresh the page display
+                console.log("    updating page by removing items: ", this.checkboxes_selected_new);
+                // Update the page, by ditching the Content Items that were moved away
+                for (var index of this.checkboxes_selected_new) {     // Loop over the indexes of the checkboxes that were selected
+                    let [class_name , uri] = this.content_array[index];       // Unpack the entries of the 2-element array
+                    console.log(`    removing item with URI '${uri}' and Class '${class_name}' from page: array index is ${index}`);
+                    this.content_array.splice(index, 1);            // Deletes 1 array element from the specified index position
+                }
+
+                /*
                 console.log("    updating page by removing items: ", this.checkboxes_selected);
                 // Update the page, by ditching the Content Items that were moved away
                 //for (var uri of this.checkboxes_selected) {     // Loop over the checkboxes that were selected
@@ -1046,13 +1064,16 @@ new Vue({
                     console.log(`    removing item with URI '${uri}' and Class '${class_name}' from page: array index is ${index}`);
                     this.content_array.splice(index, 1);            // Deletes 1 array element from the specified index position
                 }
+                */
 
-                this.checkboxes_selected = [];          // Clear the data about the checkboxes that were selected
+
+                //this.checkboxes_selected = [];          // Clear the data about the checkboxes that were selected
                 this.checkboxes_selected_new = [];          // Clear the data about the checkboxes that were selected
+
                 // Clear all checkmarks
                 // (when page elements are taken out, checkmarks seem to "pass on" to the remaining elements in the same index positions)
                 console.log("Resetting all checkboxes as part of page refresh");
-                this.reset_checkboxes();
+                this.reset_checkboxes();    // TODO: this doesn't work :(
             }
             else  {                     // Server reported FAILURE
                 this.error = true;
