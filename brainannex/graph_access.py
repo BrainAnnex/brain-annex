@@ -1820,19 +1820,25 @@ class GraphAccess(InterGraph):
 
 
 
-    def explore_neighborhood(self, start_id :int|str, max_hops=2, avoid_links=None, include_start_node=False) -> [str]:
+    def explore_neighborhood(self, start_id :int|str, max_hops=2,
+                             avoid_links=None, avoid_label=None,
+                             include_start_node=False) -> [str]:
         """
         Return "nearby" database nodes, from a given start node, by following a max number of links,
-        and optionally avoiding traversing links with some specified names.
+        and optionally avoiding traversing links with some specified names,
+        and optionally avoiding traversing nodes that include the specified label.
         Optionally, include the start node as well.
 
-        :param start_id:    The value of the internal database ID of the starting node
-        :param max_hops:    Integer >= 1 with the maximum number of links to follow in the graph traversal
-        :param avoid_links: Name, or list/tuple of names, of links to avoid in the graph traversal
-        :param include_start_node: [OPTIONAL] If True, include the start node as well.
-        :return:            A (possibly empty) list of dict's, with the properties of all the located nodes,
-                                plus the 2 special keys "internal_id" and "node_labels".
-                                EXAMPLE: [ {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']} ]
+        :param start_id:        The value of the internal database ID of the starting node
+        :param max_hops:        [OPTIONAL] Integer >= 1 with the maximum number of links to follow in the graph traversal;
+                                    i.e. the max distance to travel away from the starting node
+        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal
+        :param avoid_label:     [OPTIONAL] Name of a node label to be avoided on any of the nodes in the graph traversal
+        :param include_start_node: [OPTIONAL] If True, include the start node as well in the returned result
+
+        :return:                A (possibly empty) list of dict's, with the properties of all the located nodes,
+                                    plus the 2 special keys "internal_id" and "node_labels".
+                                    EXAMPLE: [ {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']} ]
         """
         CypherUtils.assert_valid_internal_id(start_id)
 
@@ -1840,7 +1846,7 @@ class GraphAccess(InterGraph):
             f"explore_neighborhood(): argument `max_hops` " \
             f"must be an integer >= 1 (passed value was {max_hops})"
 
-        path_clause = CypherUtils.avoid_links_in_path(avoid_links, prefix_and=True)
+        path_clause = CypherUtils.avoid_links_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
 
         # Locate graph paths from the given start node (s) to end nodes (e)
         q = f'''
