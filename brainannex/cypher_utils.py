@@ -756,7 +756,7 @@ class CypherUtils:
         elif type(avoid_label) == str:
             avoid_label = avoid_label.strip()
             assert avoid_label != "", \
-                "avoid_links_in_path(): the argument `avoid_label`, if provided as a string, cannot be a blank string"
+                "avoid_links_in_path(): the argument `avoid_label`, if provided as a string, cannot be blank"
             clause_from_label = f"NONE(node_to_avoid IN nodes({path_dummy_name}) WHERE '{avoid_label}' IN labels(node_to_avoid))"
             # Note: "node_to_avoid" is a *local# dummy name; no harm if it occurs elsewhere in the main query
         else:

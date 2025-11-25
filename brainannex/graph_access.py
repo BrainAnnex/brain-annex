@@ -1171,8 +1171,8 @@ class GraphAccess(InterGraph):
 
 
 
-    def add_links(self, match_from: Union[int, CypherBuilder], match_to: Union[int, CypherBuilder],
-                  rel_name:str) -> int:
+    def add_links(self, match_from :int|str|CypherBuilder, match_to :int|str|CypherBuilder,
+                  rel_name :str) -> int:
         """
         Add one or more links (aka graph edges/relationships), with the specified rel_name,
         originating in each of the nodes specified by the match_from specifications,
@@ -1821,18 +1821,21 @@ class GraphAccess(InterGraph):
 
 
     def explore_neighborhood(self, start_id :int|str, max_hops=2,
-                             avoid_links=None, avoid_label=None,
+                             avoid_links=None, follow_links=None,
+                             avoid_label=None,
                              include_start_node=False) -> [str]:
         """
-        Return "nearby" database nodes, from a given start node, by following a max number of links,
+        Return distinct "nearby" database nodes, from a given start node, by following a max number of links,
         and optionally avoiding traversing links with some specified names,
         and optionally avoiding traversing nodes that include the specified label.
         Optionally, include the start node as well.
+        Included nodes will only appear once in the result, even if there might be multiple paths to get to them
 
         :param start_id:        The value of the internal database ID of the starting node
         :param max_hops:        [OPTIONAL] Integer >= 1 with the maximum number of links to follow in the graph traversal;
                                     i.e. the max distance to travel away from the starting node
         :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal
+        :param follow_links:    [OPTIONAL] Name, or list/tuple of names, of the links that we're allowed to follow in the traversal
         :param avoid_label:     [OPTIONAL] Name of a node label to be avoided on any of the nodes in the graph traversal
         :param include_start_node: [OPTIONAL] If True, include the start node as well in the returned result
 
@@ -1846,21 +1849,39 @@ class GraphAccess(InterGraph):
             f"explore_neighborhood(): argument `max_hops` " \
             f"must be an integer >= 1 (passed value was {max_hops})"
 
+        if avoid_links and follow_links:
+            raise Exception(f"explore_neighborhood(): cannot pass both arguments `avoid_links` and `follow_links`")
+
+
         path_clause = CypherUtils.avoid_links_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
+
+        cypher_rel_str = ""
+        if follow_links:
+            if type(follow_links) == str:
+                follow_links = follow_links.strip()
+                assert follow_links != "", \
+                    "explore_neighborhood(): argument `follow_links`, if provided as a string, cannot be empty"
+                cypher_rel_str = f":`{follow_links}`"             # EXAMPLE: ":`rel_1`"
+            else:
+                assert type(follow_links) == list or type(follow_links) == tuple, \
+                    "explore_neighborhood(): argument `follow_links`, if provided, must be a string or list/tuple of strings"
+
+                cypher_rel_str = ":`" + "`|`".join(follow_links) + "`"  # EXAMPLE: ":`rel_1`|`rel_2`"
+
 
         # Locate graph paths from the given start node (s) to end nodes (e)
         q = f'''
-            MATCH  p=(s)-[*1..{max_hops}]-(e)
+            MATCH  p=(s)-[{cypher_rel_str}*1..{max_hops}]-(e)
             WHERE id(s) = $start_id
             {path_clause}
-            RETURN e, id(e) AS internal_id, labels(e) AS node_labels
+            RETURN DISTINCT e, id(e) AS internal_id, labels(e) AS node_labels
         '''
 
         if include_start_node:
             q += '''
                 UNION MATCH (e)
                 WHERE id(e) = $start_id
-                RETURN e, id(e) AS internal_id, labels(e) AS node_labels
+                RETURN DISTINCT e, id(e) AS internal_id, labels(e) AS node_labels
                 '''
 
         data_dict={"start_id": start_id}

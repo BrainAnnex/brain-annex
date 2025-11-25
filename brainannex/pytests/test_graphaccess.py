@@ -587,95 +587,210 @@ def test_explore_neighborhood(db):
     result = db.explore_neighborhood(start_id=123)  # Non-existent node
     assert result == []
 
-    start_node_id = db.create_node(labels="Person", properties={"name": "Julian"})
+    julian_id = db.create_node(labels="Person", properties={"name": "Julian"})
 
-    result = db.explore_neighborhood(start_id=start_node_id)
+    result = db.explore_neighborhood(start_id=julian_id)
     assert result == []
 
-    n_1 = db.create_node_with_links(labels="Person", properties={"name": "Rese"},
-                                    links=[{"internal_id": start_node_id, "rel_name": "FRIENDS OF"}])
-    result = db.explore_neighborhood(start_id=start_node_id)
-    assert result == [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']}]
+    rese_id = db.create_node_with_links(labels="Person", properties={"name": "Rese"},
+                                    links=[{"internal_id": julian_id, "rel_name": "FRIENDS OF"}])
+    result = db.explore_neighborhood(start_id=julian_id)
+    assert result == [{'name': 'Rese', 'internal_id': rese_id, 'node_labels': ['Person']}]
 
-    result = db.explore_neighborhood(start_id=start_node_id, include_start_node=True)
-    expected = [{'name': 'Rese',   'internal_id': n_1,           'node_labels': ['Person']},
-                {'name': 'Julian', 'internal_id': start_node_id, 'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=julian_id, include_start_node=True)
+    expected = [{'name': 'Rese',   'internal_id': rese_id,           'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
 
-    n_2 = db.create_node_with_links(labels="Person", properties={"name": "Val"},
-                                    links=[{"internal_id": start_node_id, "rel_name": "FRIENDS OF"}])
-    result = db.explore_neighborhood(start_id=start_node_id)
-    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
-                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']}]
+    val_id = db.create_node_with_links(labels="Person", properties={"name": "Val"},
+                                    links=[{"internal_id": julian_id, "rel_name": "FRIENDS OF"}])
+    result = db.explore_neighborhood(start_id=julian_id)
+    expected = [{'name': 'Rese', 'internal_id': rese_id, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': val_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=start_node_id, include_start_node=True)
-    expected = [{'name': 'Rese',   'internal_id': n_1, 'node_labels': ['Person']},
-                {'name': 'Val',    'internal_id': n_2, 'node_labels': ['Person']},
-                {'name': 'Julian', 'internal_id': start_node_id, 'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=julian_id, include_start_node=True)
+    expected = [{'name': 'Rese',   'internal_id': rese_id, 'node_labels': ['Person']},
+                {'name': 'Val',    'internal_id': val_id, 'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
 
-    n_3 = db.create_node_with_links(labels="Car", properties={"color": "red"},
-                                    links=[{"internal_id": n_2, "rel_name": "IS OWNED BY"}])
-    result = db.explore_neighborhood(start_id=start_node_id)
-    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
-                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']},
-                {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']}]
+    car_id = db.create_node_with_links(labels="Car", properties={"color": "red"},
+                                    links=[{"internal_id": val_id, "rel_name": "IS OWNED BY"}])
+    result = db.explore_neighborhood(start_id=julian_id)
+    expected = [{'name': 'Rese', 'internal_id': rese_id, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': val_id, 'node_labels': ['Person']},
+                {'color': 'red', 'internal_id': car_id, 'node_labels': ['Car']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=start_node_id, include_start_node=True)
-    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
-                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']},
-                {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']},
-                {'name': 'Julian', 'internal_id': start_node_id, 'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=julian_id, include_start_node=True)
+    expected = [{'name': 'Rese', 'internal_id': rese_id, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': val_id, 'node_labels': ['Person']},
+                {'color': 'red', 'internal_id': car_id, 'node_labels': ['Car']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=start_node_id, avoid_links="IS OWNED BY") # Won't reach the `Car` node
-    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
-                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=julian_id, avoid_links="IS OWNED BY") # Won't reach the `Car` node
+    expected = [{'name': 'Rese', 'internal_id': rese_id, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': val_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=start_node_id, max_hops=1)    # Won't reach the `Car` node
-    expected = [{'name': 'Rese', 'internal_id': n_1, 'node_labels': ['Person']},
-                {'name': 'Val',  'internal_id': n_2, 'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=julian_id, max_hops=1)    # Won't reach the `Car` node
+    expected = [{'name': 'Rese', 'internal_id': rese_id, 'node_labels': ['Person']},
+                {'name': 'Val',  'internal_id': val_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=n_3)  # Start at the `Car` node (Val's car); only doing default 2 hops max
-    expected = [{'name': 'Val',   'internal_id': n_2,           'node_labels': ['Person']},
-                {'name': 'Julian','internal_id': start_node_id, 'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=car_id)  # Start at the `Car` node (Val's car); only doing default 2 hops max
+    expected = [{'name': 'Val',   'internal_id': val_id,           'node_labels': ['Person']},
+                {'name': 'Julian','internal_id': julian_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=n_3, max_hops=3)  # Start at the `Car` node (Val's car)
-    expected = [{'name': 'Val',    'internal_id': n_2,           'node_labels': ['Person']},
-                {'name': 'Julian', 'internal_id': start_node_id, 'node_labels': ['Person']},
-                {'name': 'Rese',   'internal_id': n_1,           'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3)  # Start at the `Car` node (Val's car)
+    expected = [{'name': 'Val',    'internal_id': val_id,           'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,           'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links="FRIENDS OF")  # Start at Val's car
-    expected = [{'name': 'Val', 'internal_id': n_2, 'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links="FRIENDS OF")  # Start at Val's car
+    expected = [{'name': 'Val', 'internal_id': val_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links=["FRIENDS OF", "IRRELEVANT NAME"])  # Start at Val's car
-    expected = [{'name': 'Val', 'internal_id': n_2, 'node_labels': ['Person']}]
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["FRIENDS OF", "IRRELEVANT NAME"])  # Start at Val's car
+    expected = [{'name': 'Val', 'internal_id': val_id, 'node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=n_3, max_hops=3, avoid_links=["FRIENDS OF", "IS OWNED BY"])  # Start at Val's car
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["FRIENDS OF", "IS OWNED BY"])  # Start at Val's car
     assert result == []
 
-    result = db.explore_neighborhood(start_id=n_3, max_hops=3,
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3,
                         avoid_links=["FRIENDS OF", "IS OWNED BY"], include_start_node=True)  # Start at Val's car
-    assert result == [{'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']}]
+    assert result == [{'color': 'red', 'internal_id': car_id, 'node_labels': ['Car']}]
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_label="Car")       # Start at the `Car` node (Val's car)
+    assert result == []
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_label="Person")    # Start at the `Car` node (Val's car)
+    assert result == []
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_label="Nonexistent")  # Start at the `Car` node (Val's car)
+    expected = [{'name': 'Val',    'internal_id': val_id,           'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,           'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+
+    db.add_links(match_from=rese_id, match_to=car_id, rel_name="LIKES")
+
+    # Now there are 2 paths of length 2 from the red Car (Val's) to the Person "Julian"; we'll always be starting at the Car
+    result = db.explore_neighborhood(start_id=car_id, max_hops=2)
+    expected = [{'name': 'Val',    'internal_id': val_id,           'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,           'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=2, avoid_links="IS OWNED BY")
+    expected = [{'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,           'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links="IS OWNED BY")
+    expected = [{'name': 'Val',    'internal_id': val_id,           'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,           'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["IS OWNED BY", "FRIENDS OF"])
+    expected = [{'name': 'Rese',   'internal_id': rese_id,           'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["IS OWNED BY", "FRIENDS OF", "LIKES"])
+    assert result == []
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=2, avoid_label="Person")
+    assert result == []
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=4)   # Loop around back to the Car node
+    expected = [{'name': 'Val',    'internal_id': val_id,    'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,   'node_labels': ['Person']},
+                {'color': 'red',   'internal_id': car_id,    'node_labels': ['Car']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=4, include_start_node=True)   # Loop around back to the Car node (but only shows up once)
+    expected = [{'name': 'Val',    'internal_id': val_id,    'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,   'node_labels': ['Person']},
+                {'color': 'red',   'internal_id': car_id,    'node_labels': ['Car']}]
+    assert compare_recordsets(result, expected)
+
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, follow_links="NON_EXISTENT")
+    assert result == []
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, follow_links ="LIKES")
+    assert result == [{'name': 'Rese', 'internal_id': rese_id,   'node_labels': ['Person']}]
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, follow_links ="   IS OWNED BY  ")
+    assert result == [{'name': 'Val',   'internal_id': val_id,    'node_labels': ['Person']}]
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, follow_links ="IS OWNED BY", avoid_label="Junk")
+    assert result == [{'name': 'Val',   'internal_id': val_id,    'node_labels': ['Person']}]
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, follow_links ="IS OWNED BY", avoid_label="Car")
+    assert result == []
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, follow_links ="IS OWNED BY", avoid_label="Person")
+    assert result == []
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, follow_links = ["LIKES", "IS OWNED BY"])
+    expected = [{'name': 'Val',    'internal_id': val_id,    'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,   'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, follow_links = ["LIKES", "IS OWNED BY", "FRIENDS OF"])
+    expected = [{'name': 'Val',    'internal_id': val_id,    'node_labels': ['Person']},
+                {'name': 'Rese',   'internal_id': rese_id,   'node_labels': ['Person']},
+                {'name': 'Julian', 'internal_id': julian_id, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+
+
+    # Remove the Person node "Julian"; now the only link from "Val" to "Red" is thru the Car node
+    db.delete_nodes(julian_id)
+
+    result = db.explore_neighborhood(start_id=rese_id, max_hops=2)
+    expected= [{'color': 'red', 'internal_id': car_id, 'node_labels': ['Car']},
+               {'name': 'Val',  'internal_id': val_id, 'node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.explore_neighborhood(start_id=rese_id, max_hops=2, avoid_label='Person')
+    assert result == []
+
+    result = db.explore_neighborhood(start_id=rese_id, max_hops=2, avoid_label='Car')
+    assert result == []
 
 
     with pytest.raises(Exception):
-        db.explore_neighborhood(start_id=n_3, max_hops= 0)
+        db.explore_neighborhood(start_id=car_id, max_hops=0)
+
+    with pytest.raises(Exception):
+        db.explore_neighborhood(start_id=car_id, max_hops=1, follow_links="    ")
+
+    with pytest.raises(Exception):
+        db.explore_neighborhood(start_id=car_id, max_hops=1, avoid_links="    ")
+
+    with pytest.raises(Exception):
+        db.explore_neighborhood(start_id=car_id, max_hops=1, avoid_label="   ")
+
+    with pytest.raises(Exception):
+        db.explore_neighborhood(start_id=car_id, max_hops=1, follow_links="l1", avoid_links="l2")
 
 
 
 
-###  ~ CREATE NODES ~
+#########   ~ CREATE NODES ~
 
 def test_create_node(db):
     """
