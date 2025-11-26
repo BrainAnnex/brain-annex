@@ -1031,19 +1031,16 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def delete_nodes(self, match: Union[int, CypherBuilder]) -> int:
+    def delete_nodes(self, match :int|str|CypherBuilder) -> int:
         """
         Delete the node or nodes specified by the match argument.
         Return the number of nodes deleted.
 
-        :param match:   EITHER an integer with an internal database node id,
+        :param match:   EITHER an integer or string with an internal database node id,
                             OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :return:        The number of nodes deleted (possibly zero)
         """
-        # Create the "processed-match dictionaries"
-        #match_structure = CypherUtils.process_match_structure(match, caller_method="delete_nodes")
-
-        # Unpack needed values from the match dictionary
+        # Unpack needed values from the match object
         (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="delete_nodes")
 
         q = f"MATCH {node} {CypherUtils.prepare_where(where)} DETACH DELETE n"
@@ -1245,6 +1242,7 @@ class GraphAccess(InterGraph):
 
         :return:            The number of links added.  If none got added, or in case of error, an Exception is raised
         """
+        # TODO: merge with add_links()
         # TODO: (Unclear what multiple calls would do in this case: update the props or create a new relationship??)
 
         # Prepare the query to add the requested links between the given nodes (possibly, sets of nodes)
