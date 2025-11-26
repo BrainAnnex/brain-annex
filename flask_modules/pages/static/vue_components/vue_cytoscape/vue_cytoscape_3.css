@@ -1,5 +1,4 @@
-div.cytoscape-container {
-    width: 85%;
+div.cytoscape-baseline {
     height: 850px;
     display: block;
     background-color: #f6f6f6;
@@ -7,15 +6,31 @@ div.cytoscape-container {
     display: inline-block;
 }
 
+div.cytoscape-container-normal {
+    width: 85%;
+}
 
+div.cytoscape-container-expanded {
+    width: 95%;
+}
+
+
+/* Side box on the right, for node/edge info and controls */
 div.cytoscape-legend {
     width: 13%;
     border: 1px solid #CCC;
-    padding: 5px;
+    padding: 0;
     display: inline-block;
     vertical-align: top;
 
     color: #444;
+}
+
+div.cytoscape-legend-collapsed {
+    display: inline-block;
+    vertical-align: top;
+    border: 1px solid #CCC;
+    padding: 0;
 }
 
 
@@ -25,4 +40,17 @@ div.label {
     margin-right: 5px;
     margin-bottom: 5px;
     border-radius: 10px;
+}
+
+
+p.legend-block {
+    padding: 5px;
+    padding-top: 0;
+}
+
+
+/* Make the element (for example, an image, a SPAN or a TD, etc) clickable,
+   with the same cursor as for links */
+.clickable-icon {
+    cursor: pointer;
 }

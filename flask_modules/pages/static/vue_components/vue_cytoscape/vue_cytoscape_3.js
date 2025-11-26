@@ -32,16 +32,34 @@ Vue.component('vue_cytoscape_3',
         template: `
             <div>  <!-- Outer container, serving as Vue-required template root.  OK to use a <section> instead -->
 
-                <div v-bind:id="'cy_' + component_id" class="cytoscape-container">
-                    <!--
+                <div v-bind:id="'cy_' + component_id"
+                     class='cytoscape-baseline'
+                     v-bind:class="{ 'cytoscape-container-normal': sidebox_expanded , 'cytoscape-container-expanded': !sidebox_expanded }">
+                     <!--
                         ******   CYTOSCAPE.js WILL INSERT THE GRAPH HERE!   ******
-                      -->
+                       -->
                 </div>
 
 
                 <!-- SIDE BOX, to the right of the main plot -->
-                <div class="cytoscape-legend">
-                    <p v-if="!node_info">
+                <div v-if="!sidebox_expanded" class="cytoscape-legend-collapsed">
+                    <img @click='sidebox_expanded = !sidebox_expanded'
+                        src='../../graphics/thin_left_arrow_32.png'
+                        style='padding:0'
+                        title='Click to expand sidebar' alt='Click to expand sidebar'
+                    >
+                </div>
+
+
+                <div v-if="sidebox_expanded" class="cytoscape-legend">
+                    <img @click='sidebox_expanded = !sidebox_expanded'
+                        src='../../graphics/thin_right_arrow_32.png'
+                        style='padding:0'
+                        class='clickable-icon'
+                        title='Click to collapse sidebar' alt='Click to collapse sidebar'
+                    >
+
+                    <p v-if="!node_info" class="legend-block">
                         <b>Node labels</b><br><br>
                         <template v-for="color_map in Object.entries(graph_data.color_mapping)">
                             <div class="label" v-bind:style="{'background-color': color_map[1]}">{{color_map[0]}}</div>
@@ -53,7 +71,7 @@ Vue.component('vue_cytoscape_3',
                         <span style="color: #BBB; font-style: italic">(shift-click for multiple selections)</span>
                     </p>
 
-                    <p v-else>
+                    <p v-else class="legend-block">
                         <template v-for="label_name in node_labels">
                             <div class="label" v-bind:style="{'background-color': graph_data.color_mapping[label_name]}">{{label_name}}</div>
                         </template>
@@ -70,16 +88,18 @@ Vue.component('vue_cytoscape_3',
                     <br>
                     <hr>
                     <br>
-                    <i>Plot layout style:</i>
-                    <select @change='change_plot_style' v-model="plot_layout_style" style="margin-top:5px">
-                        <option value='breadthfirst'>breadthfirst</option>
-                        <option value='circle'>circle</option>
-                        <option value='concentric'>concentric</option>
-                        <option value='cose'>cose</option>
-                        <option value='grid'>grid</option>
-                        <option value='preset'>preset</option>
-                        <option value='random'>random</option>
+                    <p class="legend-block">
+                        <i>Plot layout style:</i>
+                        <select @change='change_plot_style' v-model="plot_layout_style" style="margin-top:5px">
+                            <option value='breadthfirst'>breadthfirst</option>
+                            <option value='circle'>circle</option>
+                            <option value='concentric'>concentric</option>
+                            <option value='cose'>cose</option>
+                            <option value='grid'>grid</option>
+                            <option value='preset'>preset</option>
+                            <option value='random'>random</option>
                     </select>
+                    </p>
 
                 </div>      <!-- End of side box -->
 
@@ -97,6 +117,8 @@ Vue.component('vue_cytoscape_3',
                 // both variables are arrays of strings
                 node_labels: null,
                 node_info: null,
+
+                sidebox_expanded: true,
 
                 plot_layout_style: "breadthfirst"  // CHOICES: 'grid', 'circle', 'random',
                                                    //          'concentric', 'breadthfirst', 'cose'
