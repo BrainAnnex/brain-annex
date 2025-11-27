@@ -1089,7 +1089,7 @@ class DataManager:
                                 to      URI of the new Category
         :return:            None
         """
-        #print("**** : ", data_dict)     # EXAMPLE: {'items': ['i-3332', 'i-3278'], 'from': '3676', 'to': '3677'}
+        #print("In switch_category(): ", data_dict)     # EXAMPLE: {'items': ['i-3332', 'i-3278'], 'from': '3676', 'to': '3677'}
 
         items = data_dict["items"]
 

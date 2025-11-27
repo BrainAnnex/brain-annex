@@ -709,35 +709,69 @@ class CypherUtils:
 
 
     @classmethod
-    def avoid_links_in_path(cls, avoid_links : None|str|list|tuple,
+    def avoid_links_in_path(cls, avoid_links=None, avoid_label=None,
                             path_dummy_name="p", prefix_and=False) -> str:
         """
-        Create a clause for a Cypher query to traverse a graph while avoid links with specific names.
+        Create a clause for a Cypher query to traverse a graph
+        while avoiding links with any of the specified names,
+        as well as avoiding node that contain the specified label.
 
-        EXAMPLE:   MATCH p=(:start_Label)-[*]->(:end_label) WHERE {here insert the clause returned by this function} RETURN ...
+        EXAMPLE of usage:
+                    MATCH p=(:start_Label)-[*]->(:end_label)
+                    WHERE {here insert the clause returned by this function}
+                    RETURN ...
 
-        :param avoid_links:     Name, or list/tuple of names, of links to avoid in the graph traversal
-        :param path_dummy_name: Whatever dummy name is being used in the overall Cypher query, to refer to the paths
+        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal
+        :param avoid_label:     [OPTIONAL] Name of a node label to be avoided on any of the nodes in the graph traversal
+        :param path_dummy_name: [OPTIONAL] Whatever dummy name is being used in the overall Cypher query,
+                                    to refer to the paths; by default, "p"
         :param prefix_and:      [OPTIONAL] If True, prefix "AND " in cases where the returned value isn't a blank string;
                                     by default, False
         :return:                A Cypher clause fragment
         """
-        # TODO: zap leading/trailing blanks
-
-        if avoid_links is None or avoid_links == "":
-            return ""
+        if (avoid_links is None) and (avoid_label is None):
+            return ""       # No restrictions
 
         match avoid_links:
-            case str():     # Note: `str()` is class pattern
-                clause = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{avoid_links}')"
-            case list() | tuple():
-                substring = "' OR type(r) = '".join(avoid_links)    # Example:  "s1' OR type(r) = 's2"
-                clause = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{substring}')"
-            case _ :
-                raise Exception(f"avoid_links_in_path(): argument `avoid_links`, if provided, "
-                            f"must be a string, or list/tuple of strings. The type passed was {type(avoid_links)}")
+            case None:
+                clause_from_links = ""
+            case str():     # Note: `str()` is a class pattern
+                avoid_links = avoid_links.strip()
+                assert avoid_links != "", \
+                    "avoid_links_in_path(): the argument `avoid_links`, if provided as a string, cannot be blank"
 
-        if prefix_and:
+                clause_from_links = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{avoid_links}')"
+            case list() | tuple():
+                # TODO: zap leading/trailing blanks from all names
+                substring = "' OR type(r) = '".join(avoid_links)    # EXAMPLE, if avoid_links is ["l1", "l2", "l3"]:
+                                                                    #       "l1' OR type(r) = 'l2' OR type(r) = 'l3"
+                clause_from_links = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{substring}')"
+                # EXAMPLE of clause:  "NONE(r IN relationships(p) WHERE type(r) = 'l1' OR type(r) = 'l2' OR type(r) = 'l3')"
+            case _ :
+                raise Exception(f"avoid_links_in_path(): the argument `avoid_links`, if provided, "
+                                f"must be a string, or list/tuple of strings. The type passed was {type(avoid_links)}")
+
+        if avoid_label is None:
+            clause_from_label = ""
+        elif type(avoid_label) == str:
+            avoid_label = avoid_label.strip()
+            assert avoid_label != "", \
+                "avoid_links_in_path(): the argument `avoid_label`, if provided as a string, cannot be blank"
+            clause_from_label = f"NONE(node_to_avoid IN nodes({path_dummy_name}) WHERE '{avoid_label}' IN labels(node_to_avoid))"
+            # Note: "node_to_avoid" is a *local# dummy name; no harm if it occurs elsewhere in the main query
+        else:
+            raise Exception(f"avoid_links_in_path(): the argument `avoid_label`, if provided, "
+                                f"must be a string. The type passed was {type(avoid_label)}")
+
+
+        if clause_from_links and clause_from_label:
+            clause = clause_from_links + " AND " + clause_from_label
+        elif clause_from_links:
+            clause = clause_from_links
+        else:
+            clause = clause_from_label
+
+        if prefix_and and clause:
             return f"AND {clause}"
 
         return clause

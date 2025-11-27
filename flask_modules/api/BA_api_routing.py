@@ -1805,12 +1805,13 @@ class ApiRouting:
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['items', 'from', 'to'],
                                                   json_decode=True)
+                #print("In '/switch_category' endpoint.  data_dict: ", data_dict)
                 DataManager.switch_category(data_dict)
                 response_data = {"status": "ok"}
             except Exception as ex:
                 err_details = f"/switch_category : Unable to relocate Content Item(s) to new Category.  {exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}        # Error termination
-                # TODO: manage scenario where SOME - but not all - items got moved;
+                # TODO: manage scenario where SOME - but not all - items got successfully moved;
                 #       maybe implement a standard "error_data" field
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header

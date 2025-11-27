@@ -102,12 +102,13 @@ class Categories:
         """
         Return the Name and Remarks field values attached to the given Category
 
-        :param category_uri:    A string identifying the desired Category
+        :param category_uri:    A string uniquely identifying the desired Category
         :return:                The Category's properties (or a blank dictionary if not found)
                                     EXAMPLES:   {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
                                                 {"uri": "1", "name": "HOME", "root": true}
         """
-        return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
+        #return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
+        return GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Category", search=("uri", category_uri))
 
 
 
@@ -1168,6 +1169,7 @@ class Categories:
         :param to_category:     The URI of a Category Data Node to which the above Content Item(s) needs to be switched to
         :return:                The number of Content Items successfully relocated
         """
+        # TODO: Don't relocate Content Items that are already tagged with the new Category!!
         return Collections.bulk_relocate_to_other_collection_at_end(items=items,
                                                              from_collection=from_category, to_collection=to_category,
                                                              membership_rel_name="BA_in_category")
