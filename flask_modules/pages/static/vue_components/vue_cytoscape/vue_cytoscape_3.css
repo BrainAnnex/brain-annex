@@ -42,7 +42,19 @@ div.label {
     border-radius: 10px;
 }
 
+div.edge {
+    display: inline-block;
+    font-size:13px;
+    background-color: #e6e1e1;
+    padding: 3px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    border: 1px solid gray;
+}
 
+
+
+/* A section of displays and controls in the cytoscape side box */
 p.legend-block {
     padding: 5px;
     padding-top: 0;

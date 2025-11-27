@@ -10,7 +10,7 @@ Vue.component('vue_cytoscape_3',
             /* graph_data is an object with the following 3 KEYS:
 
                 1) "structure"      (an array of objects that represent either nodes or edges)
-                        EXAMPLE:
+                        EXAMPLE (2 nodes followed by an edge):
                             [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
                              {'id': 2, 'color': 'white', 'labels': ['CAR']},
                              {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
@@ -41,7 +41,7 @@ Vue.component('vue_cytoscape_3',
                 </div>
 
 
-                <!-- SIDE BOX, to the right of the main plot -->
+                <!-- SIDE BOX, to the right of the main plot : COLLAPSED STATE -->
                 <div v-if="!sidebox_expanded" class="cytoscape-legend-collapsed">
                     <img @click='sidebox_expanded = !sidebox_expanded'
                         src='../../graphics/thin_left_arrow_32.png'
@@ -51,6 +51,7 @@ Vue.component('vue_cytoscape_3',
                 </div>
 
 
+                <!-- SIDE BOX, to the right of the main plot : NORMAL STATE -->
                 <div v-if="sidebox_expanded" class="cytoscape-legend">
                     <img @click='sidebox_expanded = !sidebox_expanded'
                         src='../../graphics/thin_right_arrow_32.png'
@@ -59,6 +60,8 @@ Vue.component('vue_cytoscape_3',
                         title='Click to collapse sidebar' alt='Click to collapse sidebar'
                     >
 
+
+                    <!-- If nothing is selected on the plot, show the list of labels... -->
                     <p v-if="!node_info" class="legend-block">
                         <b>Node labels</b><br><br>
                         <template v-for="color_map in Object.entries(graph_data.color_mapping)">
@@ -71,6 +74,7 @@ Vue.component('vue_cytoscape_3',
                         <span style="color: #BBB; font-style: italic">(shift-click for multiple selections)</span>
                     </p>
 
+                    <!-- ...if a node or edge is selected on the plot -->
                     <p v-else class="legend-block">
                         <template v-for="label_name in node_labels">
                             <div class="label" v-bind:style="{'background-color': graph_data.color_mapping[label_name]}">{{label_name}}</div>
@@ -84,10 +88,10 @@ Vue.component('vue_cytoscape_3',
                     </p>
 
 
-                    <!-- Change desired plot style -->
+
+                    <!-- Pulldown menu to change desired plot style -->
                     <br>
                     <hr>
-                    <br>
                     <p class="legend-block">
                         <i>Plot layout style:</i>
                         <select @change='change_plot_style' v-model="plot_layout_style" style="margin-top:5px">
@@ -101,6 +105,23 @@ Vue.component('vue_cytoscape_3',
                     </select>
                     </p>
 
+
+
+                    <!-- Edge locator -->
+                    <br>
+                    <hr>
+                    <p class="legend-block">
+                        <b>Edges:</b><br>
+                        <span style="color: #BBB; font-style: italic">(Click to highlight)</span>
+                        <br>
+                        <template v-for="name in this.edge_names">
+                            <div class="edge  clickable-icon" @click="highlight_edges(name)">
+                                {{name}}
+                            </div>
+                        </template>
+                    </p>
+
+
                 </div>      <!-- End of side box -->
 
             </div>		<!-- End of outer container -->
@@ -111,12 +132,23 @@ Vue.component('vue_cytoscape_3',
         // ---------------------  DATA  ----------------------
         data: function() {
             return {
-                graph_structure: this.graph_data.structure,     // A list of dicts
+                graph_structure: this.graph_data.structure,
+                        /* An array of objects that represent either nodes or edges)
+                            EXAMPLE (2 nodes followed by an edge):
+                                [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
+                                 {'id': 2, 'color': 'white', 'labels': ['CAR']},
+                                 {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
+                        */
 
                 // Data of the currently-selected node;
-                // both variables are arrays of strings
-                node_labels: null,
+                // both variables are arrays of strings:
+                node_labels: null,      // Array of labels of the currently-selected node
                 node_info: null,
+
+                node_array: [],
+                edge_array: [],
+                label_names: [],        // Array of unique label names
+                edge_names: [],         // Array of unique edge names
 
                 sidebox_expanded: true,
 
@@ -130,7 +162,9 @@ Vue.component('vue_cytoscape_3',
         // ---------------------  MOUNTED  ----------------------
         mounted() {
             /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
-                     waiting this late is needed.  Caution must be taken not to re-trigger it from its code.
+                     waiting this late is needed.
+                     Caution must be taken not to re-trigger it from the code in this function,
+                     or an infinite loop will result!.
              */
             console.log(`The 'vue_cytoscape_2' component is now mounted`);
 
@@ -141,6 +175,8 @@ Vue.component('vue_cytoscape_3',
             // Note: it cannot be simply saved as component data, because doing so triggers another call to this
             //       "mounted" Vue hook function, leading to an infinite loop!
             this.$options.cy_object = cy_object;
+
+            this.extract_nodes_and_edges();
         },
 
 
@@ -173,7 +209,10 @@ Vue.component('vue_cytoscape_3',
 
                 return cyto_arr;
             }
-        },
+
+
+
+        },  // COMPUTED
 
 
 
@@ -375,50 +414,6 @@ Vue.component('vue_cytoscape_3',
 
 
 
-            highlight_class_node(label, key, value)
-            /*  This is a generalization of the function highlight_class_node() in vue_cytoscape_2
-                Instruct Cytoscape to select the node of the specified label that contains the given key/property pair.
-                EXAMPLE: label="CLASS", key="name", value="some_class_name"
-                TODO: test
-             */
-            {
-                console.log(`Invoking highlight_class_node() with label = "${label}", key = "${key}", value = "${value}"`);
-                console.log("cy_object:");
-                console.log(this.$options.cy_object);
-
-                // Needs to locate the 'id' of a node from this.graph_structure
-                // that contains the desired key/value pair
-                // EXAMPLE (fragment):  {key: value, 'id': 116404, 'labels': ['CLASS']}
-
-                var found = false;
-
-                for (node of this.graph_structure)  {        // Loop over this.graph_structure array
-                    let node_labels = node.labels;
-                    console.log(`node_labels: ${node_labels}`);
-                    console.log(`Examining node with labels '${node_labels}', and id=${node.id}`);
-                    if (node_labels !== undefined  &&  node_labels.includes(label)  &&  node[key] == value)  {
-                        found = true;
-                        var located_node = node;
-                        break;
-                    }
-                }
-
-                if (found)  {
-                    console.log(`Located node with id:  ${located_node.id}`);
-                    const selector = `#${located_node.id}`   // Used to refer to a graph element in the Cytoscape object
-                    //console.log(`The following selector will be used: '${selector}'`);
-                    this.$options.cy_object.$(selector).select();   // Tell Cytoscape to select this node
-                                                                    // EXAMPLE:  cy_object.$('#116404').select()
-                    //this.node_info = ['A test'];
-                    //this.node_labels = node.labels;
-                    this.populate_legend_from_node(located_node);
-                }
-                else
-                    alert(`The desired node not found in the graph!  Try refreshing the page`);
-            },
-
-
-
             map_labels_to_color(labels)
             /*  Given the labels of a node (an array of strings),
                 return the name of the color to use for the inside of the node,
@@ -523,8 +518,111 @@ Vue.component('vue_cytoscape_3',
                 const c_new = c.darker(0.635).formatHex();  // Less Luminosity
                 //console.log(c_new);
                 return c_new;
-            }
+            },
 
+
+            extract_nodes_and_edges()
+            // Parse the array passed to the object, and extract/separate nodes and edges
+            {
+                // TODO: possibly use this function do do an initial validation of the pass data
+                for (el of this.graph_structure)  {     // el is an object that represents a node or edge
+                    if (('source' in el) && ('target' in el))  {
+                       // If it's an edge...
+                        this.edge_array.push(el);
+                        if (! this.edge_names.includes(el.name))
+                            this.edge_names.push(el.name);
+                        }
+                    else  {
+                        // ...otherwise, it's taken to be a node
+                        this.node_array.push(el);
+                    }
+                }
+            },
+
+
+
+            highlight_edges(name)
+            // Highlight in the graph all edges with the given name
+            {
+                console.log(`Invoking highlight_edges() with name = "${name}"`);
+                //console.log("cy_object:");
+                //console.log(this.$options.cy_object);
+
+                // Needs to locate the 'id' of edges from the displayed graph
+                // that contains the desired name
+                // EXAMPLE (fragment):  {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
+
+                var found_array = [];   // Array of edge objects
+
+                for (edge of this.edge_array)  {        // Loop over array of edge objects
+                    //console.log(`Examining edge with name "${edge.name}", and id="${edge.id}"`);
+                    if (edge.name == name)
+                        found_array.push(edge);
+                }
+                console.log(`Located the following ${found_array.length} edge(s):`);
+                console.log(found_array);
+
+                if (found_array.length == 0)  {
+                    alert(`The desired edge not found in the graph!  Try refreshing the page`);
+                    return;
+                }
+
+                // Highlight each located edge in turn
+                for (edge of found_array)  {        // Loop over array of edge objects
+                    var edge_id = edge.id;
+                    console.log(`    attempting to highlight edge with id: "${edge_id}"`);
+                    const selector = `#${edge_id}`; // Used to refer to a graph element in the Cytoscape object.
+                                                    // EXAMPLE: "#edge-3"
+
+                    this.$options.cy_object.$(selector).select();   // Tell Cytoscape to select this edge
+                                                                    // EXAMPLE:  cy_object.$('#edge-3').select()
+                }
+            },
+
+
+
+            highlight_located_node(label, key, value)
+            /*  This is a generalization of the function highlight_class_node() in vue_cytoscape_2
+                Instruct Cytoscape to select the node of the specified label that contains the given key/property pair.
+                EXAMPLE: label="CLASS", key="name", value="some_class_name"
+                TODO: test
+             */
+            {
+                console.log(`Invoking highlight_located_node() with label = "${label}", key = "${key}", value = "${value}"`);
+                console.log("cy_object:");
+                console.log(this.$options.cy_object);
+
+                // Needs to locate the 'id' of a node from this.graph_structure
+                // that contains the desired key/value pair
+                // EXAMPLE (fragment):  {key: value, 'id': 116404, 'labels': ['CLASS']}
+
+                var found = false;
+
+                for (node of this.graph_structure)  {        // Loop over this.graph_structure array
+                    let node_labels = node.labels;
+                    console.log(`node_labels: ${node_labels}`);
+                    console.log(`Examining node with labels '${node_labels}', and id=${node.id}`);
+                    if (node_labels !== undefined  &&  node_labels.includes(label)  &&  node[key] == value)  {
+                        found = true;
+                        var located_node = node;
+                        break;
+                    }
+                }
+
+                if (!found)  {
+                    alert(`The desired node not found in the graph!  Try refreshing the page`);
+                    return;
+                }
+
+                console.log(`Located node with id:  ${located_node.id}`);
+                const selector = `#${located_node.id}`;   // Used to refer to a graph element in the Cytoscape object
+                //console.log(`The following selector will be used: '${selector}'`);
+                this.$options.cy_object.$(selector).select();   // Tell Cytoscape to select this node
+                                                                // EXAMPLE:  cy_object.$('#116404').select()
+                //this.node_info = ['A test'];
+                //this.node_labels = node.labels;
+                this.populate_legend_from_node(located_node);
+            }
 
         }  // METHODS
 
