@@ -8,7 +8,7 @@ import json
 
 class DisplayNetwork:
     """
-    Used to create a single HTML file that graphically displays an interactive version
+    Used to create an HTML file that graphically displays an interactive version
     of graph-network data
     """
 
@@ -31,7 +31,8 @@ class DisplayNetwork:
     def _html_header(cls, component_file_css :str) -> str:
         """
         Generate and return the text for the initial part of an HTML file, including the HEAD section.
-        Various general JavaScript library files (Vue 2, D3 and Cytoscape) are for now hardwired in the code.
+        Various general JavaScript library files (Vue 2, D3 and Cytoscape)
+        are for now hardwired in the code.
 
         :param component_file_css:  The full URL of the .CSS file used by our Vue component
         :return:                    A string with HTML code
@@ -56,8 +57,10 @@ class DisplayNetwork:
     @classmethod
     def _html_body_start(cls, caption=None) -> str:
         """
+        Prepare and return the text for the early part (but post-headers) of an HTML file,
+        with an optional caption to be shown at the top
 
-        :param caption:
+        :param caption: [OPTIONAL]
         :return:        A string with HTML code
         """
         return f'''
@@ -74,8 +77,9 @@ class DisplayNetwork:
         Generate and return the HTML for a Vue container (a DIV element with the Vue ROOT component),
         plus a script to instantiate the above Vue root component
 
-        :param vue_component:
-        :param component_file:
+        :param vue_component:   A string with the name of the existing Vue.js component to use.
+                                    EXAMPLE: "vue_cytoscape_2" (assuming that a .js file with such a Vue component exists)
+        :param component_file:  The full name (including path) of the .js file that contains the above component
         :param graph_data:
         :param vue_count:
         :return:                A string with HTML code
@@ -195,7 +199,7 @@ class DisplayNetwork:
 
         # Export into the HTML file the various Vue-related parts
 
-        VUE_COMPS_DIR = "https://life123.science/libraries/vue_components/"
+        VUE_COMPS_DIR = "https://life123.science/libraries/vue_components/"     # TODO: for now, hardwired
         component_file_js = f"{VUE_COMPS_DIR}{graphic_component}.js"
         component_file_css = f"{VUE_COMPS_DIR}{graphic_component}.css"
 

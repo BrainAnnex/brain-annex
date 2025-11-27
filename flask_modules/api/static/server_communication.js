@@ -177,13 +177,13 @@ class ServerCommunication
         if (json_encode_send) {
             ServerCommunication.sanitize_data_object(data_obj);    // TODO: unclear if really necessary; JSON.stringify() seems to already ditch "undeclared" values
             var data_str = JSON.stringify(data_obj);
-            console.log(`contact_server(): the data object to send to server is first being converted to JSON as: '${data_str}'`);
+            //console.log(`contact_server(): the data object to send to server is first being converted to JSON as: '${data_str}'`);
             if (method == "GET")
                 data_str = "json=" + data_str;      // Start preparing a query string for the URL
         }
         else {
             var data_str = ServerCommunication.parse_data_object(data_obj);
-            console.log(`contact_server(): the data object to send is being string-encoded as "${data_str}"`);
+            //console.log(`contact_server(): the data object to send is being string-encoded as "${data_str}"`);
         }
 
 

@@ -133,7 +133,7 @@ Vue.component('vue-plugin-n',
         updated() {
             /* The "updated" Vue hook
              */
-            console.log("Invoking the `updated` Vue hook");
+            console.log("Notes plugin: Invoking the `updated` Vue hook");
             this.reload_mathjax();  // TODO: maybe let process_mathjax() call this, and only if MathJax is undefined
             this.process_mathjax(); // TODO: maybe only invoke if the note contains math text
         },
@@ -142,7 +142,7 @@ Vue.component('vue-plugin-n',
         // For debugging purposes, for now...
         {
             //alert(`Invoking the 'beforeDestroy' Vue hook`);
-            console.log(`Invoking the 'beforeDestroy' Vue hook`);
+            console.log(`Notes plugin: Invoking the 'beforeDestroy' Vue hook`);
         },
 
 

@@ -1,0 +1,86 @@
+<!-- This is just a tester for the Vue component in the .js file by the same name
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tester for Vue component</title>
+
+    <link type="text/css" rel="stylesheet" href="vue_cytoscape_3.css">  <!-- *** CHANGE THIS AS NEEDED *** -->
+
+    <script src="../../Vue2/vue2.js"></script>          <!-- Vue.js (version 2.6) -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js"></script>
+</head>
+
+<body>
+
+<h1>TESTER of Interactive network plot</h1>
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENT below : ROOT element -->
+
+    <vue_cytoscape_3 v-bind:graph_data="graph_data_json"
+                     v-bind:component_id="1">
+    >
+    </vue_cytoscape_3>
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="vue_cytoscape_3.js"></script>                    <!-- *** CHANGE THIS AS NEEDED *** -->
+
+
+
+
+<script>
+    // Instantiation of the ROOT component must come after the definition of the descendant components
+    new Vue({
+        el: '#vue-root-1',
+
+        data: {     // THE TEST DATA
+            graph_data_json:
+
+                {
+                    "structure": [
+                        {'id': 1, 'name': 'Julian', 'labels': ['Person']},
+                        {'id': 2, 'color': 'white', 'brand': 'Toyota', 'labels': ['Car']},
+                        {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'},
+                        {'id': 3, 'name': 'Berkeley', 'labels': ['City']},
+                        {'name': 'LIVES IN', 'source': 1, 'target': 3, 'id': 'edge-2'},
+                        {'id': 4, 'name': 'Bayer', 'labels': ['Company']},
+                        {'name': 'WORKS FOR', 'source': 1, 'target': 4, 'id': 'edge-3', 'since': 2025},
+                        {'id': 5, 'name': 'USA', 'labels': ['Country']},
+                        {'id': 6, 'name': 'Germany', 'labels': ['Country']},
+                        {'name': 'LOCATED IN', 'source': 3, 'target': 5, 'id': 'edge-4'},
+                        {'name': 'LOCATED IN', 'source': 4, 'target': 5, 'id': 'edge-5'},
+                        {'name': 'LOCATED IN', 'source': 4, 'target': 6, 'id': 'edge-6'}
+                    ],
+                    "color_mapping": {
+                        "Car": "#F16668",
+                        "Person": "cyan",
+                        "City": "#C990C1",
+                        "Company": "#F79768",
+                        "Country": "#8DCC92"
+                    },
+                    "caption_mapping": {
+                        "Car": "brand",
+                        "Person": "name",
+                        "City": "name",
+                        "Company": "name",
+                        "Country": "name"
+                    }
+                }
+
+        }  // END of data
+
+    });
+</script>
+
+
+</body>
+</html>
