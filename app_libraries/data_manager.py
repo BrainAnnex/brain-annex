@@ -216,7 +216,7 @@ class DataManager:
     def get_schema_visualization_data(cls):
         """
         Create and return an object with all the info
-        to visualise a graph with the database Schema info
+        to visualise a graph displaying the database Schema info
 
         :return:    An object of class PyGraphScape
         """
@@ -238,18 +238,20 @@ class DataManager:
         graph_obj.assign_caption(label="VEHICLE", caption="year")
         return graph_obj
         '''
-
+        # Fetch all the "CLASS" nodes from the database, and then fetch all the links among them
         classes_match = cls.db.match(labels="CLASS")
         schema_nodes = cls.db.get_nodes(match=classes_match,
                                         return_internal_id=True, return_labels=True)
+        #print("get_schema_visualization_data() - schema_nodes:", schema_nodes)
+
         class_node_ids = graph_obj.prepare_graph(schema_nodes, add_edges=True)
-        #print("Class node IDs:", class_node_ids)
+        #print("    Class node IDs:", class_node_ids)
 
         property_match = cls.db.match(labels="PROPERTY")
         schema_nodes = cls.db.get_nodes(match=property_match,
-                                    return_internal_id=True, return_labels=True)
+                                        return_internal_id=True, return_labels=True)
 
-        property_node_ids = graph_obj.prepare_graph(schema_nodes, add_edges=False)
+        property_node_ids = graph_obj.prepare_graph(schema_nodes, cumulative=True, add_edges=False)
         #print("Property node IDs:", property_node_ids)
 
         graph_obj.link_node_groups(class_node_ids, property_node_ids)
