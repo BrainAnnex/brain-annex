@@ -4001,9 +4001,9 @@ class GraphSchema:
         :param class_name:  The name of a Class node already present in the Schema
 
         :param select:      [OPTIONAL] Name of the Pandas field, or list of names, to import; all others will be ignored
-                                (Note: original name prior to any rename, if applicable)
+                                (Note: use the original field name prior to any rename done by this function, if applicable)
         :param drop:        [OPTIONAL] Name of a Pandas field, or list of names, to ignore during import
-                                (Note: original name prior to any rename, if applicable)
+                                (Note: use the original field name prior to any rename, if applicable)
                                 If both arguments "select" and "drop" are passed, an Exception gets raised
         :param rename:      [OPTIONAL] dictionary to rename the Pandas dataframe's column names to
                                 EXAMPLE {"current_name": "name_we_want"}
@@ -4012,7 +4012,7 @@ class GraphSchema:
                                             any import of a record that is a duplicate in that field,
                                             will result in the modification of the existing record, rather than the creation of new one;
                                             the details of the modification are based on the argument `duplicate_option'
-                                            (Note: original name prior to any rename, if applicable)
+                                            (Note: use the original field name prior to any rename, if applicable)
 
         :param duplicate_option:    Only applicable if primary_key is specified;
                                     if provided, must be "merge" (default) or "replace".
@@ -4038,9 +4038,9 @@ class GraphSchema:
                                     that contain integers, or that are to be converted to integers
                                     (typically necessary because numeric Pandas columns with NaN's
                                      are automatically turned into floats;
-                                     this argument will cast them to int's, and drop the NaN's)
+                                     this argument will cast the value to int's, and drop any NaN's)
         :param extra_labels:    [OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
-                                    IN ADDITION TO the Class name (which is always used as label)
+                                    *IN ADDITION TO* the Class name (which is always used as label)
         :param report:          [OPTIONAL] If True (default), print the status of the import-in-progress
                                     at the end of each batch round
         :param report_frequency: [OPTIONAL] Only applicable if report is True;
@@ -4057,6 +4057,7 @@ class GraphSchema:
                                                             is specified, because imports might then refer to existing,
                                                             or previously-created. nodes.
         """
+        # TODO: maybe rename `max_batch_size` to `batch_size`
         # TODO: restore uri_namespace , present in the old version
         # TODO: maybe return a separate list of internal database ID's of any updated node
 
@@ -4147,7 +4148,7 @@ class GraphSchema:
         # Determine the number of needed batches (always at least 1)
         number_batches = math.ceil(len(df) / max_batch_size)    # Note that if the max_chunk_size equals the size of df
                                                                 # then we'll just use 1 batch
-        print(f"import_pandas_nodes(): importing {len(df)} records in {number_batches} batch(es) of max size {max_batch_size}...")
+        print(f"import_pandas_nodes(): importing {len(df)} records in {number_batches} batch(es) of size up to {max_batch_size}...")
 
         batch_list = np.array_split(df, number_batches)     # List of Pandas data frames,
                                                             # each resulting from splitting the original data frame
