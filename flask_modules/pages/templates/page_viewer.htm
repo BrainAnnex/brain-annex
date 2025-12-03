@@ -226,7 +226,7 @@
     </a>
 </p>
 {% endif %}
-    
+
 
 {# Display all subcategories (at the top) #}
 <div v-if="all_subcategories.length > 0" class='subsections'>
@@ -698,6 +698,20 @@ new Vue({
 
         next_new_item_uri: -1,      // Auto-increment negative values as URI placeholders for new Content Items being added: -1, -2, ...
 
+        my_categories: [
+                { name: "French", uri: "514" },
+                { name: "German", uri: "60" },
+                { name: "Brazilian Portuguese", uri: "697" },
+                { name: "Language", uri: "544" }
+            ],
+
+        my_categories_OLD_2: [
+                { label: "French", value: "514" },
+                { label: "German", value: "60" },
+                { label: "Brazilian Portuguese", value: "697" },
+                { label: "Language", value: "544" }
+            ],
+
 
         // For bulk operations.  TODO: turn into a Vue component
         bulk_operations: false,     // If true, checkboxes for bulk operations of Content Items are revealed
@@ -731,26 +745,30 @@ new Vue({
         if (this.is_page_empty)
             this.expose_controls = true;
 
-        // Portion for module Awesomplete
+        // Portion for module Awesomplete.  See: https://projects.verou.me/awesomplete/
         const inputElement = document.getElementById("category_navigator"); // The input element managed by Awesomplete
         console.log(inputElement);
 
         // Show label but insert value into the input:
         new Awesomplete(inputElement, {
-            autoFirst: true,
-            list: [
-                [ "French", "514" ],
-                [ "German", "60" ],
-                [ "Brazilian Portuguese", "697" ],
-                [ "Language", "544" ],
-                [ "Windows 11", "4740" ],
-                [ "Dining", "535" ]
-            ]
+            autoFirst: true,            // The 1st match automatically highlighted  in pop-down menu
+            list: this.all_categories,  // Data source
+            sort: false,                // Don't perform any sorting (our data source is already sorted!)
+            maxItems: 20,               // Max number of matches being shown in pop-down menu
+
+            data: function (item, input) {
+                        // Translate our data-source key names ("name" and "uri")
+                        // to the key names expected by Awesomplete ("label" and "value", respectively)
+                        if (item.remarks !== undefined)
+                            return { label: item.name + " [" + item.remarks + "]" , value: item.uri };
+                        else
+                            return { label: item.name, value: item.uri };
+            }
         });
 
 
         inputElement.addEventListener("awesomplete-selectcomplete", (event) => {
-            console.log(event); // Event of type "awesomplete-selectcomplete"
+            //console.log(event);     // Event of type "awesomplete-selectcomplete"
             console.log(`Picked (label): ${event.text.label}`);
             console.log(`Picked (value): ${event.text.value}`);
             window.location.href = `${event.text.value}`;        // `viewer/${event.text.value}`;
