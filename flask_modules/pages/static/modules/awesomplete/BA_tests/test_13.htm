@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test 13</title>
+    <link rel="stylesheet" href="../awesomplete.css">
+    <script src="../awesomplete.js"></script>
+</head>
+
+<body>
+<h2>Test 13</h2>
+
+<form method='GET' action='target_page.htm'  id='ajax-form'  style='float:right; padding-right:5px;'>
+    <img src='https://brainannex.org/graphics/pageBuilder/magnifier.png' alt='search box' title='search box'>
+    <input id='julian' type='text' name='text' size='35'>   <!-- Make sure that this INPUT element shows up before the other ones! -->
+    <input type='hidden' name='ac' value=1>
+    <input type='submit' value='SEARCH'>
+    <script>
+
+    </script>
+</form>
+
+
+
+<script>
+
+var inputElement = document.getElementById("julian");
+
+//var awesomplete = new Awesomplete(inputElement);
+
+
+// Show label but insert value into the input:
+new Awesomplete(inputElement, {
+    autoFirst: true,
+	list: [
+		[ "Italy", "IT" ],
+		[ "China", "CN" ],
+		[ "United States", "US" ],
+		[ "India", "IN" ],
+		[ "German", "DE" ],
+		[ "France", "FR" ],
+		[ "Russia", "RU" ],
+		[ "Spain", "ES" ],
+		[ "Greece", "EL" ]
+	]
+});
+
+inputElement.addEventListener("awesomplete-select", (event) => {
+    const inputText = event.target.value;     // What was actually typed in the input box
+    console.log(`Actually typed in the input box: ${inputText}`);
+
+    //awesomplete.list = ["my"+inputText, "custom"+inputText, "list"+inputText];
+    //awesomplete.evaluate();    // need to call it if you dynamically set list while the popup is open
+});
+
+inputElement.addEventListener("awesomplete-selectcomplete", (event) => {
+    console.log(event);
+    console.log(`Picked (label): ${event.text.label}`);
+    console.log(`Picked (value): ${event.text.value}`);
+});
+
+
+/*
+new Awesomplete(inputReference, {
+	minChars: 3,
+	maxItems: 15,
+	...
+});
+*/
+
+
+//var my_list = ["Ada", "Java", "JavaScript", "Fortran", "Python", "Node.js", "Ruby on Rails", "LISP", "BASIC"];
+
+//new Awesomplete(inputElement, { list: my_list });
+
+// We can also use an element reference for the list instead of a selector
+//new Awesomplete(input, {list: document.querySelector("#mylist")});
+
+//var input = document.getElementById("myinput");
+
+//var awesomplete = new Awesomplete(input);
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test 8</title>
+    <link rel="stylesheet" href="../awesomplete.css">
+    <script src="../awesomplete.js"></script>
+</head>
+
+<body>
+<h2>Test 8</h2>
+
+<input id="myinput">
+
+
+
+<script>
+var input = document.getElementById("myinput");
+
+var awesomplete = new Awesomplete(input);
+
+
+// Show label but insert value into the input:
+new Awesomplete(input, {
+	list: [
+		[ "Italy", "IT" ],
+		[ "China", "CN" ],
+		[ "United States", "US" ],
+		[ "India", "IN" ]
+	]
+});
+
+/*
+Alternative:
+new Awesomplete(input, {
+	list: [
+		{ label: "Italy", value: "IT" },
+		{ label: "China", value: "CN" },
+		{ label: "United States", value: "US" }
+	]
+});
+*/
+</script>
+
+</body>
+</html>
