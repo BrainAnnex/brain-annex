@@ -764,10 +764,10 @@ new Vue({
             //console.log(event);     // Event of type "awesomplete-selectcomplete"
             console.log(`Awesomplete picked (label): ${event.text.label}`);
             console.log(`Awesomplete picked (value): ${event.text.value}`);
-            this.category_input_navigator = `LOADING new page: "${event.text.label}"...`; // This will show inside
-                                                                                                         // the INPUT element, while the page re-direct
-                                                                                                         // takes its time
-            window.location.href = `${event.text.value}`;           // Re-direct web page
+            this.category_input_navigator = `LOADING new page: "${event.text.label}"...`;   // This will show inside
+                                                                                            // the INPUT element, while the page re-direct
+                                                                                            // takes its time
+            window.location.href = `/BA/pages/viewer/${event.text.value}`;                  // Re-direct web page
         });
 
     },
