@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test 12</title>
+    <link rel="stylesheet" href="../awesomplete.css">
+    <script src="../awesomplete.js"></script>
+</head>
+
+<body>
+<h2>Test 12</h2>
+
+<form method='GET' action='target_page.htm'  id='ajax-form'  style='float:right; padding-right:5px;'>
+    <img src='https://brainannex.org/graphics/pageBuilder/magnifier.png' alt='search box' title='search box'>
+    <input type='text' name='text' size='35'>   <!-- Make sure that this INPUT element shows up before the other ones! -->
+    <input type='hidden' name='ac' value=1>
+    <input type='submit' value='SEARCH'>
+    <script>
+
+    </script>
+</form>
+
+
+
+<script>
+
+// Get the FIRST DOM Element within the document that matches the specified group of CSS selectors
+var inputElement = document.querySelector('#ajax-form input');
+//var input = document.getElementById("myinput");
+
+var awesomplete = new Awesomplete(inputElement);
+
+
+// Show label but insert value into the input:
+new Awesomplete(inputElement, {
+    autoFirst: true,
+	list: [
+		[ "Italy", "IT" ],
+		[ "China", "CN" ],
+		[ "United States", "US" ],
+		[ "India", "IN" ]
+	]
+});
+
+/*
+new Awesomplete(inputReference, {
+	minChars: 3,
+	maxItems: 15,
+	...
+});
+*/
+
+
+//var my_list = ["Ada", "Java", "JavaScript", "Fortran", "Python", "Node.js", "Ruby on Rails", "LISP", "BASIC"];
+
+//new Awesomplete(inputElement, { list: my_list });
+
+// We can also use an element reference for the list instead of a selector
+//new Awesomplete(input, {list: document.querySelector("#mylist")});
+
+//var input = document.getElementById("myinput");
+
+//var awesomplete = new Awesomplete(input);
+
+</script>
+
+</body>
+</html>

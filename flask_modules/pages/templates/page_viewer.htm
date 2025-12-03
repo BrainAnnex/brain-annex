@@ -75,6 +75,9 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/modules/dropzone/dropzone.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/modules/dragscroll/dragscroll.css">
 
+    <link rel="stylesheet" href="/BA/pages/static/modules/awesomplete/awesomplete.css">
+
+
     <!-- Styling for Vue CORE components -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/toc_sidebar/toc_sidebar.css">
@@ -82,7 +85,7 @@
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
-    
+
     <!-- PLUGIN-specific styling -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/headers/headers.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/images/images.css">
@@ -99,6 +102,8 @@
     <script src="/BA/pages/static/modules/CKeditor/ckeditor.js"></script>
     <script src="/BA/pages/static/modules/dropzone/dropzone.js"></script>
     <script src="/BA/pages/static/modules/dragscroll/dragscroll.js"></script>
+    <script src="/BA/pages/static/modules/awesomplete/awesomplete.js"></script>
+
     <script src="/BA/api/static/server_communication.js"></script>
 </head>
 
@@ -168,8 +173,10 @@
 
 
 
-
+<!-- Manage the expansion/contraction of the right sidebox -->
 <div v-bind:class="{ 'lightbox': show_right_sidebox, 'lightbox--expand-right': !show_right_sidebox }">
+
+
 
 
 <!-- ****************************************************************
@@ -195,6 +202,15 @@
 
 
 
+<form method='GET' action='target_page.htm'  id='ajax-form'  style='float:right; padding-right:5px;'>
+    <span style="color:gray">Category Navigator</span><br>
+    <img src='https://brainannex.org/graphics/pageBuilder/magnifier.png' alt='Go to Category' title='Go to Category'>
+    <input id='category_navigator' type='text' name='text' size='35'>
+</form>
+
+
+
+
 {# Display prominently this page's Category's name and, if appropriate, its controls #}
 {% if category_name %}
 <p class="headline">
@@ -210,7 +226,7 @@
     </a>
 </p>
 {% endif %}
-
+    
 
 {# Display all subcategories (at the top) #}
 <div v-if="all_subcategories.length > 0" class='subsections'>
@@ -714,6 +730,32 @@ new Vue({
         // If the page is devoid of content and of sub-categories, switch automatically to editing mode
         if (this.is_page_empty)
             this.expose_controls = true;
+
+        // Portion for module Awesomplete
+        const inputElement = document.getElementById("category_navigator"); // The input element managed by Awesomplete
+        console.log(inputElement);
+
+        // Show label but insert value into the input:
+        new Awesomplete(inputElement, {
+            autoFirst: true,
+            list: [
+                [ "French", "514" ],
+                [ "German", "60" ],
+                [ "Brazilian Portuguese", "697" ],
+                [ "Language", "544" ],
+                [ "Windows 11", "4740" ],
+                [ "Dining", "535" ]
+            ]
+        });
+
+
+        inputElement.addEventListener("awesomplete-selectcomplete", (event) => {
+            console.log(event); // Event of type "awesomplete-selectcomplete"
+            console.log(`Picked (label): ${event.text.label}`);
+            console.log(`Picked (value): ${event.text.value}`);
+            window.location.href = `${event.text.value}`;        // `viewer/${event.text.value}`;
+        });
+
     },
 
 

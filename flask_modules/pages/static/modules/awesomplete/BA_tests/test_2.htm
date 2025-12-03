@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test 2</title>
+    <link rel="stylesheet" href="../awesomplete.css">
+    <script src="../awesomplete.js" async></script>
+</head>
+
+<body>
+<h2>Test 2</h2>
+
+
+Choose Programming language:
+<input class="awesomplete" list="mylist">
+
+<datalist id="mylist">
+	<option>Ada</option>
+	<option>Java</option>
+	<option>JavaScript</option>
+	<option>Fortran</option>
+	<option>Python</option>
+	<option>Node.js</option>
+	<option>Ruby</option>
+</datalist>
+
+
+
+<!-- Compare with the NON-Awesomplete version -->
+
+<br><hr><br>
+Choose country:
+<input type="text" id="country" list="countryOptions">  <!-- `list` is a standard HTML attribute -->
+
+<datalist id="countryOptions">
+    <option value="USA">
+    <option value="Canada">
+    <option value="Mexico">
+    <option value="UK">
+</datalist>
+
+</body>
+</html>

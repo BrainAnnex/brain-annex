@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test 5</title>
+    <link rel="stylesheet" href="../awesomplete.css">
+    <script src="../awesomplete.js"></script>
+</head>
+
+<body>
+<h2>Test 5</h2>
+
+<input id="myinput" >
+
+<!-- The following will show on the page -->
+<ul id="mylist">
+	<li>Ada</li>
+	<li>Java</li>
+	<li>JavaScript</li>
+	<li>Python</li>
+	<li>Fortran</li>
+	<li>Node.js</li>
+	<li>Ruby on Rails</li>
+</ul>
+
+
+
+<script>
+var input = document.getElementById("myinput");
+
+// We can also use an element reference for the list instead of a selector
+new Awesomplete(input, {list: document.querySelector("#mylist")});
+</script>
+
+</body>
+</html>
