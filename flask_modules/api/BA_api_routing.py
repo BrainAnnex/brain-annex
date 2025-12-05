@@ -2232,7 +2232,7 @@ class ApiRouting:
                     <input type='hidden' name='category_id' value='123'>
                     <input type='hidden' name='insert_after_uri' value='rs-2'>
                     <input type='hidden' name='insert_after_class' value='Recordset'>
-                    <input type='hidden' name='upload_folder' value='documents/Ebooks & Articles'>      <!-- OPTIONAL -->
+                    <input type='hidden' name='upload_folder' value='documents/Ebooks & Articles'>    <!-- OPTIONAL -->
                 </form>
 
             The 'insert_after_uri' attribute also can take the special values 'INSERT_AT_BOTTOM' or 'INSERT_AT_TOP'
@@ -2244,7 +2244,7 @@ class ApiRouting:
                 in case of error, a server error status is return (500), with a text error message
             """
             # TODO: move a lot of this function to MediaManager
-            # TODO: media is currently added to a folder determined by its media type
+            # TODO: media is currently added to a folder determined by its media type (image vs. document)
 
             # Extract the POST values
             post_data = request.form    # Example: ImmutableMultiDict([('category_id', '3677'),
@@ -2271,33 +2271,44 @@ class ApiRouting:
 
 
             # Map the MIME type of the uploaded file into a schema_code
-            # TODO: maybe store the MIME type in the database?
+            # TODO: maybe store the MIME type in the database, or in the plugin helper?
+            #       For now, the Schema Class is inferred from the MIME type of the file
             if mime_type.split('/')[0] == "image":  # For example, 'image/jpeg', 'image/png', etc.
                 class_name = "Image"
             else:
                 class_name = "Document"            # Any unrecognized MIME type is treated as a Document
 
 
-            # Move the uploaded file from its temp location to the media folder
+            # Move the uploaded file from its temp location to the appropriate media folder (depending on class_name)
             # TODO: let upload_helper (optionally) handle it
         
             src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
 
-            if not post_data.get("upload_folder"):    # If not explicitly passed
+            if not post_data.get("upload_folder"):    # If not explicitly passed (EXAMPLE: "documents/Ebooks & Articles")
                 dest_folder = MediaManager.default_file_path(class_name=class_name)
             else:
                 dest_folder = cls.config_pars["MEDIA_FOLDER"] + post_data["upload_folder"] + "/"
 
             dest_fullname = dest_folder + tmp_filename_for_upload
 
-            #print(f"    Attempting to move `{src_fullname}` to `{dest_fullname}`")
+            #print(f"upload_media(): Attempting to move file `{src_fullname}` to `{dest_fullname}`")
             try:
-                shutil.move(src_fullname, dest_fullname)
-            except Exception as ex:
-                # TODO: create the folder if not present
-                err_status = f"Error in moving the file to the intended final destination ({dest_folder}) after upload. {ex}"
-                return make_response(err_status, 500)
-        
+                shutil.move(src_fullname, dest_fullname)    # Note: this will fail if the path to the destination file isn't already present
+            except Exception:
+                # This failure might be due to the folder dest_folder not being present
+                print(f"upload_media(): Failed to move the uploaded file '{src_fullname}' to its intended destination '{dest_fullname}'.  "
+                      f"Attempting to automatically correct, if that was due to a missing destination folder")
+
+                # Attempt to remedy the problem by creating the appropriate media folder - in case it was missing
+                MediaManager.create_folder(name=dest_folder)
+
+                # Try again after creating the media folder (if that was indeed missing)
+                try:
+                    shutil.move(src_fullname, dest_fullname)
+                except Exception as ex:
+                    err_status = f"Error in moving the file to the intended final destination ({dest_folder}) after upload. {ex}"
+                    return make_response(err_status, 500)
+
         
             category_uri = post_data["category_id"]
 
@@ -2315,7 +2326,8 @@ class ApiRouting:
                 try:
                     extra_properties = ImageProcessing.process_uploaded_image(media_folder=dest_folder,
                                                                               basename=basename, suffix=suffix)
-                    #   extra_properties may contain the following keys: "caption", "width", "height"
+                    # `extra_properties` is a  dictionary of extra properties to store in database,
+                    # and may contain the following keys: "caption", "width", "height"
 
                 except Exception:
                     extra_properties = {}       # Nothing else to save in the database

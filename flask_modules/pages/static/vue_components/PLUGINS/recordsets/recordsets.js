@@ -1,4 +1,5 @@
 /*  Vue component to display and edit Content Items of type "rs" (Recordsets)
+    TODO: rename 'vue-plugin-recordsets'
  */
 
 Vue.component('vue-plugin-rs',

@@ -2,7 +2,7 @@ from brainannex import GraphSchema
 
 
 
-class TimerWidget:
+class Timer:
     """
     Plugin-provided custom interface for "timer widgets"
     """
@@ -24,14 +24,14 @@ class TimerWidget:
 
         # TODO: this ought to be done by plugin_support.py
         if not GraphSchema.class_name_exists("Content Item"):
-            GraphSchema.create_class_with_properties(name="Content Item", strict=True,
+            GraphSchema.create_class_with_properties(name="Content Item", strict=False,
                                                      properties=["uri"])
             GraphSchema.create_class_relationship(from_class="Content Item", to_class="Category",
                                                   rel_name="BA_in_category")
 
 
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
-            db_id, _ = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=True, code="timer",
+            db_id, _ = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="timer", handler="timer",
                                                                 properties=["ringtone"],
                                                                 class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 

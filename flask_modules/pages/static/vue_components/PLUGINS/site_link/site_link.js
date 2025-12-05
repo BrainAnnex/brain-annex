@@ -1,4 +1,5 @@
 /*  Vue component to display and edit Content Items of type "sl" (Site Links, aka Bookmarks)
+    TODO: rename 'vue-plugin-site-link'
  */
 
 Vue.component('vue-plugin-sl',

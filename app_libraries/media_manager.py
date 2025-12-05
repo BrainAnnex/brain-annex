@@ -23,7 +23,7 @@ class MediaManager:
                         #                     (notice the forward slashes, even on Windows)
                         # This class variable gets set by initialize.py
 
-    DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder (a child of MEDIA_FOLDER)
+    DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder (a subfolder of cls.MEDIA_FOLDER)
                             # EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
                             # This class variable gets set by initialize.py
 
@@ -49,26 +49,34 @@ class MediaManager:
 
 
     @classmethod
-    def set_media_folder(cls, path_name: str) -> None:
+    def set_media_folder(cls, path_name :str) -> None:
         """
+        Initialize the class variable MEDIA_FOLDER with the given data.
+        If path_name doesn't end with "/", add it
 
         :param path_name:   Location where the media for Content Items is stored, including the final "/"
                                 EXAMPLE on Windows: "D:/media/"
                                 (notice the forward slashes, even on Windows)
         :return:            None
         """
-        # TODO: if path_name doesn't end with "/", add it
+        # TODO: verify that the given folder actually exists
 
-        cls.MEDIA_FOLDER = path_name
+        assert type(path_name) == str, \
+            f"MediaManager.set_media_folder(): the argument `path_name` must be a string.  " \
+            f"The passed argument ({path_name}) was of type {type(path_name)}"
+
+        cls.MEDIA_FOLDER = path_name.rstrip("/") + "/"  # Always add a final "/" (after first removing it, if present)
 
 
 
     @classmethod
     def set_default_folders(cls, folder_dict :dict) -> None:
         """
+        Initialize the class variable DEFAULT_FOLDERS with the given data
 
-        :param folder_dict:
-        :return:
+        :param folder_dict: A dict mapping a Class name to its designated default folder (a subfolder of cls.MEDIA_FOLDER)
+                                EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
+        :return:            None
         """
         cls.DEFAULT_FOLDERS = folder_dict
 
@@ -137,15 +145,16 @@ class MediaManager:
 
 
     @classmethod
-    def lookup_media_file(cls, uri :str, class_name, thumb=False) -> (str, str, str):
+    def lookup_media_file(cls, uri :str, class_name :str, thumb=False) -> (str, str, str):
         """
 
-        :param uri:     Unique identifier for the Media Item of interest
-        :param class_name:
-        :param thumb:   If True, return the folder for the thumbnail image instead;
+        :param uri:         Together with the Class name, this string provides
+                                a unique identifier for the Media Item of interest
+        :param class_name:  Name of the Schema Class for this media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param thumb:       If True, return the folder for the thumbnail image instead;
                                 ignored if the file suffix is "svg" (regardless of case),
                                 because SVG files cannot be resized
-        :return:        The triplet (filepath, basename, suffix)
+        :return:            The triplet (filepath, basename, suffix)
                                 Notes:  filepath ends with a "/"
                                         the basename is exclusive of path and of suffix
                                         the suffix does NOT include the dot
@@ -178,12 +187,13 @@ class MediaManager:
     def get_full_filename(cls, uri : str, class_name, thumb=False) -> str:
         """
 
-        :param uri:     Unique identifier for the Media Item of Interest
-        :param class_name:
-        :param thumb:   If True, return the folder for the thumbnail image instead;
+        :param uri:         Together with the Class name, this string provides
+                                a unique identifier for the Media Item of interest
+        :param class_name:  Name of the Schema Class for this media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param thumb:       If True, return the folder for the thumbnail image instead;
                                 ignored if the file suffix is "svg" (regardless of case),
                                 because SVG files cannot be resized
-        :return:        EXAMPLE: "D:/media/my_media_folder/images/Tahiti vacation/"
+        :return:            EXAMPLE: "D:/media/my_media_folder/images/Tahiti vacation/"
         """
         (filepath, basename, suffix) = cls.lookup_media_file(uri=uri, class_name=class_name, thumb=thumb)
         filename = basename + "." + suffix
@@ -193,45 +203,6 @@ class MediaManager:
 
         return full_file_name
 
-
-
-    @classmethod
-    def get_from_text_file(cls, filename: str, path="", encoding="latin-1") -> str:
-        """
-        Read in and return the contents of the specified TEXT file.
-
-        Note: 'utf8' encoding at times led to problems.
-               More info: https://stackoverflow.com/questions/5552555/unicodedecodeerror-invalid-continuation-byte
-
-        :param filename:    FULL filename, INCLUDING path - unless path is passed in the following argument
-                                EXAMPLE on Windows:
-                                "D:/media/my_file.txt"   (notice the forward slashes, even on Windows)
-        :param path:        [OPTIONAL] String to prefix to the filename argument, above
-        :param encoding:    A string such as "latin-1" (aka "iso-8859-1") or "utf8"
-        :return:            The contents of the text file, using the requested encoding
-        """
-        full_file_name = path + filename
-
-        with open(full_file_name, 'r', encoding=encoding) as fh:
-            file_contents = fh.read()
-            return file_contents
-
-
-
-    @classmethod
-    def get_from_binary_file(cls, path: str, filename: str) -> bytes:
-        """
-        Read in and return the contents of the specified BINARY file
-
-        :param path:        String that must include a final "/", containing the full path of the file
-                                EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
-        :param filename:    EXCLUSIVE of path.  EXAMPLE: "my pic.jpg"
-        :return:            The contents of the binary file
-        """
-        full_file_name = path + filename
-        with open(full_file_name, 'rb') as fh:
-            file_contents = fh.read()
-            return file_contents
 
 
 
@@ -358,36 +329,6 @@ class MediaManager:
 
 
     @classmethod
-    def save_into_file(cls, contents: str, filename: str, class_name :str) -> None:
-        """
-        Save the given data into the specified file in the class-wide media folder.  UTF8 encoding is used.
-        In case of error, detailed Exceptions are raised
-
-        :param contents:    String to store into the file
-        :param filename:    EXCLUSIVE of file path
-        :param class_name:  Needed to determine the default folder location (which is based on class_name)
-        :return:            None.  In case of errors, detailed Exceptions are raised
-        """
-
-        folder = cls.default_file_path(class_name=class_name)
-        full_file_name = folder + filename
-
-        try:
-            f = open(full_file_name, "w", encoding='utf8')
-        except Exception as ex:
-            raise Exception(f"save_into_file(): Unable to open file {full_file_name} for writing. {ex}")
-
-        try:
-            f.write(contents)
-        except Exception as ex:
-            raise Exception(f"save_into_file(): Unable write data to file {full_file_name}. "
-                            f"First 20 characters: `{contents[:20]}`. {exceptions.exception_helper(ex)}")
-
-        f.close()
-
-
-
-    @classmethod
     def delete_media_file(cls, uri: str, class_name :str, thumb=False) -> bool:
         """
         Delete the specified media file, assumed in a standard location
@@ -401,23 +342,6 @@ class MediaManager:
         full_file_name = cls.get_full_filename(uri, class_name=class_name, thumb=thumb)
 
         return cls.delete_file(full_file_name)
-
-
-
-    @classmethod
-    def delete_file(cls, fullname: str) -> bool:
-        """
-        Delete the specified file
-
-        :param fullname:    Full name of the file to delete, including its path
-        :return:            True if successful, or False if file was not found
-        """
-
-        if os.path.exists(fullname):
-            os.remove(fullname)
-            return True
-        else:
-            return False    # "The file does not exist"
 
 
 
@@ -504,14 +428,44 @@ class MediaManager:
 
 
     @classmethod
-    def locate_orphan_media_NOT_YET_USED(cls, directory: str, db) -> [str]:    # TODO: finish implementing
+    def create_missing_media_folder(cls, class_name :str) -> None:
         """
+        Attempt to create a presumably-missing media folder for the media associated to the given schema Class.
+        If the folder already exists, no action taken.
+
+        :param class_name:  Name of a schema Class that has associated media.  EXAMPLE: "Document"
+        :return:            None
+        """
+        folder_name = cls.DEFAULT_FOLDERS.get(class_name)   # EXAMPLE: "documents"
+        if folder_name:
+            dir_to_create = cls.MEDIA_FOLDER + folder_name  # EXAMPLE: "D:/media/documents"
+            cls.create_folder(dir_to_create)
+
+
+
+    @classmethod
+    def create_folder(cls, name :str) -> None:
+        """
+        If the folder already exists, no action is taken
+
+        :param name:    EXAMPLE, on Windows: D:/media/documents"
+        :return:        None
+        """
+        print(f"create_folder(): attempting to create a folder named '{name}'")
+        os.makedirs(name, exist_ok=True)       # Do not raise an error if the folder already exists
+
+
+
+    @classmethod
+    def locate_orphan_media_NOT_YET_USED(cls, directory: str, db) -> [str]:
+        """
+        # TODO: finish implementing
         Locate files in a LOCAL directory
         that lack a corresponding database record (for now, just considering Notes)
 
         :param directory:   EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
         :param db:          Object of type "GraphAccess"; TODO: should be able to avoid it
-                                                              by using the GraphSchema layer instead
+                                                                by using the GraphSchema layer instead
         :return:            A list of names of "orphaned" file s
         """
         file_list = os.listdir(directory)
@@ -534,6 +488,117 @@ class MediaManager:
 
 
 
+    #####################################################################################################
+
+    '''                            ~   DIRECT FILE ACCESS (read/modify)   ~                                '''
+
+    def ________DIRECT_FILE_ACCESS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    @classmethod
+    def get_from_text_file(cls, filename :str, path="", encoding="latin-1") -> str:
+        """
+        Read in and return the contents of the specified TEXT file.
+
+        Note: "utf8" encoding at times led to problems.
+              See https://stackoverflow.com/questions/5552555/unicodedecodeerror-invalid-continuation-byte
+
+        :param filename:    FULL filename, INCLUDING path - unless path is passed in the following argument
+                                EXAMPLE on Windows:
+                                "D:/my_media_folder/documents/my_file.txt"   (notice the forward slashes, even on Windows)
+        :param path:        [OPTIONAL] String to prefix to the `filename` argument, above
+        :param encoding:    [OPTIONAL] A string such as "latin-1" (aka "iso-8859-1") or "utf8"
+        :return:            The contents of the text file, using the requested encoding
+        """
+        full_file_name = path + filename
+
+        with open(full_file_name, 'r', encoding=encoding) as fh:
+            file_contents = fh.read()
+            return file_contents
+
+
+
+    @classmethod
+    def get_from_binary_file(cls, path :str, filename :str) -> bytes:
+        """
+        Read in and return the contents of the specified BINARY file
+
+        :param path:        String that must include a final "/", containing the full path of the file
+                                EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
+        :param filename:    EXCLUSIVE of path.  EXAMPLE: "my pic.jpg"
+        :return:            The contents of the binary file
+        """
+        full_file_name = path + filename
+        with open(full_file_name, 'rb') as fh:
+            file_contents = fh.read()
+            return file_contents
+
+
+
+    @classmethod
+    def save_into_text_file(cls, contents :str, filename :str, class_name :str) -> None:
+        """
+        Save the given text data into the specified file, stored in the class-wide media folder.
+        UTF8 encoding is used.
+
+        :param contents:    String with the text to store into the file
+        :param filename:    EXCLUSIVE of file path
+        :param class_name:  Needed to determine the default folder location (which is based on class_name);
+                                if that folder doesn't exist, it gets created
+        :return:            None.  In case of errors, detailed Exceptions are raised
+        """
+        folder = cls.default_file_path(class_name=class_name)
+        full_file_name = folder + filename
+
+        # First, try to open the file...
+        try:
+            f = open(full_file_name, "w", encoding='utf8')
+        except Exception:
+            # This failure might be due to the media folder not being present
+            print(f"save_into_text_file(): Failed to open file '{full_file_name}' for writing.  "
+                  f"Attempting to automatically correct, if that was due to a missing folder for the media of Class '{class_name}'")
+
+            # Attempt to remedy the problem by creating the appropriate media folder - in case it was missing
+            cls.create_missing_media_folder(class_name=class_name)
+
+            # Try again after creating the media folder (if that was indeed missing)
+            try:
+                f = open(full_file_name, "w", encoding='utf8')
+            except Exception as ex:
+                raise Exception(f"save_into_file(): Unable to open file '{full_file_name}' for writing. {ex}")
+
+
+         # ...then try to write into it
+        try:
+            f.write(contents)
+        except Exception as ex:
+            raise Exception(f"save_into_file(): Unable write data to file '{full_file_name}'. "
+                            f"First 20 characters: `{contents[:20]}`. {exceptions.exception_helper(ex)}")
+
+        f.close()
+
+
+
+    @classmethod
+    def delete_file(cls, fullname :str) -> bool:
+        """
+        Delete the specified file
+
+        :param fullname:    Full name of the file to delete, including its path
+        :return:            True if successful, or False if file was not found
+        """
+
+        if os.path.exists(fullname):
+            os.remove(fullname)
+            return True
+        else:
+            return False    # "The file does not exist"
+
+
+
+
 
 ##########################################    IMAGES    ######################################################
 
@@ -541,24 +606,24 @@ class ImageProcessing:
     """
     Utility class for managing images, especially in the context of uploads.
 
-    SIDE NOTE: The "th" format from the Classic BrainAnnex, is:
-    "default (largish) thumbs - 3 fit in a row" : width sized to 300
+    SIDE NOTE: The "th" format from previous versions of BrainAnnex, is the only format in current use:
+        "default (largish) thumbs - 3 fit in a row" : width sized to 300
 
-    formats =
-    {
-        "th": { "description": "default (largish) thumbs - 3 fit in a row",
-                "size": 300,
-                "affected": "w"
+        formats =
+        {
+            "th": { "description": "default (largish) thumbs - 3 fit in a row",
+                    "size": 300,
+                    "affected": "w"
+            }
         }
-    }
     """
 
     @classmethod
-    def save_thumbnail(cls, src_folder: str, filename: str, save_to_folder: str,
-                       src_width: int, src_height: int) -> None:
+    def save_thumbnail(cls, src_folder :str, filename :str, save_to_folder :str,
+                       src_width :int, src_height :int) -> None:
         """
         Make a thumbnail of the specified image, and save it in a file.
-        The "th" thumbnail format is being followed.
+        The "th" thumbnail format (width=300) is being followed.
 
         :param src_folder:      Full path of folder with the file to resize.  It MUST end with "/"
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
@@ -567,40 +632,56 @@ class ImageProcessing:
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/"
         :param src_width:       Pixel width of the original image
         :param src_height:      Pixel height of the original image
-        :return:                None.  In case of error, an Exception is raised
+        :return:                None
         """
-        cls.scale_down_horiz(src_folder, filename, save_to_folder, src_width, src_height, target_width=300)
+        #TODO: turn the hardwired 300 into a class variable.  Specific formats ought to go into the Image plugin
+        image = cls.scale_down_horiz(src_folder=src_folder, filename=filename,
+                                     src_width=src_width, src_height=src_height, target_width=300)
+
+        resized_full_name = save_to_folder + filename
+
+        try:
+            image.save(resized_full_name)
+        except Exception:
+            # This failure might be due to the destination folder for the resized images not being present
+            print(f"save_thumbnail(): Failed to save the resized image into the file '{resized_full_name}'.  "
+                  f"Attempting to automatically correct, if that was due to a missing destination folder")
+
+            # Attempt to remedy the problem by creating the appropriate folder - in case it was missing
+            MediaManager.create_folder(name=save_to_folder)
+
+            # Try again after creating the media folder (if that was indeed missing)
+            image.save(resized_full_name)
 
 
 
     @classmethod
-    def scale_down_horiz(cls, src_folder: str, filename: str, save_to_folder: str,
-                         src_width: int, src_height: int, target_width: int) -> None:
+    def scale_down_horiz(cls, src_folder: str, filename: str,
+                         src_width: int, src_height: int, target_width: int):
         """
-        Resize an image to the target WIDTH, and save it in a file.
+        Resize to the target WIDTH the image contained in the specified file,
+        and return it as an `Image` object
 
         :param src_folder:      Full path of folder with the file to resize.  It MUST end with "/"
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
         :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
-        :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
-                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/"
         :param src_width:       Pixel width of the original image
         :param src_height:      Pixel height of the original image
         :param target_width:    Desired pixel width of the resized image
-        :return:                None.  In case of error, an Exception is raised
+        :return:                An `Image` object with the resized image
         """
         image = Image.open(src_folder + filename)
 
-        resized_full_name = save_to_folder + filename
-
-        if target_width >= src_width:   # Don't transform the image; just save it as it is
-            image.save(resized_full_name)
+        if target_width >= src_width:   # Don't transform the image; just return it, as it is
+            return image
+            #image.save(resized_full_name)
         else:
             scaling_ratio = src_width / target_width    # This will be > 1 (indicative of reduction)
             #print("scaling_ratio: ", scaling_ratio)
             target_height = int(src_height / scaling_ratio)
             new_image = image.resize((target_width, target_height))
-            new_image.save(resized_full_name)
+            return new_image
+            #new_image.save(resized_full_name)
 
 
 

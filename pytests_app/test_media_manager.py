@@ -23,6 +23,18 @@ def db():
 
 
 
+def test_set_media_folder():
+    MediaManager.set_media_folder("D:/whatever/")
+    assert MediaManager.MEDIA_FOLDER == "D:/whatever/"
+
+    MediaManager.set_media_folder("D:/I_forgot_the_final_slash")
+    assert MediaManager.MEDIA_FOLDER == "D:/I_forgot_the_final_slash/"  # Automatically added
+
+    with pytest.raises(Exception):
+        MediaManager.set_media_folder(True)
+
+
+
 def test_default_file_path():
     MediaManager.set_media_folder("D:/media/my_media_folder/")
     MediaManager.set_default_folders(plugin_support.all_default_folders())

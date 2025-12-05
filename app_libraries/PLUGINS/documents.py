@@ -36,7 +36,7 @@ class Documents:
             MediaManager.add_to_schema()
 
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
-            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="d",
+            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="d",  handler="documents",
                                                  properties=["caption", "date_created", "url", "comments", "year", "month", "read", "rating", "authors"],
                                                  class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
 

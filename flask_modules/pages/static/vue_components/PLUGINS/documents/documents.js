@@ -1,4 +1,5 @@
 /*  Vue component to display and edit Content Items of type "d" (Document)
+    TODO: rename 'vue-plugin-documents'
  */
 
 Vue.component('vue-plugin-d',

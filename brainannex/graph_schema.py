@@ -206,7 +206,7 @@ class GraphSchema:
 
 
     @classmethod
-    def create_class(cls, name :str, code=None, strict=False, no_datanodes=False, create_index=True) -> (int|str, str):
+    def create_class(cls, name :str, code=None, handler=None, strict=False, no_datanodes=False, create_index=True) -> (int|str, str):
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -219,10 +219,11 @@ class GraphSchema:
               use the function create_class_with_properties() instead.
 
         :param name:        Name to give to the new Class (any leading/trailing blank will first be stripped off)
-        :param code:        [OPTIONAL] String indicative of the software handler for this Class and its subclasses
+        :param code:        DEPRECATED!  [OPTIONAL] String indicative of the software handler for this Class and its subclasses
+        :param handler:         [OPTIONAL] Name of a software module that services this Class
         :param strict:      [OPTIONAL] If True, the Class will be of the "Strict" type;
                                 otherwise (default), it'll be of the "Lenient" type
-                            Explained under the comments for the GraphSchema class
+                                Explained under the comments for the GraphSchema class
 
         :param no_datanodes:[OPTIONAL] If True, it means that this Class does not allow data node
                                 to have a "SCHEMA" relationship to it;
@@ -248,11 +249,13 @@ class GraphSchema:
         if cls.class_name_exists(name):
             raise Exception(f"GraphSchema.create_class(): A class named `{name}` ALREADY exists")
 
-        schema_uri = cls._next_available_schema_uri()    # A schema-wide uri, also used for Property nodes
+        schema_uri = cls._next_available_schema_uri()    # A schema-wide uri, also used for other types of Schema nodes
 
         attributes = {"name": name, "uri": schema_uri, "strict": strict}
         if code:
             attributes["code"] = code
+        if handler:
+            attributes["handler"] = handler
         if no_datanodes:
             attributes["no_datanodes"] = True
 
@@ -260,8 +263,9 @@ class GraphSchema:
         # Create the database node for this new class
         internal_id = cls.db.create_node(labels=["CLASS", "SCHEMA"], properties=attributes)
 
-        #TODO: create an index and constraint for the pair (label=name, properties="uri") , unless user selects create_index=False
+
         if create_index:
+            # Create an index and constraint for the pair (label=name, properties="uri")
             cls.db.create_constraint(label=name, key="uri")
 
         return (internal_id, schema_uri)
@@ -1384,8 +1388,8 @@ class GraphSchema:
 
 
     @classmethod
-    def create_class_with_properties(cls, name :str, properties :[str], code=None, strict=False,
-                                     class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int, str):
+    def create_class_with_properties(cls, name :str, properties :[str], code=None, handler=None, strict=False,
+                                     class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int|str, str):
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
         and link them together with "HAS_PROPERTY" relationships.
@@ -1405,20 +1409,22 @@ class GraphSchema:
 
         :param name:            String with name to assign to the new class
         :param properties:      List of strings with the names of the Properties, in their default order (if that matters)
-        :param code:            Optional string indicative of the software handler for this Class and its subclasses.
-        :param strict:          If True, the Class will be of the "Strict" type;
-                                    otherwise, it'll be of the "Lenient" type
+        :param code:            DEPRECATED!  [OPTIONAL] String indicative of the software handler for this Class and its subclasses.
+        :param handler:         [OPTIONAL] Name of a software module that services this Class
+        :param strict:          [OPTIONAL] If True, the Class will be of the "Strict" type;
+                                    otherwise (default), it'll be of the "Lenient" type
+                                    Explained under the comments for the GraphSchema class
 
-        :param class_to_link_to: If this name is specified, and a link_to_name (below) is also specified,
+        :param class_to_link_to: [OPTIONAL] If this name is specified, and a link_to_name (below) is also specified,
                                     then create an OUTBOUND relationship from the newly-created Class
                                     to this existing Class
-        :param link_name:       Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
-        :param link_dir:        Desired direction(s) of the relationships: either "OUT" (default) or "IN"
+        :param link_name:       [OPTIONAL] Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
+        :param link_dir:        [OPTIONAL] Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
         :return:                If successful, the pair (internal database ID, string "schema_uri" assigned to the new Class);
                                 otherwise, raise an Exception
         """
-        # TODO: possibly deprecate argument "code" in favor of the new (not-yet-used) "handler"
+        # TODO: phase out the argument "code" in favor of the new (not-yet-used) "handler"
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
         #       adding a new Class and then leaving it without properties or links, in case of mid-operation error
 
@@ -1440,7 +1446,7 @@ class GraphSchema:
 
 
         # Create the new Class
-        new_class_int_id , new_class_uri = cls.create_class(name, code=code, strict=strict)
+        new_class_int_id , new_class_uri = cls.create_class(name, code=code, handler=handler, strict=strict)
         cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Schema ID: '{new_class_uri}')")
 
         number_properties_added = cls.add_properties_to_class(class_node=new_class_int_id, property_list = properties)
@@ -1452,13 +1458,11 @@ class GraphSchema:
 
         if class_to_link_to and link_name:
             # Create a relationship between the newly-created Class and an existing Class whose name is given by class_to_link_to
-            #other_class_id = cls.get_class_id(class_name = class_to_link_to)
-            #cls.debug_print(f"Internal database ID of the `{class_to_link_to}` class to link to: {other_class_id}")
             try:
                 if link_dir == "OUT":
-                    cls.create_class_relationship(from_class=new_class_int_id, to_class=class_to_link_to, rel_name =link_name)
+                    cls.create_class_relationship(from_class=new_class_int_id, to_class=class_to_link_to, rel_name=link_name)
                 else:
-                    cls.create_class_relationship(from_class=class_to_link_to, to_class=new_class_int_id, rel_name =link_name)
+                    cls.create_class_relationship(from_class=class_to_link_to, to_class=new_class_int_id, rel_name=link_name)
             except Exception as ex:
                 raise Exception(f"New Class ({name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
