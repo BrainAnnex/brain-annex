@@ -1,4 +1,5 @@
 /*  Vue component to display and edit Content Items of type "i" (Images)
+    TODO: rename 'vue-plugin-images'
  */
 
 Vue.component('vue-plugin-i',

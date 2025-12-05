@@ -11,12 +11,12 @@ class UploadHelper:
 
 
     @classmethod
-    def store_uploaded_file(cls, files, upload_dir: str, key_name=None) -> (str, str, str, str):
+    def store_uploaded_file(cls, files, upload_dir :str, key_name=None) -> (str, str, str, str):
         """
         Meant for SINGLE-file uploads.
 
         It accepts a flask.request object, and it creates a file from the upload,
-        which it stores into the folder specified by upload_dir
+        which it stores into the folder specified by `upload_dir`
 
         It decides, from the name of the file being uploaded, a meaningful (and safe) name
         for the temporary file to create as part of the upload.
@@ -34,23 +34,23 @@ class UploadHelper:
                                     and the name after FileStorage is the name of the file being uploaded
         :param upload_dir:  Name of temporary directory to use for the upload.
                                 EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
-        :param key_name:    (OPTIONAL) The value that was used in the HTML form INPUT tag for the "name" attribute:
+        :param key_name:    [OPTIONAL] The value that was used in the HTML form INPUT tag for the "name" attribute:
                                 <input type="file" name="some_key_to_refer_to_the_upload">
                                 or its counterpart in JS submissions, such as
                                             const post_data = new FormData();
                                             post_data.append('file', this.file_to_import);
-                            Basically, a label to tag the file being uploaded.
-                            The "Dropzone" front-end module uses "file".
-                            If not provided, the first key found in request.files is used.
-                            (Note: in the ImmutableMultiDict data structure, multiple values are allowed for the same key;
-                                   if more than one value is present, the first is picked)
+                                Basically, a label to tag the file being uploaded.
+                                The "Dropzone" front-end module uses "file".
+                                If not provided, the first key found in request.files is used.
+                                (Note: in the ImmutableMultiDict data structure, multiple values are allowed for the same key;
+                                       if more than one value is present, the first is picked)
 
         :return:            The 4-tuple (filename, full_filename_including_path, original_filename, mimetype)
-                            where filename is the basename;
-                            filename and original_filename are usually the same, unless there were
-                            funky characters in original_filename
-                            EXAMPLE: ("my_file_being_uploaded.txt", "D:/tmp/my_file_being_uploaded.txt",
-                                      "my_file_being_uploaded.txt", "text/plain")
+                                where filename is the basename;
+                                filename and original_filename are usually the same, unless there were
+                                funky characters in original_filename
+                                EXAMPLE: ("my_file_being_uploaded.txt", "D:/tmp/my_file_being_uploaded.txt",
+                                          "my_file_being_uploaded.txt", "text/plain")
 
         """
         # Locate the data about the desired file upload
@@ -126,7 +126,7 @@ class UploadHelper:
 
         :param filename:    A string with the "cleaned-up" filename to use
         """
-        #TODO: pytest
+        #TODO: pytest, and possibly move to MediaManager
         _filename_ascii_strip_re = re.compile(r"[^A-Za-z0-9_., &()-]") # List of allowed characters in the name;
                                                                        # BRAIN ANNEX adaptation:
                                                                        # note that the blank space, ampersand and the round parentheses
@@ -153,7 +153,7 @@ class UploadHelper:
         filename = _filename_ascii_strip_re.sub("", filename)   # Zap all characters except the allowed ones
         filename = filename.strip("._ ")         # Zap periods, underscores and blanks at the start or end of the string
 
-        # On nt (such as Windows 7, etc) a couple of special files are present in each folder.  We
+        # On "nt" (such as Windows 7, etc) a couple of special files are present in each folder.  We
         # have to ensure that the target file is not such a filename; if it is, we prepend an underline
         if  (
                 os.name == "nt"

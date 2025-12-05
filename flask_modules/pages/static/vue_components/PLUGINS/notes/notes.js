@@ -1,4 +1,5 @@
 /*  Vue component to display and edit Content Items of type "n" (a single "note", i.e. HTML-formatted text)
+    TODO: rename 'vue-plugin-notes'
  */
 
 Vue.component('vue-plugin-n',

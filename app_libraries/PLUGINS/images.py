@@ -35,6 +35,6 @@ class Images:
 
 
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
-            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="i",
+            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="i", handler="images",
                                                  properties=["width", "height", "caption", "date_created"],
                                                  class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")

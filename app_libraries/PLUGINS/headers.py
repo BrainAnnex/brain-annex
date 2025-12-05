@@ -2,7 +2,7 @@ from brainannex import GraphSchema, Categories
 
 
 
-class Header:
+class Headers:
     """
     Plugin-provided custom interface for "headers"
     """
@@ -27,7 +27,7 @@ class Header:
 
 
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
-            db_id, _ = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="h",
+            db_id, _ = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="h", handler="headers",
                                                                 properties=["text"],
                                                                 class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 
