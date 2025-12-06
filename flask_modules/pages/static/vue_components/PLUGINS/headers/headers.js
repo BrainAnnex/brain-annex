@@ -2,6 +2,7 @@
 // TODO: maybe Headers should be regarded as "Page Elements", rather than "Content Items"
 
 /*  Vue component to display and edit Content Items of type "h" (Headers)
+    TODO: rename 'vue-plugin-headers'
  */
 
 Vue.component('vue-plugin-h',

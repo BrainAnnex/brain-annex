@@ -7,7 +7,7 @@ def default_folder(class_name :str) -> str:
     """
     Fetch the name for the default folder used for media content associated to the given class
 
-    :param class_name:
+    :param class_name:  The name of a Schema class
     :return:            A folder name, with no slashes.  EXAMPLE: "documents"
     """
     if class_name == "Document":

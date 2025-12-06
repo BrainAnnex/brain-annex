@@ -1,4 +1,4 @@
-/*  Experimental new version
+/*  New version under development
  */
 
 Vue.component('vue_cytoscape_3',
@@ -44,7 +44,7 @@ Vue.component('vue_cytoscape_3',
                 <!-- SIDE BOX, to the right of the main plot : COLLAPSED STATE -->
                 <div v-if="!sidebox_expanded" class="cytoscape-legend-collapsed">
                     <img @click='sidebox_expanded = !sidebox_expanded'
-                        src='../../graphics/thin_left_arrow_32.png'
+                        src='https://life123.science/libraries/vue_components/graphics/thin_left_arrow_32.png'
                         style='padding:0'
                         title='Click to expand sidebar' alt='Click to expand sidebar'
                     >
@@ -54,7 +54,7 @@ Vue.component('vue_cytoscape_3',
                 <!-- SIDE BOX, to the right of the main plot : NORMAL STATE -->
                 <div v-if="sidebox_expanded" class="cytoscape-legend">
                     <img @click='sidebox_expanded = !sidebox_expanded'
-                        src='../../graphics/thin_right_arrow_32.png'
+                        src='https://life123.science/libraries/vue_components/graphics/thin_right_arrow_32.png'
                         style='padding:0'
                         class='clickable-icon'
                         title='Click to collapse sidebar' alt='Click to collapse sidebar'
@@ -121,7 +121,8 @@ Vue.component('vue_cytoscape_3',
                         </template>
                     </p>
 
-
+                    <br><br>
+                    <span style="color:gray">vue_cytoscape_3 , rev. 2</span>
                 </div>      <!-- End of side box -->
 
             </div>		<!-- End of outer container -->

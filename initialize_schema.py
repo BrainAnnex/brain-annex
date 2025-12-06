@@ -3,9 +3,9 @@ import os
 from configparser import ConfigParser
 from brainannex import GraphAccess, GraphSchema, Categories, UserManager, FullTextIndexing
 
-from app_libraries.PLUGINS.timer_widget import TimerWidget
-from app_libraries.PLUGINS.site_links import SiteLinks
-from app_libraries.PLUGINS.header import Header
+from app_libraries.PLUGINS.timer import Timer
+from app_libraries.PLUGINS.site_link import SiteLink
+from app_libraries.PLUGINS.headers import Headers
 from app_libraries.PLUGINS.images import Images
 from app_libraries.PLUGINS.documents import Documents
 from app_libraries.PLUGINS.notes import Notes
@@ -145,19 +145,19 @@ def initialize_schema(db):
 
     # Initialize plugins (TODO: allow to pick-and-choose what plugins to use
     try:
-        TimerWidget.add_to_schema()
+        Timer.add_to_schema()
         print("    Added Schema for `TimerWidget` plugin")
     except Exception as ex:
         print(f"WARNING: `TimerWidget` Schema could NOT be created. ", ex)
 
     try:
-        Header.add_to_schema()
+        Headers.add_to_schema()
         print("    Added Schema for `Header` plugin")
     except Exception as ex:
         print(f"WARNING: `Header` Schema could NOT be created. ", ex)
 
     try:
-        SiteLinks.add_to_schema()
+        SiteLink.add_to_schema()
         print("    Added Schema for `SiteLinks` plugin")
     except Exception as ex:
         print(f"WARNING: `SiteLinks` Schema could NOT be created. ", ex)

@@ -37,7 +37,7 @@ class Notes:
 
 
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
-            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="n",
+            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="n", handler="notes",
                                                  properties=["title", "public", "date_created"],
                                                  class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
 
@@ -90,7 +90,7 @@ class Notes:
         print(f"Creating file named `{filename}`")
         #print("    File contents:")
         #print(body)
-        MediaManager.save_into_file(body, filename, class_name="Note")
+        MediaManager.save_into_text_file(body, filename, class_name="Note")
 
         # Introduce new attributes, "basename" and "suffix", to be stored in the database
         data_binding["basename"] = basename
@@ -132,7 +132,7 @@ class Notes:
         print(f"Overwriting file named `{filename}`")
         #print("    File contents:")
         #print(body)
-        MediaManager.save_into_file(body, filename, class_name="Note")
+        MediaManager.save_into_text_file(body, filename, class_name="Note")
 
         revised_item_data = item_data.copy()   # Clone an independent copy
 
