@@ -213,8 +213,8 @@
 
 {# Display prominently this page's Category's name and, if appropriate, its controls #}
 {% if category_name %}
-<p class="headline">
-    {{category_name}}
+<p class="headline"   @dblclick="toggle_edit_mode()"  title="Double-click to toggle page edit mode">
+    [[category_name]]
     <span style="color:gray; margin-left:25px; font-size:10px">{{category_remarks}}</span>
     {# Category management #}
     <a v-if="expose_controls"  href="/BA/pages/category_manager/{{category_uri}}"  target="_blank"  style="margin-left:15px">
@@ -794,6 +794,18 @@ new Vue({
     // ----------------------------  METHODS  -----------------------------
 
     methods:  {
+
+        toggle_edit_mode()
+        /*  Invoked when the user double-clicks on the page's Category name:
+            toggle the page edit mode, and clear any text selected by the double click
+         */
+        {
+            // Toggle the page edit mode
+            this.expose_controls = !this.expose_controls;
+
+            // Clear any text selection
+            window.getSelection().removeAllRanges();
+        },
 
         clear_checkboxes()
         // Clear all the checkboxes for the bulk operations

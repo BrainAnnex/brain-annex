@@ -1,4 +1,5 @@
 from neo4j.time import DateTime                             # To convert datetimes (and dates) between neo4j.time.DateTime and python
+                                                            # TODO: all Neo4j-specific parts are being migrated to the InterGraph libraries
 import neo4j.graph                                          # To check returned data types
 from brainannex.cypher_utils import CypherUtils, CypherBuilder  # Helper classes
 from brainannex import InterGraph                           # One of a family of classes, for different (versions) of graph databases;
@@ -25,8 +26,8 @@ from typing import Union, List, Tuple
         - Name changed to GraphAccess, from NeoAccess, in 2025, 
                 to emphasize potential use with other graph databases besides Neo4j.
                 The database-specific portions were extracted and separated 
-                into a family of parent classes ("InterGraph"), one per supported database
-                (currently supported are versions 4 and 5 of the Neo4j database)
+                into a family of parent classes ("InterGraph"), one per supported database:
+                currently supported are versions 4 and 5 of the Neo4j database
         
         - NeoAccess is a fork of NeoInterface; it started out in late 2021.
                 This library was released independently on PyPI for a period of time, but
