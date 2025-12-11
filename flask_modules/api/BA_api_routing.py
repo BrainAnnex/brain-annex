@@ -1978,7 +1978,9 @@ class ApiRouting:
         def get_filtered():
             """
             Perform a database search for particular nodes, and return their properties,
-            as well as a total count
+            as well as a total count.
+
+            For example, for the use of a record search form or the recordset plugin
 
             EXAMPLE of invocation:
                 http://localhost:5000//BA/api/get_filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
@@ -1992,8 +1994,6 @@ class ApiRouting:
                                     if provided, key_value must be passed, too
                     key_value   The required value for the above key; if provided, key_name must be passed, too.
                                     Note: no requirement for the key to be primary
-                    clause      MUST use "n" as dummy name   (NOT IN CURRENT USE?)
-                                    EXAMPLE:  n.name CONTAINS 'art'
                     order_by    Field name, or comma-separated list;
                                     each name may optionally be followed by "DESC"
                     skip        The number of initial entries (in the context of specified order) to skip

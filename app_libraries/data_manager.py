@@ -1407,9 +1407,8 @@ class DataManager:
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
                                                     Note: no requirement for the key to be primary
                                 "case_sensitive" Boolean
-                                "clause"        TODO: NOT CURRENTLY IMPLEMENTED
-                                                    MUST use "n" as dummy name.
-                                                    EXAMPLE: "n.name CONTAINS 'art'"
+                                "clause_key"
+                                "clause_value"
                                 "order_by"      Field name, or comma-separated list;
                                                     each name may optionally be followed by "DESC"
                                                     NOTE: if ordering by a non-existing field, "skip" may not work as expected;
@@ -1435,7 +1434,8 @@ class DataManager:
             f"get_nodes_by_filter(): argument `filter_dict` must be a dictionary.  " \
             f"The type of the passed argument was {type(filter_dict)}"
 
-        allowed_keys = ["label", "key_name", "key_value", "case_sensitive", "clause", "order_by", "skip", "limit"]
+        allowed_keys = ["label", "key_name", "key_value", "case_sensitive",
+                        "order_by", "skip", "limit"]
 
         # Check the validity of the keys
         for key in filter_dict:
@@ -1449,7 +1449,6 @@ class DataManager:
         key_value = filter_dict.get("key_value")
         case_sensitive = filter_dict.get("case_sensitive")
 
-        #clause = filter_dict.get("clause")     # Not in current use
         order_by = filter_dict.get("order_by")
 
 

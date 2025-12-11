@@ -10,14 +10,17 @@ Vue.component('vue-plugin-rs',
                                 it means that it's a newly-created header, not yet registered with the server
                                 (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
 
-                                EXAMPLE :    {class_name:"Recordset",
-                                          class:"YouTube Channel"
-                                          n_group:10,
-                                          order_by:"name",
-                                          pos:100,
-                                          schema_code:"rs",
-                                          uri:"rs-7"
-                                         }
+                                EXAMPLE :
+                                        { class_name: "Recordset",
+                                          class: "Restaurants"
+                                          n_group: 10,
+                                          order_by: "name",
+                                          clause_key: "city",
+                                          clause_value: "Berkeley",
+                                          pos: 100,
+                                          schema_code: "rs",
+                                          uri: "rs-7"
+                                        }
                                       (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
                             TODO: take "pos" and "class_name" out of item_data !
             edit_mode:      A boolean indicating whether in editing mode
@@ -179,7 +182,8 @@ Vue.component('vue-plugin-rs',
                         Class: "{{current_metadata.class}}"<br>
                         Label: "{{current_metadata.label}}"<br>
                         Order by: "{{current_metadata.order_by}}"<br>
-                        Fields: "{{current_metadata.fields}}"<br>
+                        Fields to include (blank = ALL): "{{current_metadata.fields}}"<br>
+                        Filter: Field "{{current_metadata.clause_key}}" = {{current_metadata.clause_value}}<br>
                         Number records shown per page: {{current_metadata.n_group}}
                     </p>
                 </div>
@@ -217,7 +221,7 @@ Vue.component('vue-plugin-rs',
                         </tr>
 
                         <tr>
-                            <td style="text-align: right">Fields</td>
+                            <td style="text-align: right">Fields to include (blank = ALL)</td>
                             <td>
                                 <input v-model="current_metadata.fields" size="70">
                             </td>
@@ -642,7 +646,9 @@ Vue.component('vue-plugin-rs',
                                     class: this.current_metadata.class,     // To identify nodes considered part of  this Recordset
                                     label: this.current_metadata.label,     // To identify nodes considered part of  this Recordset
                                     n_group: parseInt(this.current_metadata.n_group),
-                                    order_by: this.current_metadata.order_by
+                                    order_by: this.current_metadata.order_by,
+                                    key_name: this.current_metadata.clause_key,
+                                    key_value: this.current_metadata.clause_value
                                    };
                 }
                 else  {
@@ -656,7 +662,9 @@ Vue.component('vue-plugin-rs',
                                     class: this.current_metadata.class,
                                     fields: this.current_metadata.fields,
                                     n_group: parseInt(this.current_metadata.n_group),
-                                    order_by: this.current_metadata.order_by
+                                    order_by: this.current_metadata.order_by,
+                                    key_name: this.current_metadata.clause_key,
+                                    key_value: this.current_metadata.clause_value
                                    };
                 }
 
@@ -792,7 +800,9 @@ Vue.component('vue-plugin-rs',
                                  class: this.current_metadata.class,
                                  order_by: this.current_metadata.order_by,
                                  limit: this.current_metadata.n_group,
-                                 skip: skip};
+                                 skip: skip,
+                                 key_name: this.current_metadata.clause_key,
+                                 key_value: this.current_metadata.clause_value};
 
                 const my_var = page;        // Optional parameter to pass
 
