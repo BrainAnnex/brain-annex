@@ -1973,7 +1973,7 @@ class GraphSchema:
                             key_names=None, key_value=None, string_match=None, case_sensitive=True,
                             include_id=False, include_labels=False,
                             order_by=None, sort_ignore_case=None,
-                            skip=None, limit=100) -> [dict]:
+                            skip=None, limit=100) -> ([dict], int):
         """
         Locate the nodes that match the given parameters, and return their properties as specified,
         in the form of a list of dicts
@@ -2005,10 +2005,12 @@ class GraphSchema:
         :param skip:        [OPTIONAL] An integer
         :param limit:       [OPTIONAL] An integer specifying the max number of items to return
 
-        :return:            A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
-                                Notes: The internal database ID is *not* included.
+        :return:            A pair with two elements:
+                                1. A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
+                                    Notes: The internal database ID is *not* included.
                                        The `_CLASS` special property, if present, will be included.
                                        Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
+                                2.  What the number of nodes would be in the absence of limit/skip value
         """
         allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
         if string_match:
@@ -2075,6 +2077,12 @@ class GraphSchema:
             RETURN n
             '''
 
+        q_count = f'''
+            MATCH (n {labels_str})
+            {clause}
+            RETURN COUNT(n) AS TOTAL_RECORD_COUNT
+            '''
+
         if include_id:
             q += ''' , id(n) AS internal_id
                  '''
@@ -2095,9 +2103,36 @@ class GraphSchema:
 
 
         #cls.db.debug_query_print(q, data_binding)
+        '''
+        # EXAMPLE of query with data_binding {'key_value': 'Berkeley'}
+            MATCH (n :`Restaurants`)
+            WHERE 
+            (
+                CASE 
+                    WHEN n.`city` = toString(n.`city`) 
+                    THEN toLower(n.`city`) 
+                    ELSE n.`city` 
+                END
+                CONTAINS toLower($key_value)
+            )
+            
+            RETURN n, id(n) AS internal_id, labels(n) AS node_labels
+            ORDER BY n.`name` 
+            SKIP 8 
+            LIMIT 4
+        '''
         result = cls.db.query(q, data_binding=data_binding)
 
-        return cls.db.standardize_recordset(recordset=result)
+        if limit is None and skip is None:
+            number_records = len(result)
+        else:
+            #cls.db.debug_query_print(q_count, data_binding)
+            number_records = cls.db.query(q_count, data_binding=data_binding, single_cell="TOTAL_RECORD_COUNT")
+
+        #print("get_nodes_by_filter(): number_records = ", number_records)
+
+        standardized_recordset = cls.db.standardize_recordset(recordset=result)
+        return (standardized_recordset, number_records)
 
 
 

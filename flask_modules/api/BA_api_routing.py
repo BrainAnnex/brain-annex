@@ -2054,8 +2054,11 @@ class ApiRouting:
 
 
             try:
-                recordset = DataManager.get_nodes_by_filter(json_data)  # List of dicts, with all the fields of the search results
-                #print("recordset: ", recordset)
+                recordset, total_count = DataManager.get_filtered(json_data)
+                # `recordset` is a list of dicts, with all the fields of the search results
+                # `total_count` is what the length of `recordset` would have been, in the absence of limit/skip value
+                #print("    recordset: ", recordset)
+                #print("    total_count: ", total_count)
 
                 # Build a list from the original database-query result; for each "record" (list element which is a dict),
                 #   take only its key/value pairs where the value has an acceptable type.
@@ -2064,20 +2067,6 @@ class ApiRouting:
                 sanitized_recordset = [{k: v for k, v in record.items()
                                             if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list) }
                                        for record in recordset]
-
-                # `total_count` is what the length of `recordset` would have been, in the absence of limit/skip value
-                # TODO: maybe modify get_nodes_by_filter() to also return that value;
-                #       the approach below will stop working as soon as clauses are allowed!
-                if class_name:
-                    if GraphSchema.class_name_exists(class_name):
-                        total_count = GraphSchema.count_data_nodes_of_class(class_name)
-                    else:
-                        total_count = None
-                elif label_name:
-                    total_count = GraphSchema.db.count_nodes(labels=label_name)
-                else:
-                    total_count = None
-
 
                 response = {"status": "ok",
                             "payload": {"recordset": sanitized_recordset, "total_count": total_count}}   # Successful termination

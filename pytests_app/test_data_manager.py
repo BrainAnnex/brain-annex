@@ -167,29 +167,32 @@ def test_switch_category(db):
 
 
 
-def test_get_nodes_by_filter(db):
+def test_get_filtered(db):
     db.empty_dbase()
 
-    assert DataManager.get_nodes_by_filter({}) == []    # The database is empty
+    assert DataManager.get_filtered({}) == ( [] , 0 )   # The database is empty
 
     internal_id = db.create_node(labels="Test Label", properties={'age': 22, 'gender': 'F'})
 
     # No filtration
-    assert DataManager.get_nodes_by_filter({}) == [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
+    assert DataManager.get_filtered({}) == (
+                                            [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
+                                            , 1
+                                           )
     # Filtration by labels
-    assert DataManager.get_nodes_by_filter({"label": "Test Label"}) == \
-                                [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
-    assert DataManager.get_nodes_by_filter({"label": "WRONG_Label"}) == []
-    assert DataManager.get_nodes_by_filter({"key_name": "age", "key_value": 22}) == \
-                                [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}]
-    assert DataManager.get_nodes_by_filter({"key_name": "age", "key_value": 99}) == []
-    assert DataManager.get_nodes_by_filter({"label": "WRONG_Label", "key_name": "age", "key_value": 22}) == []
+    assert DataManager.get_filtered({"label": "Test Label"}) == \
+           ( [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}] , 1 )
+    assert DataManager.get_filtered({"label": "WRONG_Label"}) == ( [] , 0 )
+    assert DataManager.get_filtered({"key_name": "age", "key_value": 22}) == \
+           ( [{'gender': 'F', 'age': 22, 'internal_id': internal_id, 'node_labels': ["Test Label"]}] , 1 )
+    assert DataManager.get_filtered({"key_name": "age", "key_value": 99}) == ( [] , 0 )
+    assert DataManager.get_filtered({"label": "WRONG_Label", "key_name": "age", "key_value": 22}) == ( [] , 0 )
 
     with pytest.raises(Exception):
-        DataManager.get_nodes_by_filter(filter_dict=123)        # Not a dict
+        DataManager.get_filtered(filter_dict=123)        # Not a dict
 
     with pytest.raises(Exception):
-        DataManager.get_nodes_by_filter({"mystery_key": 123})   # Bad key
+        DataManager.get_filtered({"mystery_key": 123})   # Bad key
 
     # TODO: add more tests
     #print(DataManager.get_nodes_by_filter({}))

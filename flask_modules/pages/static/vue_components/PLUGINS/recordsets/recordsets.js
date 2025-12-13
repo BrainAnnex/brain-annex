@@ -171,7 +171,7 @@ Vue.component('vue-plugin-rs',
                 </p>
 
 
-                <!-- RECORDSET EDITOR : in VIEWING MODE -->
+                <!-- RECORDSET EDITOR : in *VIEWING* MODE -->
                 <div v-if="editing_mode && !recordset_editing"
                      style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b>
@@ -183,13 +183,13 @@ Vue.component('vue-plugin-rs',
                         Label: "{{current_metadata.label}}"<br>
                         Order by: "{{current_metadata.order_by}}"<br>
                         Fields to include (blank = ALL): "{{current_metadata.fields}}"<br>
-                        Filter: Field "{{current_metadata.clause_key}}" = {{current_metadata.clause_value}}<br>
+                        Filter: \`{{current_metadata.clause_key}}\` = <span style="background-color: #cdf6fd">{{current_metadata.clause_value}}</span>   (If value is string, then case-sensitive CONTAINS)<br>
                         Number records shown per page: {{current_metadata.n_group}}
                     </p>
                 </div>
 
 
-                <!-- RECORDSET EDITOR : in EDITING MODE -->
+                <!-- RECORDSET EDITOR : in *EDITING* MODE -->
                 <div v-if="recordset_editing" style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b><br>
                     <table>
@@ -224,6 +224,15 @@ Vue.component('vue-plugin-rs',
                             <td style="text-align: right">Fields to include (blank = ALL)</td>
                             <td>
                                 <input v-model="current_metadata.fields" size="70">
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="text-align: right">Filter</td>
+                            <td>
+                                <input v-model="current_metadata.clause_key" size="15">
+                                <span style="font-weight: bold; font-size: 18px">=</span>
+                                <input v-model="current_metadata.clause_value" size="30">  (If value is string, then case-sensitive CONTAINS)
                             </td>
                         </tr>
 
