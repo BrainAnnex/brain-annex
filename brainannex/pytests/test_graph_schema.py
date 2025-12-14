@@ -754,15 +754,49 @@ def test_get_class_properties(db):
 def test_add_properties_to_class(db):
     pass    # TODO
 
-
-
-def test_new_class_with_properties(db):
+def test_create_class_with_properties(db):
     pass    # TODO
+
+
+
+def test_set_property_attribute(db):
+    db.empty_dbase()
+    create_sample_schema_2()    # Schema with quotes and categories
+
+    GraphSchema.set_property_attribute(class_name="quotes", prop_name="verified",
+                                       attribute_name="dtype", attribute_value="boolean")
+
+    q = '''
+    MATCH (c :CLASS {name: "quotes"})-[:HAS_PROPERTY]->(p :PROPERTY {name: "verified"}) 
+    RETURN p.dtype AS DTYPE
+    '''
+    result = db.query(q, single_cell="DTYPE")
+
+    assert result == "boolean"
 
 
 
 def test_remove_property_from_class(db):
-    pass    # TODO
+    db.empty_dbase()
+    create_sample_schema_2()    # Schema with quotes and categories
+
+    result = GraphSchema.get_class_properties(class_node="quotes")
+    assert result == ["quote", "attribution", "verified"]
+
+    GraphSchema.remove_property_from_class(class_name="quotes", property_name="verified")
+
+    result = GraphSchema.get_class_properties(class_node="quotes")
+    assert result == ["quote", "attribution"]
+
+    with pytest.raises(Exception):
+        GraphSchema.remove_property_from_class(class_name="I_dont_exist", property_name="attribution")
+
+    with pytest.raises(Exception):
+        GraphSchema.remove_property_from_class(class_name="quotes", property_name="unknown")
+
+    GraphSchema.remove_property_from_class(class_name="quotes", property_name="attribution")
+    result = GraphSchema.get_class_properties(class_node="quotes")
+    assert result == ["quote"]
 
 
 

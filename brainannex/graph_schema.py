@@ -1183,7 +1183,7 @@ class GraphSchema:
     #####################################################################################################
 
     @classmethod
-    def get_class_properties(cls, class_node: int | str,
+    def get_class_properties(cls, class_node: int|str,
                              include_ancestors=False, sort_by_path_len="ASC", exclude_system=False) -> [str]:
         """
         Return the list of all the names of the Properties associated with the given Class
@@ -1350,44 +1350,6 @@ class GraphSchema:
 
 
     @classmethod
-    def set_property_attribute(cls, class_name :str, prop_name :str, attribute_name :str, attribute_value) -> None:
-        """
-        Set an attribute on an existing "PROPERTY" node of the specified Class
-
-        EXAMPLES:   set_property_attribute(class_name="Content Item", prop_name="uri",
-                                           attribute_name="system", attribute_value=True)
-
-                    set_property_attribute(class_name="User", prop_name="admin",
-                                           attribute_name="dtype", attribute_value="boolean")
-                    set_property_attribute(class_name="User", prop_name="user_id",
-                                           attribute_name="dtype", attribute_value="integer")
-
-                    set_property_attribute(class_name="User", prop_name="username",
-                                           attribute_name="required", attribute_value=True)
-
-        :param class_name:      The name of an existing CLASS node
-        :param prop_name:       The name of an existing PROPERTY node
-        :param attribute_name:  The name of an attribute (field) of the PROPERTY node
-        :param attribute_value: The value to give to the above attribute (field) of the PROPERTY node;
-                                    if a value was already set, it will be over-written
-        :return:                None
-        """
-        #TODO: provide support for some attributes, such as "dtype", "required", "system"
-        q = f'''
-            MATCH (:CLASS {{name: $class_name}})-[:HAS_PROPERTY]->(p :PROPERTY {{name: $prop_name}})
-            SET p.`{attribute_name}`= $attribute_value
-            '''
-        #print(q)
-        result = cls.db.update_query(q,
-                            data_binding={"class_name": class_name, "prop_name": prop_name, "attribute_value": attribute_value})
-        #print(result)
-        assert result.get('properties_set') == 1, \
-            f"set_property_attribute() : " \
-            f"failed to set the attribute named '{attribute_name}' for Property '{prop_name}' of Class '{class_name}'"
-
-
-
-    @classmethod
     def create_class_with_properties(cls, name :str, properties :[str], code=None, handler=None, strict=False,
                                      class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int|str, str):
         """
@@ -1471,35 +1433,92 @@ class GraphSchema:
 
 
     @classmethod
-    def remove_property_from_class(cls, class_uri :str, property_uri :str) -> None:
+    def set_property_attribute(cls, class_name :str, prop_name :str, attribute_name :str, attribute_value) -> None:
+        """
+        Set an attribute on an existing "PROPERTY" node of the specified Class
+
+        EXAMPLES:   set_property_attribute(class_name="Content Item", prop_name="uri",
+                                           attribute_name="system", attribute_value=True)
+
+                    set_property_attribute(class_name="User", prop_name="admin",
+                                           attribute_name="dtype", attribute_value="boolean")
+                    set_property_attribute(class_name="User", prop_name="user_id",
+                                           attribute_name="dtype", attribute_value="integer")
+
+                    set_property_attribute(class_name="User", prop_name="username",
+                                           attribute_name="required", attribute_value=True)
+
+        :param class_name:      The name of an existing CLASS node
+        :param prop_name:       The name of an existing PROPERTY node
+        :param attribute_name:  The name of an attribute (field) of the PROPERTY node.
+                                    EXAMPLES:  "system", "dtype", "required", "description"
+        :param attribute_value: The value to give to the above attribute (field) of the PROPERTY node;
+                                    if a value was already set, it will be over-written
+        :return:                None
+        """
+        #TODO: provide support for some attributes, such as "dtype", "required", "system"
+        q = f'''
+            MATCH (:CLASS {{name: $class_name}})-[:HAS_PROPERTY]->(p :PROPERTY {{name: $prop_name}})
+            SET p.`{attribute_name}`= $attribute_value
+            '''
+        data_binding={"class_name": class_name, "prop_name": prop_name, "attribute_value": attribute_value}
+
+        cls.db.debug_print_query(q, data_binding)
+        result = cls.db.update_query(q, data_binding=data_binding)
+        # EXAMPLE:  {'_contains_updates': True, 'properties_set': 1, 'returned_data': []}
+        #print(result)
+
+        # TODO: in case of failure, do some diagnostics (does the Class exist? does it have the requested Property?)
+        assert result.get('properties_set') == 1, \
+            f"set_property_attribute() : " \
+            f"failed to set the attribute named '{attribute_name}' for Property '{prop_name}' of Class '{class_name}'"
+
+
+
+    @classmethod
+    def remove_property_from_class(cls, class_name :str, property_name :str) -> None:
         """
         Take out the specified (single) Property from the given Class.
         If the Class or Property was not found, an Exception is raised
 
-        :param class_uri:   The uri of the Class node
-        :param property_uri:The uri of the Property node
-        :return:            None
+        :param class_name:      The name of the Class node
+        :param property_name:   The name of the Property node
+        :return:                None
         """
-        #TODO: switch from uri's to names
         #TODO: offer the option to remove the property from Data Nodes
         #TODO: if the Class is strict, property from Data Nodes must happen unless explicitly over-ridden
 
-        assert cls.class_uri_exists(class_uri), \
-            f"remove_property_from_class(): the schema has no Class with the requested ID of {class_uri}"
 
-        q = f'''
-            MATCH (c :CLASS {{ uri: '{class_uri}' }})
+        q = '''
+            MATCH (c :CLASS { name: $class_name })
                   -[:HAS_PROPERTY]
-                  ->(p :PROPERTY {{ uri: '{property_uri}'}})
+                  ->(p :PROPERTY { name: $property_name})
             DETACH DELETE p
             '''
+        data_binding = {"class_name": class_name, "property_name": property_name}
+        #cls.db.debug_print_query(data_binding, data_binding)
 
-        result = cls.db.update_query(q)
+        result = cls.db.update_query(q, data_binding)
+        # EXAMPLE: {'_contains_updates': True, 'nodes_deleted': 1, 'relationships_deleted': 1, 'returned_data': []}
         #print("result of update_query in remove_property_from_class(): ", result)
 
         # Validate the results of the query
-        assert result.get("nodes_deleted") == 1, f"Failed to find or delete the Property node (with schema_uri {property_uri})"
-        assert result.get("relationships_deleted") == 1, "Failed to find or delete the relationship"
+        if result.get("nodes_deleted") != 1:    # Failed operation; investigate possible causes
+            all_properties = cls.get_class_properties(class_node=class_name)
+            # Maybe the Class doesn't exist...
+            assert cls.class_name_exists(class_name), \
+                f'remove_property_from_class(): the Schema has no Class named "{class_name}"'
+
+            # Maybe the Class doesn't have the Property we're trying to remove
+            assert property_name in all_properties, \
+                f"remove_property_from_class(): Property `{property_name}` is not a Property of the Class `{class_name}`"
+
+            # Unable to determine the cause of the error...
+            raise Exception(f'remove_property_from_class(): Failed to find or delete the Property node named "{property_name}"')
+
+
+        assert result.get("relationships_deleted") == 1, \
+            f'remove_property_from_class(): Failed to find or delete the link to the Property node named "{property_name}"'
 
 
 
