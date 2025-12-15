@@ -767,9 +767,9 @@ def test_set_property_attribute(db):
                                        attribute_name="dtype", attribute_value="boolean")
 
     q = '''
-    MATCH (c :CLASS {name: "quotes"})-[:HAS_PROPERTY]->(p :PROPERTY {name: "verified"}) 
-    RETURN p.dtype AS DTYPE
-    '''
+        MATCH (c :CLASS {name: "quotes"})-[:HAS_PROPERTY]->(p :PROPERTY {name: "verified"}) 
+        RETURN p.dtype AS DTYPE
+        '''
     result = db.query(q, single_cell="DTYPE")
 
     assert result == "boolean"

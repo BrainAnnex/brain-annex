@@ -364,7 +364,7 @@ class PagesRouting:
             """
             template = "filter.htm"
 
-            all_labels = DataManager.get_node_labels()      # EXAMPLE: EXAMPLE: ["my_label_1", "my_label_2"]
+            all_labels = DataManager.get_node_labels()      # EXAMPLE: ["my_label_1", "my_label_2"]
             all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)
 
             return render_template(template,

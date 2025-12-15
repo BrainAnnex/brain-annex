@@ -373,7 +373,11 @@ class ApiRouting:
                 json    A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
-                class_name , label , include_ancestors , sort_by_path_len , exclude_system
+                    class_name
+                    label
+                    include_ancestors
+                    sort_by_path_len
+                    exclude_system
                 Either `class_name` or `label` must be present
 
             EXAMPLE invocations:
@@ -568,6 +572,29 @@ class ApiRouting:
 
 
 
+        @bp.route('/all_labels')
+        @login_required
+        def all_labels():
+            """
+            Get all the node labels present in the database
+
+            EXAMPLE:   ['label_1', 'label_2']
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/all_labels
+            """
+
+            try:
+                all_labels = DataManager.get_node_labels()      # EXAMPLE: ["my_label_1", "my_label_2"]
+                response = {"status": "ok", "payload": all_labels}          # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+
+            #print(f"all_labels() is returning: `{response}`")
+
+            return jsonify(response)        # This function also takes care of the Content-Type header
+
+
+
         @bp.route('/get_record_classes')
         @login_required
         def get_record_classes():
@@ -589,7 +616,7 @@ class ApiRouting:
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
         
-            print(f"get_record_classes() is returning: `{response}`")
+            #print(f"get_record_classes() is returning: `{response}`")
         
             return jsonify(response)        # This function also takes care of the Content-Type header
 
@@ -2044,7 +2071,7 @@ class ApiRouting:
             #  TODO: for now, we're actually doing a database search by node label,
             #         rather than by Schema Class
             class_name = json_data.get("class")
-            label_name = json_data.get("label")
+            #label_name = json_data.get("label")
 
             if "label" not in json_data:
                 json_data["label"] = class_name     # Use "class" in lieu of "label"

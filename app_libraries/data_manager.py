@@ -695,8 +695,8 @@ class DataManager:
 
         :param uri:         String with a unique identifier for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
-        :param label:       [OPTIONAL] String with a Label of the Content Item
         :param update_data: A dict of data field names and their desired new values
+        :param label:       [OPTIONAL] String with a Label of the Content Item
         :return:            None
         """
 

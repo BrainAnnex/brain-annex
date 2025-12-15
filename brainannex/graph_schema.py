@@ -1535,7 +1535,7 @@ class GraphSchema:
                                         are renamed as well (NOT YET IMPLEMENTED)
         :return:                    None
         """
-         #TODO: implement rename_data_fields.  Pytests
+         #TODO: implement `rename_data_fields`.  Pytest
 
         assert old_name != new_name, \
             "rename_property(): The old name and the new name cannot be the same"
