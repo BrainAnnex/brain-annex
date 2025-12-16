@@ -25,6 +25,7 @@ class Recordsets:
             Categories.add_to_schema()
 
 
+        # Create the Class needed by this plugin, unless already in the database
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
             db_id, _ = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="rs", handler="recordsets",
                                                                 properties=["caption", "label", "order_by", "clause_key", "clause_op", "clause_value",  "n_group", "fields"],
@@ -34,9 +35,7 @@ class Recordsets:
             GraphSchema.set_property_attribute(class_name=cls.SCHEMA_CLASS_NAME, prop_name="n_group",
                                                attribute_name="dtype", attribute_value="int")
 
-
             # Set up the auto-increment namespace
             namespace="recordset"
-            GraphSchema.create_namespace(name=namespace, prefix="rs-", suffix="")
-            match_to = GraphSchema.db.match(labels="Schema Autoincrement", key_name="namespace", key_value=namespace)
-            GraphSchema.db.add_links(match_from=db_id, match_to=match_to, rel_name="HAS_URI_GENERATOR")
+            ns_id = GraphSchema.create_namespace(name=namespace, prefix="rs-", suffix="")
+            GraphSchema.db.add_links(match_from=db_id, match_to=ns_id, rel_name="HAS_URI_GENERATOR")
