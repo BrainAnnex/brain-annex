@@ -484,7 +484,7 @@ class GraphAccess(InterGraph):
         :param properties:  OPTIONAL (possibly empty or None) dictionary of properties to set for the new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
 
-        :return:            The value of the internal database ID of the node just created
+        :return:            The internal database ID of the node just created
         """
 
         if properties is None:
