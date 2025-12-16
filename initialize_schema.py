@@ -129,21 +129,26 @@ def initialize_schema(db):
     # Initialize core modules
 
     Categories.set_database(db)     # Also takes care of the class "Collections
-    Categories.add_to_schema()
+    Categories.add_to_schema()      # Create, as needed, a new Schema Class node that represents "Categories"
+    print("    Added Schema for `Categories` core module")
 
-    Categories.create_categories_root()
-    print("    Added Schema for `Categories` module, and created a root Category")
+    try:
+        Categories.create_categories_root()
+        print("    Created a root Category")
+    except Exception as ex:
+        print(f"WARNING: Could not create root Category (perhaps it already exists?) ", ex)
+
 
     UserManager.set_database(db)
     UserManager.add_to_schema()
-    print("    Added Schema for `UserManager` module")
+    print("    Added Schema for `UserManager` core module")
 
     FullTextIndexing.set_database(db)
     FullTextIndexing.add_to_schema()
-    print("    Added Schema for `FullTextIndexing` module")
+    print("    Added Schema for `FullTextIndexing` core module")
 
 
-    # Initialize plugins (TODO: allow to pick-and-choose what plugins to use
+    # Initialize plugins (TODO: perhaps allow to pick-and-choose what plugins to use)
     try:
         Timer.add_to_schema()
         print("    Added Schema for `TimerWidget` plugin")
