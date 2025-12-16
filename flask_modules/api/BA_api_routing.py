@@ -373,7 +373,11 @@ class ApiRouting:
                 json    A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
-                class_name , label , include_ancestors , sort_by_path_len , exclude_system
+                    class_name
+                    label
+                    include_ancestors
+                    sort_by_path_len
+                    exclude_system
                 Either `class_name` or `label` must be present
 
             EXAMPLE invocations:
@@ -568,6 +572,29 @@ class ApiRouting:
 
 
 
+        @bp.route('/all_labels')
+        @login_required
+        def all_labels():
+            """
+            Get all the node labels present in the database
+
+            EXAMPLE:   ['label_1', 'label_2']
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/all_labels
+            """
+
+            try:
+                all_labels = DataManager.get_node_labels()      # EXAMPLE: ["my_label_1", "my_label_2"]
+                response = {"status": "ok", "payload": all_labels}          # Successful termination
+            except Exception as ex:
+                response = {"status": "error", "error_message": str(ex)}    # Error termination
+
+            #print(f"all_labels() is returning: `{response}`")
+
+            return jsonify(response)        # This function also takes care of the Content-Type header
+
+
+
         @bp.route('/get_record_classes')
         @login_required
         def get_record_classes():
@@ -589,7 +616,7 @@ class ApiRouting:
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
         
-            print(f"get_record_classes() is returning: `{response}`")
+            #print(f"get_record_classes() is returning: `{response}`")
         
             return jsonify(response)        # This function also takes care of the Content-Type header
 
@@ -1978,7 +2005,9 @@ class ApiRouting:
         def get_filtered():
             """
             Perform a database search for particular nodes, and return their properties,
-            as well as a total count
+            as well as a total count.
+
+            For example, for the use of a record search form or the recordset plugin
 
             EXAMPLE of invocation:
                 http://localhost:5000//BA/api/get_filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
@@ -1992,8 +2021,6 @@ class ApiRouting:
                                     if provided, key_value must be passed, too
                     key_value   The required value for the above key; if provided, key_name must be passed, too.
                                     Note: no requirement for the key to be primary
-                    clause      MUST use "n" as dummy name   (NOT IN CURRENT USE?)
-                                    EXAMPLE:  n.name CONTAINS 'art'
                     order_by    Field name, or comma-separated list;
                                     each name may optionally be followed by "DESC"
                     skip        The number of initial entries (in the context of specified order) to skip
@@ -2044,7 +2071,7 @@ class ApiRouting:
             #  TODO: for now, we're actually doing a database search by node label,
             #         rather than by Schema Class
             class_name = json_data.get("class")
-            label_name = json_data.get("label")
+            #label_name = json_data.get("label")
 
             if "label" not in json_data:
                 json_data["label"] = class_name     # Use "class" in lieu of "label"
@@ -2054,8 +2081,11 @@ class ApiRouting:
 
 
             try:
-                recordset = DataManager.get_nodes_by_filter(json_data)  # List of dicts, with all the fields of the search results
-                #print("recordset: ", recordset)
+                recordset, total_count = DataManager.get_filtered(json_data)
+                # `recordset` is a list of dicts, with all the fields of the search results
+                # `total_count` is what the length of `recordset` would have been, in the absence of limit/skip value
+                #print("    recordset: ", recordset)
+                #print("    total_count: ", total_count)
 
                 # Build a list from the original database-query result; for each "record" (list element which is a dict),
                 #   take only its key/value pairs where the value has an acceptable type.
@@ -2064,20 +2094,6 @@ class ApiRouting:
                 sanitized_recordset = [{k: v for k, v in record.items()
                                             if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list) }
                                        for record in recordset]
-
-                # `total_count` is what the length of `recordset` would have been, in the absence of limit/skip value
-                # TODO: maybe modify get_nodes_by_filter() to also return that value;
-                #       the approach below will stop working as soon as clauses are allowed!
-                if class_name:
-                    if GraphSchema.class_name_exists(class_name):
-                        total_count = GraphSchema.count_data_nodes_of_class(class_name)
-                    else:
-                        total_count = None
-                elif label_name:
-                    total_count = GraphSchema.db.count_nodes(labels=label_name)
-                else:
-                    total_count = None
-
 
                 response = {"status": "ok",
                             "payload": {"recordset": sanitized_recordset, "total_count": total_count}}   # Successful termination

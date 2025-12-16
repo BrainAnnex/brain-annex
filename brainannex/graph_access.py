@@ -1,4 +1,5 @@
 from neo4j.time import DateTime                             # To convert datetimes (and dates) between neo4j.time.DateTime and python
+                                                            # TODO: all Neo4j-specific parts are being migrated to the InterGraph libraries
 import neo4j.graph                                          # To check returned data types
 from brainannex.cypher_utils import CypherUtils, CypherBuilder  # Helper classes
 from brainannex import InterGraph                           # One of a family of classes, for different (versions) of graph databases;
@@ -25,8 +26,8 @@ from typing import Union, List, Tuple
         - Name changed to GraphAccess, from NeoAccess, in 2025, 
                 to emphasize potential use with other graph databases besides Neo4j.
                 The database-specific portions were extracted and separated 
-                into a family of parent classes ("InterGraph"), one per supported database
-                (currently supported are versions 4 and 5 of the Neo4j database)
+                into a family of parent classes ("InterGraph"), one per supported database:
+                currently supported are versions 4 and 5 of the Neo4j database
         
         - NeoAccess is a fork of NeoInterface; it started out in late 2021.
                 This library was released independently on PyPI for a period of time, but
@@ -1846,7 +1847,7 @@ class GraphAccess(InterGraph):
     def explore_neighborhood(self, start_id :int|str, max_hops=2,
                              avoid_links=None, follow_links=None,
                              avoid_label=None,
-                             include_start_node=False) -> [str]:
+                             include_start_node=False) -> [dict]:
         """
         Return distinct "nearby" database nodes, from a given start node, by following a max number of links,
         and optionally avoiding traversing links with some specified names,
@@ -1864,7 +1865,7 @@ class GraphAccess(InterGraph):
 
         :return:                A (possibly empty) list of dict's, with the properties of all the located nodes,
                                     plus the 2 special keys "internal_id" and "node_labels".
-                                    EXAMPLE: [ {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']} ]
+                                    EXAMPLE: [ {'color': 'red', 'internal_id': 123, 'node_labels': ['Car']} ]
         """
         CypherUtils.assert_valid_internal_id(start_id)
 

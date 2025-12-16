@@ -105,17 +105,20 @@ INTAKE_FOLDER = extract_par("INTAKE_FOLDER", SETTINGS)
 OUTTAKE_FOLDER = extract_par("OUTTAKE_FOLDER", SETTINGS)
 
 PORT_NUMBER = extract_par("PORT_NUMBER", SETTINGS)      # The Flask default is 5000
-DEPLOYMENT = extract_par("DEPLOYMENT", SETTINGS)        # Should be either "LOCAL" or "REMOTE"  (TODO: maybe use "SERVER" instead of "REMOTE")
+DEPLOYMENT = extract_par("DEPLOYMENT", SETTINGS)        # Should be either "FLASK" or "EXTERNAL"
+                                                        #     use FLASK if starting the app with Flask
+                                                        #     use EXTERNAL if starting the app with gunicorn (or other WSGI HTTP Server)
 
-# TODO: PORT_NUMBER is only used for Local runs
+
+# TODO: PORT_NUMBER is only used for FLASK runs
 
 try:
     PORT_NUMBER = int(PORT_NUMBER)
 except Exception:
     raise Exception(f"The passed configuration value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
 
-assert DEPLOYMENT == "LOCAL" or DEPLOYMENT == "REMOTE", \
-    f"The passed configuration value for DEPLOYMENT (`{DEPLOYMENT}`) must be either 'LOCAL' or 'REMOTE'"
+assert DEPLOYMENT == "FLASK" or DEPLOYMENT == "EXTERNAL", \
+    f"The passed configuration value for DEPLOYMENT (`{DEPLOYMENT}`) must be either 'FLASK' or 'EXTERNAL'"
 
 # END OF CONFIGURATION IMPORT
 
@@ -202,14 +205,17 @@ app.secret_key = b"pqE3_t(4!x"
 ###  Fire up the web app
 
 #if os.environ.get("FLASK_APP"):
-if DEPLOYMENT == "REMOTE":      # starting the app with gunicorn
-    # Remote deployment.  The web app is started from the CLI,
-    # with the command "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
-    print(f" * REMOTE deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN or https://YOUR_IP_OR_DOMAIN")
-else:       # "LOCAL" : starting the app with Flask
-    # Local deployment.  The web app is started by running this main.py
+if DEPLOYMENT == "EXTERNAL":      # starting the app with gunicorn (or other WSGI HTTP Server)
+    # The web app is started with commands such as:
+    #           "gunicorn [OPTIONS] main:app"
+    print(f" * EXTERNAL deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN or https://YOUR_IP_OR_DOMAIN")
+else:       # "FLASK" : starting the app with Flask
+    # The web app is started by running this main.py
+    #   - either by running main.py (for example from an IDE such as PyCharm)
+    #   - or by starting flask from the CLI, with the command:
+    #           "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
     debug_mode = True   # At least for now, local deployment always enables Flask's debug mode
-    print(f" * LOCAL deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
+    print(f" * FLASK deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
     if __name__ == '__main__':  # Skip the next command if application is run from the Flask command line executable
         app.run(debug=debug_mode, port=PORT_NUMBER) # CORE of UI : transfer control to the "Flask object"
                                                     # This  will start a local WSGI server.  Threaded mode is enabled by default

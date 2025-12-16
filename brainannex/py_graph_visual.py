@@ -438,7 +438,8 @@ class PyGraphVisual:
 
         :param result_dataset:  A list of dictionary data about graph-database nodes;
                                     each dict must contain an entry with the key "internal_id"
-        :param cumulative:
+        :param cumulative:      If False (default) then any previous call to this function will get ignored,
+                                    and a new graph is appended
         :param add_edges:       If True, all existing edges among the displayed nodes
                                     will also be part of the visualization
         :param avoid_links:     Name or list of name of links to avoid including

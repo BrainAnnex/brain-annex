@@ -127,16 +127,17 @@ class ServerCommunication
 
             data_obj:       [OPTIONAL] To be used with either GET or POST.
                             Object with the data to be sent to the server, as part of the request.
-                            EXAMPLE:  {uri: 123, text: "Some data"}
+                            EXAMPLE:  {internal_id: 123, text: "Some data"}
 
-            json_encode_send: If true, the entire data_obj will get JSON-encoded, and passed in the form:
-                                json=CONVERTED_JSN_OBJECT
+            json_encode_send: [OPTIONAL] If true, the entire above `data_obj` will get JSON-encoded,
+                              and passed in the form:
+                                    json=CONVERTED_JSN_OBJECT
                               By default, false
                               EXAMPLE: json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}"
 
             callback_fn:    EXAMPLE:    finish_my_op   , assuming there's a function called finish_my_op()
 
-            custom_data:    If present, it is passed as a final argument to the callback function
+            custom_data:    [OPTIONAL] If present, it is passed as a final argument to the callback function
                             TODO: a better name might be pass_thru_data
 
         EXAMPLE of invocation:

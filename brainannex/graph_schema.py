@@ -1183,7 +1183,7 @@ class GraphSchema:
     #####################################################################################################
 
     @classmethod
-    def get_class_properties(cls, class_node: int | str,
+    def get_class_properties(cls, class_node: int|str,
                              include_ancestors=False, sort_by_path_len="ASC", exclude_system=False) -> [str]:
         """
         Return the list of all the names of the Properties associated with the given Class
@@ -1350,44 +1350,6 @@ class GraphSchema:
 
 
     @classmethod
-    def set_property_attribute(cls, class_name :str, prop_name :str, attribute_name :str, attribute_value) -> None:
-        """
-        Set an attribute on an existing "PROPERTY" node of the specified Class
-
-        EXAMPLES:   set_property_attribute(class_name="Content Item", prop_name="uri",
-                                           attribute_name="system", attribute_value=True)
-
-                    set_property_attribute(class_name="User", prop_name="admin",
-                                           attribute_name="dtype", attribute_value="boolean")
-                    set_property_attribute(class_name="User", prop_name="user_id",
-                                           attribute_name="dtype", attribute_value="integer")
-
-                    set_property_attribute(class_name="User", prop_name="username",
-                                           attribute_name="required", attribute_value=True)
-
-        :param class_name:      The name of an existing CLASS node
-        :param prop_name:       The name of an existing PROPERTY node
-        :param attribute_name:  The name of an attribute (field) of the PROPERTY node
-        :param attribute_value: The value to give to the above attribute (field) of the PROPERTY node;
-                                    if a value was already set, it will be over-written
-        :return:                None
-        """
-        #TODO: provide support for some attributes, such as "dtype", "required", "system"
-        q = f'''
-            MATCH (:CLASS {{name: $class_name}})-[:HAS_PROPERTY]->(p :PROPERTY {{name: $prop_name}})
-            SET p.`{attribute_name}`= $attribute_value
-            '''
-        #print(q)
-        result = cls.db.update_query(q,
-                            data_binding={"class_name": class_name, "prop_name": prop_name, "attribute_value": attribute_value})
-        #print(result)
-        assert result.get('properties_set') == 1, \
-            f"set_property_attribute() : " \
-            f"failed to set the attribute named '{attribute_name}' for Property '{prop_name}' of Class '{class_name}'"
-
-
-
-    @classmethod
     def create_class_with_properties(cls, name :str, properties :[str], code=None, handler=None, strict=False,
                                      class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int|str, str):
         """
@@ -1471,35 +1433,92 @@ class GraphSchema:
 
 
     @classmethod
-    def remove_property_from_class(cls, class_uri :str, property_uri :str) -> None:
+    def set_property_attribute(cls, class_name :str, prop_name :str, attribute_name :str, attribute_value) -> None:
+        """
+        Set an attribute on an existing "PROPERTY" node of the specified Class
+
+        EXAMPLES:   set_property_attribute(class_name="Content Item", prop_name="uri",
+                                           attribute_name="system", attribute_value=True)
+
+                    set_property_attribute(class_name="User", prop_name="admin",
+                                           attribute_name="dtype", attribute_value="boolean")
+                    set_property_attribute(class_name="User", prop_name="user_id",
+                                           attribute_name="dtype", attribute_value="integer")
+
+                    set_property_attribute(class_name="User", prop_name="username",
+                                           attribute_name="required", attribute_value=True)
+
+        :param class_name:      The name of an existing CLASS node
+        :param prop_name:       The name of an existing PROPERTY node
+        :param attribute_name:  The name of an attribute (field) of the PROPERTY node.
+                                    EXAMPLES:  "system", "dtype", "required", "description"
+        :param attribute_value: The value to give to the above attribute (field) of the PROPERTY node;
+                                    if a value was already set, it will be over-written
+        :return:                None
+        """
+        #TODO: provide support for some attributes, such as "dtype", "required", "system"
+        q = f'''
+            MATCH (:CLASS {{name: $class_name}})-[:HAS_PROPERTY]->(p :PROPERTY {{name: $prop_name}})
+            SET p.`{attribute_name}`= $attribute_value
+            '''
+        data_binding={"class_name": class_name, "prop_name": prop_name, "attribute_value": attribute_value}
+
+        cls.db.debug_print_query(q, data_binding)
+        result = cls.db.update_query(q, data_binding=data_binding)
+        # EXAMPLE:  {'_contains_updates': True, 'properties_set': 1, 'returned_data': []}
+        #print(result)
+
+        # TODO: in case of failure, do some diagnostics (does the Class exist? does it have the requested Property?)
+        assert result.get('properties_set') == 1, \
+            f"set_property_attribute() : " \
+            f"failed to set the attribute named '{attribute_name}' for Property '{prop_name}' of Class '{class_name}'"
+
+
+
+    @classmethod
+    def remove_property_from_class(cls, class_name :str, property_name :str) -> None:
         """
         Take out the specified (single) Property from the given Class.
         If the Class or Property was not found, an Exception is raised
 
-        :param class_uri:   The uri of the Class node
-        :param property_uri:The uri of the Property node
-        :return:            None
+        :param class_name:      The name of the Class node
+        :param property_name:   The name of the Property node
+        :return:                None
         """
-        #TODO: switch from uri's to names
         #TODO: offer the option to remove the property from Data Nodes
         #TODO: if the Class is strict, property from Data Nodes must happen unless explicitly over-ridden
 
-        assert cls.class_uri_exists(class_uri), \
-            f"remove_property_from_class(): the schema has no Class with the requested ID of {class_uri}"
 
-        q = f'''
-            MATCH (c :CLASS {{ uri: '{class_uri}' }})
+        q = '''
+            MATCH (c :CLASS { name: $class_name })
                   -[:HAS_PROPERTY]
-                  ->(p :PROPERTY {{ uri: '{property_uri}'}})
+                  ->(p :PROPERTY { name: $property_name})
             DETACH DELETE p
             '''
+        data_binding = {"class_name": class_name, "property_name": property_name}
+        #cls.db.debug_print_query(data_binding, data_binding)
 
-        result = cls.db.update_query(q)
+        result = cls.db.update_query(q, data_binding)
+        # EXAMPLE: {'_contains_updates': True, 'nodes_deleted': 1, 'relationships_deleted': 1, 'returned_data': []}
         #print("result of update_query in remove_property_from_class(): ", result)
 
         # Validate the results of the query
-        assert result.get("nodes_deleted") == 1, f"Failed to find or delete the Property node (with schema_uri {property_uri})"
-        assert result.get("relationships_deleted") == 1, "Failed to find or delete the relationship"
+        if result.get("nodes_deleted") != 1:    # Failed operation; investigate possible causes
+            all_properties = cls.get_class_properties(class_node=class_name)
+            # Maybe the Class doesn't exist...
+            assert cls.class_name_exists(class_name), \
+                f'remove_property_from_class(): the Schema has no Class named "{class_name}"'
+
+            # Maybe the Class doesn't have the Property we're trying to remove
+            assert property_name in all_properties, \
+                f"remove_property_from_class(): Property `{property_name}` is not a Property of the Class `{class_name}`"
+
+            # Unable to determine the cause of the error...
+            raise Exception(f'remove_property_from_class(): Failed to find or delete the Property node named "{property_name}"')
+
+
+        assert result.get("relationships_deleted") == 1, \
+            f'remove_property_from_class(): Failed to find or delete the link to the Property node named "{property_name}"'
 
 
 
@@ -1516,7 +1535,7 @@ class GraphSchema:
                                         are renamed as well (NOT YET IMPLEMENTED)
         :return:                    None
         """
-         #TODO: implement rename_data_fields.  Pytests
+         #TODO: implement `rename_data_fields`.  Pytest
 
         assert old_name != new_name, \
             "rename_property(): The old name and the new name cannot be the same"
@@ -1973,7 +1992,7 @@ class GraphSchema:
                             key_names=None, key_value=None, string_match=None, case_sensitive=True,
                             include_id=False, include_labels=False,
                             order_by=None, sort_ignore_case=None,
-                            skip=None, limit=100) -> [dict]:
+                            skip=None, limit=100) -> ([dict], int):
         """
         Locate the nodes that match the given parameters, and return their properties as specified,
         in the form of a list of dicts
@@ -1981,7 +2000,7 @@ class GraphSchema:
         :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
         :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
         :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
-                                An implicit OR is used if there's more than 1
+                                An implicit OR is used if there's more than one
         :param key_value:   [OPTIONAL] Only applicable if arg `key_names` is present: match nodes with the
                                 specified key name/value (for each key, with an implicit OR, if there's more than 1).
                                 If key_value is a string, the match is case-sensitive;
@@ -2005,10 +2024,12 @@ class GraphSchema:
         :param skip:        [OPTIONAL] An integer
         :param limit:       [OPTIONAL] An integer specifying the max number of items to return
 
-        :return:            A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
-                                Notes: The internal database ID is *not* included.
+        :return:            A pair with two elements:
+                                1. A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
+                                    Notes: The internal database ID is *not* included.
                                        The `_CLASS` special property, if present, will be included.
                                        Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
+                                2.  What the number of nodes would be in the absence of limit/skip value
         """
         allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
         if string_match:
@@ -2075,6 +2096,12 @@ class GraphSchema:
             RETURN n
             '''
 
+        q_count = f'''
+            MATCH (n {labels_str})
+            {clause}
+            RETURN COUNT(n) AS TOTAL_RECORD_COUNT
+            '''
+
         if include_id:
             q += ''' , id(n) AS internal_id
                  '''
@@ -2095,9 +2122,36 @@ class GraphSchema:
 
 
         #cls.db.debug_query_print(q, data_binding)
+        '''
+        # EXAMPLE of query with data_binding {'key_value': 'Berkeley'}
+            MATCH (n :`Restaurants`)
+            WHERE 
+            (
+                CASE 
+                    WHEN n.`city` = toString(n.`city`) 
+                    THEN toLower(n.`city`) 
+                    ELSE n.`city` 
+                END
+                CONTAINS toLower($key_value)
+            )
+            
+            RETURN n, id(n) AS internal_id, labels(n) AS node_labels
+            ORDER BY n.`name` 
+            SKIP 8 
+            LIMIT 4
+        '''
         result = cls.db.query(q, data_binding=data_binding)
 
-        return cls.db.standardize_recordset(recordset=result)
+        if limit is None and skip is None:
+            number_records = len(result)
+        else:
+            #cls.db.debug_query_print(q_count, data_binding)
+            number_records = cls.db.query(q_count, data_binding=data_binding, single_cell="TOTAL_RECORD_COUNT")
+
+        #print("get_nodes_by_filter(): number_records = ", number_records)
+
+        standardized_recordset = cls.db.standardize_recordset(recordset=result)
+        return (standardized_recordset, number_records)
 
 
 
