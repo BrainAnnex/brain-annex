@@ -487,9 +487,12 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
-            ServerCommunication.contact_server_OLD(url_server,
-                        {post_obj: post_obj,
-                        callback_fn: this.finish_add_see_also, custom_data: this.uri_see_also_child_to_add});
+            ServerCommunication.contact_server(url_server,
+                        {method: "POST",
+                         data_obj: post_obj,
+                         callback_fn: this.finish_add_see_also,
+                         custom_data: this.uri_see_also_child_to_add}
+                        );
         },
 
         finish_add_see_also(success, server_payload, error_message, custom_data)
@@ -602,9 +605,11 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
-            ServerCommunication.contact_server_OLD(url_server,
-                        {post_obj: post_obj,
-                        callback_fn: this.finish_add_parent_category, custom_data: this.uri_parent_to_add});
+            ServerCommunication.contact_server(url_server,
+                        {method: "POST",
+                         data_obj: post_obj,
+                         callback_fn: this.finish_add_parent_category,
+                         custom_data: this.uri_parent_to_add});
         },
 
         finish_add_parent_category(success, server_payload, error_message, custom_data)
@@ -665,9 +670,11 @@ new Vue({
             else
                 custom_data = ['child', child_id];
 
-            ServerCommunication.contact_server_OLD(url_server,
-                        {post_obj: post_obj,
-                        callback_fn: this.finish_sever_relationship, custom_data: custom_data});
+            ServerCommunication.contact_server(url_server,
+                        {method: "POST",
+                         data_obj: post_obj,
+                         callback_fn: this.finish_sever_relationship,
+                         custom_data: custom_data});
         },
 
         finish_sever_relationship(success, server_payload, error_message, custom_data)
@@ -763,8 +770,10 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
-            ServerCommunication.contact_server_OLD(url_server,
-                        {post_obj: post_obj, callback_fn: this.finish_save_name_edit});
+            ServerCommunication.contact_server(url_server,
+                        {method: "POST",
+                         data_obj: post_obj,
+                         callback_fn: this.finish_save_name_edit});
         },
 
 
@@ -816,7 +825,9 @@ new Vue({
             this.waiting = true;
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";
-            ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_delete_category});
+            ServerCommunication.contact_server(url_server,
+                        {method: "GET",
+                         callback_fn: this.finish_delete_category});
         },
 
         finish_delete_category(success, server_payload, error_message)
@@ -861,8 +872,10 @@ new Vue({
             this.waiting = true;        // Entering a waiting-for-server mode
             this.error = false;         // Clear any error from the previous operation
             this.status_message = "";   // Clear any message from the previous operation
-            ServerCommunication.contact_server_OLD(url_server_api,
-                                               {post_obj: post_obj, callback_fn: this.finish_add_subcategory});
+            ServerCommunication.contact_server(url_server_api,
+                        {method: "POST",
+                         data_obj: post_obj,
+                         callback_fn: this.finish_add_subcategory});
         },
 
         finish_add_subcategory(success, server_payload, error_message)
@@ -912,7 +925,10 @@ new Vue({
             this.status_message = "";   // Clear any message from the previous operation
 
             // Initiate asynchronous contact with the server
-            ServerCommunication.contact_server_OLD(url_server_api,{callback_fn: this.finish_pin_category});
+            ServerCommunication.contact_server(url_server_api,
+                        {method: "GET",
+                         callback_fn: this.finish_pin_category
+                        });
         },
 
         finish_pin_category(success, server_payload, error_message, custom_data)

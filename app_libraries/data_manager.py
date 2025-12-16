@@ -695,8 +695,8 @@ class DataManager:
 
         :param uri:         String with a unique identifier for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
-        :param label:       [OPTIONAL] String with a Label of the Content Item
         :param update_data: A dict of data field names and their desired new values
+        :param label:       [OPTIONAL] String with a Label of the Content Item
         :return:            None
         """
 
@@ -1395,7 +1395,7 @@ class DataManager:
 
 
     @classmethod
-    def get_nodes_by_filter(cls, filter_dict :dict) -> [dict]:
+    def get_filtered(cls, filter_dict :dict) -> ([dict], int):
         """
         Return the list of the database nodes that match all the requirements spelled out in the given filter
 
@@ -1407,9 +1407,9 @@ class DataManager:
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
                                                     Note: no requirement for the key to be primary
                                 "case_sensitive" Boolean
-                                "clause"        TODO: NOT CURRENTLY IMPLEMENTED
-                                                    MUST use "n" as dummy name.
-                                                    EXAMPLE: "n.name CONTAINS 'art'"
+                                "clause_key"    Name of a node property (field)
+                                "clause_value"  Value to match for the above property;
+                                                    if the value is a string, then do a case-sensitive CONTAINS
                                 "order_by"      Field name, or comma-separated list;
                                                     each name may optionally be followed by "DESC"
                                                     NOTE: if ordering by a non-existing field, "skip" may not work as expected;
@@ -1423,24 +1423,27 @@ class DataManager:
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
                                 {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
 
-        :return:            A (possibly-empty) list of dictionaries; each dict contains the data for a node,
-                                including a field called "internal_id" that has the internal database ID,
-                                and a field called "node_labels" with a list of the node's label names
+        :return:            A pair with two elements:
+                                1. A (possibly-empty) list of dictionaries; each dict contains the data for a node,
+                                    including a field called "internal_id" that has the internal database ID,
+                                    and a field called "node_labels" with a list of the node's label names
+                                2.  What the number of nodes would be in the absence of limit/skip value
         """
         #TODO: parse the filter_dict here, but move the body of the computation to GraphSchema
 
-        #print(f"In get_nodes_by_filter().  filter_dict: {filter_dict}")
+        #print(f"In get_filtered().  filter_dict: {filter_dict}")
 
         assert type(filter_dict) == dict, \
-            f"get_nodes_by_filter(): argument `filter_dict` must be a dictionary.  " \
+            f"get_filtered(): argument `filter_dict` must be a dictionary.  " \
             f"The type of the passed argument was {type(filter_dict)}"
 
-        allowed_keys = ["label", "key_name", "key_value", "case_sensitive", "clause", "order_by", "skip", "limit"]
+        allowed_keys = ["label", "key_name", "key_value", "case_sensitive",
+                        "order_by", "skip", "limit"]
 
         # Check the validity of the keys
         for key in filter_dict:
             assert key in allowed_keys, \
-                    f"get_nodes_by_filter(): unknown key ('{key}') in argument `filter_dict`.  " \
+                    f"get_filtered(): unknown key ('{key}') in argument `filter_dict`.  " \
                     f"Allowed values are: {allowed_keys})"
 
         label = filter_dict.get("label")      # It will be None if key isn't present
@@ -1449,7 +1452,6 @@ class DataManager:
         key_value = filter_dict.get("key_value")
         case_sensitive = filter_dict.get("case_sensitive")
 
-        #clause = filter_dict.get("clause")     # Not in current use
         order_by = filter_dict.get("order_by")
 
 

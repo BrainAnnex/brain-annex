@@ -1822,7 +1822,7 @@ class GraphAccess(InterGraph):
     def explore_neighborhood(self, start_id :int|str, max_hops=2,
                              avoid_links=None, follow_links=None,
                              avoid_label=None,
-                             include_start_node=False) -> [str]:
+                             include_start_node=False) -> [dict]:
         """
         Return distinct "nearby" database nodes, from a given start node, by following a max number of links,
         and optionally avoiding traversing links with some specified names,
@@ -1840,7 +1840,7 @@ class GraphAccess(InterGraph):
 
         :return:                A (possibly empty) list of dict's, with the properties of all the located nodes,
                                     plus the 2 special keys "internal_id" and "node_labels".
-                                    EXAMPLE: [ {'color': 'red', 'internal_id': n_3, 'node_labels': ['Car']} ]
+                                    EXAMPLE: [ {'color': 'red', 'internal_id': 123, 'node_labels': ['Car']} ]
         """
         CypherUtils.assert_valid_internal_id(start_id)
 
