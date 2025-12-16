@@ -47,7 +47,8 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
                             class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
 
-                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span>
+                    <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
 
                     <!-- If not on last page, show right arrows -->
                     <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
@@ -102,7 +103,7 @@ Vue.component('vue-plugin-rs',
                                 </template>
                             </td>
 
-                            <!-- The control cell (for editing) -->
+                            <!-- The control cell (for editing a single existing record) -->
                             <td v-show="editing_mode" style="background-color: #f2f2f2">
                                 <span v-if="record.internal_id == record_being_editing">
                                     <button @click="save_record_edit">SAVE</button>
@@ -126,13 +127,19 @@ Vue.component('vue-plugin-rs',
                             </th>
                         </tr>
 
-                        <!-- Row for entry of new data, if in editing mode  -->
+                        <!-- Row for entry of a new data record, if in editing mode  -->
                         <tr v-if="editing_mode">
                             <td v-for="field_name in headers_to_include">
                                 <input v-model="new_record[field_name]">
                             </td>
                             <td v-show="editing_mode">
-                                <button @click="save_new_record" style="">SAVE</button>
+                                <!-- Button will be disabled until something is typed in any of the field,
+                                     so that the new_record object is not empty -->
+                                <button @click="save_new_record"
+                                        v-bind:disabled="Object.keys(new_record).length === 0"
+                                >
+                                    SAVE
+                                </button>
                                 <span @click="editing_mode=false" class="clickable-icon" style="color:blue">Cancel</span>
                             </td>
                         </tr>
@@ -152,7 +159,8 @@ Vue.component('vue-plugin-rs',
                     <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
                             class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
 
-                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span> <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span>
+                    <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
 
                     <!-- If not on last page, show right arrows -->
                     <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
@@ -175,7 +183,7 @@ Vue.component('vue-plugin-rs',
                 </p>
 
 
-                <!-- RECORDSET EDITOR : in *VIEWING* MODE -->
+                <!-- RECORDSET EDITOR (for the overall structure): in *VIEWING* MODE -->
                 <div v-if="editing_mode && !recordset_editing"
                      style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b>
@@ -193,7 +201,7 @@ Vue.component('vue-plugin-rs',
                 </div>
 
 
-                <!-- RECORDSET EDITOR : in *EDITING* MODE -->
+                <!-- RECORDSET EDITOR (for the overall structure): in *EDITING* MODE -->
                 <div v-if="recordset_editing" style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b><br>
                     <table>
@@ -244,8 +252,14 @@ Vue.component('vue-plugin-rs',
                         <tr>
                             <td style="text-align: right">Number records shown per page</td>
                             <td>
-                                <input v-model="current_metadata.n_group" size="2">
-                                </td>
+                                <select v-model="current_metadata.n_group">
+                                    <option disabled value='-1'>[Choose an option]</option>
+                                    <option v-for="item in size_choices"
+                                            v-bind:value="item">
+                                        {{item}}
+                                    </option>
+                                </select>
+                            </td>
                         </tr>
 
                         <tr>
@@ -287,13 +301,18 @@ Vue.component('vue-plugin-rs',
                 headers: [],            // EXAMPLE:  ["quote", "attribution", "notes"]
 
                 recordset: [],          // Array of records to show together (in the context of previous/next navigation)
-                                        // This will get loaded by querying the server when the page loads
+                                        // This will get set by querying the server when the page loads
+
+                record_class: null,     // The Schema Class of the individual records, if present
+                                        // This will get set by querying the server when the page loads
 
                 all_labels: [],         // Array of all the node labels present in the database
 
-                current_page: 1,
+                current_page: 1,        // For the navigation of the groups of records
 
-                total_count: null,      // Size of the entire (un-filtered) recordset
+                total_count: null,      // Size of our filtered recordset in the absence of the "limit" option
+
+                size_choices: [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,75,100,125,150,200,250,300,400,500], // Options for pull-down menu
 
                 record_being_editing: null, // The "ID" of the record currently being edited, if any;
                                             // for now, only one record at a time may be edited
@@ -303,12 +322,17 @@ Vue.component('vue-plugin-rs',
 
                 recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
 
-                // This object contains the values bound to the editing fields, initially cloned from the prop data;
-                //      it'll change in the course of the edit-in-progress
-                current_metadata: Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+                /* This object - with the metadata of the recordset - contains the values bound to the editing fields,
+                      initially cloned from the prop data;
+                      it'll change in the course of the edit-in-progress.
+                      EXAMPLE: {class_name: "Recordset", class_handler: "recordsets", pos: 12, uri: "rs-4",
+                                caption: "Verbs", filter_label: "French Vocabulary", n_group: 5}
 
-                // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+                 */
+                current_metadata: Object.assign({}, this.item_data),    // Initially clone from the original data passed to this component
+
+                // Clone of the above object, used to restore the original data in case of a Cancel or failed save
+                pre_edit_metadata: Object.assign({}, this.item_data),   // Initially clone from the original data passed to this component
 
                 // The following applies to the single record currently being edited (just one at most).
                 // This object contains the values bound to the editing fields,
@@ -359,7 +383,7 @@ Vue.component('vue-plugin-rs',
             number_of_pages()
             // For page navigation
             {
-                return Math.ceil(this.total_count / this.current_metadata.n_group);        // this.item_data.n_group
+                return Math.ceil(this.total_count / this.current_metadata.n_group);
             },
 
             page_range()
@@ -531,7 +555,8 @@ Vue.component('vue-plugin-rs',
              */
 
             save_record_edit()
-            /*  Invoked when the user asks to save the edit-in-progress of an individual record.
+            /*  Invoked when the user asks to save the edit-in-progress
+                of an existing individual record.
                 NOT used for new records, nor to change the definition of the recordset .
              */
             {
@@ -540,7 +565,7 @@ Vue.component('vue-plugin-rs',
 
                 const post_obj = {
                                     internal_id: this.record_latest.internal_id
-                                 };     // Note: not using (at least for now, `uri` nor `class_name`
+                                 };     // Note: not using (at least for now, `uri` nor `class_name`)
 
                 // Go over each field name of the recordset
                 for (field_name of this.headers)    // Looping over array
@@ -607,14 +632,22 @@ Vue.component('vue-plugin-rs',
             },
 
 
+
             save_new_record()
-            // Send a request to the server, to save a record newly entered thru a form
+            // Send a request to the server, to save a record NEWLY ENTERED thru a form
             // (NOT for editing existing records)
             {
                 console.log(`In save_new_record(), for Recordset with URI '${this.current_metadata.uri}'`);
 
                 var url_server_api = "/BA/api/create_data_node_JSON";
-                var post_obj = {class_name: this.current_metadata.class};       // Class of the records
+
+                if (! this.record_class)  {
+                    alert("Creation of new records without Schema is not implemented yet, sorry");
+                    return;
+                }
+
+                // Start putting together the POST object
+                let post_obj = {class_name: this.record_class};  // Class of the the individual records
 
                 //console.log("New record just entered:");
                 //console.log(this.new_record);
@@ -625,7 +658,7 @@ Vue.component('vue-plugin-rs',
                 }
 
                 console.log(`About to contact the server at '${url_server_api}' .  POST object:`);
-                console.log(post_obj);      // EXAMPLE:  {class_name: "Quote", quote: "Inspiration exists, but it has to find us working", attribution: "Pablo Picasso"}
+                console.log(post_obj);      // EXAMPLE:  {class_name: "Quote", quote: "Inspiration exists, but it has to find us working"}
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
@@ -661,11 +694,15 @@ Vue.component('vue-plugin-rs',
 
 
             save_recordset_edit()
-            // Send a request to the server, to update or create this Recordset's definition
+            // Send a request to the server, to update or create this RECORDSET's definition
             {
                 console.log(`In save_recordset_edit(), for Recordset with URI '${this.current_metadata.uri}'`);
 
                 // Send the request to the server, using a POST
+
+                let n_group = parseInt(this.current_metadata.n_group);
+                if (Number.isNaN(n_group))
+                    n_group = 15;   // DEFAULT value to use if missing or not a valid integer
 
                 if (this.current_metadata.uri < 0) {    // A negative URI is a convention to indicate a just-created Recordset
                     // Create a new Recordset
@@ -679,7 +716,7 @@ Vue.component('vue-plugin-rs',
                                     //     note that "class" and "label" are properties, not Schema data)
                                     filter_label: this.current_metadata.filter_label,     // Used to identify nodes considered part of  this Recordset
                                     fields: this.current_metadata.fields,
-                                    n_group: parseInt(this.current_metadata.n_group),
+                                    n_group: n_group,
                                     order_by: this.current_metadata.order_by,
                                     clause_key: this.current_metadata.clause_key,
                                     clause_value: this.current_metadata.clause_value,
@@ -695,7 +732,7 @@ Vue.component('vue-plugin-rs',
 
                                     filter_label: this.current_metadata.filter_label,  // Used to identify nodes considered part of  this Recordset
                                     fields: this.current_metadata.fields,
-                                    n_group: parseInt(this.current_metadata.n_group),
+                                    n_group: n_group,
                                     order_by: this.current_metadata.order_by,
                                     clause_key: this.current_metadata.clause_key,
                                     clause_value: this.current_metadata.clause_value,
@@ -703,7 +740,7 @@ Vue.component('vue-plugin-rs',
                                    };
                 }
 
-                console.log(`----------About to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
@@ -878,7 +915,6 @@ Vue.component('vue-plugin-rs',
                 // Note: we're actually doing a database search by node label,
                 //       rather than by Schema Class
                 const get_obj = {label: this.current_metadata.filter_label,
-                                 class: this.current_metadata.class,    // TODO: probably zap.
                                  order_by: this.current_metadata.order_by,
                                  limit: this.current_metadata.n_group,
                                  skip: skip,
@@ -915,6 +951,12 @@ Vue.component('vue-plugin-rs',
                     this.recordset = server_payload.recordset;
                     this.total_count = server_payload.total_count;
                     this.current_page = custom_data;
+
+                    // Attempt to extract the Schema Class of the individual records,
+                    //      by examining the first one (if present)
+                    if (this.recordset.length > 0)
+                         if ('_CLASS' in this.recordset[0])
+                            this.record_class = this.recordset[0]._CLASS;
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
