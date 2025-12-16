@@ -5527,20 +5527,22 @@ class GraphSchema:
 
 
     @classmethod
-    def create_namespace(cls, name :str, prefix="", suffix="") -> None:
+    def create_namespace(cls, name :str, prefix="", suffix="") -> int|str:
         """
         Set up a new namespace for URI's.
+        If a namespace by this name already exists, an Exception is raised.
 
         :param name:    A string used to maintain completely separate groups of auto-increment values;
                             leading/trailing blanks are ignored
-        :param prefix:  (OPTIONAL) String to prefix to the auto-increment number;
+        :param prefix:  [OPTIONAL] String to prefix to the auto-increment number;
                             it will be stored in the database
-        :param suffix:  (OPTIONAL) String to suffix to the auto-increment number;
+        :param suffix:  [OPTIONAL] String to suffix to the auto-increment number;
                             it will be stored in the database
-        :return:        None
+        :return:        The internal database ID of the node just created
         """
         # TODO: offer an option to link the new namespace to a given Class,
         #       using the "HAS_URI_GENERATOR" from the class to the new namespace node
+        # TODO: offer an option to take no action (rather than an error) if namespace already exists
 
         assert type(name) == str, \
             f"create_namespace(): the argument `name` must be a string.  " \
@@ -5558,7 +5560,7 @@ class GraphSchema:
         if suffix:
             properties["suffix"] = suffix
 
-        cls.db.create_node(labels="Schema Autoincrement", properties=properties)
+        return cls.db.create_node(labels="Schema Autoincrement", properties=properties)
 
 
 
