@@ -367,7 +367,8 @@ class Categories:
     def create_categories_root(cls, data_dict=None) -> (int|str, str):
         """
         Create a ROOT Category node;
-        and return its internal database ID and its URI
+        and return its internal database ID and its URI.
+        If it already exists, an Exception is raised
 
         :param data_dict:   [OPTIONAL] Dict to specify alternate desired values
                                 for the "name" and "remarks" fields of the Root Category
@@ -387,7 +388,7 @@ class Categories:
 
         internal_id = GraphSchema.create_data_node(class_name="Category", extra_labels ="BA",
                                                    properties = data_dict,
-                                                   new_uri=new_uri)
+                                                   new_uri=new_uri)         # TODO: maybe drop the "BA" extra label
         return (internal_id, new_uri)
 
 
