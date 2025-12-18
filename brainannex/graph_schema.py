@@ -3680,7 +3680,6 @@ class GraphSchema:
 
         The requested new relationship MUST be present in the Schema, or an Exception will be raised.
 
-
         Note that if a relationship with the same name already exists between the data nodes exists,
         nothing gets created (and an Exception is raised)
 
