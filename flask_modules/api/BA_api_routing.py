@@ -1479,14 +1479,12 @@ class ApiRouting:
                 sub         URI to identify an existing Category node that is to be made a sub-category of another one
                 cat         URI to identify an existing Category node that is to be made the parent of the other Category
             """
-            # TODO: not in current use
-
             # Extract the GET values
             get_data = request.args     # Example: ImmutableMultiDict([('sub', '12'), ('cat', '555')])
 
             try:
                 data_dict = cls.extract_get_pars(get_data, required_par_list=['sub', 'cat'])
-                Categories.add_subcategory_relationship(data_dict)
+                Categories.add_subcategory_relationship(category_uri=data_dict["cat"], subcategory_uri=data_dict["sub"])
                 response_data = {"status": "ok"}
             except Exception as ex:
                 err_details = f"Unable to add the requested relationship to the specified subcategory.  {exceptions.exception_helper(ex)}"

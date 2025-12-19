@@ -233,8 +233,8 @@ class Categories:
         Return all the (immediate) subcategories of the given category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
-            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'},
-             {'uri': '3', 'name': 'Hobbies'}]
+            [{'_CLASS': 'Category', 'uri': '2', 'name': 'Work', remarks: 'outside employment'},
+             {'_CLASS': 'Category', 'uri': '3', 'name': 'Hobbies'}]
 
         :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
@@ -481,25 +481,28 @@ class Categories:
 
 
     @classmethod
-    def add_subcategory_relationship(cls, data_dict :dict) -> None:
+    def add_subcategory_relationship(cls, category_uri :str, subcategory_uri :str) -> None:
         """
         Add a sub-category ("BA_subcategory_of") relationship
         between the specified 2 existing Categories.
         If the requested new relationship cannot be created (for example, if it already exists),
         raise an Exception
 
-        :param data_dict:   Two keys are expected:
-                                "sub"         URI to identify an existing Category node
-                                                that is to be made a sub-category of another one
-                                "cat"         URI to identify an existing Category node
-                                                that is to be made the parent of the other Category
+        :param category_uri:    URI to identify an existing Category node
+                                    that is to be made the parent of the other Category
+        :param subcategory_uri: URI to identify an existing Category node
+                                    that is to be made a sub-category of another one
 
-        :return:            None.  If the requested new relationship could not be created,
-                                raise an Exception
+        :return:                None.  If the requested new relationship could not be created,
+                                    raise an Exception
         """
+        assert category_uri != subcategory_uri, \
+            f"add_subcategory_relationship(): a Category (uri: `{category_uri}`) cannot be made a subcategory of itself"
 
-        subcategory_uri = data_dict["sub"]
-        category_uri = data_dict["cat"]
+        assert not cls.is_root_category(subcategory_uri), \
+            f"add_subcategory_relationship(): the root Category (uri: `{subcategory_uri}`) cannot be made a subcategory of another Category"
+
+        #  TODO: verify that no cycles are being created (i.e. enforece a DAG structure)
 
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
@@ -507,7 +510,8 @@ class Categories:
             GraphSchema.add_data_relationship(from_id=subcategory_uri, to_id=category_uri,
                                               rel_name="BA_subcategory_of", id_type="uri")
         except Exception as ex:
-            raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship. {ex}")
+            raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship "
+                            f"from Category uri `{subcategory_uri}` to Category uri `{category_uri}`. {ex}")
 
 
 
@@ -698,6 +702,7 @@ class Categories:
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 
         return siblings_categories
+
 
 
     """

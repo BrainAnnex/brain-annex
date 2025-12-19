@@ -38,6 +38,10 @@ def initialize_categories(db):
 
 # ************  THE ACTUAL TESTS  ************
 
+def test_add_to_schema(db):
+    pass
+
+
 def test_get_category_info(db):
     _, root_uri = initialize_categories(db)
 
@@ -98,6 +102,72 @@ def test_get_all_categories(db):
 
 
 
+def test_count_subcategories(db):
+    root_internal_id, root_uri = initialize_categories(db)
+    result = Categories.get_parent_categories(root_uri)
+    assert result == []     # The root node has no children yet
+
+    # Add a sub-category ("Languages") to the root
+    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
+                                               "subcategory_remarks": "Common node for all languages"})
+
+    assert Categories.count_subcategories(root_uri) == 1
+    assert Categories.count_subcategories(language_uri) == 0    # The "Languages" node has no children
+
+    # Add a 2nd sub-category ("Courses") to the root
+    courses_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Courses"})
+
+    assert Categories.count_subcategories(root_uri) == 2
+    assert Categories.count_subcategories(language_uri) == 0
+    assert Categories.count_subcategories(courses_uri) == 0
+
+    # Add a sub-category ("French") to "Languages"
+    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
+    assert Categories.count_subcategories(root_uri) == 2
+    assert Categories.count_subcategories(language_uri) == 1    # Now has a child
+    assert Categories.count_subcategories(courses_uri) == 0
+    assert Categories.count_subcategories(french_uri) == 0
+
+    # Make the "French" also a child of "Courses"
+    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
+    assert Categories.count_subcategories(root_uri) == 2
+    assert Categories.count_subcategories(language_uri) == 1
+    assert Categories.count_subcategories(courses_uri) == 1        # Now has a child
+    assert Categories.count_subcategories(french_uri) == 0
+
+
+
+def test_count_parent_categories(db):
+    root_internal_id, root_uri = initialize_categories(db)
+    result = Categories.get_parent_categories(root_uri)
+    assert result == []     # The root node has no parents
+
+    # Add a sub-category ("Languages") to the root
+    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
+                                               "subcategory_remarks": "Common node for all languages"})
+
+    assert Categories.count_parent_categories(language_uri) == 1    # The "Languages" node has 1 parent (the root)
+
+    # Add a 2nd sub-category ("Courses") to the root
+    courses_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Courses"})
+
+    assert Categories.count_parent_categories(courses_uri) == 1     # The "Courses" node has 1 parent (the root)
+
+    # Add a sub-category ("French") to "Languages"
+    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
+    assert Categories.count_parent_categories(french_uri) == 1      # The "French" node has 1 parent ("Languages")
+
+    # Make the "French" also a child of "Courses"
+    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
+    # The "French" node will now have 2 parents ("Languages" and "Courses)
+    assert Categories.count_parent_categories(french_uri) == 2
+
+
+def test_get_subcategories(db):
+    pass
+
+
+
 def test_get_parent_categories(db):
     root_internal_id, root_uri = initialize_categories(db)
     result = Categories.get_parent_categories(root_uri)
@@ -131,68 +201,6 @@ def test_get_parent_categories(db):
     expected = [{"name": "Languages", "remarks": "Common node for all languages", "uri": language_uri},
                 {"name": "Courses", "uri": courses_uri}]
     assert compare_recordsets(result, expected)
-
-
-
-def test_count_parent_categories(db):
-    root_internal_id, root_uri = initialize_categories(db)
-    result = Categories.get_parent_categories(root_uri)
-    assert result == []     # The root node has no parents
-
-    # Add a sub-category ("Languages") to the root
-    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
-                                               "subcategory_remarks": "Common node for all languages"})
-
-    assert Categories.count_parent_categories(language_uri) == 1    # The "Languages" node has 1 parent (the root)
-
-    # Add a 2nd sub-category ("Courses") to the root
-    courses_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Courses"})
-
-    assert Categories.count_parent_categories(courses_uri) == 1     # The "Courses" node has 1 parent (the root)
-
-    # Add a sub-category ("French") to "Languages"
-    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
-    assert Categories.count_parent_categories(french_uri) == 1      # The "French" node has 1 parent ("Languages")
-
-    # Make the "French" also a child of "Courses"
-    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
-    # The "French" node will now have 2 parents ("Languages" and "Courses)
-    assert Categories.count_parent_categories(french_uri) == 2
-
-
-
-def test_count_subcategories(db):
-    root_internal_id, root_uri = initialize_categories(db)
-    result = Categories.get_parent_categories(root_uri)
-    assert result == []     # The root node has no children yet
-
-    # Add a sub-category ("Languages") to the root
-    language_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Languages",
-                                               "subcategory_remarks": "Common node for all languages"})
-
-    assert Categories.count_subcategories(root_uri) == 1
-    assert Categories.count_subcategories(language_uri) == 0    # The "Languages" node has no children
-
-    # Add a 2nd sub-category ("Courses") to the root
-    courses_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Courses"})
-
-    assert Categories.count_subcategories(root_uri) == 2
-    assert Categories.count_subcategories(language_uri) == 0
-    assert Categories.count_subcategories(courses_uri) == 0
-
-    # Add a sub-category ("French") to "Languages"
-    french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
-    assert Categories.count_subcategories(root_uri) == 2
-    assert Categories.count_subcategories(language_uri) == 1    # Now has a child
-    assert Categories.count_subcategories(courses_uri) == 0
-    assert Categories.count_subcategories(french_uri) == 0
-
-    # Make the "French" also a child of "Courses"
-    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
-    assert Categories.count_subcategories(root_uri) == 2
-    assert Categories.count_subcategories(language_uri) == 1
-    assert Categories.count_subcategories(courses_uri) == 1        # Now has a child
-    assert Categories.count_subcategories(french_uri) == 0
 
 
 
@@ -247,11 +255,54 @@ def test_get_sibling_categories(db):
 
 
 
+def test_create_parent_map(db):
+    pass
+
+
+def test_create_categories_root(db):
+    pass
+
+
+def test_create_add_subcategory(db):
+    pass
+
+def test_delete_category(db):
+    pass
+
+
+
+def test_add_subcategory_relationship(db):
+    _, root_uri = initialize_categories(db)
+
+    A_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "A"})
+    B_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "B"})
+
+    with pytest.raises(Exception):
+        # Root cannot be made a subcategory of something else
+        Categories.add_subcategory_relationship(category_uri=A_uri, subcategory_uri=root_uri)
+
+    with pytest.raises(Exception):
+        # Link already exists
+        Categories.add_subcategory_relationship(category_uri=root_uri, subcategory_uri=A_uri)
+
+    with pytest.raises(Exception):
+        # Sub-category of itself!
+        Categories.add_subcategory_relationship(category_uri=A_uri, subcategory_uri=A_uri)
+
+
+    # Make 'A' a subcategory of 'B'
+    Categories.add_subcategory_relationship(category_uri=B_uri, subcategory_uri=A_uri)
+
+    # Verify that 'A' is indeed a subcategory of 'B'
+    result = Categories.get_subcategories(category_uri=B_uri)
+    assert result == [{'_CLASS': 'Category', 'uri': A_uri, 'name': 'A'}]
+
+
+
 def test_get_see_also(db):
     root_internal_id, root_uri = initialize_categories(db)
 
     A_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "A"})
-
     B_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "B"})
 
     Categories.create_see_also(from_category=A_uri, to_category=B_uri)
@@ -300,39 +351,46 @@ def test_remove_see_also(db):
 
 
 
+def test_import_ontology(db):
+    pass
 
 
-##########  ITEMS IN CATEGORIES  ##########
 
 
-def test_get_items_schema_data(db):
-    _, root_uri = initialize_categories(db)
-    #print("root URI is: ", root_uri)
 
-    res = Categories.get_items_schema_data(category_uri=root_uri)
-    assert res == {}    # There are no Contents Items yet attached to the Category
+##############  CATEGORY PAGES  ##############
 
-    GraphSchema.create_class_with_properties(name="Note", properties=["title", "basename", "suffix"])
-    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "uri"])
 
-    # Add some Content Items to the above Category
-    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Note",
-                                 item_properties={"title": "My 1st note"})
+def test_viewer_handler(db):
+    pass
 
-    res = Categories.get_items_schema_data(category_uri=root_uri)
-    assert res == {'Note': ['title', 'basename', 'suffix']}
+def test_add_relationship_before(db):
+    pass
 
-    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Image",
-                                  item_properties={"caption": "vacation pic", "basename": "pic1", "suffix": "jpg"})
-    res = Categories.get_items_schema_data(category_uri=root_uri)
-    assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix', 'uri']}
+def test_remove_relationship_before(db):
+    pass
 
-    # Make the "uri" property of the Class "Image" to be a "system" property
-    GraphSchema.set_property_attribute(class_name="Image", prop_name="uri",
-                                       attribute_name="system", attribute_value=True)
-    res = Categories.get_items_schema_data(category_uri=root_uri)
-    assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix']}   # 'uri' is no longer included
+def test_create_bread_crumbs(db):
+    pass
 
+def test__recursive(db):
+    pass
+
+
+def test_pin_category(db):
+    pass
+
+def test_is_pinned(db):
+    pass
+
+def test_get_categories_linked_to_content_item(db):
+    pass
+
+def test_get_content_items_by_category(db):
+    pass
+
+def test_add_content_at_beginning(db):
+    pass
 
 
 def test_link_content_at_end(db):
@@ -366,6 +424,11 @@ def test_link_content_at_end(db):
         Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
     # TODO: additional testing
+
+
+
+def test_add_content_at_end(db):
+    pass
 
 
 
@@ -495,3 +558,64 @@ def test_detach_from_category(db):
         '''
     result = db.query(q, single_cell="path_count")
     assert result == 1
+
+
+
+def test_relocate_across_categories(db):
+    pass
+
+
+
+##############  SCHEMA-RELATED  ##############
+
+
+def test_get_items_schema_data(db):
+    _, root_uri = initialize_categories(db)
+    #print("root URI is: ", root_uri)
+
+    res = Categories.get_items_schema_data(category_uri=root_uri)
+    assert res == {}    # There are no Contents Items yet attached to the Category
+
+    GraphSchema.create_class_with_properties(name="Note", properties=["title", "basename", "suffix"])
+    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "uri"])
+
+    # Add some Content Items to the above Category
+    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Note",
+                                 item_properties={"title": "My 1st note"})
+
+    res = Categories.get_items_schema_data(category_uri=root_uri)
+    assert res == {'Note': ['title', 'basename', 'suffix']}
+
+    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Image",
+                                  item_properties={"caption": "vacation pic", "basename": "pic1", "suffix": "jpg"})
+    res = Categories.get_items_schema_data(category_uri=root_uri)
+    assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix', 'uri']}
+
+    # Make the "uri" property of the Class "Image" to be a "system" property
+    GraphSchema.set_property_attribute(class_name="Image", prop_name="uri",
+                                       attribute_name="system", attribute_value=True)
+    res = Categories.get_items_schema_data(category_uri=root_uri)
+    assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix']}   # 'uri' is no longer included
+
+
+
+##############  POSITION WITHIN CATEGORIES  ##############
+
+
+def test_check_for_duplicates(db):
+    pass
+
+def test_check_all_categories_for_duplicates(db):
+    pass
+
+def test_reassign_positional_values(db):
+    pass
+
+def test_reposition_content(db):
+    pass
+
+def test_relocate_positions(db):
+    pass
+
+def test_swap_content_items(db):
+    pass
