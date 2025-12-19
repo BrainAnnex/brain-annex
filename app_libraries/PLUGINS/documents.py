@@ -204,3 +204,18 @@ class Documents:
         :return:    None
         """
         pass    # Nothing to do
+
+
+
+    @classmethod
+    def api_endpoint(cls, parameters):
+        """
+        EXPERIMENTAL : not in current use.
+
+        Optional function to provide web API endpoint management for this plugin
+
+        :param parameters:  Data that was passed to the web API endpoint for this plugin
+        :return:
+        """
+        print("In Documents.api_endpoint().  parameters: ", parameters)
+        return "ok"

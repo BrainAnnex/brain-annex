@@ -9,6 +9,7 @@ from app_libraries.data_manager import DataManager
 from app_libraries.documentation_generator import DocumentationGenerator
 from app_libraries.media_manager import MediaManager, ImageProcessing
 from app_libraries.PLUGINS.documents import Documents
+from app_libraries.PLUGINS import plugin_support
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
@@ -881,7 +882,7 @@ class ApiRouting:
             """
             Similar to get_text_media(), but:
                 1) no login required
-                2) specifically for Notes
+                2) specifically for Notes  (TODO: possibly generalize to any media)
                 3) it only serves items that are marked as "public" in the database
 
             EXAMPLE invocation: http://localhost:5000/BA/api/remote_access_note/123
@@ -1296,8 +1297,6 @@ class ApiRouting:
         def delete(uri, class_name):
             """
             Delete the specified Content Item.
-            Note that class_name is redundant; only used as a safety mechanism
-            against incorrect values of their uri
 
             EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/Document
             """
@@ -1397,136 +1396,6 @@ class ApiRouting:
         def ________CATEGORY_RELATED________(DIVIDER):
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
-
-        @bp.route('/add_item_to_category', methods=['POST'])
-        @login_required
-        def add_item_to_category():
-            """
-            Create a new Content Item attached to a particular Category,
-            at a particular location in the "collection" (page)
-
-            EXAMPLE invocation:
-            curl http://localhost:5000/BA/api/add_item_to_category
-                            -d "category_id=708&insert_after_uri=711&schema_code=h&text=New Header&class_name=Headers"
-        
-            POST FIELDS:
-                category_id         URI identifying the Category to which attach the new Content Item
-                class_name          The name of the Class of the new Content Item
-                insert_after_uri    Either an URI of an existing Content Item attached to this Category,
-                                    or one of the special values "TOP" or "BOTTOM"
-                insert_after_class  The name of the Class of the preceding Content Item, if applicable
-                *PLUS* any applicable plugin-specific fields
-
-            RETURNED PAYLOAD (on success):
-                The URI of the newly-created Data Node
-            """
-            # TODO: possibly phase out in favor of '/add_item_to_category_JSON' (below)
-            # TODO: switch from "category_id" to "category_uri"
-            # TODO: also return the newly-assigned "pos" value
-            # Extract the POST values
-            post_data = request.form
-            # Example: ImmutableMultiDict([('category_id', '123'), ('class_name', 'Header'),
-            #                              ('insert_after_uri', 'i-5'), ('insert_after_class', 'Image'), ('text', 'My Header')])
-            #cls.show_post_data(post_data, "add_item_to_category")
-        
-            # Create a new Content Item with the POST data
-            try:
-                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'insert_after_uri', 'class_name'])
-                #print("/add_item_to_category - pars_dict: ", pars_dict)
-                # EXAMPLE: {'class_name': 'Header', 'category_id': '1', 'insert_after_uri': 'BOTTOM', 'text': 'My Header'}
-                payload = DataManager.new_content_item_in_category(pars_dict)        # The URI of the newly-created Data Node
-                response_data = {"status": "ok", "payload": payload}
-            except Exception as ex:
-                err_details = f"/add_item_to_category : Unable to add the requested Content Item to the specified Category.  " \
-                              f"{exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}
-
-            #print(f"add_item_to_category() is returning: `{err_details}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
-        @bp.route('/add_item_to_category_JSON', methods=['POST'])
-        @login_required
-        def add_item_to_category_JSON():
-            """
-            Create a new Content Item attached to a particular Category,
-            at a particular location in the "collection" (page)
-
-            This is variation of '/add_item_to_category' that expects to receive JSON data
-
-            POST VARIABLES:
-                json    (REQUIRED) A JSON-encoded dict
-
-            KEYS in the JSON-encoded dict:
-                category_uri        URI identifying the Category to which attach the new Content Item
-                class_name          The name of the Class of the new Content Item
-                insert_after_uri    Either an URI of an existing Content Item attached to this Category,
-                                        or one of the special values "TOP" or "BOTTOM"
-                insert_after_class  [OPTIONAL] The name of the Class of the preceding Content Item, if applicable
-                *PLUS* any applicable plugin-specific fields
-
-            RETURNED PAYLOAD (on success):
-                The URI of the newly-created Data Node
-            """
-            #TODO:
-            '''
-            A possible general API design:
-                required_fields = ["category_uri", "class_name", "insert_after_uri"]
-                other_fields = ["insert_after_class"]
-                allow_extra_fields = True
-                handler = DataManager.add_new_content_item_to_category
-                
-            Then it automatically does field extraction and presence check,
-            and finally makes a call to:  
-                handler(category_uri=..., class_name=..., insert_after_uri=..., insert_after_class=...,
-                        extra_fields=<the remaining dict>)   
-            '''
-
-            # Extract and parse the POST value
-            pars_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
-            # provided that mimetype indicates "application/json"
-            # EXAMPLE: {'category_uri': '6967', 'class_name': 'Header', 'insert_after_uri': 'BOTTOM', 'text': 'My Header'}
-            # See: https://flask.palletsprojects.com/en/1.1.x/api/
-            #print("In add_item_to_category_JSON() -  pars_dict: ", pars_dict)
-
-            # TODO: create a helper function for the unpacking/validation below
-            category_uri = pars_dict.get('category_uri')
-            class_name = pars_dict.get('class_name')
-            insert_after_uri = pars_dict.get('insert_after_uri')
-            insert_after_class = pars_dict.get('insert_after_class')    # NOT required if `insert_after_uri` is "TOP" or "BOTTOM"
-
-            # TODO: this check for a required set of variables ought to be the ONLY responsibility of this layer!
-            if not category_uri or not class_name or not insert_after_uri:
-                err_details = f"add_item_to_category_JSON(): some required parameters are missing; " \
-                              f"'category_uri', 'class_name' and 'insert_after_uri' are required"
-                response_data = {"status": "error", "error_message": err_details}
-                return jsonify(response_data), 400      # 400 is "Bad Request client error"
-
-
-            # Create a new Content Item with the POST data
-            try:
-                del pars_dict["category_uri"]
-                del pars_dict["class_name"]
-                del pars_dict["insert_after_uri"]
-                if "insert_after_class" in pars_dict:
-                    del pars_dict["insert_after_class"]
-
-                #print("Creating new Content Item with following properties: ", pars_dict)
-                payload = DataManager.add_new_content_item_to_category(category_uri=category_uri, class_name=class_name,
-                                                                       insert_after_uri=insert_after_uri, insert_after_class=insert_after_class,
-                                                                       item_data=pars_dict)     # It returns the URI of the newly-created Data Node
-                response_data = {"status": "ok", "payload": payload}
-            except Exception as ex:
-                err_details = f"/add_item_to_category_JSON : Unable to add the requested Content Item to the specified Category.  " \
-                              f"{exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}
-
-            #print(f"add_item_to_category_JSON() is returning: `{err_details}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
 
 
         @bp.route('/delete_category/<uri>')
@@ -1661,7 +1530,6 @@ class ApiRouting:
             """
             Add or remove a "SEE ALSO" relationship between two given Categories
 
-
             EXAMPLE invocation:
                 curl http://localhost:5000/BA/api/see_also -d
                             "from_category_uri=some_category_uri&to_category_uri=some_other_category_uri&action=add"
@@ -1669,7 +1537,7 @@ class ApiRouting:
             POST FIELDS:
                 from_category_uri       URI to identify the Category from which the "BA_see_also" link originates
                 to_category_uri         URI to identify the Category towards which the "BA_see_also" link points
-                action                  Either "add" or "remove"
+                action                  Either "add" or "remove"    TODO: possibly switch to using a "DELETE" HTTP method for the latter
 
             RETURNED PAYLOAD (on success):
                 Nothing
@@ -1706,11 +1574,175 @@ class ApiRouting:
 
         #####################################################################################################
 
-        '''                          ~  CONTENT ITEMS in CATEGORIES    ~                                   '''
+        '''                      ~  CATEGORY PAGES  (CONTENT ITEMS in CATEGORIES)    ~                    '''
 
-        def ________CONTENT_ITEMS_CATEGORIES________(DIVIDER):
+        def ________CATEGORY_PAGES________(DIVIDER):
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
+
+
+        @bp.route('/add_item_to_category', methods=['POST'])
+        @login_required
+        def add_item_to_category():
+            """
+            Create a new Content Item attached to a particular Category,
+            at a particular location in the "collection" (page)
+
+            EXAMPLE invocation:
+            curl http://localhost:5000/BA/api/add_item_to_category
+                            -d "category_id=708&insert_after_uri=711&schema_code=h&text=New Header&class_name=Headers"
+
+            POST FIELDS:
+                category_id         URI identifying the Category to which attach the new Content Item
+                class_name          The name of the Class of the new Content Item
+                insert_after_uri    Either an URI of an existing Content Item attached to this Category,
+                                    or one of the special values "TOP" or "BOTTOM"
+                insert_after_class  The name of the Class of the preceding Content Item, if applicable
+                *PLUS* any applicable plugin-specific fields
+
+            RETURNED PAYLOAD (on success):
+                The URI of the newly-created Data Node
+            """
+            # TODO: possibly phase out in favor of '/add_item_to_category_JSON' (below)
+            # TODO: switch from "category_id" to "category_uri"
+            # TODO: also return the newly-assigned "pos" value
+            # Extract the POST values
+            post_data = request.form
+            # Example: ImmutableMultiDict([('category_id', '123'), ('class_name', 'Header'),
+            #                              ('insert_after_uri', 'i-5'), ('insert_after_class', 'Image'), ('text', 'My Header')])
+            #cls.show_post_data(post_data, "add_item_to_category")
+
+            # Create a new Content Item with the POST data
+            try:
+                pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'insert_after_uri', 'class_name'])
+                #print("/add_item_to_category - pars_dict: ", pars_dict)
+                # EXAMPLE: {'class_name': 'Header', 'category_id': '1', 'insert_after_uri': 'BOTTOM', 'text': 'My Header'}
+                payload = DataManager.new_content_item_in_category(pars_dict)        # The URI of the newly-created Data Node
+                response_data = {"status": "ok", "payload": payload}
+            except Exception as ex:
+                err_details = f"/add_item_to_category : Unable to add the requested Content Item to the specified Category.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+
+            #print(f"add_item_to_category() is returning: `{err_details}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/plugin/<handler>', methods=['POST'])
+        @login_required
+        def plugin(handler):
+            """
+            EXPERIMENTAL endpoint not yet in use.  Meant to support plugin-provided operations.
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict
+
+            EXAMPLE invocation:     http://localhost:5000/BA/api/plugin/documents using a POST,
+                                    and passing a body of [1,2,3] with mimetype "application/json"
+
+            :param handler: The name of a plugin-handler class.  EXAMPLE: "documents"
+            """
+            print(f"Invoking /plugin/ endpoint for handler:  `{handler}`")
+            # Extract and parse the POST value
+            parameters = request.get_json()     # This parses the JSON-encoded string in the POST message,
+                                                # provided that mimetype indicates "application/json"
+
+            print("    parameters passed to the plugin: ", parameters)              # EXAMPLE:  [1, 2, 3]
+
+            try:
+                result = plugin_support.api_handler(handler, parameters)
+                response_data = {"status": "ok", "payload": result}                  # Successful termination
+
+            except Exception as ex:
+                err_details =  f"Error from `{handler}` plugin.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/add_item_to_category_JSON', methods=['POST'])
+        @login_required
+        def add_item_to_category_JSON():
+            """
+            Create a new Content Item attached to a particular Category,
+            at a particular location in the "collection" (page)
+
+            This is variation of '/add_item_to_category' that expects to receive JSON data
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict
+
+            KEYS in the JSON-encoded dict:
+                category_uri        URI identifying the Category to which attach the new Content Item
+                class_name          The name of the Class of the new Content Item
+                insert_after_uri    Either an URI of an existing Content Item attached to this Category,
+                                        or one of the special values "TOP" or "BOTTOM"
+                insert_after_class  [OPTIONAL] The name of the Class of the preceding Content Item, if applicable
+                *PLUS* any applicable plugin-specific fields
+
+            RETURNED PAYLOAD (on success):
+                The URI of the newly-created Data Node
+            """
+            #TODO:
+            '''
+            A possible general API design:
+                required_fields = ["category_uri", "class_name", "insert_after_uri"]
+                other_fields = ["insert_after_class"]
+                allow_extra_fields = True
+                handler = DataManager.add_new_content_item_to_category
+                
+            Then it automatically does field extraction and presence check,
+            and finally makes a call to:  
+                handler(category_uri=..., class_name=..., insert_after_uri=..., insert_after_class=...,
+                        extra_fields=<the remaining dict>)   
+            '''
+
+            # Extract and parse the POST value
+            pars_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
+            # provided that mimetype indicates "application/json"
+            # EXAMPLE: {'category_uri': '6967', 'class_name': 'Header', 'insert_after_uri': 'BOTTOM', 'text': 'My Header'}
+            # See: https://flask.palletsprojects.com/en/1.1.x/api/
+            #print("In add_item_to_category_JSON() -  pars_dict: ", pars_dict)
+
+            # TODO: create a helper function for the unpacking/validation below
+            category_uri = pars_dict.get('category_uri')
+            class_name = pars_dict.get('class_name')
+            insert_after_uri = pars_dict.get('insert_after_uri')
+            insert_after_class = pars_dict.get('insert_after_class')    # NOT required if `insert_after_uri` is "TOP" or "BOTTOM"
+
+            # TODO: this check for a required set of variables ought to be the ONLY responsibility of this layer!
+            if not category_uri or not class_name or not insert_after_uri:
+                err_details = f"add_item_to_category_JSON(): some required parameters are missing; " \
+                              f"'category_uri', 'class_name' and 'insert_after_uri' are required"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            # Create a new Content Item with the POST data
+            try:
+                del pars_dict["category_uri"]
+                del pars_dict["class_name"]
+                del pars_dict["insert_after_uri"]
+                if "insert_after_class" in pars_dict:
+                    del pars_dict["insert_after_class"]
+
+                #print("Creating new Content Item with following properties: ", pars_dict)
+                payload = DataManager.add_new_content_item_to_category(category_uri=category_uri, class_name=class_name,
+                                                                       insert_after_uri=insert_after_uri, insert_after_class=insert_after_class,
+                                                                       item_data=pars_dict)     # It returns the URI of the newly-created Data Node
+                response_data = {"status": "ok", "payload": payload}
+            except Exception as ex:
+                err_details = f"/add_item_to_category_JSON : Unable to add the requested Content Item to the specified Category.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+
+            #print(f"add_item_to_category_JSON() is returning: `{err_details}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
         @bp.route('/link_content_at_end/<category_uri>/<item_uri>')
