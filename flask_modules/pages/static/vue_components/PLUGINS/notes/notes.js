@@ -157,13 +157,16 @@ Vue.component('vue-plugin-n',
 
                 this.waiting = true;
 
-                // Prepare a URL to communicate with the server's endpoint
+                // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get_text_media/" + item_data.uri;
 
-                ServerCommunication.contact_server_OLD(url_server_api,
-                                                  {callback_fn: this.finish_get_note});
+                console.log(`In get_note(): about to contact the server at "${url_server_api}"`);
 
-                console.log("    SENT REQUEST TO SERVER to retrieve Note whose URI is `" + item_data.uri + "`...");
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "GET",
+                             callback_fn: this.finish_get_note
+                            });
             }, // get_note
 
 
@@ -341,7 +344,7 @@ Vue.component('vue-plugin-n',
                 // Start the body of the POST to send to the server
                 var post_obj = {schema_code: this.item_data.schema_code};
 
-                if (noteID < 0)  {	// Add NEW note
+                if (noteID < 0)  {	    // Add NEW note
                     const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                     const insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
 
@@ -353,7 +356,7 @@ Vue.component('vue-plugin-n',
                     if (this.current_data['title'] != "")
                         post_obj.title = this.current_data['title'];        // TODO: implement a title creator, if not supplied by user
 
-                    var url_server = "/BA/api/add_item_to_category";
+                    var url_server_api = "/BA/api/add_item_to_category";    // TODO: probably phase out in favor of '/update_content_item_JSON'
                 }
                 else  {				    // Edit EXISTING note
                     post_obj.uri = noteID;
@@ -364,23 +367,27 @@ Vue.component('vue-plugin-n',
                     if (post_obj.basename === undefined)
                         alert("Attempting to call /BA/api/update_content_item with an undefined basename!");
 
-                    var url_server = "/BA/api/update_content_item";
+                    var url_server_api = "/BA/api/update_content_item"; // TODO: probably phase out in favor of '/update_content_item_JSON'
                 }
 
 
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: false,
+                             callback_fn: this.finish_save
+                            });
+
                 this.save_waiting = true;
                 this.error = false;   // Clear possible past message
-
-                //console.log("In 'vue-plugin-n', do_box_save().  post_obj: ", post_obj);
-                ServerCommunication.contact_server_OLD(url_server, {post_obj: post_obj,
-                                                                callback_fn: this.finish_save});
 
             },  // do_box_save()
 
 
             finish_save(success, server_payload, error_message)
             /*	Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID.
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity ID.
 
                 Exit the editing mode.  Invoked upon a SAVE operation on an existing note.
                 Restore all <input> fields to strings, using the values saved in the Vue object.

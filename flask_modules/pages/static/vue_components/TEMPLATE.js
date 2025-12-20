@@ -125,7 +125,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // var get_obj = {my_key, my_value};    // Optional
 
-                console.log(`In server_communication_POST(): about to contact the server at "${url_server_api}"`);
+                console.log(`In server_communication_GET(): about to contact the server at "${url_server_api}"`);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
