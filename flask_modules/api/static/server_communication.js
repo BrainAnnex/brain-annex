@@ -224,7 +224,7 @@ class ServerCommunication
         console.log("    using the following fetch_options: ", fetch_options);
 
         fetch(url_server, fetch_options)
-        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors_JSON(fetch_resp_obj))    // Deal with fetch() errors
+        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
         .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
                                                         //      TODO: turn into a method that first logs the first part of the response
                                                         //            (helpful in case of parsing errors)
@@ -289,7 +289,7 @@ class ServerCommunication
         }
 
         fetch(url_server, fetch_options)
-        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors_JSON(fetch_resp_obj))    // Deal with fetch() errors
+        .then(fetch_resp_obj => ServerCommunication.handle_fetch_errors(fetch_resp_obj))    // Deal with fetch() errors
         .then(fetch_resp_obj => fetch_resp_obj.json())  // Transform the response object into a JS promise that will resolve into a JSON object
                                                         //      TODO: turn into a method that first logs the first part of the response
                                                         //            (helpful in case of parsing errors)
@@ -579,18 +579,25 @@ class ServerCommunication
     }
 
 
+
     static handle_fetch_errors(resp_obj)
-    /*  If the given response object - returned by a fetch() calls - indicates success,
-            just pass thru the response object:
-            it will get caught by the next ".then()" statement of the original fetch() call
-            .
-        In case of HTTP error status (such as 404), log the error to the console,
-            and raise an exception with error details - meant to be caught by a
-            ".catch()" statement in the original fetch() call.
+    /*  Examine the given response object, returned by a fetch() call, to determine if there was an error involved.
 
-        Example of response object:
+        1) If no error was reported (i.e. the response object indicates success),
+        log in the console some debugging info, and pass thru the response object,
+        which will get caught by the next ".then()" statement of the original fetch() call.
+
+        2) In case of HTTP error status (such as 404), log the error to the console,
+        and then throw a new Error() with error details,
+        which will get intercepted by the ".catch()" statement in the original fetch() call
+
+        EXAMPLE of successful response object:
             { type: "basic", url: "http://localhost:5000/BA/api/create_new_schema_class", redirected: false,
               status: 200, ok: true, statusText: "OK", headers: Headers, body: ReadableStream, bodyUsed: false }
+
+        EXAMPLE of error response object:
+            { type: "basic", url: "http://localhost:5000/BA/api/add_subcategory_relationship", redirected: false,
+             status: 405, ok: false, statusText: "METHOD NOT ALLOWED", headers: Headers(6), body: ReadableStream, bodyUsed: false }
      */
     {
         if (resp_obj.ok)  {
@@ -604,38 +611,6 @@ class ServerCommunication
         }
 
         // If the above "ok" attribute is false, then there was an HTTP error status - for example a 404 (page not found)
-        console.error('Error: HTTP error status received from the server. Response object below:', resp_obj);
-
-        const error_info = "HTTP error status received from the server. Error status: " + resp_obj.status
-                                + ". Error details: " + resp_obj.statusText + ". \nURL: " + resp_obj.url;
-
-        throw new Error(error_info);    // This will get intercepted by the ".catch()" statement in the original fetch() call
-    }
-
-
-    static handle_fetch_errors_JSON(resp_obj)
-    /*  In case of HTTP error status (such as 404), log the error to the console
-
-        In all cases, always pass thru the response object:
-            it will get caught by the next ".then()" statement of the original fetch() call
-
-        Example of response object:
-            { type: "basic", url: "http://localhost:5000/BA/api/create_new_schema_class", redirected: false,
-              status: 200, ok: true, statusText: "OK", headers: Headers, body: ReadableStream, bodyUsed: false }
-     */
-    {
-        if (resp_obj.ok)  {
-            // FOR DEBUGGING:
-            console.log(`Received response object from server: `, resp_obj);
-            console.log('    Content-Type of response: ', resp_obj.headers.get('Content-Type'));
-            //console.log('    Date: ', resp_obj.headers.get('Date'));
-            // END OF DEBUGGING
-
-            return resp_obj;	// Just pass thru the response object
-        }
-
-        // If the above "ok" attribute is false, then there was an HTTP error status - for example a 404 (page not found)
-        //console.error('Error: HTTP error status received from the server. Response object below:', resp_obj);
 
         const error_info = "HTTP error status received from the server. Error status: " + resp_obj.status
                                 + ". Error details: " + resp_obj.statusText + ". \nURL: " + resp_obj.url;
@@ -643,8 +618,12 @@ class ServerCommunication
 
         console.error('Response object below:', resp_obj);
 
-        return resp_obj;	// Just pass thru the response object
-        //throw new Error(error_info);    // This will get intercepted by the ".catch()" statement in the original fetch() call
+        // Note: we must throw a new Error, rather than just pass thru the response object.
+        //       because the next step in the original fetch() call
+        //       might be a call to json() on the response object,
+        //       which would then choke and generate a confusing "Can't parse JSON" error
+
+        throw new Error(error_info);  // This will get intercepted by the ".catch()" statement in the original fetch() call
     }
 
 

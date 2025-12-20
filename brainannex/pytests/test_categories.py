@@ -204,6 +204,35 @@ def test_get_parent_categories(db):
 
 
 
+def test_get_ancestor_categories(db):
+    _, root_uri = initialize_categories(db)
+
+    result = Categories.get_ancestor_categories(category_uri=root_uri)
+    assert result == []     # The root node has no ancestors
+
+    A_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "A"})
+    result = Categories.get_ancestor_categories(category_uri=A_uri)
+    assert result == [root_uri]     # The root node is the only ancestor of Category "A"
+
+    B_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "B"})
+    result = Categories.get_ancestor_categories(category_uri=B_uri)
+    assert result == [root_uri]     # The root node is the only ancestor of Category "B"
+
+    C_uri = Categories.add_subcategory({"category_uri": A_uri, "subcategory_name": "C"})
+    result = Categories.get_ancestor_categories(category_uri=C_uri)
+    assert compare_unordered_lists(result, [A_uri, root_uri])
+
+    # Make "A" a subcategory of "B"
+    Categories.add_subcategory_relationship(category_uri=B_uri, subcategory_uri=A_uri)
+
+    result = Categories.get_ancestor_categories(category_uri=A_uri)
+    assert compare_unordered_lists(result, [B_uri, root_uri])
+
+    result = Categories.get_ancestor_categories(category_uri=C_uri)
+    assert compare_unordered_lists(result, [A_uri, B_uri, root_uri])
+
+
+
 def test_get_sibling_categories(db):
     root_internal_id, root_uri = initialize_categories(db)
     result = Categories.get_sibling_categories(root_internal_id)
@@ -297,6 +326,10 @@ def test_add_subcategory_relationship(db):
     result = Categories.get_subcategories(category_uri=B_uri)
     assert result == [{'_CLASS': 'Category', 'uri': A_uri, 'name': 'A'}]
 
+    with pytest.raises(Exception):
+        # This would create a cycle
+        Categories.add_subcategory_relationship(category_uri=A_uri, subcategory_uri=B_uri)
+
 
 
 def test_get_see_also(db):
@@ -364,8 +397,6 @@ def test_import_ontology(db):
 def test_viewer_handler(db):
     pass
 
-def test_add_relationship_before(db):
-    pass
 
 def test_remove_relationship_before(db):
     pass

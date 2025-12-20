@@ -449,35 +449,7 @@ class DataManager:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
-    #######################     RECORDS-RELATED       #######################
-
-    @classmethod
-    def add_data_relationship_handler(cls, data_dict: dict) -> None:
-        """
-        Add the specified relationship (edge) between data nodes.
-        In case of error, an Exception is raised.
-
-        :param data_dict: A dictionary with the following
-                from                    The uri of the node from which the relationship originates
-                to                      The uri of the node into which the relationship takes
-                rel_name                The name of the relationship to add
-                schema_code (optional)  If passed, the appropriate plugin gets invoked
-
-        :return: None
-        """
-        from_id = data_dict['from']
-        to_id = data_dict['to']
-        rel_name = data_dict['rel_name']
-        schema_code = data_dict.get('schema_code')         # Tolerant of missing values
-
-        if schema_code == "cat":        # TODO: take this part away?
-            Categories.add_relationship_before(from_id=from_id, to_id=to_id,
-                                               rel_name=rel_name)       # Category-specific action
-
-        # The adding of the relationship is done here
-        GraphSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="uri",
-                                          rel_name=rel_name)
-
+    #######################     DATA NODES  RELATED       #######################
 
 
     @classmethod
@@ -501,6 +473,8 @@ class DataManager:
         schema_code = data_dict.get('schema_code')         # Tolerant of missing values
 
         if schema_code == "cat":
+            # TODO: turn into a specialized web api endpoint specifically for Categories,
+            #       like done for /BA/api/add_subcategory_relationship
             Categories.remove_relationship_before(from_id=from_uri, to_id=to_uri,
                                                   rel_name=rel_name)       # Category-specific action
 

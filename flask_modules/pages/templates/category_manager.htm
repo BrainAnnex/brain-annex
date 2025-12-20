@@ -104,11 +104,11 @@
             <div style='width:105px; text-align:center'>
 
                 <!-- TODO: this needs replacing -->
-                <a href='javascript:replaceMenu(0)'>
+
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
                          v-bind:title="'NOT YET IMPLEMENTED!!!  REMOVE &ldquo;' + p.name + '&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
                     >
-                </a>
+
                 <br>
 
                 <!-- TODO: this form needs replacing -->
@@ -329,12 +329,12 @@ It does *NOT* delete `' + s.name + '`'"
                 >
                 <br>
 
+
                 <!-- TODO: this needs replacing -->
-                <a href='javascript:replaceMenu(6)'>
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
                          v-bind:title="'NOT YET IMPLEMENTED!!!  REMOVE &ldquo;' + s.name + '&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
                     >
-                </a>
+
                 <br>
 
                 <!-- TODO: this form needs replacing -->
@@ -588,26 +588,36 @@ new Vue({
 
 
         add_parent_category()
-        // Add the just-selected parent category (specified by this.uri_parent_to_add) to the current category
+        // Link up the just-selected parent category (specified by this.uri_parent_to_add) to the current category
         {
             console.log(`Attempting to make the just-selected Category (URI '${this.uri_parent_to_add}') a parent of the current Category (URI '${this.category_uri}')`);
 
-            let url_server = "/BA/api/add_relationship";    // TODO: maybe switch to the more specialized /BA/api/add_subcategory_relationship  ???
+            //let url_server = "/BA/api/add_relationship";
+            let url_server = "/BA/api/add_subcategory_relationship";
+
+            let get_obj = {cat: this.uri_parent_to_add,
+                           sub: this.category_uri
+                           };
+
+            /*
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: this.category_uri,
                             to: this.uri_parent_to_add,
                             rel_name: "BA_subcategory_of",
                             schema_code: "cat"};
-            console.log(`About to contact the server at ${url_server} .  POST object:`);
-            console.log(post_obj);
+            */
+
+            console.log(`About to contact the server at ${url_server} .  GET object:`);
+            console.log(get_obj);
 
             this.waiting = true;        // About to contact the server
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
             ServerCommunication.contact_server(url_server,
-                        {method: "POST",
-                         data_obj: post_obj,
+                        {method: "GET",
+                         data_obj: get_obj,
+                         json_encode_send: false,
                          callback_fn: this.finish_add_parent_category,
                          custom_data: this.uri_parent_to_add});
         },
@@ -642,26 +652,36 @@ new Vue({
 
 
         add_child_category()
-        // Add the just-selected child category (specified by this.uri_child_to_add) to the current category
+        // Link up the just-selected child category (specified by this.uri_child_to_add) to the current category
         {
-            console.log(`Attempting to make the just-selected Category (URI '${this.uri_child_to_add}') a child of the current Category (URI '${this.category_uri}')`);
+            console.log(`Attempting to make the just-selected Category (URI '${this.uri_child_to_add}') a sub-category of the current Category (URI '${this.category_uri}')`);
 
-            let url_server = "/BA/api/add_relationship";    // TODO: maybe switch to the more specialized /BA/api/add_subcategory_relationship ???
+            //let url_server = "/BA/api/add_relationship";
+            let url_server = "/BA/api/add_subcategory_relationship";
+
+            let get_obj = {cat: this.category_uri,
+                           sub: this.uri_child_to_add
+                          };
+
+            /*
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: this.uri_child_to_add,
                             to: this.category_uri,
                             rel_name: "BA_subcategory_of",
                             schema_code: "cat"};
-            console.log(`About to contact the server at ${url_server} .  POST object:`);
-            console.log(post_obj);
+             */
+
+            console.log(`About to contact the server at ${url_server} .  GET object:`);
+            console.log(get_obj);
 
             this.waiting = true;        // About to contact the server
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
             ServerCommunication.contact_server(url_server,
-                        {method: "POST",
-                         data_obj: post_obj,
+                        {method: "GET",
+                         data_obj: get_obj,
+                         json_encode_send: false,
                          callback_fn: this.finish_add_child_category,
                          custom_data: this.uri_child_to_add});
         },

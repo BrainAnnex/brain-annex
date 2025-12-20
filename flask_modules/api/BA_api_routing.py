@@ -1324,7 +1324,6 @@ class ApiRouting:
                 from                    The URI of the Data Nodes from which the relationship originates
                 to                      The URI of the Data Nodes into which the relationship takes
                 rel_name                The name of the relationship to add
-                schema_code (optional)  If passed, the appropriate plugin gets invoked
 
             EXAMPLE of invocation:
                 curl http://localhost:5000/BA/api/add_relationship -d
@@ -1334,12 +1333,20 @@ class ApiRouting:
 
             # Extract the POST values
             post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of')])
             #cls.show_post_data(post_data, "add_relationship")
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                DataManager.add_data_relationship_handler(data_dict)
+
+                from_id = data_dict['from']
+                to_id = data_dict['to']
+                rel_name = data_dict['rel_name']
+
+                # The adding of the relationship is done here
+                GraphSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="uri",
+                                                  rel_name=rel_name)
+
                 response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
                 err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
