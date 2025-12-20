@@ -129,7 +129,7 @@ def test_count_subcategories(db):
     assert Categories.count_subcategories(french_uri) == 0
 
     # Make the "French" also a child of "Courses"
-    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
+    Categories.add_subcategory_relationship(subcategory_uri=french_uri, category_uri=courses_uri)
     assert Categories.count_subcategories(root_uri) == 2
     assert Categories.count_subcategories(language_uri) == 1
     assert Categories.count_subcategories(courses_uri) == 1        # Now has a child
@@ -158,7 +158,7 @@ def test_count_parent_categories(db):
     assert Categories.count_parent_categories(french_uri) == 1      # The "French" node has 1 parent ("Languages")
 
     # Make the "French" also a child of "Courses"
-    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
+    Categories.add_subcategory_relationship(subcategory_uri=french_uri, category_uri=courses_uri)
     # The "French" node will now have 2 parents ("Languages" and "Courses)
     assert Categories.count_parent_categories(french_uri) == 2
 
@@ -195,7 +195,7 @@ def test_get_parent_categories(db):
     # The "French" node has 1 parent ("Languages")
 
     # Make the "French" also a child of "Courses"
-    Categories.add_subcategory_relationship({"sub": french_uri, "cat": courses_uri})
+    Categories.add_subcategory_relationship(subcategory_uri=french_uri, category_uri=courses_uri)
     # The "French" node will now have 2 parents ("Languages" and "Courses)
     result = Categories.get_parent_categories(french_uri)
     expected = [{"name": "Languages", "remarks": "Common node for all languages", "uri": language_uri},

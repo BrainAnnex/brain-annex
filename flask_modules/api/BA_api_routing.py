@@ -1178,7 +1178,7 @@ class ApiRouting:
                 class_name=data_dict["class_name"]
                 del data_dict["uri"]
                 del data_dict["class_name"]
-                DataManager.update_content_item(uri=uri, class_name=class_name,
+                DataManager.update_content_item(entity_id=uri, class_name=class_name,
                                                 update_data=data_dict)
                 response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
@@ -1264,7 +1264,7 @@ class ApiRouting:
             if uri:
                 # Scenario where `uri` and (`class_name` and/or `label`) are used
                 try:
-                    DataManager.update_content_item(uri=uri, class_name=class_name, label=label,
+                    DataManager.update_content_item(entity_id=uri, class_name=class_name, label=label,
                                                     update_data=data_dict)
                     response_data = {"status": "ok"}                                    # If no errors
                 except Exception as ex:

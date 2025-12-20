@@ -682,18 +682,17 @@ class DataManager:
     ##############   MODIFYING CONTENT ITEMS   ##############
 
     @classmethod
-    def update_content_item(cls, uri :str, class_name :str, update_data: dict, label=None) -> None:
+    def update_content_item(cls, entity_id :str, class_name :str, update_data :dict, label=None) -> None:
         """
         Update an existing Content Item.
         No harm if new values are identical to the earlier old values.
-        Note: class_name is redundant
 
         Notes:
             - if a field is blank, it gets completely dropped from the node
             - if a field isn't mentioned, no change is applied to it
             - leading/trailing blanks in the field values are stripped away
 
-        :param uri:         String with a unique identifier for the Content Item to update
+        :param entity_id:   String with a unique identifier for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
         :param update_data: A dict of data field names and their desired new values
         :param label:       [OPTIONAL] String with a Label of the Content Item
@@ -705,8 +704,9 @@ class DataManager:
 
         # Make sure that the requested Content Item exists
         if class_name:
-            assert GraphSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
-                    f"update_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
+            #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="uri", class_name=class_name), \
+            assert GraphSchema.data_node_exists(find=(class_name, entity_id)), \
+                    f"update_content_item(): no Content Item found with URI `{entity_id}` and class `{class_name}`"
 
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
@@ -726,16 +726,16 @@ class DataManager:
 
         if plugin_support.is_media_class(class_name):
             # If the Content Item is a Media Item, do some special handling
-            MediaManager.before_update_content(uri=uri, set_dict=update_data, class_name=class_name)
+            MediaManager.before_update_content(uri=entity_id, set_dict=update_data, class_name=class_name)
 
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
-        number_updated = GraphSchema.update_data_node(data_node=uri, set_dict=update_data, drop_blanks=True,
+        number_updated = GraphSchema.update_data_node(data_node=entity_id, set_dict=update_data, drop_blanks=True,
                                                       class_name=class_name, label=label)
 
 
         if class_name == "Note":
-            Notes.update_content_item_successful(uri, original_post_data)
+            Notes.update_content_item_successful(entity_id, original_post_data)
 
 
         # If the update was NOT for a "note" (in which case it might only be about the note's body rather than its metadata)
@@ -750,22 +750,22 @@ class DataManager:
 
 
     @classmethod
-    def delete_content_item(cls, uri: str, class_name: str) -> None:
+    def delete_content_item(cls, uri :str, class_name :str) -> None:
         """
         Delete the specified individual Content Item.
-        Note:  class_name is redundant; used as a safety mechanism
-               against incorrect values of their uri
 
-        :param uri:         String version of the unique ID
+        :param uri:         String with the unique entity ID of the Content Item
         :param class_name:  Name of the Schema Class of the Content Item
         :return:            None
         """
-        #print(f"In delete_content_item(). Attempting to delete URI `{uri}` of type `{schema_code}`")
+        #print(f"In delete_content_item(). Attempting to delete URI `{uri}` of type `{class_name}`")
 
+        assert class_name, "delete_content_item(): argument `class_name` is missing"
         assert uri, "delete_content_item(): argument `uri` is missing"
 
         # Make sure that the requested Content Item exists
-        assert GraphSchema.data_node_exists(node_id=uri, id_key="uri", class_name=class_name), \
+        #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="uri", class_name=class_name), \
+        assert GraphSchema.data_node_exists(find=(class_name, uri)), \
             f"delete_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 

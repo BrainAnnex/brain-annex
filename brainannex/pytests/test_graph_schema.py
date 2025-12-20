@@ -1119,33 +1119,53 @@ def test_get_data_node_id(db):
 
 
 
-def test_data_node_exists(db):
+def test_data_node_exists_OLD(db):
     db.empty_dbase()
 
-    assert not GraphSchema.data_node_exists(node_id=123)
-    assert not GraphSchema.data_node_exists(node_id="c-88", id_key="uri", class_name="Car")
-    assert not GraphSchema.data_node_exists(node_id=45, id_key="employee id", class_name="Employee")
+    assert not GraphSchema.data_node_exists_OLD(node_id=123)
+    assert not GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="uri", class_name="Car")
+    assert not GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id", class_name="Employee")
 
     GraphSchema.create_class(name="Car", strict = True)
     internal_id = GraphSchema.create_data_node(class_name="Car", new_uri="c-88")
-    assert GraphSchema.data_node_exists(node_id=internal_id)
-    assert GraphSchema.data_node_exists(node_id=internal_id, class_name="Car")
-    assert not GraphSchema.data_node_exists(node_id=internal_id, class_name="BOAT")
-    assert GraphSchema.data_node_exists(node_id="c-88", id_key="uri", class_name="Car")
-    assert not GraphSchema.data_node_exists(node_id="c-88", id_key="uri", class_name="BOAT")
+    assert GraphSchema.data_node_exists_OLD(node_id=internal_id)
+    assert GraphSchema.data_node_exists_OLD(node_id=internal_id, class_name="Car")
+    assert not GraphSchema.data_node_exists_OLD(node_id=internal_id, class_name="BOAT")
+    assert GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="uri", class_name="Car")
+    assert not GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="uri", class_name="BOAT")
 
     GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
     GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
-    assert GraphSchema.data_node_exists(node_id=45, id_key="employee id", class_name="Employee")
-    assert not GraphSchema.data_node_exists(node_id=666, id_key="employee id", class_name="Employee")   # Non-existent
+    assert GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id", class_name="Employee")
+    assert not GraphSchema.data_node_exists_OLD(node_id=666, id_key="employee id", class_name="Employee")   # Non-existent
 
     with pytest.raises(Exception):
-        GraphSchema.data_node_exists(node_id=45, id_key="employee id")    # Missing `class_name`
+        GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id")    # Missing `class_name`
 
     GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45, "remarks": "duplicate"})
 
     with pytest.raises(Exception):
-        GraphSchema.data_node_exists(node_id=45, id_key="employee id", class_name="Employee")   # Bad primary key
+        GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id", class_name="Employee")   # Bad primary key
+
+
+
+def test_data_node_exists(db):
+    db.empty_dbase()
+
+    assert not GraphSchema.data_node_exists(find=123)
+    assert not GraphSchema.data_node_exists(find=("Car", "c-88"))
+
+    GraphSchema.create_class(name="Car", strict = True)
+    internal_id = GraphSchema.create_data_node(class_name="Car", new_uri="c-88")
+    assert GraphSchema.data_node_exists(find=internal_id)
+    assert GraphSchema.data_node_exists(find=("Car", "c-88"))
+    assert not GraphSchema.data_node_exists(find=("BOAT", "c-88"))
+
+    with pytest.raises(Exception):
+        GraphSchema.data_node_exists(find={})
+
+    with pytest.raises(Exception):
+        GraphSchema.data_node_exists(find=(1, 2, 3))
 
 
 
