@@ -1560,7 +1560,7 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def follow_links(self, match: Union[int, CypherBuilder], rel_name :str, rel_dir ="OUT",
+    def follow_links(self, match :int|CypherBuilder, rel_name :str, rel_dir ="OUT",
                            neighbor_labels=None, include_id=False, include_labels=False, limit=100) -> [dict]:
         """
         From the given starting node(s), follow all the relationships that have the specified name,
