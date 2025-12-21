@@ -29,10 +29,14 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/record_navigator/record_navigator.css">
     <link type="text/css"  rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
     <!-- JavaScript -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js"></script>
+
     <script src="/BA/pages/static/Vue2/vue2.js"></script>       <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
 </head>
@@ -189,6 +193,31 @@
 
 <br><br>
 
+<button @click="foo">
+    Visualize the above data
+</button>
+
+<h2>Graph</h2>
+
+<vue_cytoscape_4
+        v-bind:graph_data="graph_data_json"
+        v-bind:component_id="1"
+>
+</vue_cytoscape_4>
+
+
+<!--  Everything below is diagnostic data shown below the graph  -->
+
+<div class="content-block" style="margin-left: 5px">
+    <div class="content-block-title">
+        Plot Data
+    </div>
+    TBA
+</div>
+
+<br><br>
+
+
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element "vue-root-1"  ~~~~~~~~~~~~~~~~~~~~~  -->
 
 
@@ -200,7 +229,11 @@
      the script below must handle both the JS import and the instantiation of Vue, to make sure
      that the former is completed first -->
 
+<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4.js"></script>
+
+
 <script type="module">
+
 // Import the JS module (it will register the component globally - and it will be completed
 // prior to the instantiation of Vue, below)
 import '/BA/pages/static/vue_components/multiselect/multiselect.js';
@@ -230,6 +263,18 @@ new Vue({
         query_result: [],           // Array of objects, with one entry per record returned by the search
         query_result_summary: "",   // The total count (total number of nodes with requested label in dbase)
 
+
+        // Object with all the data needed by the Vue component to display the graph
+        // 3 keys:  "structure" (an array of object literals), "color_mapping" (object literal) and "caption_mapping" (object literal)
+        graph_data_json: {
+            structure:  [{'German': 'Sehr gut!', 'English': 'Very good!', 'uri': 'vocab-1', 'id': 77, 'labels': ['German']},
+                         {'German': 'wunderbar!', 'English': 'excellent!', 'uri': 'vocab-2', 'id': 78, 'labels': ['German']},
+                        ],
+            color_mapping: {'German': '#56947E'},
+            caption_mapping: {'German': 'English'}
+        },
+
+
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
         error: false,               // Whether the last server communication resulted in error
         waiting: false              // Whether any server request is still pending
@@ -240,6 +285,21 @@ new Vue({
     // ---------------------  METHODS  ----------------------
 
     methods:  {
+
+        foo()
+        {
+            console.log("foo() invoked");
+
+            this.graph_data_json = {
+                structure:  [{'German': 'Sehr gut!', 'English': 'Very good!', 'uri': 'vocab-1', 'id': 77, 'labels': ['German']},
+                             {'German': 'wunderbar!', 'English': 'excellent!', 'uri': 'vocab-2', 'id': 78, 'labels': ['German']},
+                             {'color': 'white', 'make': 'Toyota', 'id': 123, 'labels': ['Car']}
+                            ],
+                color_mapping: {'German': '#56947E', 'Car': '#F79768'},
+                caption_mapping: {'German': 'English', 'Car': 'make'}
+            }
+        },
+
 
 
         /*
