@@ -2207,7 +2207,7 @@ class GraphSchema:
         (and optionally by a label)
 
         :param uri:     A string to identify a Data Node by the value of its "uri" attribute
-        :param label:   (OPTIONAL) String to require the Data Node to have (redundant,
+        :param label:   String to require the Data Node to have (redundant,
                             since "uri" already uniquely specifies a Data Node - but
                             could be used for speed or data integrity)
 
@@ -2344,10 +2344,63 @@ class GraphSchema:
 
         label_str = f":`{class_name}`"
 
-
         return (label_str, where_clause, data_binding)
 
 
+
+    @classmethod
+    def data_node_exists(cls, find :int|str|tuple|list) -> bool:
+        """
+        Return True if the specified Data Node exists, or False otherwise.
+        If more than 1 node comes up, an Exception is raised.
+
+        EXAMPLES:   data_node_exists(find=123)
+                    data_node_exists(find=("Image", "i-88"))
+
+        TODO: *** This form will probably be the MODEL for functions in this class, as far as argument passing goes ***
+
+        :param find:    Either an internal node id (int or str),
+                            or a pair/list of strings representing the entity (Class) name and the entity id
+        :return:        True if the specified Data Node exists, or False otherwise
+        """
+        if type(find) == int or type(find) == str:
+            return cls.data_node_exists_OLD(node_id=find)
+
+        assert type(find) == tuple or type(find) == list, \
+            "data_node_exists(): the argument `find` must either be an internal node id (int or str), or a pair of strings"
+
+        assert len(find) == 2, \
+            "data_node_exists(): if the argument `find` is passed as a tuple or list, it must have length 2"
+
+        return cls.data_node_exists_OLD(node_id=find[1], id_key="uri", class_name=find[0])
+
+
+
+    @classmethod
+    def data_node_exists_EXPERIMENTAL_4(cls, internal_id :int|str, entity :(str, str)) -> bool:
+        """
+        EXAMPLES:   data_node_exists(internal_id=123)
+                    data_node_exists(entity=("Image", "i-88"))
+        TODO: probably a dead end to drop
+        :param internal_id:
+        :param entity:
+        :return:
+        """
+        pass
+
+
+    @classmethod
+    def data_node_exists_EXPERIMENTAL_3(cls, internal_id :int|str, entity_name :str, entity_id :str) -> bool:
+        """
+        EXAMPLES:   data_node_exists(internal_id=123)
+                    data_node_exists(entity_name="Image", entity_id="i-88")
+        TODO: probably a dead end to drop
+        :param internal_id:
+        :param entity_name:
+        :param entity_id:
+        :return:
+        """
+        pass
 
 
     @classmethod
@@ -2355,15 +2408,15 @@ class GraphSchema:
         """
         Return True if the specified Data Node exist, or False otherwise.
         Optionally, require the result to be unique.
-
+        TODO: probably a dead end to drop
         :param search:      Either an internal database ID (int or str),
                             OR a pair consisting of a key_name string and a key_value
 
                             EXAMPLES:   123
                                         "f425-a84d"
-                                        ("uri", "h-88")
+                                        ("entity_id", "h-88")
                                         ("root", True)
-        :param class_name:
+        :param class_name:      [OPTIONAL] Only required if not passing an internal database ID
         :param require_unique:  [OPTIONAL]
         :return:                True if the specified Data Node exists, or False otherwise
         """
@@ -2441,6 +2494,7 @@ class GraphSchema:
 
                         EXAMPLES:   123
                                     {"class_name": "Header", "key_value": "h-88"}
+                                    {"class_name": "Header", "key_value": "h-88", "key_name": "entity_id"}
                                     {"class_name": "Category", "key_value": True, "key_name": "root"}
 
                         TODO: alternate names: "node", "node_id", "id", "find_by"
@@ -2511,19 +2565,21 @@ class GraphSchema:
 
 
     @classmethod
-    def data_node_exists(cls, node_id, id_key=None, class_name=None) -> bool:
+    def data_node_exists_OLD(cls, node_id, id_key=None, class_name=None) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
         If opting to search by primary key, and more than 1 node comes up, an Exception is raised.
 
+        EXAMPLES:       data_node_exists(123)
+                        data_node_exists(node_id="i-123", id_key="entity_id", class_name="Image")
+
         :param node_id:     Either an internal database ID (int or str), or a primary key value
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri" or "entity_id".
                                 Alternatively, leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :return:            True if the specified Data Node exists, or False otherwise
         """
         #TODO: consider adding an `include_ancestors` option
-        #TODO: use this as a MODEL for other functions, as far as argument passing goes
 
         # Prepare a Cypher query to locate the number of the data nodes
         where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key, class_name=class_name, method="data_node_exists")
@@ -3680,7 +3736,6 @@ class GraphSchema:
 
         The requested new relationship MUST be present in the Schema, or an Exception will be raised.
 
-
         Note that if a relationship with the same name already exists between the data nodes exists,
         nothing gets created (and an Exception is raised)
 
@@ -3729,7 +3784,7 @@ class GraphSchema:
         number_relationships_added = result.get("relationships_created", 0)   # If key isn't present, use a value of 0
 
         if number_relationships_added != 1:
-            # TODO: double-check that the following reported problem is indeed what caused the failure
+            # TODO: investigate if maybe that link already exists
             raise Exception(f"GraphSchema.add_data_relationship(): Failed to add the relationship `{rel_name}` "
                             f"from data node ({from_id}, of Class `{from_class}`), "
                             f"to data node ({to_id}, of Class `{to_class}`)")

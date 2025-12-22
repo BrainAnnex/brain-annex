@@ -233,8 +233,8 @@ class Categories:
         Return all the (immediate) subcategories of the given category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
-            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'},
-             {'uri': '3', 'name': 'Hobbies'}]
+            [{'_CLASS': 'Category', 'uri': '2', 'name': 'Work', remarks: 'outside employment'},
+             {'_CLASS': 'Category', 'uri': '3', 'name': 'Hobbies'}]
 
         :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
@@ -268,6 +268,26 @@ class Categories:
         GraphSchema.remove_schema_info(result)    # Zap any low-level Schema-related data
 
         return result
+
+
+
+    @classmethod
+    def get_ancestor_categories(cls, category_uri :str) -> [str]:
+        """
+        Return all the ancestor categories - direct or indirect - of the given Category,
+        as a list of the entity id's of the ancestor node
+
+        :param category_uri:A string identifying the desired Category
+        :return:            A list of the entity id's of its ancestor nodes
+        """
+        # Follow 1 or more outbound "BA_subcategory_of" relationships from the given Category node;
+        q = '''
+            MATCH (c :Category {uri: $category_uri})-[:BA_subcategory_of*1..]->(c_ancestor)
+            RETURN DISTINCT c_ancestor.uri AS ENTITY_ID
+            ORDER BY ENTITY_ID
+            '''
+
+        return cls.db.query(q, data_binding={"category_uri": category_uri},  single_column="ENTITY_ID")
 
 
 
@@ -481,25 +501,37 @@ class Categories:
 
 
     @classmethod
-    def add_subcategory_relationship(cls, data_dict :dict) -> None:
+    def add_subcategory_relationship(cls, category_uri :str, subcategory_uri :str) -> None:
         """
         Add a sub-category ("BA_subcategory_of") relationship
         between the specified 2 existing Categories.
         If the requested new relationship cannot be created (for example, if it already exists),
         raise an Exception
 
-        :param data_dict:   Two keys are expected:
-                                "sub"         URI to identify an existing Category node
-                                                that is to be made a sub-category of another one
-                                "cat"         URI to identify an existing Category node
-                                                that is to be made the parent of the other Category
+        :param category_uri:    URI to identify an existing Category node
+                                    that is to be made the parent of the other Category
+        :param subcategory_uri: URI to identify an existing Category node
+                                    that is to be made a sub-category of another one
 
-        :return:            None.  If the requested new relationship could not be created,
-                                raise an Exception
+        :return:                None.  If the requested new relationship could not be created,
+                                    raise an Exception
         """
+        assert category_uri != subcategory_uri, \
+            f"add_subcategory_relationship(): a Category (entity id: `{category_uri}`) cannot be made a subcategory of itself"
 
-        subcategory_uri = data_dict["sub"]
-        category_uri = data_dict["cat"]
+        assert not cls.is_root_category(subcategory_uri), \
+            f"add_subcategory_relationship(): the root Category (entity id: `{subcategory_uri}`) cannot be made a subcategory of another Category"
+
+        #  Verify that no cycles are being created (i.e. enforce a DAG structure)
+        all_ancestors = cls.get_ancestor_categories(category_uri)
+        if subcategory_uri in all_ancestors:
+            # Cycle detected!
+            cat_name = cls.get_category_info(category_uri).get("name")
+            sub_name = cls.get_category_info(subcategory_uri).get("name")
+            raise Exception(f"add_subcategory_relationship(): the intended sub-category (name: `{sub_name}`, entity id: `{subcategory_uri}`) "
+                            f"is an ancestor of the given Category (name: `{cat_name}`, entity id: `{category_uri}`).  "
+                            f"Cannot turn an ancestor Category into a subcategory: that could create cycles")
+
 
         # Notice that, because the relationship is called a SUB-category, the subcategory is the "parent"
         #   (the originator) of the relationship
@@ -507,7 +539,8 @@ class Categories:
             GraphSchema.add_data_relationship(from_id=subcategory_uri, to_id=category_uri,
                                               rel_name="BA_subcategory_of", id_type="uri")
         except Exception as ex:
-            raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship. {ex}")
+            raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship "
+                            f"from Category uri `{subcategory_uri}` to Category uri `{category_uri}`. {ex}")
 
 
 
@@ -700,44 +733,13 @@ class Categories:
         return siblings_categories
 
 
+
     """
-    NOTE: the next 2 methods, below, may be the future prototype of plugin-specific methods...
+    NOTE: the next method, below, may be the future prototype of plugin-specific methods...
           Nothing is returned if all is good, but an Exception is raised in case of problems.
           The methods only handle the plugin-specific part; the "main action" is done by the core method,
           AFTER calling this method (if provided)
     """
-
-    @classmethod
-    def add_relationship_before(cls, from_id :str, to_id :str,
-                                rel_name :str) -> None:
-        """
-        A handler to be invoked by the core module before a relationship involving Categories is called.
-
-        If any restriction would apply to adding the parent/child relationship between the specified categories,
-        raise an Exception.
-
-        IMPORTANT: NO RELATIONSHIP IS ACTUALLY ADDED
-
-        The restriction are:
-            1) the subcategory node cannot be the Root Category
-            2) a category cannot be a subcategory of itself
-
-        NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
-
-        :param from_id:     String with the uri of the subcategory node
-        :param to_id:       String with the uri of the parent-category node
-        :param rel_name:    NOT USED
-        :return:            None.  If the requested new relationship should not be created, raise an Exception
-        """
-        # If the sub-category is the Root Category, raise an Exception
-        if cls.is_root_category(from_id):        # TODO: this will eventually have to be managed differently
-            raise Exception("Cannot add the relationship because the Root Category cannot be made a subcategory of something else")
-
-        # If the parent and the child are the same, raise an Exception
-        assert from_id != to_id, \
-            "Cannot add a relationship from a Category to itself"
-
-
 
     @classmethod
     def remove_relationship_before(cls, from_id: str, to_id :str,
@@ -754,6 +756,9 @@ class Categories:
             *) the subcategory node cannot become orphaned as a result of the deletion
 
         NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory TO the parent category node
+
+        TODO: ditch after creating a specialized web api endpoint specifically for Categories,
+              like done for /BA/api/add_subcategory_relationship
 
         :param from_id:     String with the uri of the subcategory node
         :param to_id:       NOT USED.  String with the uri of the parent-category node

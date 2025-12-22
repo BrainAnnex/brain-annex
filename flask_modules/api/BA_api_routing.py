@@ -9,6 +9,7 @@ from app_libraries.data_manager import DataManager
 from app_libraries.documentation_generator import DocumentationGenerator
 from app_libraries.media_manager import MediaManager, ImageProcessing
 from app_libraries.PLUGINS.documents import Documents
+from app_libraries.PLUGINS import plugin_support
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
@@ -881,7 +882,7 @@ class ApiRouting:
             """
             Similar to get_text_media(), but:
                 1) no login required
-                2) specifically for Notes
+                2) specifically for Notes  (TODO: possibly generalize to any media)
                 3) it only serves items that are marked as "public" in the database
 
             EXAMPLE invocation: http://localhost:5000/BA/api/remote_access_note/123
@@ -1177,7 +1178,7 @@ class ApiRouting:
                 class_name=data_dict["class_name"]
                 del data_dict["uri"]
                 del data_dict["class_name"]
-                DataManager.update_content_item(uri=uri, class_name=class_name,
+                DataManager.update_content_item(entity_id=uri, class_name=class_name,
                                                 update_data=data_dict)
                 response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
@@ -1263,7 +1264,7 @@ class ApiRouting:
             if uri:
                 # Scenario where `uri` and (`class_name` and/or `label`) are used
                 try:
-                    DataManager.update_content_item(uri=uri, class_name=class_name, label=label,
+                    DataManager.update_content_item(entity_id=uri, class_name=class_name, label=label,
                                                     update_data=data_dict)
                     response_data = {"status": "ok"}                                    # If no errors
                 except Exception as ex:
@@ -1296,8 +1297,6 @@ class ApiRouting:
         def delete(uri, class_name):
             """
             Delete the specified Content Item.
-            Note that class_name is redundant; only used as a safety mechanism
-            against incorrect values of their uri
 
             EXAMPLE invocation: http://localhost:5000/BA/api/delete/46/Document
             """
@@ -1325,7 +1324,6 @@ class ApiRouting:
                 from                    The URI of the Data Nodes from which the relationship originates
                 to                      The URI of the Data Nodes into which the relationship takes
                 rel_name                The name of the relationship to add
-                schema_code (optional)  If passed, the appropriate plugin gets invoked
 
             EXAMPLE of invocation:
                 curl http://localhost:5000/BA/api/add_relationship -d
@@ -1335,12 +1333,20 @@ class ApiRouting:
 
             # Extract the POST values
             post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of'), ('schema_code', 'cat')])
+            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of')])
             #cls.show_post_data(post_data, "add_relationship")
 
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-                DataManager.add_data_relationship_handler(data_dict)
+
+                from_id = data_dict['from']
+                to_id = data_dict['to']
+                rel_name = data_dict['rel_name']
+
+                # The adding of the relationship is done here
+                GraphSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="uri",
+                                                  rel_name=rel_name)
+
                 response_data = {"status": "ok"}                                    # If no errors
             except Exception as ex:
                 err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
@@ -1398,6 +1404,188 @@ class ApiRouting:
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
 
+
+        @bp.route('/delete_category/<uri>')
+        @login_required
+        def delete_category(uri):
+            """
+            Delete the specified Category, provided that there are no Content Items linked to it.
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/delete_category/123
+
+            :param uri: The URI of a data node representing a Category
+
+            RETURNED PAYLOAD (on success):
+                None
+            """
+            try:
+                Categories.delete_category(uri)
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to delete the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+
+            return jsonify(response_data)       # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/add_subcategory', methods=['POST'])
+        @login_required
+        def add_subcategory():
+            """
+            Add a new Subcategory to a given Category
+            (if the Subcategory to link up to already exists, use '/add_subcategory_relationship' instead)
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
+
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/add_subcategory -d
+                            "category_uri=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
+        
+            POST FIELDS:
+                category_uri            URI to identify the Category to which to add the new Subcategory
+                subcategory_name        The name to give to the new Subcategory
+                subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
+
+            RETURNED PAYLOAD (on success):
+                The URI of the newly-created Category Data Node
+            """
+            # Extract the POST values
+            post_data = request.form     # Example: ImmutableMultiDict([('category_uri', 'cat-12'),
+                                         #                              ('subcategory_name', 'Astronomy'),
+                                         #                              ('subcategory_remarks', '')])
+            #print(post_data)
+
+            try:
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['category_uri', 'subcategory_name'])
+                payload = Categories.add_subcategory(data_dict)     # The URI of the newly-created Category Data Node
+                                                                    # TODO: maybe move to DataManager module
+                response_data = {"status": "ok", "payload": payload}
+            except Exception as ex:
+                err_details = f"/add_subcategory : Unable to add the requested Subcategory.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+        
+            #print(f"add_subcategory() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+        
+
+        
+        @bp.route('/add_subcategory_relationship')
+        @login_required
+        def add_subcategory_relationship():
+            """
+            Create a subcategory relationship between 2 existing Categories.
+            (To add a new subcategory to an existing Category, use /add_subcategory instead)
+
+            Notice that this is a more specialized form of the more general /add_relationship
+
+            EXAMPLE invocation: http://localhost:5000/BA/api/add_subcategory_relationship?sub=12&cat=1
+
+            QUERY-STRINGS FIELDS:
+                sub         URI to identify an existing Category node that is to be made a sub-category of another one
+                cat         URI to identify an existing Category node that is to be made the parent of the other Category
+            """
+            # Extract the GET values
+            get_data = request.args     # Example: ImmutableMultiDict([('sub', '12'), ('cat', '555')])
+
+            try:
+                data_dict = cls.extract_get_pars(get_data, required_par_list=['sub', 'cat'])
+                Categories.add_subcategory_relationship(category_uri=data_dict["cat"], subcategory_uri=data_dict["sub"])
+                response_data = {"status": "ok"}
+            except Exception as ex:
+                err_details = f"Unable to add the requested relationship to the specified subcategory.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+        
+            #print(f"add_subcategory_relationship() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/pin_category/<uri>/<op>')
+        @login_required
+        def pin_category(uri, op):
+            """
+            Set or unset the "pinned" property of the specified Category
+
+            EXAMPLE invocations: http://localhost:5000/BA/api/pin_category/123/set
+                                 http://localhost:5000/BA/api/pin_category/123/unset
+
+            :param uri: The URI of a data node representing a Category
+            :param op:  Either "set" or "unset"
+
+            RETURNED PAYLOAD (on success):
+                Nothing
+            """
+            try:
+                Categories.pin_category(uri=uri, op=op)
+                response_data = {"status": "ok"}                                    # Successful termination
+            except Exception as ex:
+                err_details = f"Unable to change the 'pinned' status of the specified Category.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/see_also', methods=['POST'])
+        @login_required
+        def see_also():
+            """
+            Add or remove a "SEE ALSO" relationship between two given Categories
+
+            EXAMPLE invocation:
+                curl http://localhost:5000/BA/api/see_also -d
+                            "from_category_uri=some_category_uri&to_category_uri=some_other_category_uri&action=add"
+
+            POST FIELDS:
+                from_category_uri       URI to identify the Category from which the "BA_see_also" link originates
+                to_category_uri         URI to identify the Category towards which the "BA_see_also" link points
+                action                  Either "add" or "remove"    TODO: possibly switch to using a "DELETE" HTTP method for the latter
+
+            RETURNED PAYLOAD (on success):
+                Nothing
+            """
+            # Extract the POST values
+            post_data = request.form    # Example: ImmutableMultiDict([('from_category_uri', 'cat-12'),
+                                        #                              ('to_category_uri', 'cat-4732'),
+                                        #                              ('action', 'remove')])
+            #print(post_data)
+
+            try:
+                data_dict = cls.extract_post_pars(post_data,
+                                                  required_par_list=['from_category_uri', 'to_category_uri', 'action'])
+
+                if data_dict["action"] == "add":
+                    Categories.create_see_also(from_category=data_dict["from_category_uri"], to_category=data_dict["to_category_uri"])
+                elif data_dict["action"] == "remove":
+                    Categories.remove_see_also(from_category=data_dict["from_category_uri"], to_category=data_dict["to_category_uri"])
+                else:
+                    raise Exception(f"The parameter `action` in the POST request has an unknown value ({data_dict['action']}); "
+                                    f"allowed values are 'add' and 'remove'")
+
+                response_data = {"status": "ok"}
+            except Exception as ex:
+                err_details = f"/see_also : Unable to modify the requested 'SEE ALSO' link.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}        # Error termination
+
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+
+
+        #####################################################################################################
+
+        '''                      ~  CATEGORY PAGES  (CONTENT ITEMS in CATEGORIES)    ~                    '''
+
+        def ________CATEGORY_PAGES________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
+
         @bp.route('/add_item_to_category', methods=['POST'])
         @login_required
         def add_item_to_category():
@@ -1408,7 +1596,7 @@ class ApiRouting:
             EXAMPLE invocation:
             curl http://localhost:5000/BA/api/add_item_to_category
                             -d "category_id=708&insert_after_uri=711&schema_code=h&text=New Header&class_name=Headers"
-        
+
             POST FIELDS:
                 category_id         URI identifying the Category to which attach the new Content Item
                 class_name          The name of the Class of the new Content Item
@@ -1428,7 +1616,7 @@ class ApiRouting:
             # Example: ImmutableMultiDict([('category_id', '123'), ('class_name', 'Header'),
             #                              ('insert_after_uri', 'i-5'), ('insert_after_class', 'Image'), ('text', 'My Header')])
             #cls.show_post_data(post_data, "add_item_to_category")
-        
+
             # Create a new Content Item with the POST data
             try:
                 pars_dict = cls.extract_post_pars(post_data, required_par_list=['category_id', 'insert_after_uri', 'class_name'])
@@ -1442,6 +1630,39 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}
 
             #print(f"add_item_to_category() is returning: `{err_details}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/plugin/<handler>', methods=['POST'])
+        @login_required
+        def plugin(handler):
+            """
+            EXPERIMENTAL endpoint not yet in use.  Meant to support plugin-provided operations.
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict
+
+            EXAMPLE invocation:     http://localhost:5000/BA/api/plugin/documents using a POST,
+                                    and passing a body of [1,2,3] with mimetype "application/json"
+
+            :param handler: The name of a plugin-handler class.  EXAMPLE: "documents"
+            """
+            print(f"Invoking /plugin/ endpoint for handler:  `{handler}`")
+            # Extract and parse the POST value
+            parameters = request.get_json()     # This parses the JSON-encoded string in the POST message,
+                                                # provided that mimetype indicates "application/json"
+
+            print("    parameters passed to the plugin: ", parameters)              # EXAMPLE:  [1, 2, 3]
+
+            try:
+                result = plugin_support.api_handler(handler, parameters)
+                response_data = {"status": "ok", "payload": result}                  # Successful termination
+
+            except Exception as ex:
+                err_details =  f"Error from `{handler}` plugin.  {exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
@@ -1527,190 +1748,6 @@ class ApiRouting:
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
-
-
-        @bp.route('/delete_category/<uri>')
-        @login_required
-        def delete_category(uri):
-            """
-            Delete the specified Category, provided that there are no Content Items linked to it.
-
-            EXAMPLE invocation: http://localhost:5000/BA/api/delete_category/123
-
-            :param uri: The URI of a data node representing a Category
-
-            RETURNED PAYLOAD (on success):
-                None
-            """
-            try:
-                Categories.delete_category(uri)
-                response_data = {"status": "ok"}                                    # Successful termination
-            except Exception as ex:
-                err_details = f"Unable to delete the specified Category.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # Error termination
-
-
-            return jsonify(response_data)       # This function also takes care of the Content-Type header
-
-
-
-        @bp.route('/add_subcategory', methods=['POST'])
-        @login_required
-        def add_subcategory():
-            """
-            Add a new Subcategory to a given Category
-            (if the Subcategory to link up to already exists, use '/add_subcategory_relationship' instead)
-            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
-
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/add_subcategory -d
-                            "category_uri=some_category_uri&subcategory_name=SOME_NAME&subcategory_remarks=SOME_REMARKS"
-        
-            POST FIELDS:
-                category_uri            URI to identify the Category to which to add the new Subcategory
-                subcategory_name        The name to give to the new Subcategory
-                subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
-
-            RETURNED PAYLOAD (on success):
-                The URI of the newly-created Category Data Node
-            """
-            # Extract the POST values
-            post_data = request.form     # Example: ImmutableMultiDict([('category_uri', 'cat-12'),
-                                         #                              ('subcategory_name', 'Astronomy'),
-                                         #                              ('subcategory_remarks', '')])
-            #print(post_data)
-
-            try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['category_uri', 'subcategory_name'])
-                payload = Categories.add_subcategory(data_dict)     # The URI of the newly-created Category Data Node
-                                                                    # TODO: maybe move to DataManager module
-                response_data = {"status": "ok", "payload": payload}
-            except Exception as ex:
-                err_details = f"/add_subcategory : Unable to add the requested Subcategory.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}        # Error termination
-        
-            #print(f"add_subcategory() is returning: `{response_data}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-        
-
-        
-        @bp.route('/add_subcategory_relationship')
-        @login_required
-        def add_subcategory_relationship():
-            """
-            Create a subcategory relationship between 2 existing Categories.
-            (To add a new subcategory to an existing Category, use /add_subcategory instead)
-
-            Notice that this is a more specialized form of the more general /add_relationship
-
-            EXAMPLE invocation: http://localhost:5000/BA/api/add_subcategory_relationship?sub=12&cat=1
-
-            QUERY-STRINGS FIELDS:
-                sub         URI to identify an existing Category node that is to be made a sub-category of another one
-                cat         URI to identify an existing Category node that is to be made the parent of the other Category
-            """
-            # TODO: not in current use
-
-            # Extract the GET values
-            get_data = request.args     # Example: ImmutableMultiDict([('sub', '12'), ('cat', '555')])
-
-            try:
-                data_dict = cls.extract_get_pars(get_data, required_par_list=['sub', 'cat'])
-                Categories.add_subcategory_relationship(data_dict)
-                response_data = {"status": "ok"}
-            except Exception as ex:
-                err_details = f"Unable to add the requested relationship to the specified subcategory.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}        # Error termination
-        
-            #print(f"add_subcategory_relationship() is returning: `{response_data}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
-        @bp.route('/pin_category/<uri>/<op>')
-        @login_required
-        def pin_category(uri, op):
-            """
-            Set or unset the "pinned" property of the specified Category
-
-            EXAMPLE invocations: http://localhost:5000/BA/api/pin_category/123/set
-                                 http://localhost:5000/BA/api/pin_category/123/unset
-
-            :param uri: The URI of a data node representing a Category
-            :param op:  Either "set" or "unset"
-
-            RETURNED PAYLOAD (on success):
-                Nothing
-            """
-            try:
-                Categories.pin_category(uri=uri, op=op)
-                response_data = {"status": "ok"}                                    # Successful termination
-            except Exception as ex:
-                err_details = f"Unable to change the 'pinned' status of the specified Category.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # Error termination
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
-        @bp.route('/see_also', methods=['POST'])
-        @login_required
-        def see_also():
-            """
-            Add or remove a "SEE ALSO" relationship between two given Categories
-
-
-            EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/see_also -d
-                            "from_category_uri=some_category_uri&to_category_uri=some_other_category_uri&action=add"
-
-            POST FIELDS:
-                from_category_uri       URI to identify the Category from which the "BA_see_also" link originates
-                to_category_uri         URI to identify the Category towards which the "BA_see_also" link points
-                action                  Either "add" or "remove"
-
-            RETURNED PAYLOAD (on success):
-                Nothing
-            """
-            # Extract the POST values
-            post_data = request.form    # Example: ImmutableMultiDict([('from_category_uri', 'cat-12'),
-                                        #                              ('to_category_uri', 'cat-4732'),
-                                        #                              ('action', 'remove')])
-            #print(post_data)
-
-            try:
-                data_dict = cls.extract_post_pars(post_data,
-                                                  required_par_list=['from_category_uri', 'to_category_uri', 'action'])
-
-                if data_dict["action"] == "add":
-                    Categories.create_see_also(from_category=data_dict["from_category_uri"], to_category=data_dict["to_category_uri"])
-                elif data_dict["action"] == "remove":
-                    Categories.remove_see_also(from_category=data_dict["from_category_uri"], to_category=data_dict["to_category_uri"])
-                else:
-                    raise Exception(f"The parameter `action` in the POST request has an unknown value ({data_dict['action']}); "
-                                    f"allowed values are 'add' and 'remove'")
-
-                response_data = {"status": "ok"}
-            except Exception as ex:
-                err_details = f"/see_also : Unable to modify the requested 'SEE ALSO' link.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}        # Error termination
-
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
-
-
-        #####################################################################################################
-
-        '''                          ~  CONTENT ITEMS in CATEGORIES    ~                                   '''
-
-        def ________CONTENT_ITEMS_CATEGORIES________(DIVIDER):
-            pass        # Used to get a better structure view in IDEs
-        #####################################################################################################
 
 
         @bp.route('/link_content_at_end/<category_uri>/<item_uri>')

@@ -104,11 +104,11 @@
             <div style='width:105px; text-align:center'>
 
                 <!-- TODO: this needs replacing -->
-                <a href='javascript:replaceMenu(0)'>
+
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
                          v-bind:title="'NOT YET IMPLEMENTED!!!  REMOVE &ldquo;' + p.name + '&rdquo; as a parent category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
                     >
-                </a>
+
                 <br>
 
                 <!-- TODO: this form needs replacing -->
@@ -164,7 +164,6 @@ It does *NOT* delete `' + p.name + '`'"
                     {% endif %}
                 {% endfor %}
             </select>
-
         </div>
 
 
@@ -279,34 +278,34 @@ It does *NOT* delete `' + p.name + '`'"
             <img src="/BA/pages/static/graphics/child.jpg">
 
 
-            <!-- Provide 2 Add-child forms, floated to the right -->
-        <div style="width:180px; float:right; margin-right:2px">
-            <!-- TODO: this needs replacing -->
-            <span style="font-style:italic; color:#666666">Add an <b>existing</b> Sub-category to &ldquo;{{category_name}}&rdquo;:</span><br>
-            <b>NOT YET IMPLEMENTED</b><br>
-            <form method='POST' action='doCategoryHandler2.php?op=addEdge&cat={{category_uri}}' id='form_5'>
-                <input type='hidden' name='parentID' value='{{category_uri}}'>
-                <select id = 'menu_5' name = 'childID' style = 'width:180px'>
-                    <option value='-1'>[Select sub-category]</option>
+            <!-- Provide 2 add-child forms, floated to the right -->
+            <div style="width:180px; float:right; margin-right:2px">
+
+                <!-- Add an existing Category as an additional sub-category -->
+                <span style="font-style:italic; color:#666666">Add an <b>existing</b> Sub-category to &ldquo;{{category_name}}&rdquo;:</span><br>
+                <br>
+
+                <select @change="add_child_category"  v-model="uri_child_to_add"  style='width:180px'>
+                    <option disabled value=''>[Select sub-category]</option>
 
                     {% for c in all_categories %}
                         {% if c['uri'] != category_uri %}
                             <option value="{{c['uri']}}">{{c['name']}}</option>
                         {% endif %}
                     {% endfor %}
-
                 </select>
-            </form><br><br>
 
-            <span style="font-style:italic; color:#666666"><b>OR</b> Create a <b>new</b> Sub-category:</span>
-            <div  style="border:1px solid #BBB; padding: 2px; background-color:#E5E5E5">
-                Name <input type='text' v-model="new_subcategory_name" maxlength='60'><br>
-                Remarks <span style="color:gray">(optional)</span><input type='text'  v-model="new_subcategory_remarks" maxlength='90'><br>
-                <button @click="add_subcategory" style="margin-top:2px">Add</button>
+                <br><br>
+
+                <!-- Add a new Category as an additional sub-category -->
+                <span style="font-style:italic; color:#666666"><b>OR</b> Create a <b>new</b> Sub-category:</span>
+                <div  style="border:1px solid #BBB; padding: 2px; background-color:#E5E5E5">
+                    Name <input type='text' v-model="new_subcategory_name" maxlength='60'><br>
+                    Remarks <span style="color:gray">(optional)</span><input type='text'  v-model="new_subcategory_remarks" maxlength='90'><br>
+                    <button @click="add_subcategory" style="margin-top:2px">Add</button>
+                </div>
+
             </div>
-
-
-        </div>
 
 
         <template v-for="s in subcategories">
@@ -330,12 +329,12 @@ It does *NOT* delete `' + s.name + '`'"
                 >
                 <br>
 
+
                 <!-- TODO: this needs replacing -->
-                <a href='javascript:replaceMenu(6)'>
                     <img src='/BA/pages/static/graphics/replace_16_1329089.png'
                          v-bind:title="'NOT YET IMPLEMENTED!!!  REMOVE &ldquo;' + s.name + '&rdquo; as a sub-category of &ldquo;{{category_name}}&rdquo;, and REPLACE it with something else'"
                     >
-                </a>
+
                 <br>
 
                 <!-- TODO: this form needs replacing -->
@@ -377,7 +376,7 @@ It does *NOT* delete `' + s.name + '`'"
 
 
 <p style="margin-top:0; padding: 5px; width: 50%">
-    <span style="font-size:14px; background-color: yellow;">IMPORTANT: still in Beta.  <i>A few functions aren't yet implemented.</i></span>
+    <span style="font-size:12px; background-color: #eeeeaf">Note:  <i>a few functions aren't yet implemented.</i></span>
 </p>
 
 <br>
@@ -426,6 +425,7 @@ new Vue({
 
         // Used by pulldown menus ('' is its default choice - asking the user to make a selection)
         uri_parent_to_add: '',
+        uri_child_to_add: '',
         uri_see_also_child_to_add: '',
 
 
@@ -588,26 +588,36 @@ new Vue({
 
 
         add_parent_category()
-        // Add the just-selected parent category (specified by this.uri_parent_to_add) to the current category
+        // Link up the just-selected parent category (specified by this.uri_parent_to_add) to the current category
         {
-            console.log(`Attempting to make the just-selected Category URI '${this.uri_parent_to_add}' a parent of the current Category (URI '${this.category_uri}')`);
+            console.log(`Attempting to make the just-selected Category (URI '${this.uri_parent_to_add}') a parent of the current Category (URI '${this.category_uri}')`);
 
-            let url_server = "/BA/api/add_relationship";    // TODO: switch to the more specialized /BA/api/add_subcategory_relationship
+            //let url_server = "/BA/api/add_relationship";
+            let url_server = "/BA/api/add_subcategory_relationship";
+
+            let get_obj = {cat: this.uri_parent_to_add,
+                           sub: this.category_uri
+                           };
+
+            /*
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: this.category_uri,
                             to: this.uri_parent_to_add,
                             rel_name: "BA_subcategory_of",
                             schema_code: "cat"};
-            console.log(`About to contact the server at ${url_server} .  POST object:`);
-            console.log(post_obj);
+            */
+
+            console.log(`About to contact the server at ${url_server} .  GET object:`);
+            console.log(get_obj);
 
             this.waiting = true;        // About to contact the server
             this.status_message = "";   // Clear any message from the previous operation
             this.error = false;         // Clear any error from the previous operation
 
             ServerCommunication.contact_server(url_server,
-                        {method: "POST",
-                         data_obj: post_obj,
+                        {method: "GET",
+                         data_obj: get_obj,
+                         json_encode_send: false,
                          callback_fn: this.finish_add_parent_category,
                          custom_data: this.uri_parent_to_add});
         },
@@ -622,14 +632,12 @@ new Vue({
                 this.status_message = `Relationship added`;
 
                 // Synchronize the page data to the finalized current data
-                pos = this.locate_item(this.all_categories, custom_data);
+                pos = this.locate_item(this.all_categories, custom_data);   // Locate the parent Category
                 if (pos == -1)
                     alert("Unable to find the added parent Category in the page. Try refreshing");
                 else
                     // Append the new parent category to the list of parent categories
                     this.parent_categories.push(this.all_categories[pos]);
-                    //this.parent_categories.splice(pos, 1);
-                    //this.parent_categories.push(custom_data);
             }
             else  {             // Server reported FAILURE
                 this.error = true;
@@ -640,6 +648,71 @@ new Vue({
             this.waiting = false;           // Make a note that the asynchronous operation has come to an end
             this.uri_parent_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
         },
+
+
+
+        add_child_category()
+        // Link up the just-selected child category (specified by this.uri_child_to_add) to the current category
+        {
+            console.log(`Attempting to make the just-selected Category (URI '${this.uri_child_to_add}') a sub-category of the current Category (URI '${this.category_uri}')`);
+
+            //let url_server = "/BA/api/add_relationship";
+            let url_server = "/BA/api/add_subcategory_relationship";
+
+            let get_obj = {cat: this.category_uri,
+                           sub: this.uri_child_to_add
+                          };
+
+            /*
+            // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
+            let post_obj = {from: this.uri_child_to_add,
+                            to: this.category_uri,
+                            rel_name: "BA_subcategory_of",
+                            schema_code: "cat"};
+             */
+
+            console.log(`About to contact the server at ${url_server} .  GET object:`);
+            console.log(get_obj);
+
+            this.waiting = true;        // About to contact the server
+            this.status_message = "";   // Clear any message from the previous operation
+            this.error = false;         // Clear any error from the previous operation
+
+            ServerCommunication.contact_server(url_server,
+                        {method: "GET",
+                         data_obj: get_obj,
+                         json_encode_send: false,
+                         callback_fn: this.finish_add_child_category,
+                         custom_data: this.uri_child_to_add});
+        },
+
+        finish_add_child_category(success, server_payload, error_message, custom_data)
+        // Callback function to wrap up the action of add_child_category() upon getting a response from the server
+        // custom_data contains the uri of the requested new Parent Category
+        {
+            console.log(`Finalizing the add_child_category operation...  custom_data: ${custom_data}`);
+            if (success)  {     // Server reported SUCCESS
+                console.log("    server call was successful; it returned: ", server_payload);
+                this.status_message = `Relationship added`;
+
+                // Synchronize the page data to the finalized current data
+                pos = this.locate_item(this.all_categories, custom_data);   // Locate the child Category
+                if (pos == -1)
+                    alert("Unable to find the added child Category in the page. Try refreshing");
+                else
+                    // Append the new child category to the list of child categories
+                    this.subcategories.push(this.all_categories[pos]);
+            }
+            else  {             // Server reported FAILURE
+                this.error = true;
+                this.status_message = `FAILED relationship addition: ${error_message}`;
+            }
+
+            // Final wrap-up, regardless of error or success
+            this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+            this.uri_child_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
+        },
+
 
 
 
