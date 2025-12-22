@@ -208,11 +208,18 @@
 
 <!--  Everything below is diagnostic data shown below the graph  -->
 
-<div class="content-block" style="margin-left: 5px">
+<div class="content-block" style="margin-left: 5px; color:gray">
     <div class="content-block-title">
         Plot Data
     </div>
-    TBA
+    <b>COLOR MAPPING</b>: [[graph_data_json.color_mapping]]<br>
+    <b>CAPTION MAPPING</b>: [[graph_data_json.caption_mapping]]<br>
+    <b>STRUCTURE</b>: <br>
+    <ul>
+        <li v-for="item in graph_data_json.structure">
+            [[item]]
+        </li>
+    </ul>
 </div>
 
 <br><br>

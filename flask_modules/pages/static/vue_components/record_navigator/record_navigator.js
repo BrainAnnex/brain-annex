@@ -160,7 +160,7 @@ Vue.component('vue-record-navigator',
 
 
 
-        // ----------------  WATCH  -----------------
+        // -----------------------  WATCH  ------------------------
         watch: {
             nodes_data()  {
                 //console.log('The prop `nodes_data` has changed!');
