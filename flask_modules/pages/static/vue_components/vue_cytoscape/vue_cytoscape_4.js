@@ -161,20 +161,47 @@ Vue.component('vue_cytoscape_4',
 
 
 
-        // ---------------------  UPDATED  ----------------------
-        updated()
-        // The "updated" Vue hook is invoked when the data changes, after the virtual DOM is re-rendered
-        {
-            console.log(`The 'vue_cytoscape_4' component is now updated`);
 
-            const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
+        watch: {
+            graph_data(newVal, oldVal)
+            // Runs ONLY when the `graph_data` prop changes
+            {
+                console.log(`In 'vue_cytoscape_4': the "watch" on the prop "graph_data" reveals that it has changed`);
+
+                const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given
                                                             //                     to the DIV element containing the graph)
-            // Save the newly-created Cytoscape object, as metadata for this Vue component
-            // Note: the Cytoscape object cannot be simply saved as component data,
-            //       because doing so triggers another call to this
-            //       "mounted" Vue hook function, leading to an infinite loop!
-            this.$options.cy_object = cy_object;
+                // Save the newly-created Cytoscape object, as metadata for this Vue component
+                // Note: the Cytoscape object cannot be simply saved as component data,
+                //       because doing so triggers another call to this
+                //       "mounted" Vue hook function, leading to an infinite loop!
+                this.$options.cy_object = cy_object;
+            }
+        },
+
+        /*
+        // To also try:
+        watch: {
+            graph_data: {
+                handler(newVal, oldVal) {
+                    // Runs ONLY when the `graph_data` prop changes
+                    // oldVal will be undefined on first run
+                },
+                immediate: true     // the watcher to fire once on component creation as well
+            }
+        },
+        */
+
+
+        // ---------------------  UPDATED  ----------------------
+        updated()
+        /* The "updated" Vue hook is invoked when the data changes, after the virtual DOM is re-rendered.
+            It happens when the props of the component change,
+            as well as well a node or edge is selected on the graph (which triggers a legend change),
+            but NOT when nodes are moved around in the graph
+         */
+        {
+            console.log(`The 'vue_cytoscape_4' component is now updated`);
         },
 
 

@@ -193,7 +193,7 @@
 
 <br><br>
 
-<button @click="foo">
+<button @click="visualize_data">
     Visualize the above data
 </button>
 
@@ -267,11 +267,9 @@ new Vue({
         // Object with all the data needed by the Vue component to display the graph
         // 3 keys:  "structure" (an array of object literals), "color_mapping" (object literal) and "caption_mapping" (object literal)
         graph_data_json: {
-            structure:  [{'German': 'Sehr gut!', 'English': 'Very good!', 'uri': 'vocab-1', 'id': 77, 'labels': ['German']},
-                         {'German': 'wunderbar!', 'English': 'excellent!', 'uri': 'vocab-2', 'id': 78, 'labels': ['German']},
-                        ],
-            color_mapping: {'German': '#56947E'},
-            caption_mapping: {'German': 'English'}
+            structure:  [],
+            color_mapping: {},
+            caption_mapping: {}
         },
 
 
@@ -286,17 +284,16 @@ new Vue({
 
     methods:  {
 
-        foo()
+        visualize_data()
         {
-            console.log("foo() invoked");
+            console.log("visualize_data() invoked");
 
             this.graph_data_json = {
-                structure:  [{'German': 'Sehr gut!', 'English': 'Very good!', 'uri': 'vocab-1', 'id': 77, 'labels': ['German']},
-                             {'German': 'wunderbar!', 'English': 'excellent!', 'uri': 'vocab-2', 'id': 78, 'labels': ['German']},
-                             {'color': 'white', 'make': 'Toyota', 'id': 123, 'labels': ['Car']}
-                            ],
-                color_mapping: {'German': '#56947E', 'Car': '#F79768'},
-                caption_mapping: {'German': 'English', 'Car': 'make'}
+                structure:  [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
+                             {'id': 2, 'color': 'white', 'labels': ['CAR']},
+                             {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}],
+                color_mapping: {'PERSON': '#56947E', 'CAR': '#F79768'},
+                caption_mapping: {'PERSON': 'name', 'CAR': 'color'}
             }
         },
 
