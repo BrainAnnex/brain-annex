@@ -149,7 +149,7 @@ Vue.component('vue_cytoscape_4',
 
                 node_array: [],
                 edge_array: [],
-                label_names: [],        // Array of unique label names
+                label_names: [],        // Array of unique label names.  NOT IN CURRENT USE : currently relying on color map
                 edge_names: [],         // Array of unique edge names
 
                 sidebox_expanded: true,
@@ -162,6 +162,8 @@ Vue.component('vue_cytoscape_4',
 
 
 
+        // ---------------------  WATCH  ----------------------
+
         watch: {
             graph_data(newVal, oldVal)
             // Runs ONLY when the `graph_data` prop changes
@@ -173,9 +175,11 @@ Vue.component('vue_cytoscape_4',
                                                             //                     to the DIV element containing the graph)
                 // Save the newly-created Cytoscape object, as metadata for this Vue component
                 // Note: the Cytoscape object cannot be simply saved as component data,
-                //       because doing so triggers another call to this
-                //       "mounted" Vue hook function, leading to an infinite loop!
+                //       because doing somehow leads to an infinite loop!
                 this.$options.cy_object = cy_object;
+
+                this.graph_structure = this.graph_data.structure;
+                this.extract_nodes_and_edges();
             }
         },
 
@@ -201,29 +205,15 @@ Vue.component('vue_cytoscape_4',
             but NOT when nodes are moved around in the graph
          */
         {
-            console.log(`The 'vue_cytoscape_4' component is now updated`);
+            //console.log(`The 'vue_cytoscape_4' component is now updated`);
         },
 
 
 
         // ---------------------  MOUNTED  ----------------------
-        mounted() {
-            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
-                     waiting this late is needed.
-                     Caution must be taken not to re-trigger it from the code in this function,
-                     or an infinite loop will result!.
-             */
-            console.log(`The 'vue_cytoscape_4' component is now mounted`);
-
-            const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
-                                                            // EXAMPLE :  "cy_1"  (this name needs to match the ID given
-                                                            //                     to the DIV element containing the graph)
-            // Save the newly-created Cytoscape object, as metadata for this Vue component
-            // Note: it cannot be simply saved as component data, because doing so triggers another call to this
-            //       "mounted" Vue hook function, leading to an infinite loop!
-            this.$options.cy_object = cy_object;
-
-            this.extract_nodes_and_edges();
+        mounted()
+        {
+            //console.log(`The 'vue_cytoscape_4' component is now mounted`);
         },
 
 
@@ -571,7 +561,8 @@ Vue.component('vue_cytoscape_4',
             extract_nodes_and_edges()
             // Parse the array passed to the object, and extract/separate nodes and edges
             {
-                // TODO: possibly use this function do do an initial validation of the pass data
+                console.log(`Extracting nodes and edges`);
+                // TODO: possibly use this function do do an initial validation of the passed data
                 for (el of this.graph_structure)  {     // el is an object that represents a node or edge
                     if (('source' in el) && ('target' in el))  {
                        // If it's an edge...
