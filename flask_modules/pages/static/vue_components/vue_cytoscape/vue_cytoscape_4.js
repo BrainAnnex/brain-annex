@@ -1,7 +1,7 @@
 /*  New version under development (for Search function in main UI)
  */
 
-Vue.component('vue_cytoscape_4',
+Vue.component('vue-cytoscape-4',
     {
         props: {
             graph_data: {
@@ -122,7 +122,7 @@ Vue.component('vue_cytoscape_4',
                     </p>
 
                     <br><br><br><br>
-                    <span style="color:rgb(187, 187, 187); font-size:14px">vue_cytoscape_4 , rev. 1</span>
+                    <span style="color:rgb(187, 187, 187); font-size:14px">vue-cytoscape-4 , rev. 1</span>
                     <br><br>
                 </div>      <!-- End of side box -->
 
@@ -168,7 +168,7 @@ Vue.component('vue_cytoscape_4',
             graph_data(newVal, oldVal)
             // Runs ONLY when the `graph_data` prop changes
             {
-                console.log(`In 'vue_cytoscape_4': the "watch" on the prop "graph_data" reveals that it has changed`);
+                console.log(`In 'vue-cytoscape-4': the "watch" on the prop "graph_data" reveals that it has changed`);
 
                 const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given
@@ -205,7 +205,7 @@ Vue.component('vue_cytoscape_4',
             but NOT when nodes are moved around in the graph
          */
         {
-            //console.log(`The 'vue_cytoscape_4' component is now updated`);
+            //console.log(`The 'vue-cytoscape-4' component is now updated`);
         },
 
 
@@ -213,7 +213,7 @@ Vue.component('vue_cytoscape_4',
         // ---------------------  MOUNTED  ----------------------
         mounted()
         {
-            //console.log(`The 'vue_cytoscape_4' component is now mounted`);
+            //console.log(`The 'vue-cytoscape-4' component is now mounted`);
         },
 
 

@@ -27,7 +27,7 @@
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/record_navigator/record_navigator.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/record_navigator/record_navigator_graph.css">
     <link type="text/css"  rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4.css">
 
@@ -186,41 +186,15 @@
 
 <!-- Display the query result, including a record-navigation capability -->
 
-<vue-record-navigator
+<vue-record-navigator-graph
     v-bind:nodes_data="query_result"
 >
-</vue-record-navigator>
-
-<br><br>
-
-<button @click="visualize_data">
-    Visualize the above data
-</button>
-
-<h2>Graph</h2>
-
-<vue_cytoscape_4
-        v-bind:graph_data="graph_data_json"
-        v-bind:component_id="1"
->
-</vue_cytoscape_4>
+</vue-record-navigator-graph>
 
 
-<!--  Everything below is diagnostic data shown below the graph  -->
 
-<div class="content-block" style="margin-left: 5px; color:gray">
-    <div class="content-block-title">
-        Plot Data
-    </div>
-    <b>COLOR MAPPING</b>: [[graph_data_json.color_mapping]]<br>
-    <b>CAPTION MAPPING</b>: [[graph_data_json.caption_mapping]]<br>
-    <b>STRUCTURE</b>: <br>
-    <ul>
-        <li v-for="item in graph_data_json.structure">
-            [[item]]
-        </li>
-    </ul>
-</div>
+
+
 
 <br><br>
 
@@ -244,7 +218,7 @@
 // Import the JS module (it will register the component globally - and it will be completed
 // prior to the instantiation of Vue, below)
 import '/BA/pages/static/vue_components/multiselect/multiselect.js';
-import '/BA/pages/static/vue_components/record_navigator/record_navigator.js';
+import '/BA/pages/static/vue_components/record_navigator/record_navigator_graph.js';
 
 
 // Instantiation of the Vue object (ROOT component) must come last
@@ -270,16 +244,6 @@ new Vue({
         query_result: [],           // Array of objects, with one entry per record returned by the search
         query_result_summary: "",   // The total count (total number of nodes with requested label in dbase)
 
-
-        // Object with all the data needed by the Vue component to display the graph
-        // 3 keys:  "structure" (an array of object literals), "color_mapping" (object literal) and "caption_mapping" (object literal)
-        graph_data_json: {
-            structure:  [],
-            color_mapping: {},
-            caption_mapping: {}
-        },
-
-
         status_message: "",         // Message for the user about the status of the last operation (NOT used for "waiting" status)
         error: false,               // Whether the last server communication resulted in error
         waiting: false              // Whether any server request is still pending
@@ -290,21 +254,6 @@ new Vue({
     // ---------------------  METHODS  ----------------------
 
     methods:  {
-
-        visualize_data()
-        {
-            console.log("visualize_data() invoked");
-
-            this.graph_data_json = {
-                structure:  [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
-                             {'id': 2, 'color': 'white', 'labels': ['CAR']},
-                             {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}],
-                color_mapping: {'PERSON': '#56947E', 'CAR': '#F79768'},
-                caption_mapping: {'PERSON': 'name', 'CAR': 'color'}
-            }
-        },
-
-
 
         /*
             --------------   SERVER CALLS   ----------------------------------------------------------------
