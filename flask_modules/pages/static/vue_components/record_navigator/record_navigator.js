@@ -61,16 +61,16 @@ Vue.component('vue-record-navigator',
                     </template>
 
 
-                    <!-- Display the data record (all its fields, incl. "internal_id" and "node_labels")
+                    <!-- Display the data record (all its fields, incl. "internal_id" and "_node_labels")
                       -->
 
                     <!-- Part 1 of 2: the node LABELS receive special handling -->
-                    <span  v-for="label in item.data.node_labels"  class="node-label">
+                    <span  v-for="label in item.data._node_labels"  class="node-label">
                         {{label}}
                     </span>
 
                     <!-- Part 2 of 2: all the other fields, incl. internal_id -->
-                    <template  v-if="key != 'node_labels'"  v-for="(val, key) in item.data">
+                    <template  v-if="key != '_node_labels'"  v-for="(val, key) in item.data">
                         <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
                          \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
                     </template>
@@ -150,7 +150,7 @@ Vue.component('vue-record-navigator',
                                         //
                                         //      * "data" is an object containing all the field names and values
                                         //            returned from the database node
-                                        //           (incl. the special fields "internal_id" and "node_labels")
+                                        //           (incl. the special fields "internal_id" and "_node_labels")
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error

@@ -137,12 +137,12 @@ class DisplayNetwork:
                                             'structure'         A list of dicts
                                                 EXAMPLE, representing two nodes and an edge between them:
                                                     [     {'id': 'n-0',
-                                                           'labels': ['label_1'],
+                                                           '_node_labels': ['label_1'],
                                                            'name': 'Company A',
                                                            'my_field': 1234
                                                           },
                                                           {'id': 'n-1',
-                                                           'labels': ['label_2'],
+                                                           '_node_labels': ['label_2'],
                                                            'name': 'Customer B',
                                                            'my_field': 88
                                                           },
@@ -229,12 +229,12 @@ class PyGraphVisual:
 
         self.structure = []             # The data that defines a graph to visualize.
                                         #   A list of dicts defining nodes, and possibly edges as well.
-                                        #   NODES must contain the keys 'id' and 'labels'
+                                        #   NODES must contain the keys 'id' and '_node_labels'
                                         #   EDGES must contain the keys 'name', 'source', and 'target'
                                         #       (and presumably 'id' is required as well?)
                                         # EXAMPLE (2 nodes and an edge):
-                                        #   [{'id': 1, 'labels': ['PERSON'], 'name': 'Julian'},
-                                        #    {'id': 2, 'labels': ['CAR'], 'color': 'white'},
+                                        #   [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
+                                        #    {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
                                         #    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
 
         self.color_mapping = {}         # Mapping a node label to its interior color (the edge color is an automatic variation)
@@ -243,10 +243,11 @@ class PyGraphVisual:
         self.caption_mapping = {}       # Mapping a node label to its caption (field name to use on the graph)
                                         # EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
 
-        self._next_available_edge_id = 1 # An auto-increment value
-
         self._all_node_ids = []         # List of all the node id's added to the graph so far;
                                         #   used for optional prevention of duplicates
+
+        self._next_available_edge_id = 1 # An auto-increment value
+
 
         self.EXTRA_COLORS =  {          # Convenient extra colors, not available thru standard CSS names
             "graph_green": '#8DCC92',
@@ -302,7 +303,7 @@ class PyGraphVisual:
 
         EXAMPLE:    given a call to:  add_node(node_id=1, labels=['PERSON'], data={'name': 'Julian'})
                     then the internal format, cumulatively added to self.structure, will be:
-                    {'id': 1, 'labels': ['PERSON'], 'name': 'Julian'}
+                    {'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'}
 
         :param node_id:     Either an integer or a string to uniquely identify this node in the graph;
                                 it will be used to specify the start/end nodes of edges.
@@ -334,7 +335,7 @@ class PyGraphVisual:
         if type(labels) == str:
             labels = [labels]
 
-        d["labels"] = labels
+        d["_node_labels"] = labels
 
         self.structure.append(d)
         self._all_node_ids.append(node_id)
@@ -423,6 +424,35 @@ class PyGraphVisual:
     ############   The methods below require a database connection   ############
 
 
+    def prepare_recordset(self, id_list :[int|str]) -> [dict]:
+        """
+        Given a list of node internal id's, construct and return a dataset of their properties,
+        plus the special fields `internal_id` and `_node_labels`
+
+        :param id_list: A list of node internal id's
+
+        :return:        A list of dicts, with the node properties plus the special fields `internal_id` and `_node_labels`
+                            EXAMPLE:
+                            [{'internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
+        """
+        assert type(id_list) == list, \
+            f"initialize_graph(): argument `id_list` must be a list; it is of type {type(id_list)}"
+
+        assert self.db, \
+            "initialize_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
+
+
+        q = f'''
+            MATCH (n)
+            WHERE ID(n) IN $id_list
+            RETURN n
+            '''
+
+        #self.db.debug_print_query(q, {"id_list": id_list})
+        return self.db.query_extended(q, {"id_list": id_list}, flatten=True)
+
+
+
     def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
@@ -431,7 +461,7 @@ class PyGraphVisual:
         Each dictionary entry MUST have a key named "internal_id".
         If any key named "id" is found, it get automatically renamed "id_original" (since "id" is used by the visualization software);
         if "id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
-        Though not required, a key named "node_labels" is typically present as well; if found, it will be renamed "labels".
+        Though not required, a key named "_node_labels" is typically present as well.
 
         Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
         the time portion, if present, will get dropped
@@ -478,9 +508,8 @@ class PyGraphVisual:
 
             node_list.append(internal_id)
 
-            if "node_labels" in node_clone:
-                labels = node["node_labels"]
-                del node_clone["node_labels"]
+            if "_node_labels" in node_clone:
+                labels = node["_node_labels"]
             else:
                 labels = ""
 

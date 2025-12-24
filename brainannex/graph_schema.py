@@ -2366,7 +2366,7 @@ class GraphSchema:
                                 By default True; use False, to disregard case in string matches
         :param include_id:  [OPTIONAL] If True, also return an extra field named "internal_id",
                                 with the internal database ID value; by default, False
-        :param include_labels:  [OPTIONAL] If True, also return an extra field named "node_labels",
+        :param include_labels:  [OPTIONAL] If True, also return an extra field named "_node_labels",
                                 with a list of the node labels; by default, False
         :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive instructions.
                                 EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
@@ -2462,7 +2462,7 @@ class GraphSchema:
                  '''
 
         if include_labels:
-            q += ''' , labels(n) AS node_labels
+            q += ''' , labels(n) AS _node_labels
                  '''
 
         if order_by:
@@ -2490,7 +2490,7 @@ class GraphSchema:
                 CONTAINS toLower($key_value)
             )
             
-            RETURN n, id(n) AS internal_id, labels(n) AS node_labels
+            RETURN n, id(n) AS internal_id, labels(n) AS _node_labels
             ORDER BY n.`name` 
             SKIP 8 
             LIMIT 4
@@ -2998,8 +2998,8 @@ class GraphSchema:
         Return all the values stored at all the Data Nodes of the specified Class.
         Each values comprises all the node fields, the internal database ID and the node labels.
 
-        EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'node_labels': ['Motor Vehicle']},
-                  {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'node_labels': ['Motor Vehicle']}
+        EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, '_node_labels': ['Motor Vehicle']},
+                  {'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}
                  ]
 
         See also: data_nodes_of_class()
@@ -5538,11 +5538,11 @@ class GraphSchema:
     
         all_nodes = cls.db.get_nodes(match, return_labels=True)
         for node in all_nodes:
-            labels = node['node_labels']
+            labels = node['_node_labels']
             class_name = labels[0]
             print(f"ENTITY: `{class_name}`")
             properties = list(node)
-            properties.remove('node_labels')
+            properties.remove('_node_labels')
             print("PROPERTIES:", properties)
             print()
             cls.create_class_with_properties(name=class_name, properties=properties, strict=False)

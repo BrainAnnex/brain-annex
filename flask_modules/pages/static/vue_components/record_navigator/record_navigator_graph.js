@@ -65,16 +65,16 @@ Vue.component('vue-record-navigator-graph',
                     </template>
 
 
-                    <!-- Display the data record (all its fields, incl. "internal_id" and "node_labels")
+                    <!-- Display the data record (all its fields, incl. "internal_id" and "_node_labels")
                       -->
 
                     <!-- Part 1 of 2: the node LABELS receive special handling -->
-                    <span  v-for="label in item.data.node_labels"  class="node-label">
+                    <span  v-for="label in item.data._node_labels"  class="node-label">
                         {{label}}
                     </span>
 
                     <!-- Part 2 of 2: all the other fields, incl. internal_id -->
-                    <template  v-if="key != 'node_labels'"  v-for="(val, key) in item.data">
+                    <template  v-if="key != '_node_labels'"  v-for="(val, key) in item.data">
                         <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
                          \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
                     </template>
@@ -136,7 +136,8 @@ Vue.component('vue-record-navigator-graph',
 
             <!--  Connection to Cytoscape graph -->
 
-            <button @click="visualize_data">
+            <button @click="visualize_data"
+                    style="padding:12px; font-weight:bold; color:brown">
                 Visualize the above data
             </button>
 
@@ -169,7 +170,7 @@ Vue.component('vue-record-navigator-graph',
 
 
 
-        // ----------------  DATA  -----------------
+        // ---------------------  DATA  ----------------------
         data: function() {
             return {
                 next_record_id: 0,      // Auto-increment to identify records shown on page
@@ -191,7 +192,7 @@ Vue.component('vue-record-navigator-graph',
                                         //
                                         //      * "data" is an object containing all the field names and values
                                         //            returned from the database node
-                                        //           (incl. the special fields "internal_id" and "node_labels")
+                                        //           (incl. the special fields "internal_id" and "_node_labels")
 
 
                 // Object with all the data needed by the Vue component to display the graph
@@ -254,6 +255,15 @@ Vue.component('vue-record-navigator-graph',
                                  {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}],
                     color_mapping: {'PERSON': '#56947E', 'CAR': '#F79768'},
                     caption_mapping: {'PERSON': 'name', 'CAR': 'color'}
+                };
+
+                this.graph_data_json.structure.push({'id': 3, 'color': 'blue', 'labels': ['CAR']});
+
+                for (let record of this.recordset_array) {
+                    let data = record.data;
+                    data.id = data.internal_id;
+                    data.labels = data._node_labels;
+                    this.graph_data_json.structure.push(data);
                 }
             },
 

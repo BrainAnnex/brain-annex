@@ -573,7 +573,7 @@ class DataManager:
                                 plus either "uri" or "internal_id" (the latter takes priority)
 
         :return:             A list of dictionaries with all the properties of the neighbor nodes,
-                             including an extra field called "node_labels", with a string of label names
+                             including an extra field called "_node_labels", with a string of label names
                              If the internal database ID is provided, then the internal database ID's
                                 of the matched nodes is also returned.
         """
@@ -1167,8 +1167,8 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1193,9 +1193,9 @@ class DataManager:
             
             new_result = []     # SET OUTSIDE of this loop
             
-            labels = node["node_labels"]
+            labels = node["_node_labels"]
             del node["internal_id"]
-            del node["node_labels"]
+            del node["_node_labels"]
             dn = GraphSchema.DataNode(internal_id=internal_id, labels=labels], properties=node)
             # All the above lines would be un-necessary if FullTextIndexing.search_word returned a DataNode object!
             
@@ -1249,8 +1249,8 @@ class DataManager:
 
         result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, 'node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, 'node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1400,7 +1400,7 @@ class DataManager:
         :return:            A pair with two elements:
                                 1. A (possibly-empty) list of dictionaries; each dict contains the data for a node,
                                     including a field called "internal_id" that has the internal database ID,
-                                    and a field called "node_labels" with a list of the node's label names
+                                    and a field called "_node_labels" with a list of the node's label names
                                 2.  What the number of nodes would be in the absence of limit/skip value
         """
         #TODO: parse the filter_dict here, but move the body of the computation to GraphSchema

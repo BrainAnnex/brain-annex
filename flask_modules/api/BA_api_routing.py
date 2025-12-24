@@ -2066,7 +2066,7 @@ class ApiRouting:
             RETURNED JSON PAYLOAD:
                 recordset:   A list of dicts with the filtered data; each dict contains the data for a node,
                                 including a field called "internal_id" that has the internal database ID,
-                                and a field called "node_labels" with a list of the node's label names
+                                and a field called "_node_labels" with a list of the node's label names
                 total_count: The total number of nodes in the database with the given label - NOT considering the remainder of the filter
                                 if no label was provided, None
             """

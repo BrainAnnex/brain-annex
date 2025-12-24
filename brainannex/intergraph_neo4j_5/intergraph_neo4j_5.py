@@ -360,7 +360,7 @@ class InterGraph:
 
         For example, useful in scenarios where nodes were returned,
         and their internal database IDs (using the key "internal_id")
-        and/or node labels (using the key "node_labels") are desired -
+        and/or node labels (using the key "_node_labels") are desired -
         in addition to all the properties and their values.
 
         Unless the flatten flag is True, individual records are kept as separate lists.
@@ -390,16 +390,16 @@ class InterGraph:
                                 were returned in the Cypher query.
 
                         EXAMPLE with flatten=True for a query returning nodes "MATCH n RETURN n":
-                                [   {'year': 2023, 'make': 'Ford', 'internal_id': 123, 'node_labels': ['Motor Vehicle']},
-                                    {'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'node_labels': ['Motor Vehicle']}
+                                [   {'year': 2023, 'make': 'Ford', 'internal_id': 123, '_node_labels': ['Motor Vehicle']},
+                                    {'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}
                                 ]
                         EXAMPLE with flatten=False for that same query returning nodes "MATCH n RETURN n":
-                                [   [{'year': 2023, 'make': 'Ford', 'internal_id': 123, 'node_labels': ['Motor Vehicle']}],
-                                    [{'year': 2013, 'make': 'Toyota', 'internal_id': 4, 'node_labels': ['Motor Vehicle']}]
+                                [   [{'year': 2023, 'make': 'Ford', 'internal_id': 123, '_node_labels': ['Motor Vehicle']}],
+                                    [{'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}]
                                 ]
 
                         EXAMPLE of *individual items* - for a returned NODE
-                            {'gender': 'M', 'age': 20, 'internal_id': 123, 'node_labels': ['patient']}
+                            {'gender': 'M', 'age': 20, 'internal_id': 123, '_node_labels': ['patient']}
 
                         EXAMPLE of *individual items* - for a returned RELATIONSHIP (note that 'neo4j_type' is the link name,
                             and that any properties of the relationships, such as 'price', appear as key/values in the dict)
@@ -459,7 +459,7 @@ class InterGraph:
 
                     if isinstance(item, neo4j.graph.Node):
                         neo4j_properties["internal_id"] = item.id               # Example: 227
-                        neo4j_properties["node_labels"] = list(item.labels)     # Example: ['person', 'client']
+                        neo4j_properties["_node_labels"] = list(item.labels)     # Example: ['person', 'client']
 
                     elif isinstance(item, neo4j.graph.Relationship):
                         neo4j_properties["internal_id"] = item.id               # Example: 227

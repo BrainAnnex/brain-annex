@@ -74,7 +74,7 @@ Vue.component('vue-cytoscape-4',
                         <span style="color: #BBB; font-style: italic">(shift-click for multiple selections)</span>
                     </p>
 
-                    <!-- ...if a node or edge is selected on the plot -->
+                    <!-- ...else, if a node or edge is selected on the plot -->
                     <p v-else class="legend-block">
                         <template v-for="label_name in node_labels">
                             <div class="label" v-bind:style="{'background-color': graph_data.color_mapping[label_name]}">{{label_name}}</div>
@@ -405,7 +405,7 @@ Vue.component('vue-cytoscape-4',
                     if (k == "labels")
                         continue;       // No need to show; labels are shown elsewhere as graphic tags
                     if (k != "name")
-                        html_row_str = `<b>${k}</b>: ${node_data_obj[k]}`;
+                        html_row_str = `<b>${k}</b>: <span class='property-value'>${node_data_obj[k]}</span>`;
                     else
                         html_row_str = `<span style='color: brown; font-weight: bold'>${k}: ${node_data_obj[k]}</span>`;
 
