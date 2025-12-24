@@ -227,7 +227,7 @@ class PyGraphVisual:
     def __init__(self, db=None):
         self.db = db                    # Object of "GraphAccess" class
 
-        self.structure = []             # The data that defines a graph to visualize.
+        self.structure = []             # The data needed by the Cytoscape graph visualization.
                                         #   A list of dicts defining nodes, and possibly edges as well.
                                         #   NODES must contain the keys 'id' and '_node_labels'
                                         #   EDGES must contain the keys 'name', 'source', and 'target'
@@ -285,6 +285,7 @@ class PyGraphVisual:
         (typically, to pass to the front-end, for eventual use by the Cytoscape.js library)
 
         :return:    A dict with 3 keys - "structure", "color_mapping" and "caption_mapping"
+                        For more details, see object constructor
         """
         return {"structure": self.structure,
                 "color_mapping": self.color_mapping,
@@ -429,7 +430,7 @@ class PyGraphVisual:
         Given a list of node internal id's, construct and return a dataset of their properties,
         plus the special fields `internal_id` and `_node_labels`
 
-        :param id_list: A list of node internal id's
+        :param id_list: A list of internal id's of database nodes
 
         :return:        A list of dicts, with the node properties plus the special fields `internal_id` and `_node_labels`
                             EXAMPLE:
@@ -441,6 +442,8 @@ class PyGraphVisual:
         assert self.db, \
             "initialize_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
 
+        if id_list == []:
+            return []       # No data was passed
 
         q = f'''
             MATCH (n)
@@ -456,7 +459,7 @@ class PyGraphVisual:
     def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
-        as returned by GraphAccess.get_nodes() - construct and save visualization data for them.
+        as returned by GraphAccess.get_nodes() - construct and save in the object visualization data for them.
 
         Each dictionary entry MUST have a key named "internal_id".
         If any key named "id" is found, it get automatically renamed "id_original" (since "id" is used by the visualization software);
@@ -479,6 +482,13 @@ class PyGraphVisual:
         assert self.db, \
             "prepare_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
 
+        assert type(result_dataset) == list, \
+            f"prepare_graph(): argument `id_list` must be a list; it is of type {type(result_dataset)}"
+
+        if len(result_dataset) == 0:
+            return []       # No data was passed
+
+
         if not cumulative:
             # Reset: clear out any previous graph-structure data, and reset edge number auto-increment
             self.structure = []
@@ -496,7 +506,7 @@ class PyGraphVisual:
 
             node_clone = node.copy()
 
-            del node_clone["internal_id"]
+            #del node_clone["internal_id"]
             
             if "id" in node_clone:
                 assert "id_original" not in node_clone, \
@@ -556,6 +566,23 @@ class PyGraphVisual:
                   "they were renamed `id_original` to avoid conflict with internal database IDs")
             
         return node_list
+
+
+
+    def assemble_graph(self, id_list :[int | str]) -> [dict]:
+        """
+        Given a list of node internal id's, construct and return the data needed by the Cytoscape graph visualization.
+
+        Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
+        the time portion, if present, will get dropped
+
+        :param id_list: A list of internal id's of database nodes
+        :return:        A list of dicts defining nodes, and possibly edges as well,
+                            with all the data needed by the Cytoscape graph visualization
+        """
+        recordset = self.prepare_recordset(id_list)
+        self.prepare_graph(result_dataset=recordset, cumulative=False, add_edges=True)
+        return self.structure
 
 
 
