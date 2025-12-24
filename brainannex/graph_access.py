@@ -104,7 +104,7 @@ class GraphAccess(InterGraph):
                             Note that if multiple labels are given, then only nodes with ALL of them will be matched;
                             at present, there's no way to request an "OR" operation
 
-        :param internal_id: An integer with the node's internal database ID.
+        :param internal_id: The internal database ID of the node of interest.
                                 If specified, it OVER-RIDES all the remaining arguments [except for the labels (TODO: revisit this)]
 
         :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
@@ -338,7 +338,7 @@ class GraphAccess(InterGraph):
         """
         Return True if a node with the given internal database ID exists, or False otherwise
 
-        :param internal_id: An integer with a node's internal database ID
+        :param internal_id: The internal database ID of the node of interest
         :return:            True if a node with the given internal Neo4j exists, or False otherwise
         """
         q = f'''
@@ -393,13 +393,13 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_node_labels(self, internal_id: int) -> [str]:
+    def get_node_labels(self, internal_id :int|str) -> [str]:
         """
-        Return a list whose elements are the label(s) of the node specified by its Neo4j internal ID
+        Return a list whose elements are the label(s) of the node specified by its internal ID
 
         TODO: maybe also accept a "match" structure as argument
 
-        :param internal_id: An integer with a Neo4j node id
+        :param internal_id: The internal database ID of the node of interest
         :return:            A list of strings with the names of all the labels of the given node
         """
         CypherUtils.assert_valid_internal_id(internal_id)
@@ -407,6 +407,20 @@ class GraphAccess(InterGraph):
         q = "MATCH (n) WHERE id(n)=$internal_id RETURN labels(n) AS all_labels"
 
         return self.query(q, data_binding={"internal_id": internal_id}, single_cell="all_labels")
+
+
+
+    def get_all_node_labels(self) -> [str]:
+        """
+        Look up and return a list, sorted alphabetically,
+        of all the node labels in the database.
+        EXAMPLE: ["my_label_1", "my_label_2"]
+
+        :return:    A list of strings, sorted alphabetically
+        """
+        label_list = self.get_labels()    # Database-specific operation to retrieve all the node labels in the database
+
+        return sorted(label_list)
 
 
 
@@ -1019,6 +1033,18 @@ class GraphAccess(InterGraph):
             raise Exception("create_node_with_relationships(): Unable to extract internal ID of the newly-created node")
 
         return internal_id    # Return the Neo4j ID of the new node
+
+
+
+    def add_new_label(self, label :str) -> int|str:
+        """
+        Create a new blank node with the specified label.
+        Mostly used for testing.
+
+        :return:    The internal database ID of the new node
+        """
+        return  self.create_node(label)
+
 
 
 
@@ -1663,13 +1689,13 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_parents_and_children(self, internal_id: int) -> ():
+    def get_parents_and_children(self, internal_id :int|str) -> ():
         """
         Fetch all the nodes connected to the given one by INbound relationships to it (its "parents"),
         as well as by OUTbound relationships to it (its "children")
         TODO: allow specifying a relationship name to follow
 
-        :param internal_id: An integer with a Neo4j internal node ID
+        :param internal_id: The internal database ID of the node of interest
         :return:            A dictionary with 2 keys: 'parent_list' and 'child_list'
                                 The values are lists of dictionaries with 3 keys: "internal_id", "label", "rel"
                                 EXAMPLE of individual items in either parent_list or child_list:
@@ -1700,7 +1726,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_siblings(self, internal_id: int, rel_name: str, rel_dir="OUT", order_by=None) -> [int]:
+    def get_siblings(self, internal_id :int|str, rel_name: str, rel_dir="OUT", order_by=None) -> [int]:
         """
         Return the data of all the "sibling" nodes of the given one.
         By "sibling", we mean: "sharing a link (by default outbound) of the specified name,
@@ -1710,7 +1736,7 @@ class GraphAccess(InterGraph):
                  each with a outbound link named "subcategory_of" to a third node,
                  will be considered "siblings" under rel_name="subcategory_of" and rel_dir="OUT
 
-        :param internal_id: Integer with the internal database ID of the node of interest
+        :param internal_id: The internal database ID of the node of interest
         :param rel_name:    The name of the relationship used to establish a "siblings" connection
         :param rel_dir:     (OPTIONAL) Either "OUT" (default) or "IN".  The link direction that is expected from the
                                 start node to its "parents" - and then IN REVERSE to the parent's children
@@ -2958,11 +2984,11 @@ class GraphAccess(InterGraph):
 
 
 
-    def assert_valid_internal_id(self, internal_id: int) -> None:
+    def assert_valid_internal_id(self, internal_id :int|str) -> None:
         """
         Raise an Exception if the argument is not a valid database internal ID
 
-        :param internal_id: Alleged Neo4j internal database ID
+        :param internal_id: Alleged internal database ID of the node of interest
         :return:            None
         """
         CypherUtils.assert_valid_internal_id(internal_id)

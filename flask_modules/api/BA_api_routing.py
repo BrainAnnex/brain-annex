@@ -585,7 +585,7 @@ class ApiRouting:
             """
 
             try:
-                all_labels = DataManager.get_node_labels()      # EXAMPLE: ["my_label_1", "my_label_2"]
+                all_labels = GraphSchema.db.get_all_node_labels()      # EXAMPLE: ["my_label_1", "my_label_2"]
                 response = {"status": "ok", "payload": all_labels}          # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -1946,7 +1946,7 @@ class ApiRouting:
                                     the internal database ID of the new node
             """
             try:
-                internal_id = DataManager.add_new_label(new_label)
+                internal_id = GraphSchema.db.add_new_label(new_label)
                 response_data = {"status": "ok", "payload": internal_id}            # Successful termination
             except Exception as ex:
                 err_details = f"Unable to create a new database node with the given label: `{new_label}`. " \

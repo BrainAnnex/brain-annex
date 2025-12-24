@@ -71,37 +71,6 @@ class DataManager:
 
 
 
-    #######################     LOW-LEVEL DATABASE-NODE UTILITIES       #######################
-
-    @classmethod
-    def get_node_labels(cls) -> [str]:
-        """
-        Look up and return a list, sorted alphabetically,
-        of all the node labels in the database.
-        EXAMPLE: ["my_label_1", "my_label_2"]
-
-        :return:    A list of strings, sorted alphabetically
-        """
-        # TODO: move to GraphAccess
-        label_list = cls.db.get_labels()    # Fetch all the node labels in the database
-
-        return sorted(label_list)
-
-
-
-    @classmethod
-    def add_new_label(cls, label: str) -> int:
-        """
-        Create a new blank node with the specified label.
-        Mostly used for testing.
-
-        :return:    The internal database ID of the new node
-        """
-        # TODO: move to GraphAccess
-        return  cls.db.create_node(label)
-
-
-
 
     #####################################################################################################
 
