@@ -11,7 +11,7 @@ from app_libraries.media_manager import MediaManager, ImageProcessing
 from app_libraries.PLUGINS.documents import Documents
 from app_libraries.PLUGINS import plugin_support
 from app_libraries.upload_helper import UploadHelper
-from brainannex import GraphSchema, Categories
+from brainannex import GraphSchema, Categories, PyGraphVisual
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
@@ -1111,7 +1111,7 @@ class ApiRouting:
             #TODO: make the generation of the URI optional
             #TODO: lift restriction against plugin-specific actions
 
-            # Extract and parse the POST value
+            # Extract and parse the POST value.  TODO: embed in a try/except
             pars_dict = request.get_json()  # This parses the JSON-encoded string in the POST message,
                                             # provided that mimetype indicates "application/json"
                                             # EXAMPLE: {"class_name": "Quote",
@@ -1223,7 +1223,8 @@ class ApiRouting:
                 data_dict = request.get_json()      # This parses the JSON-encoded string in the POST message into a python dictionary,
                                                     # provided that mimetype indicates "application/json";
                                                     # other mime types will result in a None value
-                assert data_dict is not None, "the client request does not have the MIME type 'application/json'"
+                assert data_dict is not None, \
+                    "the client request does not have the expected MIME type 'application/json'"
             except Exception as ex:
                 err_details = f"update_content_item_JSON(): Unable to update the Record (Content Item / Database Node).  " \
                               f"Request body could not be parsed as valid JSON.  {exceptions.exception_helper(ex)}"
@@ -1650,7 +1651,7 @@ class ApiRouting:
             :param handler: The name of a plugin-handler class.  EXAMPLE: "documents"
             """
             print(f"Invoking /plugin/ endpoint for handler:  `{handler}`")
-            # Extract and parse the POST value
+            # Extract and parse the POST value.  TODO: embed in a try/except
             parameters = request.get_json()     # This parses the JSON-encoded string in the POST message,
                                                 # provided that mimetype indicates "application/json"
 
@@ -1693,7 +1694,7 @@ class ApiRouting:
             """
             #TODO:
             '''
-            A possible general API design:
+            A possible general API design (but only directly applicable when the json object is a dict!]:
                 required_fields = ["category_uri", "class_name", "insert_after_uri"]
                 other_fields = ["insert_after_class"]
                 allow_extra_fields = True
@@ -1705,9 +1706,9 @@ class ApiRouting:
                         extra_fields=<the remaining dict>)   
             '''
 
-            # Extract and parse the POST value
+            # Extract and parse the POST value.  TODO: embed in a try/except
             pars_dict = request.get_json()      # This parses the JSON-encoded string in the POST message,
-            # provided that mimetype indicates "application/json"
+                                                # provided that mimetype indicates "application/json"
             # EXAMPLE: {'category_uri': '6967', 'class_name': 'Header', 'insert_after_uri': 'BOTTOM', 'text': 'My Header'}
             # See: https://flask.palletsprojects.com/en/1.1.x/api/
             #print("In add_item_to_category_JSON() -  pars_dict: ", pars_dict)
@@ -1744,7 +1745,7 @@ class ApiRouting:
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}
 
-            #print(f"add_item_to_category_JSON() is returning: `{err_details}`")
+            #print(f"add_item_to_category_JSON() is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
@@ -2146,6 +2147,79 @@ class ApiRouting:
                                                 # response = make_response(response["error_message"], 422)  # "422 Unprocessable Entity"
                                                 # return response
 
+
+
+
+
+
+        #####################################################################################################
+
+        '''                                     ~   VISUALIZATION   ~                                      '''
+
+        def ________VISUALIZATION________(DIVIDER):
+            pass        # Used to get a better structure view in IDEs
+        #####################################################################################################
+
+        @bp.route('/assemble-graph', methods=['POST'])
+        @login_required
+        def assemble_graph_json():
+            """
+            Construct and return the data needed by the Cytoscape graph visualization,
+            to display all the passed nodes and any edges among them.
+
+            Any date/datetime value found in the database will first be "sanitized"
+            into a string representation of the date;
+            the time portion, if present, will get dropped
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded list of internal database ID's
+
+            :return:    A list of dicts defining nodes, and possibly edges as well,
+                            with all the data needed by the Cytoscape graph visualization
+            """
+            # TODO: use this as a ***MODEL*** of future JSON web api calls
+            # Extract and parse the POST value
+            try:
+                pars_list = request.get_json()      # This parses the JSON-encoded string in the POST message,
+                                                    # provided that mimetype indicates "application/json";
+                                                    # otherwise, it'll return None
+                                                    # An error will occur if the JSON string is not parsable
+                # EXAMPLE: [34, 2, 412]    The individual list entries are internal database ID's (int or str)
+                # See: https://flask.palletsprojects.com/en/1.1.x/api/
+                # Note: `pars_list` will be None if the request's mimetype was not "application/json";
+                # give a clear error message in such a case (otherwise, the None value is passed thru,
+                # and will cause obscure error messages downstream)
+                assert pars_list is not None, \
+                    "the client request does not have the expected MIME type 'application/json'"
+            except Exception as ex:
+                err_details = f"/assemble-graph : Unable to parse JSON request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            print("In assemble_graph_json() -  pars_list: ", pars_list)
+
+            if type(pars_list) != list:
+                err_details = f"/assemble-graph : the passed JSON value should be a list (array); " \
+                              f"instead, it's of type {type(pars_list)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                graph = PyGraphVisual(db=GraphSchema.db)
+                result = graph.assemble_graph(id_list=pars_list)
+                response_data = {"status": "ok", "payload": result}                 # Successful termination
+            except Exception as ex:
+                err_details = f"/assemble-graph : unable to construct the Cytoscape graph visualization data.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+
+            #print(f"assemble_graph_json() is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
 

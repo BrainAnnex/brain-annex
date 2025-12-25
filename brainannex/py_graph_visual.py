@@ -569,7 +569,7 @@ class PyGraphVisual:
 
 
 
-    def assemble_graph(self, id_list :[int | str]) -> [dict]:
+    def assemble_graph(self, id_list :[int|str]) -> [dict]:
         """
         Given a list of node internal id's, construct and return the data needed by the Cytoscape graph visualization.
 
