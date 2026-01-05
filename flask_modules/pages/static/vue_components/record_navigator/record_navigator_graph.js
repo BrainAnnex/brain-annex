@@ -245,26 +245,94 @@ Vue.component('vue-record-navigator-graph',
         methods: {
 
             visualize_data()
-            // Invoked when user clicks on a button to sync the results to the Cytoscape graph below
+            // Invoked when user clicks on a button to apply the search results to the Cytoscape graph
             {
                 console.log("visualize_data() invoked");
 
+                // Example test data
                 this.graph_data_json = {
-                    structure:  [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
-                                 {'id': 2, 'color': 'white', 'labels': ['CAR']},
+                    structure:  [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
+                                 {'id': 2, 'color': 'white', '_node_labels': ['CAR']},
                                  {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}],
                     color_mapping: {'PERSON': '#56947E', 'CAR': '#F79768'},
                     caption_mapping: {'PERSON': 'name', 'CAR': 'color'}
                 };
 
-                this.graph_data_json.structure.push({'id': 3, 'color': 'blue', 'labels': ['CAR']});
+                this.graph_data_json.structure.push({'id': 3, 'color': 'blue', '_node_labels': ['CAR']});
 
+                /*
+                // Test of using actual results data: sending the nodes (no edges) to the Cytoscape graph
                 for (let record of this.recordset_array) {
                     let data = record.data;
                     data.id = data.internal_id;
                     data.labels = data._node_labels;
                     this.graph_data_json.structure.push(data);
                 }
+                return;
+                */
+
+
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/assemble-graph";
+
+                 // Put together an array of the internal ID's of the nodes that were returned by the search result
+                let node_internal_ids = [];
+                for (let record of this.recordset_array) {
+                    let data = record.data;
+                    node_internal_ids.push(data.internal_id);
+                }
+
+                const post_data = node_internal_ids;
+                //const my_var = "some value";        // Optional parameter to pass, if needed
+
+                console.log(`visualize_data(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_data);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: node_internal_ids,
+                             json_encode_send: true,
+                             callback_fn: this.finish_visualize_data,
+                             //custom_data: my_var
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_visualize_data(success, server_payload, error_message, custom_data)
+            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+                custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the visualize_data() call
+            */
+            {
+                console.log("Finalizing the visualize_data() operation...");
+                //console.log(`Custom pass-thru data:`);
+                //console.log(custom_data)
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    // Update the data for the Cytoscape Vue component
+                    this.graph_data_json = {
+                        structure: server_payload,
+                        color_mapping: {'Books': '#56947E', 'BA': '#F79768'},
+                        caption_mapping: {'Books': 'Title', 'Category': 'name'}
+                    };
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    //...
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                   //...
             },
 
 
