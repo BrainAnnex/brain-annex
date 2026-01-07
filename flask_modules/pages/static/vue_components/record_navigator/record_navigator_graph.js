@@ -249,6 +249,7 @@ Vue.component('vue-record-navigator-graph',
             {
                 console.log("visualize_data() invoked");
 
+                /*
                 // Example test data
                 this.graph_data_json = {
                     structure:  [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
@@ -257,11 +258,9 @@ Vue.component('vue-record-navigator-graph',
                     color_mapping: {'PERSON': '#56947E', 'CAR': '#F79768'},
                     caption_mapping: {'PERSON': 'name', 'CAR': 'color'}
                 };
-
                 this.graph_data_json.structure.push({'id': 3, 'color': 'blue', '_node_labels': ['CAR']});
 
-                /*
-                // Test of using actual results data: sending the nodes (no edges) to the Cytoscape graph
+                // Test of using actual (unprocessed) results data: sending the nodes (no edges) to the Cytoscape graph
                 for (let record of this.recordset_array) {
                     let data = record.data;
                     data.id = data.internal_id;
@@ -303,7 +302,7 @@ Vue.component('vue-record-navigator-graph',
             },
 
             finish_visualize_data(success, server_payload, error_message, custom_data)
-            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+            /* Callback function to wrap up the action of visualize_data() upon getting a response from the server.
 
                 success:        Boolean indicating whether the server call succeeded
                 server_payload: Whatever the server returned (stripped of information about the success of the operation)
@@ -320,8 +319,8 @@ Vue.component('vue-record-navigator-graph',
                     // Update the data for the Cytoscape Vue component
                     this.graph_data_json = {
                         structure: server_payload,
-                        color_mapping: {'Books': '#56947E', 'BA': '#F79768'},
-                        caption_mapping: {'Books': 'Title', 'Category': 'name'}
+                        color_mapping: {},
+                        caption_mapping: {}
                     };
                 }
                 else  {             // Server reported FAILURE

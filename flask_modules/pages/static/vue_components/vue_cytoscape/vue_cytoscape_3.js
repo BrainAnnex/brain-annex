@@ -167,7 +167,7 @@ Vue.component('vue_cytoscape_3',
                      Caution must be taken not to re-trigger it from the code in this function,
                      or an infinite loop will result!.
              */
-            console.log(`The 'vue_cytoscape_2' component is now mounted`);
+            console.log(`The 'vue_cytoscape_3' component is now mounted`);
 
             const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given

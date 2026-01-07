@@ -20,6 +20,7 @@ div.cytoscape-legend {
     width: 13%;
     border: 1px solid #CCC;
     padding: 0;
+    padding-bottom:3px;
     display: inline-block;
     vertical-align: top;
 

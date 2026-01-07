@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <title>Tester for Vue component</title>
 
-    <link type="text/css" rel="stylesheet" href="vue_cytoscape_3.css">  <!-- *** CHANGE THIS AS NEEDED *** -->
+    <link type="text/css" rel="stylesheet" href="vue_cytoscape_4.css">  <!-- *** CHANGE THIS AS NEEDED *** -->
 
     <script src="../../Vue2/vue2.js"></script>          <!-- Vue.js (version 2.6) -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -20,10 +20,10 @@
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENT below : ROOT element -->
 
-    <vue_cytoscape_3 v-bind:graph_data="graph_data_json"
+    <vue-cytoscape-4 v-bind:graph_data="graph_data_json"
                      v-bind:component_id="1">
     >
-    </vue_cytoscape_3>
+    </vue-cytoscape-4>
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
 
@@ -32,7 +32,7 @@
 <!--
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
-<script src="vue_cytoscape_3.js"></script>                    <!-- *** CHANGE THIS AS NEEDED *** -->
+<script src="vue_cytoscape_4.js"></script>                    <!-- *** CHANGE THIS AS NEEDED *** -->
 
 
 
@@ -47,25 +47,21 @@
 
                 {
                     "structure": [
-                        {'id': 1, 'name': 'Julian', 'labels': ['Person']},
-                        {'id': 2, 'color': 'white', 'brand': 'Toyota', 'labels': ['Car']},
+                        {'id': 1, 'name': 'Julian', '_node_labels': ['Person']},
+                        {'id': 2, 'color': 'white', 'brand': 'Toyota', '_node_labels': ['Car']},
                         {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'},
-                        {'id': 3, 'name': 'Berkeley', 'labels': ['City']},
+                        {'id': 3, 'name': 'Berkeley', '_node_labels': ['City']},
                         {'name': 'LIVES IN', 'source': 1, 'target': 3, 'id': 'edge-2'},
-                        {'id': 4, 'name': 'Bayer', 'labels': ['Company']},
+                        {'id': 4, 'name': 'Bayer', '_node_labels': ['Company']},
                         {'name': 'WORKS FOR', 'source': 1, 'target': 4, 'id': 'edge-3', 'since': 2025},
-                        {'id': 5, 'name': 'USA', 'labels': ['Country']},
-                        {'id': 6, 'name': 'Germany', 'labels': ['Country']},
+                        {'id': 5, 'name': 'USA', '_node_labels': ['Country']},
+                        {'id': 6, 'name': 'Germany', '_node_labels': ['Country']},
                         {'name': 'LOCATED IN', 'source': 3, 'target': 5, 'id': 'edge-4'},
                         {'name': 'LOCATED IN', 'source': 4, 'target': 5, 'id': 'edge-5'},
                         {'name': 'LOCATED IN', 'source': 4, 'target': 6, 'id': 'edge-6'}
                     ],
                     "color_mapping": {
-                        "Car": "#F16668",
-                        "Person": "cyan",
-                        "City": "#C990C1",
-                        "Company": "#F79768",
-                        "Country": "#8DCC92"
+
                     },
                     "caption_mapping": {
                         "Car": "brand",
