@@ -136,12 +136,20 @@ Vue.component('vue-record-navigator-graph',
 
             <!--  Connection to Cytoscape graph -->
 
-            <button @click="visualize_data"
+            <button v-if="recordset_array.length == 0" disabled
+                    style="padding:12px; font-weight:bold; color:gray">
+                To visualize a graph, first search for nodes, above (and expand links of interest)
+            </button>
+            <button v-else @click="visualize_data"
                     style="padding:12px; font-weight:bold; color:brown">
                 Visualize the above data
             </button>
 
-            <h2>Graph</h2>
+            <h2>Graph
+                <span v-if="recordset_array.length == 0" style="color:gray">
+                    (currently empty; search first!)
+                </span>
+            </h2>
 
             <vue-cytoscape-4
                     v-bind:graph_data="graph_data_json"

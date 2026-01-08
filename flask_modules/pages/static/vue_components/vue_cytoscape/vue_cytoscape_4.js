@@ -507,17 +507,19 @@ Vue.component('vue-cytoscape-4',
             /*  Given the labels of a node (an array of strings),
                 return the name of the color to use for the inside of the node,
                 based on what was specified in "color_mapping" from the "graph_data" prop.
+
                 In case of multiple labels, try them sequentially, until a mapping is found.
+                The label "BA" is (at least for now) skipped - being a special label.
                 If no mapping information is present for any of the labels,
                 or if invoked with an undefined value,
                 use the color white by default
 
-                :param labels:  Array of label strings
+                :param labels:  Array of strings (the labels of a database node)
                 :return:        String with a color name or numeric code
              */
             {
                 // The default value, in case no mapping info found for any of the labels
-                const default_color = '#FFFFFF';    // TODO: assign colors on rotation instead
+                const default_color = '#FFFFFF';
 
                 if (labels === undefined)  {
                     console.log("map_labels_to_color(): invoked with `undefined` argument.  Returning default value")
@@ -528,7 +530,7 @@ Vue.component('vue-cytoscape-4',
                 //console.log(this.color_mapping);
 
                 for (single_label of labels) {
-                    if (single_label in this.color_mapping)  {
+                    if ((single_label in this.color_mapping) && (single_label != "BA"))  {
                         const color = this.color_mapping[single_label];
                         //console.log(`Using the color '${color}' for the inside of this node`);
                         return color;

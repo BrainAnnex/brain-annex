@@ -52,39 +52,40 @@
 </div>
 
 
-<h2>Search Notes and Documents</h2>
-<i>(retrieve anything that includes ALL the words below; common words ignored)</i><br><br>
+<div style="background-color: lavender; padding-left: 10px; padding-bottom: 5px; margin-top:10px; border:1px solid #CCC">
+    <h2 style="margin-top:8px">Text Search : Notes and Documents</h2>
+    <i>(retrieve anything that includes ALL the words below; common words ignored)</i><br><br>
 
-<div class="content-block">
-    <div class="content-block-title">Search</div>
+    <div class="content-block">
+        <div class="content-block-title">Search</div>
 
-    <form method='GET' action='search'>
-        <br>
-        <input type='text' name='words'  size="100" maxlength="225" placeholder="Enter all the words to search for">
-        <br><br><br>
+        <form method='GET' action='search'>
+            <br>
+            <input type='text' name='words'  size="85" maxlength="225" placeholder="Enter all the words to search for">
+            <br><br><br>
 
-        <select name='search_category'  style='font-size:14px'>
-            <option value=''>[OPTIONALLY, select Category to restrict search under]</option>
-            {% for category in all_categories %}
-            <option value='{{category.uri}}'>
-                {{category.name}}
-                {% if category.remarks %} [{{category.remarks}}] {% endif %}
-            </option>
-            {% endfor %}
-        </select>
+            <select name='search_category'  style='font-size:14px'>
+                <option value=''>[OPTIONALLY, select Category to restrict search under]</option>
+                {% for category in all_categories %}
+                <option value='{{category.uri}}'>
+                    {{category.name}}
+                    {% if category.remarks %} [{{category.remarks}}] {% endif %}
+                </option>
+                {% endfor %}
+            </select>
 
-        <input type="submit" value="SEARCH">
-    </form>
+            <input type="submit" value="SEARCH">
+        </form>
+    </div>
 
 </div>
 
 
 
 
-
 <br><br><br>
 
-<h2>Search the Database Nodes</h2>
+<h2>Search Database Nodes</h2>
 
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
