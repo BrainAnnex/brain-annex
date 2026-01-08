@@ -53,8 +53,8 @@ class NodeExplorer:
         # Retrieve ALL nodes with the specified label
         match = db.match(labels=label)
         recordset = db.get_nodes(match=match, return_internal_id=True, return_labels=True)
-                                    # EXAMPLE: [ {"internal_id": 145, "node_labels": ["person", "client"], 'gender': 'M', 'age': 42},
-                                    #            {"internal_id": 222, "node_labels": ["person"], 'gender': 'F', 'age': 21, location: "Berkeley"} ]
+                                    # EXAMPLE: [ {"internal_id": 145, "_node_labels": ["person", "client"], 'gender': 'M', 'age': 42},
+                                    #            {"internal_id": 222, "_node_labels": ["person"], 'gender': 'F', 'age': 21, location: "Berkeley"} ]
 
         if len(recordset) == 0:
             return ([], [], [], [], 0, 0)     # If no records were found.  Return a 6-tuple with empty lists and zero counts
@@ -73,10 +73,10 @@ class NodeExplorer:
             header_list.remove("internal_id")
             header_list = ["internal_id"] + header_list
 
-        # Move the field "node_labels" to the front of header_list, if present
-        if "node_labels" in header_list:
-            header_list.remove("node_labels")
-            header_list = ["node_labels"] + header_list
+        # Move the field "_node_labels" to the front of header_list, if present
+        if "_node_labels" in header_list:
+            header_list.remove("_node_labels")
+            header_list = ["_node_labels"] + header_list
 
 
         record_list = []
@@ -361,7 +361,7 @@ class NodeExplorer:
 
                 then return
                 {  "headers":  [
-                                    ["node_labels", "node_labels"],
+                                    ["_node_labels", "_node_labels"],
                                     ["internal_id", "NEO4J_ID"],
                                     ["gender"],
                                     ["age", "FLOAT"],
@@ -409,7 +409,7 @@ class NodeExplorer:
 
         all_data  = {
                     "headers":  [
-                                    ["node_labels", "node_labels"],
+                                    ["_node_labels", "_node_labels"],
                                     ["internal_id", "NEO4J_ID"],
                                     ["gender"],
                                     ["age", "FLOAT"],

@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 {#  Schema Viewer.
     This pages hosts a Vue component ("vue_cytoscape_2") to display the database Schema.
-    For background info, see:
-        https://julianspolymathexplorations.blogspot.com/2022/11/schema-graph-databases-neo4j.html
+    For background info on Schema, see:  https://brainannex.org/docs/neoschema-user-guide.htm
 
     Flask-passed parameters:
         site_data       Dict of general site data.  Keys: "site_pages", "branding", "version";
@@ -26,11 +25,11 @@
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_2.css">
 
+
+    <!-- JavaScript -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js"></script>
 
-
-    <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
 </head>

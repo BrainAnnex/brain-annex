@@ -1,10 +1,12 @@
 /*  "Record navigator" with recursive drill-down capabilities to follow links
     and explore neighbor nodes as sub-records.
+    This version makes use of a Cytoscape Vue sub-component, to generate a graph
+    from the above data.
 
     Currently used in the filter page.
  */
 
-Vue.component('vue-record-navigator',
+Vue.component('vue-record-navigator-graph',
     {
         props: {
             /*  Array of objects, with one entry per "record" (data from one database node) */
@@ -17,6 +19,8 @@ Vue.component('vue-record-navigator',
 
         template: `
             <!-- Outer container, serving as Vue-required template root -->
+            <section>
+
             <div style="border:1px solid #DDD; padding:10px; background-color: #f4f4f4">
 
                 <p v-if="recordset_array.length === 0" style="color: gray">
@@ -121,14 +125,60 @@ Vue.component('vue-record-navigator',
                         >
                     </span>
 
-                </p>
+                </p>    <!--  End of items in the current recordset -->
 
-            </div>  <!-- End of outer container -->
+            </div> <!--  End of navigable results box -->
+
+
+            <br><br>
+
+
+
+            <!--  Connection to Cytoscape graph -->
+
+            <button v-if="recordset_array.length == 0" disabled
+                    style="padding:12px; font-weight:bold; color:gray">
+                To visualize a graph, first search for nodes, above (and expand links of interest)
+            </button>
+            <button v-else @click="visualize_data"
+                    style="padding:12px; font-weight:bold; color:brown">
+                Visualize the above data
+            </button>
+
+            <h2>Graph
+                <span v-if="recordset_array.length == 0" style="color:gray">
+                    (currently empty; search first!)
+                </span>
+            </h2>
+
+            <vue-cytoscape-4
+                    v-bind:graph_data="graph_data_json"
+                    v-bind:component_id="1"
+            >
+            </vue-cytoscape-4>
+
+
+            <!--  Everything below is diagnostic data shown below the graph  -->
+            <div class="content-block" style="margin-left: 5px; color:gray">
+                <div class="content-block-title">
+                    Plot Data
+                </div>
+                <b>COLOR MAPPING</b>: {{graph_data_json.color_mapping}}<br>
+                <b>CAPTION MAPPING</b>: {{graph_data_json.caption_mapping}}<br>
+                <b>STRUCTURE</b>:
+                <ul>
+                    <li v-for="item in graph_data_json.structure">
+                        {{item}}
+                    </li>
+                </ul>
+            </div>
+
+            </section>   <!-- End of outer Vue container -->
             `,
 
 
 
-        // ----------------  DATA  -----------------
+        // ---------------------  DATA  ----------------------
         data: function() {
             return {
                 next_record_id: 0,      // Auto-increment to identify records shown on page
@@ -151,6 +201,16 @@ Vue.component('vue-record-navigator',
                                         //      * "data" is an object containing all the field names and values
                                         //            returned from the database node
                                         //           (incl. the special fields "internal_id" and "_node_labels")
+
+
+                // Object with all the data needed by the Vue component to display the graph
+                // 3 keys:  "structure" (an array of object literals), "color_mapping" (object literal) and "caption_mapping" (object literal)
+                graph_data_json: {
+                    structure:  [],
+                    color_mapping: {},
+                    caption_mapping: {}
+                },
+
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -191,6 +251,98 @@ Vue.component('vue-record-navigator',
 
         // ----------------  METHODS  -----------------
         methods: {
+
+            visualize_data()
+            // Invoked when user clicks on a button to apply the search results to the Cytoscape graph
+            {
+                console.log("visualize_data() invoked");
+
+                /*
+                // Example test data
+                this.graph_data_json = {
+                    structure:  [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
+                                 {'id': 2, 'color': 'white', '_node_labels': ['CAR']},
+                                 {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}],
+                    color_mapping: {'PERSON': '#56947E', 'CAR': '#F79768'},
+                    caption_mapping: {'PERSON': 'name', 'CAR': 'color'}
+                };
+                this.graph_data_json.structure.push({'id': 3, 'color': 'blue', '_node_labels': ['CAR']});
+
+                // Test of using actual (unprocessed) results data: sending the nodes (no edges) to the Cytoscape graph
+                for (let record of this.recordset_array) {
+                    let data = record.data;
+                    data.id = data.internal_id;
+                    data.labels = data._node_labels;
+                    this.graph_data_json.structure.push(data);
+                }
+                return;
+                */
+
+
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/assemble-graph";
+
+                 // Put together an array of the internal ID's of the nodes that were returned by the search result
+                let node_internal_ids = [];
+                for (let record of this.recordset_array) {
+                    let data = record.data;
+                    node_internal_ids.push(data.internal_id);
+                }
+
+                const post_data = node_internal_ids;
+                //const my_var = "some value";        // Optional parameter to pass, if needed
+
+                console.log(`visualize_data(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_data);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: node_internal_ids,
+                             json_encode_send: true,
+                             callback_fn: this.finish_visualize_data,
+                             //custom_data: my_var
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_visualize_data(success, server_payload, error_message, custom_data)
+            /* Callback function to wrap up the action of visualize_data() upon getting a response from the server.
+
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+                custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the visualize_data() call
+            */
+            {
+                console.log("Finalizing the visualize_data() operation...");
+                //console.log(`Custom pass-thru data:`);
+                //console.log(custom_data)
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    // Update the data for the Cytoscape Vue component
+                    this.graph_data_json = {
+                        structure: server_payload,
+                        color_mapping: {},
+                        caption_mapping: {}
+                    };
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    //...
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                   //...
+            },
+
+
 
             toggle_links(record, record_index)
             /*  Show/Hide an inline summary of the available links from/to the given record.

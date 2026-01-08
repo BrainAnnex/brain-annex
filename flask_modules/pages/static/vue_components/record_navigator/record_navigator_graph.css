@@ -1,0 +1,49 @@
+/* Used for the record navigator (for now, part of filter.htm)
+ */
+
+
+/* For a box to pre-pend to record headers */
+span.subrecord-in {
+    background-color: #bbe175;
+    color: black;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 5px;
+}
+
+span.subrecord-out {
+    background-color: #fdbeb8;
+    color: black;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 5px;
+}
+
+
+/* Little rounded boxes for labels */
+span.node-label {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: white;
+    background-color: #444444;
+}
+
+
+/* For little rounded boxes that show a link (either IN or OUT) */
+span.relationship-in {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    color: #333;
+    background-color: #bbe175;
+}
+
+span.relationship-out {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    color: #333;
+    background-color: #fdbeb8;
+}

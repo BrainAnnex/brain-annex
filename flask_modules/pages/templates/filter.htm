@@ -27,12 +27,16 @@
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/record_navigator/record_navigator.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/record_navigator/record_navigator_graph.css">
     <link type="text/css"  rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
     <!-- JavaScript -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.2/cytoscape.umd.js"></script>
+
     <script src="/BA/pages/static/Vue2/vue2.js"></script>       <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
 </head>
@@ -48,39 +52,40 @@
 </div>
 
 
-<h2>Search Notes and Documents</h2>
-<i>(retrieve anything that includes ALL the words below; common words ignored)</i><br><br>
+<div style="background-color: lavender; padding-left: 10px; padding-bottom: 5px; margin-top:10px; border:1px solid #CCC">
+    <h2 style="margin-top:8px">Text Search : Notes and Documents</h2>
+    <i>(retrieve anything that includes ALL the words below; common words ignored)</i><br><br>
 
-<div class="content-block">
-    <div class="content-block-title">Search</div>
+    <div class="content-block">
+        <div class="content-block-title">Search</div>
 
-    <form method='GET' action='search'>
-        <br>
-        <input type='text' name='words'  size="100" maxlength="225" placeholder="Enter all the words to search for">
-        <br><br><br>
+        <form method='GET' action='search'>
+            <br>
+            <input type='text' name='words'  size="85" maxlength="225" placeholder="Enter all the words to search for">
+            <br><br><br>
 
-        <select name='search_category'  style='font-size:14px'>
-            <option value=''>[OPTIONALLY, select Category to restrict search under]</option>
-            {% for category in all_categories %}
-            <option value='{{category.uri}}'>
-                {{category.name}}
-                {% if category.remarks %} [{{category.remarks}}] {% endif %}
-            </option>
-            {% endfor %}
-        </select>
+            <select name='search_category'  style='font-size:14px'>
+                <option value=''>[OPTIONALLY, select Category to restrict search under]</option>
+                {% for category in all_categories %}
+                <option value='{{category.uri}}'>
+                    {{category.name}}
+                    {% if category.remarks %} [{{category.remarks}}] {% endif %}
+                </option>
+                {% endfor %}
+            </select>
 
-        <input type="submit" value="SEARCH">
-    </form>
+            <input type="submit" value="SEARCH">
+        </form>
+    </div>
 
 </div>
 
 
 
 
-
 <br><br><br>
 
-<h2>Search the Database Nodes</h2>
+<h2>Search Database Nodes</h2>
 
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
@@ -149,10 +154,10 @@
             </td>
         </tr>
         <tr>
-            <td>SKIP</td><td><input type="text" size="2" v-model="skip"></td>
+            <td style="color:gray">SKIP</td><td><input type="text" size="2" v-model="skip"></td>
         </tr>
         <tr>
-            <td>LIMIT</td><td><input type="text" size="2" v-model="limit"></td>
+            <td style="font-weight: bold">LIMIT</td><td><input type="text" size="2" v-model="limit"></td>
         </tr>
     </table>
 
@@ -182,12 +187,18 @@
 
 <!-- Display the query result, including a record-navigation capability -->
 
-<vue-record-navigator
+<vue-record-navigator-graph
     v-bind:nodes_data="query_result"
 >
-</vue-record-navigator>
+</vue-record-navigator-graph>
+
+
+
+
+
 
 <br><br>
+
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element "vue-root-1"  ~~~~~~~~~~~~~~~~~~~~~  -->
 
@@ -200,11 +211,15 @@
      the script below must handle both the JS import and the instantiation of Vue, to make sure
      that the former is completed first -->
 
+<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4.js"></script>
+
+
 <script type="module">
+
 // Import the JS module (it will register the component globally - and it will be completed
 // prior to the instantiation of Vue, below)
 import '/BA/pages/static/vue_components/multiselect/multiselect.js';
-import '/BA/pages/static/vue_components/record_navigator/record_navigator.js';
+import '/BA/pages/static/vue_components/record_navigator/record_navigator_graph.js';
 
 
 // Instantiation of the Vue object (ROOT component) must come last
@@ -240,7 +255,6 @@ new Vue({
     // ---------------------  METHODS  ----------------------
 
     methods:  {
-
 
         /*
             --------------   SERVER CALLS   ----------------------------------------------------------------
