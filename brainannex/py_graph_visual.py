@@ -155,22 +155,33 @@ class DisplayNetwork:
                                             'caption_mapping'   A dict
                                                 EXAMPLE: {"label_1": "name", "label_2": "name"}
 
-        :param graphic_component:   A string with the name of the existing Vue.js component to use.
-                                        EXAMPLE: "vue_cytoscape_3" (assuming that a .js file with such a Vue component exists)
+        :param graphic_component:   The basename of a existing JavaScript and CSS files a
+                                        that provides the interactive visualization functionality.
+                                        The JS file is expected to implement a Vue.js component by the same name
+                                        (but with hyphens in lieu of any underscore in the name, if applicable.)
+                                        EXAMPLE: "vue_cytoscape_4" (assuming that a "vue_cytoscape_4.js" file
+                                                 and a "vue_cytoscape_4.css" file
+                                                 exist in the directory specified by the argument `vue_comps_dir`,
+                                                 and that the .js file implements a Vue component named "vue-cytoscape-4")
 
         :param filename:            The name of the file into which to place the HTML code
                                         to create the interactive network plot.
                                         The suffix ".htm" will be added if it doesn't end with ".htm" or ".html"
-                                        If the file already exists, it will get overwritten
+                                        If the file already exists, it will get overwritten.
+                                        (Note: this file will automatically include an internal reference to the JavaScript
+                                        file specified in `graphic_component`)
 
         :param caption:             [OPTIONAL] String displayed at the top of the HTML file.
                                         By default, "Interactive network plot"
+
         :param vue_comps_dir:       [OPTIONAL] The full name of the directory where the Vue components reside.
                                         A final "/" in the name is optional.
                                         Note: when this function is used in a Jupyterlab notebook, it's best to use
                                               a URL.  EXAMPLE: "https://life123.science/libraries/vue_components/"
         :return:                    None
         """
+        # TODO: split the 'structure' list into separate lists of nodes and edges
+
         # Perform data validation
         assert type(graph_data) == dict, "export_plot(): argument `graph_data` must be a python dictionary"
 
@@ -205,11 +216,18 @@ class DisplayNetwork:
         if not vue_comps_dir.endswith("/"):
             vue_comps_dir += "/"        # Add the final slash, unless already present
 
+        assert not graphic_component.endswith(".js") and not graphic_component.endswith(".css"), \
+            "export_plot(): the argument `graphic_component` should be the BASE NAME of existing .js and .css files; " \
+            "do not include any suffix"
+
         component_file_js = f"{vue_comps_dir}{graphic_component}.js"
         component_file_css = f"{vue_comps_dir}{graphic_component}.css"
 
+        vue_component_name = graphic_component.replace("_", "-")    # Replace each instance of "_" (if any) with "-"
+
         html = cls._html_header(component_file_css) + cls._html_body_start(caption=f"<h1>{caption}</h1>") + \
-               cls._html_vue_container(vue_component=graphic_component, vue_count=1, component_file=component_file_js, graph_data=graph_data)
+               cls._html_vue_container(vue_component=vue_component_name, vue_count=1,
+                                       component_file=component_file_js, graph_data=graph_data)
 
         cls._write_to_file(file_handler, text = html)
 
