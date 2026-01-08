@@ -1,4 +1,4 @@
-/*  New version under development (for Search function in main UI)
+/*  Used in Search function in main UI
  */
 
 Vue.component('vue-cytoscape-4',
