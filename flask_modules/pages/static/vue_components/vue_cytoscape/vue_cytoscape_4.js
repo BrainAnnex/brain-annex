@@ -20,12 +20,14 @@ Vue.component('vue-cytoscape-4',
                              {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
                              {'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
 
-                2) "color_mapping"      (TODO: auto-assign if unspecified)
+                        Note: 'id' values can be integers or strings
+
+                2) "color_mapping"
                         Map of node labels to color names
                         EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
 
-                3) "caption_mapping"    (from label name to property to use for the node's caption)
-                        Map of node labels to node field (property) names
+                3) "caption_mapping"
+                        Map of node labels to node field (property) names to use for the node's caption
                         EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
              */
 
@@ -151,7 +153,12 @@ Vue.component('vue-cytoscape-4',
                 color_mapping: this.graph_data.color_mapping,
                         /*  Map of node labels to color names
                             EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
-                        */
+                         */
+
+                caption_mapping: this.graph_data.caption_mapping,
+                        /*  Map of node labels to node field (property) names to use for the node's caption
+                            EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
+                         */
 
                 // Data of the currently-selected node;
                 // both variables are arrays of strings:
@@ -541,7 +548,7 @@ Vue.component('vue-cytoscape-4',
             },
 
 
-            map_labels_to_caption_field(labels)
+            map_labels_to_caption_field(labels, node_id)
             /*  Given the labels of a node (an array of strings),
                 return the name of the field to use for the node caption,
                 based on what was specified in the "caption_mapping" value from the "graph_data" prop.
@@ -549,31 +556,87 @@ Vue.component('vue-cytoscape-4',
 
                 If no mapping information is present for any of the labels,
                 or if invoked with an undefined value,
-                use the field name "id" by default
+                try to use any of some common field names, such as "name", "title", etc.
+                - or, failing that, use the field name "id" by default
 
-                :return: string
+                :param labels:  An array of strings
+                :param node_id: An integer or string with the node id
+                :return:        String
              */
             {
                 // The default value, in case no mapping info found for any of the labels
                 const default_caption_field_name = "id";
 
                 if (labels === undefined)  {
-                    console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Returning default value")
-                    return default_caption_field_name;
+                    console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Using a default value")
                 }
+                else  {
+                    console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
+                    //console.log(this.graph_data.caption_mapping);
 
-                //console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
-                //console.log(this.graph_data.caption_mapping);
-
-                for (single_label of labels) {
-                    if (single_label in this.graph_data.caption_mapping)  {
-                        const caption_field_name = this.graph_data.caption_mapping[single_label];
-                        //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
-                        return caption_field_name;
+                    for (single_label of labels) {
+                        if (single_label in this.graph_data.caption_mapping)  {
+                            const caption_field_name = this.graph_data.caption_mapping[single_label];
+                            //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
+                            return caption_field_name;
+                        }
                     }
                 }
 
+                // If we get here, no mapping information was available.  Try some typical names [TODO: turn into an array of values]
+                console.log(`map_labels_to_caption_field(): no mapping information was available. Trying common names for node with id ${node_id}...`);
+
+                const node = this.locate_node_by_id(node_id);
+                //console.log(node);
+
+                if ("name" in node)
+                    return "name";
+                if ("Name" in node)
+                    return "Name";
+                if ("title" in node)
+                    return "title";
+                if ("Title" in node)
+                    return "Title";
+                if ("caption" in node)
+                    return "caption";
+                if ("Caption" in node)
+                    return "Caption";
+                if ("model" in node)
+                    return "model";
+                if ("brand" in node)
+                    return "brand";
+
+                // Nothing could be found; fall back to the generic default
+                console.log("map_labels_to_caption_field(): no typical common names identified. Falling back to the generic default");
                 return default_caption_field_name;
+            },
+
+
+            locate_node_by_id(node_id)
+            /*
+                :param node_id: A string
+             */
+            {
+                console.log(`In locate_node_by_id().  Searching for node with id: ${node_id}`);
+                //console.log(typeof node_id);
+
+
+                // Loop over array of nodes and edges
+                for (el of this.graph_structure)  {      // el is an object that represents a node or edge
+                    //console.log(`    el.id : ${el.id}`);
+                    //console.log(typeof el.id);
+                    //console.log(`    el :`);
+                    //console.log(el);
+                    if (!(('source' in el) && ('target' in el))   &&  (el.id == node_id))  {
+                        // If the element is a node, and its id matches the desired value
+                        console.log(`    Located the following node:`);
+                        console.log(el);
+                        return el;
+                    }
+                }
+
+                console.log(`    Unable to locate any matching node`);
+                return {};
             },
 
 
@@ -581,17 +644,23 @@ Vue.component('vue-cytoscape-4',
             node_caption_f(ele)
             /*  Function to generate the caption to show on the graph, for a given node.
                 The caption is based on the node's labels; in the absence of a user-specified mapping,
-                the data in the field "id" is used as caption.
+                an attempt is made to locate typical important field names, such as "name" or "title";
+                failing that, the data in the field "id" is used as caption.
 
                 Note: the various fields of the node may be extracted from the argument ele (representing a node element)
                       as ele.data(field_name).  For example: ele.data("id")
+
+                :param ele: An object representing a node element;
+                                ele.data is a function to which one can pass a field name as argument
+                                (such as "id", and will typically "_node_labels")
+                :return:    The name of a field who value will be used as node caption in the graph
              */
             {
                 //console.log("Determining node caption for node with id: ", ele.data("id"));
                 //console.log("    and labels: ", ele.data("_node_labels"));
 
-                const field_to_use_for_caption = this.map_labels_to_caption_field(ele.data("_node_labels"));
-                //console.log(`Name of field to use for caption: '${field_to_use_for_caption}'`);
+                const field_to_use_for_caption = this.map_labels_to_caption_field(ele.data("_node_labels"), ele.data("id"));
+                console.log(`Name of field to use for caption: '${field_to_use_for_caption}'`);
 
                 return ele.data(field_to_use_for_caption)
             },
