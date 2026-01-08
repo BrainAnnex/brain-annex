@@ -298,10 +298,10 @@ class Categories:
 
         :param category_internal_id:    The internal database ID of a "Category" data node
         :return:                        A list of dictionaries, with one element for each "sibling";
-                                            each element contains the 'internal_id' and 'node_labels' keys,
+                                            each element contains the 'internal_id' and '_node_labels' keys,
                                             plus whatever attributes are stored on that node.
                                             EXAMPLE of single element:
-                                            {'name': 'French', 'internal_id': 123, 'node_labels': ['Category', 'BA']}
+                                            {'name': 'French', 'internal_id': 123, '_node_labels': ['Category', 'BA']}
         """
         #TODO: switch to the following commented line, after testing it
         #result = cls.db.get_siblings(internal_id=category_internal_id, rel_name="BA_subcategory_of", order_by="name")
@@ -719,10 +719,10 @@ class Categories:
 
         :param category_uri: A string identifying the desired Category
         :return:             A list of dictionaries, with one element for each "sibling";
-                                each element contains the 'internal_id' and 'node_labels' keys,
+                                each element contains the 'internal_id' and '_node_labels' keys,
                                 plus whatever attributes are stored on that node.
                                 EXAMPLE of single element:
-                                {'name': 'French', 'internal_id': 123, 'node_labels': ['Category', 'BA']}
+                                {'name': 'French', 'internal_id': 123, '_node_labels': ['Category', 'BA']}
         """
         # TODO: expand to cover all the data needs of BA_pages_routing.py
         # TODO: maybe move to DataManager layer

@@ -9,7 +9,8 @@ import json
 class DisplayNetwork:
     """
     Used to create an HTML file that graphically displays an interactive version
-    of graph-network data
+    of graph-network data.
+    This HTML file is a scaffold for one or move Vue components that provide the desired functionality
     """
 
     @classmethod
@@ -18,7 +19,7 @@ class DisplayNetwork:
         Write the given text (containing simple text and/or HTML code) into the file managed with
         the given File Handler
 
-        :param file_handler:
+        :param file_handler:A file handler, for example as returned by calls to open()
         :param text:        String to write to the file managed by the above file handler
         :return:            None
         """
@@ -31,7 +32,7 @@ class DisplayNetwork:
     def _html_header(cls, component_file_css :str) -> str:
         """
         Generate and return the text for the initial part of an HTML file, including the HEAD section.
-        Various general JavaScript library files (Vue 2, D3 and Cytoscape)
+        Various general JavaScript library files (Vue v.2, D3 and Cytoscape)
         are for now hardwired in the code.
 
         :param component_file_css:  The full URL of the .CSS file used by our Vue component
@@ -58,10 +59,11 @@ class DisplayNetwork:
     def _html_body_start(cls, caption=None) -> str:
         """
         Prepare and return the text for the early part (but post-headers) of an HTML file,
-        with an optional caption to be shown at the top
+        with an optional text caption to be shown at the top
 
-        :param caption: [OPTIONAL]
-        :return:        A string with HTML code
+        :param caption: [OPTIONAL] A string with plain text or HTML code.
+                            EXAMPLES:  "Figure 1" ,  "<b>My Header</b>"
+        :return:        A string with the HTML code to incorporate into the HTML file being formed
         """
         return f'''
 <body>
@@ -78,11 +80,15 @@ class DisplayNetwork:
         plus a script to instantiate the above Vue root component
 
         :param vue_component:   A string with the name of the existing Vue.js component to use.
-                                    EXAMPLE: "vue_cytoscape_2" (assuming that a .js file with such a Vue component exists)
+                                    EXAMPLE: "vue_cytoscape_3" (assuming that a .js file with such a Vue component exists)
         :param component_file:  The full name (including path) of the .js file that contains the above component
-        :param graph_data:
-        :param vue_count:
-        :return:                A string with HTML code
+        :param graph_data:      A python dictionary of data to pass to the Vue component.
+                                    It must contain 3 keys: 'structure', 'color_mapping', 'caption_mapping'.
+                                    For more details, see export_plot()
+        :param vue_count:       An integer used to differentiate between multiple Vue components in the same HTML file.
+                                    By default, 1
+        :return:                A string with HTML code,
+                                    including a <script> element that instantiates the Vue root element
         """
 
         vue_id = f"vue-root-{vue_count}"    # EXAMPLE: "vue-root-1"
@@ -107,7 +113,7 @@ class DisplayNetwork:
 
 
 <script>
-    // Instantiation of the Vue ROOT component
+    // Instantiation of the Vue ROOT element
     new Vue({{
         el: '#{vue_id}',
 
@@ -124,9 +130,10 @@ class DisplayNetwork:
 
     @classmethod
     def export_plot(cls, graph_data :dict, graphic_component :str,
-                    filename :str, caption="Interactive network plot") -> None:
+                    filename :str, caption="Interactive network plot",
+                    vue_comps_dir="https://life123.science/libraries/vue_components/") -> None:
         """
-        Send to the given file the data to create a Vue-based display of a network.
+        Send to the given file the HTML data to create a Vue-based display of a network.
 
         This is meant to work alongside a Vue.js component that expects 2 arguments ("props"):
             1) graph_data
@@ -135,24 +142,12 @@ class DisplayNetwork:
         :param graph_data:          A python dictionary of data to pass to the Vue component.
                                         It must contain 3 keys:
                                             'structure'         A list of dicts
-                                                EXAMPLE, representing two nodes and an edge between them:
-                                                    [     {'id': 'n-0',
-                                                           'labels': ['label_1'],
-                                                           'name': 'Company A',
-                                                           'my_field': 1234
-                                                          },
-                                                          {'id': 'n-1',
-                                                           'labels': ['label_2'],
-                                                           'name': 'Customer B',
-                                                           'my_field': 88
-                                                          },
-                                                          {'name': 'SELLS_TO',
-                                                           'id': 'edge-1',
-                                                           'source': 'n-0',
-                                                           'target': 'n-1',
-                                                           'edge_prop': 'some value'
-                                                          }
-                                                    ]
+                                                EXAMPLE (two nodes followed by an edge):
+                                                    [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
+                                                     {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
+                                                     {'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
+
+                                                Note: 'id' values can be integers or strings
 
                                             'color_mapping'     A dict
                                                 EXAMPLE: {"label_1": "#8DCC92", "label_2": "#D9C8AD"}
@@ -161,29 +156,39 @@ class DisplayNetwork:
                                                 EXAMPLE: {"label_1": "name", "label_2": "name"}
 
         :param graphic_component:   A string with the name of the existing Vue.js component to use.
-                                        EXAMPLE: "vue_cytoscape_2" (assuming that a .js file with such a Vue component exists)
+                                        EXAMPLE: "vue_cytoscape_3" (assuming that a .js file with such a Vue component exists)
 
-        :param filename:            The name of the file into which to create the interactive network plot.
+        :param filename:            The name of the file into which to place the HTML code
+                                        to create the interactive network plot.
                                         The suffix ".htm" will be added if it doesn't end with ".htm" or ".html"
+                                        If the file already exists, it will get overwritten
 
-        :param caption:             String displayed at the top of the HTML file
-
+        :param caption:             [OPTIONAL] String displayed at the top of the HTML file.
+                                        By default, "Interactive network plot"
+        :param vue_comps_dir:       [OPTIONAL] The full name of the directory where the Vue components reside.
+                                        A final "/" in the name is optional.
+                                        Note: when this function is used in a Jupyterlab notebook, it's best to use
+                                              a URL.  EXAMPLE: "https://life123.science/libraries/vue_components/"
         :return:                    None
         """
         # Perform data validation
         assert type(graph_data) == dict, "export_plot(): argument `graph_data` must be a python dictionary"
 
         assert len(graph_data) == 3, \
-                "export_plot(): argument `graph_data` must contains exactly 3 keys, named 'structure', 'color_mapping', 'caption_mapping'"
+                "export_plot(): argument `graph_data` must contains exactly 3 keys, " \
+                "named 'structure', 'color_mapping', 'caption_mapping'"
 
         assert ('structure' in graph_data) and type(graph_data['structure']) == list, \
-                f"export_plot(): the argument `graph_data` must contain a key named 'structure' whose value is a list.  Passed value: {graph_data.get('structure')}"
+                f"export_plot(): the argument `graph_data` must contain a key named 'structure' whose value is a list.  " \
+                f"Passed value: {graph_data.get('structure')}"
 
         assert ('color_mapping' in graph_data) and type(graph_data['color_mapping']) == dict, \
-                f"export_plot(): the argument `graph_data` must contain a key named 'color_mapping' whose value is a python dictionary.  Passed value: {graph_data.get('color_mapping')}"
+                f"export_plot(): the argument `graph_data` must contain a key named 'color_mapping' whose value is a python dictionary.  " \
+                f"Passed value: {graph_data.get('color_mapping')}"
 
         assert ('caption_mapping' in graph_data) and type(graph_data['caption_mapping']) == dict, \
-                f"export_plot(): the argument `graph_data` must contain a key named 'caption_mapping' whose value is a python dictionary.  Passed value: {graph_data.get('caption_mapping')}"
+                f"export_plot(): the argument `graph_data` must contain a key named 'caption_mapping' whose value is a python dictionary.  " \
+                f"Passed value: {graph_data.get('caption_mapping')}"
 
         assert type(filename) == str, "export_plot(): argument `filename` must be a string"
 
@@ -193,15 +198,15 @@ class DisplayNetwork:
 
 
         # Prepare writing into the file (OVERWRITE)
-
         file_handler = open(filename, "w")      # Create a new file, to write to; over-write if present
 
 
         # Export into the HTML file the various Vue-related parts
+        if not vue_comps_dir.endswith("/"):
+            vue_comps_dir += "/"        # Add the final slash, unless already present
 
-        VUE_COMPS_DIR = "https://life123.science/libraries/vue_components/"     # TODO: for now, hardwired
-        component_file_js = f"{VUE_COMPS_DIR}{graphic_component}.js"
-        component_file_css = f"{VUE_COMPS_DIR}{graphic_component}.css"
+        component_file_js = f"{vue_comps_dir}{graphic_component}.js"
+        component_file_css = f"{vue_comps_dir}{graphic_component}.css"
 
         html = cls._html_header(component_file_css) + cls._html_body_start(caption=f"<h1>{caption}</h1>") + \
                cls._html_vue_container(vue_component=graphic_component, vue_count=1, component_file=component_file_js, graph_data=graph_data)
@@ -227,14 +232,14 @@ class PyGraphVisual:
     def __init__(self, db=None):
         self.db = db                    # Object of "GraphAccess" class
 
-        self.structure = []             # The data that defines a graph to visualize.
+        self.structure = []             # The data needed by the Cytoscape graph visualization.
                                         #   A list of dicts defining nodes, and possibly edges as well.
-                                        #   NODES must contain the keys 'id' and 'labels'
+                                        #   NODES must contain the keys 'id' and '_node_labels'
                                         #   EDGES must contain the keys 'name', 'source', and 'target'
                                         #       (and presumably 'id' is required as well?)
                                         # EXAMPLE (2 nodes and an edge):
-                                        #   [{'id': 1, 'labels': ['PERSON'], 'name': 'Julian'},
-                                        #    {'id': 2, 'labels': ['CAR'], 'color': 'white'},
+                                        #   [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
+                                        #    {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
                                         #    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
 
         self.color_mapping = {}         # Mapping a node label to its interior color (the edge color is an automatic variation)
@@ -243,10 +248,11 @@ class PyGraphVisual:
         self.caption_mapping = {}       # Mapping a node label to its caption (field name to use on the graph)
                                         # EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
 
-        self._next_available_edge_id = 1 # An auto-increment value
-
         self._all_node_ids = []         # List of all the node id's added to the graph so far;
                                         #   used for optional prevention of duplicates
+
+        self._next_available_edge_id = 1 # An auto-increment value
+
 
         self.EXTRA_COLORS =  {          # Convenient extra colors, not available thru standard CSS names
             "graph_green": '#8DCC92',
@@ -284,6 +290,7 @@ class PyGraphVisual:
         (typically, to pass to the front-end, for eventual use by the Cytoscape.js library)
 
         :return:    A dict with 3 keys - "structure", "color_mapping" and "caption_mapping"
+                        For more details, see object constructor
         """
         return {"structure": self.structure,
                 "color_mapping": self.color_mapping,
@@ -302,7 +309,7 @@ class PyGraphVisual:
 
         EXAMPLE:    given a call to:  add_node(node_id=1, labels=['PERSON'], data={'name': 'Julian'})
                     then the internal format, cumulatively added to self.structure, will be:
-                    {'id': 1, 'labels': ['PERSON'], 'name': 'Julian'}
+                    {'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'}
 
         :param node_id:     Either an integer or a string to uniquely identify this node in the graph;
                                 it will be used to specify the start/end nodes of edges.
@@ -332,9 +339,9 @@ class PyGraphVisual:
         d["id"] = node_id
 
         if type(labels) == str:
-            labels = [labels]
+            labels = [labels]   # Turn into a list, if passed as a single string value
 
-        d["labels"] = labels
+        d["_node_labels"] = labels
 
         self.structure.append(d)
         self._all_node_ids.append(node_id)
@@ -423,15 +430,46 @@ class PyGraphVisual:
     ############   The methods below require a database connection   ############
 
 
+    def prepare_recordset(self, id_list :[int|str]) -> [dict]:
+        """
+        Given a list of node internal id's, construct and return a dataset of their properties,
+        plus the special fields `internal_id` and `_node_labels`
+
+        :param id_list: A list of internal id's of database nodes
+
+        :return:        A list of dicts, with the node properties plus the special fields `internal_id` and `_node_labels`
+                            EXAMPLE:
+                            [{'internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
+        """
+        assert type(id_list) == list, \
+            f"initialize_graph(): argument `id_list` must be a list; it is of type {type(id_list)}"
+
+        assert self.db, \
+            "initialize_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
+
+        if id_list == []:
+            return []       # No data was passed
+
+        q = f'''
+            MATCH (n)
+            WHERE ID(n) IN $id_list
+            RETURN n
+            '''
+
+        #self.db.debug_print_query(q, {"id_list": id_list})
+        return self.db.query_extended(q, {"id_list": id_list}, flatten=True)
+
+
+
     def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
-        as returned by GraphAccess.get_nodes() - construct and save visualization data for them.
+        as returned by GraphAccess.get_nodes() - construct and save in the object visualization data for them.
 
         Each dictionary entry MUST have a key named "internal_id".
         If any key named "id" is found, it get automatically renamed "id_original" (since "id" is used by the visualization software);
         if "id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
-        Though not required, a key named "node_labels" is typically present as well; if found, it will be renamed "labels".
+        Though not required, a key named "_node_labels" is typically present as well.
 
         Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
         the time portion, if present, will get dropped
@@ -448,6 +486,13 @@ class PyGraphVisual:
         """
         assert self.db, \
             "prepare_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
+
+        assert type(result_dataset) == list, \
+            f"prepare_graph(): argument `id_list` must be a list; it is of type {type(result_dataset)}"
+
+        if len(result_dataset) == 0:
+            return []       # No data was passed
+
 
         if not cumulative:
             # Reset: clear out any previous graph-structure data, and reset edge number auto-increment
@@ -466,7 +511,7 @@ class PyGraphVisual:
 
             node_clone = node.copy()
 
-            del node_clone["internal_id"]
+            #del node_clone["internal_id"]
             
             if "id" in node_clone:
                 assert "id_original" not in node_clone, \
@@ -478,9 +523,8 @@ class PyGraphVisual:
 
             node_list.append(internal_id)
 
-            if "node_labels" in node_clone:
-                labels = node["node_labels"]
-                del node_clone["node_labels"]
+            if "_node_labels" in node_clone:
+                labels = node["_node_labels"]
             else:
                 labels = ""
 
@@ -527,6 +571,23 @@ class PyGraphVisual:
                   "they were renamed `id_original` to avoid conflict with internal database IDs")
             
         return node_list
+
+
+
+    def assemble_graph(self, id_list :[int|str]) -> [dict]:
+        """
+        Given a list of node internal id's, construct and return the data needed by the Cytoscape graph visualization.
+
+        Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
+        the time portion, if present, will get dropped
+
+        :param id_list: A list of internal id's of database nodes
+        :return:        A list of dicts defining nodes, and possibly edges as well,
+                            with all the data needed by the Cytoscape graph visualization
+        """
+        recordset = self.prepare_recordset(id_list)
+        self.prepare_graph(result_dataset=recordset, cumulative=False, add_edges=True)
+        return self.structure
 
 
 

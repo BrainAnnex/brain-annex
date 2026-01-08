@@ -489,9 +489,9 @@ Vue.component('vue-plugin-rs',
                 Invoked when the user clicks on the "EDIT" control for that record
 
                 :param record:  An object with the standard properties
-                                    "internal_id", "node_labels", and "uri" [may or may not have a value],
+                                    "internal_id", "_node_labels", and "uri" [may or may not have a value],
                                     plus whatever fields are part of the given particular record (node)
-                                    EXAMPLE:  {internal_id: 123, node_labels: ["Restaurant"], uri: "r-88",
+                                    EXAMPLE:  {internal_id: 123, _node_labels: ["Restaurant"], uri: "r-88",
                                                name: "Pizzeria NY", city: "NYC"}
              */
             {

@@ -1,7 +1,7 @@
-/*  New version under development
+/*  New version under development (for Search function in main UI)
  */
 
-Vue.component('vue_cytoscape_3',
+Vue.component('vue-cytoscape-4',
     {
         props: {
             graph_data: {
@@ -9,16 +9,25 @@ Vue.component('vue_cytoscape_3',
             },
             /* graph_data is an object with the following 3 KEYS:
 
-                1) "structure"      (an array of objects that represent either nodes or edges)
-                        EXAMPLE (2 nodes followed by an edge):
-                            [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
-                             {'id': 2, 'color': 'white', 'labels': ['CAR']},
-                             {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
+                1) "structure"      (an array of objects that represent either nodes or edges).
+                        The 'id' key is REQUIRED in each object;
+                        a '_node_labels' is typically present in node objects (but not required).
+                        Objects representing edges must have the keys 'source', 'target' and 'name',
+                        where the values of 'source' are 'target' must be 'id' values on node objects.
 
-                2) "color_mapping"      (TODO: auto-assign if unspecified; SEE vue_curves_4.js)
+                        EXAMPLE (two nodes followed by an edge):
+                            [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
+                             {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
+                             {'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
+
+                        Note: 'id' values can be integers or strings
+
+                2) "color_mapping"
+                        Map of node labels to color names
                         EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
 
-                3) "caption_mapping"    (from label name to property to use for the node's caption)
+                3) "caption_mapping"
+                        Map of node labels to node field (property) names to use for the node's caption
                         EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
              */
 
@@ -64,7 +73,7 @@ Vue.component('vue_cytoscape_3',
                     <!-- If nothing is selected on the plot, show the list of labels... -->
                     <p v-if="!node_info" class="legend-block">
                         <b>Node labels</b><br><br>
-                        <template v-for="color_map in Object.entries(graph_data.color_mapping)">
+                        <template v-for="color_map in Object.entries(color_mapping)">
                             <div class="label" v-bind:style="{'background-color': color_map[1]}">{{color_map[0]}}</div>
                         </template>
 
@@ -74,10 +83,10 @@ Vue.component('vue_cytoscape_3',
                         <span style="color: #BBB; font-style: italic">(shift-click for multiple selections)</span>
                     </p>
 
-                    <!-- ...if a node or edge is selected on the plot -->
+                    <!-- ...else, if a node or edge is selected on the plot -->
                     <p v-else class="legend-block">
                         <template v-for="label_name in node_labels">
-                            <div class="label" v-bind:style="{'background-color': graph_data.color_mapping[label_name]}">{{label_name}}</div>
+                            <div class="label" v-bind:style="{'background-color': color_mapping[label_name]}">{{label_name}}</div>
                         </template>
                         <br><br>
 
@@ -121,8 +130,8 @@ Vue.component('vue_cytoscape_3',
                         </template>
                     </p>
 
-                    <br><br>
-                    <span style="color:gray">vue_cytoscape_3 , rev. 2</span>
+                    <br><br><br><br>
+                    <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">vue-cytoscape-4 , rev. 2</span>
                 </div>      <!-- End of side box -->
 
             </div>		<!-- End of outer container -->
@@ -136,10 +145,20 @@ Vue.component('vue_cytoscape_3',
                 graph_structure: this.graph_data.structure,
                         /* An array of objects that represent either nodes or edges)
                             EXAMPLE (2 nodes followed by an edge):
-                                [{'id': 1, 'name': 'Julian', 'labels': ['PERSON']},
-                                 {'id': 2, 'color': 'white', 'labels': ['CAR']},
+                                [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
+                                 {'id': 2, 'color': 'white', '_node_labels': ['CAR']},
                                  {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
                         */
+
+                color_mapping: this.graph_data.color_mapping,
+                        /*  Map of node labels to color names
+                            EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
+                         */
+
+                caption_mapping: this.graph_data.caption_mapping,
+                        /*  Map of node labels to node field (property) names to use for the node's caption
+                            EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
+                         */
 
                 // Data of the currently-selected node;
                 // both variables are arrays of strings:
@@ -148,60 +167,112 @@ Vue.component('vue_cytoscape_3',
 
                 node_array: [],
                 edge_array: [],
-                label_names: [],        // Array of unique label names
+                label_names: [],        // Array of unique label names.  NOT IN CURRENT USE : currently relying on color map
                 edge_names: [],         // Array of unique edge names
 
-                sidebox_expanded: true,
+                default_color_palette:  {   0: "#F16668",
+                                            1: "cyan",
+                                            2: "#C990C1",
+                                            3: "#F79768",
+                                            4: "#8DCC92",
+                                            5: 'yellow',
+                                            6: 'lightgray',
+                                            7: 'pink'
+                                        },
+                next_available_color_palette_index: 0,
 
-                plot_layout_style: "breadthfirst"  // CHOICES: 'grid', 'circle', 'random',
-                                                   //          'concentric', 'breadthfirst', 'cose'
+                sidebox_expanded: true,             // Flag indicating whether to show the plot legend
+
+                plot_layout_style: "breadthfirst"   // CHOICES: 'grid', 'circle', 'random',
+                                                    //          'concentric', 'breadthfirst', 'cose'
             }
         },
 
 
 
+
+        // ---------------------  WATCH  ----------------------
+
+        watch: {
+            graph_data(newVal, oldVal)
+            // Runs ONLY when the `graph_data` prop changes
+            // Note: the "immediate" option cannot be used (presumably because too early in mount cycle)
+            {
+                console.log(`In 'vue-cytoscape-4': the "watch" on the prop "graph_data" reveals that it has changed`);
+
+                this.graph_structure = this.graph_data.structure;
+                this.extract_nodes_and_edges();
+
+                const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
+                                                            // EXAMPLE :  "cy_1"  (this name needs to match the ID given
+                                                            //                     to the DIV element containing the graph)
+                // Save the newly-created Cytoscape object, as metadata for this Vue component
+                // Note: the Cytoscape object cannot be simply saved as component data,
+                //       because doing somehow leads to an infinite loop!
+                this.$options.cy_object = cy_object;
+            }
+        },
+
+
+
+        // ---------------------  UPDATED  ----------------------
+        updated()
+        /* The "updated" Vue hook is invoked when the data changes, after the virtual DOM is re-rendered.
+            It happens when the props of the component change,
+            as well as well a node or edge is selected on the graph (which triggers a legend change),
+            but NOT when nodes are moved around in the graph
+         */
+        {
+            //console.log(`The 'vue-cytoscape-4' component is now updated`);
+        },
+
+
+
         // ---------------------  MOUNTED  ----------------------
-        mounted() {
-            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
-                     waiting this late is needed.
-                     Caution must be taken not to re-trigger it from the code in this function,
-                     or an infinite loop will result!.
-             */
-            console.log(`The 'vue_cytoscape_3' component is now mounted`);
+        mounted()
+        /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
+         waiting this late is needed.
+         Caution must be taken not to re-trigger it from the code in this function,
+         or an infinite loop will result!
+         */
+        {
+            console.log(`The 'vue-cytoscape-4' component is now mounted`);
+
+            this.extract_nodes_and_edges();
 
             const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given
                                                             //                     to the DIV element containing the graph)
+
             // Save the newly-created Cytoscape object, as metadata for this Vue component
             // Note: it cannot be simply saved as component data, because doing so triggers another call to this
             //       "mounted" Vue hook function, leading to an infinite loop!
             this.$options.cy_object = cy_object;
-
-            this.extract_nodes_and_edges();
         },
 
 
 
         // ---------------------  COMPUTED  ----------------------
         computed: {
+
             assemble_element_structure()
             /*  Create and return the graph structure needed by Cytoscape.js
                 (an array of objects, each with a key named "data")
                 EXAMPLE:
                     [
-                        {data: {'id': 1, 'name': 'Julian', 'labels': ['PERSON']}
+                        {data: {'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']}
                         },
-                        {data: {'id': 2, 'color': 'white', 'labels': ['CAR']}
+                        {data: {'id': 2, 'color': 'white', '_node_labels': ['CAR']}
                         },
                         {data: {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
                         }
                     ]
              */
             {
-                cyto_arr = [];
+                var cyto_arr = [];
 
-                for (i in this.graph_structure) {   // Note:  i will be an integer, not an array element!!
-                    el = {data: this.graph_structure[i]};
+                for (i in this.graph_data.structure) {   // Note:  i will be an integer, not an array element!!
+                    el = {data: this.graph_data.structure[i]};
                     cyto_arr.push(el);
                 }
 
@@ -232,12 +303,18 @@ Vue.component('vue_cytoscape_3',
 
 
             create_graph(element_id)
-            /*  This function needs to be invoked after this Vue component is "mounted".
+            /*  This function needs to be invoked when
+                1) this Vue component is first created,
+                2) as well as whenever its input graph data changes,
+                3) or when the user asks for a different layout.
                 Replace the contents of the desired HTML element (whose id is specified by the given `element_id`)
                 with the graphic structure created by Cytoscape
+
+                :param element_id:  The name to match the ID of the Cytoscape DIV element containing the graph.
+                                        EXAMPLE: "cy_1"
              */
             {
-                console.log(`Running create_graph() to replace page element with ID '${element_id}'`);
+                console.log(`Running create_graph() to replace the page element with ID '${element_id}'`);
 
                 var cy_object = cytoscape({
 
@@ -327,11 +404,11 @@ Vue.component('vue_cytoscape_3',
                 /*
                 // EXAMPLES of adding nodes
                 cy_object.add([
-                    { data: { id: 4, labels: 'import' , name: 'Restaurants' }, position: {x: 80, y: 100} }
+                    { data: { id: 4, _node_labels: ['import'] , name: 'Restaurants' }, position: {x: 80, y: 100} }
                 ]);
 
                 cy_object.add([
-                    { data: { id: 5, labels: 'SOME_OTHER_LABELS' , name: 'Mr. Node' }, position: {x: 80, y: 200} }
+                    { data: { id: 5, _node_labels: ['SOME_OTHER_LABELS'] , name: 'Mr. Node' }, position: {x: 80, y: 200} }
                 ]);
                 */
 
@@ -350,7 +427,7 @@ Vue.component('vue_cytoscape_3',
             {
                 const node = ev.target;
 
-                const cyto_data_obj = node.data();      // An object with various keys, such as 'id', 'labels', 'name'
+                const cyto_data_obj = node.data();      // An object with various keys, such as 'id', '_node_labels', 'name'
 
                 this.populate_legend_from_node(cyto_data_obj);
             },
@@ -366,10 +443,10 @@ Vue.component('vue_cytoscape_3',
 
                 for (k in node_data_obj) {
                     //console.log( k, node_data_obj[k] );
-                    if (k == "labels")
+                    if (k == "_node_labels")
                         continue;       // No need to show; labels are shown elsewhere as graphic tags
                     if (k != "name")
-                        html_row_str = `<b>${k}</b>: ${node_data_obj[k]}`;
+                        html_row_str = `<b>${k}</b>: <span class='property-value'>${node_data_obj[k]}</span>`;
                     else
                         html_row_str = `<span style='color: brown; font-weight: bold'>${k}: ${node_data_obj[k]}</span>`;
 
@@ -379,7 +456,7 @@ Vue.component('vue_cytoscape_3',
 
                 // Update the legend
                 this.node_info = info_arr;
-                this.node_labels = node_data_obj.labels;
+                this.node_labels = node_data_obj._node_labels;
             },
 
 
@@ -414,24 +491,54 @@ Vue.component('vue_cytoscape_3',
             },
 
 
+            auto_assign_color_to_label(label)
+            /*  Automatically assign a color to the specified label,
+                in auto-increment fashion from a default color palette.
+                If a color association was already present, it will be over-written.
+
+                :param label:   The name of a node label
+             */
+            {
+                if (! (this.next_available_color_palette_index in this.default_color_palette))
+                    // If we ran out of available default colors, implement a wrap-around
+                    this.next_available_color_palette_index = 0;        // Reset the auto-increment
+
+                let assigned_color = this.default_color_palette[this.next_available_color_palette_index];
+                this.color_mapping[label] = assigned_color;
+                this.next_available_color_palette_index += 1;
+                console.log(`auto_assign_color_to_label(): assigned color '${assigned_color}' to label '${label}'`);
+            },
+
 
             map_labels_to_color(labels)
             /*  Given the labels of a node (an array of strings),
                 return the name of the color to use for the inside of the node,
                 based on what was specified in "color_mapping" from the "graph_data" prop.
+
                 In case of multiple labels, try them sequentially, until a mapping is found.
-                If no mapping information is present for any of the labels, use the color white by default
+                The label "BA" is (at least for now) skipped - being a special label.
+                If no mapping information is present for any of the labels,
+                or if invoked with an undefined value,
+                use the color white by default
+
+                :param labels:  Array of strings (the labels of a database node)
+                :return:        String with a color name or numeric code
              */
             {
                 // The default value, in case no mapping info found for any of the labels
-                const default_color = '#FFFFFF';    // TODO: assign colors on rotation instead
+                const default_color = '#FFFFFF';
 
-                //console.log("labels: ", labels);    // Example: ["PERSON"]
-                //console.log(this.graph_data.color_mapping);
+                if (labels === undefined)  {
+                    console.log("map_labels_to_color(): invoked with `undefined` argument.  Returning default value")
+                    return default_color;
+                }
+
+                //console.log("map_labels_to_color(): labels: ", labels);    // Example: ["PERSON"]
+                //console.log(this.color_mapping);
 
                 for (single_label of labels) {
-                    if (single_label in this.graph_data.color_mapping)  {
-                        const color = this.graph_data.color_mapping[single_label];
+                    if ((single_label in this.color_mapping) && (single_label != "BA"))  {
+                        const color = this.color_mapping[single_label];
                         //console.log(`Using the color '${color}' for the inside of this node`);
                         return color;
                     }
@@ -441,29 +548,95 @@ Vue.component('vue_cytoscape_3',
             },
 
 
-            map_labels_to_caption_field(labels)
+            map_labels_to_caption_field(labels, node_id)
             /*  Given the labels of a node (an array of strings),
                 return the name of the field to use for the node caption,
                 based on what was specified in the "caption_mapping" value from the "graph_data" prop.
                 In case of multiple labels, try them sequentially, until a mapping is found.
-                If no mapping information is present for any of the labels, use the field name "id" by default
+
+                If no mapping information is present for any of the labels,
+                or if invoked with an undefined value,
+                try to use any of some common field names, such as "name", "title", etc.
+                - or, failing that, use the field name "id" by default
+
+                :param labels:  An array of strings
+                :param node_id: An integer or string with the node id
+                :return:        String
              */
             {
                 // The default value, in case no mapping info found for any of the labels
                 const default_caption_field_name = "id";
 
-                //console.log("In map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
-                //console.log(this.graph_data.caption_mapping);
+                if (labels === undefined)  {
+                    console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Using a default value")
+                }
+                else  {
+                    console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
+                    //console.log(this.graph_data.caption_mapping);
 
-                for (single_label of labels) {
-                    if (single_label in this.graph_data.caption_mapping)  {
-                        const caption_field_name = this.graph_data.caption_mapping[single_label];
-                        //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
-                        return caption_field_name;
+                    for (single_label of labels) {
+                        if (single_label in this.graph_data.caption_mapping)  {
+                            const caption_field_name = this.graph_data.caption_mapping[single_label];
+                            //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
+                            return caption_field_name;
+                        }
                     }
                 }
 
+                // If we get here, no mapping information was available.  Try some typical names [TODO: turn into an array of values]
+                console.log(`map_labels_to_caption_field(): no mapping information was available. Trying common names for node with id ${node_id}...`);
+
+                const node = this.locate_node_by_id(node_id);
+                //console.log(node);
+
+                if ("name" in node)
+                    return "name";
+                if ("Name" in node)
+                    return "Name";
+                if ("title" in node)
+                    return "title";
+                if ("Title" in node)
+                    return "Title";
+                if ("caption" in node)
+                    return "caption";
+                if ("Caption" in node)
+                    return "Caption";
+                if ("model" in node)
+                    return "model";
+                if ("brand" in node)
+                    return "brand";
+
+                // Nothing could be found; fall back to the generic default
+                console.log("map_labels_to_caption_field(): no typical common names identified. Falling back to the generic default");
                 return default_caption_field_name;
+            },
+
+
+            locate_node_by_id(node_id)
+            /*
+                :param node_id: A string
+             */
+            {
+                console.log(`In locate_node_by_id().  Searching for node with id: ${node_id}`);
+                //console.log(typeof node_id);
+
+
+                // Loop over array of nodes and edges
+                for (el of this.graph_structure)  {      // el is an object that represents a node or edge
+                    //console.log(`    el.id : ${el.id}`);
+                    //console.log(typeof el.id);
+                    //console.log(`    el :`);
+                    //console.log(el);
+                    if (!(('source' in el) && ('target' in el))   &&  (el.id == node_id))  {
+                        // If the element is a node, and its id matches the desired value
+                        console.log(`    Located the following node:`);
+                        console.log(el);
+                        return el;
+                    }
+                }
+
+                console.log(`    Unable to locate any matching node`);
+                return {};
             },
 
 
@@ -471,17 +644,23 @@ Vue.component('vue_cytoscape_3',
             node_caption_f(ele)
             /*  Function to generate the caption to show on the graph, for a given node.
                 The caption is based on the node's labels; in the absence of a user-specified mapping,
-                the data in the field "id" is used as caption.
+                an attempt is made to locate typical important field names, such as "name" or "title";
+                failing that, the data in the field "id" is used as caption.
 
                 Note: the various fields of the node may be extracted from the argument ele (representing a node element)
                       as ele.data(field_name).  For example: ele.data("id")
+
+                :param ele: An object representing a node element;
+                                ele.data is a function to which one can pass a field name as argument
+                                (such as "id", and will typically "_node_labels")
+                :return:    The name of a field who value will be used as node caption in the graph
              */
             {
                 //console.log("Determining node caption for node with id: ", ele.data("id"));
-                //console.log("    and labels: ", ele.data("labels"));
+                //console.log("    and labels: ", ele.data("_node_labels"));
 
-                const field_to_use_for_caption = this.map_labels_to_caption_field(ele.data("labels"));
-                //console.log(`Name of field to use for caption: '${field_to_use_for_caption}'`);
+                const field_to_use_for_caption = this.map_labels_to_caption_field(ele.data("_node_labels"), ele.data("id"));
+                console.log(`Name of field to use for caption: '${field_to_use_for_caption}'`);
 
                 return ele.data(field_to_use_for_caption)
             },
@@ -497,9 +676,9 @@ Vue.component('vue_cytoscape_3',
              */
             {
                 //console.log("Determining color for node with id: ", ele.data("id"));
-                //console.log("    and labels: ", ele.data("labels"));
+                //console.log("    and labels: ", ele.data("_node_labels"));
 
-                return this.map_labels_to_color(ele.data("labels"));
+                return this.map_labels_to_color(ele.data("_node_labels"));
             },
 
 
@@ -510,8 +689,8 @@ Vue.component('vue_cytoscape_3',
                 same Hue/Saturation but less Luminosity
              */
             {
-                //console.log(this.graph_data.color_mapping);
-                //console.log(ele.data("labels"));
+                //console.log(this.color_mapping);
+                //console.log(ele.data("_node_labels"));
                 const interior_color = this.node_color_f(ele);
                 //console.log(interior_color);
                 const c = d3.hsl(interior_color);
@@ -523,18 +702,56 @@ Vue.component('vue_cytoscape_3',
 
 
             extract_nodes_and_edges()
-            // Parse the array passed to the object, and extract/separate nodes and edges
+            /*  Parse the "graph_structure" array passed to the Vue component,
+                do some validation, and extract/separate nodes and edges.
+                It will set the variables this.node_array, this.edge_array, and this.edge_names,
+                as well as auto-assign default colors as needed
+            */
             {
-                // TODO: possibly use this function do do an initial validation of the pass data
+                console.log(`Entering extract_nodes_and_edges()`);
+
+                // Reset all affected arrays of nodes and edges
+                this.node_array = [];
+                this.edge_array = [];
+                this.edge_names = [];
+
+                // Parse the "graph_structure" array passed to the Vue component, and extract/separate nodes and edge
                 for (el of this.graph_structure)  {     // el is an object that represents a node or edge
                     if (('source' in el) && ('target' in el))  {
-                       // If it's an edge...
+                        // If it appears to be an edge...
+                        if (! ('name' in el))
+                            alert(`Irregularity in passed graph structure: found a nameless edge (from node ${el.source} to node ${el.target})`);
+
                         this.edge_array.push(el);
                         if (! this.edge_names.includes(el.name))
-                            this.edge_names.push(el.name);
+                            this.edge_names.push(el.name);      // Keep a running list of all edge names encountered
                         }
                     else  {
                         // ...otherwise, it's taken to be a node
+                        if (! ('id' in el))
+                            alert(`Irregularity in passed graph structure: found a node lacking a key named 'id'`);
+                        if (! ('_node_labels' in el))
+                            alert(`Irregularity in passed graph structure: found a node (id ${el.id}) lacking a key named '_node_labels'`);
+                        else  {
+                            let labels = el._node_labels;
+                            //console.log(`extract_nodes_and_edges(): verifying or assigning colors to the labels ${labels}`);
+                            if (! Array.isArray(labels))
+                                alert(`Irregularity in passed graph structure: found a node (id ${el.id}) whose labels are not an array'`);
+                            else {
+                                for (let l of labels)  {
+                                    console.log(`extract_nodes_and_edges(): examining color assignment to label '${l}'`);
+                                    /*
+                                    if (Object.keys(this.color_mapping).length == 0)
+                                        console.log("this.color_mapping is empty");
+                                    else
+                                        console.log(this.color_mapping);
+                                    */
+                                    if (! (l in this.color_mapping))
+                                        this.auto_assign_color_to_label(l);
+                                }
+                            }
+                        }
+
                         this.node_array.push(el);
                     }
                 }
@@ -564,7 +781,7 @@ Vue.component('vue_cytoscape_3',
                 console.log(found_array);
 
                 if (found_array.length == 0)  {
-                    alert(`The desired edge not found in the graph!  Try refreshing the page`);
+                    alert(`The desired edge not found in the graph!`);
                     return;
                 }
 
@@ -595,12 +812,12 @@ Vue.component('vue_cytoscape_3',
 
                 // Needs to locate the 'id' of a node from this.graph_structure
                 // that contains the desired key/value pair
-                // EXAMPLE (fragment):  {key: value, 'id': 116404, 'labels': ['CLASS']}
+                // EXAMPLE (fragment):  {key: value, 'id': 116404, '_node_labels': ['CLASS']}
 
                 var found = false;
 
                 for (node of this.graph_structure)  {        // Loop over this.graph_structure array
-                    let node_labels = node.labels;
+                    let node_labels = node._node_labels;
                     console.log(`node_labels: ${node_labels}`);
                     console.log(`Examining node with labels '${node_labels}', and id=${node.id}`);
                     if (node_labels !== undefined  &&  node_labels.includes(label)  &&  node[key] == value)  {
@@ -621,7 +838,7 @@ Vue.component('vue_cytoscape_3',
                 this.$options.cy_object.$(selector).select();   // Tell Cytoscape to select this node
                                                                 // EXAMPLE:  cy_object.$('#116404').select()
                 //this.node_info = ['A test'];
-                //this.node_labels = node.labels;
+                //this.node_labels = node._node_labels;
                 this.populate_legend_from_node(located_node);
             }
 

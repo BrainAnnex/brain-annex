@@ -364,7 +364,7 @@ class PagesRouting:
             """
             template = "filter.htm"
 
-            all_labels = DataManager.get_node_labels()      # EXAMPLE: ["my_label_1", "my_label_2"]
+            all_labels = GraphSchema.db.get_all_node_labels()      # EXAMPLE: ["my_label_1", "my_label_2"]
             all_categories = Categories.get_all_categories(exclude_root=False, include_remarks=True)
 
             return render_template(template,
@@ -438,7 +438,7 @@ class PagesRouting:
 
             template = "node_explorer.htm"
 
-            label_list = DataManager.get_node_labels()
+            label_list = GraphSchema.db.get_all_node_labels()   # EXAMPLE: ["my_label_1", "my_label_2"]
 
             return render_template(template,
                                    site_data = cls.site_data,
@@ -474,7 +474,7 @@ class PagesRouting:
             """
 
             template = "manage_node_labels.htm"
-            label_list = DataManager.get_node_labels()
+            label_list = GraphSchema.db.get_all_node_labels()   # EXAMPLE: ["my_label_1", "my_label_2"]
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
@@ -489,7 +489,7 @@ class PagesRouting:
 
             template = "node_explorer.htm"
 
-            label_list = DataManager.get_node_labels()
+            label_list = GraphSchema.db.get_all_node_labels()   # EXAMPLE: ["my_label_1", "my_label_2"]
             #return "TEMPORARILY DISABLED"
             # TODO: fix infinite loop in print statements
             (header_list, record_list, inbound_headers, outbound_headers, inbound_counts, outbound_counts) = \

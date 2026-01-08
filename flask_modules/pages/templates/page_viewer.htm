@@ -733,9 +733,10 @@ new Vue({
         if (this.is_page_empty)
             this.expose_controls = true;
 
-        // Portion for module Awesomplete.  See: https://projects.verou.me/awesomplete/
+        // Portion for the module Awesomplete.  See: https://projects.verou.me/awesomplete/
         const inputElement = document.getElementById("category_navigator"); // The input element managed by Awesomplete
-        console.log(inputElement);
+        //console.log("inputElement for the module Awesomplete");
+        //console.log(inputElement);
 
         // Show label but insert value into the input:
         new Awesomplete(inputElement, {

@@ -260,9 +260,9 @@ def test_import_pandas_nodes_4(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']}
                ]
     assert compare_recordsets(result, expected)
 
@@ -285,12 +285,12 @@ def test_import_pandas_nodes_4(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], 'node_labels': ['Motor Vehicle'], 'color': 'white'},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle'], 'color': 'white'},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']},
 
-                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[2], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[2], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -323,11 +323,11 @@ def test_import_pandas_nodes_5(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -350,11 +350,11 @@ def test_import_pandas_nodes_5(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -386,11 +386,11 @@ def test_import_pandas_nodes_6(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'year': 2005, 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'year': 2025, 'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, 'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'year': 2005, 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'year': 2025, 'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -411,11 +411,11 @@ def test_import_pandas_nodes_6(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]
 
     assert compare_recordsets(result, expected)
@@ -436,12 +436,12 @@ def test_import_pandas_nodes_6(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'internal_id': import_car_list[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[1], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'internal_id': import_car_list[2], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'internal_id': import_car_list[3], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[4], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'internal_id': import_car_list[5], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'internal_id': import_car_list[4], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]
 
     assert compare_recordsets(result, expected)
@@ -605,9 +605,9 @@ def test_import_pandas_nodes_2_OLD(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']}
                ]
     assert compare_recordsets(result, expected)
 
@@ -626,12 +626,12 @@ def test_import_pandas_nodes_2_OLD(db):
     assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], 'node_labels': ['Motor Vehicle'], 'color': 'white'},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], 'node_labels': ['Motor Vehicle']},
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle'], 'color': 'white'},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']},
 
-                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], 'node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[1], 'node_labels': ['Motor Vehicle']}
+                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[1], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
