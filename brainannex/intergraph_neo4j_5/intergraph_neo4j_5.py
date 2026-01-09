@@ -12,7 +12,7 @@ import sys
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2025 Julian A. West
+        Copyright (c) 2021-2026 Julian A. West
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org),
         though it's released independently.
@@ -167,7 +167,7 @@ class InterGraph:
 
     def version(self) -> str:
         """
-        Return the version of the Neo4j driver being used.  EXAMPLE: "4.4.12"
+        Return the version of the Neo4j driver being used.  EXAMPLE: "5.28.1"
 
         :return:    A string with the version number
         """
@@ -310,7 +310,7 @@ class InterGraph:
                 return
 
         # Start a new session, use it, and then immediately close it
-        with self.driver.session() as new_session:
+        with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 
@@ -418,7 +418,7 @@ class InterGraph:
                 return []
 
         # Start a new session, use it, and then immediately close it
-        with self.driver.session() as new_session:
+        with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 
@@ -529,7 +529,7 @@ class InterGraph:
                  return {}
 
         # Start a new session, use it, and then immediately close it
-        with self.driver.session() as new_session:
+        with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 

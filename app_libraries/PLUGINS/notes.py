@@ -7,6 +7,8 @@ class Notes:
     """
     Plugin-provided handlers for "notes"  (HTML-formatted text)
     """
+    
+    SCHEMA_CLASS_NAME = "Note"
 
     SCHEMA_CLASS_NAME = "Note"
 

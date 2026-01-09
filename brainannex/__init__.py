@@ -5,8 +5,8 @@ __version__ = "5.0.0rc7_INTERIM_15"        # IN-PROGRESS towards rc7
 #            should be uncommented,
 #            depending on the graph database being used
 
-from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph      # (Un)comment AS NEEDED!
-#from brainannex.intergraph_neo4j_5.intergraph_neo4j_5 import InterGraph     # (Un)comment AS NEEDED!
+#from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph      # (Un)comment AS NEEDED!
+from brainannex.intergraph_neo4j_5.intergraph_neo4j_5 import InterGraph     # (Un)comment AS NEEDED!
 
 from brainannex.graph_access import GraphAccess
 from brainannex.cypher_utils import (CypherBuilder, CypherUtils)
