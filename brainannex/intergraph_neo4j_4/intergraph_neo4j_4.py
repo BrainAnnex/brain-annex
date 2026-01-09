@@ -12,7 +12,7 @@ import sys
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2025 Julian A. West
+        Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
 
         This file is part of the "Brain Annex" project (https://BrainAnnex.org),
         though it's released independently.

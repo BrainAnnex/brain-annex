@@ -17,7 +17,7 @@ from datetime import datetime
 
 
 """
-    MIT License.  Copyright (c) 2021-2025 Julian A. West and the BrainAnnex.org project
+    MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
 """
 
 
