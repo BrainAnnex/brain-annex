@@ -1,6 +1,6 @@
 """
     Router/generator for Brain Annex pages
-    MIT License.  Copyright (c) 2021-2025 Julian A. West
+    MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
 """
 
 from flask import Blueprint, render_template, current_app, make_response, request
