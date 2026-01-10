@@ -2755,7 +2755,7 @@ class GraphSchema:
         Return all the properties of the link(s), of the specified name, between the two given Data nodes.
 
         Note that more than 1 link by the same name may exist between any two given nodes, if
-        the links have different properties; as long as at least 1 link exists, True is returned
+        the links have different properties.
 
         :param node1_id:   A unique value to identify the 1st data node:
                                 either an internal database ID or a primary key value
@@ -2793,7 +2793,7 @@ class GraphSchema:
                 RETURN r
                 '''
             result = cls.db.query_extended(q, data_dict, flatten=True,
-                fields_to_exclude=['neo4j_start_node', 'neo4j_end_node', 'neo4j_type'])
+                fields_to_exclude=['neo4j_start_node', 'neo4j_end_node', 'neo4j_type'])     # TODO: fields_to_exclude are database-specific
         else:
             q = f'''
                 MATCH (dn1) -[r :`{link_name}`]-> (dn2)
@@ -3987,7 +3987,7 @@ class GraphSchema:
 
 
     @classmethod
-    def import_pandas_nodes_NO_BATCH(cls, df :pd.DataFrame, class_name: str, class_node=None,
+    def import_pandas_nodes_NO_BATCH(cls, df :pd.DataFrame, class_name :str, class_node=None,
                                      select=None, drop=None, rename=None,
                                      primary_key=None, duplicate_option="merge",
                                      datetime_cols=None, int_cols=None,
@@ -4362,6 +4362,7 @@ class GraphSchema:
                                                                 # then we'll just use 1 batch
         print(f"import_pandas_nodes(): importing {len(df)} records in {number_batches} batch(es) of size up to {max_batch_size}...")
 
+         # TODO: np.array_split is being phased out in favor of the approach used in import_pandas_links()
         batch_list = np.array_split(df, number_batches)     # List of Pandas data frames,
                                                             # each resulting from splitting the original data frame
                                                             # into groups of rows
@@ -4678,6 +4679,7 @@ class GraphSchema:
                                                                 # then we'll just use 1 batch
         print(f"import_pandas_links(): importing {len(df)} links in {number_batches} batch(es) of max size {max_batch_size}...")
 
+        # TODO: np.array_split is being phased out in favor of the approach used in import_pandas_links()
         batch_list = np.array_split(df, number_batches)     # List of Pandas data frames,
                                                             # each resulting from splitting the original data frame
                                                             # into groups of rows
@@ -4819,7 +4821,7 @@ class GraphSchema:
 
         :return:                A list of the internal database ID's of the created links
         """
-        # TODO: obsolete arg "report"
+        # TODO: obsolete the arg "report"
         # TODO: if "report_frequency" isn't specified by the user (None), select a value dynamically based on the import size and max_batch_size
 
         cls.assert_valid_relationship_name(link_name)
@@ -4839,7 +4841,10 @@ class GraphSchema:
         key_from = col_from
         key_to = col_to
 
-        if type(cols_link_props) == list:
+        # Compose a (possibly empty) list `link_props`
+        if cols_link_props is None:
+            link_props = []
+        elif type(cols_link_props) == list:
             link_props = cols_link_props
         else:
             link_props = [cols_link_props]
@@ -4849,13 +4854,14 @@ class GraphSchema:
                                                                 # then we'll just use 1 batch
         print(f"import_pandas_links(): importing {len(df)} links in {number_batches} batch(es) of max size {max_batch_size}...")
 
-        batch_list = np.array_split(df, number_batches)     # List of Pandas data frames,
+        #batch_list = np.array_split(df, number_batches)    # List of Pandas data frames,
                                                             # each resulting from splitting the original data frame
-                                                            # into groups of rows
+                                                            # into groups of rows.  BAD APPROACH!  It turns int's into numpy.int64 :O
 
         # EXAMPLE of *ONE* ELEMENT in the batch_list (batch_list is a list of them):
         #       a Pandas data frame, with the same columns, but fewer rows, as the original data frame df
-        #print("batch_list[0]: \n", batch_list[0])
+        #print("\nbatch_list[0]:\n", batch_list[0])
+        #print("Data types of above batch:\n", batch_list[0].dtypes, "\n")
         '''
             city_id  state_id  rank region
         0        1         1    53  north
@@ -4868,20 +4874,27 @@ class GraphSchema:
 
         link_id_list = []
 
-        for batch_count, df_chunk in enumerate(batch_list):         # Split the import operation into batches
-            # df_chunk is a Pandas data frame, with the same columns, but fewer rows, as the original data frame df
-            '''
-                city_id  state_id  rank region
-            0        1         1    53  north
-            1        3         1     4  north            
-            '''
-            if report and ((batch_count+1) % report_frequency == 0):
-                print(f"   Importing batch # {batch_count+1} : {len(df_chunk)} row(s)")
+        number_of_recs = len(df)
 
-            link_list = cls._restructure_df(df=df_chunk, col_from=key_from, col_to=key_to, cols_other=link_props)
+        batch_count = 1             # 1-based count for batches (just used in reporting)
+        chunk_size = math.ceil(number_of_recs / number_batches)  # EXAMPLES: 10 recs, 2 batches -> 5 ; 11 recs, 2 batches -> 6
+        row_start = 0               # 0-based indexing
+        row_end = chunk_size-1
+
+        #for batch_count, df_chunk in enumerate(batch_list):         # Split the import operation into batches
+        while(row_start < number_of_recs):      # 0-based indexing
+            if report and (batch_count % report_frequency == 0):
+                print(f"   Importing batch # {batch_count} : {chunk_size} row(s)")
+
+            #print(f"From row {row_start} to row {row_end} (both inclusive):\n")
+            #print(f"key_from: `{key_from}`, key_to: `{key_to}`, link_props: {link_props}")
+
+            link_list = cls._convert_df_chunk(df=df, row_start=row_start, row_end=row_end,
+                                              col_from=key_from, col_to=key_to, cols_other=link_props)
+            #link_list = cls._restructure_df(df=df_chunk, col_from=key_from, col_to=key_to, cols_other=link_props)
                                 # Turn the Pandas dataframe into a list of dicts;
-                                # each dict (originating from 1 row of the dataframe)
-                                # contains the data for 1 link
+                                # each dict (originating from a row of the dataframe)
+                                # contains the data for 1 link.  The value for 'OTHER_FIELDS' is a (possibly-empty) dict
                                 # EXAMPLE: [{'FROM': 1, 'TO': 1, 'OTHER_FIELDS': {'rank': 53, 'region': 'north'}},
                                 #           {'FROM': 3, 'TO': 1, 'OTHER_FIELDS': {'rank': 4, 'region': 'north'}}]
             #print("link_list:\n", link_list)
@@ -4897,10 +4910,10 @@ class GraphSchema:
                       (to_node   :`{class_to}`   {{`{key_to}`  : link_dict["TO"]}})             
                 MERGE (from_node)-[r:`{link_name}`]->(to_node)
                 WITH r, link_dict["OTHER_FIELDS"] AS link_props
-                SET r = link_props
+                SET r += link_props
                 RETURN id(r) AS link_id
                 '''
-
+            # Note:  "SET r += link_props" works also when link_props in an empty dict
             data_binding={"link_list": link_list}
 
             # EXAMPLE of query:
@@ -4911,7 +4924,7 @@ class GraphSchema:
                       (to_node   :`State` {`state_id`: link_dict["TO"]})             
                 MERGE (from_node)-[r:`IS_IN`]->(to_node)
                 WITH r, link_dict["OTHER_FIELDS"] AS link_props
-                SET r = link_props
+                SET r += link_props
                 RETURN id(r) AS link_id
             '''
             # EXAMPLE of data_binding:
@@ -4922,10 +4935,9 @@ class GraphSchema:
                               ]
                 }
             '''
-
             #cls.db.debug_query_print(q, data_binding)
 
-            result = cls.db.update_query(q, data_binding)
+            result = cls.db.update_query(q, data_binding=data_binding)
             #print("    Result of running batch : ", result)
             # EXAMPLE :  {'_contains_updates': True,
             #             'relationships_created': 2, 'properties_set': 4,
@@ -4945,10 +4957,18 @@ class GraphSchema:
                 else:
                     raise Exception(error_msg)
 
-            if report and ((batch_count+1) % report_frequency == 0):
+            if report and (batch_count % report_frequency == 0):
                 print(f"     Interim status: at the end of this batch, imported a grand total of {len(link_id_list)} link(s)")
 
+            batch_count += 1
+
+            row_start = row_end + 1
+
+            row_end = row_start + chunk_size-1  # This will create a chuck of the desired size
+            if row_end >= number_of_recs:
+                row_end = number_of_recs-1      # The max value that row_end can take
         # END for
+
 
         if report_frequency:
             print(f"    FINISHED importing a total of {len(link_id_list)} links")
@@ -4958,34 +4978,51 @@ class GraphSchema:
 
 
     @classmethod
-    def _restructure_df(cls, df, col_from :str, col_to :str, cols_other :[str]) -> [dict]:
+    def _convert_df_chunk(cls, df, row_start :int, row_end :int, col_from :str, col_to :str, cols_other :[str]) -> [dict]:
         """
-        Take a Pandas dataframe with at least 2 columns,
+        Take a portion of a Pandas dataframe with at least 2 columns,
         whose names are respectively given by col_from and col_to,
         and turn it into a list of dicts.
 
-        Each dictionary contains 3 key/value pairs:
-            1) "FROM", with the value from the column identified by col_from
-            2) "TO", with the value from the column identified by to_from
-            3) "OTHER_FIELDS, with a dict with the names/values from all the columns identified by cols_other;
-                        Pairs with values that are None, blanks strings and Numpy Nan's are dropped
+        Only a batch of rows between `row_start` and `row_end` (both INCLUSIVE, and zero-based indexes) is processed.
+
+        Each dictionary created for a dataframe row contains 3 key/value pairs:
+            1) "FROM", with the value from the column identified by `col_from`
+            2) "TO", with the value from the column identified by `to_from`
+            3) "OTHER_FIELDS, with a dict with the names/values from all the columns identified by `cols_other`;
+                        Key/Value pairs with values that are None, blanks strings or Numpy Nan's are dropped
 
         EXAMPLE - given the following dataframe df:
-               A  B   C    D     E
-            0  1  x  10  100  1000
-            1  2  y  20  200  2000
-        then   _restructure_df(df=df, col_from="A", col_to="B", cols_other=["C","E"]) gives:
-                         [{'FROM': 1, 'TO': 'x', 'OTHER_FIELDS': {'C': 10, 'E': 1000}},
-                          {'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {'C': 20, 'E': 2000}}]
+               A  B   C    D      E
+            0  1  x  10  100  Hello
+            1  2  y  20  200
+
+            then   _convert_df_chunk(df=df, row_start=0, row_end=1, col_from="A", col_to="B", cols_other=["C","E"])
+            gives:
+                         [{'FROM': 1, 'TO': 'x', 'OTHER_FIELDS': {'C': 10, 'E': 'Hello'}},
+                          {'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {'C': 20}}]
 
         :param df:          A Pandas dataframe with at least 2 columns,
                                 whose names are specified in the next 2 fields
+        :param row_start:   INCLUSIVE row number where the batch starts
+        :param row_end:     INCLUSIVE row number where the batch ends
         :param col_from:    The name of a column in the above Pandas dataframe
         :param col_to:      The name of another column in the above Pandas dataframe
         :param cols_other:  A (possibly-empty) list of other column names in the dataframe
         :return:            A list of dicts, derived from the rows of the dataframe
         """
-        # Transforming the DataFrame
+        assert row_end >= row_start, \
+            f"_convert_df_chunk(): the value of `row_end` ({row_end}) cannot be smaller than that of `row_start` ({row_start})." \
+            f" Both are INCLUSIVE row numbers"
+
+        assert row_end < len(df), \
+            f"_convert_df_chunk(): the value of `row_end` ({row_end}) must be SMALLER " \
+            f"than the number of rows ({len(df)}) in the dataframe (zero-based indexing)"
+
+        # Transform the requested batch of rows from the DataFrame into a list of dicts
+        records = df.iloc[row_start:row_end+1].to_dict(orient="records")
+
+        # Extract the fields of interest, while omitting "junk" values
         data_list = [
             {
                 "FROM": row[col_from],
@@ -4993,7 +5030,7 @@ class GraphSchema:
                 "OTHER_FIELDS": {col: row[col] for col in cols_other
                                                 if cls._not_junk(row[col])}     # Strip off "junk" values
             }
-            for _, row in df.iterrows()     # iterrows() allows iterating over each row of the DataFrame
+            for row in records
         ]
 
         return data_list
