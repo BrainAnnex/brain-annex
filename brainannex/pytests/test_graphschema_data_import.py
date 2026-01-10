@@ -1093,7 +1093,41 @@ def test_import_pandas_links_4(db):
 
 
 
-def test__restructure_df():
+def test_import_pandas_links_5(db):
+    db.empty_dbase()
+
+    # Create a "City" Class node - together with its Properties, based on the data to import
+    GraphSchema.create_class_with_properties(name="City", properties=["City ID", "name"])
+
+    # Likewise for a "State" Class node - together with its Properties, based on the data to import
+    GraphSchema.create_class_with_properties(name="State", properties=["State ID", "name", "2-letter abbr"])
+
+    # Now add a relationship named "IS_IN", from the "City" Class to the "State" Class
+    GraphSchema.create_class_relationship(from_class="City", to_class="State", rel_name="IS_IN")
+
+    city_df = pd.DataFrame({"City ID": [1, 2, 3, 4], "name": ["Berkeley", "Chicago", "San Francisco", "New York City"]})
+    state_df = pd.DataFrame({"State ID": [1, 2, 3], "name": ["California", "Illinois", "New York"], "2-letter abbr": ["CA", "IL", "NY"]})
+
+    state_city_links_df = pd.DataFrame({"State ID": [1, 1, 2, 3], "City ID": [1, 3, 2, 4]})
+    print(state_city_links_df)
+
+    GraphSchema.import_pandas_nodes(df=city_df, class_name="City", report=False)      # Import the 4 cities
+    GraphSchema.import_pandas_nodes(df=state_df, class_name="State", report=False)    # Import the 3 states
+
+    # Finally, link up the cities to the states, using links named "IS_IN"
+    GraphSchema.import_pandas_links(df=state_city_links_df,
+                                    class_from="City", class_to="State",
+                                    col_from="City ID", col_to="State ID",
+                                    link_name="IS_IN")
+
+    assert GraphSchema.data_link_exists(node1_id="Berkeley", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="San Francisco", node2_id="California", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="Chicago", node2_id="Illinois", id_key="name", link_name="IS_IN")
+    assert GraphSchema.data_link_exists(node1_id="New York City", node2_id="New York", id_key="name", link_name="IS_IN")
+
+
+
+def test__convert_df_chunk():
     data = {
         "A": [1, 2, 3],
         "B": ["x", "y", "z"],
@@ -1108,15 +1142,42 @@ def test__restructure_df():
     1  2  y  20  200  2000
     2  3  z  30  300  3000
     '''
-    result = GraphSchema._restructure_df(df=df, col_from="A", col_to="B", cols_other=["C", "E"])
+    result = GraphSchema._convert_df_chunk(df=df, row_start=0, row_end=2,
+                                           col_from="A", col_to="B", cols_other=["C", "E"])
     assert result == [{'FROM': 1, 'TO': 'x', 'OTHER_FIELDS': {'C': 10, 'E': 1000}},
                       {'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {'C': 20, 'E': 2000}},
                       {'FROM': 3, 'TO': 'z', 'OTHER_FIELDS': {'C': 30, 'E': 3000}}]
 
-    result = GraphSchema._restructure_df(df=df, col_from="A", col_to="B", cols_other=[])
+    assert type(result[0]["FROM"]) == int
+    assert type(result[0]["OTHER_FIELDS"]["C"]) == int
+
+    result = GraphSchema._convert_df_chunk(df=df, row_start=0, row_end=1,
+                                           col_from="A", col_to="B", cols_other=["C", "E"])
+    assert result == [{'FROM': 1, 'TO': 'x', 'OTHER_FIELDS': {'C': 10, 'E': 1000}},
+                      {'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {'C': 20, 'E': 2000}}]
+
+    result = GraphSchema._convert_df_chunk(df=df, row_start=1, row_end=1,
+                                           col_from="A", col_to="B", cols_other=["C", "E"])
+    assert result == [{'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {'C': 20, 'E': 2000}}]
+
+    with pytest.raises(Exception):  # Starting after the endrow
+        GraphSchema._convert_df_chunk(df=df, row_start=2, row_end=1,
+                                      col_from="A", col_to="B", cols_other=["C", "E"])
+    with pytest.raises(Exception):  # Exessive row_end
+        GraphSchema._convert_df_chunk(df=df, row_start=1, row_end=3,
+                                      col_from="A", col_to="B", cols_other=["C", "E"])
+
+    result = GraphSchema._convert_df_chunk(df=df, row_start=1, row_end=2,
+                                           col_from="A", col_to="B", cols_other=["C", "E"])
+    assert result == [{'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {'C': 20, 'E': 2000}},
+                      {'FROM': 3, 'TO': 'z', 'OTHER_FIELDS': {'C': 30, 'E': 3000}}]
+
+    result = GraphSchema._convert_df_chunk(df=df, row_start=0, row_end=2,
+                                           col_from="A", col_to="B", cols_other=[])
     assert result == [{'FROM': 1, 'TO': 'x', 'OTHER_FIELDS': {}},
                       {'FROM': 2, 'TO': 'y', 'OTHER_FIELDS': {}},
                       {'FROM': 3, 'TO': 'z', 'OTHER_FIELDS': {}}]
+
 
 
     # With new data that contains some None values, empty strings and NaN's
@@ -1134,9 +1195,18 @@ def test__restructure_df():
     1  2  y   20    NaN   beta
     2  3  z   30  300.0   None
     '''
-    result = GraphSchema._restructure_df(df=df, col_from="A", col_to="C", cols_other=["B", "D", "E"])
+    result = GraphSchema._convert_df_chunk(df=df, row_start=0, row_end=2,
+                                           col_from="A", col_to="C", cols_other=["B", "D", "E"])
 
     assert result == [  {'FROM': 1, 'TO': 10, 'OTHER_FIELDS': {'D': 100.0, 'E': 'alpha'}},
+                        {'FROM': 2, 'TO': 20, 'OTHER_FIELDS': {'B': 'y',   'E': 'beta'}},
+                        {'FROM': 3, 'TO': 30, 'OTHER_FIELDS': {'B': 'z',   'D': 300.0}}
+                     ]
+
+    result = GraphSchema._convert_df_chunk(df=df, row_start=1, row_end=2,
+                                           col_from="A", col_to="C", cols_other=["B", "D", "E"])
+
+    assert result == [
                         {'FROM': 2, 'TO': 20, 'OTHER_FIELDS': {'B': 'y',   'E': 'beta'}},
                         {'FROM': 3, 'TO': 30, 'OTHER_FIELDS': {'B': 'z',   'D': 300.0}}
                      ]
@@ -1156,7 +1226,7 @@ def test__not_junk():
 
 
 
-def test_import_pandas_links_4(db):
+def test_get_data_link_properties(db):
     db.empty_dbase()
     GraphSchema.set_database(db)
 
