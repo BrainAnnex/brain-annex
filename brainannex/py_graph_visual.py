@@ -88,7 +88,7 @@ class DisplayNetwork:
         :param vue_count:       An integer used to differentiate between multiple Vue components in the same HTML file.
                                     By default, 1
         :return:                A string with HTML code,
-                                    including a <script> element that instantiates the Vue root element
+                                    including a SCRIPT element that instantiates the Vue root element
         """
 
         vue_id = f"vue-root-{vue_count}"    # EXAMPLE: "vue-root-1"
