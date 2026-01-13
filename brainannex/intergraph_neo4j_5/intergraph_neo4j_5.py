@@ -743,25 +743,28 @@ class InterGraph:
         Create a new database index, unless it already exists,
         to be applied to the pairing of the specified label and key (property).
         The standard name automatically given to the new index is of the form label.key
-        EXAMPLE - to index nodes labeled "car" by their key "color", use:
+
+        EXAMPLE - to index nodes labeled "car" by their key (property) "color", use:
                         create_index(label="car", key="color")
                   This new index - if not already in existence - will be named "car.color"
 
         If an existing index entry contains a list of labels (or types) such as ["l1", "l2"] ,
         and a list of properties such as ["p1", "p2"] ,
-        then the given pair (label, key) is checked against ("l1_l2", "p1_p2"), to decide whether it already exists.
+        then the given pair (label, key) is checked against ("l1_l2", "p1_p2"),
+        to decide whether it already exists.
 
         :param label:   A string with the node label to which the index is to be applied
         :param key:     A string with the key (property) name to which the index is to be applied
         :return:        True if a new index was created, or False otherwise
         """
-        # TODO: clarify naming, and offer option to specify a custom name.  Allow use of multiple keys
+        # TODO: offer option to specify a custom index name.  Allow use of multiple keys
         existing_indexes = self.get_indexes()   # A Pandas dataframe with info about indexes;
                                                 #       in particular 2 columns named "labelsOrTypes" and "properties"
 
-        # Ditch Pandas dataframe rows where either column "labelsOrTypes" or "properties" is missing
-        # (this would be the case for indexes of type "LOOKUP", which won't have "labelsOrTypes" nor "properties")
-        existing_indexes = existing_indexes.dropna(subset=["labelsOrTypes", "properties"])
+        if not existing_indexes.empty:
+            # Ditch Pandas dataframe rows where either column "labelsOrTypes" or "properties" is missing
+            # (this would be the case for indexes of type "LOOKUP", which won't have "labelsOrTypes" nor "properties")
+            existing_indexes = existing_indexes.dropna(subset=["labelsOrTypes", "properties"])
 
         # Proceed by row (axis=1) along the Pandas dataframe `existing_indexes`, and assemble a list of pairs.
         # The 1st element in the pairs consists of underscore-separated `labelsOrTypes` entries;
