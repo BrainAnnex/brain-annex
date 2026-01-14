@@ -36,12 +36,14 @@ div.cytoscape-legend-collapsed {
 }
 
 
+/* For the listing of node labels, as "tag-like" graphics */
 div.label {
     display: inline-block;
     padding: 5px;
     margin-right: 5px;
     margin-bottom: 5px;
     border-radius: 10px;
+    border: 1px solid #d0d0d0;
 }
 
 div.edge {

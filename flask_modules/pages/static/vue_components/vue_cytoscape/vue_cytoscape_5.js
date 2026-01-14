@@ -256,6 +256,8 @@ Vue.component('vue-cytoscape-5',
             // Note: it cannot be simply saved as component data, because doing so triggers another call to this
             //       "mounted" Vue hook function, leading to an infinite loop!
             this.$options.cy_object = cy_object;
+
+            console.log(`    completed execution of mounted()`);
         },
 
 
@@ -295,31 +297,23 @@ Vue.component('vue-cytoscape-5',
                 return cyto_arr;
             }
 
-
-
         },  // COMPUTED
+
 
 
 
         // ---------------------  METHODS  ----------------------
         methods: {
-            change_plot_style()
-            /*  Invoked as soon as the user selects an entry from the menu of plot styles.
-                Re-render the graph with the new plot style
-             */
-            {
-                const cy_object = this.create_graph('cy_' + this.component_id);     // This will let Cytoscape.js re-render the plot
-                this.$options.cy_object = cy_object;        // Save the new object
-                this.node_info = null;                      // Unset any node selection
-            },
-
-
 
             create_graph(element_id)
-            /*  This function needs to be invoked when
-                1) this Vue component is first created,
-                2) as well as whenever its input graph data changes,
-                3) or when the user asks for a different layout.
+            /*  Let Cytoscape.js re-render the requested plot.
+
+                This function needs to be invoked whenever any of the following holds:
+
+                1) this Vue component is first created
+                2) its input graph data changes
+                3) the user asks for a different layout
+
                 Replace the contents of the desired HTML element (whose id is specified by the given `element_id`)
                 with the graphic structure created by Cytoscape
 
@@ -395,6 +389,7 @@ Vue.component('vue-cytoscape-5',
                             // The Y-axis points DOWNWARD
                             // ALTERNATIVE:
                             //       position {x: 0, y: 0}  // In node definitions; can also use renderedPosition
+                            // TEST
                             '1': {x: 0,    y: 0},       // Julian
                             '2': {x: 0,    y: 200},     // Toyota
                             '3': {x: -200, y: 0},       // Berkeley
@@ -410,9 +405,10 @@ Vue.component('vue-cytoscape-5',
                 /*
                     Detect all click of interest, and register their handlers
                  */
-                cy_object.on('click', this.clear_legend);           // A click on the empty space of the graph (the Cytoscape core)
-                cy_object.on('click', 'node', this.show_node_info); // A click on a node on the graph
-                cy_object.on('click', 'edge', this.show_edge_info); // A click on an edged
+                cy_object.on('click', this.clear_legend);                   // A click on the empty space of the graph (the Cytoscape core)
+                cy_object.on('click', 'node', this.show_node_info);         // A click on a node on the graph
+                cy_object.on('click', 'edge', this.show_edge_info);         // A click on an edge
+                cy_object.on('dblclick', 'node', this.handle_double_click);// A double-click on a node on the graph
 
                 /*
                 // EXAMPLES of adding nodes
@@ -431,19 +427,148 @@ Vue.component('vue-cytoscape-5',
 
 
 
+           node_caption_f(ele)
+            /*  Function to generate the caption to show on the graph, for a given node.
+                The caption is based on the node's labels; in the absence of a user-specified mapping,
+                an attempt is made to locate typical important field names, such as "name" or "title";
+                failing that, the data in the field "id" is used as caption.
+
+                Note: the various fields of the node may be extracted from the argument ele (representing a node element)
+                      as ele.data(field_name).  For example: ele.data("id")
+
+                :param ele: An object representing a node element;
+                                ele.data is a function to which one can pass a field name as argument
+                                (such as "id", and will typically "_node_labels")
+                :return:    The name of a field who value will be used as node caption in the graph
+             */
+            {
+                //console.log("Determining node caption for node with the following element:");
+                //console.log(ele);
+                //console.log("    which has id: ", ele.data("id"));
+                //console.log("    and labels: ", ele.data("_node_labels"));
+
+                const field_to_use_for_caption = this.map_labels_to_caption_field(ele.data("_node_labels"), ele.data("id"));
+                //console.log(`Name of field to use for caption: '${field_to_use_for_caption}'`);
+
+                return ele.data(field_to_use_for_caption)
+            },
+
+
+            node_color_f(ele)
+            /*  Function to generate the color to use for the inside of the given node.
+                The color is based on the node's labels; in the absence of a user-specified mapping,
+                white is used.
+
+                Note: the various fields of the node may be extracted from the argument ele (representing a node element)
+                      as ele.data(field_name).  For example: ele.data("id")
+             */
+            {
+                //console.log("Determining color for node with id: ", ele.data("id"));
+                //console.log("    and labels: ", ele.data("_node_labels"));
+
+                return this.map_labels_to_color(ele.data("_node_labels"));
+            },
+
+
+            node_border_color_f(ele)
+            /*  Function to generate the color to use for the border of the node
+                passed as argument (as a graph element).
+                The relationship between the interior and edge color is:
+                same Hue/Saturation but less Luminosity
+             */
+            {
+                //console.log(this.color_mapping);
+                //console.log(ele.data("_node_labels"));
+                const interior_color = this.node_color_f(ele);
+                //console.log(interior_color);
+                const c = d3.hsl(interior_color);
+                //console.log(c);
+                const c_new = c.darker(0.635).formatHex();  // Less Luminosity
+                //console.log(c_new);
+                return c_new;
+            },
+
+
+
+
             /*
                 SUPPORT FUNCTIONS
              */
 
+            change_plot_style()
+            /*  Invoked as soon as the user selects an entry from the menu of plot styles.
+                Re-render the graph with the new plot style
+             */
+            {
+                const cy_object = this.create_graph('cy_' + this.component_id);     // This will let Cytoscape.js re-render the plot
+                this.$options.cy_object = cy_object;        // Save the new object.   TODO: could this be done inside create_graph() ?
+                this.node_info = null;                      // Unset any node selection (in the legend)
+            },
+
+
+            handle_double_click(ev)
+            {
+                console.log("In handle_double_click()");
+
+                const node = ev.target;
+
+                const cyto_node_data_obj = node.data(); // An object with the key 'id',
+                                                        // plus typically '_node_labels', and all the node properties
+
+                console.log(cyto_node_data_obj);
+                const node_id = cyto_node_data_obj.id;
+
+                this.hide_node(node_id);
+            },
+
+
+            hide_node(node_id)
+            /*
+                :param node_id:
+             */
+            {
+                console.log(`In hide_node().  Searching for node with id: ${node_id}`);
+                console.log(typeof node_id);
+
+                const node_index = this.locate_node_by_id(node_id);
+                console.log(`    hide_node(): node located in index position ${node_index}`);
+
+                if (node_index == -1)  {
+                    alert(`hide_node(): unable to locate any node with id ${node_id}`);
+                    return;
+                }
+
+                const adjacent_edges = this.locate_adjacent_edges(node_id);
+                console.log(`    hide_node(): the node is attached to the following ${adjacent_edges.length} edges:`);
+                console.log(adjacent_edges);
+
+                for (let edge_index of adjacent_edges) {
+                    console.log(`    handle_double_click(): hiding EDGE with index position ${edge_index}`);
+                    this.edges.splice(edge_index, 1);   // Delete 1 array element in position edge_index
+                }
+
+                console.log(`    handle_double_click(): hiding NODE with index position ${node_index}`);
+                this.nodes.splice(node_index, 1);       // Delete 1 array element in position node_index
+
+                // Update the graphic object
+                const cy_object = this.create_graph('cy_' + this.component_id);     // This will let Cytoscape.js re-render the plot
+                this.$options.cy_object = cy_object;        // Save the new object.   TODO: could this be done inside create_graph() ?
+
+            },
+
+
+
             show_node_info(ev)
-            // Invoked when clicking on a node
+            // Invoked when user clicks on a node
             {
                 const node = ev.target;
 
-                const cyto_data_obj = node.data();      // An object with various keys, such as 'id', '_node_labels', 'name'
+                const cyto_node_data_obj = node.data(); // An object with the key 'id',
+                                                        // plus typically '_node_labels', and all the node properties
 
-                this.populate_legend_from_node(cyto_data_obj);
+                this.populate_legend_from_node(cyto_node_data_obj);
             },
+
 
 
             populate_legend_from_node(node_data_obj)
@@ -519,7 +644,7 @@ Vue.component('vue-cytoscape-5',
                 let assigned_color = this.default_color_palette[this.next_available_color_palette_index];
                 this.color_mapping[label] = assigned_color;
                 this.next_available_color_palette_index += 1;
-                console.log(`auto_assign_color_to_label(): assigned color '${assigned_color}' to label '${label}'`);
+                //console.log(`auto_assign_color_to_label(): assigned color '${assigned_color}' to label '${label}'`);
             },
 
 
@@ -582,27 +707,50 @@ Vue.component('vue-cytoscape-5',
                 const default_caption_field_name = "id";
 
                 if (labels === undefined)  {
-                    console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Using a default value")
+                    //console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Using a default value")
                 }
                 else  {
-                    console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
+                    //console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
                     //console.log(this.graph_data.caption_mapping);
 
                     for (single_label of labels) {
                         if (single_label in this.graph_data.caption_mapping)  {
-                            const caption_field_name = this.graph_data.caption_mapping[single_label];
+                            //const caption_field_name = this.graph_data.caption_mapping[single_label];
+                            const caption_field_name = this.caption_mapping[single_label];
                             //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
                             return caption_field_name;
                         }
                     }
                 }
 
-                // If we get here, no mapping information was available.  Try some typical names [TODO: turn into an array of values]
-                console.log(`map_labels_to_caption_field(): no mapping information was available. Trying common names for node with id ${node_id}...`);
+                // If we get here, no mapping information was available.  Try some typical names
+                //console.log(`map_labels_to_caption_field(): no mapping information was available. Trying common names for node with id ${node_id}...`);
 
-                const node = this.locate_node_by_id(node_id);
-                //console.log(node);
+                const node_index = this.locate_node_by_id(node_id);
+                //console.log(node_index);
+                if (node_index == -1)  {
+                    alert(`map_labels_to_caption_field(): unable to locate node with id ${node_id}`);
+                    return default_caption_field_name;
+                }
 
+                const node = this.nodes[node_index];    // An object; among its keys will be the node field (property) names
+
+
+                const common_field_names = ["name", "Name", "title", "Title", "caption", "Caption", "model", "brand"];
+
+                for (let field_name of common_field_names) {
+                    if (field_name in node)  {
+                        if (labels.length == 1)  {
+                            // If there's just 1 label, associate it with this assumed field name, for future reference
+                            let single_label = labels[0];
+                            console.log(`map_labels_to_caption_field(): Assigning field "${field_name}" for the captions of nodes with label "${single_label}"`);
+                            this.caption_mapping[single_label] = field_name;
+                        }
+                        return field_name;
+                    }
+                }
+
+                /*
                 if ("name" in node)
                     return "name";
                 if ("Name" in node)
@@ -619,100 +767,13 @@ Vue.component('vue-cytoscape-5',
                     return "model";
                 if ("brand" in node)
                     return "brand";
+                */
 
                 // Nothing could be found; fall back to the generic default
-                console.log("map_labels_to_caption_field(): no typical common names identified. Falling back to the generic default");
+                //console.log("map_labels_to_caption_field(): no typical common names identified. Falling back to the generic default");
                 return default_caption_field_name;
             },
 
-
-            locate_node_by_id(node_id)
-            /*
-                :param node_id: An integer(?) or string with the Cytoscape ID of a node
-             */
-            {
-                console.log(`In locate_node_by_id().  Searching for node with id: ${node_id}`);
-                //console.log(typeof node_id);
-
-
-                // Loop over array of nodes
-                for (el of this.nodes)  {      // el is an object that represents a node
-                    //console.log(`    el.id : ${el.id}`);
-                    //console.log(typeof el.id);
-                    //console.log(`    el :`);
-                    //console.log(el);
-                    if (el.id == node_id)  {
-                        // If the element is a node, and its id matches the desired value
-                        console.log(`    Located the following node:`);
-                        console.log(el);
-                        return el;
-                    }
-                }
-
-                console.log(`    Unable to locate any matching node`);
-                return {};
-            },
-
-
-
-            node_caption_f(ele)
-            /*  Function to generate the caption to show on the graph, for a given node.
-                The caption is based on the node's labels; in the absence of a user-specified mapping,
-                an attempt is made to locate typical important field names, such as "name" or "title";
-                failing that, the data in the field "id" is used as caption.
-
-                Note: the various fields of the node may be extracted from the argument ele (representing a node element)
-                      as ele.data(field_name).  For example: ele.data("id")
-
-                :param ele: An object representing a node element;
-                                ele.data is a function to which one can pass a field name as argument
-                                (such as "id", and will typically "_node_labels")
-                :return:    The name of a field who value will be used as node caption in the graph
-             */
-            {
-                //console.log("Determining node caption for node with id: ", ele.data("id"));
-                //console.log("    and labels: ", ele.data("_node_labels"));
-
-                const field_to_use_for_caption = this.map_labels_to_caption_field(ele.data("_node_labels"), ele.data("id"));
-                console.log(`Name of field to use for caption: '${field_to_use_for_caption}'`);
-
-                return ele.data(field_to_use_for_caption)
-            },
-
-
-            node_color_f(ele)
-            /*  Function to generate the color to use for the inside of the given node.
-                The color is based on the node's labels; in the absence of a user-specified mapping,
-                white is used.
-
-                Note: the various fields of the node may be extracted from the argument ele (representing a node element)
-                      as ele.data(field_name).  For example: ele.data("id")
-             */
-            {
-                //console.log("Determining color for node with id: ", ele.data("id"));
-                //console.log("    and labels: ", ele.data("_node_labels"));
-
-                return this.map_labels_to_color(ele.data("_node_labels"));
-            },
-
-
-            node_border_color_f(ele)
-            /*  Function to generate the color to use for the border of the node
-                passed as argument (as a graph element).
-                The relationship between the interior and edge color is:
-                same Hue/Saturation but less Luminosity
-             */
-            {
-                //console.log(this.color_mapping);
-                //console.log(ele.data("_node_labels"));
-                const interior_color = this.node_color_f(ele);
-                //console.log(interior_color);
-                const c = d3.hsl(interior_color);
-                //console.log(c);
-                const c_new = c.darker(0.635).formatHex();  // Less Luminosity
-                //console.log(c_new);
-                return c_new;
-            },
 
 
             extract_names()
@@ -754,7 +815,7 @@ Vue.component('vue-cytoscape-5',
                             alert(`Irregularity in passed graph structure: found a node (id ${el.id}) whose labels are not an array'`);
                         else {
                             for (let l of labels)  {
-                                console.log(`extract_names(): examining color assignment to label '${l}'`);
+                                //console.log(`extract_names(): examining color assignment to label '${l}'`);
                                 if (! (l in this.color_mapping))
                                     this.auto_assign_color_to_label(l);
                                     
@@ -848,7 +909,75 @@ Vue.component('vue-cytoscape-5',
                 //this.node_info = ['A test'];
                 //this.node_labels = node._node_labels;
                 this.populate_legend_from_node(located_node);
+            },
+
+
+
+            locate_node_by_id(node_id)
+            /*  Locate and return the index of first element of the this.nodes array
+                whose 'id' key value matches the passed value.
+
+                :param node_id: A string (always a string!) with the Cytoscape ID of a node
+                :return:        A zero-based index of an element of the array this.nodes,
+                                    or -1 if not found
+             */
+            {
+                //console.log(`In locate_node_by_id().  Searching for node with id: ${node_id}`);
+                //console.log(typeof node_id);
+
+
+                // Loop over array of nodes
+                //for (el of this.nodes)  {      // el is an object that represents a node
+                for (i in this.nodes) {   // Note:  i will be an integer, not an array element!!
+                    let el = this.nodes[i];
+                    //console.log(`    el.id : ${el.id}`);
+                    //console.log(typeof el.id);
+                    //console.log(`    el :`);
+                    //console.log(el);
+                    if (el.id == node_id)  {
+                        // If the element is a node, and its id matches the desired value
+                        //console.log(`    Located the following node:`);
+                        //console.log(el);
+                        return i;          // Formerly: return el;
+                    }
+                }
+
+                console.log(`    locate_node_by_id(): Unable to locate any matching node`);
+                return -1;
+            },
+
+
+
+            locate_adjacent_edges(node_id)
+            /*  Locate and return the indexes of all the element of the this.edges array
+                whose 'source' or 'target' matches the passed node 'id' value.
+                The index values are returned in REVERSE numerical position (for ease of deleting them
+                with the splice function, for example)
+
+                :param node_id: A string (always a string!) with the Cytoscape ID of a node
+                :return:        A (possibly empty) array of indexes in the this.edges array
+             */
+            {
+                console.log(`In locate_adjacent_edges().  Searching for edges connected to node with id: ${node_id}`);
+
+                var adjacent_edges = [];    // Running list of indexes of located edges
+
+                // Loop over array of edges
+                //for (i in this.edges) {   // Note:  i will be an integer, not an array element!!
+                for (let i = this.edges.length - 1; i >= 0; i--) {
+                    let e = this.edges[i];
+                    if (e.source == node_id || e.target == node_id)  {
+                        // Found
+                        console.log(`    Located the following edge:`);
+                        console.log(e);
+                        adjacent_edges.push(i);     // Save the index
+                    }
+                }
+
+                return adjacent_edges;
             }
+
+
 
         }  // METHODS
 
