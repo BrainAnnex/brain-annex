@@ -260,6 +260,9 @@ class PyGraphVisual:
                                         #    {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
                                         #    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
 
+        self.node_structure = []        # TODO: phase this in
+        self.edge_structure = []        # TODO: phase this in
+
         self.color_mapping = {}         # Mapping a node label to its interior color (the edge color is an automatic variation)
                                         # EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
 
