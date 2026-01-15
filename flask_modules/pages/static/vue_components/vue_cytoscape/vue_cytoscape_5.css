@@ -1,0 +1,79 @@
+div.cytoscape-baseline {
+    height: 850px;
+    display: block;
+    background-color: #f6f6f6;
+    border: 1px solid #CCC;
+    display: inline-block;
+}
+
+div.cytoscape-container-normal {
+    width: 85%;
+}
+
+div.cytoscape-container-expanded {
+    width: 95%;
+}
+
+
+/* Side box on the right, for node/edge info and controls */
+div.cytoscape-legend {
+    width: 13%;
+    border: 1px solid #CCC;
+    padding: 0;
+    padding-bottom:3px;
+    display: inline-block;
+    vertical-align: top;
+
+    font-size: 16px;
+    color: #444;
+}
+
+div.cytoscape-legend-collapsed {
+    display: inline-block;
+    vertical-align: top;
+    border: 1px solid #CCC;
+    padding: 0;
+}
+
+
+/* For the listing of node labels, as "tag-like" graphics */
+div.label {
+    display: inline-block;
+    padding: 5px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    border-radius: 10px;
+    border: 1px solid #d0d0d0;
+}
+
+div.edge {
+    display: inline-block;
+    font-size:13px;
+    background-color: #e6e1e1;
+    padding: 3px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    border: 1px solid gray;
+}
+
+
+
+/* A section of displays and controls in the cytoscape side box */
+p.legend-block {
+    padding: 5px;
+    padding-top: 0;
+}
+
+
+/* For the graph legend */
+span.property-value {
+    font-size: 14px;
+    color: #555;
+}
+
+
+/* Make the element (for example, an image, a SPAN or a TD, etc) clickable,
+   with the same cursor as for links */
+.clickable-icon {
+    cursor: pointer;
+}

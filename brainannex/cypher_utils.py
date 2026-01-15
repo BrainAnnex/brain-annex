@@ -479,6 +479,7 @@ class CypherUtils:
     def assemble_cypher_blocks(cls, handle :Union[int, str, CypherBuilder],
                               dummy_node_name=None, caller_method=None) -> tuple:
         """
+        Put together the various blocks of what can be later assembled into a Cypher query
 
         :param handle:          EITHER a valid internal database ID (int or string),
                                     OR a "CypherBuilder" object (containing data to identify a node or set of nodes)
@@ -600,7 +601,7 @@ class CypherUtils:
     @classmethod
     def prepare_where(cls, where_list: Union[str, list]) -> str:
         """
-        Given a WHERE clause, or list/tuple of them, combined them all into one -
+        Given a Cypher WHERE clause, or list/tuple of them, combine them all into one -
         and also prefix the WHERE keyword to the result (if appropriate).
         The *combined* clauses of the WHERE statement are parentheses-enclosed, to protect against code injection
 
@@ -655,6 +656,9 @@ class CypherUtils:
         Turn a Python dictionary (meant for specifying node or relationship attributes)
         into a string suitable for Cypher queries,
         plus its corresponding data-binding dictionary.
+
+        The goal is to make use of Cypher's data-binding capabilities (generally better than
+        embedding values into Cypher-query strings: safer against data injection and against broken Cypher!)
 
         EXAMPLE :
                 {'cost': 65.99, 'item description': 'the "red" button'}
