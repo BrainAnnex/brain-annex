@@ -88,7 +88,7 @@ class DisplayNetwork:
         :param vue_count:       An integer used to differentiate between multiple Vue components in the same HTML file.
                                     By default, 1
         :return:                A string with HTML code,
-                                    including a <script> element that instantiates the Vue root element
+                                    including a SCRIPT element that instantiates the Vue root element
         """
 
         vue_id = f"vue-root-{vue_count}"    # EXAMPLE: "vue-root-1"
@@ -259,6 +259,9 @@ class PyGraphVisual:
                                         #   [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
                                         #    {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
                                         #    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
+
+        self.node_structure = []        # TODO: phase this in
+        self.edge_structure = []        # TODO: phase this in
 
         self.color_mapping = {}         # Mapping a node label to its interior color (the edge color is an automatic variation)
                                         # EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}

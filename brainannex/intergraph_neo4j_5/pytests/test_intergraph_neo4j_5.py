@@ -56,7 +56,9 @@ def test_constructor():
     obj1 = InterGraph(url, debug=False)       # Rely on default username/pass
 
     assert obj1.debug is False
-    assert obj1.version() == "5.28.1"    # Test the version of the Neo4j driver (this ought to match the value in requirements.txt)
+    # Test the version of the Neo4j driver (this ought to match the value in requirements.txt)
+    assert obj1.version().startswith("5.28")    # This will match any minor version, such as "5.28.1"
+
 
 
     # Another way of instantiating the class

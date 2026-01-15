@@ -298,7 +298,7 @@ class DocumentationGenerator:
                 if first_python_class:
                     first_python_class = False
                 else:
-                    htm += "<br><br><hr>"       # Skipped if it's the first Class
+                    htm += "<br><br><br><hr>"       # Skipped if it's the first Class
 
                 htm += f"<a name='{python_class_name}'></a>\n"
                 htm += f"<h1 class='class-name'>Class {python_class_name}</h1>\n"
