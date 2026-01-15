@@ -2209,7 +2209,7 @@ class ApiRouting:
 
             try:
                 graph = PyGraphVisual(db=GraphSchema.db)
-                result = graph.assemble_graph(id_list=pars_list)
+                result = graph.assemble_graph(id_list=pars_list)    # A pair with (node data, edge data)
                 response_data = {"status": "ok", "payload": result}                 # Successful termination
             except Exception as ex:
                 err_details = f"/assemble-graph : unable to construct the Cytoscape graph visualization data.  " \

@@ -20,7 +20,7 @@ Vue.component('vue-cytoscape-5',
                              {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
                              {'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
 
-                        Note: 'id' values can be integers or strings
+                        Note: 'id' values can be strings or integers (which eventually get converted to strings)
                         
                 1) "structure" 
                 
@@ -537,15 +537,12 @@ Vue.component('vue-cytoscape-5',
 
                 const node_id = cyto_node_data_obj.id;
 
-                //this.hide_node(node);
-                this.hide_node_SIMPLIFIED(node);
-
-                //this.hide_node(node_id);
+                this.hide_node(node);
             },
 
 
 
-            hide_node_SIMPLIFIED(node_collection)
+            hide_node(node_collection)
             // Hide a single node (1 node wrapped in a Collection)
             {
                 const node_id = node_collection.data().id;
@@ -556,40 +553,6 @@ Vue.component('vue-cytoscape-5',
                 node_collection.remove();
 
                 this.sync_vue_data_from_cytoscape();
-            },
-
-
-
-            hide_node(node_collection)
-            // TODO: obsolete!  Hide a single node (1 node wrapped in a Collection)
-            {
-                const node_id = node_collection.data().id;
-                console.log(`In hide_node().  Hiding node with id: ${node_id}`);
-
-
-                // Remove the node from the Cytoscape graph (which automatically takes care of hiding its links)
-                node_collection.remove();
-
-                // Remove the node from our data structure
-                const node_index = this.locate_node_by_id(node_id);
-                console.log(`    hide_node(): node located in index position ${node_index}`);
-
-                if (node_index == -1)  {
-                    alert(`hide_node(): unable to locate any node with id ${node_id}`);
-                    return;
-                }
-
-                const adjacent_edges = this.locate_adjacent_edges(node_id);
-                console.log(`    hide_node(): the node is attached to the following ${adjacent_edges.length} edges:`);
-                console.log(adjacent_edges);
-
-                for (let edge_index of adjacent_edges) {
-                    console.log(`    handle_double_click(): hiding EDGE with index position ${edge_index}`);
-                    this.edges.splice(edge_index, 1);   // Delete 1 array element in position edge_index
-                }
-
-                console.log(`    handle_double_click(): hiding NODE with index position ${node_index}`);
-                this.nodes.splice(node_index, 1);       // Delete 1 array element in position node_index
             },
 
 
@@ -609,8 +572,7 @@ Vue.component('vue-cytoscape-5',
                     return;
                 }
 
-                //this.hide_node(node);
-                this.hide_node_SIMPLIFIED(node);
+                this.hide_node(node);
             },
 
 
@@ -638,23 +600,7 @@ Vue.component('vue-cytoscape-5',
                 // Remove node + orphans in one operation
                 node.union(orphan_nodes).remove();
 
-
-                const remaining_nodes = this.$options.cy_object.nodes().map(n => ({ ...n.data() }));
-                // Note: { ...n.data() }  invokes all getters, copies values, and produces a static snapshot
-                console.log("Remaining nodes:");
-                console.log(remaining_nodes);
-
-                const remaining_edges = this.$options.cy_object.edges().map(e => ({ ...e.data() }));
-                console.log("Remaining edges:");
-                console.log(remaining_edges);
-
-                // Update the Vue data
-                this.nodes = remaining_nodes;
-                this.edges = remaining_edges;
-
-                this.clear_legend();        // Unset the details of the node selection (in the legend)
-
-                this.extract_names();
+                this.sync_vue_data_from_cytoscape();
             },
 
 
