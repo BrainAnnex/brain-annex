@@ -159,10 +159,10 @@ class DisplayNetwork:
                                         that provides the interactive visualization functionality.
                                         The JS file is expected to implement a Vue.js component by the same name
                                         (but with hyphens in lieu of any underscore in the name, if applicable.)
-                                        EXAMPLE: "vue_cytoscape_4" (assuming that a "vue_cytoscape_4.js" file
-                                                 and a "vue_cytoscape_4.css" file
+                                        EXAMPLE: "vue_cytoscape_5" (assuming that a "vue_cytoscape_5.js" file
+                                                 and a "vue_cytoscape_5.css" file
                                                  exist in the directory specified by the argument `vue_comps_dir`,
-                                                 and that the .js file implements a Vue component named "vue-cytoscape-4")
+                                                 and that the .js file implements a Vue component named "vue-cytoscape-5")
 
         :param filename:            The name of the file into which to place the HTML code
                                         to create the interactive network plot.

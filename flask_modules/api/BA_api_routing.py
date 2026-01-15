@@ -2165,7 +2165,7 @@ class ApiRouting:
         def assemble_graph_json():
             """
             Construct and return the data needed by the Cytoscape graph visualization,
-            to display all the passed nodes, as well as any edges among them.
+            to display all the requested nodes, as well as any edges among them.
 
             Any date/datetime value will first be "sanitized"
             into a string representation of the date;
@@ -2174,8 +2174,9 @@ class ApiRouting:
             POST VARIABLES:
                 json    (REQUIRED) A JSON-encoded list of internal database ID's of the data nodes of interest
 
-            :return:    A list of dicts defining nodes, and possibly edges as well,
-                            with all the data needed by the Cytoscape graph visualization
+            :return:    A pair with all the data needed by the Cytoscape graph visualization.
+                            The first element in the pair is a list of dicts with the node data;
+                            the second  element in the pair is a list of dicts with the edge data
             """
             # TODO: use this as a ***MODEL*** of future JSON web api calls
             # Extract and parse the POST value
