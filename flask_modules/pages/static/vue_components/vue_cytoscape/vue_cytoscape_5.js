@@ -537,18 +537,31 @@ Vue.component('vue-cytoscape-5',
 
                 const node_id = cyto_node_data_obj.id;
 
-                console.log(node.neighborhood());
-                console.log(node.connectedEdges());
-
-                this.hide_node(node);
+                //this.hide_node(node);
+                this.hide_node_SIMPLIFIED(node);
 
                 //this.hide_node(node_id);
             },
 
 
 
-            hide_node(node_collection)
+            hide_node_SIMPLIFIED(node_collection)
             // Hide a single node (1 node wrapped in a Collection)
+            {
+                const node_id = node_collection.data().id;
+                console.log(`In hide_node().  Hiding node with id: ${node_id}`);
+
+
+                // Remove the node from the Cytoscape graph (which automatically takes care of hiding its links)
+                node_collection.remove();
+
+                this.sync_vue_data_from_cytoscape();
+            },
+
+
+
+            hide_node(node_collection)
+            // TODO: obsolete!  Hide a single node (1 node wrapped in a Collection)
             {
                 const node_id = node_collection.data().id;
                 console.log(`In hide_node().  Hiding node with id: ${node_id}`);
@@ -596,7 +609,8 @@ Vue.component('vue-cytoscape-5',
                     return;
                 }
 
-                this.hide_node(node);
+                //this.hide_node(node);
+                this.hide_node_SIMPLIFIED(node);
             },
 
 
@@ -643,6 +657,26 @@ Vue.component('vue-cytoscape-5',
                 this.extract_names();
             },
 
+
+            sync_vue_data_from_cytoscape()
+            {
+                const remaining_nodes = this.$options.cy_object.nodes().map(n => ({ ...n.data() }));
+                // Note: { ...n.data() }  invokes all getters, copies values, and produces a static snapshot
+                console.log("Remaining nodes:");
+                console.log(remaining_nodes);
+
+                const remaining_edges = this.$options.cy_object.edges().map(e => ({ ...e.data() }));
+                console.log("Remaining edges:");
+                console.log(remaining_edges);
+
+                // Update the Vue data
+                this.nodes = remaining_nodes;
+                this.edges = remaining_edges;
+
+                this.clear_legend();        // Unset the details of the node selection (in the legend)
+
+                this.extract_names();
+            },
 
 
             show_node_info(ev)
