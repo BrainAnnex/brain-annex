@@ -77,9 +77,11 @@ Vue.component('vue-cytoscape-5',
                     <!-- If nothing is selected on the plot, show the list of labels... -->
                     <p v-if="!legend_html" class="legend-block">
                         <b>Node labels</b><br><br>
-                        <template v-for="color_map in Object.entries(color_mapping)">
-                            <div class="label" v-bind:style="{'background-color': color_map[1]}">{{color_map[0]}}</div>
+                        <template v-for="label in label_names">
+                            <div class="label" v-bind:style="{'background-color': color_mapping[label]}">{{label}}</div>
                         </template>
+
+
 
                         <br><br><br>
                         <span style="color: #888; font-style: italic">Select a node or edge<br>on the graph</span>
@@ -103,6 +105,7 @@ Vue.component('vue-cytoscape-5',
                         <br><br>
                         <template v-if="selected_element_type == 'node'">
                             <button  @click="hide_node_by_id(selected_element.id)">Hide (node only)</button>
+                            <br><br>
                             <button  @click="hide_node_and_orphans(selected_element.id)">Hide (incl. orphaned neighbors)</button>
                         </template>
                         <br>
@@ -185,7 +188,6 @@ Vue.component('vue-cytoscape-5',
                                                 //      for the currently-selected node or edge
                 selected_element: null,         // Object containing the data of the selected node or edge
                 selected_element_type: null,    // Either "node" or "edge"
-                //selected_collection: null,      // A cytoscape.Collection (1 node or edge wrapped in a Collection)
 
 
                 default_color_palette:  {   0: "#ff7577",  // Pale red "#F16668",
@@ -621,48 +623,24 @@ Vue.component('vue-cytoscape-5',
 
                 // Remove node + orphans in one operation
                 node.union(orphan_nodes).remove();
-            },
 
 
+                const remaining_nodes = this.$options.cy_object.nodes().map(n => ({ ...n.data() }));
+                // Note: { ...n.data() }  invokes all getters, copies values, and produces a static snapshot
+                console.log("Remaining nodes:");
+                console.log(remaining_nodes);
 
+                const remaining_edges = this.$options.cy_object.edges().map(e => ({ ...e.data() }));
+                console.log("Remaining edges:");
+                console.log(remaining_edges);
 
+                // Update the Vue data
+                this.nodes = remaining_nodes;
+                this.edges = remaining_edges;
 
-            hide_node_OLD(node_id)
-            /*
-                TODO: eliminate
-                :param node_id: A string (always a string!) with the Cytoscape ID of a node
-             */
-            {
-                console.log(`In hide_node().  Searching for node with id: ${node_id}`);
+                this.clear_legend();        // Unset the details of the node selection (in the legend)
 
-                const node = this.$options.cy_object.getElementById(node_id);   // TODO: experimental!
-
-                console.log(`     Alternate way to obtain id: ${node.data().id}`);
-
-                const node_index = this.locate_node_by_id(node_id);
-                console.log(`    hide_node(): node located in index position ${node_index}`);
-
-                if (node_index == -1)  {
-                    alert(`hide_node(): unable to locate any node with id ${node_id}`);
-                    return;
-                }
-
-                const adjacent_edges = this.locate_adjacent_edges(node_id);
-                console.log(`    hide_node(): the node is attached to the following ${adjacent_edges.length} edges:`);
-                console.log(adjacent_edges);
-
-                for (let edge_index of adjacent_edges) {
-                    console.log(`    handle_double_click(): hiding EDGE with index position ${edge_index}`);
-                    this.edges.splice(edge_index, 1);   // Delete 1 array element in position edge_index
-                }
-
-                console.log(`    handle_double_click(): hiding NODE with index position ${node_index}`);
-                this.nodes.splice(node_index, 1);       // Delete 1 array element in position node_index
-
-                // Update the graphic object
-                const cy_object = this.create_graph('cy_' + this.component_id);     // This will let Cytoscape.js re-render the plot
-                this.$options.cy_object = cy_object;        // Save the new object.   TODO: could this be done inside create_graph() ?
-
+                this.extract_names();
             },
 
 
@@ -943,7 +921,7 @@ Vue.component('vue-cytoscape-5',
 
                 // Reset the arrays of edge and label names
                 this.edge_names = [];
-                this.selected_node_labels = [];
+                this.label_names = [];
 
                 // Parse the array of edges
                 for (el of this.edges)  {     // el is an object that represents an edge
@@ -975,8 +953,8 @@ Vue.component('vue-cytoscape-5',
                                 if (! (l in this.color_mapping))
                                     this.auto_assign_color_to_label(l);
                                     
-                                if (! this.selected_node_labels.includes(l))
-                                    this.selected_node_labels.push(l);      // Keep a running list of all label names encountered
+                                if (! this.label_names.includes(l))
+                                    this.label_names.push(l);      // Keep a running list of all label names encountered
                             }
                         }
                     }
